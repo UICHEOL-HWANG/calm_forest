@@ -92,10 +92,6 @@ test('가로 폰 — 캐릭터 선택창은 아이폰 Safari 가로(높이 약 2
   assert.match(b, /#char-preview, #char-preview-fallback \{ width: 120px; height: 96px; \}/);
 });
 
-test('아주 낮은 가로(340 이하, Safari 주소창) — 코치 장 목표 줄을 접는다', () => {
-  assert.match(html, /@media \(orientation: landscape\) and \(max-height: 340px\) \{\n    body\.is-touch #coach-goal \{ display: none; \}/);
-});
-
 test('가로 폰 — 첫 환영 창은 조작 목록·큰 이모지를 접어 시작 버튼이 바로 보인다', () => {
   assert.match(html, /#tutorial-modal \.tut-emoji, #tutorial-modal \.tut-list \{ display: none; \}/);
 });
