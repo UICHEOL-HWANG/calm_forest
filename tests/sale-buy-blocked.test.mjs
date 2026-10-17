@@ -4,7 +4,7 @@ import { buyBlocked, SALE_ENDED_MSG } from '../js/shop/sale-window.js';
 
 const def = { id: 'x', sale: 'halloween' };
 const KST = (y, m, d, h = 0, mi = 0, s = 0) => Date.UTC(y, m - 1, d, h, mi, s) - 9 * 3600 * 1000;
-const IN = KST(2026, 10, 25, 12), BEFORE = KST(2026, 10, 23, 23, 59, 59), AFTER = KST(2026, 11, 3, 0, 0, 0);
+const IN = KST(2026, 10, 25, 12), BEFORE = KST(2026, 10, 16, 23, 59, 59), AFTER = KST(2026, 11, 3, 0, 0, 0);
 
 test('기간 안에는 어떤 경우에도 막지 않는다', () => {
   assert.equal(buyBlocked({ def, now: IN }), false);

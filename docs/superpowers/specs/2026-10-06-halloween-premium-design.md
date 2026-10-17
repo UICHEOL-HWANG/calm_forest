@@ -37,7 +37,7 @@
 
 ```js
 export const SALE_WINDOWS = Object.freeze({
-  halloween: { from: '2026-10-24', to: '2026-11-02' },   // KST 날짜, 양끝 포함. 승인일에 맞춰 이 한 곳만 고친다
+  halloween: { from: '2026-10-17', to: '2026-11-02' },   // KST 날짜, 양끝 포함. 승인일에 맞춰 이 한 곳만 고친다
 });
 export function saleOpen(item, now = Date.now()) { /* item.sale 없으면 true */ }
 ```
