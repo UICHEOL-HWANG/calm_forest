@@ -105,3 +105,6 @@ export const OWL_NEXT_LINES = {
 export function owlNextLine(houseStage = 0) {
   return (houseStage || 0) >= 3 ? OWL_NEXT_LINES.bridge : OWL_NEXT_LINES.house;
 }
+export function owlCanShow({ tutorialSeen = false, modalOpen = false } = {}) {
+  return !!tutorialSeen && !modalOpen;
+}

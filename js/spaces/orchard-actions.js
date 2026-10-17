@@ -14,7 +14,7 @@ import { trackEvent } from '../analytics.js';
 import { BASIC_CROPS, TOOLS } from '../data/tools.js';
 import { seedKeyOf } from '../farm-crops.js';
 import { logOrchardEvent } from '../orchard-log.js';
-import { ONBOARD_LINES, ONBOARD_SEEDS, OWL_NEXT_LINES, afterAdvPlant, afterUnlock, needsRefill, owlNextLine, shouldOffer } from '../orchard-onboard.js';
+import { ONBOARD_LINES, ONBOARD_SEEDS, OWL_NEXT_LINES, afterAdvPlant, afterUnlock, needsRefill, owlCanShow, owlNextLine, shouldOffer } from '../orchard-onboard.js';
 import { ORCHARD_AUTO_TOOLS, TREE_SLOTS, YIELD_PER_DAY, chopHit, freeSlots, fruitKeyOf, fruitOf, harvestable, nearStream, orchardToolFor, sapKeyOf } from '../orchard.js';
 import { Sound } from '../sound.js';
 import { createPlot, seedSelCrop, syncSeedToolIcon, trellisAdjacent } from '../spaces/farm.js';
@@ -172,6 +172,7 @@ export function maybeOfferOrchardQuest({ needHarvested = false } = {}) {
 function owlNextStep(needHarvested) {
   const hs = gameState.hintsSeen;
   if (hs.owlAfterHarvest) return;
+  if (!owlCanShow({ tutorialSeen: gameState.tutorialSeen, modalOpen: ui.anyModalOpen?.() })) return;
   if (needHarvested && !Object.keys(gameState.dex?.crop || {}).length) return;   // 튜토리얼 끝 호출인데 아직 안 거뒀다
   hs.owlAfterHarvest = true;
   ui.showHintBanner?.({ ico: '🦉', title: OWL_NEXT_LINES.title, line: owlNextLine(gameState.houseStage), near: () => true, attention: true });

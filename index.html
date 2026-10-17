@@ -4898,7 +4898,10 @@
       const m = $('tutorial-modal');
       m.classList.remove('show');
       trackEvent('tutorial_skip', { at: m.dataset.src || 'welcome' });   // [①] 온보딩 거부 / 도움말 닫기 구분
-      if ((m.dataset.src || 'welcome') === 'welcome') nudgeGuideOnce();   // 📖 환영 모달에서 바로 건너뛴 사람(대다수)에게도 1회
+      if ((m.dataset.src || 'welcome') === 'welcome') {
+        nudgeGuideOnce();   // 📖 환영 모달에서 바로 건너뛴 사람(대다수)에게도 1회
+        Input.orchardQuestAfterTutorial?.();
+      }
     });
     $('coach-skip').addEventListener('click', () => endCoach(false));
 

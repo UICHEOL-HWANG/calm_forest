@@ -137,3 +137,20 @@ test('owlNextLine: 집이 덜 지어졌으면 집, 다 지었으면 다리', asy
   assert.equal(owlNextLine(3), OWL_NEXT_LINES.bridge);
   assert.equal(owlNextLine(undefined), OWL_NEXT_LINES.house);
 });
+
+test('owlCanShow: 환영 모달 전·모달 위에서는 미룬다', async () => {
+  const { owlCanShow } = await import('../js/orchard-onboard.js');
+  assert.equal(owlCanShow({ tutorialSeen: false, modalOpen: false }), false);
+  assert.equal(owlCanShow({ tutorialSeen: true, modalOpen: true }), false);
+  assert.equal(owlCanShow({ tutorialSeen: true, modalOpen: false }), true);
+});
+
+test('환영 모달 건너뛰기도 미뤄 둔 올빼미·과수원 의뢰를 다시 부른다', async () => {
+  const { readFileSync } = await import('node:fs');
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const skip = html.slice(html.indexOf("$('tut-skip').addEventListener"), html.indexOf("$('coach-skip').addEventListener"));
+  assert.match(skip, /orchardQuestAfterTutorial/);
+  const src = readFileSync(new URL('../js/spaces/orchard-actions.js', import.meta.url), 'utf8');
+  const fn = src.slice(src.indexOf('function owlNextStep'), src.indexOf('hs.owlAfterHarvest = true'));
+  assert.match(fn, /owlCanShow\(/);
+});
