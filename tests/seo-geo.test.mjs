@@ -185,3 +185,7 @@ test('seoHead: noindex 를 켜면 robots 메타를 넣는다', async () => {
   assert.match(seoHead({ path: '/x', title: 't', description: 'd', noindex: true }), /<meta name="robots" content="noindex" \/>/);
   assert.doesNotMatch(seoHead({ path: '/x', title: 't', description: 'd' }), /noindex/);
 });
+
+test('_headers: llms.txt 는 UTF-8 로 내보낸다', () => {
+  assert.match(read('_headers'), /\/llms\.txt\n  ! Content-Type\n  Content-Type: text\/plain; charset=utf-8/);
+});
