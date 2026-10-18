@@ -35,6 +35,8 @@ import { Sound } from '../sound.js';
 import { josa } from '../spaces/cafe.js';
 import { HALLOWEEN_INDOOR_IDS, HALLOWEEN_STYLE, buildHalloween, makeCtx } from './halloween-art.js';
 import { DREAM_DECOR_IDS, buildDreamDecor } from '../dream/decor-art.js';   // 🌙 꿈 장식 4종
+import { IDS as KITCHEN_SET_IDS, build as buildKitchenSet } from '../decor-drops/art-kitchen.js';
+import { IDS as NIGHT_SET_IDS, build as buildNightSet } from '../decor-drops/art-night.js';
 import { SOUVENIR_INDOOR_IDS, buildSouvenir } from '../mountain/souvenir-art.js';
 import { MIRROR_DECOR_IDS, buildMirrorDecor } from '../mirror/decor-art.js';   // 🪞 거울 장식 4종
 import { T as MirrorT } from '../mirror/track.js';
@@ -441,6 +443,10 @@ export function decorMesh(id) {
     const shade = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.19, 10), new THREE.MeshStandardMaterial({ color: 0xfff2c0, emissive: 0xffca70, emissiveIntensity: 0.85, roughness: 0.6 })); shade.position.y = 0.32; g.add(shade);
   } else if (DREAM_DECOR_IDS.includes(id)) {   // 🌙 꿈 장식 — ✨ 꿈 조각으로 산다(js/dream/decor-art.js)
     g.add(buildDreamDecor(id));
+  } else if (KITCHEN_SET_IDS.includes(id)) {
+    g.add(buildKitchenSet(id));
+  } else if (NIGHT_SET_IDS.includes(id)) {
+    g.add(buildNightSet(id));
   } else if (MIRROR_DECOR_IDS.includes(id)) {   // 🪞 거울 장식 — 🪞 거울 조각으로 산다(js/mirror/decor-art.js)
     g.add(buildMirrorDecor(id));
   } else if (SOUVENIR_INDOOR_IDS.includes(id)) {
