@@ -55,7 +55,7 @@
         <a href="#s-act">활성화 퍼널 <em>A</em></a>
         <a href="#s-ret">리텐션 <em>R</em></a>
         <a href="#s-gro">성장 구성</a>
-        <a href="#s-eng">참여 · 맵</a>
+        <a href="#s-eng">활성화 시간 · 밀도맵</a>
         <a href="#s-ops">유저 관찰</a>
       </nav>
 
@@ -78,7 +78,7 @@
         <section class="rsec" id="s-act">
           <div class="sh" style="--av:url(img/chars/chick.png)">
             <span class="eyebrow">Activation · 신규 첫 주</span>
-            <h2>신규 유저는 어디서 멈추나</h2>
+            <h2>신규 유저 퍼널 분석</h2>
             <p class="insight skel" id="actInsight">첫날 획득 행동(수확·낚시·제작 등)까지 가는지가 재방문을 가르는 지점인지 봅니다.</p>
           </div>
           <div class="two">
@@ -98,7 +98,7 @@
         <section class="rsec" id="s-ret">
           <div class="sh" style="--av:url(img/chars/bear.png)">
             <span class="eyebrow">Retention</span>
-            <h2>얼마나 다시 오나</h2>
+            <h2>리텐션</h2>
             <p class="insight skel" id="retInsight">첫날 획득 여부로 나눈 N일차 리텐션입니다.</p>
           </div>
           <div class="two">
@@ -118,7 +118,7 @@
         <section class="rsec" id="s-gro">
           <div class="sh" style="--av:url(img/chars/dog.png)">
             <span class="eyebrow">Growth accounting</span>
-            <h2>DAU 는 무엇으로 이루어지나</h2>
+            <h2>DAU 상세 구성</h2>
             <p class="insight">신규·연속 복귀·재활성(쉬었다 돌아옴)이 위로, 전날 왔는데 그날 안 온 이탈이 아래로 쌓입니다. 오늘 이탈은 하루가 끝나야 셉니다.</p>
           </div>
           <div class="chartbox"><canvas id="cGrowth" height="120"></canvas></div>
@@ -132,16 +132,16 @@
         <section class="rsec" id="s-eng">
           <div class="sh" style="--av:url(img/chars/cat.png)">
             <span class="eyebrow">Engagement</span>
-            <h2>언제, 어디서 노나</h2>
+            <h2>활성화 시간 · 이동 밀도맵</h2>
           </div>
           <div class="two">
             <div class="panel">
-              <h3>요일 × 시간대 (KST)</h3>
+              <h3>활성화 시간 (요일 × 시간대, KST)</h3>
               <p class="def">세션 시작 기준. 이벤트·푸시 시각을 정할 때 씁니다.</p>
               <div id="hourmap"></div>
             </div>
             <div class="panel">
-              <h3>맵별 이동 밀도</h3>
+              <h3>이동 밀도맵</h3>
               <div class="seg" id="mapSel" role="group" aria-label="맵">
                 <button data-map="main" class="on">마을</button>
                 <button data-map="dream">꿈의 숲</button>

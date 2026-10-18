@@ -154,6 +154,7 @@
 
   <script type="module">
     import { CONFIG, isSupabaseConfigured } from '../js/config.js';
+    import { LOGIN_GATE_HTML, mountLoginGate } from './js/admin-login.js';
     import { parseBody } from '../js/notices.js';   // 게임 소식함과 같은 '|' 표 규칙
     const $ = (id) => document.getElementById(id);
     const showMsg = (html) => { $('load').style.display = 'none'; const m = $('msg'); m.style.display = 'block'; m.innerHTML = html; };
@@ -176,8 +177,8 @@
       sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, { auth: { detectSessionInUrl: true, persistSession: true } });
       const { data: s } = await sb.auth.getSession();
       if (!s?.session) {
-        showMsg('로그인이 필요합니다.<br><br><button id="lg">구글로 로그인</button><br><small style="opacity:.6">관리자 계정으로 로그인하세요</small>');
-        $('lg').onclick = () => sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname } });
+        showMsg('관리자 로그인이 필요합니다.' + LOGIN_GATE_HTML);
+        mountLoginGate(sb);
         return;
       }
       const { data: isAdmin, error } = await sb.rpc('cf_is_admin');

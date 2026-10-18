@@ -148,6 +148,7 @@
 
   <script type="module">
     import { CONFIG, isSupabaseConfigured } from '../js/config.js';
+    import { LOGIN_GATE_HTML, mountLoginGate } from './js/admin-login.js';
     const $ = (id) => document.getElementById(id);
     const showMsg = (html) => { $('load').style.display='none'; const m=$('msg'); m.style.display='block'; m.innerHTML=html; };
     // 차트 색은 _dash.css 토큰에서 읽습니다(라이트/다크 자동 대응).
@@ -198,8 +199,8 @@
       if (!shareKey) {
         const { data:s } = await sb.auth.getSession();
         if (!s?.session) {
-          showMsg('로그인이 필요합니다.<br><br><button id="lg">구글로 로그인</button><br><small style="opacity:.6">또는 게임에서 먼저 로그인 후 이 페이지를 여세요</small>');
-          $('lg').onclick = () => sb.auth.signInWithOAuth({ provider:'google', options:{ redirectTo: location.origin + location.pathname }});
+          showMsg('관리자 로그인이 필요합니다.' + LOGIN_GATE_HTML);
+          mountLoginGate(sb);
           return;
         }
       }

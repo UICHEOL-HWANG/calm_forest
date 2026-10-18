@@ -5,6 +5,7 @@
 //  - 색은 _dash.css 토큰에서만 읽는다(V)
 // =============================================================
 import { CONFIG, isSupabaseConfigured } from '../../js/config.js';
+import { LOGIN_GATE_HTML, mountLoginGate } from './admin-login.js';
 
 export const $ = (id) => document.getElementById(id);
 export const V = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -34,9 +35,8 @@ export async function bootAdmin({ allowShare = true } = {}) {
 
   const { data } = await sb.auth.getSession();
   if (!data?.session) {
-    showMsg(`<img class="msg-char" src="${CHAR('panda')}" alt="">로그인이 필요합니다.<br><br><button id="lg">구글로 로그인</button>
-      <br><small style="opacity:.6">또는 게임에서 먼저 로그인한 뒤 이 페이지를 여세요</small>`);
-    $('lg').onclick = () => sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname } });
+    showMsg(`<img class="msg-char" src="${CHAR('panda')}" alt="">관리자 로그인이 필요합니다.${LOGIN_GATE_HTML}`);
+    mountLoginGate(sb);
     return null;
   }
   return sb;

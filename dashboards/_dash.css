@@ -210,6 +210,19 @@ table.mini td.n { text-align: right; font-variant-numeric: tabular-nums; }
   border-radius: 12px; padding: 10px 18px; font-weight: 600; cursor: pointer;
   color: var(--ink); font-family: inherit;
 }
+.lg-gate { margin-top: 14px; }
+.lg-gate #lgGoogle { margin-top: 0; width: 100%; }
+.lg-or { font-size: 12px; color: var(--ink-3); margin: 14px 0 8px; }
+.lg-row { display: flex; gap: 8px; margin-top: 8px; }
+.lg-row[hidden] { display: none; }
+.lg-row input {
+  flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--surface-2);
+  border-radius: 12px; padding: 10px 12px; font: inherit; color: var(--ink);
+}
+#msg .lg-row button { margin-top: 0; white-space: nowrap; }
+#msg .lg-gate button:disabled { opacity: .5; cursor: default; }
+.lg-note { min-height: 1.4em; font-size: 12px; color: var(--ink-3); margin-top: 8px; }
+.lg-note.bad { color: var(--down); }
 #load { display: none; text-align: center; padding: 50px; color: var(--ink-3); font-size: 14px; }
 
 /* 이동 히트맵 캔버스 — width:100% 만 주면 정사각으로 커져
