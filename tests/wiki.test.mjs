@@ -100,3 +100,16 @@ test('wiki.js: 한글 조합 중 Enter 무시 · 실패 캐시 안 함', () => {
   assert.match(js, /ev\.isComposing/);
   assert.match(js, /data = null/);
 });
+
+test('위키: GA4 태그와 게임 링크 UTM', () => {
+  const secs = new Map([['개요', '방어는 바다 물고기다.'], ['얻는 법', '낚는다.']]);
+  const doc = renderDoc(index.get('fish/sea_buri'), secs, { index, entries: wiki.entries, cats: wiki.cats });
+  assert.match(doc, /googletagmanager\.com\/gtag\/js\?id=G-ELBTR8BXBF/);
+  assert.match(doc, /gtag\('config', 'G-ELBTR8BXBF'\)/);
+  assert.match(doc, /class="wk-cta" href="\/\?utm_source=wiki&amp;utm_medium=referral&amp;utm_campaign=fish_sea_buri"/);
+  assert.match(doc, /class="wk-foot"><a href="\/\?utm_source=wiki&amp;utm_medium=referral&amp;utm_campaign=fish_sea_buri"/);
+  const home = renderHome(wiki.cats, wiki.entries);
+  assert.match(home, /utm_campaign=wiki_home/);
+  const cat = renderCat(wiki.cats[0], wiki.entries.filter(e => e.cat === 'fish'), { cats: wiki.cats });
+  assert.match(cat, /utm_campaign=cat_fish/);
+});

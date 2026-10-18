@@ -8,7 +8,7 @@ export function rssXml(rows) {
   const items = rows.map(r => [
     '    <item>',
     `      <title>${esc(r.title)}</title>`,
-    `      <link>${SITE}/</link>`,
+    `      <link>${SITE}/news/${r.id}</link>`,
     `      <guid isPermaLink="false">calmforest-notice-${r.id}</guid>`,
     `      <pubDate>${new Date(r.created_at).toUTCString()}</pubDate>`,
     `      <description>${esc(r.body).replace(/\n/g, '&lt;br&gt;')}</description>`,

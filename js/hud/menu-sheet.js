@@ -27,7 +27,7 @@ const CSS = `
 const CATS = [
   ['🏡', '마을', [['char-btn', '🐾'], ['map-btn', '🗺️'], ['photo-btn', '📷'], ['emote-btn', '🙂']]],
   ['💌', '소식·친구', [['inbox-btn', '📮'], ['invite-btn', '🤝'], ['lb-btn', '🏆'], ['feedback-tab', '💬']]],
-  ['📒', '기록', [['album-btn', '📸'], ['stats-btn', '📊'], ['diary-btn', '📝'], ['help-btn', '📖']]],
+  ['📒', '기록', [['album-btn', '📸'], ['decor-set-btn', '🎁'], ['stats-btn', '📊'], ['diary-btn', '📝'], ['help-btn', '📖']]],
   ['⚙️', '설정', [['settings-btn', '⚙️']]],
 ];
 
