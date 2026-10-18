@@ -2830,4 +2830,6 @@ export const EN = {
   '🎁 특별한 꾸미기 세트': '🎁 Special Decor Sets',
   '미니게임을 하다 보면 일정 확률로 나와요! 두 개를 다 모으면 세트 연출이 켜져요.': 'They turn up now and then as you play minigames! Collect both pieces to light up the set.',
   '🎣 곧 만나요': '🎣 Coming soon',
+  '꾸미기 세트': 'Decor Sets', '요리': 'Cooking', '꿈의 숲': 'Dream Forest', '광산': 'Mine', '조각': 'Carving',
+  '나룻배': 'Ferry', '안개숲': 'Misty Forest', '밤손님 대결': 'Night Duel', '반딧불 숲': 'Firefly Glade',
 };

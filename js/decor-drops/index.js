@@ -5,9 +5,11 @@ import { DECOR } from '../data/catalog.js';
 import { DROP_SOURCES, DECOR_SETS } from '../data/decor-sets.js';
 import { rollDrop, setProgress, daysSince, bannerDue } from './rules.js';
 import { dropToast, setCompleteToast, bannerCopy } from './copy.js';
+import { albumView, albumHtml } from './album.js';
 
 const forceNext = () => IS_DEV_SESSION && new URLSearchParams(location.search).get('drop') === 'force';
 const nameOf = (id) => DECOR.find(d => d.id === id)?.name ?? id;
+const infoOf = (id) => { const d = DECOR.find(x => x.id === id); return { name: d?.name ?? id, ico: d?.ico ?? '🎁' }; };
 const granted = () => (Array.isArray(gameState.house?.grantedDecor) ? gameState.house.grantedDecor : []);
 
 function grant(id) {
@@ -46,7 +48,7 @@ export function onPlay(src) {
 
 export function openDecorAlbum(from) {
   trackEvent('decor_album_open', { src: from });
-  ui.openDecorAlbum?.();
+  ui.openDecorAlbum?.(albumHtml(albumView(granted(), infoOf)));
 }
 
 export function decorBanner(src) {

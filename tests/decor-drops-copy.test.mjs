@@ -50,6 +50,7 @@ test('every runtime string translates fully to English', () => {
     for (const id of [...s.items, s.bonus]) runtime.push(nameOf(id));
   }
   runtime.push(C.ALBUM_COPY.title, C.ALBUM_COPY.lead, C.ALBUM_COPY.soon);
+  runtime.push(...Object.values(C.SRC_PLACE), '꾸미기 세트');
   for (const ko of runtime) assert.doesNotMatch(t(ko), HAS_KO, `${ko} → ${t(ko)}`);
 });
 
