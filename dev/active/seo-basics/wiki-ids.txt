@@ -1,0 +1,14 @@
+fish: common=피라미, uncommon=붉은 물고기, rare=무지개 물고기, sakura_trout=벚꽃 송어, puffer=동글 복어, maple_carp=단풍 잉어, ice_smelt=얼음 빙어
+crop: carrot=당근, tomato=토마토, blueberry=블루베리, pumpkin=호박, wheat=밀, corn=옥수수, grape=포도
+ore: stone=돌, coal=석탄, gem=보석
+cook: veg_stew=든든한 채소죽, mushroom_soup=숲의 버섯 스프, rice_ball=소금 주먹밥, baked_yam=군고구마, herb_salad=들나물 무침, grilled_fish=생선 구이, omelette=푸짐한 오믈렛, bread=갓 구운 빵, grape_juice=포도주스, lunchbox=모둠 도시락, forest_feast=숲의 한상차림
+npc: farmer=농부 삼촌, builder=목수 아저씨, merchant=방랑 상인, angler=낚시꾼 할아버지, chef=요리사 판다, forager=숲지기 오소리, stargazer=별 보는 아이, ferryman=사공 오리, rancher=목장 아주머니, curator=큐레이터 할아버지, courier=의뢰 올빼미, guest_deer=숲길 사슴, guest_otter=강가 수달, guest_hedgehog=가시 고슴도치, guest_squirrel=부지런한 다람쥐, guest_raccoon=야행성 너구리, guest_frog=빗소리 개구리, guest_turtle=느긋한 거북, guest_beaver=댐 짓는 비버
+forage: mushroom=숲 버섯, berry=산딸기, acorn=도토리, herb=숲 약초
+bug: yellow=노랑반디, blue=푸른반디, green=초록반디, rainbow=무지개반디
+track: fur_tuft=털뭉치, acorn_drop=주운 도토리
+dig: worm=지렁이, shard=사금파리, old_coin=옛 동전
+river: lotus=물 위 연꽃, driftwood=떠내려온 나무, shell=강 조개, moon_fish=달빛 물고기
+spirit: shy=수줍은 정령, sleepy=졸린 정령, mischief=장난꾸러기 정령, golden=황금 정령
+weather: clear=맑은 날, rain=비 오는 날, snow=눈 오는 날, fog=안개 낀 날
+visitor: butterfly=호랑나비, sparrow=참새, hedgehog=고슴도치, frog=청개구리
+fish(sea): sea_aji=전갱이, sea_buri=방어, sea_mola=개복치, sea_tuna=참치

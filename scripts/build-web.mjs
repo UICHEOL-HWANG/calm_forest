@@ -64,6 +64,8 @@ const INCLUDE = [
   // 💳 /terms /refund (/shop 은 아래에서 생성) — CONFIG.PADDLE.storeOpen 일 때만 넣는다(STORE_PAGES)
   ['pages/delete-account.html', 'delete-account.html'], // → /delete-account
   '_headers',        // 캐시 헤더
+  ['wiki/wiki.css', 'wiki/wiki.css'],
+  ['wiki/wiki.js', 'wiki/wiki.js'],
 ];
 // assets/brand 는 아이콘 "원본"(빌드 입력)이라 배포에 넣지 않는다 — 런타임 참조 없음.
 
@@ -134,9 +136,10 @@ if (CONFIG.PADDLE.storeOpen) {
   await mkdir(path.join(DIST, 'shop'), { recursive: true });
   for (const pg of shopProductPages(ITEMS)) {
     await writeFile(path.join(DIST, 'shop', `${pg.id}.html`), pg.html);
-    if (pg.open) sitemapPaths.push(pg.path);
   }
 }
+const { writeWiki } = await import('./lib/wiki/build.mjs');
+sitemapPaths.push(...await writeWiki(DIST));
 await writeFile(path.join(DIST, 'sitemap.xml'), sitemapXml(sitemapPaths));
 await writeFile(path.join(DIST, 'robots.txt'), robotsTxt());
 
