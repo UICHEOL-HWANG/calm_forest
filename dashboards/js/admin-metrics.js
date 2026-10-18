@@ -55,6 +55,29 @@ export function heatGrid(cells, map) {
   return { grid, n, max };
 }
 
+export const MAP_HOUR_ROWS = [
+  { map: 'main', label: '마을' },
+  { map: 'dream', label: '꿈의 숲' },
+  { map: 'mirror', label: '거울 마을' },
+  { map: 'other', label: '그 외' },
+];
+
+export function mapHourGrid(rows) {
+  const byHour = Array.from({ length: 24 }, () => 0);
+  for (const r of rows) byHour[r.hour] += r.hits;
+  const find = (m, h) => rows.find((r) => r.map === m && r.hour === h);
+  return {
+    total: byHour.reduce((a, b) => a + b, 0),
+    rows: MAP_HOUR_ROWS.map(({ map, label }) => ({
+      map, label,
+      cells: byHour.map((tot, hour) => {
+        const r = find(map, hour);
+        return { hour, hits: r?.hits || 0, users: r?.users || 0, share: tot ? (r?.hits || 0) / tot : null };
+      }),
+    })),
+  };
+}
+
 /** 유저 관찰 표의 상태 칩. */
 export function userStatus(u, now = new Date()) {
   const idleH = (now - new Date(u.last_seen)) / 3600e3;

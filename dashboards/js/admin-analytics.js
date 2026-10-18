@@ -4,7 +4,7 @@
 //  계산: ./admin-metrics.js(순수 함수, 테스트 있음) · 공통: ./admin-common.js
 // =============================================================
 import { $, V, nf, esc, CHAR, shareKey, bootAdmin, explainRpcError, showMsg, createLoader } from './admin-common.js';
-import { MAPS, delta, worstLeak, rate, heatGrid, userStatus, funnelSteps } from './admin-metrics.js';
+import { MAPS, delta, worstLeak, rate, heatGrid, userStatus, funnelSteps, mapHourGrid } from './admin-metrics.js';
 
 const page = $('page');
 const loader = createLoader(page, $('loader'));
@@ -107,6 +107,7 @@ function render(d) {
   renderNsm(d.nsm_daily || []);
   renderHourmap(d.hourly || []);
   renderHeat(d.heat || []);
+  renderMapHour(mapHourGrid(d.map_hour || []));
   renderUsers(d.users || []);
   renderEcon(d.econ_daily || [], d.econ_sources || []);
   renderSegments(d.segments || {}, d.progress || {});
@@ -245,6 +246,19 @@ function renderHourmap(rows) {
     }
   }
   $('hourmap').innerHTML = h + '</div>';
+}
+
+function renderMapHour({ rows, total }) {
+  if (!total) { $('maphour').innerHTML = '<div class="empty">이 기간 위치 기록이 없어요.</div>'; return; }
+  let h = '<div class="hgrid mhgrid"><span></span>' + Array.from({ length: 24 }, (_, i) => `<span style="text-align:center">${i % 3 === 0 ? i : ''}</span>`).join('');
+  for (const r of rows) {
+    h += `<span class="rl">${r.label}</span>`;
+    for (const c of r.cells) {
+      const tip = c.share == null ? `${c.hour}시 · 기록 없음` : `${r.label} ${c.hour}시 · ${Math.round(c.share * 100)}% · 기록 ${nf(c.hits)}건 · ${nf(c.users)}명·일`;
+      h += `<span class="cell" title="${tip}"${c.share ? ` style="background:rgba(var(--tint-rgb),${(.12 + .88 * c.share).toFixed(2)})"` : ''}></span>`;
+    }
+  }
+  $('maphour').innerHTML = h + '</div>';
 }
 
 // 히트맵 램프 = _dash.css --heat-lo → --heat-hi (단일 색 — 다색 램프는 색맹에서 순서가 뒤집힌다)

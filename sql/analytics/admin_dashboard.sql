@@ -239,6 +239,10 @@ begin
              from (select map, gx, gz, sum(hits)::int as hits from cf_heat_day
                    where not persona and day between since and today group by 1, 2, 3) h),
 
+    'map_hour', (select coalesce(jsonb_agg(jsonb_build_object('hour', hour, 'map', map, 'hits', hits, 'users', users)), '[]'::jsonb)
+                 from (select hour, map, sum(hits)::int as hits, sum(users)::int as users from cf_map_hour
+                       where not persona and day between since and today group by 1, 2) mh),
+
     'econ_daily', (select coalesce(jsonb_agg(jsonb_build_object('day', day, 'inflow', i, 'outflow', o, 'net', i - o) order by day), '[]'::jsonb)
                    from (select day, sum(inflow)::bigint as i, sum(outflow)::bigint as o from cf_econ_day
                          where not persona and day between since and today group by day) e),

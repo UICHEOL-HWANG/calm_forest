@@ -135,6 +135,8 @@ table.tri { border-collapse: separate; border-spacing: 3px; font-size: 12px; wid
 .hgrid { display: grid; grid-template-columns: 22px repeat(24, 1fr); gap: 2px; font-size: 9px; color: var(--ink-3); max-width: 640px; }
 .hgrid .cell { aspect-ratio: 1; border-radius: 2px; background: var(--surface-2); }
 .hgrid .rl { display: flex; align-items: center; }
+.mhgrid { grid-template-columns: 56px repeat(24, 1fr); max-width: none; }
+.mhgrid .rl { white-space: nowrap; font-size: 11px; }
 
 /* 맵별 이동 밀도 */
 .heatwrap { display: grid; justify-items: start; gap: 8px; }

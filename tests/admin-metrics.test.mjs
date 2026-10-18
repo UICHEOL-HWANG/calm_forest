@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { delta, worstLeak, rate, heatGrid, userStatus, funnelSteps, MAPS } from '../dashboards/js/admin-metrics.js';
+import { delta, worstLeak, rate, heatGrid, userStatus, funnelSteps, MAPS, mapHourGrid } from '../dashboards/js/admin-metrics.js';
 
 const src = (p) => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 
@@ -71,4 +71,28 @@ test('맵 필터는 마을·꿈의 숲·거울 마을 세 개', () => {
   assert.deepEqual(Object.keys(MAPS), ['main', 'dream', 'mirror']);
   const html = src('dashboards/admin_analytics.html');
   for (const m of Object.keys(MAPS)) assert.match(html, new RegExp(`data-map="${m}"`));
+});
+
+test('시간대 × 맵: 각 시간의 위치 기록 중 맵별 비중, 기록 없는 시간은 null', () => {
+  const g = mapHourGrid([
+    { hour: 21, map: 'main', hits: 300, users: 8 },
+    { hour: 21, map: 'other', hits: 100, users: 3 },
+    { hour: 9, map: 'dream', hits: 50, users: 1 },
+  ]);
+  assert.deepEqual(g.rows.map((r) => r.map), ['main', 'dream', 'mirror', 'other']);
+  const cell = (m, h) => g.rows.find((r) => r.map === m).cells[h];
+  assert.equal(cell('main', 21).share, 0.75);
+  assert.equal(cell('other', 21).share, 0.25);
+  assert.equal(cell('main', 21).users, 8);
+  assert.equal(cell('dream', 9).share, 1);
+  assert.equal(cell('main', 3).share, null);
+  assert.equal(cell('mirror', 21).share, 0);
+  assert.equal(g.rows[0].cells.length, 24);
+  assert.equal(g.total, 450);
+});
+
+test('시간대 × 맵 표는 대시보드 응답의 map_hour 를 읽는다', () => {
+  assert.match(src('dashboards/js/admin-analytics.js'), /mapHourGrid\(d\.map_hour/);
+  assert.match(src('sql/analytics/admin_dashboard.sql'), /'map_hour'/);
+  assert.match(src('sql/migrations/migrate_admin_rollup.sql'), /insert into cf_map_hour/);
 });
