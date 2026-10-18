@@ -30,7 +30,7 @@ function localDay() {
 //   CSS 로 숨겨지는 상태는 render() 가 실제 표시 여부를 재서 따로 잡는다(리텐션 배너의 'CSS 숨김 ≠ JS 억제' 함정).
 function suppressed() {
   const b = document.body;
-  for (const c of ['mg-open', 'guide-open', 'intro-open', 'duel-open', 'menu-open', 'coaching', 'sea-mode', 'cv-open', 'boat-run', 'dream-cut']) {
+  for (const c of ['mg-open', 'guide-open', 'decor-open', 'intro-open', 'duel-open', 'menu-open', 'coaching', 'sea-mode', 'cv-open', 'boat-run', 'dream-cut']) {
     if (b.classList.contains(c)) return c;
   }
   if (document.querySelector('[id$="-modal"].show')) return 'modal';

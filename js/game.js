@@ -59,6 +59,9 @@ import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './
 import { t, LANG, aiBucket } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
 import { initPlaza, updatePlaza, plazaSpotNow, openPlaza, plazaScatterBlocks, plazaDefault, restorePlaza, refreshPlaza, plazaDecorMesh, plazaMapVisible } from './plaza/index.js';
 import { refreshPond, updatePond, pondScatterBlocks } from './pond/index.js';
+import { onPlay, decorBanner, applySetFx } from './decor-drops/index.js';
+import { updateSetFx } from './decor-drops/fx.js';
+import { normalizeDrops } from './decor-drops/rules.js';
 import { welcomeOffer, topPriceLine, fertBlockedByWatering } from './first-loop.js';   // 🪙 코인 첫 루프 규칙
 import { farmToolFor, farmActionIsNoop, FARM_AUTO_TOOLS } from './farm-auto.js';   // 🌾 농사 도구 자동 전환 규칙(밭 상태→도구)
 import { questAvailable, pickGated, repeatNPCsFor, repeatQuestFor, questIdFor, pickCurrent, activeQuestList, dailyExtendPlan, pickDailyExtra, renumberDailyLine } from './quests.js';   // 🦉 의뢰 공급 규칙(전제조건 게이트·시드 추첨·주민 반복 의뢰)
@@ -1027,6 +1030,7 @@ const gameState = {
   starDay: null,   // 🔭 별 잇기 — 마지막으로 보상 받은 날(같은 날 재도전은 연습)
   star: { cleared: {}, plays: {}, best: {} },   // 🌌 별자리별 첫 클리어 날짜·시도 횟수·최고 점수(해금은 cleared 로 계산)
   hintsSeen: {},                            // 첫 접근 안내 표시 여부 { key: true }
+  drops: {},
   e1: null,                                 // 🧪 E1 첫 5분 수확 실험 { arm, seeded, harvested } — 등록된 신규만(js/exp-e1.js)
   dream: { visits: 0, day: '', got: [], total: 0 },   // 🌙 꿈의 숲 — 누적 방문·그날 주운 조각 자리·누적 획득(js/dream/layout.js normalizeDream)
   mirror: { visits: 0, day: '', done: 0, hinted: [], total: 0 },   // 🪞 거울 마을 — 누적 방문·그날 마친 의뢰·힌트 쓴 의뢰·누적 조각(js/mirror/quests.js normalizeMirror)
@@ -1896,7 +1900,7 @@ export const Input = {
   armTutorialMove() { movedOnce = false; },  // 튜토리얼 시작 시 이동 스텝 재감지
   getDecor() {   // 🏠 층별 해금 — 잠긴 것도 목록엔 보이되 locked 로 흐리게(살 목표가 보여야 싱크가 된다)
     const st = gameState.houseStage, kept = gameState.house.stored || {};
-    return DECOR.filter(d => !d.hidden)
+    return [...DECOR.filter(d => !d.hidden), ...DECOR.filter(d => d.set && (kept[d.id] || 0) > 0)]
       .filter(d => catalogVisible(d, { stored: kept[d.id] || 0 }))   // 🎃 기간 밖 한정품은 안 산 사람에겐 숨긴다(보관분은 계속 보인다)
       .filter(d => !d.dream || (gameState.dream?.visits || 0) > 0 || (kept[d.id] || 0) > 0)   // 🌙 꿈을 꿔 보기 전엔 ✨ 화폐가 뭔지 모른다 — 숨긴다
       .filter(d => !d.mirror || (gameState.mirror?.visits || 0) > 0 || (kept[d.id] || 0) > 0)   // 🪞 거울 마을을 다녀오기 전엔 🪞 화폐가 뭔지 모른다
@@ -2239,6 +2243,7 @@ function retentionGuidanceSuppressed() {
     const b = document.body;
     if (b.classList.contains('mg-open')) return 'minigame';
     if (b.classList.contains('guide-open')) return 'guide';
+    if (b.classList.contains('decor-open')) return 'decor';
     if (b.classList.contains('intro-open')) return 'intro';
     if (b.classList.contains('spot-on')) return 'spotlight';
     if (document.querySelector('#tutorial-modal.show, #chat-modal.show, #quiz-modal.show, #story-modal.show, #npc-modal.show, #market-modal.show, #hire-modal.show, #dex-modal.show, #notice-modal.show, #char-modal.show, #feedback-modal.show, #settings-modal.show, #invite-modal.show')) return 'modal';
@@ -2756,6 +2761,8 @@ function applySave(saved) {
   if (saved.house && saved.house.bedGiven) gameState.house.bedGiven = true;   // 🛏️ 기본 침대를 이미 받았는지(두 번 주지 않게)
   if (saved.house && Array.isArray(saved.house.grantedDecor))                // 🏖️ 승계 가구를 이미 줬는지(옮기거나 창고에 넣어도 다시 안 주게)
     gameState.house.grantedDecor = [...new Set(saved.house.grantedDecor.filter(id => typeof id === 'string'))];
+  gameState.drops = normalizeDrops(saved.drops);
+  applySetFx();
   if (saved.farm && Number.isFinite(saved.farm.stage)) {                     // 🌾 밭 단계 복원 — 밭(plots) 복원보다 먼저 울타리를 맞춘다. 없으면 1단계
     gameState.farm.stage = Math.max(1, Math.min(MAX_FARM_STAGE, Math.floor(saved.farm.stage)));
     if (gameState.farm.stage > 1) rebuildFarm(true);
@@ -5304,6 +5311,7 @@ function kitchenFinish(id, res = {}) {
   if (cookO != null) settleDifficulty('cook', cookO);
   // 🧮 GA4 는 이벤트당 25개까지만 받는다(trackEvent 가 ts·platform 을 더 붙인다) → 원본 배열·자유 요리 정보는
   //    cooking_detail 로 나누고 run_id 로 잇는다. arms·eases·dda·probe_v 는 기존 분석 쿼리가 쓰므로 본 이벤트에 남긴다.
+  if (!res.abandoned) onPlay('cook');
   const runId = globalThis.crypto?.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
   trackEvent(res.abandoned ? 'cooking_abandon' : 'cooking_result', {
     run_id: runId,
@@ -6029,6 +6037,7 @@ function animate() {
   updatePet(dt, t);         // 🐾 펫 — 따라다니기 / 맡긴 잡일 연쇄(접속 중에만 — 오프라인 정산 없음)
   if (atFarm && visitors) visitors.update(dt);   // 🦋 방문객 — 텃밭 체류 중에만
   updatePops(dt);
+  updateSetFx(clock.elapsedTime);
   updateTraceBubbles(dt, t, player.position);   // 🐾 흔적 말풍선 — 통통·가까이 가면 확대·고리
   updateVisitorBubbles(dt, t);                  // 🔍 방문객 말풍선 — 같은 연출
   updateAura(dt);       // 🏮 빛 공방 오라
@@ -7118,7 +7127,7 @@ function handleAction() {
     const az = outdoorTarget.pinned ? outdoorTarget.z : player.position.z;
     return placeOutdoor(ax, az);
   }
-  if (nearKitchen) { trackEvent('kitchen_open'); return ui.openKitchen?.(kitchenView()); } // 🍳 자유주방 → 요리 미니게임 메뉴판
+  if (nearKitchen) { trackEvent('kitchen_open'); decorBanner('cook'); return ui.openKitchen?.(kitchenView()); } // 🍳 자유주방 → 요리 미니게임 메뉴판
   if (nearStation) return ui.openCraft?.(craftPanelData(nearStation.id));   // 🔥🫙 가공 시설 근처 → 가공 창
   if (nearBench) return ui.openCook?.();   // 작업대 근처 → 제작 메뉴(도구·야외·선물)
   if (nearShop) return ui.openShop?.();    // 상점 근처 → 상점 메뉴

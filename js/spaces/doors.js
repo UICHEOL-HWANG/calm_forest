@@ -16,6 +16,7 @@ import {
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { plazaSpot } from '../plaza/index.js';
 import { trackEvent } from '../analytics.js';
+import { decorBanner } from '../decor-drops/index.js';
 import { DECOR, DECOR_SCALE, OUTDOOR, STATION_IDS, stationLabel } from '../data/catalog.js';
 import { BENCH, CAFE, CAFE_GATE, CAFE_HALF, COOP, DOCK_GATE, FARM, FARM_GATE, FOREST, FOREST_R, GLADE, GLADE_R, HOUSE_POS, LIGHT_WORKSHOP, INT, KITCHEN, MARKET, MINE, MINE_GATE, MINE_HALF, MIST, MIST_GATE, MIST_HALF, MOUNTAIN, MOUNTAIN_GATE, MUSEUM, MUSEUM_GATE, NEIGHBOR_GATE, OBSERVATORY, OBSERVATORY_GATE, OBSERVATORY_R, ORCHARD, ORCHARD_GATE, ORCHARD_HALF, ORCHARD_PROMPT_R, RANK, RIVER, RIVER_DOCK_HALF, ROOF_Y, SEA, SEA_DECK_Z0, SEA_GATE, SHOP, SHOP_DOOR } from '../data/places.js';
 import { TOOLS } from '../data/tools.js';
@@ -452,7 +453,7 @@ export function updateZoneHint() {
   $w.nearGlade = inVillage2() && isOpen('glade') && dist2D(GLADE, player.position) < GLADE_R + 0.5;
   if (nearGlade && !nearLightWorkshop) {   // 🏮 공방 문 앞에선 공방 프롬프트만 — 밤에 안내 두 줄이 겹쳤다
     hint = isNight() ? '🌟 반딧불이 — 포충망(5)으로 반짝일 때 휘두르기' : '🌟 반딧불이 계곡 — 🌙 밤에 다시 오세요';
-    if (!wasGlade) trackEvent('zone_enter', { zone: 'glade', night: isNight() });   // [GA4] 밤 콘텐츠 유입
+    if (!wasGlade) { trackEvent('zone_enter', { zone: 'glade', night: isNight() }); decorBanner('firefly'); }   // [GA4] 밤 콘텐츠 유입
     firstHintBanner('glade', '🌟', '반딧불이 계곡', '밤에 포충망으로 반딧불이 잡는 곳');
   }
   const wasForest = nearForest;

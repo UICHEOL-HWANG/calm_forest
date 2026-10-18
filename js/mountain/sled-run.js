@@ -1,5 +1,6 @@
 import { diffParams, gameState, giveReward, requestSave, settleDifficulty, todayStr, trackDiffAbandon } from '../game.js';
 import { trackEvent } from '../analytics.js';
+import { onPlay } from '../decor-drops/index.js';
 import { sendSledRun } from '../supabase-client.js';
 import { ddaOutcome } from '../difficulty.js';
 import { finalTimeMs, PHYS, PHYS_V } from './sled.js';
@@ -106,6 +107,7 @@ export function sledSettle(sled, ctx, env = {}) {
     acorns: ctx.acornsCollected, hits: sled.hits.length, new_best: newBest ? 1 : 0, rewarded: rewarded ? 1 : 0,
     ...(ctx.diff ? diffParams(ctx.diff) : {}),
   });
+  onPlay('sled');
   sendSledRun(sledRow(ctx, 'finish', null, sled, timeMs, { rewarded, coins, fpsAvg: env.fpsAvg }, st.best));
   return { timeMs, coins, rewarded, newBest, leftToday: Math.max(0, DAILY_REWARD_RUNS - doneAfter) };
 }

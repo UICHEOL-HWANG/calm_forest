@@ -11,6 +11,7 @@ import {
   requestSave, spawnDust, spawnFloatText, syncStory, toolPage, ui, updatePlotVisual,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
+import { onPlay } from '../decor-drops/index.js';
 import { BASIC_CROPS, TOOLS } from '../data/tools.js';
 import { seedKeyOf } from '../farm-crops.js';
 import { logOrchardEvent } from '../orchard-log.js';
@@ -83,6 +84,7 @@ export function harvestTree(tree) {
   rebuildOrchard(); refreshInventoryUI(); requestSave();
   trackEvent('fruit_harvest', { kind: tree.kind, n, stacked_days: stacked });   // [GA4]
   logOrchardEvent('fruit_harvest', { kind: tree.kind, n });                     // [원장]
+  onPlay('orchard');
 }
 
 // 🪓 과일나무 베기 — 규칙(열매 가드 · hp · 단계별 목재)은 js/orchard.js chopHit() 이고

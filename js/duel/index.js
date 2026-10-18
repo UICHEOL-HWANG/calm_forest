@@ -9,6 +9,7 @@
 // =============================================================
 import { setDuelSource } from '../game.js';
 import { trackEvent } from '../analytics.js';
+import { onPlay } from '../decor-drops/index.js';
 import { logDuel } from '../metrics.js';   // 🗄️ 판 단위 로그(Supabase) — BQ 는 하루 뒤라 오늘 보려면 이쪽
 import { rollHand, judge, initMatch as rpsInit, applyRound as rpsRound } from './rps.js';
 import { SHELL_ROUNDS, makeSwaps, finalPos,
@@ -114,6 +115,7 @@ export function initDuel() {
         secs: Math.round((Date.now() - started) / 1000),
         recovered: won ? ctx.crops.length : 0,
       });
+      onPlay('duel');
       // 🎬 이기면 동물이 후다닥 도망, 지면 신나서 폴짝 — 결과는 위에서 이미 기록했다.
       //   여기서 그만둬도 승부는 끝난 것이다 → 끊기면 연출만 건너뛰고 결과(won)는 그대로 돌려준다.
       try {

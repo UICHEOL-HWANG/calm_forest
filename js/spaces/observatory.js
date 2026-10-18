@@ -6,6 +6,7 @@ import {
   rollDifficulty, setSpaceVisible, snapCamera, solidBox, solidCircle, syncStory, ui,
 } from '../game.js';
 import { trackEvent } from '../analytics.js';
+import { decorBanner } from '../decor-drops/index.js';
 import { OBSERVATORY, OBSERVATORY_GATE, OBSERVATORY_R } from '../data/places.js';
 import { Sound, setBGMTheme } from '../sound.js';
 import { R_BASE, STAIR_FOOT, STAIR_HALF_W, buildObservatoryExterior, stairHeight } from '../observatory/exterior.js';
@@ -83,6 +84,7 @@ export function enterObservatory() {
   firstHint('observatory', '🔭', '천문대 · 별자리 잇기', { steps: [{ ico: '🔭', label: '망원경 앞에서 {A}' }], note: '나갈 땐 남쪽 문' });
   setBGMTheme('stars');   // 🎵 천문대 오르골
   Sound.blip(); trackEvent('observatory_enter');
+  decorBanner('star');
 }
 
 function resetLookPose() {
