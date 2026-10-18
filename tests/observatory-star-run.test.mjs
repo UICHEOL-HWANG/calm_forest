@@ -9,7 +9,7 @@ import { ddaOutcome } from '../js/difficulty.js';
 import * as constellations from '../js/observatory/constellations.js';
 
 function run(day = '2026-10-04', starDay = null, star = undefined) {
-  const paid = [], saves = [], events = [], settled = [], rows = [], abandons = [];
+  const paid = [], saves = [], events = [], settled = [], rows = [], abandons = [], plays = [];
   const ctx = {
     gameState: { starDay, ...(star ? { star } : {}) },
     today: day,
@@ -19,12 +19,13 @@ function run(day = '2026-10-04', starDay = null, star = undefined) {
     settleDifficulty: (game, o) => settled.push([game, o]),
     sendStarRun: row => rows.push(row),
     trackDiffAbandon: (...a) => abandons.push(a),
+    onPlay: src => plays.push(src),
     diffParams: r => ({ ease: r.ease, dda: r.dda, arm: r.arm, ...(r.probe_v ? { probe_v: r.probe_v } : {}) }), ddaOutcome,
   };
   const c = vm.createContext({ ...rhythm, ...constellations, ...ctx, todayStr: () => c.today });
   vm.runInContext(readFileSync(new URL('../js/observatory/star-run.js', import.meta.url), 'utf8')
     .replace(/^import [\s\S]*?;\n/gm, '').replace(/^export /gm, ''), c);
-  return { c, paid, saves, events, settled, rows, abandons };
+  return { c, paid, saves, events, settled, rows, abandons, plays };
 }
 const plain = v => JSON.parse(JSON.stringify(v));
 const S = judges => rhythm.summarize(judges);
@@ -195,4 +196,11 @@ test('gameState.star has a default and survives save/load (old Big Dipper winner
   const src = gameSource();
   assert.match(src, /star: \{ cleared: \{\}, plays: \{\}, best: \{\} \},/);
   assert.match(src, /gameState\.star = restoreStar\(saved\.star, saved\.starDay\)/);
+});
+
+test('every settled run rolls one decor drop', () => {
+  const { c, plays } = run('2026-10-04', null, { cleared: { big_dipper: '2026-10-01' }, plays: {}, best: {} });
+  c.starSettle(S(ALL_PERFECT));
+  c.starSettle(S(FAILED));
+  assert.deepEqual(plays, ['star', 'star']);
 });

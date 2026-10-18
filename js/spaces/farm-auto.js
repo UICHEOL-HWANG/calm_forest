@@ -14,6 +14,7 @@ import {
   spawnSparkle, syncFarmHints, todayStr, toolMesh, tryUnlockDrop, ui, updatePlotVisual, wiltPlot, workerCap,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
+import { onPlay } from '../decor-drops/index.js';
 import { offerPush } from '../push-ui.js';
 import { recipeOf as craftRecipeOf, stationDef } from '../craft/recipes.js';
 import { isReady, stationOf, waitedDays } from '../craft/slots.js';
@@ -142,6 +143,7 @@ export function tryHarvest(plot = plots.find(p => p.state === 'mature' && dist2D
     tryUnlockDrop(0.05);                                          // 🎨 랜덤 색(낮은 확률)
   }
   trackEvent('harvest_crop', { crop: gameState.inventory.crop, kind: harvestKind, qty, adv, pest: harvestPest, sickle: viaSickle ? 1 : 0 }); // [GA4] 종류·수량·해충 손실 + 낫으로 딸려 온 칸
+  onPlay('crop');
   // 🌾 잘 드는 낫 — 옆 칸도 함께. 총량은 그대로고 손만 덜 간다(🌾밭 확장 7단계로 밭이 많아졌다).
   //   ⚠️ 밭 격자는 짝수 좌표 2칸 간격이라 2.6 이면 상하좌우만 걸린다(대각선은 2.83).
   if (!viaSickle && sickleReach(gameState)) {

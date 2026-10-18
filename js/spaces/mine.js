@@ -12,6 +12,7 @@ import {
   ui, woodMat,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
+import { onPlay } from '../decor-drops/index.js';
 import { MINE, MINE_GATE, MINE_HALF } from '../data/places.js';
 import { DEX_GATES, gateOf, gateOpen } from '../dex-gates.js';
 import { Sound, setBGMTheme } from '../sound.js';
@@ -176,6 +177,7 @@ export function tryMine() {
     trackGateBlocked('ore', 'gem');        // [GA4] 📖
     ui.act?.('mine');                              // 튜토리얼: 첫 채굴
     trackEvent('mine_ore', { ore: ore.id, amt, pick: minePow });  // [GA4] ⛏️ 무쇠 괭이 사용 여부(pick=2)
+    onPlay('mine');
   }
 }
 

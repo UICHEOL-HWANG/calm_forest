@@ -14,6 +14,7 @@ import {
   spawnFloatText, spawnSparkle, todayStr, ui, wakeToMorning,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다
 import { trackEvent } from '../analytics.js';
+import { onPlay } from '../decor-drops/index.js';
 import { DREAM } from '../data/places.js';
 import { CLOUD_BED, LANDING, SHARDS_PER_DAY, SHARD_PICK_R, ISLANDS, clampWalkable, islandOf, normalizeDream, shardsLeft, spotOf } from '../dream/layout.js';
 import { buildDreamWorld } from '../dream/art.js';
@@ -185,6 +186,7 @@ function collect(id, g) {
   spawnFloatText(wx, 1.6, wz, '+1 ✨', '#8f7ad6');
   Sound.starPick?.();
   trackEvent('dream_shard', { shard_id: id, island: islandOf(id), nth_today: d.got.length, elapsed_s: nowS() });
+  onPlay('dream');
   if (firstHintBanner('dreamShard', '✨', '꿈 조각', '구름 침대에 누우면 아침에 깨어나요')) trackEvent('dream_hint', { step: 'shard' });
   if (d.got.length >= SHARDS_PER_DAY) ui.toast?.('오늘 꿈 조각은 다 모았어요 · 내일 또 와요', 2600);
   syncHud();

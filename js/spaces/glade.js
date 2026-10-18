@@ -12,6 +12,7 @@ import {
   spawnFloatText, spawnSparkle, spawnTree, trackGateBlocked, tryUnlockDrop, ui,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
+import { onPlay } from '../decor-drops/index.js';
 import { BUG_KINDS, CAFE_GATE, GLADE, GLADE_R, LIGHT_WORKSHOP, LIGHT_WORKSHOP_POND } from '../data/places.js';
 import { PAL } from '../data/world.js';
 import { NIGHT_MIN } from '../daynight.js';
@@ -186,4 +187,5 @@ export function tryNet() {
   showCatchItem(bugJarMesh(kind), wx, target.position.y, wz);
   if (kind.id === 'rainbow') tryUnlockDrop(0.5);          // 🎨 최희귀 → 집 색 해금 확률
   trackEvent('firefly_catch', { kind: kind.id, weather: WEATHER, night: Math.round(nightLevel * 100) }); // [GA4] 밤 콘텐츠 KPI
+  onPlay('firefly');
 }

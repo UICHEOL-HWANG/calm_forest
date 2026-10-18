@@ -38,3 +38,11 @@ export function bannerDue(drops, granted, setId, today) {
   if (setProgress(granted, setId).complete) return false;
   return normalizeDrops(drops).banner[setId] !== today;
 }
+
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+const dayMs = (s) => Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10));
+
+export function daysSince(first, today) {
+  if (typeof first !== 'string' || !DAY_RE.test(first) || !DAY_RE.test(today)) return null;
+  return Math.round((dayMs(today) - dayMs(first)) / 86400000);
+}

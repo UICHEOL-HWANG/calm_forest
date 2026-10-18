@@ -7,6 +7,7 @@
 // =============================================================
 import { dateHash, gameState, giveReward, requestSave, todayStr } from '../game.js';   // 🔁 순환 import — 함수 안에서만
 import { trackEvent } from '../analytics.js';
+import { onPlay } from '../decor-drops/index.js';
 import { LANG, t } from '../i18n.js';
 import { QUIZ_COIN_PER, QUIZ_COIN_PERFECT, buildDailyQuiz, quizAvailable, quizLine } from '../ferry-quiz.js';
 import { NPCS } from '../data/npcs.js';
@@ -85,6 +86,7 @@ export function quizEnd({ quit = false } = {}) {
   trackEvent('ferry_quiz_end', { quiz_date: r0.quizDate, correct_n: correctN, total,
     reached: r0.answers.filter(a => a != null).length, quit: quit ? 1 : 0,
     ms_total: Math.round(performance.now() - r0.t0), reward_id: reward.coins ? 'coins' : 'none', coins: reward.coins || 0 });   // [GA4] 끝
+  if (!quit) onPlay('ferry');
   const line = correctN >= total ? quizLine('perfect', lineSeed(9), LANG)
     : correctN ? quizLine('endSome', lineSeed(9), LANG, { n: correctN }) : quizLine('endZero', lineSeed(9), LANG);
   return { correctN, total, reward, line };

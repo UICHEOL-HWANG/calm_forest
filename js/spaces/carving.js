@@ -10,6 +10,7 @@ import {
   scene, snapCamera, spawnConfetti, spawnFloatText, spawnSparkle, todayStr, ui, woodMat,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
+import { onPlay } from '../decor-drops/index.js';
 import { SELL_ICO_G } from '../data/places.js';
 import { logEcon } from '../metrics.js';
 import { Sound } from '../sound.js';
@@ -276,6 +277,7 @@ export function carveFinish(kind) {
     duration_ms: Math.round(performance.now() - carve.startAt),
     is_best: isBest ? 1 : 0, total_carved: st.carved,
   });
+  if (kind !== 'abandon') onPlay('carve');
   const res = { ok: true, name: d.name, ico: d.ico, score, isBest, coins, carved: st.carved, dmg: carve.dmg,
     tier: { id: tier.id, ico: tier.ico, name: tier.name } };
   setTimeout(() => ui.carveDone?.(res), kind === 'done' ? 1500 : 700);  // 회전 연출을 본 뒤 결과 카드

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeDrops, rollDrop, setProgress, bannerDue } from '../js/decor-drops/rules.js';
+import { normalizeDrops, rollDrop, setProgress, bannerDue, daysSince } from '../js/decor-drops/rules.js';
 import { DROP_SOURCES } from '../js/data/decor-sets.js';
 
 const fresh = () => normalizeDrops(null);
@@ -71,4 +71,11 @@ test('banner once per day, never after completion', () => {
   assert.equal(bannerDue({ ...d, banner: { picnic: '2026-10-18' } }, [], 'picnic', '2026-10-18'), false);
   assert.equal(bannerDue({ ...d, banner: { picnic: '2026-10-17' } }, [], 'picnic', '2026-10-18'), true);
   assert.equal(bannerDue(d, ['picnicBasket', 'picnicPies'], 'picnic', '2026-10-18'), false);
+});
+
+test('days since first day, null when unknown', () => {
+  assert.equal(daysSince('2026-10-11', '2026-10-18'), 7);
+  assert.equal(daysSince('2026-10-18', '2026-10-18'), 0);
+  assert.equal(daysSince(null, '2026-10-18'), null);
+  assert.equal(daysSince('bad', '2026-10-18'), null);
 });

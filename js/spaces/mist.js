@@ -13,6 +13,7 @@ import {
   swayables, syncBadges, syncStory, todayStr, trackDiffAbandon, triggerMoment, ui, woodMat,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
+import { onPlay } from '../decor-drops/index.js';
 import { LANTERN_CALM_R, MIST, MIST_DRAIN, MIST_GATE, MIST_HALF, MIST_LANTERN_POS, MIST_PRACTICE_STEPS, MIST_WAVES, ORCHARD, ORCHARD_GATE, ORCHARD_HALF, PURIFY_GLOW, SOOTHE_GLOW, SPIRITS, TREE_LIGHT_MAX } from '../data/places.js';
 import { FRUITS, sapKeyOf } from '../orchard.js';
 import { GATE_PATCH, GATE_W, buildGateArt } from '../orchard-art.js';
@@ -378,6 +379,7 @@ export function clearMistSpirits() {
 
 export function mistEnd(result) {
   if (mist.practice) { endPractice(result === 'quit' ? 'quit' : 'done'); return; }   // 🎓 연습은 보상·기록 없이 정리
+  if (result !== 'quit') onPlay('mist');
   mist.active = false;
   const st = gameState.mist;
   if (result === 'purified') {
