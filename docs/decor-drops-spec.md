@@ -12,11 +12,11 @@
 | 오후의 피크닉 세트 `picnic` | `picnicBasket` | 소복 과일 바구니 | 🍎 과수원 `harvestTree` | 1/6 | 12번째 |
 | | `picnicPies` | 갓 구운 파이 탑 | 🍲 요리 `kitchenFinish` (포기 제외) | 1/10 | 20번째 |
 | | `picnicTable` (보너스) | 체크 식탁보 둥근 식탁 | 세트 완성 시 | | |
-| 별빛 티타임 세트 `teatime` | `teaBowl` | 텃밭 한 그릇 | 🌾 텃밭 수확 `tryHarvest` | 1/10 | 20번째 |
+| 별빛 티타임 세트 `teatime` | `teaBowl` | 텃밭 한 그릇 | 🌾 텃밭 수확 `tryHarvest` (낫으로 딸려 온 칸은 제외) | 1/10 | 20번째 |
 | | `teaCake` | 꿈결 별 케이크 | 🌙 꿈 조각 `dream collect` | 1/14 | 28번째 |
 | | `teaCupboard` (보너스) | 깃발 민트 찬장 | 세트 완성 시 | | |
 | 눈 오는 밤 세트 `winter` | `winterSled` | 목도리 두른 썰매 | 🏔️ 설산 `sled_result` (sled-run.js:104) | 1/9 (임시) | 18번째 |
-| | `winterLamp` | 별 헤는 무드등 | 🔭 천문대 `star_result` (star-run.js:84) | 1/4 | 8번째 |
+| | `winterLamp` | 별 헤는 무드등 | 🔭 천문대 `star_result` (star-run.js:84, 성공한 판만) | 1/4 | 8번째 |
 | | `winterSofa` (보너스) | 눈 내리는 창가 소파 | 세트 완성 시 | | |
 | 반짝 돌 공방 세트 `stone` | `stoneGems` | 반짝반짝 원석함 | ⛏️ 광산 `mine_ore` (mine.js:178) | 1/64 | 128번째 |
 | | `stoneBear` | 꼬마 곰 석상 | 🗿 조각 `carve_result` (carving.js:273, 포기 제외) | 1/4 | 8번째 |
