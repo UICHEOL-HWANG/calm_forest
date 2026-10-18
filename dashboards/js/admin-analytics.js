@@ -4,12 +4,12 @@
 //  계산: ./admin-metrics.js(순수 함수, 테스트 있음) · 공통: ./admin-common.js
 // =============================================================
 import { $, V, nf, esc, CHAR, shareKey, bootAdmin, explainRpcError, showMsg, createLoader } from './admin-common.js';
-import { MAPS, delta, worstLeak, rate, heatGrid, userStatus, funnelSteps, mapHourGrid, heatCellsFor, HEAT_SLOTS } from './admin-metrics.js';
+import { MAPS, delta, worstLeak, rate, heatGrid, userStatus, funnelSteps, mapHourGrid, heatCellsFor, HEAT_SLOTS, zoneFlow, zoneLabel } from './admin-metrics.js';
 
 const page = $('page');
 const loader = createLoader(page, $('loader'));
 const charts = {};
-let sb = null, days = 30, data = null, heatMap = 'main', heatSlot = 'all';
+let sb = null, days = 30, data = null, heatMap = 'main', heatSlot = 'all', flowSeg = 'all';
 
 const mmdd = (d) => String(d).slice(5).replace('-', '/');
 const secs = (s) => (s == null ? '—' : s >= 60 ? `${Math.floor(s / 60)}분 ${Math.round(s % 60)}초` : `${Math.round(s)}초`);
@@ -61,6 +61,13 @@ const fill = (ctx, h) => {
     heatMap = b.dataset.map;
     [...$('mapSel').children].forEach((x) => x.classList.toggle('on', x === b));
     if (data) renderHeat(heatCellsFor(data, heatSlot));
+  });
+  $('flowSeg').addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    flowSeg = b.dataset.seg;
+    [...$('flowSeg').children].forEach((x) => x.classList.toggle('on', x === b));
+    if (data) renderFlow(zoneFlow(data.zone_flow, flowSeg));
   });
   $('slotSel').addEventListener('click', (e) => {
     const b = e.target.closest('button');
@@ -115,6 +122,7 @@ function render(d) {
   renderHourmap(d.hourly || []);
   renderHeat(heatCellsFor(d, heatSlot));
   renderMapHour(mapHourGrid(d.map_hour || []));
+  renderFlow(zoneFlow(d.zone_flow, flowSeg));
   renderUsers(d.users || []);
   renderEcon(d.econ_daily || [], d.econ_sources || []);
   renderSegments(d.segments || {}, d.progress || {});
@@ -293,6 +301,23 @@ function slotNote() {
   const s = HEAT_SLOTS.find((x) => x.slot === heatSlot);
   const since = data?.heat_slot_since ? ` · ${mmdd(data.heat_slot_since)}부터 집계` : '';
   return ` ${s.label}(${s.range}${since})`;
+}
+
+function renderFlow(f) {
+  if (!f.sessions) {
+    $('flowTop').innerHTML = emptyState('이 기간 경로 기록이 없어요', '');
+    $('flowEnds').innerHTML = '';
+    return;
+  }
+  const max = f.top[0]?.n || 1;
+  $('flowTop').innerHTML = '<table class="ut"><tr><th>경로</th><th class="r">횟수</th><th class="r">세션당</th></tr>'
+    + f.top.map((r) => `<tr><td>${esc(zoneLabel(r.a))} → <b>${esc(zoneLabel(r.b))}</b>
+        <div style="height:4px;border-radius:2px;margin-top:3px;width:${Math.round(100 * r.n / max)}%;background:rgba(var(--tint-rgb),.6)"></div></td>
+        <td class="r">${nf(r.n)}</td><td class="r">${r.share}%</td></tr>`).join('') + '</table>';
+  const list = (title, rows) => `<table class="ut"><tr><th>${title}</th><th class="r">세션</th><th class="r">비중</th></tr>`
+    + rows.map((r) => `<tr><td>${esc(zoneLabel(r.zone))}</td><td class="r">${nf(r.n)}</td><td class="r">${r.share}%</td></tr>`).join('') + '</table>';
+  $('flowEnds').innerHTML = list('처음 들른 곳', f.first) + '<div style="height:12px"></div>' + list('마지막으로 있던 곳', f.last);
+  $('flowDef').textContent = `시설·관문 반경 안을 지난 순서(세션 ${nf(f.sessions)}개, 길은 제외). 세션당 = 그 이동 횟수 ÷ 세션 수.`;
 }
 
 // ── 운영 ──

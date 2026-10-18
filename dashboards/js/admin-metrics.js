@@ -68,6 +68,38 @@ export function heatCellsFor(data, slot) {
   return (data.heat_slot || []).filter((r) => r[3] === slot).map(([map, gx, gz, , hits]) => ({ map, gx, gz, hits }));
 }
 
+export const ZONES = {
+  spawn: '스폰 광장', stop: '정류장', neighbor_gate: '이웃 관문', house: '집 앞', bench: '작업대·주방',
+  shop: '상점', market: '좌판·시세판', lake: '호수·부두', farm_gate: '텃밭 입구', coop: '닭장',
+  cafe_gate: '카페 입구', glade: '계곡', light_workshop: '빛 공방', forest: '채집 숲', mine_gate: '광산 입구',
+  museum_gate: '박물관 입구', observatory_gate: '천문대 입구', dock: '나루터', sea_gate: '바다 관문',
+  mountain_gate: '설산 관문', mist_gate: '안개숲 관문', orchard_gate: '과수원 관문',
+  house_in: '집 실내', farm: '텃밭', orchard: '과수원', mine: '광산', cafe: '카페 홀', museum: '박물관',
+  kitchen: '요리 무대', carving: '조각 무대', prologue: '프롤로그', observatory: '천문대', neighbor: '이웃 마당',
+  neighbor_in: '이웃 실내', mist: '안개숲', sea: '바다터', mountain: '설산',
+  river: '나룻배', dream: '꿈의 숲', mirror: '거울 마을',
+};
+
+export const zoneLabel = (k) => ZONES[k] || k;
+
+export function zoneFlow(flow, seg, topN = 12) {
+  if (!flow) return { sessions: 0, top: [], first: [], last: [] };
+  const pick = (r) => seg === 'all' || r[0] === seg;
+  const sessions = Object.entries(flow.sessions || {}).reduce((a, [k, n]) => a + (seg === 'all' || k === seg ? n : 0), 0);
+  const share = (n) => (sessions ? Math.round((1000 * n) / sessions) / 10 : 0);
+  const sum = (rows, key) => {
+    const m = new Map();
+    for (const r of rows.filter(pick)) m.set(key(r), (m.get(key(r)) || 0) + r[r.length - 1]);
+    return [...m.entries()].sort((x, y) => y[1] - x[1]);
+  };
+  return {
+    sessions,
+    top: sum(flow.trans || [], (r) => r[1] + '>' + r[2]).slice(0, topN).map(([k, n]) => { const [a, b] = k.split('>'); return { a, b, n, share: share(n) }; }),
+    first: sum(flow.first || [], (r) => r[1]).slice(0, 6).map(([zone, n]) => ({ zone, n, share: share(n) })),
+    last: sum(flow.last || [], (r) => r[1]).slice(0, 6).map(([zone, n]) => ({ zone, n, share: share(n) })),
+  };
+}
+
 export const MAP_HOUR_ROWS = [
   { map: 'main', label: '마을' },
   { map: 'dream', label: '꿈의 숲' },

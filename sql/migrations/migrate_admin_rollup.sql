@@ -127,7 +127,7 @@ declare
   v_from  date;
   t0 timestamptz;
   t1 timestamptz;
-  n_sess int; n_heat int; n_hour int; n_slot int; n_econ int;
+  n_sess int; n_heat int; n_hour int; n_slot int; n_path int; n_econ int;
 begin
   -- 같은 날을 두 곳(대시보드 열기·03:00 적재)이 동시에 지우고 다시 넣으면 PK 충돌 → 한 번에 하나만
   perform pg_advisory_xact_lock(hashtext('cf_rollup'));
@@ -197,6 +197,7 @@ begin
   delete from cf_heat_day where day between v_from and p_to;
   delete from cf_map_hour where day between v_from and p_to;
   delete from cf_heat_slot where day between v_from and p_to;
+  delete from cf_session_zones where day between v_from and p_to;
   with g as (
     select g.session_id, g.created_at, g.char_x as x, g.char_z as z, g.user_id,
            coalesce(nullif(g.client_id, ''), g.user_id::text) as uid,
@@ -216,7 +217,8 @@ begin
     from r where far group by 1, 2
   ),
   lab as (
-    select r.created_at, r.x, r.z, r.user_id, r.uid,
+    select r.session_id, r.created_at, r.x, r.z, r.user_id, r.uid,
+           (r.far and (st.start_z > -470 or (st.max_ax <= 6.5 and st.z_span > 60))) as boat,
            case
              when not r.far then case when abs(r.x) <= 44 and abs(r.z) <= 44 then 'main' end
              -- 나룻배(강 코스): 나루터 근처에서 시작했거나, 강폭(|x|≤6.4) 안에서만 60유닛 넘게 내려간 구간
@@ -262,9 +264,40 @@ begin
     where map is not null
     group by 1, 2, 3, 4, 5, 6
     returning 1
+  ),
+  zl as (
+    select session_id, created_at, uid, persona, (created_at at time zone tz)::date as day,
+           case when map in ('dream', 'mirror') then map when boat then 'river' else cf_zone_of(x, z) end as zone
+    from pl
+    where session_id is not null
+  ),
+  zs as (
+    select session_id, day, created_at, zone,
+           lag(zone) over (partition by session_id, day order by created_at) as prev
+    from zl
+    where zone not in ('road', 'unknown')
+  ),
+  zp as (
+    select session_id, day, array_agg(zone order by created_at) as path
+    from zs
+    where prev is distinct from zone
+    group by 1, 2
+  ),
+  zd as (
+    select session_id, day, bool_or(persona) as persona, max(uid) as uid, jsonb_object_agg(zone, n) as dwell
+    from (select session_id, day, zone, bool_or(persona) as persona, max(uid) as uid, count(*) as n
+          from zl group by 1, 2, 3) q
+    group by 1, 2
+  ),
+  ins_path as (
+    insert into cf_session_zones (session_id, day, persona, uid, path, dwell)
+    select zd.session_id, zd.day, zd.persona, zd.uid, coalesce(zp.path, '{}'), zd.dwell
+    from zd left join zp using (session_id, day)
+    returning 1
   )
-  select (select count(*) from ins_heat), (select count(*) from ins_hour), (select count(*) from ins_slot)
-    into n_heat, n_hour, n_slot;
+  select (select count(*) from ins_heat), (select count(*) from ins_hour), (select count(*) from ins_slot),
+         (select count(*) from ins_path)
+    into n_heat, n_hour, n_slot, n_path;
 
   -- ── 경제 ──
   delete from cf_econ_day where day between v_from and p_to;
@@ -278,7 +311,7 @@ begin
   group by 1, 2, 3;
   get diagnostics n_econ = row_count;
 
-  return jsonb_build_object('from', v_from, 'to', p_to, 'sessions', n_sess, 'heat', n_heat, 'map_hour', n_hour, 'heat_slot', n_slot, 'econ', n_econ);
+  return jsonb_build_object('from', v_from, 'to', p_to, 'sessions', n_sess, 'heat', n_heat, 'map_hour', n_hour, 'heat_slot', n_slot, 'zone_paths', n_path, 'econ', n_econ);
 end;
 $$;
 

@@ -56,6 +56,7 @@
         <a href="#s-ret">리텐션 <em>R</em></a>
         <a href="#s-gro">성장 구성</a>
         <a href="#s-eng">활성화 시간 · 밀도맵</a>
+        <a href="#s-flow">이동 흐름</a>
         <a href="#s-ops">유저 관찰</a>
       </nav>
 
@@ -162,6 +163,30 @@
             <h3>시간대별 맵 비중 (KST)</h3>
             <p class="def">그 시간 위치 기록 중 각 맵이 차지한 비율. 진할수록 그 시간에 그 맵에 많이 있었다는 뜻입니다. 그 외 = 바다터·설산·실내·나룻배 등. 칸에 마우스를 올리면 기록 수와 명·일이 보입니다.</p>
             <div id="maphour"></div>
+          </div>
+        </section>
+
+        <section class="rsec" id="s-flow">
+          <div class="sh" style="--av:url(img/chars/dog.png)">
+            <span class="eyebrow">Flow</span>
+            <h2>이동 흐름</h2>
+          </div>
+          <div class="seg" id="flowSeg" role="group" aria-label="유저 구분">
+            <button data-seg="all" class="on">전체</button>
+            <button data-seg="new">신규</button>
+            <button data-seg="ret">복귀</button>
+          </div>
+          <div class="two">
+            <div class="panel">
+              <h3>많이 지나간 경로</h3>
+              <p class="def" id="flowDef">시설·관문 반경 안을 지난 순서. 길(시설 밖)은 빼고 셉니다.</p>
+              <div id="flowTop"></div>
+            </div>
+            <div class="panel">
+              <h3>처음 들른 곳 · 마지막으로 있던 곳</h3>
+              <p class="def">세션마다 첫 시설과 끝 시설. 마지막이 몰리는 곳은 이탈 직전 위치 후보입니다.</p>
+              <div id="flowEnds"></div>
+            </div>
           </div>
         </section>
 

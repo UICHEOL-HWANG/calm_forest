@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { delta, worstLeak, rate, heatGrid, userStatus, funnelSteps, MAPS, mapHourGrid, heatCellsFor, HEAT_SLOTS } from '../dashboards/js/admin-metrics.js';
+import { delta, worstLeak, rate, heatGrid, userStatus, funnelSteps, MAPS, mapHourGrid, heatCellsFor, HEAT_SLOTS, ZONES, zoneFlow } from '../dashboards/js/admin-metrics.js';
 
 const src = (p) => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 
@@ -114,4 +114,36 @@ test('밀도맵 시간대는 롤업 cf_heat_slot 과 응답 heat_slot 을 쓴다
   assert.match(src('sql/analytics/admin_dashboard.sql'), /'heat_slot'/);
   assert.match(src('dashboards/js/admin-analytics.js'), /heatCellsFor\(/);
   assert.match(src('dashboards/admin_analytics.html'), /id="slotSel"/);
+});
+
+test('이동 흐름: 구역 이름표는 SQL cf_zone_of 의 키와 맵 판정 키를 전부 덮는다', () => {
+  const sql = src('sql/migrations/migrate_zone_paths.sql');
+  const keys = [...sql.matchAll(/\('([a-z_]+)', -?[0-9.]+, -?[0-9.]+, [0-9.]+\)/g)].map((m) => m[1]);
+  assert.ok(keys.length >= 30);
+  for (const k of [...keys, 'river', 'dream', 'mirror']) assert.ok(ZONES[k], k);
+});
+
+test('이동 흐름: 세그먼트별로 경로를 합치고 비중은 세션 수 기준', () => {
+  const flow = {
+    sessions: { new: 10, ret: 30 },
+    trans: [['new', 'spawn', 'bench', 6], ['ret', 'spawn', 'bench', 9], ['ret', 'house', 'house_in', 12]],
+    first: [['new', 'spawn', 10], ['ret', 'house', 20], ['ret', 'spawn', 10]],
+    last: [['new', 'bench', 4], ['ret', 'house_in', 18]],
+  };
+  const all = zoneFlow(flow, 'all');
+  assert.equal(all.sessions, 40);
+  assert.deepEqual(all.top[0], { a: 'spawn', b: 'bench', n: 15, share: 37.5 });
+  assert.equal(all.top[1].a, 'house');
+  assert.deepEqual(all.first.map((r) => [r.zone, r.n]), [['spawn', 20], ['house', 20]]);
+  const nw = zoneFlow(flow, 'new');
+  assert.equal(nw.sessions, 10);
+  assert.deepEqual(nw.top, [{ a: 'spawn', b: 'bench', n: 6, share: 60 }]);
+  assert.deepEqual(zoneFlow(undefined, 'all'), { sessions: 0, top: [], first: [], last: [] });
+});
+
+test('이동 흐름은 롤업 cf_session_zones 와 응답 zone_flow 를 쓴다', () => {
+  assert.match(src('sql/migrations/migrate_admin_rollup.sql'), /insert into cf_session_zones/);
+  assert.match(src('sql/analytics/admin_dashboard.sql'), /'zone_flow'/);
+  assert.match(src('dashboards/js/admin-analytics.js'), /zoneFlow\(/);
+  assert.match(src('dashboards/admin_analytics.html'), /id="s-flow"/);
 });
