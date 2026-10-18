@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>고요한 숲 앱 받기 · App Store · Google Play</title>
+<meta name="description" content="고요한 숲을 아이폰·안드로이드 앱으로 받아요. 폰 카메라로 QR을 비추거나 스토어 버튼을 눌러 주세요." />
+<link rel="canonical" href="https://calmforest.cloud/app" />
+<meta property="og:title" content="고요한 숲 앱 받기" />
+<meta property="og:description" content="아이폰·안드로이드에서 고요한 숲을 만나요." />
+<meta property="og:image" content="https://calmforest.cloud/preview.jpg" />
+<meta property="og:url" content="https://calmforest.cloud/app" />
+<meta name="theme-color" content="#bfe8c9" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<style>
+  :root { --bg: #fbf8ef; --card: #ffffff; --ink: #1e2a24; --sub: #5b6b60; --line: #dfe8dc; --mint: #dff2e3; }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100dvh; display: grid; place-items: center; padding: 24px 16px; background: var(--bg);
+    color: var(--ink); font: 15px/1.5 -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
+  main { width: min(420px, 100%); text-align: center; background: var(--card); border: 1px solid var(--line); border-radius: 28px;
+    padding: 34px 26px 28px; box-shadow: 0 18px 50px rgba(30, 50, 40, .12); }
+  .leaf { font-size: 38px; }
+  h1 { margin: 4px 0 2px; font-size: 30px; letter-spacing: -.5px; }
+  .lead { margin: 0 0 22px; font-weight: 700; font-size: 17px; }
+  .qr { display: block; width: 180px; height: 180px; margin: 0 auto 10px; padding: 10px; border-radius: 18px; background: #fff; border: 1px solid var(--line); }
+  .hint { margin: 0 0 22px; color: var(--sub); font-size: 13px; word-break: keep-all; }
+  .badges { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .badges a { display: inline-block; line-height: 0; }
+  .badges img { height: 40px; width: auto; }
+  .play { display: inline-block; margin-top: 24px; padding: 11px 20px; border-radius: 14px; background: var(--mint); color: #1f4a33;
+    font-weight: 700; text-decoration: none; }
+</style>
+</head>
+<body>
+<main>
+  <div class="leaf">🌿</div>
+  <h1>고요한 숲</h1>
+  <p class="lead">📱 폰에서도 만나요</p>
+  <img class="qr" src="/assets/qr/app-link.svg" alt="고요한 숲 앱 받기 QR" width="180" height="180" />
+  <p class="hint">폰 카메라로 QR을 비춰 주세요</p>
+  <div class="badges">
+    <a href="/app?os=ios" data-os="ios"><img src="/assets/badges/app-store-ko.svg" alt="App Store에서 다운로드하기" height="40" /></a>
+    <a href="/app?os=android" data-os="android"><img src="/assets/badges/google-play-ko.png" alt="다운로드하기 Google Play" height="40" /></a>
+  </div>
+  <a class="play" href="/">🌿 게임 하러 가기</a>
+</main>
+<script>
+  (function () {
+    var q = new URLSearchParams(location.search);
+    var keep = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'].filter(function (k) { return q.get(k); });
+    if (!keep.length) return;
+    document.querySelectorAll('.badges a').forEach(function (a) {
+      var u = new URL(a.getAttribute('href'), location.origin);
+      keep.forEach(function (k) { u.searchParams.set(k, q.get(k)); });
+      a.setAttribute('href', u.pathname + u.search);
+    });
+  })();
+</script>
+</body>
+</html>

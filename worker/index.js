@@ -38,6 +38,7 @@ import { runPush, isPushTick } from '../functions/push-cron.js';
 import { runAuraCron } from '../functions/aura-cron.js';
 import { onRequestGet as cardnewsImg } from '../functions/cardnews-img.js';
 import { onRequestGet as rssFeed } from '../functions/rss.js';
+import { onRequestGet as appLink } from '../functions/app-link.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -56,6 +57,11 @@ export default {
         if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
         const res = await routeApi(pathname, { request, env, ctx });
         if (res) return withCors(res);
+      }
+
+      if (pathname === '/app' || pathname === '/app/') {
+        if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method Not Allowed', { status: 405 });
+        return await appLink({ request, env });
       }
 
       if (pathname === '/rss.xml') {
