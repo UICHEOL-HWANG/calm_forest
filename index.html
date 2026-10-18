@@ -48,6 +48,11 @@
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96.png" />
 <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+<meta name="keywords" content="고요한 숲, calm forest, 힐링 게임, 브라우저 게임, 농사 게임, 낚시 게임, 3D 마을 꾸미기, 무료 웹게임" />
+<link rel="canonical" href="https://calmforest.cloud/" />
+<link rel="alternate" type="application/rss+xml" title="고요한 숲 소식" href="https://calmforest.cloud/rss.xml" />
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"VideoGame","name":"고요한 숲","alternateName":"calm forest","url":"https://calmforest.cloud/","image":"https://calmforest.cloud/preview.jpg?v=20261006","description":"포근한 로우폴리 3D 브라우저 게임. 걷고, 농사짓고, 낚시하고, 집을 짓고 꾸미는 힐링 마을. 설치 없이 브라우저에서 바로.","genre":["Simulation","Casual"],"gamePlatform":["Web browser","Android","iOS"],"applicationCategory":"Game","inLanguage":["ko","en"],"offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"}}</script>
 <!-- 📱 PWA — 구글 플레이(TWA)·홈화면 설치용. 아이콘 원본은 assets/pwa/, 빌드가 루트로 편다.
      토스·itch 번들은 build-ait/build-itch 가 이 링크를 지운다(다른 오리진에서 404). -->
 <link rel="manifest" href="/manifest.webmanifest" />
@@ -6635,7 +6640,7 @@
         shown++;
         const d = new Date(r.taken_at);
         const cell = document.createElement('div'); cell.className = 'album-cell';
-        cell.innerHTML = `<img loading="lazy" src="${url}" alt=""><span class="album-date">${escapeHtml(r.weather || '')} ${d.getMonth() + 1}/${d.getDate()}</span>`;
+        cell.innerHTML = `<img loading="lazy" src="${url}" alt="${escapeHtml(`고요한 숲 사진 · ${r.weather || ''} ${d.getMonth() + 1}/${d.getDate()}`)}"><span class="album-date">${escapeHtml(r.weather || '')} ${d.getMonth() + 1}/${d.getDate()}</span>`;
         cell.addEventListener('click', () => {
           albumCur = { key: r.object_key, url };
           $('album-img').src = url;

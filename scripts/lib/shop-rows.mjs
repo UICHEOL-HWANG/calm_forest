@@ -10,5 +10,5 @@ const won = (n) => `₩${n.toLocaleString('ko-KR')}`;
 /** 카탈로그 → 현금 상품 <tr> 배열(구분 · 아이템 · 가격) */
 export function shopRows(items) {
   return items.filter(it => it.premium).map(it =>
-    `    <tr><td>${SLOT_KO[it.slot]}</td><td>${it.ico} ${it.name}</td><td>${it.price.cash?.label ?? won(it.price.won)}</td></tr>`);
+    `    <tr><td>${SLOT_KO[it.slot]}</td><td><a href="/shop/${it.id}">${it.ico} ${it.name}</a></td><td>${it.price.cash?.label ?? won(it.price.won)}</td></tr>`);
 }

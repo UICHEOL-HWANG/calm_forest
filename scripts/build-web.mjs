@@ -110,6 +110,36 @@ if (CONFIG.PADDLE.storeOpen) {
   await writeFile(path.join(DIST, 'shop.html'), tpl.replace('<!--ROWS-->', rows));
 }
 
+const { SEO_PAGES } = await import('./lib/seo-pages.mjs');
+const { seoHead, injectHead } = await import('./lib/seo-meta.mjs');
+const { sitemapXml, robotsTxt } = await import('./lib/sitemap.mjs');
+const { guidePage } = await import('./lib/guide-page.mjs');
+const sitemapPaths = [];
+for (const page of SEO_PAGES) {
+  if (page.store && !CONFIG.PADDLE.storeOpen) continue;
+  sitemapPaths.push(page.path);
+  if (!page.file) continue;
+  const f = path.join(DIST, page.file);
+  await writeFile(f, injectHead(await readFile(f, 'utf8'), seoHead(page)));
+}
+for (const [src, page] of [['guide/guide.html', '/guide/'], ['guide/guide-en.html', '/guide/en/']]) {
+  const meta = SEO_PAGES.find(p => p.path === page);
+  const out = path.join(DIST, page, 'index.html');
+  await mkdir(path.dirname(out), { recursive: true });
+  await writeFile(out, guidePage(await readFile(path.join(ROOT, src), 'utf8'), meta));
+}
+if (CONFIG.PADDLE.storeOpen) {
+  const { ITEMS } = await import('../js/cosmetics/catalog.js');
+  const { shopProductPages } = await import('./lib/shop-pages.mjs');
+  await mkdir(path.join(DIST, 'shop'), { recursive: true });
+  for (const pg of shopProductPages(ITEMS)) {
+    await writeFile(path.join(DIST, 'shop', `${pg.id}.html`), pg.html);
+    if (pg.open) sitemapPaths.push(pg.path);
+  }
+}
+await writeFile(path.join(DIST, 'sitemap.xml'), sitemapXml(sitemapPaths));
+await writeFile(path.join(DIST, 'robots.txt'), robotsTxt());
+
 // 결과 검증 — 금지 패턴이 하나라도 들어갔으면 배포 전에 멈춘다
 const files = await walk(DIST);
 const leaked = files.filter(f => FORBIDDEN.some(re => f.split(path.sep).some(seg => re.test(seg))));
