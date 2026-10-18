@@ -37,7 +37,9 @@ test('no numeric odds in the album', () => {
 });
 
 test('menu button and panel exist and open through openDecorAlbum', () => {
-  assert.match(HTML, /<button id="decor-btn"><span class="uico">🎁<\/span><span class="ulbl">꾸미기 세트<\/span><\/button>/);
+  assert.match(HTML, /<button id="decor-set-btn"><span class="uico">🎁<\/span><span class="ulbl">꾸미기 세트<\/span><\/button>/);
+  assert.equal((HTML.match(/id="decor-btn"/g) || []).length, 1, 'decor-btn id must stay unique');
+  assert.match(HTML, /\$\('decor-set-btn'\)\.addEventListener\('click', \(\) => openDecorAlbum\('menu'\)\)/);
   assert.match(HTML, /<div id="decor-album" aria-hidden="true">/);
   assert.match(HTML, /openDecorAlbum\(html\) \{/);
   assert.match(IX, /trackEvent\('decor_album_open', \{ src: from \}\)/);
@@ -46,4 +48,12 @@ test('menu button and panel exist and open through openDecorAlbum', () => {
 
 test('menu label translates', () => {
   assert.match(read('../js/i18n-en.js'), /'꾸미기 세트': 'Decor Sets'/);
+});
+
+test('album blocks game keys, closes on Escape and suppresses other banners', () => {
+  assert.match(HTML, /function closeDecorAlbum\(\) \{/);
+  assert.match(HTML, /if \(!\$\('decor-album'\)\.classList\.contains\('show'\)\) return;\n\s*if \(e\.key === 'Escape'\) \{ e\.preventDefault\(\); closeDecorAlbum\(\); \}\n\s*e\.stopPropagation\(\);/);
+  assert.match(HTML, /\$\('decor-close'\)\.addEventListener\('click', closeDecorAlbum\)/);
+  assert.match(read('../js/game.js'), /if \(b\.classList\.contains\('decor-open'\)\) return 'decor';/);
+  assert.match(read('../js/app-banner-ui.js'), /'guide-open', 'decor-open',/);
 });

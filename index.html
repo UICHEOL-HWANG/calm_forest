@@ -2176,7 +2176,7 @@
       <button id="char-btn"><span class="uico">🐾</span><span class="ulbl">캐릭터·꾸미기</span></button>
       <button id="map-btn"><span class="uico">🗺️</span><span class="ulbl">마을 지도</span></button>
       <button id="album-btn"><span class="uico">📸</span><span class="ulbl">사진첩</span></button>
-      <button id="decor-btn"><span class="uico">🎁</span><span class="ulbl">꾸미기 세트</span></button>
+      <button id="decor-set-btn"><span class="uico">🎁</span><span class="ulbl">꾸미기 세트</span></button>
       <button id="inbox-btn"><span class="uico">📮</span><span class="ulbl">소식함</span></button>
       <button id="invite-btn" style="display:none;"><span class="uico">🤝</span><span class="ulbl">친구 초대</span></button>
       <hr class="util-sep">
@@ -5009,8 +5009,14 @@
       startCoach();                   // 먼저 코치를 켜 둔다 — 지도를 열어둔 채 이탈해도 튜토리얼이 사라지지 않게
       showStoryMapOnce(null);         // 📖 4장 지도를 그 위에 1회
     });
-    $('decor-btn').addEventListener('click', () => openDecorAlbum('menu'));
-    $('decor-close').addEventListener('click', () => { $('decor-album').classList.remove('show'); $('decor-album').setAttribute('aria-hidden', 'true'); document.body.classList.remove('decor-open'); });
+    $('decor-set-btn').addEventListener('click', () => openDecorAlbum('menu'));
+    function closeDecorAlbum() { $('decor-album').classList.remove('show'); $('decor-album').setAttribute('aria-hidden', 'true'); document.body.classList.remove('decor-open'); }
+    $('decor-close').addEventListener('click', closeDecorAlbum);
+    window.addEventListener('keydown', (e) => {
+      if (!$('decor-album').classList.contains('show')) return;
+      if (e.key === 'Escape') { e.preventDefault(); closeDecorAlbum(); }
+      e.stopPropagation();
+    }, true);
     $('help-btn').addEventListener('click', () => openGuide('menu'));   // 📖 초보자 안내서(튜토리얼 다시 보기는 안내서 첫 장 버튼)
     // ⚖️ 정책 페이지(개인정보 처리방침·계정 삭제) — 마을은 그대로 두고 새 탭으로 연다.
     //    · API_BASE 를 앞에 붙이는 이유: 토스·itch 번들은 오리진이 달라 상대경로가 404 다(일지 버튼과 같은 처리).
