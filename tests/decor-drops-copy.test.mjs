@@ -43,7 +43,7 @@ test('every runtime string translates fully to English', () => {
   for (const [src, d] of Object.entries(DROP_SOURCES)) {
     runtime.push(C.dropToast(nameOf(d.item), d.set, 1), C.dropToast(nameOf(d.item), d.set, 2));
     const b = C.bannerCopy(d.set, src);
-    runtime.push(b.title, b.line, b.go);
+    runtime.push(b.title, b.line, b.go, `${b.line} ${b.go}`);
   }
   for (const s of DECOR_SETS) {
     runtime.push(C.setCompleteToast(s.id), C.SET_NAMES[s.id]);

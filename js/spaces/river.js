@@ -14,7 +14,7 @@ import {
   tryUnlockDrop, ui, wantAction, woodMat,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
-import { onPlay } from '../decor-drops/index.js';
+import { onPlay, decorBanner } from '../decor-drops/index.js';
 import { BOAT_LAMP, BOAT_LAMP_POST } from '../boat-lamp.js';
 import { BOAT_BASE_SPEED, BOAT_BOOST_CD, BOAT_LAMPS, BOAT_RUNS_PER_DAY, BOAT_UPGRADES, DOCK_GATE, DOCK_POND, DOCK_POND_R, RIVER, RIVER_DOCK_HALF, RIVER_LEN, RIVER_OBS, RIVER_PICKS, RIVER_W } from '../data/places.js';
 import { PAL } from '../data/world.js';
@@ -228,6 +228,7 @@ export function enterRiver() {
     { steps: [{ ico: '🛶', label: '배 앞 {A}' }, { ico: '⬅️➡️', label: '피하기' }, { ico: '💨', label: '{A} 스퍼트' }], note: '하루 3번', chip: '⭐ 별조각으로 배 강화' });
   Sound.blip();
   trackEvent('boat_enter', { runs_left: boatRunsLeft(), night: isNight(), weather: WEATHER });   // [GA4] 유입
+  decorBanner('ferry');
 }
 
 export function exitRiver() {

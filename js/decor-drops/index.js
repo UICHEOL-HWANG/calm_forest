@@ -3,8 +3,8 @@ import { IS_DEV_SESSION } from '../config.js';
 import { trackEvent } from '../analytics.js';
 import { DECOR } from '../data/catalog.js';
 import { DROP_SOURCES, DECOR_SETS } from '../data/decor-sets.js';
-import { rollDrop, setProgress, daysSince } from './rules.js';
-import { dropToast, setCompleteToast } from './copy.js';
+import { rollDrop, setProgress, daysSince, bannerDue } from './rules.js';
+import { dropToast, setCompleteToast, bannerCopy } from './copy.js';
 
 const forceNext = () => IS_DEV_SESSION && new URLSearchParams(location.search).get('drop') === 'force';
 const nameOf = (id) => DECOR.find(d => d.id === id)?.name ?? id;
@@ -41,5 +41,28 @@ export function onPlay(src) {
     trackEvent('decor_set_complete', { set: def.set, days_since_first: daysSince(gameState.firstDay, todayStr()) });
     applySetFx();
   }
+  requestSave();
+}
+
+export function openDecorAlbum(from) {
+  trackEvent('decor_album_open', { src: from });
+  ui.openDecorAlbum?.();
+}
+
+export function decorBanner(src) {
+  const def = DROP_SOURCES[src];
+  if (!def || !gameState.house) return;
+  const today = todayStr();
+  if (!bannerDue(gameState.drops, granted(), def.set, today)) return;
+  const drops = gameState.drops || {};
+  gameState.drops = { ...drops, banner: { ...(drops.banner || {}), [def.set]: today } };
+  const c = bannerCopy(def.set, src);
+  const set = DECOR_SETS.find(s => s.id === def.set);
+  ui.showHintBanner?.({
+    ico: '🎁', img: set.thumb, title: c.title, line: `${c.line} ${c.go}`,
+    onShow: () => trackEvent('decor_banner', { set: def.set, act: 'show' }),
+    onTap: () => { trackEvent('decor_banner', { set: def.set, act: 'tap' }); openDecorAlbum('banner'); },
+    onDismiss: (reason) => { if (reason !== 'tap') trackEvent('decor_banner', { set: def.set, act: 'dismiss' }); },
+  });
   requestSave();
 }

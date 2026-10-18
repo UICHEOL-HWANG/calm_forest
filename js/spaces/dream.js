@@ -14,7 +14,7 @@ import {
   spawnFloatText, spawnSparkle, todayStr, ui, wakeToMorning,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다
 import { trackEvent } from '../analytics.js';
-import { onPlay } from '../decor-drops/index.js';
+import { onPlay, decorBanner } from '../decor-drops/index.js';
 import { DREAM } from '../data/places.js';
 import { CLOUD_BED, LANDING, SHARDS_PER_DAY, SHARD_PICK_R, ISLANDS, clampWalkable, islandOf, normalizeDream, shardsLeft, spotOf } from '../dream/layout.js';
 import { buildDreamWorld } from '../dream/art.js';
@@ -136,6 +136,7 @@ function arrive({ skipped, atS, short }) {
   const d = dreamState(), left = dreamLeftToday();
   trackEvent('dream_cutscene_end', { skipped: +skipped, at_s: atS, short: +short });
   trackEvent('dream_enter', { visit_n: d.visits, left_today: left });
+  decorBanner('dream');
   syncHud();
   if (!gameState.hintsSeen.dreamArrive) {
     gameState.hintsSeen.dreamArrive = true;

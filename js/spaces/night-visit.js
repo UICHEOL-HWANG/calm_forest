@@ -11,6 +11,7 @@ import {
   roundRect, scene, showCatchItem, spawnDust, spawnSparkle, todayStr, triggerMoment, ui, updatePlotVisual, worldGround, worldGroundPatches,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
+import { decorBanner } from '../decor-drops/index.js';
 import { DEX } from '../data/dex.js';
 import { initNoteQueue, noteArrived, noteArrivedOpen, showIfIdle, beforeDuel } from '../duel/note-queue.js';
 import { makeRaidScar } from '../duel/raid-art.js';
@@ -117,6 +118,7 @@ export function investigateTrace(tr) {
   ui.toast?.(`🔍 ${NIGHT_ANIMAL[t.animal]?.ico || '🐾'} 흔적에서 ${entry?.ico || ''} ${entry?.name || '수집품'}을 찾았어요!`, 2600);
   dexDiscover('track', t.loot);                          // 📖 도감 신규 카테고리 '흔적'
   trackEvent('night_trace', { animal: t.animal });       // [GA4] 조사 전환율
+  decorBanner('duel');
   requestSave();       // ← 대결 전에 저장한다(리롤 방지의 핵심: 흔적은 이미 지워졌고 보상은 이미 줬다)
   maybeDuel(t);
 }

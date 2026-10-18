@@ -10,7 +10,7 @@ import {
   scene, snapCamera, spawnConfetti, spawnFloatText, spawnSparkle, todayStr, ui, woodMat,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
-import { onPlay } from '../decor-drops/index.js';
+import { onPlay, decorBanner } from '../decor-drops/index.js';
 import { SELL_ICO_G } from '../data/places.js';
 import { logEcon } from '../metrics.js';
 import { Sound } from '../sound.js';
@@ -174,6 +174,7 @@ export function carveStart(id) {
   bindCarvePointer();
   ui.act?.('carve');                                      // 🎓 튜토리얼: "조각 시작해보기" 단계 통과
   trackEvent('carve_start', { order: id, mat: d.mat });   // [GA4] 미니게임 퍼널: 시작
+  decorBanner('carve');
   return { ok: true, id, name: d.name, ico: d.ico, waste: carve.waste, dmgMax: 3 };
 }
 

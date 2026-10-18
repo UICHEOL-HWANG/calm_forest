@@ -2826,6 +2826,7 @@ export const EN = {
   '밤손님 대결에서 일정 확률로 나와요!': 'Turns up now and then in night visitor duels!',
   '반딧불 숲에서 일정 확률로 나와요!': 'Turns up now and then in the firefly glade!',
   '세트 보기 ›': 'See the set ›',
+  '{0} 세트 보기 ›': '{0} See the set ›',
   '🎁 특별한 꾸미기 세트': '🎁 Special Decor Sets',
   '미니게임을 하다 보면 일정 확률로 나와요! 두 개를 다 모으면 세트 연출이 켜져요.': 'They turn up now and then as you play minigames! Collect both pieces to light up the set.',
   '🎣 곧 만나요': '🎣 Coming soon',

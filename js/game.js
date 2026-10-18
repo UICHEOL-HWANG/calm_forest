@@ -59,7 +59,7 @@ import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './
 import { t, LANG, aiBucket } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
 import { initPlaza, updatePlaza, plazaSpotNow, openPlaza, plazaScatterBlocks, plazaDefault, restorePlaza, refreshPlaza, plazaDecorMesh, plazaMapVisible } from './plaza/index.js';
 import { refreshPond, updatePond, pondScatterBlocks } from './pond/index.js';
-import { onPlay } from './decor-drops/index.js';
+import { onPlay, decorBanner } from './decor-drops/index.js';
 import { normalizeDrops } from './decor-drops/rules.js';
 import { welcomeOffer, topPriceLine, fertBlockedByWatering } from './first-loop.js';   // 🪙 코인 첫 루프 규칙
 import { farmToolFor, farmActionIsNoop, FARM_AUTO_TOOLS } from './farm-auto.js';   // 🌾 농사 도구 자동 전환 규칙(밭 상태→도구)
@@ -7123,7 +7123,7 @@ function handleAction() {
     const az = outdoorTarget.pinned ? outdoorTarget.z : player.position.z;
     return placeOutdoor(ax, az);
   }
-  if (nearKitchen) { trackEvent('kitchen_open'); return ui.openKitchen?.(kitchenView()); } // 🍳 자유주방 → 요리 미니게임 메뉴판
+  if (nearKitchen) { trackEvent('kitchen_open'); decorBanner('cook'); return ui.openKitchen?.(kitchenView()); } // 🍳 자유주방 → 요리 미니게임 메뉴판
   if (nearStation) return ui.openCraft?.(craftPanelData(nearStation.id));   // 🔥🫙 가공 시설 근처 → 가공 창
   if (nearBench) return ui.openCook?.();   // 작업대 근처 → 제작 메뉴(도구·야외·선물)
   if (nearShop) return ui.openShop?.();    // 상점 근처 → 상점 메뉴

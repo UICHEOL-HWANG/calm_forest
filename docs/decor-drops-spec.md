@@ -86,7 +86,7 @@ gameState.drops = { tries: { orchard: 0, cook: 0, crop: 0, dream: 0, sled: 0, st
 | 이벤트 | 파라미터 | 언제 |
 |---|---|---|
 | `decor_drop` | `item`, `set`, `src`, `tries`, `pity` (0/1) | 아이템 획득 |
-| `decor_set_complete` | `set`, `hours_since_start` | 세트 완성 |
+| `decor_set_complete` | `set`, `days_since_first` | 세트 완성 (firstDay가 날짜라 일 단위) |
 | `decor_banner` | `set`, `act` (`show`/`tap`/`dismiss`) | 입장 배너 |
 | `decor_album_open` | `src` (`banner`/`menu`) | 앨범 열기 |
 
