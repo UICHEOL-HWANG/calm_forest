@@ -56,6 +56,17 @@ create table if not exists public.cf_map_hour (
   primary key (day, hour, map, persona)
 );
 
+create table if not exists public.cf_heat_slot (
+  day     date     not null,
+  slot    smallint not null check (slot between 0 and 3),
+  map     text     not null check (map in ('main', 'dream', 'mirror')),
+  persona boolean  not null default false,
+  gx      smallint not null,
+  gz      smallint not null,
+  hits    integer  not null,
+  primary key (day, slot, map, persona, gx, gz)
+);
+
 create table if not exists public.cf_econ_day (
   day      date    not null,
   source   text    not null,
@@ -70,7 +81,8 @@ alter table public.cf_sessions enable row level security;
 alter table public.cf_heat_day enable row level security;
 alter table public.cf_econ_day enable row level security;
 alter table public.cf_map_hour enable row level security;
-revoke all on public.cf_sessions, public.cf_heat_day, public.cf_econ_day, public.cf_map_hour from anon, authenticated;
+alter table public.cf_heat_slot enable row level security;
+revoke all on public.cf_sessions, public.cf_heat_day, public.cf_econ_day, public.cf_map_hour, public.cf_heat_slot from anon, authenticated;
 
 -- 획득 행동 16종 — 북극성 정의와 같은 목록(바꾸면 METRICS_FRAMEWORK.md 도 같이)
 create or replace function public.cf_is_acq(c jsonb)
@@ -115,7 +127,7 @@ declare
   v_from  date;
   t0 timestamptz;
   t1 timestamptz;
-  n_sess int; n_heat int; n_hour int; n_econ int;
+  n_sess int; n_heat int; n_hour int; n_slot int; n_econ int;
 begin
   -- 같은 날을 두 곳(대시보드 열기·03:00 적재)이 동시에 지우고 다시 넣으면 PK 충돌 → 한 번에 하나만
   perform pg_advisory_xact_lock(hashtext('cf_rollup'));
@@ -184,6 +196,7 @@ begin
   -- ── 맵별 이동 밀도: 날 단위로 통째 교체 ──
   delete from cf_heat_day where day between v_from and p_to;
   delete from cf_map_hour where day between v_from and p_to;
+  delete from cf_heat_slot where day between v_from and p_to;
   with g as (
     select g.session_id, g.created_at, g.char_x as x, g.char_z as z, g.user_id,
            coalesce(nullif(g.client_id, ''), g.user_id::text) as uid,
@@ -238,8 +251,20 @@ begin
     from pl
     group by 1, 2, 3, 4
     returning 1
+  ),
+  ins_slot as (
+    insert into cf_heat_slot (day, slot, map, persona, gx, gz, hits)
+    select (created_at at time zone tz)::date, (extract(hour from created_at at time zone tz)::int / 6)::smallint, map, persona,
+           (round(x / 2.0) * 2)::smallint,
+           (round((z - case map when 'dream' then -550 when 'mirror' then -700 else 0 end) / 2.0) * 2)::smallint,
+           count(*)
+    from pl
+    where map is not null
+    group by 1, 2, 3, 4, 5, 6
+    returning 1
   )
-  select (select count(*) from ins_heat), (select count(*) from ins_hour) into n_heat, n_hour;
+  select (select count(*) from ins_heat), (select count(*) from ins_hour), (select count(*) from ins_slot)
+    into n_heat, n_hour, n_slot;
 
   -- ── 경제 ──
   delete from cf_econ_day where day between v_from and p_to;
@@ -253,7 +278,7 @@ begin
   group by 1, 2, 3;
   get diagnostics n_econ = row_count;
 
-  return jsonb_build_object('from', v_from, 'to', p_to, 'sessions', n_sess, 'heat', n_heat, 'map_hour', n_hour, 'econ', n_econ);
+  return jsonb_build_object('from', v_from, 'to', p_to, 'sessions', n_sess, 'heat', n_heat, 'map_hour', n_hour, 'heat_slot', n_slot, 'econ', n_econ);
 end;
 $$;
 

@@ -239,6 +239,11 @@ begin
              from (select map, gx, gz, sum(hits)::int as hits from cf_heat_day
                    where not persona and day between since and today group by 1, 2, 3) h),
 
+    'heat_slot', (select coalesce(jsonb_agg(jsonb_build_array(map, gx, gz, slot, hits)), '[]'::jsonb)
+                  from (select map, gx, gz, slot, sum(hits)::int as hits from cf_heat_slot
+                        where not persona and day between since and today group by 1, 2, 3, 4) hs),
+    'heat_slot_since', (select min(day) from cf_heat_slot),
+
     'map_hour', (select coalesce(jsonb_agg(jsonb_build_object('hour', hour, 'map', map, 'hits', hits, 'users', users)), '[]'::jsonb)
                  from (select hour, map, sum(hits)::int as hits, sum(users)::int as users from cf_map_hour
                        where not persona and day between since and today group by 1, 2) mh),

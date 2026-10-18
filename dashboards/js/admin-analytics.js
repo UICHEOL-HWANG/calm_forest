@@ -4,12 +4,12 @@
 //  계산: ./admin-metrics.js(순수 함수, 테스트 있음) · 공통: ./admin-common.js
 // =============================================================
 import { $, V, nf, esc, CHAR, shareKey, bootAdmin, explainRpcError, showMsg, createLoader } from './admin-common.js';
-import { MAPS, delta, worstLeak, rate, heatGrid, userStatus, funnelSteps, mapHourGrid } from './admin-metrics.js';
+import { MAPS, delta, worstLeak, rate, heatGrid, userStatus, funnelSteps, mapHourGrid, heatCellsFor, HEAT_SLOTS } from './admin-metrics.js';
 
 const page = $('page');
 const loader = createLoader(page, $('loader'));
 const charts = {};
-let sb = null, days = 30, data = null, heatMap = 'main';
+let sb = null, days = 30, data = null, heatMap = 'main', heatSlot = 'all';
 
 const mmdd = (d) => String(d).slice(5).replace('-', '/');
 const secs = (s) => (s == null ? '—' : s >= 60 ? `${Math.floor(s / 60)}분 ${Math.round(s % 60)}초` : `${Math.round(s)}초`);
@@ -60,7 +60,14 @@ const fill = (ctx, h) => {
     if (!b) return;
     heatMap = b.dataset.map;
     [...$('mapSel').children].forEach((x) => x.classList.toggle('on', x === b));
-    if (data) renderHeat(data.heat || []);
+    if (data) renderHeat(heatCellsFor(data, heatSlot));
+  });
+  $('slotSel').addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    heatSlot = b.dataset.slot === 'all' ? 'all' : +b.dataset.slot;
+    [...$('slotSel').children].forEach((x) => x.classList.toggle('on', x === b));
+    if (data) renderHeat(heatCellsFor(data, heatSlot));
   });
   watchToc();
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => data && render(data));
@@ -106,7 +113,7 @@ function render(d) {
   renderGrowth(d.daily || []);
   renderNsm(d.nsm_daily || []);
   renderHourmap(d.hourly || []);
-  renderHeat(d.heat || []);
+  renderHeat(heatCellsFor(d, heatSlot));
   renderMapHour(mapHourGrid(d.map_hour || []));
   renderUsers(d.users || []);
   renderEcon(d.econ_daily || [], d.econ_sources || []);
@@ -277,8 +284,15 @@ function renderHeat(cells) {
   ctx.putImageData(img, 0, 0);
   const total = grid.reduce((a, b) => a + b, 0);
   $('heatDef').innerHTML = total
-    ? `위 = 북쪽 · ${MAPS[heatMap].label} 위치 기록 ${nf(total)}건. 밝을수록 오래 머문 칸(2유닛 격자).`
-    : `<span style="display:inline-flex;gap:8px;align-items:center"><img src="${CHAR(MAPS[heatMap].char)}" alt="" style="width:28px;height:28px;object-fit:contain">이 기간 ${MAPS[heatMap].label} 기록이 없어요.</span>`;
+    ? `위 = 북쪽 · ${MAPS[heatMap].label}${slotNote()} 위치 기록 ${nf(total)}건. 밝을수록 오래 머문 칸(2유닛 격자).`
+    : `<span style="display:inline-flex;gap:8px;align-items:center"><img src="${CHAR(MAPS[heatMap].char)}" alt="" style="width:28px;height:28px;object-fit:contain">이 기간 ${MAPS[heatMap].label}${slotNote()} 기록이 없어요.</span>`;
+}
+
+function slotNote() {
+  if (heatSlot === 'all') return '';
+  const s = HEAT_SLOTS.find((x) => x.slot === heatSlot);
+  const since = data?.heat_slot_since ? ` · ${mmdd(data.heat_slot_since)}부터 집계` : '';
+  return ` ${s.label}(${s.range}${since})`;
 }
 
 // ── 운영 ──

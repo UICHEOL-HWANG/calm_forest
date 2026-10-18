@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { delta, worstLeak, rate, heatGrid, userStatus, funnelSteps, MAPS, mapHourGrid } from '../dashboards/js/admin-metrics.js';
+import { delta, worstLeak, rate, heatGrid, userStatus, funnelSteps, MAPS, mapHourGrid, heatCellsFor, HEAT_SLOTS } from '../dashboards/js/admin-metrics.js';
 
 const src = (p) => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 
@@ -95,4 +95,23 @@ test('시간대 × 맵 표는 대시보드 응답의 map_hour 를 읽는다', ()
   assert.match(src('dashboards/js/admin-analytics.js'), /mapHourGrid\(d\.map_hour/);
   assert.match(src('sql/analytics/admin_dashboard.sql'), /'map_hour'/);
   assert.match(src('sql/migrations/migrate_admin_rollup.sql'), /insert into cf_map_hour/);
+});
+
+test('밀도맵 시간대: 전체는 날 단위 표, 시간대는 압축 배열에서 그 구간만 꺼낸다', () => {
+  const data = {
+    heat: [{ map: 'main', gx: 0, gz: 0, hits: 9 }],
+    heat_slot: [['main', 0, 0, 3, 4], ['main', 2, 2, 1, 5], ['dream', 0, 0, 3, 1]],
+  };
+  assert.deepEqual(HEAT_SLOTS.map((s) => s.label), ['전체', '새벽', '오전', '오후', '저녁']);
+  assert.equal(heatCellsFor(data, 'all'), data.heat);
+  assert.deepEqual(heatCellsFor(data, 3), [{ map: 'main', gx: 0, gz: 0, hits: 4 }, { map: 'dream', gx: 0, gz: 0, hits: 1 }]);
+  assert.deepEqual(heatCellsFor(data, 0), []);
+  assert.deepEqual(heatCellsFor({}, 1), []);
+});
+
+test('밀도맵 시간대는 롤업 cf_heat_slot 과 응답 heat_slot 을 쓴다', () => {
+  assert.match(src('sql/migrations/migrate_admin_rollup.sql'), /insert into cf_heat_slot/);
+  assert.match(src('sql/analytics/admin_dashboard.sql'), /'heat_slot'/);
+  assert.match(src('dashboards/js/admin-analytics.js'), /heatCellsFor\(/);
+  assert.match(src('dashboards/admin_analytics.html'), /id="slotSel"/);
 });

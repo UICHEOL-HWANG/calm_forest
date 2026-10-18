@@ -55,6 +55,19 @@ export function heatGrid(cells, map) {
   return { grid, n, max };
 }
 
+export const HEAT_SLOTS = [
+  { slot: 'all', label: '전체' },
+  { slot: 0, label: '새벽', range: '0–6시' },
+  { slot: 1, label: '오전', range: '6–12시' },
+  { slot: 2, label: '오후', range: '12–18시' },
+  { slot: 3, label: '저녁', range: '18–24시' },
+];
+
+export function heatCellsFor(data, slot) {
+  if (slot === 'all') return data.heat || [];
+  return (data.heat_slot || []).filter((r) => r[3] === slot).map(([map, gx, gz, , hits]) => ({ map, gx, gz, hits }));
+}
+
 export const MAP_HOUR_ROWS = [
   { map: 'main', label: '마을' },
   { map: 'dream', label: '꿈의 숲' },
