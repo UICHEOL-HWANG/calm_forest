@@ -97,7 +97,7 @@ export function starSettle(summary, run = {}, diff = null, ctx = {}) {
     offsets: (run.offsets || []).map(v => Math.round(v)).join(','),
     judges: (run.judges || []).join(','),
   });
-  onPlay('star');
+  if (summary.success) onPlay('star');
   if (unlockedNext) trackEvent('star_unlock', { constellation: unlockedNext, from: c.id, run_id: ctx.runId || '' });
 
   const pay = { coins: coins + bonus, alreadyToday, firstClear, unlockedNext };

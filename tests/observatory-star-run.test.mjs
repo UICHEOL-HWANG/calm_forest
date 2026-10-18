@@ -198,9 +198,9 @@ test('gameState.star has a default and survives save/load (old Big Dipper winner
   assert.match(src, /gameState\.star = restoreStar\(saved\.star, saved\.starDay\)/);
 });
 
-test('every settled run rolls one decor drop', () => {
+test('only successful runs roll a decor drop', () => {
   const { c, plays } = run('2026-10-04', null, { cleared: { big_dipper: '2026-10-01' }, plays: {}, best: {} });
   c.starSettle(S(ALL_PERFECT));
   c.starSettle(S(FAILED));
-  assert.deepEqual(plays, ['star', 'star']);
+  assert.deepEqual(plays, ['star']);
 });
