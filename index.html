@@ -4369,7 +4369,7 @@
           const pad = 9, inner = S - pad * 2, span = half * 2;
           const px = (wx, wz) => [pad + (wx - cx + half) / span * inner, pad + (wz - cz + half) / span * inner];
           // 공간별 바닥색(실내=나무, 동굴=암회색, 텃밭=풀색)
-          const floor = d.place === 'house' ? 'rgba(150,110,70,0.6)' : d.place === 'mine' ? 'rgba(74,74,84,0.75)' : d.place === 'cafe' ? 'rgba(190,145,95,0.7)' : d.place === 'river' ? 'rgba(90,160,200,0.7)' : d.place === 'mist' ? 'rgba(74,80,106,0.8)' : d.place === 'sea' ? 'rgba(70,150,195,0.75)' : d.place === 'museum' ? 'rgba(214,198,170,0.75)' : d.place === 'observatory' ? 'rgba(90,84,130,0.8)' : d.place === 'mountain' ? '#e9eef3' : d.place === 'neighbor' ? 'rgba(150,200,120,0.75)' : d.place === 'mirror' ? 'rgba(80,98,154,0.8)' : d.place === 'dream' ? 'rgba(110,90,170,0.8)' : 'rgba(120,180,110,0.7)';
+          const floor = d.place === 'house' ? 'rgba(150,110,70,0.6)' : d.place === 'mine' ? 'rgba(74,74,84,0.75)' : d.place === 'cafe' ? 'rgba(190,145,95,0.7)' : d.place === 'river' ? 'rgba(90,160,200,0.7)' : d.place === 'mist' ? 'rgba(74,80,106,0.8)' : d.place === 'sea' ? 'rgba(70,150,195,0.75)' : d.place === 'museum' ? 'rgba(214,198,170,0.75)' : d.place === 'observatory' ? 'rgba(90,84,130,0.8)' : d.place === 'mountain' ? '#e9eef3' : d.place === 'neighbor' ? 'rgba(150,200,120,0.75)' : d.place === 'mirror' ? 'rgba(80,98,154,0.8)' : d.place === 'halloween' ? 'rgba(90,106,106,0.85)' : d.place === 'dream' ? 'rgba(110,90,170,0.8)' : 'rgba(120,180,110,0.7)';
           ctx.fillStyle = floor; ctx.fillRect(pad, pad, inner, inner);
           ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 1.5; ctx.strokeRect(pad, pad, inner, inner);
           // 랜드마크(밭/광맥/가구/출구)
@@ -4385,7 +4385,7 @@
           // 공간 이름 라벨(상단 작게)
           ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.font = 'bold 9px sans-serif';
           ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-          ctx.fillText(t(d.place === 'house' ? '🏠 실내' : d.place === 'mine' ? '⛏️ 동굴' : d.place === 'cafe' ? '☕ 카페' : d.place === 'river' ? '🛶 강' : d.place === 'mist' ? '🌫️ 안개 숲' : d.place === 'sea' ? '🌊 바다터' : d.place === 'museum' ? '🏛️ 박물관' : d.place === 'observatory' ? '🔭 천문대' : d.place === 'mountain' ? '🏔️ 설산' : d.place === 'orchard' ? '🍎 과수원' : d.place === 'neighbor' ? '🏡 이웃의 숲' : d.place === 'mirror' ? '🪞 거울 마을' : d.place === 'dream' ? '🌙 꿈의 숲' : '🌾 텃밭'), S / 2, pad + 1.5);
+          ctx.fillText(t(d.place === 'house' ? '🏠 실내' : d.place === 'mine' ? '⛏️ 동굴' : d.place === 'cafe' ? '☕ 카페' : d.place === 'river' ? '🛶 강' : d.place === 'mist' ? '🌫️ 안개 숲' : d.place === 'sea' ? '🌊 바다터' : d.place === 'museum' ? '🏛️ 박물관' : d.place === 'observatory' ? '🔭 천문대' : d.place === 'mountain' ? '🏔️ 설산' : d.place === 'orchard' ? '🍎 과수원' : d.place === 'neighbor' ? '🏡 이웃의 숲' : d.place === 'mirror' ? '🪞 거울 마을' : d.place === 'halloween' ? '🎃 달빛 유령 정원' : d.place === 'dream' ? '🌙 꿈의 숲' : '🌾 텃밭'), S / 2, pad + 1.5);
           // 플레이어
           let [pxx, pyy] = px(d.x, d.z);
           pxx = Math.max(pad + 3, Math.min(S - pad - 3, pxx)); pyy = Math.max(pad + 3, Math.min(S - pad - 3, pyy));
@@ -6809,7 +6809,7 @@
       fert: { ico: '🌱', name: '비료' }, bait: { ico: '🪱', name: '미끼' },
       wheat: { ico: '🌾', name: '밀' }, corn: { ico: '🌽', name: '옥수수' }, grape: { ico: '🍇', name: '포도' },
       seed_wheat: { ico: '🌾', name: '밀 씨앗' }, seed_corn: { ico: '🌽', name: '옥수수 씨앗' }, seed_grape: { ico: '🍇', name: '포도 씨앗' },
-      honey: { ico: '🍯', name: '꿀' },
+      honey: { ico: '🍯', name: '꿀' }, candy: { ico: '🍬', name: '사탕' },
       apple: { ico: '🍎', name: '사과' }, pear: { ico: '🍐', name: '배' }, peach: { ico: '🍑', name: '복숭아' },
       persimmon: { ico: '🍊', name: '감' }, chestnut: { ico: '🌰', name: '밤' },
     };
@@ -6821,6 +6821,7 @@
       { name: '⛏️ 광물', keys: ['stone', 'coal', 'gem'] },
       { name: '🌙 밤·숲', keys: ['bug', 'forage'] },
       { name: '🛶 강 · 🌫️ 숲', keys: ['star', 'glow'] },
+      { name: '🎃 할로윈', keys: ['candy'] },
     ];
     function bagSection(title, items) {
       const sec = document.createElement('div'); sec.className = 'bag-sec';

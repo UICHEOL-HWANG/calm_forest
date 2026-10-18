@@ -26,7 +26,7 @@ export function makeCtx(T, onNight = null) {
   };
 }
 
-function kit(T) {
+export function kit(T) {
   const paint = (geo, hex) => {
     const c = new T.Color(hex), n = geo.attributes.position.count, arr = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) { arr[i * 3] = c.r; arr[i * 3 + 1] = c.g; arr[i * 3 + 2] = c.b; }
