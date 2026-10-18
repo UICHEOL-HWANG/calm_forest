@@ -4,7 +4,7 @@ export const KEYWORDS = ['고요한 숲', 'calm forest', '힐링 게임', '브�
 
 export const SAME_AS = Object.freeze([
   'https://play.google.com/store/apps/details?id=com.cheorish.lab.calmforest',
-  'https://apps.apple.com/app/id6821420691',
+  'https://apps.apple.com/kr/app/id6821420691',
   'https://cheorish.itch.io/calmforest',
   'https://www.threads.com/@calm.forest.official',
   'https://www.instagram.com/calm.forest.official/',
