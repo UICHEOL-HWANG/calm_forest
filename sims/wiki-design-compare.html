@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>고요위키 시안</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
+  .v { display: none; }
+  body.a .va, body.b .vb, body.c .vc { display: block; }
+  .doc p { line-height: 1.75; margin: 0 0 12px; }
+  .layout { display: grid; grid-template-columns: minmax(0,1fr) 300px; gap: 28px; align-items: start; }
+  @media (max-width: 760px) { .layout { grid-template-columns: minmax(0,1fr); } .top input { width: 150px !important; } .wrap { padding-left: 16px !important; padding-right: 16px !important; } .info { order: -1; } }
+
+  .va { background: #f5f5f5; color: #212529; min-height: 100vh; }
+  .va .top { background: #2f6b4a; color: #fff; padding: 0 20px; height: 52px; display: flex; align-items: center; gap: 16px; }
+  .va .top b { font-size: 18px; letter-spacing: -.02em; }
+  .va .top input { margin-left: auto; width: 260px; max-width: 45vw; border: 0; border-radius: 4px; padding: 8px 10px; font-size: 14px; }
+  .va .wrap { max-width: 1100px; margin: 0 auto; background: #fff; border: 1px solid #ddd; border-top: 0; padding: 24px 28px 48px; }
+  .va h1 { font-size: 30px; margin: 0 0 4px; font-weight: 700; }
+  .va .crumb { font-size: 13px; color: #0275d8; margin-bottom: 18px; }
+  .va .cat { border: 1px solid #ccc; font-size: 13px; padding: 6px 10px; margin-bottom: 18px; }
+  .va .cat a { color: #0275d8; }
+  .va h2 { font-size: 22px; border-bottom: 1px solid #ccc; padding-bottom: 6px; margin: 26px 0 12px; }
+  .va h2 span { color: #0275d8; margin-right: 6px; }
+  .va .toc { border: 1px solid #ccc; display: inline-block; padding: 10px 18px; font-size: 14px; margin-bottom: 8px; }
+  .va .toc div { margin: 3px 0; } .va .toc a { color: #0275d8; text-decoration: none; }
+  .va .info table { width: 100%; border-collapse: collapse; font-size: 14px; border: 2px solid #2f6b4a; }
+  .va .info th.h { background: #2f6b4a; color: #fff; font-size: 17px; padding: 10px; }
+  .va .info td.ic { text-align: center; font-size: 72px; padding: 14px; background: #eef6f0; }
+  .va .info td, .va .info th { border: 1px solid #cfdcd3; padding: 7px 9px; text-align: left; }
+  .va .info th:not(.h) { background: #e3efe6; width: 34%; font-weight: 600; }
+  .va a.x { color: #0275d8; } .va sup { color: #0275d8; font-size: 11px; }
+
+  .vb { background: #fbf8ef; color: #1e2a24; min-height: 100vh; }
+  .vb .top { position: sticky; top: 0; background: rgba(223,242,227,.92); backdrop-filter: blur(8px); border-bottom: 1px solid #c4dfcb; padding: 10px 20px; display: flex; align-items: center; gap: 12px; }
+  .vb .top b { font-size: 17px; color: #1f4a33; }
+  .vb .top input { margin-left: auto; width: 240px; max-width: 45vw; border: 1px solid #c4dfcb; border-radius: 999px; padding: 8px 14px; background: #fff; }
+  .vb .wrap { max-width: 1040px; margin: 0 auto; padding: 22px 20px 56px; }
+  .vb .crumb { font-size: 13px; color: #4a7a5c; margin-bottom: 8px; }
+  .vb h1 { font-size: 32px; margin: 0 0 16px; color: #1f4a33; font-weight: 800; letter-spacing: -.02em; }
+  .vb .chips span { display: inline-block; background: #e3f1e6; color: #2f6b4a; border-radius: 999px; padding: 4px 12px; font-size: 13px; margin: 0 6px 6px 0; }
+  .vb h2 { font-size: 20px; color: #1f4a33; margin: 28px 0 10px; }
+  .vb .card { background: #fff; border-radius: 18px; box-shadow: 0 4px 14px rgba(60,90,70,.10); padding: 20px 22px; }
+  .vb .info .card { text-align: center; }
+  .vb .info .ic { font-size: 84px; width: 128px; height: 128px; margin: 4px auto 10px; display: grid; place-items: center; background: #e3f1e6; border-radius: 32px; }
+  .vb .info .nm { font-size: 22px; font-weight: 800; color: #1f4a33; } .vb .info .en { color: #6b7d72; font-size: 14px; margin-bottom: 14px; }
+  .vb .info dl { display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; text-align: left; font-size: 14px; margin: 0; }
+  .vb .info dt { color: #6b7d72; } .vb .info dd { margin: 0; font-weight: 600; }
+  .vb .rel { display: flex; gap: 10px; flex-wrap: wrap; } .vb .rel a { background: #fff; border: 1px solid #d7e6da; border-radius: 14px; padding: 10px 14px; color: #1f4a33; text-decoration: none; font-weight: 600; font-size: 14px; }
+  .vb .cta { display: inline-block; margin-top: 18px; background: #2f7a4a; color: #fff; padding: 12px 20px; border-radius: 12px; text-decoration: none; font-weight: 700; }
+
+  .vc { background: #efe6d2; color: #3b3125; min-height: 100vh; font-family: "Nanum Myeongjo", "AppleMyungjo", serif; }
+  .vc .top { padding: 16px 24px; border-bottom: 2px dashed #b9a57f; display: flex; align-items: center; gap: 12px; font-family: -apple-system, "Apple SD Gothic Neo", sans-serif; }
+  .vc .top b { font-size: 18px; color: #5a4630; } .vc .top input { margin-left: auto; width: 240px; max-width: 45vw; background: #f8f1e1; border: 1px solid #b9a57f; padding: 8px 10px; }
+  .vc .wrap { max-width: 1000px; margin: 24px auto; background: #fbf5e6; padding: 30px 34px 50px; box-shadow: 0 2px 0 #d8c9a8, 0 8px 24px rgba(90,70,40,.15); }
+  .vc .crumb { font-size: 13px; color: #8a7350; letter-spacing: .08em; font-family: -apple-system, sans-serif; }
+  .vc h1 { font-size: 36px; margin: 6px 0 2px; } .vc .sub { color: #8a7350; font-style: italic; margin-bottom: 18px; }
+  .vc h2 { font-size: 21px; margin: 26px 0 10px; } .vc h2::before { content: "§ "; color: #b08a4a; }
+  .vc .doc p { font-size: 16px; }
+  .vc .info .label { background: #fffaf0; border: 1px solid #b9a57f; padding: 16px; transform: rotate(-1.2deg); box-shadow: 3px 3px 0 #d8c9a8; font-family: -apple-system, sans-serif; }
+  .vc .info .ic { font-size: 76px; text-align: center; border-bottom: 1px dashed #b9a57f; padding-bottom: 8px; margin-bottom: 10px; }
+  .vc .info .row { display: flex; justify-content: space-between; font-size: 14px; padding: 4px 0; border-bottom: 1px dotted #d8c9a8; } .vc .info .row span:first-child { color: #8a7350; }
+  .vc a { color: #8a5a1a; }
+</style>
+</head>
+<body class="a">
+<script>document.body.className = (location.hash.slice(1) || 'a');</script>
+
+<div class="v va">
+  <div class="top"><b>🌿 고요위키</b><span style="font-size:13px;opacity:.85">고요한 숲 공식 위키</span><input placeholder="문서 검색" /></div>
+  <div class="wrap">
+    <h1>방어</h1>
+    <div class="crumb">고요위키 › 물고기 › 바다터 물고기</div>
+    <div class="cat">분류: <a>물고기</a> | <a>바다터</a> | <a>대형 낚시</a></div>
+    <div class="layout">
+      <div class="doc">
+        <div class="toc"><b>목차</b><div><a>1. 개요</a></div><div><a>2. 얻는 법</a></div><div><a>3. 쓰임새</a></div><div><a>4. 여담</a></div></div>
+        <h2><span>1.</span>개요</h2>
+        <p>바다터 부두에서 줄다리기 끝에 낚아 올리는 중형 물고기. 낮이든 밤이든 가리지 않고 물어서, 바다 낚시를 처음 해 보는 사람이 가장 자주 만나는 상대다.<sup>[1]</sup></p>
+        <h2><span>2.</span>얻는 법</h2>
+        <p><a class="x">바다터</a> 부두 끝에서 찌를 던지면 된다. 🔴 버텨요 표시가 뜨면 손을 떼고, 🟢 당기세요 표시에 맞춰 연타한다. 부두 끝 빨간 널판까지 끌려가면 놓친다.</p>
+        <h2><span>3.</span>쓰임새</h2>
+        <p>무게만 재고 놓아준다. 대신 물고기 2마리와 8코인을 받는다.</p>
+        <h2><span>4.</span>여담</h2>
+        <p>전갱이보다 무겁고 참치보다는 가볍다. 6kg에서 14kg 사이로 잡힌다.</p>
+      </div>
+      <aside class="info"><table>
+        <tr><th class="h" colspan="2">방어</th></tr>
+        <tr><td class="ic" colspan="2">🐠</td></tr>
+        <tr><th>영문명</th><td>Yellowtail</td></tr>
+        <tr><th>분류</th><td>바다터 물고기</td></tr>
+        <tr><th>장소</th><td><a class="x">바다터</a> 부두</td></tr>
+        <tr><th>시간</th><td>낮·밤 모두</td></tr>
+        <tr><th>무게</th><td>6 ~ 14kg</td></tr>
+        <tr><th>보상</th><td>물고기 2 · 8🪙</td></tr>
+      </table></aside>
+    </div>
+  </div>
+</div>
+
+<div class="v vb">
+  <div class="top"><b>🌿 고요위키</b><input placeholder="🔍 무엇이 궁금하세요?" /></div>
+  <div class="wrap">
+    <div class="crumb">고요위키 › 물고기 › 바다터</div>
+    <h1>🐠 방어</h1>
+    <div class="layout">
+      <div class="doc">
+        <div class="chips"><span>🌊 바다터</span><span>☀️🌙 낮·밤</span><span>⚖️ 6~14kg</span><span>🪙 8코인</span></div>
+        <h2>이런 물고기예요</h2>
+        <div class="card"><p>바다터 부두에서 줄다리기 끝에 낚아 올리는 중형 물고기예요. 낮이든 밤이든 가리지 않고 물어서, 바다 낚시를 처음 해 보는 분이 가장 자주 만나는 상대예요.</p></div>
+        <h2>잡는 법</h2>
+        <div class="card"><p>바다터 부두 끝에서 찌를 던져요. 🔴 버텨요 표시가 뜨면 손을 떼고, 🟢 당기세요 표시에 맞춰 연타해요. 빨간 널판까지 끌려가면 놓쳐요.</p></div>
+        <h2>함께 보면 좋아요</h2>
+        <div class="rel"><a href="#">🐟 전갱이</a><a href="#">🐡 개복치</a><a href="#">⚔️ 참치</a><a href="#">🎣 낚시꾼 할아버지</a></div>
+        <a class="cta" href="#">🌿 게임에서 만나러 가기</a>
+      </div>
+      <aside class="info"><div class="card">
+        <div class="ic">🐠</div><div class="nm">방어</div><div class="en">Yellowtail</div>
+        <dl><dt>분류</dt><dd>바다터 물고기</dd><dt>장소</dt><dd>바다터 부두</dd><dt>시간</dt><dd>낮·밤 모두</dd><dt>무게</dt><dd>6 ~ 14kg</dd><dt>보상</dt><dd>물고기 2 · 8🪙</dd></dl>
+      </div></aside>
+    </div>
+  </div>
+</div>
+
+<div class="v vc">
+  <div class="top"><b>📒 고요위키</b><span style="font-size:13px;color:#8a7350">숲 관찰 일지</span><input placeholder="일지 찾기" /></div>
+  <div class="wrap">
+    <div class="crumb">FIELD NOTES · 물고기 · 바다터</div>
+    <h1>방어</h1><div class="sub">Yellowtail · 바다터 부두의 단골손님</div>
+    <div class="layout">
+      <div class="doc">
+        <h2>관찰 기록</h2>
+        <p>바다터 부두에서 줄다리기 끝에 낚아 올리는 중형 물고기. 낮이든 밤이든 가리지 않고 문다. 바다 낚시를 처음 해 보는 이가 가장 자주 만나는 상대다.</p>
+        <h2>만나는 법</h2>
+        <p>부두 끝에서 찌를 던진다. 버텨요 표시가 뜨면 손을 떼고, 당기세요 표시에 맞춰 연타한다. 빨간 널판까지 끌려가면 놓친다.</p>
+        <h2>덧붙임</h2>
+        <p>전갱이보다 무겁고 참치보다 가볍다. <a href="#">개복치</a>, <a href="#">참치</a> 항목도 함께 볼 것.</p>
+      </div>
+      <aside class="info"><div class="label">
+        <div class="ic">🐠</div>
+        <div class="row"><span>표본명</span><span>방어</span></div>
+        <div class="row"><span>학명 아닌 영문명</span><span>Yellowtail</span></div>
+        <div class="row"><span>채집지</span><span>바다터 부두</span></div>
+        <div class="row"><span>시간</span><span>낮·밤</span></div>
+        <div class="row"><span>무게</span><span>6 ~ 14kg</span></div>
+        <div class="row"><span>보상</span><span>물고기 2 · 8🪙</span></div>
+      </div></aside>
+    </div>
+  </div>
+</div>
+</body>
+</html>
