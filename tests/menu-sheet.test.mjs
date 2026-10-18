@@ -28,3 +28,16 @@ test('PC ☰ 도 긴 목록 대신 같은 카드를 연다', () => {
 test('안 읽은 소식 점은 PC ☰ 에도 붙는다', () => {
   assert.match(HTML, /setUnread\(n\) \{ shell\?\.setUnread\(n\); menuSheet\.setUnread\(n\); \}/);
 });
+
+test('옛 버튼 묶음(#util-btns)의 버튼은 전부 ☰ 카드에도 있다', () => {
+  const start = HTML.indexOf('<div id="util-btns"');
+  const block = HTML.slice(start, HTML.indexOf('id="feedback-tab"', start));
+  const ids = [...block.matchAll(/<button[^>]*\bid="([^"]+)"/g)].map(m => m[1]);
+  assert.ok(ids.length >= 10, `util-btns 버튼이 ${ids.length}개`);
+  const cats = SHEET.slice(SHEET.indexOf('const CATS = ['), SHEET.indexOf('];', SHEET.indexOf('const CATS = [')));
+  for (const id of ids) assert.ok(cats.includes(`'${id}'`), `${id} 가 ☰ 카드(CATS)에 없다`);
+});
+
+test('🎁 꾸미기 세트는 📒 기록 묶음, 사진첩 바로 다음', () => {
+  assert.match(SHEET, /\['📒', '기록', \[\['album-btn', '📸'\], \['decor-set-btn', '🎁'\],/);
+});
