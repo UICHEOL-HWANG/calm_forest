@@ -13,3 +13,30 @@ wandb/
 
 # 노트북에 이미 임베드된 파생 이미지
 reports/figs/
+
+# 2026-10-18 베타 시기 분석 노트북 25권: 로컬 보관만, GitHub 에 올리지 않음
+notebooks/00_full_history_data_inventory.ipynb
+notebooks/01_retention_eda.ipynb
+notebooks/02_churn_where.ipynb
+notebooks/03_guest_conversion.ipynb
+notebooks/04_churn_model.ipynb
+notebooks/05_activity_eda.ipynb
+notebooks/06_spike_day_behavior_eda.ipynb
+notebooks/07_domestic_spike_breadth_eda.ipynb
+notebooks/08_toss_first_day_behavior_eda.ipynb
+notebooks/09_toss_deep_device_actions.ipynb
+notebooks/10_toss_guidance_measurement_readiness.ipynb
+notebooks/11_toss_fishing_experiment_readiness.ipynb
+notebooks/12_analysis_experiment_journal.ipynb
+notebooks/13_toss_offline_cohort_segments.ipynb
+notebooks/14_toss_early_later_label_audit.ipynb
+notebooks/15_toss_segment_readiness_for_modeling.ipynb
+notebooks/16_toss_later_target_label_eda.ipynb
+notebooks/17_all_channel_later_target_label_eda.ipynb
+notebooks/18_all_channel_exploratory_retention_model.ipynb
+notebooks/19_early_event_density_hypothesis.ipynb
+notebooks/20_event_density_action_split_hypothesis.ipynb
+notebooks/21_event_density_composition_audit.ipynb
+notebooks/22_refined_retention_feature_model.ipynb
+notebooks/23_refined_model_hyperparameter_search.ipynb
+notebooks/24_model_family_comparison.ipynb
