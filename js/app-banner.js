@@ -61,23 +61,23 @@ export function captureTouch(search, prev, now, makeId) {
 
 // 값마다 따로 인코딩 — 랜딩 URL 의 utm 값에 '&jid=' 를 숨겨 귀속을 위조하지 못하게.
 //   Play 는 1024자를 넘는 referrer 를 버리므로 값은 60자로 자른다.
-export function playReferrer(touch) {
+export function playReferrer(touch, medium = 'web_banner') {
   const u = touch?.utm;
-  const parts = [['utm_source', u?.source || 'web'], ['utm_medium', 'web_banner']];
+  const parts = [['utm_source', u?.source || 'web'], ['utm_medium', medium]];
   if (u?.campaign) parts.push(['utm_campaign', u.campaign]);
   if (u?.content) parts.push(['utm_content', u.content]);
   if (touch?.jid) parts.push(['jid', touch.jid]);
   return encodeURIComponent(parts.map(([k, v]) => `${k}=${encodeURIComponent(String(v).slice(0, 60))}`).join('&'));
 }
 
-export function storeUrl(os, cfg, touch) {
+export function storeUrl(os, cfg, touch, medium = 'web_banner') {
   if (!osLive(os, cfg)) return null;
   if (os === 'android') {
-    return `https://play.google.com/store/apps/details?id=${encodeURIComponent(cfg.androidPackage)}&referrer=${playReferrer(touch)}`;
+    return `https://play.google.com/store/apps/details?id=${encodeURIComponent(cfg.androidPackage)}&referrer=${playReferrer(touch, medium)}`;
   }
   // ct 는 합계 집계용(App Store Connect) — 개인 ID 는 넣지 않고 유입·소재 팔(utm_content)까지만, 최대 40자
   const arm = touch?.utm?.content ? '_' + touch.utm.content : '';
-  const ct = ('web_banner_' + (touch?.utm?.source || 'web') + arm).replace(/[^\w-]/g, '_').slice(0, 40);
+  const ct = (medium + '_' + (touch?.utm?.source || 'web') + arm).replace(/[^\w-]/g, '_').slice(0, 40);
   const pt = cfg.iosProviderToken ? `pt=${encodeURIComponent(cfg.iosProviderToken)}&` : '';
   return `https://apps.apple.com/app/id${encodeURIComponent(cfg.iosAppId)}?${pt}ct=${ct}&mt=8`;
 }

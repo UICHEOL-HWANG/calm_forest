@@ -35,6 +35,8 @@ import { Sound } from '../sound.js';
 import { josa } from '../spaces/cafe.js';
 import { HALLOWEEN_INDOOR_IDS, HALLOWEEN_STYLE, buildHalloween, makeCtx } from './halloween-art.js';
 import { DREAM_DECOR_IDS, buildDreamDecor } from '../dream/decor-art.js';   // 🌙 꿈 장식 4종
+import { IDS as KITCHEN_SET_IDS, build as buildKitchenSet } from '../decor-drops/art-kitchen.js';
+import { IDS as NIGHT_SET_IDS, build as buildNightSet } from '../decor-drops/art-night.js';
 import { SOUVENIR_INDOOR_IDS, buildSouvenir } from '../mountain/souvenir-art.js';
 import { MIRROR_DECOR_IDS, buildMirrorDecor } from '../mirror/decor-art.js';   // 🪞 거울 장식 4종
 import { T as MirrorT } from '../mirror/track.js';
@@ -441,6 +443,10 @@ export function decorMesh(id) {
     const shade = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.19, 10), new THREE.MeshStandardMaterial({ color: 0xfff2c0, emissive: 0xffca70, emissiveIntensity: 0.85, roughness: 0.6 })); shade.position.y = 0.32; g.add(shade);
   } else if (DREAM_DECOR_IDS.includes(id)) {   // 🌙 꿈 장식 — ✨ 꿈 조각으로 산다(js/dream/decor-art.js)
     g.add(buildDreamDecor(id));
+  } else if (KITCHEN_SET_IDS.includes(id)) {
+    g.add(buildKitchenSet(id));
+  } else if (NIGHT_SET_IDS.includes(id)) {
+    g.add(buildNightSet(id));
   } else if (MIRROR_DECOR_IDS.includes(id)) {   // 🪞 거울 장식 — 🪞 거울 조각으로 산다(js/mirror/decor-art.js)
     g.add(buildMirrorDecor(id));
   } else if (SOUVENIR_INDOOR_IDS.includes(id)) {
@@ -614,7 +620,7 @@ export function decorMesh(id) {
       });
     });
   }
-  root.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  root.traverse(o => { if (o.isMesh) o.castShadow = !o.userData.noShadow; });
   setFogExempt(root, true);   // 실내 가구는 안개 밖(고스트는 재질을 clone 하므로 플래그가 따라간다)
   return root;
 }
@@ -689,6 +695,7 @@ export function placeDecor(id, wx, wz, silent = false, rot = null, free = false,
   const fromStore = !silent && !free && (stored[id] || 0) > 0;   // 🧺 창고에 있으면 값 없이 꺼내 놓는다
   if (fromStore) { stored[id]--; if (!stored[id]) delete stored[id]; }
   if (def.hut && !fromStore && !silent && !free) { return false; }
+  if (def.set && !fromStore && !silent && !free) { return false; }
   if (buyBlocked({ silent, free, fromStore, def })) {   // 🎃 목록을 열어 둔 채 기간이 끝난 경우 — 새로 못 산다(보관분·옮기기·복원은 통과)
     ui.toast?.(SALE_ENDED_MSG); return false;
   }

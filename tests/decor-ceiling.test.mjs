@@ -15,7 +15,7 @@ const smalls = LINES.filter(l => /\bsm: true/.test(l)).map(l => ({ id: idOf(l), 
 const DECOR_SCALE = Number(SRC.match(/const DECOR_SCALE = ([\d.]+)/)[1]);
 
 test('상판 가구는 낮은 4종만이다(책장·옷장·벽난로 제외)', () => {
-  assert.deepEqual(tops.map(t => t.id).sort(), ['bigtable', 'nightstand', 'stool', 'table']);
+  assert.deepEqual(tops.map(t => t.id).sort(), ['bigtable', 'nightstand', 'picnicTable', 'stool', 'table', 'teaCupboard']);
   tops.forEach(t => assert.ok(Number.isFinite(t.y), `${t.id} top.y`));
 });
 

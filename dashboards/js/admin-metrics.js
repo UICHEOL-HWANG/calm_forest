@@ -55,6 +55,103 @@ export function heatGrid(cells, map) {
   return { grid, n, max };
 }
 
+export const HEAT_SLOTS = [
+  { slot: 'all', label: '전체' },
+  { slot: 0, label: '새벽', range: '0–6시' },
+  { slot: 1, label: '오전', range: '6–12시' },
+  { slot: 2, label: '오후', range: '12–18시' },
+  { slot: 3, label: '저녁', range: '18–24시' },
+];
+
+export function heatCellsFor(data, slot) {
+  if (slot === 'all') return data.heat || [];
+  return (data.heat_slot || []).filter((r) => r[3] === slot).map(([map, gx, gz, , hits]) => ({ map, gx, gz, hits }));
+}
+
+export const ZONES = {
+  spawn: '스폰 광장', stop: '정류장', neighbor_gate: '이웃 관문', house: '집 앞', bench: '작업대·주방',
+  shop: '상점', market: '좌판·시세판', lake: '호수·부두', farm_gate: '텃밭 입구', coop: '닭장',
+  cafe_gate: '카페 입구', glade: '계곡', light_workshop: '빛 공방', forest: '채집 숲', mine_gate: '광산 입구',
+  museum_gate: '박물관 입구', observatory_gate: '천문대 입구', dock: '나루터', sea_gate: '바다 관문',
+  mountain_gate: '설산 관문', mist_gate: '안개숲 관문', orchard_gate: '과수원 관문',
+  house_in: '집 실내', farm: '텃밭', orchard: '과수원', mine: '광산', cafe: '카페 홀', museum: '박물관',
+  kitchen: '요리 무대', carving: '조각 무대', prologue: '프롤로그', observatory: '천문대', neighbor: '이웃 마당',
+  neighbor_in: '이웃 실내', mist: '안개숲', sea: '바다터', mountain: '설산',
+  river: '나룻배', dream: '꿈의 숲', mirror: '거울 마을',
+};
+
+export const zoneLabel = (k) => ZONES[k] || k;
+
+export const ZONE_CIRCLES = [
+  ['spawn', 0, 0, 4], ['stop', 16, 17, 2.5], ['neighbor_gate', -4, 25, 2.5],
+  ['house', -8, -8, 5], ['bench', 5.5, -5.5, 3.5], ['shop', -17.5, -4, 4],
+  ['market', 11, 2.5, 4.5], ['lake', 16, 9, 7], ['farm_gate', 0, 7, 3],
+  ['coop', -4.5, 11.5, 3], ['cafe_gate', 4, 14, 3], ['glade', 7, 26, 7],
+  ['light_workshop', 16.5, 33.5, 4], ['forest', -18, 23, 9], ['mine_gate', -14, 3, 3],
+  ['museum_gate', -26, 5, 3.5], ['observatory_gate', 25, 22, 3.5], ['dock', 0, -18, 6],
+  ['sea_gate', 14.5, -12.5, 3], ['mountain_gate', -15, -32, 5], ['mist_gate', -21, -20, 3],
+  ['orchard_gate', 33, 7, 3],
+];
+
+export const VILLAGE_R = 46;
+
+export function trackSegments(points, r = VILLAGE_R) {
+  if (!points?.length) return { segments: [], outsideShare: 0, duration: 0, start: 0 };
+  const segments = [];
+  let cur = null, out = 0;
+  for (const p of points) {
+    if (Math.abs(p[1]) <= r && Math.abs(p[2]) <= r) {
+      if (!cur) { cur = []; segments.push(cur); }
+      cur.push(p);
+    } else {
+      out += 1;
+      cur = null;
+    }
+  }
+  return { segments, outsideShare: Math.round((100 * out) / points.length), duration: points[points.length - 1][0] - points[0][0], start: points[0][0] };
+}
+
+export function zoneFlow(flow, seg, topN = 12) {
+  if (!flow) return { sessions: 0, top: [], first: [], last: [] };
+  const pick = (r) => seg === 'all' || r[0] === seg;
+  const sessions = Object.entries(flow.sessions || {}).reduce((a, [k, n]) => a + (seg === 'all' || k === seg ? n : 0), 0);
+  const share = (n) => (sessions ? Math.round((1000 * n) / sessions) / 10 : 0);
+  const sum = (rows, key) => {
+    const m = new Map();
+    for (const r of rows.filter(pick)) m.set(key(r), (m.get(key(r)) || 0) + r[r.length - 1]);
+    return [...m.entries()].sort((x, y) => y[1] - x[1]);
+  };
+  return {
+    sessions,
+    top: sum(flow.trans || [], (r) => r[1] + '>' + r[2]).slice(0, topN).map(([k, n]) => { const [a, b] = k.split('>'); return { a, b, n, share: share(n) }; }),
+    first: sum(flow.first || [], (r) => r[1]).slice(0, 6).map(([zone, n]) => ({ zone, n, share: share(n) })),
+    last: sum(flow.last || [], (r) => r[1]).slice(0, 6).map(([zone, n]) => ({ zone, n, share: share(n) })),
+  };
+}
+
+export const MAP_HOUR_ROWS = [
+  { map: 'main', label: '마을' },
+  { map: 'dream', label: '꿈의 숲' },
+  { map: 'mirror', label: '거울 마을' },
+  { map: 'other', label: '그 외' },
+];
+
+export function mapHourGrid(rows) {
+  const byHour = Array.from({ length: 24 }, () => 0);
+  for (const r of rows) byHour[r.hour] += r.hits;
+  const find = (m, h) => rows.find((r) => r.map === m && r.hour === h);
+  return {
+    total: byHour.reduce((a, b) => a + b, 0),
+    rows: MAP_HOUR_ROWS.map(({ map, label }) => ({
+      map, label,
+      cells: byHour.map((tot, hour) => {
+        const r = find(map, hour);
+        return { hour, hits: r?.hits || 0, users: r?.users || 0, share: tot ? (r?.hits || 0) / tot : null };
+      }),
+    })),
+  };
+}
+
 /** 유저 관찰 표의 상태 칩. */
 export function userStatus(u, now = new Date()) {
   const idleH = (now - new Date(u.last_seen)) / 3600e3;

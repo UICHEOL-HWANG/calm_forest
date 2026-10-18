@@ -50,6 +50,12 @@ const INCLUDE = [
   ['assets/pwa/icon-192.png', 'icon-192.png'],
   ['assets/pwa/icon-512.png', 'icon-512.png'],
   ['assets/pwa/icon-maskable-512.png', 'icon-maskable-512.png'],
+  'assets/qr/login-app-store.svg',      // 📱 로그인 화면 QR 카드(PC)
+  'assets/qr/login-google-play.svg',
+  'assets/badges/app-store-ko.svg',     // 📱 공식 스토어 배지(Apple Marketing Tools · Google Play 배지 페이지)
+  'assets/badges/app-store-en.svg',
+  'assets/badges/google-play-ko.png',
+  'assets/badges/google-play-en.png',
   'sw.js',           // service worker — 오프라인 안내 페이지만 캐시
   ['pages/offline.html', 'offline.html'],       // 오프라인 안내 페이지 — sw.js 가 /offline.html 로 프리캐시
   // ⚖️ 구글 플레이 필수 — 스토어 등록정보의 "개인정보처리방침 URL"·"계정 삭제 URL" 이 이 둘을 가리킨다.
@@ -58,6 +64,8 @@ const INCLUDE = [
   // 💳 /terms /refund (/shop 은 아래에서 생성) — CONFIG.PADDLE.storeOpen 일 때만 넣는다(STORE_PAGES)
   ['pages/delete-account.html', 'delete-account.html'], // → /delete-account
   '_headers',        // 캐시 헤더
+  ['wiki/wiki.css', 'wiki/wiki.css'],
+  ['wiki/wiki.js', 'wiki/wiki.js'],
 ];
 // assets/brand 는 아이콘 "원본"(빌드 입력)이라 배포에 넣지 않는다 — 런타임 참조 없음.
 
@@ -103,6 +111,37 @@ if (CONFIG.PADDLE.storeOpen) {
   const tpl = await readFile(path.join(ROOT, 'pages/shop.template.html'), 'utf8');
   await writeFile(path.join(DIST, 'shop.html'), tpl.replace('<!--ROWS-->', rows));
 }
+
+const { SEO_PAGES } = await import('./lib/seo-pages.mjs');
+const { seoHead, injectHead } = await import('./lib/seo-meta.mjs');
+const { sitemapXml, robotsTxt } = await import('./lib/sitemap.mjs');
+const { guidePage } = await import('./lib/guide-page.mjs');
+const sitemapPaths = [];
+for (const page of SEO_PAGES) {
+  if (page.store && !CONFIG.PADDLE.storeOpen) continue;
+  sitemapPaths.push(page.path);
+  if (!page.file) continue;
+  const f = path.join(DIST, page.file);
+  await writeFile(f, injectHead(await readFile(f, 'utf8'), seoHead(page)));
+}
+for (const [src, page] of [['guide/guide.html', '/guide/'], ['guide/guide-en.html', '/guide/en/']]) {
+  const meta = SEO_PAGES.find(p => p.path === page);
+  const out = path.join(DIST, page, 'index.html');
+  await mkdir(path.dirname(out), { recursive: true });
+  await writeFile(out, guidePage(await readFile(path.join(ROOT, src), 'utf8'), meta));
+}
+if (CONFIG.PADDLE.storeOpen) {
+  const { ITEMS } = await import('../js/cosmetics/catalog.js');
+  const { shopProductPages } = await import('./lib/shop-pages.mjs');
+  await mkdir(path.join(DIST, 'shop'), { recursive: true });
+  for (const pg of shopProductPages(ITEMS)) {
+    await writeFile(path.join(DIST, 'shop', `${pg.id}.html`), pg.html);
+  }
+}
+const { writeWiki } = await import('./lib/wiki/build.mjs');
+sitemapPaths.push(...await writeWiki(DIST));
+await writeFile(path.join(DIST, 'sitemap.xml'), sitemapXml(sitemapPaths));
+await writeFile(path.join(DIST, 'robots.txt'), robotsTxt());
 
 // 결과 검증 — 금지 패턴이 하나라도 들어갔으면 배포 전에 멈춘다
 const files = await walk(DIST);

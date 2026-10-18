@@ -46,6 +46,27 @@ create table if not exists public.cf_heat_day (
   primary key (day, map, persona, gx, gz)
 );
 
+create table if not exists public.cf_map_hour (
+  day     date     not null,
+  hour    smallint not null check (hour between 0 and 23),
+  map     text     not null check (map in ('main', 'dream', 'mirror', 'other')),
+  persona boolean  not null default false,
+  hits    integer  not null,
+  users   integer  not null,
+  primary key (day, hour, map, persona)
+);
+
+create table if not exists public.cf_heat_slot (
+  day     date     not null,
+  slot    smallint not null check (slot between 0 and 3),
+  map     text     not null check (map in ('main', 'dream', 'mirror')),
+  persona boolean  not null default false,
+  gx      smallint not null,
+  gz      smallint not null,
+  hits    integer  not null,
+  primary key (day, slot, map, persona, gx, gz)
+);
+
 create table if not exists public.cf_econ_day (
   day      date    not null,
   source   text    not null,
@@ -59,7 +80,9 @@ create table if not exists public.cf_econ_day (
 alter table public.cf_sessions enable row level security;
 alter table public.cf_heat_day enable row level security;
 alter table public.cf_econ_day enable row level security;
-revoke all on public.cf_sessions, public.cf_heat_day, public.cf_econ_day from anon, authenticated;
+alter table public.cf_map_hour enable row level security;
+alter table public.cf_heat_slot enable row level security;
+revoke all on public.cf_sessions, public.cf_heat_day, public.cf_econ_day, public.cf_map_hour, public.cf_heat_slot from anon, authenticated;
 
 -- 획득 행동 16종 — 북극성 정의와 같은 목록(바꾸면 METRICS_FRAMEWORK.md 도 같이)
 create or replace function public.cf_is_acq(c jsonb)
@@ -104,7 +127,7 @@ declare
   v_from  date;
   t0 timestamptz;
   t1 timestamptz;
-  n_sess int; n_heat int; n_econ int;
+  n_sess int; n_heat int; n_hour int; n_slot int; n_path int; n_econ int;
 begin
   -- 같은 날을 두 곳(대시보드 열기·03:00 적재)이 동시에 지우고 다시 넣으면 PK 충돌 → 한 번에 하나만
   perform pg_advisory_xact_lock(hashtext('cf_rollup'));
@@ -172,9 +195,12 @@ begin
 
   -- ── 맵별 이동 밀도: 날 단위로 통째 교체 ──
   delete from cf_heat_day where day between v_from and p_to;
-  insert into cf_heat_day (day, map, persona, gx, gz, hits)
+  delete from cf_map_hour where day between v_from and p_to;
+  delete from cf_heat_slot where day between v_from and p_to;
+  delete from cf_session_zones where day between v_from and p_to;
   with g as (
-    select g.session_id, g.created_at, g.char_x as x, g.char_z as z, g.user_id,
+    select g.id, g.session_id, g.created_at, g.char_x as x, g.char_z as z, g.user_id,
+           coalesce(nullif(g.client_id, ''), g.user_id::text) as uid,
            (g.char_z <= -380 and abs(g.char_x) <= 45) as far
     from game_logs g
     -- 자정을 넘긴 나룻배 구간이 다음 날 '강 한가운데에서 시작'한 것처럼 보이지 않게 앞 3시간을 맥락으로 읽는다(집계는 t0 부터)
@@ -191,7 +217,8 @@ begin
     from r where far group by 1, 2
   ),
   lab as (
-    select r.created_at, r.x, r.z, r.user_id,
+    select r.id, r.session_id, r.created_at, r.x, r.z, r.user_id, r.uid,
+           (r.far and (st.start_z > -470 or (st.max_ax <= 6.5 and st.z_span > 60))) as boat,
            case
              when not r.far then case when abs(r.x) <= 44 and abs(r.z) <= 44 then 'main' end
              -- 나룻배(강 코스): 나루터 근처에서 시작했거나, 강폭(|x|≤6.4) 안에서만 60유닛 넘게 내려간 구간
@@ -201,16 +228,98 @@ begin
              when abs(r.x) <= 40 and r.z between -740 and -660 then 'mirror'
            end as map
     from r left join st using (session_id, run_no)
+  ),
+  pl as (
+    select l.*, (pu.id is not null) as persona
+    from lab l
+    left join cf_persona_user_ids() pu(id) on pu.id = l.user_id
+    where l.created_at >= t0
+  ),
+  ins_heat as (
+    insert into cf_heat_day (day, map, persona, gx, gz, hits)
+    select (created_at at time zone tz)::date, map, persona,
+           (round(x / 2.0) * 2)::smallint,
+           (round((z - case map when 'dream' then -550 when 'mirror' then -700 else 0 end) / 2.0) * 2)::smallint,
+           count(*)
+    from pl
+    where map is not null
+    group by 1, 2, 3, 4, 5
+    returning 1
+  ),
+  ins_hour as (
+    insert into cf_map_hour (day, hour, map, persona, hits, users)
+    select (created_at at time zone tz)::date, extract(hour from created_at at time zone tz)::smallint,
+           coalesce(map, 'other'), persona, count(*), count(distinct uid)
+    from pl
+    group by 1, 2, 3, 4
+    returning 1
+  ),
+  ins_slot as (
+    insert into cf_heat_slot (day, slot, map, persona, gx, gz, hits)
+    select (created_at at time zone tz)::date, (extract(hour from created_at at time zone tz)::int / 6)::smallint, map, persona,
+           (round(x / 2.0) * 2)::smallint,
+           (round((z - case map when 'dream' then -550 when 'mirror' then -700 else 0 end) / 2.0) * 2)::smallint,
+           count(*)
+    from pl
+    where map is not null
+    group by 1, 2, 3, 4, 5, 6
+    returning 1
+  ),
+  zl as (
+    select id, session_id, created_at, uid, persona, (created_at at time zone tz)::date as day,
+           case when map in ('dream', 'mirror') then map when boat then 'river' else cf_zone_of(x, z) end as zone,
+           (abs(x) <= 46 and abs(z) <= 46) as inv
+    from pl
+    where session_id is not null
+  ),
+  zc as (
+    select session_id, day, created_at, id, zone, inv,
+           case when zone is distinct from lag(zone) over (partition by session_id, day order by created_at, id) then 1 else 0 end as chg
+    from zl
+  ),
+  zr as (
+    select session_id, day, zone, inv, sum(chg) over (partition by session_id, day order by created_at, id) as run
+    from zc
+  ),
+  zrun as (
+    select session_id, day, run, zone, count(*) as len, bool_and(inv) as inv
+    from zr
+    where zone not in ('road', 'unknown')
+    group by 1, 2, 3, 4
+  ),
+  zn as (
+    select session_id, day, run, zone, len, inv,
+           lag(zone) over (partition by session_id, day order by run) as pz,
+           lead(zone) over (partition by session_id, day order by run) as nz
+    from zrun
+  ),
+  zk as (
+    select session_id, day, run, zone,
+           lag(zone) over (partition by session_id, day order by run) as prev
+    from zn
+    where not (inv and len = 1 and pz is not null and pz = nz)
+  ),
+  zp as (
+    select session_id, day, array_agg(zone order by run) as path
+    from zk
+    where prev is distinct from zone
+    group by 1, 2
+  ),
+  zd as (
+    select session_id, day, bool_or(persona) as persona, max(uid) as uid, jsonb_object_agg(zone, n) as dwell
+    from (select session_id, day, zone, bool_or(persona) as persona, max(uid) as uid, count(*) as n
+          from zl group by 1, 2, 3) q
+    group by 1, 2
+  ),
+  ins_path as (
+    insert into cf_session_zones (session_id, day, persona, uid, path, dwell)
+    select zd.session_id, zd.day, zd.persona, zd.uid, coalesce(zp.path, '{}'), zd.dwell
+    from zd left join zp using (session_id, day)
+    returning 1
   )
-  select (l.created_at at time zone tz)::date, l.map, (pu.id is not null),
-         (round(l.x / 2.0) * 2)::smallint,
-         (round((l.z - case l.map when 'dream' then -550 when 'mirror' then -700 else 0 end) / 2.0) * 2)::smallint,
-         count(*)
-  from lab l
-  left join cf_persona_user_ids() pu(id) on pu.id = l.user_id
-  where l.map is not null and l.created_at >= t0
-  group by 1, 2, 3, 4, 5;
-  get diagnostics n_heat = row_count;
+  select (select count(*) from ins_heat), (select count(*) from ins_hour), (select count(*) from ins_slot),
+         (select count(*) from ins_path)
+    into n_heat, n_hour, n_slot, n_path;
 
   -- ── 경제 ──
   delete from cf_econ_day where day between v_from and p_to;
@@ -224,7 +333,7 @@ begin
   group by 1, 2, 3;
   get diagnostics n_econ = row_count;
 
-  return jsonb_build_object('from', v_from, 'to', p_to, 'sessions', n_sess, 'heat', n_heat, 'econ', n_econ);
+  return jsonb_build_object('from', v_from, 'to', p_to, 'sessions', n_sess, 'heat', n_heat, 'map_hour', n_hour, 'heat_slot', n_slot, 'zone_paths', n_path, 'econ', n_econ);
 end;
 $$;
 

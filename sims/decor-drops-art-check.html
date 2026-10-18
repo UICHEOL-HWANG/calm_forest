@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Decor Drop Art Check</title>
+<style>
+  :root { --bg: #1f1a16; --card: #2c251f; --ink: #f3e9dc; --mute: #b7a893; --ok: #7fce8b; --bad: #ff8a7a; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 13px/1.35 system-ui, sans-serif; }
+  h1 { font-size: 18px; margin: 14px 16px 8px; }
+  #grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; padding: 0 16px 16px; }
+  .cell { background: var(--card); border-radius: 10px; overflow: hidden; }
+  .cell canvas { display: block; width: 100%; aspect-ratio: 1 / 1; }
+  .lab { padding: 6px 8px 8px; }
+  .lab b { display: block; font-size: 13px; }
+  .lab span { color: var(--mute); font-size: 11px; display: block; }
+  .bad { color: var(--bad) !important; }
+  @media (max-width: 720px) { #grid { grid-template-columns: repeat(2, 1fr); } }
+</style>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}</script>
+</head>
+<body>
+<h1>Decor drop sets · 18 pieces (DECOR_SCALE applied, green = catalog foot)</h1>
+<div id="grid"></div>
+<pre id="out" hidden></pre>
+<script type="module">
+import * as THREE from 'three';
+import { IDS as K_IDS, build as buildK } from '../js/decor-drops/art-kitchen.js';
+import { IDS as N_IDS, build as buildN } from '../js/decor-drops/art-night.js';
+import { DECOR, DECOR_SCALE } from '../js/data/catalog.js';
+
+const ORDER = ['picnicBasket', 'picnicPies', 'picnicTable', 'teaBowl', 'teaCake', 'teaCupboard', 'winterSled', 'winterLamp', 'winterSofa', 'stoneGems', 'stoneBear', 'stoneHearth', 'lanternBoat', 'lanternMist', 'lanternRug', 'guardFlag', 'guardJar', 'guardScarecrow'];
+const grid = document.getElementById('grid'), report = {};
+const fmt = (v) => v.toFixed(2);
+const R = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+R.setPixelRatio(1); R.setSize(240, 240, false);
+R.toneMapping = THREE.ACESFilmicToneMapping; R.toneMappingExposure = 1.05;
+
+function measure(obj, staticOnly) {
+  const box = new THREE.Box3();
+  obj.updateMatrixWorld(true);
+  obj.traverse(o => {
+    if (!o.isMesh) return;
+    let p = o, anim = false;
+    while (p && p !== obj) { if (p.userData.anim) anim = true; p = p.parent; }
+    if (staticOnly && anim) return;
+    if (o.isInstancedMesh) { o.computeBoundingBox(); box.union(o.boundingBox.clone().applyMatrix4(o.matrixWorld)); }
+    else box.expandByObject(o, true);
+  });
+  return box;
+}
+
+for (const id of ORDER) {
+  const def = DECOR.find(d => d.id === id);
+  const item = (K_IDS.includes(id) ? buildK : buildN)(id);
+  const meshes = [], anims = [];
+  item.traverse(o => { if (o.userData.anim) anims.push(o.userData.anim + (o.visible ? '' : '(hidden)')); });
+  item.children.forEach(c => { if (!c.userData.anim || c.userData.anim === 'bob') c.traverse(o => { if (o.isMesh) meshes.push(o); }); });
+  const all = measure(item, false), st0 = measure(item, true), st = st0.isEmpty() ? all : st0;
+  const w = st.max.x - st.min.x, d = st.max.z - st.min.z, h = all.max.y - all.min.y;
+  report[id] = { w: +fmt(w), d: +fmt(d), h: +fmt(h), minY: +fmt(all.min.y), cx: +fmt((st.max.x + st.min.x) / 2), cz: +fmt((st.max.z + st.min.z) / 2), staticMeshes: meshes.length, anims, foot: def?.foot, catH: def?.h ?? null, top: def?.top ?? null };
+
+  const scene = new THREE.Scene(); scene.background = new THREE.Color(0x3a3029);
+  scene.add(new THREE.HemisphereLight(0xfff6e6, 0x8a7a66, 1.1));
+  const sun = new THREE.DirectionalLight(0xfff1d6, 0.95); sun.position.set(6, 12, 8); scene.add(sun);
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(8, 0.1, 8), new THREE.MeshStandardMaterial({ color: 0xc9ac86, roughness: 0.95 })); floor.position.y = -0.05; scene.add(floor);
+  const gridH = new THREE.GridHelper(8, 8, 0x8a6f52, 0xa88c6c); gridH.position.y = 0.002; scene.add(gridH);
+  if (def?.foot) {
+    const [fw, fd] = def.foot.map(v => v * DECOR_SCALE);
+    const pts = [[-fw / 2, -fd / 2], [fw / 2, -fd / 2], [fw / 2, fd / 2], [-fw / 2, fd / 2], [-fw / 2, -fd / 2]].map(([x, z]) => new THREE.Vector3(x, 0.01, z));
+    scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0x5fe07a })));
+  }
+  const root = new THREE.Group(); root.scale.setScalar(DECOR_SCALE); root.add(item); scene.add(root);
+  const span = Math.max(w, d, h) * DECOR_SCALE, cy = h * DECOR_SCALE * 0.45;
+  const cam = new THREE.PerspectiveCamera(36, 1, 0.05, 100);
+  cam.position.set(span * 0.95 + 0.6, cy + span * 0.85 + 0.5, span * 1.25 + 0.8); cam.lookAt(0, cy, 0);
+
+  const cell = document.createElement('div'); cell.className = 'cell';
+  R.render(scene, cam);
+  const cv = document.createElement('canvas'); cv.width = cv.height = 240;
+  cv.getContext('2d').drawImage(R.domElement, 0, 0);
+  cell.appendChild(cv);
+  const lab = document.createElement('div'); lab.className = 'lab';
+  const footTxt = def?.foot ? def.foot.join('×') : '-';
+  const hBad = def?.sm && h > def.h + 1e-3;
+  lab.innerHTML = `<b>${id}</b><span>art ${fmt(w)}×${fmt(d)} h ${fmt(h)}</span><span>cat ${footTxt}${def?.sm ? ` h ${def.h}` : ''}${def?.top ? ` top ${def.top.y}` : ''}</span><span class="${meshes.length > 2 ? 'bad' : ''}">static ${meshes.length} · ${anims.join(', ') || 'no anim'}</span>${hBad ? '<span class="bad">taller than h</span>' : ''}`;
+  cell.appendChild(lab);
+  grid.appendChild(cell);
+}
+document.getElementById('out').textContent = JSON.stringify(report);
+window.__ready = true;
+</script>
+</body>
+</html>

@@ -3,15 +3,15 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>calm forest · 관리자 애널리틱스 📊</title>
-<meta name="description" content="calm forest — 북극성 · 첫 주 퍼널 · 리텐션 · DAU 구성 · 맵별 이동 밀도 관리자 대시보드" />
+<title>고요한 숲 · 관리자 애널리틱스 📊</title>
+<meta name="description" content="고요한 숲 — 북극성 · 첫 주 퍼널 · 리텐션 · DAU 구성 · 맵별 이동 밀도 관리자 대시보드" />
 <!-- 임시 공유 링크(?k=)가 검색에 노출되면 "임시"가 아니게 되므로 색인 차단 -->
 <meta name="robots" content="noindex, nofollow" />
 <link rel="icon" href="/favicon.ico" sizes="any" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 <meta property="og:type" content="website" />
-<meta property="og:title" content="calm forest · 관리자 애널리틱스 📊" />
+<meta property="og:title" content="고요한 숲 · 관리자 애널리틱스 📊" />
 <meta property="og:description" content="북극성 · 첫 주 퍼널 · 리텐션 · DAU 구성" />
 <meta property="og:url" content="https://calmforest.cloud/dashboards/admin_analytics.html" />
 <meta property="og:image" content="https://calmforest.cloud/preview.jpg" />
@@ -34,7 +34,7 @@
     </div>
     <div class="ah" style="margin-top:6px">
       <img class="brand" src="img/chars/bear.png" alt="" />
-      <h1>calm forest · 관리자 애널리틱스</h1>
+      <h1>고요한 숲 · 관리자 애널리틱스</h1>
       <div class="seg range" id="range" role="group" aria-label="기간">
         <!-- 게이트 통과 전에는 기간 전환이 의미 없으므로 비활성 -->
         <button data-d="7" disabled>7일</button>
@@ -55,7 +55,8 @@
         <a href="#s-act">활성화 퍼널 <em>A</em></a>
         <a href="#s-ret">리텐션 <em>R</em></a>
         <a href="#s-gro">성장 구성</a>
-        <a href="#s-eng">참여 · 맵</a>
+        <a href="#s-eng">활성화 시간 · 밀도맵</a>
+        <a href="#s-flow">이동 흐름</a>
         <a href="#s-ops">유저 관찰</a>
       </nav>
 
@@ -78,7 +79,7 @@
         <section class="rsec" id="s-act">
           <div class="sh" style="--av:url(img/chars/chick.png)">
             <span class="eyebrow">Activation · 신규 첫 주</span>
-            <h2>신규 유저는 어디서 멈추나</h2>
+            <h2>신규 유저 퍼널 분석</h2>
             <p class="insight skel" id="actInsight">첫날 획득 행동(수확·낚시·제작 등)까지 가는지가 재방문을 가르는 지점인지 봅니다.</p>
           </div>
           <div class="two">
@@ -98,7 +99,7 @@
         <section class="rsec" id="s-ret">
           <div class="sh" style="--av:url(img/chars/bear.png)">
             <span class="eyebrow">Retention</span>
-            <h2>얼마나 다시 오나</h2>
+            <h2>리텐션</h2>
             <p class="insight skel" id="retInsight">첫날 획득 여부로 나눈 N일차 리텐션입니다.</p>
           </div>
           <div class="two">
@@ -118,7 +119,7 @@
         <section class="rsec" id="s-gro">
           <div class="sh" style="--av:url(img/chars/dog.png)">
             <span class="eyebrow">Growth accounting</span>
-            <h2>DAU 는 무엇으로 이루어지나</h2>
+            <h2>DAU 상세 구성</h2>
             <p class="insight">신규·연속 복귀·재활성(쉬었다 돌아옴)이 위로, 전날 왔는데 그날 안 온 이탈이 아래로 쌓입니다. 오늘 이탈은 하루가 끝나야 셉니다.</p>
           </div>
           <div class="chartbox"><canvas id="cGrowth" height="120"></canvas></div>
@@ -132,23 +133,70 @@
         <section class="rsec" id="s-eng">
           <div class="sh" style="--av:url(img/chars/cat.png)">
             <span class="eyebrow">Engagement</span>
-            <h2>언제, 어디서 노나</h2>
+            <h2>활성화 시간 · 이동 밀도맵</h2>
           </div>
           <div class="two">
             <div class="panel">
-              <h3>요일 × 시간대 (KST)</h3>
+              <h3>활성화 시간 (요일 × 시간대, KST)</h3>
               <p class="def">세션 시작 기준. 이벤트·푸시 시각을 정할 때 씁니다.</p>
               <div id="hourmap"></div>
             </div>
             <div class="panel">
-              <h3>맵별 이동 밀도</h3>
+              <h3>이동 밀도맵</h3>
               <div class="seg" id="mapSel" role="group" aria-label="맵">
                 <button data-map="main" class="on">마을</button>
                 <button data-map="dream">꿈의 숲</button>
                 <button data-map="mirror">거울 마을</button>
               </div>
+              <div class="seg" id="slotSel" role="group" aria-label="시간대">
+                <button data-slot="all" class="on">전체</button>
+                <button data-slot="0">새벽</button>
+                <button data-slot="1">오전</button>
+                <button data-slot="2">오후</button>
+                <button data-slot="3">저녁</button>
+              </div>
               <div class="heatwrap"><canvas id="heat" width="44" height="44"></canvas></div>
               <p class="def" id="heatDef">위 = 북쪽. 밝을수록 오래 머문 칸(2유닛 격자).</p>
+            </div>
+          </div>
+          <div class="panel">
+            <h3>시간대별 맵 비중 (KST)</h3>
+            <p class="def">그 시간 위치 기록 중 각 맵이 차지한 비율. 진할수록 그 시간에 그 맵에 많이 있었다는 뜻입니다. 그 외 = 바다터·설산·실내·나룻배 등. 칸에 마우스를 올리면 기록 수와 명·일이 보입니다.</p>
+            <div id="maphour"></div>
+          </div>
+        </section>
+
+        <section class="rsec" id="s-flow">
+          <div class="sh" style="--av:url(img/chars/dog.png)">
+            <span class="eyebrow">Flow</span>
+            <h2>이동 흐름</h2>
+          </div>
+          <div class="seg" id="flowSeg" role="group" aria-label="유저 구분">
+            <button data-seg="all" class="on">전체</button>
+            <button data-seg="new">신규</button>
+            <button data-seg="ret">복귀</button>
+          </div>
+          <div class="two">
+            <div class="panel">
+              <h3>많이 지나간 경로</h3>
+              <p class="def" id="flowDef">시설·관문 반경 안을 지난 순서. 길(시설 밖)은 빼고 셉니다.</p>
+              <div id="flowTop"></div>
+            </div>
+            <div class="panel">
+              <h3>처음 들른 곳 · 마지막으로 있던 곳</h3>
+              <p class="def">세션마다 첫 시설과 끝 시설. 마지막이 몰리는 곳은 이탈 직전 위치 후보입니다.</p>
+              <div id="flowEnds"></div>
+            </div>
+          </div>
+          <div class="panel">
+            <h3>세션 살펴보기</h3>
+            <p class="def" id="drillDef">오른쪽 위 표에서 마지막 위치를 누르면 그곳에서 끝난 세션이 나옵니다. 세션을 고르면 마을 안 동선을 그립니다(원본 7일 보존, 관리자만).</p>
+            <div class="drill">
+              <div id="sessList" class="sess-list"></div>
+              <div class="trk">
+                <canvas id="track" width="460" height="460"></canvas>
+                <div class="trk-ctl"><button id="trkPlay" type="button" disabled>▶ 재생</button><span id="trkInfo"></span></div>
+              </div>
             </div>
           </div>
         </section>

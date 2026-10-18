@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { $w, WEATHER, player, scene, camera, ui, snapCamera, setSpaceVisible, setFogExempt, firstHint, todayStr, gameState, obstacles, setCameraRig, requestSave, mgView, rollDifficulty, spawnFloatText, spawnSparkle, spawnConfetti, triggerMoment, makeNameTag, applyCosmetics, refreshInventoryUI } from '../game.js';
 import { trackEvent } from '../analytics.js';
+import { decorBanner } from '../decor-drops/index.js';
 import { Sound, setBGMTheme } from '../sound.js';
 import { MOUNTAIN, MOUNTAIN_GATE, MOUNTAIN_LANDMARK, MOUNTAIN_LANDMARK_R } from '../data/places.js';
 import { daysSinceUnlock, isMountainOpen } from '../mountain/unlock.js';
@@ -118,6 +119,7 @@ export function enterMountain() {
   gameState.hintsSeen = { ...(gameState.hintsSeen || {}), mountainVisited: true };
   requestSave();
   trackEvent('mountain_enter', { first: first ? 1 : 0 });
+  decorBanner('sled');
 }
 
 export function mountainReturnPos() {

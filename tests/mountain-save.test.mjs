@@ -72,7 +72,7 @@ test('daily needs a YYYY-MM-DD date and an integer rewarded 0-3', () => {
 function harness(gameState, day = '2026-10-20') {
   const ctx = {
     gameState, giveReward: () => {}, requestSave: () => {}, trackEvent: () => {}, settleDifficulty: () => {},
-    sendSledRun: () => {}, trackDiffAbandon: () => {}, diffParams: () => ({}),
+    sendSledRun: () => {}, trackDiffAbandon: () => {}, diffParams: () => ({}), onPlay: () => {},
     ddaOutcome, finalTimeMs, PHYS, PHYS_V, COURSE, COURSE_V,
   };
   const c = vm.createContext({ ...ctx, todayStr: () => day });

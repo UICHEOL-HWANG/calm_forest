@@ -10,6 +10,7 @@ import {
   nearDoor, player, playerInYard, plots, roundRect, setSpaceVisible, snapCamera, ui,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
+import { decorBanner } from '../decor-drops/index.js';
 import { FARM, FARM_GATE } from '../data/places.js';
 import { CELL as FARM_CELL } from '../farm-building.js';
 import { animateBubble, makeRing, onTop } from '../bubble-fx.js';
@@ -122,6 +123,7 @@ export function enterFarm() {
   if (!e1Pending()) firstHint('farmInside', '🌾', '내 텃밭 · 심고 키우기', { steps: [{ ico: '⛏️', label: '갈기' }, { ico: '🌰', label: '심기' }, { ico: '💧', label: '물' }], note: '나갈 땐 남쪽 문' });   // 🧪 E1 처치는 '눌러서 수확하기' 하나만
   if (!e1Pending()) startVisitors();   // 🦋 텃밭 체류 중에만 방문객이 뜬다 · 🧪 E1 처치는 첫 수확 뒤(e1OnHarvest)
   Sound.blip(); trackEvent('enter_farm', { stage: gameState.farm.stage }); // [GA4] 밭 단계별 방문 분포
+  decorBanner('crop');
 }
 
 export function exitFarm() {

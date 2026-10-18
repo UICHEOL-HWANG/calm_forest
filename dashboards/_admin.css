@@ -135,6 +135,19 @@ table.tri { border-collapse: separate; border-spacing: 3px; font-size: 12px; wid
 .hgrid { display: grid; grid-template-columns: 22px repeat(24, 1fr); gap: 2px; font-size: 9px; color: var(--ink-3); max-width: 640px; }
 .hgrid .cell { aspect-ratio: 1; border-radius: 2px; background: var(--surface-2); }
 .hgrid .rl { display: flex; align-items: center; }
+.mhgrid { grid-template-columns: 56px repeat(24, 1fr); max-width: none; }
+.mhgrid .rl { white-space: nowrap; font-size: 11px; }
+.drill { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 460px); gap: 20px; align-items: start; }
+.sess-list { max-height: 520px; overflow: auto; }
+.sess-list .ut tr[data-sid] { cursor: pointer; }
+.sess-list .ut tr.on td { background: var(--surface-2); }
+#flowEnds tr[data-zone] { cursor: pointer; }
+#flowEnds tr[data-zone].on td { background: var(--surface-2); }
+.trk canvas { width: 100%; aspect-ratio: 1; border-radius: 12px; background: var(--surface-2); display: block; }
+.trk-ctl { display: flex; gap: 10px; align-items: center; margin-top: 8px; font-size: 12px; color: var(--ink-3); }
+.trk-ctl button { border: 1px solid var(--line); background: var(--surface-1); color: var(--ink); border-radius: 10px; padding: 6px 12px; font: inherit; font-weight: 700; cursor: pointer; }
+.trk-ctl button:disabled { opacity: .45; cursor: default; }
+@media (max-width: 900px) { .drill { grid-template-columns: 1fr; } }
 
 /* 맵별 이동 밀도 */
 .heatwrap { display: grid; justify-items: start; gap: 8px; }

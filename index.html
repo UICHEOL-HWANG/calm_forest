@@ -10,6 +10,7 @@
 <meta name="description" content="포근한 로우폴리 3D 브라우저 게임 — 걷고, 농사짓고, 낚시하고, 집을 짓고 꾸미는 힐링 마을. 설치 없이 브라우저에서 바로." />
 <!-- 구글 서치콘솔 소유확인 — 삭제하면 색인 데이터 접근이 끊깁니다 -->
 <meta name="google-site-verification" content="GiZimkuR7Ek0fqWjnEuQtwlpdnW0kbQjKDPgeiOiroo" />
+<meta name="naver-site-verification" content="d22420580c91eec56e4d8b429da4d8a7ab64f3d6" />
 
 <!-- 링크 미리보기(Open Graph / Twitter) -->
 <meta property="og:type" content="website" />
@@ -48,6 +49,11 @@
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96.png" />
 <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+<meta name="keywords" content="고요한 숲, calm forest, 힐링 게임, 브라우저 게임, 농사 게임, 낚시 게임, 3D 마을 꾸미기, 무료 웹게임" />
+<link rel="canonical" href="https://calmforest.cloud/" />
+<link rel="alternate" type="application/rss+xml" title="고요한 숲 소식" href="https://calmforest.cloud/rss.xml" />
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"VideoGame","name":"고요한 숲","alternateName":"calm forest","url":"https://calmforest.cloud/","image":"https://calmforest.cloud/preview.jpg?v=20261006","description":"포근한 로우폴리 3D 브라우저 게임. 걷고, 농사짓고, 낚시하고, 집을 짓고 꾸미는 힐링 마을. 설치 없이 브라우저에서 바로.","genre":["Simulation","Casual"],"gamePlatform":["Web browser","Android","iOS"],"applicationCategory":"Game","inLanguage":["ko","en"],"offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"}}</script>
 <!-- 📱 PWA — 구글 플레이(TWA)·홈화면 설치용. 아이콘 원본은 assets/pwa/, 빌드가 루트로 편다.
      토스·itch 번들은 build-ait/build-itch 가 이 링크를 지운다(다른 오리진에서 404). -->
 <link rel="manifest" href="/manifest.webmanifest" />
@@ -546,6 +552,33 @@
   body.guide-open #dex-tab, body.guide-open #feedback-tab, body.guide-open #quest-panel, body.guide-open #hint,
   body.guide-open #hint-banner, body.guide-open #coach, body.guide-open #door-prompt, body.guide-open #npc-prompt, body.guide-open #catch-banner,
   body.guide-open #zone-prompt, body.guide-open #buffs, body.guide-open #topleft, body.guide-open #topright, body.guide-open #floor-choice { display: none !important; }
+  #decor-album { position: fixed; inset: 0; z-index: 35; display: none; flex-direction: column; background: #fbf8ef; color: #1e2a24; padding-top: var(--top-inset); }
+  #decor-album.show { display: flex; }
+  #decor-album .gp-head { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #fbe9b8; border-bottom: 1px solid #ecd59a; font-weight: 700; font-size: 15px; flex: none; }
+  #decor-close { margin-left: auto; width: 34px; height: 34px; border-radius: 50%; border: none; background: #fff; color: #6b4a10; font-size: 16px; cursor: pointer; box-shadow: var(--shadow); }
+  #decor-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 12px 14px calc(16px + env(safe-area-inset-bottom)); }
+  .da-lead { max-width: 1040px; margin: 0 auto 12px; font-size: 13.5px; color: #6b5b4a; }
+  .da-grid { max-width: 1040px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  @media (max-width: 860px) { .da-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 560px) { .da-grid { grid-template-columns: minmax(0, 1fr); } }
+  .da-set, .da-soon { background: #fffaf2; border: 1px solid #e6dccb; border-radius: 14px; padding: 10px; }
+  .da-pic { position: relative; aspect-ratio: 600 / 370; border-radius: 10px; overflow: hidden; background: #efe6d6; }
+  .da-pic img { width: 100%; height: 100%; object-fit: cover; display: block; filter: saturate(.25) brightness(.92); }
+  .da-set.done .da-pic img { filter: none; }
+  .da-pic b { position: absolute; left: 8px; top: 8px; background: rgba(43,33,24,.72); color: #fff; font-size: 12px; padding: 2px 8px; border-radius: 8px; }
+  .da-set.done .da-pic b { background: #b5851f; }
+  .da-name { font-weight: 700; font-size: 15px; margin-top: 8px; }
+  .da-from { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12.5px; color: #6b5b4a; margin-top: 2px; }
+  .da-from i, .da-chip i { font-style: normal; margin-right: 3px; }
+  .da-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .da-chip { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; background: #efe6d6; font-size: 12.5px; color: #8a7a68; }
+  .da-chip:not(.got) i { filter: grayscale(1); opacity: .5; }
+  .da-chip.got { background: #fbe9b8; color: #6b4a10; font-weight: 600; }
+  .da-soon { display: grid; place-items: center; min-height: 160px; border-style: dashed; color: #8a7a68; font-weight: 700; }
+  body.decor-open #mobile-controls, body.decor-open #talk-btn, body.decor-open #hotbar, body.decor-open #minimap,
+  body.decor-open #dex-tab, body.decor-open #feedback-tab, body.decor-open #quest-panel, body.decor-open #hint,
+  body.decor-open #hint-banner, body.decor-open #coach, body.decor-open #door-prompt, body.decor-open #npc-prompt, body.decor-open #catch-banner,
+  body.decor-open #zone-prompt, body.decor-open #buffs, body.decor-open #topleft, body.decor-open #topright, body.decor-open #floor-choice { display: none !important; }
   .fb-card { width: min(400px, 90vw); max-height: calc(100dvh - 24px); overflow-y: auto; background: #fff; border-radius: 22px; box-shadow: 0 20px 60px rgba(30,50,40,0.35); padding: 24px 24px 20px; color: var(--ink); }
   .fb-card h3 { margin: 0 0 4px; font-size: 18px; }
   .fb-sub { margin: 0 0 16px; font-size: 13px; opacity: .7; }
@@ -571,6 +604,22 @@
     border: 1px solid rgba(255,255,255,0.35); border-radius: 28px;
     box-shadow: 0 20px 60px rgba(30,50,40,0.35); color: #fff; animation: floatUp .9s ease both; }
   #login-links { margin-top: 18px; font-size: 11px; color: rgba(255,255,255,.7); }
+  #login-screen { grid-auto-flow: column; justify-content: center; align-content: center; gap: 18px; }
+  #login-store { margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.28); }
+  #login-store p { margin: 0 0 10px; font-size: 13px; font-weight: 600; color: rgba(255,255,255,.95); word-break: keep-all; }
+  #login-store .ls-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .store-badge { display: inline-block; line-height: 0; border-radius: 8px; transition: transform .12s; }
+  .store-badge:active { transform: scale(0.96); }
+  .store-badge img { height: 40px; width: auto; }
+  #login-qr { width: 230px; text-align: center; padding: 22px 18px; border-radius: 24px; color: #fff;
+    background: rgba(255,255,255,0.16); backdrop-filter: blur(16px) saturate(1.2); border: 1px solid rgba(255,255,255,0.35);
+    box-shadow: 0 20px 60px rgba(30,50,40,0.35); animation: floatUp .9s ease both; }
+  #login-qr b { display: block; font-size: 15px; margin-bottom: 4px; text-shadow: 0 1px 8px rgba(0,0,0,.25); }
+  #login-qr span { display: block; font-size: 12px; color: rgba(255,255,255,.88); margin-bottom: 14px; word-break: keep-all; text-wrap: balance; }
+  #login-qr .lq-codes { display: flex; gap: 10px; justify-content: center; }
+  #login-qr figure { margin: 0; font-size: 11px; font-weight: 600; }
+  #login-qr img { display: block; width: 88px; height: 88px; border-radius: 10px; background: #fff; padding: 5px; margin-bottom: 6px; box-sizing: border-box; }
+  @media (max-width: 759px), (max-height: 520px) { #login-qr { display: none; } }
   #login-links a { color: inherit; text-decoration: underline; }
   #login-card .leaf { font-size: 40px; filter: drop-shadow(0 2px 8px rgba(0,0,0,.25)); }
   #login-card h1 { margin: 6px 0 2px; font-size: 40px; font-weight: 800; letter-spacing: -0.5px;
@@ -770,6 +819,9 @@
   @keyframes hbGlow { 0% { box-shadow: 0 0 0 0 rgba(143,214,160,.9); } 100% { box-shadow: 0 0 0 14px rgba(143,214,160,0); } }
   @media (prefers-reduced-motion: reduce) { #hint-banner.attn.show { animation: none; } }
   #hint-banner .hb-ico { font-size: 22px; flex: 0 0 auto; }
+  #hint-banner .hb-img { width: 64px; height: 48px; flex: 0 0 auto; border-radius: 10px; object-fit: cover; }
+  #hint-banner .hb-img:not([hidden]) + .hb-ico { display: none; }
+  #hint-banner .hb-img:not([hidden]) ~ div .hb-line { word-break: keep-all; }
   #hint-banner .hb-title { font-size: 14px; font-weight: 700; }
   #hint-banner .hb-line { font-size: 12.5px; opacity: .8; margin-top: 1px; }
   /* 배너가 떠 있는 동안 토스트는 그 아래로 내려 겹침 방지 */
@@ -2125,6 +2177,7 @@
       <button id="char-btn"><span class="uico">🐾</span><span class="ulbl">캐릭터·꾸미기</span></button>
       <button id="map-btn"><span class="uico">🗺️</span><span class="ulbl">마을 지도</span></button>
       <button id="album-btn"><span class="uico">📸</span><span class="ulbl">사진첩</span></button>
+      <button id="decor-set-btn"><span class="uico">🎁</span><span class="ulbl">꾸미기 세트</span></button>
       <button id="inbox-btn"><span class="uico">📮</span><span class="ulbl">소식함</span></button>
       <button id="invite-btn" style="display:none;"><span class="uico">🤝</span><span class="ulbl">친구 초대</span></button>
       <hr class="util-sep">
@@ -2188,6 +2241,7 @@
   <!-- 🌫️ 안개 숲 연습 단계 안내(컨텍스트 슬롯) -->
   <div id="mist-guide" class="panel"><div id="mgd-text"></div><div id="mgd-dots"></div><button id="mgd-go">🌳 바로 시작하기</button></div>
   <div id="hint-banner" class="panel">
+    <img class="hb-img" id="hb-img" alt="" hidden>
     <span class="hb-ico" id="hb-ico">🌿</span>
     <div style="min-width:0;">
       <div class="hb-title" id="hb-title"></div>
@@ -2722,12 +2776,22 @@
         <button id="apple-btn"><svg viewBox="0 0 384 512" aria-hidden="true"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg> Apple로 계속하기</button>
         <button id="email-btn">✉️ 이메일로 시작하기</button>
         <button id="guest-btn">게스트로 둘러보기</button>
+        <div id="login-store" hidden>
+          <p>📱 앱으로도 만나요</p>
+          <div class="ls-row"></div>
+          <template id="store-badges">
+            <img data-os="ios" data-lang="ko" data-src="assets/badges/app-store-ko.svg" alt="App Store에서 다운로드하기" height="40">
+            <img data-os="ios" data-lang="en" data-src="assets/badges/app-store-en.svg" alt="Download on the App Store" height="40">
+            <img data-os="android" data-lang="ko" data-src="assets/badges/google-play-ko.png" alt="다운로드하기 Google Play" height="40">
+            <img data-os="android" data-lang="en" data-src="assets/badges/google-play-en.png" alt="Get it on Google Play" height="40">
+          </template>
+        </div>
         <div id="login-note"></div>
         <!-- 🌐 언어 전환 — HUD(☰ 메뉴)가 숨겨지는 로그인 화면에서도 보이게 별도 배치 -->
         <button id="login-lang" style="margin-top:14px;background:none;border:none;color:rgba(255,255,255,.85);font-size:13px;cursor:pointer;text-decoration:underline;">🌐 English</button>
         <!-- 💳 Paddle 도메인 심사 — 로그인 없이 가격·약관·환불·개인정보가 닿아야 한다. CONFIG.PADDLE.storeOpen 이 false 거나 토스·안드로이드면 JS 가 제거(앱 번들은 빌드 때도 제거) -->
         <nav id="login-links">
-          <a href="/shop" target="_blank" rel="noopener">가격 안내</a> · <a href="/terms" target="_blank" rel="noopener">이용약관</a> · <a href="/refund" target="_blank" rel="noopener">환불 정책</a> · <a href="/privacy" target="_blank" rel="noopener">개인정보처리방침</a>
+          <a href="https://calmforest.cloud/wiki/" target="_blank" rel="noopener">📖 고요위키</a> · <a href="/shop" target="_blank" rel="noopener">가격 안내</a> · <a href="/terms" target="_blank" rel="noopener">이용약관</a> · <a href="/refund" target="_blank" rel="noopener">환불 정책</a> · <a href="/privacy" target="_blank" rel="noopener">개인정보처리방침</a>
         </nav>
       </div>
       <!-- ✉️ 이메일 코드 로그인 — 카드 내용이 단계별로 통째로 바뀐다(A안, js/auth/email-login.js) -->
@@ -2755,6 +2819,14 @@
         </div>
       </form>
     </div>
+    <div id="login-qr" hidden>
+      <b>📱 폰에서도 만나요</b>
+      <span>폰 카메라로 QR을 비춰 주세요</span>
+      <div class="lq-codes">
+        <figure data-os="ios"><img data-src="assets/qr/login-app-store.svg" alt="" width="88" height="88"><figcaption>App Store</figcaption></figure>
+        <figure data-os="android"><img data-src="assets/qr/login-google-play.svg" alt="" width="88" height="88"><figcaption>Google Play</figcaption></figure>
+      </div>
+    </div>
   </div>
 
   <!-- 피드백 모달 -->
@@ -2776,6 +2848,11 @@
   </div>
 
   <!-- 📖 초보자 안내서 패널 — 본문은 /guide/guide.html 을 fetch 해 #guide-body 에 주입 -->
+  <div id="decor-album" aria-hidden="true">
+    <div class="gp-head"><span>🎁 특별한 꾸미기 세트</span><button id="decor-close" aria-label="닫기">✕</button></div>
+    <div id="decor-body"></div>
+  </div>
+
   <div id="guide-panel" aria-hidden="true">
     <div class="gp-head"><span>📖 초보자 안내서</span><button id="guide-close" aria-label="닫기">✕</button></div>
     <nav id="guide-chips"></nav>
@@ -3012,6 +3089,7 @@
     import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input, markNoticesSeen, resyncPurchases } from './js/game.js';
     import { bootReferral, inviteBanner, referralOnPlay, openInviteSheet, referralEnabled } from './js/referral/index.js';   // 🤝 친구 초대
     import { bootAppBanner, mountAppBanner } from './js/app-banner-ui.js';
+    import { mountLoginStore } from './js/login-store-ui.js';
     import { initPush, offerPush } from './js/push-ui.js';   // 🔔 안드로이드 푸시 알림(안내 카드·설정 토글)   // 📲 웹 → 앱 유도 배너(웹 전용)
     import { playChestReveal, stopChestReveal } from './js/boat-chest-reveal.js';   // 🧰 보물상자 개봉 화면(R3)
     import { questPanelView } from './js/quest-panel-view.js';
@@ -3034,6 +3112,7 @@
     import { initCafeGuests } from './js/cafe-guests.js';   // ☕ 카페 손님 동적 생성(서버 프록시 경유)
     import { initNightVisit } from './js/night-visit.js';   // 🦝 밤손님 판정·주민 쪽지(서버 프록시 경유)
     import { initDuel } from './js/duel/index.js';   // 🐗🦝 밤손님 승부(흔적 조사 → 추격)
+    import { openDecorAlbum } from './js/decor-drops/index.js';
     import { t, LANG, setLang, translateDom, watchDom } from './js/i18n.js';   // 🌐 i18n(한국어 원문 키 사전)
     import { TUNING, isBetaA, betaDay } from './js/tuning.js';
 
@@ -3134,6 +3213,8 @@
       if (!item) { hintBShowing = false; document.body.classList.remove('hintbanner'); return; }
       hintBShowing = true; document.body.classList.add('hintbanner');
       $('hb-ico').textContent = item.ico || '🌿';
+      $('hb-img').hidden = !item.img;
+      if (item.img) $('hb-img').src = item.img;
       $('hb-title').textContent = item.title || '';
       $('hb-line').textContent = item.line || '';
       const el = $('hint-banner'); el.classList.toggle('attn', !!item.attention); el.classList.add('show');
@@ -3416,7 +3497,8 @@
         fillReloadPrompt(el, t('🌙 연결이 끊겨 저장이 멈췄어요. 다시 들어오면 이어서 놀 수 있어요'), 'save_stuck_reload');
       },
       // 🪧 시설 첫 접근 비차단 배너 — 입력을 안 받아 이동이 안 끊긴다(상세 규칙은 입장 후 모달 담당)
-      showHintBanner({ ico, title, line, near, attention, onTap, onShow, onDismiss, slotBottom }) { hintBQ.push({ ico, title, line, near, attention, onTap, onShow, onDismiss, slotBottom }); if (!hintBShowing) nextHintBanner(); },
+      openDecorAlbum(html) { $('topleft').classList.remove('open'); $('decor-body').innerHTML = html; $('decor-body').scrollTop = 0; $('decor-album').classList.add('show'); $('decor-album').setAttribute('aria-hidden', 'false'); document.body.classList.add('decor-open'); },
+      showHintBanner({ ico, img, title, line, near, attention, onTap, onShow, onDismiss, slotBottom }) { hintBQ.push({ ico, img, title, line, near, attention, onTap, onShow, onDismiss, slotBottom }); if (!hintBShowing) nextHintBanner(); },
       // 튜토리얼 코치 진행 중 여부 — game.js 가 근접 배너를 억제할 때 확인
       coachActive() { return tutIdx >= 0 || !!spot?.active(); },
       setInventory(inv) {
@@ -4691,6 +4773,7 @@
 
     // 로그인 화면 표시/숨김
     // why: 'no_session' | 'toss_fail'(토스 자동 연결 실패) | 'pgs_fail'(플레이 게임즈 자동 연결 실패) | 'pgs_unconfigured'(설정 전) | 'gc_fail'·'gc_unconfigured'(🍎 게임센터) | 'offline' — [GA4] 입구 이탈 분해용
+    let loginStore = null;
     function showLoginScreen(offline, why = offline ? 'offline' : 'no_session') {
       $('login-screen').classList.add('show');
       $('loading').style.display = 'none';
@@ -4701,6 +4784,7 @@
           : IS_IOS ? 'Apple로 로그인하면 마을이 안전하게 저장돼요.'   // 🍎 Apple 계정은 iOS 앱 전용 — '어느 기기에서든'은 거짓 약속
           : '로그인하면 어느 기기에서든 저장이 이어집니다.';
       trackEvent('login_screen', { reason: why });   // [GA4] 토스 유저 중 몇 %가 이 화면을 보는지
+      loginStore?.shown();
       const inv = inviteBanner();                    // 🤝 초대 링크로 왔으면 — 로그인하면 하트핀
       if (inv) { $('login-invite').textContent = inv; $('login-invite').classList.add('show'); }
     }
@@ -4926,6 +5010,14 @@
       startCoach();                   // 먼저 코치를 켜 둔다 — 지도를 열어둔 채 이탈해도 튜토리얼이 사라지지 않게
       showStoryMapOnce(null);         // 📖 4장 지도를 그 위에 1회
     });
+    $('decor-set-btn').addEventListener('click', () => openDecorAlbum('menu'));
+    function closeDecorAlbum() { $('decor-album').classList.remove('show'); $('decor-album').setAttribute('aria-hidden', 'true'); document.body.classList.remove('decor-open'); }
+    $('decor-close').addEventListener('click', closeDecorAlbum);
+    window.addEventListener('keydown', (e) => {
+      if (!$('decor-album').classList.contains('show')) return;
+      if (e.key === 'Escape') { e.preventDefault(); closeDecorAlbum(); }
+      e.stopPropagation();
+    }, true);
     $('help-btn').addEventListener('click', () => openGuide('menu'));   // 📖 초보자 안내서(튜토리얼 다시 보기는 안내서 첫 장 버튼)
     // ⚖️ 정책 페이지(개인정보 처리방침·계정 삭제) — 마을은 그대로 두고 새 탭으로 연다.
     //    · API_BASE 를 앞에 붙이는 이유: 토스·itch 번들은 오리진이 달라 상대경로가 404 다(일지 버튼과 같은 처리).
@@ -6598,7 +6690,7 @@
         shown++;
         const d = new Date(r.taken_at);
         const cell = document.createElement('div'); cell.className = 'album-cell';
-        cell.innerHTML = `<img loading="lazy" src="${url}" alt=""><span class="album-date">${escapeHtml(r.weather || '')} ${d.getMonth() + 1}/${d.getDate()}</span>`;
+        cell.innerHTML = `<img loading="lazy" src="${url}" alt="${escapeHtml(`고요한 숲 사진 · ${r.weather || ''} ${d.getMonth() + 1}/${d.getDate()}`)}"><span class="album-date">${escapeHtml(r.weather || '')} ${d.getMonth() + 1}/${d.getDate()}</span>`;
         cell.addEventListener('click', () => {
           albumCur = { key: r.object_key, url };
           $('album-img').src = url;
@@ -6871,6 +6963,7 @@
     (async () => {
       bootReferral({ track: trackEvent });           // 🤝 ?invite= 보관 — 인증(구글 리다이렉트)이 쿼리를 지우기 전에
       try { bootAppBanner(); } catch (e) { /* 저장소 없음 — 배너 연결만 빠진다 */ }   // 📲 jid·utm 보관 — 같은 이유로 인증 전에
+      try { loginStore = mountLoginStore({ config: TUNING.appBanner, platform: PLATFORM, track: trackEvent, lang: LANG }); } catch (e) { console.warn('[login-store] skipped', e); }
       // 📲 안드로이드: 설치 채널(Play Install Referrer) — 첫 실행에 한 번 읽어 GA4 + Supabase. 기다리지 않는다(실패해도 게임 진행)
       let syncInstall = () => {};
       let referrerP = null, referrerFresh = false;   // 🧭 설문이 '링크 없이 온 첫 실행'인지 판정하는 데 쓴다
