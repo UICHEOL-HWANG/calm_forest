@@ -2,6 +2,11 @@ import { register } from 'node:module';
 
 register('./three-hook.mjs', import.meta.url);
 
+export const WIKI_DATA_FILES = Object.freeze([
+  'js/data/dex.js', 'js/data/catalog.js', 'js/data/places.js', 'js/dex-gates.js', 'js/museum.js',
+  'js/habitat.js', 'js/data/npcs.js', 'js/farm-crops.js', 'js/season.js', 'js/i18n-en.js', 'scripts/lib/wiki',
+]);
+
 export const WIKI_CATS = Object.freeze([
   { id: 'fish', name: '물고기', ico: '🐟', place: '마을 낚시터' },
   { id: 'crop', name: '작물', ico: '🥕', place: '밭' },

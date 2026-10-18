@@ -38,6 +38,7 @@ import { runPush, isPushTick } from '../functions/push-cron.js';
 import { runAuraCron } from '../functions/aura-cron.js';
 import { onRequestGet as cardnewsImg } from '../functions/cardnews-img.js';
 import { onRequestGet as rssFeed } from '../functions/rss.js';
+import { onRequestGet as newsPages } from '../functions/news.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -61,6 +62,12 @@ export default {
       if (pathname === '/rss.xml') {
         if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method Not Allowed', { status: 405 });
         return await rssFeed({ request, env, waitUntil: (p) => ctx.waitUntil(p) });
+      }
+
+      if (pathname === '/news') return Response.redirect(new URL('/news/', url).toString(), 301);
+      if (pathname.startsWith('/news/') || pathname === '/sitemap-news.xml') {
+        if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method Not Allowed', { status: 405 });
+        return await newsPages({ request, env, waitUntil: (p) => ctx.waitUntil(p) });
       }
 
       // 🗂️ /cardnews/* — 인스타 발행용 카드 JPEG(KV). 정적 자산보다 먼저 가로챈다.

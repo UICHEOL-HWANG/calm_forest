@@ -54,3 +54,15 @@ h1 { font-size: 30px; line-height: 1.3; margin: 0 0 4px; }
   .wk-list td:last-child { font-size: 13px; }
   .wk-info td { overflow-wrap: anywhere; }
 }
+.wk-faq { margin-top: 30px; }
+.wk-faq h2 { font-size: 19px; margin: 0 0 10px; }
+.wk-faq dl { margin: 0; border-top: 1px solid #e3e9e5; }
+.wk-faq dt { font-weight: 700; padding: 12px 2px 2px; }
+.wk-faq dd { margin: 0; padding: 0 2px 12px; color: #3d4b42; border-bottom: 1px solid #e3e9e5; }
+.nw-date { color: #6b7d72; font-size: 14px; margin: 0 0 18px; }
+.nw-table { width: 100%; border-collapse: collapse; font-size: 15px; margin: 6px 0 18px; }
+.nw-table th, .nw-table td { border: 1px solid #cfdcd3; padding: 8px 10px; text-align: left; vertical-align: top; }
+.nw-table th { background: #e3efe6; }
+.nw-list { list-style: none; padding: 0; margin: 0; }
+.nw-list li { display: flex; gap: 10px; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #e3e9e5; padding: 9px 2px; }
+.nw-list time { color: #8a988f; font-size: 13px; white-space: nowrap; }

@@ -1,6 +1,7 @@
 import { seoHead, escapeHtml } from '../seo-meta.mjs';
 import { SITE } from '../seo-pages.mjs';
 import { SECTION_ORDER, renderBlock, linkedRefs, toPlain, firstSentence } from './content.mjs';
+import { faqOf } from './faq.mjs';
 
 const WIKI_KEYWORDS = ['고요위키', '고요한 숲', '고요한 숲 공략', '고요한 숲 도감', 'calm forest wiki'];
 
@@ -60,13 +61,16 @@ export function renderDoc(entry, secs, ctx) {
   const facts = [['영문명', entry.nameEn], ['분류', cat.name], ...entry.facts, ['박물관', entry.museum]].filter(([, v]) => v);
   const rel = relatedOf(entry, secs, ctx);
   const title = `${entry.name} · 고요위키`;
+  const qa = faqOf(entry);
   const jsonLd = {
     '@context': 'https://schema.org',
     '@graph': [
-      { '@type': 'Article', headline: entry.name, alternativeHeadline: entry.nameEn ?? undefined, description, inLanguage: 'ko', url: SITE + path, isPartOf: { '@type': 'WebSite', name: '고요위키', url: `${SITE}/wiki/` }, about: { '@type': 'VideoGame', name: '고요한 숲', url: `${SITE}/` } },
+      { '@type': 'Article', headline: entry.name, alternativeHeadline: entry.nameEn ?? undefined, description, inLanguage: 'ko', url: SITE + path, dateModified: ctx.lastmod ?? undefined, isPartOf: { '@type': 'WebSite', name: '고요위키', url: `${SITE}/wiki/` }, about: { '@type': 'VideoGame', name: '고요한 숲', url: `${SITE}/` } },
       crumbLd([['고요위키', '/wiki/'], [cat.name, catPath(cat)], [entry.name, path]]),
+      ...(qa.length ? [{ '@type': 'FAQPage', mainEntity: qa.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) }] : []),
     ],
   };
+  const faqHtml = qa.length ? `<section class="wk-faq"><h2>자주 묻는 질문</h2><dl>${qa.map(([q, a]) => `<dt>${escapeHtml(q)}</dt><dd>${escapeHtml(a)}</dd>`).join('')}</dl></section>\n` : '';
   const body = `<h1>${escapeHtml(entry.name)}</h1>
 <nav class="wk-crumb"><a href="/wiki/">고요위키</a> › <a href="${catPath(cat)}">${escapeHtml(cat.name)}</a> › ${escapeHtml(entry.name)}</nav>
 <div class="wk-cats">분류: <a href="${catPath(cat)}">${escapeHtml(cat.name)}</a></div>
@@ -81,7 +85,7 @@ ${order.map((h, i) => `<h2 id="s-${i + 1}"><span>${i + 1}.</span>${h}</h2>\n${re
 ${facts.map(([k, v]) => `<tr><th>${escapeHtml(k)}</th><td>${escapeHtml(v)}</td></tr>`).join('\n')}
 </table></aside>
 </div>
-<section class="wk-rel"><h2>함께 보면 좋아요</h2><div class="wk-cards">${rel.map(e => `<a href="${docPath(e)}">${e.ico} ${escapeHtml(e.name)}</a>`).join('')}</div>
+${faqHtml}<section class="wk-rel"><h2>함께 보면 좋아요</h2><div class="wk-cards">${rel.map(e => `<a href="${docPath(e)}">${e.ico} ${escapeHtml(e.name)}</a>`).join('')}</div>
 <a class="wk-cta" href="/">🌿 게임에서 만나러 가기</a></section>`;
   return shell({ path, title, description, jsonLd, body });
 }

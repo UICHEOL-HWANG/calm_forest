@@ -4,7 +4,7 @@ export function escapeHtml(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-export function seoHead({ path, title, description, image = OG_IMAGE, type = 'website', lang = 'ko', keywords = KEYWORDS, jsonLd = null }) {
+export function seoHead({ path, title, description, image = OG_IMAGE, type = 'website', lang = 'ko', keywords = KEYWORDS, jsonLd = null, noindex = false }) {
   const url = SITE + path;
   const t = escapeHtml(title), d = escapeHtml(description);
   const lines = [
@@ -25,6 +25,7 @@ export function seoHead({ path, title, description, image = OG_IMAGE, type = 'we
     `<meta name="twitter:image" content="${escapeHtml(image)}" />`,
     `<link rel="alternate" type="application/rss+xml" title="고요한 숲 소식" href="${SITE}/rss.xml" />`,
   ];
+  if (noindex) lines.unshift('<meta name="robots" content="noindex" />');
   if (jsonLd) lines.push(`<script type="application/ld+json">${JSON.stringify(jsonLd).replace(/</g, '\\u003c')}</script>`);
   return lines.join('\n');
 }

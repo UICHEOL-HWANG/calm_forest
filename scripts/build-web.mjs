@@ -115,11 +115,12 @@ if (CONFIG.PADDLE.storeOpen) {
 const { SEO_PAGES } = await import('./lib/seo-pages.mjs');
 const { seoHead, injectHead } = await import('./lib/seo-meta.mjs');
 const { sitemapXml, robotsTxt } = await import('./lib/sitemap.mjs');
+const { gitDate } = await import('./lib/git-date.mjs');
 const { guidePage } = await import('./lib/guide-page.mjs');
 const sitemapPaths = [];
 for (const page of SEO_PAGES) {
   if (page.store && !CONFIG.PADDLE.storeOpen) continue;
-  sitemapPaths.push(page.path);
+  sitemapPaths.push({ path: page.path, lastmod: page.src ? gitDate(page.src) : null });
   if (!page.file) continue;
   const f = path.join(DIST, page.file);
   await writeFile(f, injectHead(await readFile(f, 'utf8'), seoHead(page)));
@@ -140,6 +141,10 @@ if (CONFIG.PADDLE.storeOpen) {
 }
 const { writeWiki } = await import('./lib/wiki/build.mjs');
 sitemapPaths.push(...await writeWiki(DIST));
+const { loadWiki } = await import('./lib/wiki/load-data.mjs');
+const { llmsTxt } = await import('./lib/llms.mjs');
+const wikiData = await loadWiki();
+await writeFile(path.join(DIST, 'llms.txt'), llmsTxt({ ...wikiData, asof: new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10) }));
 await writeFile(path.join(DIST, 'sitemap.xml'), sitemapXml(sitemapPaths));
 await writeFile(path.join(DIST, 'robots.txt'), robotsTxt());
 
