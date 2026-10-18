@@ -35,7 +35,7 @@ export function puffAt(pu, u, t) {
   const k = frac(t * u.speed + pu.phase + pu.i / 3);
   return {
     x: pu.base[0] + Math.sin(k * 6 + pu.i) * 0.05,
-    y: pu.base[1] + k * u.rise,
+    y: pu.base[1] + k * u.lift,
     z: pu.base[2],
     scale: 0.7 + k * 1.2,
     opacity: 0.55 * (1 - k),

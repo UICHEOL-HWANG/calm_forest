@@ -22,3 +22,8 @@ test('baked, emissive capped, no point lights', () => {
   }
 });
 test('no comments', () => { for (const src of [K, N]) assert.doesNotMatch(src, /^\s*\/\/|\/\*/m); });
+
+test('only the matte body casts shadows; decorMesh honors noShadow', () => {
+  for (const src of [K, N]) assert.match(src, /out\.traverse\(o => \{ if \(o\.isMesh && o !== body\) o\.userData\.noShadow = true; \}\);/);
+  assert.match(IN, /root\.traverse\(o => \{ if \(o\.isMesh\) o\.castShadow = !o\.userData\.noShadow; \}\);/);
+});

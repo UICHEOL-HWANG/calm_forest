@@ -45,7 +45,7 @@ test('swarm instances stay in their volume and rest when inactive', () => {
 });
 
 test('steam puffs rise from their base and fade', () => {
-  const a = puffAt({ base: [0, 0.6, 0], phase: 0, i: 0 }, { rise: 0.6, speed: 0.5 }, 0.2);
+  const a = puffAt({ base: [0, 0.6, 0], phase: 0, i: 0 }, { lift: 0.6, speed: 0.5 }, 0.2);
   assert.ok(a.y >= 0.6 && a.y <= 1.2 && a.opacity >= 0 && a.opacity <= 0.55);
 });
 
@@ -56,4 +56,18 @@ test('loop drives set fx only over placed decor and load applies the state', () 
   assert.match(fx, /for \(const m of decorMeshes\)/);
   assert.match(fx, /addEventListener\('decor-set-fx'/);
   assert.doesNotMatch(fx, /scene\.traverse/);
+});
+
+test('anim userData never uses keys that updatePops drives scene-wide', () => {
+  const pops = read('../js/spaces/fx.js');
+  const reserved = [...new Set([...pops.matchAll(/\bu\.(\w+)/g)].map(m => m[1]))];
+  for (const f of ['../js/decor-drops/art-kitchen.js', '../js/decor-drops/art-night.js']) {
+    const src = read(f);
+    for (const m of src.matchAll(/userData = \{([^}]*)\}/g)) {
+      const keys = [...m[1].matchAll(/(\w+):/g)].map(k => k[1]);
+      for (const k of keys) assert.ok(!reserved.includes(k), `${f} userData.${k} collides with updatePops`);
+    }
+  }
+  const steam = puffAt({ base: [0, 0.17, 0], phase: 0, i: 0 }, { lift: 0.6, speed: 0.5 }, 0.6);
+  assert.ok(steam.y > 0.17);
 });

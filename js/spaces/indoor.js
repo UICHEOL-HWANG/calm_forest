@@ -620,7 +620,7 @@ export function decorMesh(id) {
       });
     });
   }
-  root.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  root.traverse(o => { if (o.isMesh) o.castShadow = !o.userData.noShadow; });
   setFogExempt(root, true);   // 실내 가구는 안개 밖(고스트는 재질을 clone 하므로 플래그가 따라간다)
   return root;
 }

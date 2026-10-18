@@ -110,7 +110,7 @@ function steamPuffs(cols) {
     }
   });
   g.visible = false;
-  g.userData = { anim: 'steam', idleHidden: true, rise: 0.6, speed: 0.5 };
+  g.userData = { anim: 'steam', idleHidden: true, lift: 0.6, speed: 0.5 };
   return g;
 }
 
@@ -204,6 +204,7 @@ export function build(id) {
   if (glow.children.length) out.add(new THREE.Mesh(bakeGroup(glow), new THREE.MeshBasicMaterial({ vertexColors: true })));
   if (glass.children.length) out.add(new THREE.Mesh(bakeGroup(glass), new THREE.MeshStandardMaterial({ vertexColors: true, transparent: true, opacity: 0.28, roughness: 0.05, depthWrite: false })));
   anims.forEach(a => out.add(a));
+  out.traverse(o => { if (o.isMesh && o !== body) o.userData.noShadow = true; });
   out.scale.setScalar(k);
   return out;
 }

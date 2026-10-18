@@ -198,6 +198,7 @@ export function build(id) {
   if (glass.children.length) host.add(new THREE.Mesh(bakeGroup(glass), new THREE.MeshStandardMaterial({ vertexColors: true, transparent: true, opacity: 0.28, roughness: 0.05, depthWrite: false })));
   if (bob) { host.userData = { ...bob }; out.add(host); }
   anims.forEach(a => out.add(a));
+  out.traverse(o => { if (o.isMesh && o !== body) o.userData.noShadow = true; });
   out.scale.setScalar(k);
   return out;
 }
