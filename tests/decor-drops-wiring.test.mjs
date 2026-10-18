@@ -23,6 +23,8 @@ test('every minigame calls onPlay with its source', () => {
 test('abandon, quit and practice do not roll', () => {
   assert.match(read('../js/game.js'), /if \(!res\.abandoned\) onPlay\('cook'\)/);
   assert.match(read('../js/spaces/carving.js'), /if \(kind !== 'abandon'\) onPlay\('carve'\)/);
+  assert.match(read('../js/spaces/farm-auto.js'), /if \(!viaSickle\) onPlay\('crop'\)/);
+  assert.match(read('../js/observatory/star-run.js'), /if \(summary\.success\) onPlay\('star'\)/);
   assert.match(read('../js/spaces/river.js'), /if \(result !== 'quit'\) onPlay\('ferry'\)/);
   assert.match(read('../js/spaces/ferry-quiz-run.js'), /if \(!quit\) onPlay\('ferry'\)/);
   const mist = read('../js/spaces/mist.js');
@@ -59,4 +61,14 @@ test('grant writes stored and grantedDecor without replacing house', () => {
 
 test('dev force flag only in dev sessions', () => {
   assert.match(read('../js/decor-drops/index.js'), /IS_DEV_SESSION && new URLSearchParams\(location\.search\)\.get\('drop'\) === 'force'/);
+});
+
+test('granted set items show up in the decor menu only while stored', () => {
+  const g = read('../js/game.js');
+  const fn = g.slice(g.indexOf('getDecor() {'), g.indexOf('getKitchen()'));
+  assert.match(fn, /\[\.\.\.DECOR\.filter\(d => !d\.hidden\), \.\.\.DECOR\.filter\(d => d\.set && \(kept\[d\.id\] \|\| 0\) > 0\)\]/);
+});
+
+test('set items can only be placed from storage, never bought at cost 0', () => {
+  assert.match(read('../js/spaces/indoor.js'), /if \(def\.set && !fromStore && !silent && !free\) \{ return false; \}/);
 });

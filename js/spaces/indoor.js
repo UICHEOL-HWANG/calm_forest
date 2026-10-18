@@ -695,6 +695,7 @@ export function placeDecor(id, wx, wz, silent = false, rot = null, free = false,
   const fromStore = !silent && !free && (stored[id] || 0) > 0;   // 🧺 창고에 있으면 값 없이 꺼내 놓는다
   if (fromStore) { stored[id]--; if (!stored[id]) delete stored[id]; }
   if (def.hut && !fromStore && !silent && !free) { return false; }
+  if (def.set && !fromStore && !silent && !free) { return false; }
   if (buyBlocked({ silent, free, fromStore, def })) {   // 🎃 목록을 열어 둔 채 기간이 끝난 경우 — 새로 못 산다(보관분·옮기기·복원은 통과)
     ui.toast?.(SALE_ENDED_MSG); return false;
   }

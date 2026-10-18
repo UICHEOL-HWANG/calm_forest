@@ -1900,7 +1900,7 @@ export const Input = {
   armTutorialMove() { movedOnce = false; },  // 튜토리얼 시작 시 이동 스텝 재감지
   getDecor() {   // 🏠 층별 해금 — 잠긴 것도 목록엔 보이되 locked 로 흐리게(살 목표가 보여야 싱크가 된다)
     const st = gameState.houseStage, kept = gameState.house.stored || {};
-    return DECOR.filter(d => !d.hidden)
+    return [...DECOR.filter(d => !d.hidden), ...DECOR.filter(d => d.set && (kept[d.id] || 0) > 0)]
       .filter(d => catalogVisible(d, { stored: kept[d.id] || 0 }))   // 🎃 기간 밖 한정품은 안 산 사람에겐 숨긴다(보관분은 계속 보인다)
       .filter(d => !d.dream || (gameState.dream?.visits || 0) > 0 || (kept[d.id] || 0) > 0)   // 🌙 꿈을 꿔 보기 전엔 ✨ 화폐가 뭔지 모른다 — 숨긴다
       .filter(d => !d.mirror || (gameState.mirror?.visits || 0) > 0 || (kept[d.id] || 0) > 0)   // 🪞 거울 마을을 다녀오기 전엔 🪞 화폐가 뭔지 모른다
@@ -2243,6 +2243,7 @@ function retentionGuidanceSuppressed() {
     const b = document.body;
     if (b.classList.contains('mg-open')) return 'minigame';
     if (b.classList.contains('guide-open')) return 'guide';
+    if (b.classList.contains('decor-open')) return 'decor';
     if (b.classList.contains('intro-open')) return 'intro';
     if (b.classList.contains('spot-on')) return 'spotlight';
     if (document.querySelector('#tutorial-modal.show, #chat-modal.show, #quiz-modal.show, #story-modal.show, #npc-modal.show, #market-modal.show, #hire-modal.show, #dex-modal.show, #notice-modal.show, #char-modal.show, #feedback-modal.show, #settings-modal.show, #invite-modal.show')) return 'modal';
