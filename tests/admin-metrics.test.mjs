@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { delta, worstLeak, rate, heatGrid, userStatus, funnelSteps, MAPS, mapHourGrid, heatCellsFor, HEAT_SLOTS, ZONES, zoneFlow } from '../dashboards/js/admin-metrics.js';
+import { delta, worstLeak, rate, heatGrid, userStatus, funnelSteps, MAPS, mapHourGrid, heatCellsFor, HEAT_SLOTS, ZONES, zoneFlow, ZONE_CIRCLES, trackSegments } from '../dashboards/js/admin-metrics.js';
 
 const src = (p) => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 
@@ -146,4 +146,23 @@ test('이동 흐름은 롤업 cf_session_zones 와 응답 zone_flow 를 쓴다',
   assert.match(src('sql/analytics/admin_dashboard.sql'), /'zone_flow'/);
   assert.match(src('dashboards/js/admin-analytics.js'), /zoneFlow\(/);
   assert.match(src('dashboards/admin_analytics.html'), /id="s-flow"/);
+});
+
+test('동선 재생: 화면의 시설 원은 SQL cf_zone_of 의 마을 원과 같다', () => {
+  const sql = src('sql/migrations/migrate_zone_paths.sql');
+  const village = sql.slice(sql.indexOf('abs(x) <= 46'), sql.indexOf("'road'"));
+  const rows = [...village.matchAll(/\('([a-z_]+)', (-?[0-9.]+), (-?[0-9.]+), ([0-9.]+)\)/g)].map((m) => [m[1], +m[2], +m[3], +m[4]]);
+  assert.deepEqual(ZONE_CIRCLES, rows);
+});
+
+test('동선 재생: 마을 안 점만 이어 그리고, 마을 밖은 끊고 비중을 센다', () => {
+  const pts = [[0, 0, 0], [5, 3, 4], [10, 0, 84], [20, 0, 90], [30, -2, -6], [40, -3, -7]];
+  const t = trackSegments(pts);
+  assert.equal(t.segments.length, 2);
+  assert.deepEqual(t.segments[0].map((p) => p[0]), [0, 5]);
+  assert.deepEqual(t.segments[1].map((p) => p[0]), [30, 40]);
+  assert.equal(t.outsideShare, 33);
+  assert.equal(t.duration, 40);
+  assert.equal(t.start, 0);
+  assert.deepEqual(trackSegments([]), { segments: [], outsideShare: 0, duration: 0, start: 0 });
 });

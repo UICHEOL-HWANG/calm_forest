@@ -199,7 +199,7 @@ begin
   delete from cf_heat_slot where day between v_from and p_to;
   delete from cf_session_zones where day between v_from and p_to;
   with g as (
-    select g.session_id, g.created_at, g.char_x as x, g.char_z as z, g.user_id,
+    select g.id, g.session_id, g.created_at, g.char_x as x, g.char_z as z, g.user_id,
            coalesce(nullif(g.client_id, ''), g.user_id::text) as uid,
            (g.char_z <= -380 and abs(g.char_x) <= 45) as far
     from game_logs g
@@ -217,7 +217,7 @@ begin
     from r where far group by 1, 2
   ),
   lab as (
-    select r.session_id, r.created_at, r.x, r.z, r.user_id, r.uid,
+    select r.id, r.session_id, r.created_at, r.x, r.z, r.user_id, r.uid,
            (r.far and (st.start_z > -470 or (st.max_ax <= 6.5 and st.z_span > 60))) as boat,
            case
              when not r.far then case when abs(r.x) <= 44 and abs(r.z) <= 44 then 'main' end
@@ -266,20 +266,42 @@ begin
     returning 1
   ),
   zl as (
-    select session_id, created_at, uid, persona, (created_at at time zone tz)::date as day,
-           case when map in ('dream', 'mirror') then map when boat then 'river' else cf_zone_of(x, z) end as zone
+    select id, session_id, created_at, uid, persona, (created_at at time zone tz)::date as day,
+           case when map in ('dream', 'mirror') then map when boat then 'river' else cf_zone_of(x, z) end as zone,
+           (abs(x) <= 46 and abs(z) <= 46) as inv
     from pl
     where session_id is not null
   ),
-  zs as (
-    select session_id, day, created_at, zone,
-           lag(zone) over (partition by session_id, day order by created_at) as prev
+  zc as (
+    select session_id, day, created_at, id, zone, inv,
+           case when zone is distinct from lag(zone) over (partition by session_id, day order by created_at, id) then 1 else 0 end as chg
     from zl
+  ),
+  zr as (
+    select session_id, day, zone, inv, sum(chg) over (partition by session_id, day order by created_at, id) as run
+    from zc
+  ),
+  zrun as (
+    select session_id, day, run, zone, count(*) as len, bool_and(inv) as inv
+    from zr
     where zone not in ('road', 'unknown')
+    group by 1, 2, 3, 4
+  ),
+  zn as (
+    select session_id, day, run, zone, len, inv,
+           lag(zone) over (partition by session_id, day order by run) as pz,
+           lead(zone) over (partition by session_id, day order by run) as nz
+    from zrun
+  ),
+  zk as (
+    select session_id, day, run, zone,
+           lag(zone) over (partition by session_id, day order by run) as prev
+    from zn
+    where not (inv and len = 1 and pz is not null and pz = nz)
   ),
   zp as (
-    select session_id, day, array_agg(zone order by created_at) as path
-    from zs
+    select session_id, day, array_agg(zone order by run) as path
+    from zk
     where prev is distinct from zone
     group by 1, 2
   ),

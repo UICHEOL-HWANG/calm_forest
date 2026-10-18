@@ -82,6 +82,35 @@ export const ZONES = {
 
 export const zoneLabel = (k) => ZONES[k] || k;
 
+export const ZONE_CIRCLES = [
+  ['spawn', 0, 0, 4], ['stop', 16, 17, 2.5], ['neighbor_gate', -4, 25, 2.5],
+  ['house', -8, -8, 5], ['bench', 5.5, -5.5, 3.5], ['shop', -17.5, -4, 4],
+  ['market', 11, 2.5, 4.5], ['lake', 16, 9, 7], ['farm_gate', 0, 7, 3],
+  ['coop', -4.5, 11.5, 3], ['cafe_gate', 4, 14, 3], ['glade', 7, 26, 7],
+  ['light_workshop', 16.5, 33.5, 4], ['forest', -18, 23, 9], ['mine_gate', -14, 3, 3],
+  ['museum_gate', -26, 5, 3.5], ['observatory_gate', 25, 22, 3.5], ['dock', 0, -18, 6],
+  ['sea_gate', 14.5, -12.5, 3], ['mountain_gate', -15, -32, 5], ['mist_gate', -21, -20, 3],
+  ['orchard_gate', 33, 7, 3],
+];
+
+export const VILLAGE_R = 46;
+
+export function trackSegments(points, r = VILLAGE_R) {
+  if (!points?.length) return { segments: [], outsideShare: 0, duration: 0, start: 0 };
+  const segments = [];
+  let cur = null, out = 0;
+  for (const p of points) {
+    if (Math.abs(p[1]) <= r && Math.abs(p[2]) <= r) {
+      if (!cur) { cur = []; segments.push(cur); }
+      cur.push(p);
+    } else {
+      out += 1;
+      cur = null;
+    }
+  }
+  return { segments, outsideShare: Math.round((100 * out) / points.length), duration: points[points.length - 1][0] - points[0][0], start: points[0][0] };
+}
+
 export function zoneFlow(flow, seg, topN = 12) {
   if (!flow) return { sessions: 0, top: [], first: [], last: [] };
   const pick = (r) => seg === 'all' || r[0] === seg;

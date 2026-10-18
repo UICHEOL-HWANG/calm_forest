@@ -4,12 +4,12 @@
 //  계산: ./admin-metrics.js(순수 함수, 테스트 있음) · 공통: ./admin-common.js
 // =============================================================
 import { $, V, nf, esc, CHAR, shareKey, bootAdmin, explainRpcError, showMsg, createLoader } from './admin-common.js';
-import { MAPS, delta, worstLeak, rate, heatGrid, userStatus, funnelSteps, mapHourGrid, heatCellsFor, HEAT_SLOTS, zoneFlow, zoneLabel } from './admin-metrics.js';
+import { MAPS, delta, worstLeak, rate, heatGrid, userStatus, funnelSteps, mapHourGrid, heatCellsFor, HEAT_SLOTS, zoneFlow, zoneLabel, ZONE_CIRCLES, VILLAGE_R, trackSegments } from './admin-metrics.js';
 
 const page = $('page');
 const loader = createLoader(page, $('loader'));
 const charts = {};
-let sb = null, days = 30, data = null, heatMap = 'main', heatSlot = 'all', flowSeg = 'all';
+let sb = null, days = 30, data = null, heatMap = 'main', heatSlot = 'all', flowSeg = 'all', drillZone = null, track = null, trkAnim = 0, sessReq = 0, trkReq = 0;
 
 const mmdd = (d) => String(d).slice(5).replace('-', '/');
 const secs = (s) => (s == null ? '—' : s >= 60 ? `${Math.floor(s / 60)}분 ${Math.round(s % 60)}초` : `${Math.round(s)}초`);
@@ -68,7 +68,19 @@ const fill = (ctx, h) => {
     flowSeg = b.dataset.seg;
     [...$('flowSeg').children].forEach((x) => x.classList.toggle('on', x === b));
     if (data) renderFlow(zoneFlow(data.zone_flow, flowSeg));
+    if (drillZone) loadSessions(drillZone);
   });
+  $('flowEnds').addEventListener('click', (e) => {
+    const tr = e.target.closest('tr[data-zone]');
+    if (tr) loadSessions(tr.dataset.zone);
+  });
+  $('sessList').addEventListener('click', (e) => {
+    const tr = e.target.closest('tr[data-sid]');
+    if (!tr) return;
+    [...$('sessList').querySelectorAll('tr[data-sid]')].forEach((x) => x.classList.toggle('on', x === tr));
+    loadTrack(tr.dataset.sid);
+  });
+  $('trkPlay').addEventListener('click', playTrack);
   $('slotSel').addEventListener('click', (e) => {
     const b = e.target.closest('button');
     if (!b) return;
@@ -314,10 +326,94 @@ function renderFlow(f) {
     + f.top.map((r) => `<tr><td>${esc(zoneLabel(r.a))} → <b>${esc(zoneLabel(r.b))}</b>
         <div style="height:4px;border-radius:2px;margin-top:3px;width:${Math.round(100 * r.n / max)}%;background:rgba(var(--tint-rgb),.6)"></div></td>
         <td class="r">${nf(r.n)}</td><td class="r">${r.share}%</td></tr>`).join('') + '</table>';
-  const list = (title, rows) => `<table class="ut"><tr><th>${title}</th><th class="r">세션</th><th class="r">비중</th></tr>`
-    + rows.map((r) => `<tr><td>${esc(zoneLabel(r.zone))}</td><td class="r">${nf(r.n)}</td><td class="r">${r.share}%</td></tr>`).join('') + '</table>';
-  $('flowEnds').innerHTML = list('처음 들른 곳', f.first) + '<div style="height:12px"></div>' + list('마지막으로 있던 곳', f.last);
+  const list = (title, rows, click) => `<table class="ut"><tr><th>${title}</th><th class="r">세션</th><th class="r">비중</th></tr>`
+    + rows.map((r) => `<tr${click ? ` data-zone="${esc(r.zone)}"${r.zone === drillZone ? ' class="on"' : ''}` : ''}><td>${esc(zoneLabel(r.zone))}${click ? ' <span style="color:var(--ink-3)">›</span>' : ''}</td><td class="r">${nf(r.n)}</td><td class="r">${r.share}%</td></tr>`).join('') + '</table>';
+  $('flowEnds').innerHTML = list('처음 들른 곳', f.first) + '<div style="height:12px"></div>' + list('마지막으로 있던 곳', f.last, true);
   $('flowDef').textContent = `시설·관문 반경 안을 지난 순서(세션 ${nf(f.sessions)}개, 길은 제외). 세션당 = 그 이동 횟수 ÷ 세션 수.`;
+}
+
+async function loadSessions(zone) {
+  drillZone = zone;
+  [...$('flowEnds').querySelectorAll('tr[data-zone]')].forEach((x) => x.classList.toggle('on', x.dataset.zone === zone));
+  if (shareKey) { $('sessList').innerHTML = emptyState('공유 보기에서는 세션을 숨겨요', '관리자로 로그인하면 보입니다.'); return; }
+  $('sessList').innerHTML = '<div class="empty">불러오는 중…</div>';
+  const req = ++sessReq;
+  const { data: rows, error } = await sb.rpc('cf_admin_sessions', { days: Math.min(days, 60), zone_last: zone, seg: flowSeg });
+  if (req !== sessReq) return;
+  if (error) { $('sessList').innerHTML = `<div class="empty">${explainRpcError(error, 'cf_admin_sessions')}</div>`; return; }
+  $('drillDef').textContent = `${zoneLabel(zone)}에서 끝난 세션 ${rows.length}개(최근순, 최대 60). 세션을 고르면 마을 안 동선을 그립니다.`;
+  if (!rows.length) { $('sessList').innerHTML = emptyState('해당 세션이 없어요', ''); return; }
+  const hm = (t) => { const d = new Date(t); return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+  $('sessList').innerHTML = '<table class="ut"><tr><th>시작</th><th>유저</th><th class="r">길이</th><th>경로</th></tr>'
+    + rows.map((r) => `<tr data-sid="${esc(r.session_id)}"><td>${hm(r.start)}${r.is_new ? ' <span class="chip new">신규</span>' : ''}</td>
+      <td style="font-family:var(--mono);font-size:11px">${esc(r.uid)}</td><td class="r">${r.sec == null ? '—' : Math.max(1, Math.round(r.sec / 60)) + '분'}</td>
+      <td style="font-size:11px">${esc(r.path.map(zoneLabel).join(' → '))}</td></tr>`).join('') + '</table>';
+}
+
+async function loadTrack(sid) {
+  cancelAnimationFrame(trkAnim);
+  $('trkPlay').disabled = true;
+  $('trkInfo').textContent = '불러오는 중…';
+  const req = ++trkReq;
+  const { data: t, error } = await sb.rpc('cf_admin_session_track', { p_session: sid });
+  if (req !== trkReq) return;
+  if (error) { $('trkInfo').innerHTML = explainRpcError(error, 'cf_admin_session_track'); return; }
+  if (!t?.points?.length) { track = null; drawTrack(1); $('trkInfo').textContent = '원본 위치 기록이 없어요(7일 지난 세션).'; return; }
+  track = trackSegments(t.points);
+  $('trkInfo').textContent = `${Math.max(1, Math.round(track.duration / 60))}분 · 위치 ${nf(t.total)}건 · 마을 밖 ${track.outsideShare}%`;
+  $('trkPlay').disabled = !track.segments.length;
+  drawTrack(1);
+}
+
+function playTrack() {
+  if (!track) return;
+  cancelAnimationFrame(trkAnim);
+  const t0 = performance.now(), len = 6000;
+  const tick = (now) => {
+    const f = Math.min(1, (now - t0) / len);
+    drawTrack(f);
+    if (f < 1) trkAnim = requestAnimationFrame(tick);
+  };
+  trkAnim = requestAnimationFrame(tick);
+}
+
+function drawTrack(frac) {
+  const c = $('track'), ctx = c.getContext('2d'), W = c.width, R = VILLAGE_R;
+  const X = (x) => ((x + R) / (2 * R)) * W, Z = (z) => ((z + R) / (2 * R)) * W, S = W / (2 * R);
+  ctx.clearRect(0, 0, W, W);
+  ctx.font = '10px sans-serif';
+  ctx.textAlign = 'center';
+  for (const [k, x, z, r] of ZONE_CIRCLES) {
+    ctx.beginPath();
+    ctx.arc(X(x), Z(z), r * S, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${V('--tint-rgb')},.10)`;
+    ctx.fill();
+    ctx.fillStyle = V('--ink-3');
+    ctx.fillText(zoneLabel(k), X(x), Z(z) + 3);
+  }
+  if (!track) return;
+  const t0 = track.start;
+  const tEnd = t0 + track.duration * frac;
+  const span = Math.max(1, tEnd - t0);
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = V('--s3');
+  let last = null;
+  for (const seg of track.segments) {
+    for (let i = 1; i < seg.length && seg[i][0] <= tEnd; i++) {
+      const a = seg[i - 1], b = seg[i];
+      ctx.globalAlpha = 0.12 + 0.88 * Math.pow((b[0] - t0) / span, 2);
+      ctx.beginPath();
+      ctx.moveTo(X(a[1]), Z(a[2]));
+      ctx.lineTo(X(b[1]), Z(b[2]));
+      ctx.stroke();
+    }
+    for (const q of seg) if (q[0] <= tEnd) last = q;
+  }
+  ctx.globalAlpha = 1;
+  const first = track.segments[0]?.[0];
+  if (first) { ctx.fillStyle = V('--s1'); ctx.beginPath(); ctx.arc(X(first[1]), Z(first[2]), 5, 0, Math.PI * 2); ctx.fill(); }
+  if (last) { ctx.fillStyle = V('--s2'); ctx.fillRect(X(last[1]) - 5, Z(last[2]) - 5, 10, 10); }
 }
 
 // ── 운영 ──

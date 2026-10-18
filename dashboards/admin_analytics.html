@@ -188,6 +188,17 @@
               <div id="flowEnds"></div>
             </div>
           </div>
+          <div class="panel">
+            <h3>세션 살펴보기</h3>
+            <p class="def" id="drillDef">오른쪽 위 표에서 마지막 위치를 누르면 그곳에서 끝난 세션이 나옵니다. 세션을 고르면 마을 안 동선을 그립니다(원본 7일 보존, 관리자만).</p>
+            <div class="drill">
+              <div id="sessList" class="sess-list"></div>
+              <div class="trk">
+                <canvas id="track" width="460" height="460"></canvas>
+                <div class="trk-ctl"><button id="trkPlay" type="button" disabled>▶ 재생</button><span id="trkInfo"></span></div>
+              </div>
+            </div>
+          </div>
         </section>
 
         <section class="rsec" id="s-ops">
