@@ -6,7 +6,7 @@
   let data = null;
   let hits = [];
   let on = 0;
-  const load = () => data || (data = fetch('/wiki/search.json').then(r => r.json()).catch(() => []));
+  const load = () => data || (data = fetch('/wiki/search.json').then(r => r.json()).catch(() => { data = null; return []; }));
   const norm = (s) => s.toLowerCase().replace(/\s+/g, '');
   const esc = (s) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const draw = () => {
@@ -15,14 +15,16 @@
   };
   input.addEventListener('focus', load);
   input.addEventListener('input', async () => {
-    const q = norm(input.value);
+    const typed = input.value;
+    const q = norm(typed);
     const all = await load();
+    if (typed !== input.value) return;
     hits = q ? all.filter(h => norm(h.n + h.e + h.c).includes(q)).slice(0, 8) : [];
     on = 0;
     draw();
   });
   input.addEventListener('keydown', (ev) => {
-    if (!hits.length) return;
+    if (ev.isComposing || ev.keyCode === 229 || !hits.length) return;
     if (ev.key === 'ArrowDown') { on = (on + 1) % hits.length; draw(); ev.preventDefault(); }
     else if (ev.key === 'ArrowUp') { on = (on - 1 + hits.length) % hits.length; draw(); ev.preventDefault(); }
     else if (ev.key === 'Enter') location.href = hits[on].p;

@@ -3,7 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadWiki } from './load-data.mjs';
-import { parseContent } from './content.mjs';
+import { parseContent, SECTION_ORDER } from './content.mjs';
 import { renderDoc, renderCat, renderHome, searchIndex, buildIndex, docPath, catPath } from './render.mjs';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
@@ -26,6 +26,13 @@ export async function writeWiki(dist) {
   const ctx = { index, entries, cats };
   const missing = entries.filter(e => !content.has(`${e.cat}/${e.id}`)).map(e => `${e.cat}/${e.id}`);
   if (missing.length) throw new Error(`위키 본문 없음: ${missing.join(', ')}`);
+  const problems = [];
+  for (const [key, secs] of content) {
+    if (!index.has(key)) problems.push(`대응 문서 없음 ${key}`);
+    if (!secs.get('개요')?.trim()) problems.push(`개요 없음 ${key}`);
+    for (const h of secs.keys()) if (!SECTION_ORDER.includes(h)) problems.push(`모르는 절 ${key} ${h}`);
+  }
+  if (problems.length) throw new Error(`위키 본문 오류: ${problems.join(', ')}`);
   const paths = ['/wiki/'];
   const put = async (p, html) => {
     const file = p.endsWith('/') ? path.join(dist, p, 'index.html') : path.join(dist, `${p}.html`);

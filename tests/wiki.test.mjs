@@ -94,3 +94,9 @@ test('게임·안내서·가격표가 위키로 링크한다', () => {
   assert.match(read('scripts/lib/guide-page.mjs'), /href="\/wiki\/"/);
   assert.ok(existsSync(new URL('../wiki/wiki.css', import.meta.url)));
 });
+
+test('wiki.js: 한글 조합 중 Enter 무시 · 실패 캐시 안 함', () => {
+  const js = read('wiki/wiki.js');
+  assert.match(js, /ev\.isComposing/);
+  assert.match(js, /data = null/);
+});
