@@ -32,7 +32,7 @@ ${seoHead({ path, title, description, lang, type: 'article', jsonLd })}
 </style>
 </head>
 <body>
-<nav class="gp-top"><a href="/">${tx.home}</a><a href="${tx.otherHref}" hreflang="${lang === 'ko' ? 'en' : 'ko'}">${tx.other}</a></nav>
+<nav class="gp-top"><a href="/">${tx.home}</a><span><a href="/wiki/">고요위키</a> · <a href="${tx.otherHref}" hreflang="${lang === 'ko' ? 'en' : 'ko'}">${tx.other}</a></span></nav>
 <main class="gd">
 ${body.trim()}
 </main>

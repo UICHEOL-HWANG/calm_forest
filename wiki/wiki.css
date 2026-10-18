@@ -1,0 +1,56 @@
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: #f4f6f3; color: #212a24; font: 16px/1.75 -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
+a { color: #1f6f9f; text-decoration: none; }
+a:hover { text-decoration: underline; }
+.wk-top { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 14px; height: 54px; padding: 0 20px; background: #2f6b4a; color: #fff; }
+.wk-logo { color: #fff; font-weight: 800; font-size: 18px; white-space: nowrap; }
+.wk-sub { font-size: 13px; opacity: .85; white-space: nowrap; }
+.wk-search { position: relative; margin-left: auto; width: 280px; max-width: 46vw; }
+.wk-search input { width: 100%; border: 0; border-radius: 6px; padding: 8px 12px; font-size: 14px; }
+.wk-results { position: absolute; right: 0; left: 0; top: 40px; margin: 0; padding: 6px 0; list-style: none; background: #fff; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.18); max-height: 60vh; overflow: auto; }
+.wk-results a { display: flex; gap: 8px; padding: 7px 12px; color: #212a24; font-size: 14px; }
+.wk-results a:hover, .wk-results a.on { background: #eef6f0; text-decoration: none; }
+.wk-results small { color: #6b7d72; margin-left: auto; }
+.wk-wrap { max-width: 1100px; margin: 0 auto; background: #fff; border: 1px solid #dde3de; border-top: 0; padding: 24px 28px 48px; }
+h1 { font-size: 30px; line-height: 1.3; margin: 0 0 4px; }
+.wk-crumb { font-size: 13px; margin-bottom: 14px; color: #6b7d72; }
+.wk-cats { border: 1px solid #cfd8d2; font-size: 13px; padding: 6px 10px; margin-bottom: 18px; }
+.wk-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 28px; align-items: start; }
+.wk-doc p { margin: 0 0 12px; }
+.wk-doc h2 { font-size: 22px; border-bottom: 1px solid #cfd8d2; padding-bottom: 6px; margin: 26px 0 12px; scroll-margin-top: 70px; }
+.wk-doc h2 span { color: #1f6f9f; margin-right: 6px; }
+.wk-toc { display: inline-flex; flex-direction: column; border: 1px solid #cfd8d2; padding: 10px 18px; font-size: 14px; margin-bottom: 4px; }
+.wk-info table { width: 100%; border-collapse: collapse; font-size: 14px; border: 2px solid #2f6b4a; }
+.wk-info th, .wk-info td { border: 1px solid #cfdcd3; padding: 7px 9px; text-align: left; vertical-align: top; }
+.wk-info th { background: #e3efe6; width: 36%; font-weight: 600; }
+.wk-info .wk-info-h { background: #2f6b4a; color: #fff; font-size: 17px; width: auto; }
+.wk-info .wk-info-ic { text-align: center; font-size: 72px; line-height: 1.2; padding: 14px; background: #eef6f0; }
+.wk-rel { margin-top: 34px; }
+.wk-rel h2 { font-size: 19px; margin: 0 0 12px; }
+.wk-cards { display: flex; flex-wrap: wrap; gap: 10px; }
+.wk-cards a { background: #fff; border: 1px solid #d7e6da; border-radius: 14px; padding: 9px 14px; color: #1f4a33; font-weight: 600; font-size: 14px; box-shadow: 0 2px 6px rgba(60,90,70,.06); }
+.wk-cta { display: inline-block; margin-top: 20px; background: #2f7a4a; color: #fff; padding: 12px 20px; border-radius: 12px; font-weight: 700; }
+.wk-cta:hover { text-decoration: none; background: #276a3f; }
+.wk-lead { color: #4a5a50; }
+.wk-list { width: 100%; border-collapse: collapse; font-size: 15px; }
+.wk-list th, .wk-list td { border-bottom: 1px solid #e3e9e5; padding: 9px 8px; text-align: left; }
+.wk-list .wk-ic { font-size: 26px; width: 44px; text-align: center; }
+.wk-list small { display: block; color: #8a988f; font-size: 12px; }
+.wk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin: 18px 0; }
+.wk-cat { display: flex; flex-direction: column; gap: 2px; border: 1px solid #d7e6da; border-radius: 16px; padding: 16px; color: #1f4a33; background: #fbfdfb; }
+.wk-cat:hover { text-decoration: none; border-color: #2f6b4a; }
+.wk-cat span { font-size: 34px; }
+.wk-cat small { color: #6b7d72; }
+.wk-foot { max-width: 1100px; margin: 0 auto; padding: 18px 20px 40px; font-size: 13px; color: #6b7d72; text-align: center; }
+@media (max-width: 760px) {
+  .wk-top { gap: 10px; padding: 0 12px; }
+  .wk-sub { display: none; }
+  .wk-search { width: auto; flex: 1; max-width: none; }
+  .wk-wrap { padding: 18px 16px 40px; border: 0; }
+  .wk-layout { grid-template-columns: minmax(0, 1fr); }
+  .wk-info { order: -1; }
+  h1 { font-size: 26px; }
+  .wk-list td:last-child { font-size: 13px; }
+  .wk-info td { overflow-wrap: anywhere; }
+}
