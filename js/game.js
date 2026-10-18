@@ -59,7 +59,8 @@ import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './
 import { t, LANG, aiBucket } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
 import { initPlaza, updatePlaza, plazaSpotNow, openPlaza, plazaScatterBlocks, plazaDefault, restorePlaza, refreshPlaza, plazaDecorMesh, plazaMapVisible } from './plaza/index.js';
 import { refreshPond, updatePond, pondScatterBlocks } from './pond/index.js';
-import { onPlay, decorBanner } from './decor-drops/index.js';
+import { onPlay, decorBanner, applySetFx } from './decor-drops/index.js';
+import { updateSetFx } from './decor-drops/fx.js';
 import { normalizeDrops } from './decor-drops/rules.js';
 import { welcomeOffer, topPriceLine, fertBlockedByWatering } from './first-loop.js';   // 🪙 코인 첫 루프 규칙
 import { farmToolFor, farmActionIsNoop, FARM_AUTO_TOOLS } from './farm-auto.js';   // 🌾 농사 도구 자동 전환 규칙(밭 상태→도구)
@@ -2760,6 +2761,7 @@ function applySave(saved) {
   if (saved.house && Array.isArray(saved.house.grantedDecor))                // 🏖️ 승계 가구를 이미 줬는지(옮기거나 창고에 넣어도 다시 안 주게)
     gameState.house.grantedDecor = [...new Set(saved.house.grantedDecor.filter(id => typeof id === 'string'))];
   gameState.drops = normalizeDrops(saved.drops);
+  applySetFx();
   if (saved.farm && Number.isFinite(saved.farm.stage)) {                     // 🌾 밭 단계 복원 — 밭(plots) 복원보다 먼저 울타리를 맞춘다. 없으면 1단계
     gameState.farm.stage = Math.max(1, Math.min(MAX_FARM_STAGE, Math.floor(saved.farm.stage)));
     if (gameState.farm.stage > 1) rebuildFarm(true);
@@ -6034,6 +6036,7 @@ function animate() {
   updatePet(dt, t);         // 🐾 펫 — 따라다니기 / 맡긴 잡일 연쇄(접속 중에만 — 오프라인 정산 없음)
   if (atFarm && visitors) visitors.update(dt);   // 🦋 방문객 — 텃밭 체류 중에만
   updatePops(dt);
+  updateSetFx(clock.elapsedTime);
   updateTraceBubbles(dt, t, player.position);   // 🐾 흔적 말풍선 — 통통·가까이 가면 확대·고리
   updateVisitorBubbles(dt, t);                  // 🔍 방문객 말풍선 — 같은 연출
   updateAura(dt);       // 🏮 빛 공방 오라
