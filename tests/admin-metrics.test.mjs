@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { delta, worstLeak, rate, heatGrid, userStatus, funnelSteps, MAPS } from '../dashboards/js/admin-metrics.js';
+import { delta, worstLeak, rate, heatGrid, userStatus, funnelSteps, MAPS, mapHourGrid, heatCellsFor, HEAT_SLOTS, ZONES, zoneFlow, ZONE_CIRCLES, trackSegments } from '../dashboards/js/admin-metrics.js';
 
 const src = (p) => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 
@@ -71,4 +71,98 @@ test('맵 필터는 마을·꿈의 숲·거울 마을 세 개', () => {
   assert.deepEqual(Object.keys(MAPS), ['main', 'dream', 'mirror']);
   const html = src('dashboards/admin_analytics.html');
   for (const m of Object.keys(MAPS)) assert.match(html, new RegExp(`data-map="${m}"`));
+});
+
+test('시간대 × 맵: 각 시간의 위치 기록 중 맵별 비중, 기록 없는 시간은 null', () => {
+  const g = mapHourGrid([
+    { hour: 21, map: 'main', hits: 300, users: 8 },
+    { hour: 21, map: 'other', hits: 100, users: 3 },
+    { hour: 9, map: 'dream', hits: 50, users: 1 },
+  ]);
+  assert.deepEqual(g.rows.map((r) => r.map), ['main', 'dream', 'mirror', 'other']);
+  const cell = (m, h) => g.rows.find((r) => r.map === m).cells[h];
+  assert.equal(cell('main', 21).share, 0.75);
+  assert.equal(cell('other', 21).share, 0.25);
+  assert.equal(cell('main', 21).users, 8);
+  assert.equal(cell('dream', 9).share, 1);
+  assert.equal(cell('main', 3).share, null);
+  assert.equal(cell('mirror', 21).share, 0);
+  assert.equal(g.rows[0].cells.length, 24);
+  assert.equal(g.total, 450);
+});
+
+test('시간대 × 맵 표는 대시보드 응답의 map_hour 를 읽는다', () => {
+  assert.match(src('dashboards/js/admin-analytics.js'), /mapHourGrid\(d\.map_hour/);
+  assert.match(src('sql/analytics/admin_dashboard.sql'), /'map_hour'/);
+  assert.match(src('sql/migrations/migrate_admin_rollup.sql'), /insert into cf_map_hour/);
+});
+
+test('밀도맵 시간대: 전체는 날 단위 표, 시간대는 압축 배열에서 그 구간만 꺼낸다', () => {
+  const data = {
+    heat: [{ map: 'main', gx: 0, gz: 0, hits: 9 }],
+    heat_slot: [['main', 0, 0, 3, 4], ['main', 2, 2, 1, 5], ['dream', 0, 0, 3, 1]],
+  };
+  assert.deepEqual(HEAT_SLOTS.map((s) => s.label), ['전체', '새벽', '오전', '오후', '저녁']);
+  assert.equal(heatCellsFor(data, 'all'), data.heat);
+  assert.deepEqual(heatCellsFor(data, 3), [{ map: 'main', gx: 0, gz: 0, hits: 4 }, { map: 'dream', gx: 0, gz: 0, hits: 1 }]);
+  assert.deepEqual(heatCellsFor(data, 0), []);
+  assert.deepEqual(heatCellsFor({}, 1), []);
+});
+
+test('밀도맵 시간대는 롤업 cf_heat_slot 과 응답 heat_slot 을 쓴다', () => {
+  assert.match(src('sql/migrations/migrate_admin_rollup.sql'), /insert into cf_heat_slot/);
+  assert.match(src('sql/analytics/admin_dashboard.sql'), /'heat_slot'/);
+  assert.match(src('dashboards/js/admin-analytics.js'), /heatCellsFor\(/);
+  assert.match(src('dashboards/admin_analytics.html'), /id="slotSel"/);
+});
+
+test('이동 흐름: 구역 이름표는 SQL cf_zone_of 의 키와 맵 판정 키를 전부 덮는다', () => {
+  const sql = src('sql/migrations/migrate_zone_paths.sql');
+  const keys = [...sql.matchAll(/\('([a-z_]+)', -?[0-9.]+, -?[0-9.]+, [0-9.]+\)/g)].map((m) => m[1]);
+  assert.ok(keys.length >= 30);
+  for (const k of [...keys, 'river', 'dream', 'mirror']) assert.ok(ZONES[k], k);
+});
+
+test('이동 흐름: 세그먼트별로 경로를 합치고 비중은 세션 수 기준', () => {
+  const flow = {
+    sessions: { new: 10, ret: 30 },
+    trans: [['new', 'spawn', 'bench', 6], ['ret', 'spawn', 'bench', 9], ['ret', 'house', 'house_in', 12]],
+    first: [['new', 'spawn', 10], ['ret', 'house', 20], ['ret', 'spawn', 10]],
+    last: [['new', 'bench', 4], ['ret', 'house_in', 18]],
+  };
+  const all = zoneFlow(flow, 'all');
+  assert.equal(all.sessions, 40);
+  assert.deepEqual(all.top[0], { a: 'spawn', b: 'bench', n: 15, share: 37.5 });
+  assert.equal(all.top[1].a, 'house');
+  assert.deepEqual(all.first.map((r) => [r.zone, r.n]), [['spawn', 20], ['house', 20]]);
+  const nw = zoneFlow(flow, 'new');
+  assert.equal(nw.sessions, 10);
+  assert.deepEqual(nw.top, [{ a: 'spawn', b: 'bench', n: 6, share: 60 }]);
+  assert.deepEqual(zoneFlow(undefined, 'all'), { sessions: 0, top: [], first: [], last: [] });
+});
+
+test('이동 흐름은 롤업 cf_session_zones 와 응답 zone_flow 를 쓴다', () => {
+  assert.match(src('sql/migrations/migrate_admin_rollup.sql'), /insert into cf_session_zones/);
+  assert.match(src('sql/analytics/admin_dashboard.sql'), /'zone_flow'/);
+  assert.match(src('dashboards/js/admin-analytics.js'), /zoneFlow\(/);
+  assert.match(src('dashboards/admin_analytics.html'), /id="s-flow"/);
+});
+
+test('동선 재생: 화면의 시설 원은 SQL cf_zone_of 의 마을 원과 같다', () => {
+  const sql = src('sql/migrations/migrate_zone_paths.sql');
+  const village = sql.slice(sql.indexOf('abs(x) <= 46'), sql.indexOf("'road'"));
+  const rows = [...village.matchAll(/\('([a-z_]+)', (-?[0-9.]+), (-?[0-9.]+), ([0-9.]+)\)/g)].map((m) => [m[1], +m[2], +m[3], +m[4]]);
+  assert.deepEqual(ZONE_CIRCLES, rows);
+});
+
+test('동선 재생: 마을 안 점만 이어 그리고, 마을 밖은 끊고 비중을 센다', () => {
+  const pts = [[0, 0, 0], [5, 3, 4], [10, 0, 84], [20, 0, 90], [30, -2, -6], [40, -3, -7]];
+  const t = trackSegments(pts);
+  assert.equal(t.segments.length, 2);
+  assert.deepEqual(t.segments[0].map((p) => p[0]), [0, 5]);
+  assert.deepEqual(t.segments[1].map((p) => p[0]), [30, 40]);
+  assert.equal(t.outsideShare, 33);
+  assert.equal(t.duration, 40);
+  assert.equal(t.start, 0);
+  assert.deepEqual(trackSegments([]), { segments: [], outsideShare: 0, duration: 0, start: 0 });
 });

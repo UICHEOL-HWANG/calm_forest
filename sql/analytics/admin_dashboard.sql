@@ -239,6 +239,35 @@ begin
              from (select map, gx, gz, sum(hits)::int as hits from cf_heat_day
                    where not persona and day between since and today group by 1, 2, 3) h),
 
+    'heat_slot', (select coalesce(jsonb_agg(jsonb_build_array(map, gx, gz, slot, hits)), '[]'::jsonb)
+                  from (select map, gx, gz, slot, sum(hits)::int as hits from cf_heat_slot
+                        where not persona and day between since and today group by 1, 2, 3, 4) hs),
+    'heat_slot_since', (select min(day) from cf_heat_slot),
+
+    'zone_flow', (with zf as (
+                    select z.path, case when coalesce(cs.day, z.day) = f.first_day then 'new' else 'ret' end as seg
+                    from cf_session_zones z
+                    left join cf_sessions cs on cs.session_id = z.session_id
+                    left join (select uid, min(day) as first_day from cf_sessions where not persona group by uid) f on f.uid = coalesce(cs.uid, z.uid)
+                    where not z.persona and z.day between since and today and cardinality(z.path) > 0
+                  ),
+                  steps as (
+                    select seg, path[i] as a, path[i + 1] as b from zf, generate_subscripts(path, 1) i where i < cardinality(path)
+                  )
+                  select jsonb_build_object(
+                    'sessions', (select jsonb_object_agg(seg, n) from (select seg, count(*) as n from zf group by 1) q),
+                    'trans', (select coalesce(jsonb_agg(jsonb_build_array(seg, a, b, n)), '[]'::jsonb)
+                              from (select seg, a, b, count(*) as n from steps group by 1, 2, 3) q),
+                    'first', (select coalesce(jsonb_agg(jsonb_build_array(seg, zone, n)), '[]'::jsonb)
+                              from (select seg, path[1] as zone, count(*) as n from zf group by 1, 2) q),
+                    'last', (select coalesce(jsonb_agg(jsonb_build_array(seg, zone, n)), '[]'::jsonb)
+                             from (select seg, path[cardinality(path)] as zone, count(*) as n from zf group by 1, 2) q)
+                  )),
+
+    'map_hour', (select coalesce(jsonb_agg(jsonb_build_object('hour', hour, 'map', map, 'hits', hits, 'users', users)), '[]'::jsonb)
+                 from (select hour, map, sum(hits)::int as hits, sum(users)::int as users from cf_map_hour
+                       where not persona and day between since and today group by 1, 2) mh),
+
     'econ_daily', (select coalesce(jsonb_agg(jsonb_build_object('day', day, 'inflow', i, 'outflow', o, 'net', i - o) order by day), '[]'::jsonb)
                    from (select day, sum(inflow)::bigint as i, sum(outflow)::bigint as o from cf_econ_day
                          where not persona and day between since and today group by day) e),
