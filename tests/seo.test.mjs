@@ -161,3 +161,7 @@ test('shopProductPages: 판매 기간이 끝난 한정 품목은 Discontinued �
 test('rssXml: XML 에 쓸 수 없는 제어문자를 지운다', () => {
   assert.doesNotMatch(rssXml([{ id: 1, title: 'a\x0bb', body: 'c\x01d', created_at: '2026-10-01T00:00:00Z' }]), /[\x00-\x08\x0B\x0C\x0E-\x1F]/);
 });
+
+test('index.html: 네이버 서치어드바이저 소유확인 메타', () => {
+  assert.match(read('index.html'), /<meta name="naver-site-verification" content="d22420580c91eec56e4d8b429da4d8a7ab64f3d6" \/>/);
+});
