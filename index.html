@@ -574,13 +574,10 @@
   #login-screen { grid-auto-flow: column; justify-content: center; align-content: center; gap: 18px; }
   #login-store { margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.28); }
   #login-store p { margin: 0 0 10px; font-size: 13px; font-weight: 600; color: rgba(255,255,255,.95); word-break: keep-all; }
-  #login-store .ls-row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
-  .store-badge { display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 13px; border-radius: 10px; background: #111; color: #fff; text-decoration: none; border: 1px solid rgba(255,255,255,.35); white-space: nowrap; transition: transform .12s; }
+  #login-store .ls-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .store-badge { display: inline-block; line-height: 0; border-radius: 8px; transition: transform .12s; }
   .store-badge:active { transform: scale(0.96); }
-  .store-badge svg { width: 18px; height: 18px; flex: none; }
-  .store-badge span { display: flex; flex-direction: column; line-height: 1.05; text-align: left; }
-  .store-badge small { font-size: 9px; opacity: .85; }
-  .store-badge b { font-size: 14px; font-weight: 700; letter-spacing: -.2px; }
+  .store-badge img { height: 40px; width: auto; }
   #login-qr { width: 230px; text-align: center; padding: 22px 18px; border-radius: 24px; color: #fff;
     background: rgba(255,255,255,0.16); backdrop-filter: blur(16px) saturate(1.2); border: 1px solid rgba(255,255,255,0.35);
     box-shadow: 0 20px 60px rgba(30,50,40,0.35); animation: floatUp .9s ease both; }
@@ -2744,6 +2741,12 @@
         <div id="login-store" hidden>
           <p>📱 앱으로도 만나요</p>
           <div class="ls-row"></div>
+          <template id="store-badges">
+            <img data-os="ios" data-lang="ko" data-src="assets/badges/app-store-ko.svg" alt="App Store에서 다운로드하기" height="40">
+            <img data-os="ios" data-lang="en" data-src="assets/badges/app-store-en.svg" alt="Download on the App Store" height="40">
+            <img data-os="android" data-lang="ko" data-src="assets/badges/google-play-ko.png" alt="다운로드하기 Google Play" height="40">
+            <img data-os="android" data-lang="en" data-src="assets/badges/google-play-en.png" alt="Get it on Google Play" height="40">
+          </template>
         </div>
         <div id="login-note"></div>
         <!-- 🌐 언어 전환 — HUD(☰ 메뉴)가 숨겨지는 로그인 화면에서도 보이게 별도 배치 -->
@@ -6905,7 +6908,7 @@
     (async () => {
       bootReferral({ track: trackEvent });           // 🤝 ?invite= 보관 — 인증(구글 리다이렉트)이 쿼리를 지우기 전에
       try { bootAppBanner(); } catch (e) { /* 저장소 없음 — 배너 연결만 빠진다 */ }   // 📲 jid·utm 보관 — 같은 이유로 인증 전에
-      try { loginStore = mountLoginStore({ config: TUNING.appBanner, platform: PLATFORM, track: trackEvent }); } catch (e) { console.warn('[login-store] skipped', e); }
+      try { loginStore = mountLoginStore({ config: TUNING.appBanner, platform: PLATFORM, track: trackEvent, lang: LANG }); } catch (e) { console.warn('[login-store] skipped', e); }
       // 📲 안드로이드: 설치 채널(Play Install Referrer) — 첫 실행에 한 번 읽어 GA4 + Supabase. 기다리지 않는다(실패해도 게임 진행)
       let syncInstall = () => {};
       let referrerP = null, referrerFresh = false;   // 🧭 설문이 '링크 없이 온 첫 실행'인지 판정하는 데 쓴다

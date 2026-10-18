@@ -36,8 +36,8 @@ const stripped = (before.match(/<link rel="(?:icon|apple-touch-icon|manifest)"/g
 const LINKS_RE = /(<nav id="login-links">[\s\S]*?<\/nav>)/;
 if (!LINKS_RE.test(html)) throw new Error('[build-itch] index.html 에서 #login-links 를 못 찾음 — 약관 링크가 itch.zone 루트 404 가 됩니다.');
 html = html.replace(LINKS_RE, nav => nav.replace(/href="\/([a-z]+)"/g, `href="${API_ORIGIN}/$1"`));
-if (!html.includes('data-src="assets/qr/')) throw new Error('[build-itch] index.html 에서 로그인 QR 이미지를 못 찾음');
-html = html.replaceAll('data-src="assets/qr/', `data-src="${API_ORIGIN}/assets/qr/`);
+if (!html.includes('data-src="assets/qr/') || !html.includes('data-src="assets/badges/')) throw new Error('[build-itch] index.html 에서 로그인 QR·스토어 배지 이미지를 못 찾음');
+html = html.replaceAll('data-src="assets/', `data-src="${API_ORIGIN}/assets/`);
 writeFileSync(`${OUT}/index.html`, html);
 
 // 게임 모듈(전부 절차 생성이라 정적 자산은 js/ 뿐 — 안내서는 웹 오리진에서 fetch)

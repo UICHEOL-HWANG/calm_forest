@@ -104,7 +104,7 @@ test('영어 사전 — 확정 문구 3개', () => {
 test('웹·itch 빌드가 QR 이미지를 싣는다', () => {
   const web = read('scripts/build-web.mjs');
   for (const f of Object.values(QR_FILES)) assert.ok(web.includes(`'${f}'`), f);
-  assert.match(read('scripts/build-itch.mjs'), /replaceAll\('data-src="assets\/qr\/', `data-src="\$\{API_ORIGIN\}\/assets\/qr\//);
+  assert.match(read('scripts/build-itch.mjs'), /replaceAll\('data-src="assets\/', `data-src="\$\{API_ORIGIN\}\/assets\//);
 });
 
 test('TUNING.appBanner 처럼 일부 값만 있는 설정도 기본값과 합쳐 완전한 주소를 만든다', async () => {
@@ -120,4 +120,27 @@ test('QR 이미지는 data-src 로만 두어 앱 번들(QR 파일 없음)에서 
   assert.ok(!/<img src=/.test(screen));
   assert.equal((screen.match(/data-src="assets\/qr\//g) || []).length, 2);
   assert.ok(!html.includes(':has(#login-main[hidden])'));
+});
+
+const BADGES = ['assets/badges/app-store-ko.svg', 'assets/badges/app-store-en.svg', 'assets/badges/google-play-ko.png', 'assets/badges/google-play-en.png'];
+
+test('공식 스토어 배지 4종이 있고, 웹 빌드에 실리며, 언어별 템플릿에 data-src 로만 걸린다', () => {
+  const web = read('scripts/build-web.mjs');
+  for (const f of BADGES) {
+    assert.ok(existsSync(new URL(f, ROOT)), f);
+    assert.ok(web.includes(`'${f}'`), f);
+  }
+  const tpl = html.slice(html.indexOf('<template id="store-badges">'), html.indexOf('</template>', html.indexOf('<template id="store-badges">')));
+  for (const os of ['ios', 'android']) for (const lang of ['ko', 'en']) {
+    assert.match(tpl, new RegExp(`data-os="${os}" data-lang="${lang}" data-src="assets/badges/`));
+  }
+  assert.ok(!/\ssrc="/.test(tpl));
+});
+
+test('Apple SVG 배지는 스크립트 없는 순수 SVG 다', () => {
+  for (const f of BADGES.filter(f => f.endsWith('.svg'))) assert.ok(!/<script|on\w+=/i.test(read(f)), f);
+});
+
+test('언어를 넘겨 부팅한다', () => {
+  assert.match(html, /mountLoginStore\(\{[^}]*lang: LANG/);
 });
