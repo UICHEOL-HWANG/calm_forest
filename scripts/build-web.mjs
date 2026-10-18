@@ -50,6 +50,8 @@ const INCLUDE = [
   ['assets/pwa/icon-192.png', 'icon-192.png'],
   ['assets/pwa/icon-512.png', 'icon-512.png'],
   ['assets/pwa/icon-maskable-512.png', 'icon-maskable-512.png'],
+  'assets/qr/login-app-store.svg',      // 📱 로그인 화면 QR 카드(PC)
+  'assets/qr/login-google-play.svg',
   'sw.js',           // service worker — 오프라인 안내 페이지만 캐시
   ['pages/offline.html', 'offline.html'],       // 오프라인 안내 페이지 — sw.js 가 /offline.html 로 프리캐시
   // ⚖️ 구글 플레이 필수 — 스토어 등록정보의 "개인정보처리방침 URL"·"계정 삭제 URL" 이 이 둘을 가리킨다.

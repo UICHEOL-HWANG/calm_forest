@@ -613,6 +613,9 @@ export const EN = {
   '대화하기': 'Talk',
   'Google로 시작하기': 'Start with Google',
   '게스트로 둘러보기': 'Look around as a guest',
+  '📱 앱으로도 만나요': '📱 Also on mobile',
+  '📱 폰에서도 만나요': '📱 Take it with you',
+  '폰 카메라로 QR을 비춰 주세요': 'Point your phone camera at the QR',
   // ✉️ 이메일 코드 로그인 (js/auth/email-login.js)
   '✉️ 이메일로 시작하기': '✉️ Start with email',
   '이메일로 시작하기': 'Start with email',
