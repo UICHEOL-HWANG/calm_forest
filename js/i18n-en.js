@@ -619,6 +619,12 @@ export const EN = {
   // ✉️ 이메일 코드 로그인 (js/auth/email-login.js)
   '✉️ 이메일로 시작하기': '✉️ Start with email',
   '이메일로 시작하기': 'Start with email',
+  '🌐 크롬에서 열기': '🌐 Open in Chrome',
+  '🌐 사파리에서 열기': '🌐 Open in Safari',
+  '🌐 브라우저에서 열기': '🌐 Open in browser',
+  '이 앱 안에서는 구글 로그인이 안 돼요.': "Google sign-in doesn't work inside this app.",
+  '안 열리면 오른쪽 위 ··· 메뉴에서 외부 브라우저로 열어 주세요.': "If it doesn't open, tap ··· at the top right and open in an external browser.",
+  '이 앱 안에서는 구글 로그인이 안 돼요. 크롬이나 사파리에서 열어 주세요.': "Google sign-in doesn't work inside this app. Please open it in Chrome or Safari.",
   '메일로 6자리 코드를 보내 드려요. 비밀번호는 필요 없어요.': 'We\'ll email you a 6-digit code. No password needed.',
   '이메일 주소': 'Email address',
   '코드 받기': 'Get code',

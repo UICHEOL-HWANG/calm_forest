@@ -707,6 +707,11 @@
   /* ✉️ 이메일 코드 로그인 — 구글 아래 보조 버튼(반투명 테두리) + 단계 카드 */
   #email-btn { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 12px auto 0; border: 1px solid rgba(255,255,255,.7); background: rgba(255,255,255,.12); border-radius: 16px; padding: 12px 24px; font-size: 15px; font-weight: 700; color: #fff; cursor: pointer; font-family: inherit; transition: transform .12s; }
   #email-btn:active { transform: scale(0.96); }
+  body.inapp #google-btn { display: none; }
+  #inapp-handoff { margin: 0 auto; }
+  #inapp-handoff p { margin: 8px 0 0; font-size: 12.5px; color: rgba(255,255,255,.9); word-break: keep-all; text-wrap: balance; }
+  #inapp-open { display: inline-flex; align-items: center; gap: 8px; border: none; background: #fff; border-radius: 16px; padding: 13px 26px; font-size: 15px; font-weight: 700; color: #3a4a40; cursor: pointer; font-family: inherit; box-shadow: 0 8px 24px rgba(0,0,0,.2); transition: transform .12s; }
+  #inapp-open:active { transform: scale(0.96); }
   body.platform-toss #email-btn, body.platform-android #email-btn, body.platform-ios #email-btn { display: none; }   /* 토스·스토어 앱은 전용 로그인 */
   #login-main[hidden], .login-step[hidden] { display: none !important; }
   .login-step .step-title { font-size: 19px; font-weight: 800; margin: 4px 0 6px; text-shadow: 0 2px 10px rgba(0,0,0,.25); }
@@ -3129,6 +3134,7 @@
   <script type="module">
     import { initAuth, signInWithGoogle, signInWithApple, requestEmailCode, verifyEmailCode, signInWithToss, signInWithPlayGames, signInWithGameCenter, deleteMyAccount, signInAsGuest, startLocalGuest, loadGame, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow, fetchNotices, insertInstallAttribution, insertInstallSurvey } from './js/supabase-client.js';
     import { mountEmailLogin } from './js/auth/email-login.js';   // ✉️ 이메일 코드 로그인(웹·itch)
+    import { mountInAppLogin, INAPP_COPY } from './js/auth/in-app-login.js';
     import { savePhotoNative, sharePhotoNative, shareUrlNative } from './js/photo-native.js';   // 📱 앱: WebView 는 download·share 를 못 한다
     import { capPlugin } from './js/cap-bridge.js';
     import { SELL_ICO_G } from './js/data/places.js';
@@ -4833,7 +4839,7 @@
           ? '연결이 잠깐 불안정했어요. 바로 플레이하기를 누르면 이어서 할 수 있어요.'
           : IS_IOS ? 'Apple로 로그인하면 마을이 안전하게 저장돼요.'   // 🍎 Apple 계정은 iOS 앱 전용 — '어느 기기에서든'은 거짓 약속
           : '로그인하면 어느 기기에서든 저장이 이어집니다.';
-      trackEvent('login_screen', { reason: why });   // [GA4] 토스 유저 중 몇 %가 이 화면을 보는지
+      trackEvent('login_screen', { reason: why, inapp: inAppLogin.app || undefined });   // [GA4] 토스 유저 중 몇 %가 이 화면을 보는지
       loginStore?.shown();
       const inv = inviteBanner();                    // 🤝 초대 링크로 왔으면 — 로그인하면 하트핀
       if (inv) { $('login-invite').textContent = inv; $('login-invite').classList.add('show'); }
@@ -4921,7 +4927,13 @@
     if (IS_ITCH) document.body.classList.add('platform-itch');
     if (IS_ANDROID) document.body.classList.add('platform-android');
     if (IS_IOS) document.body.classList.add('platform-ios');
-    $('google-btn').addEventListener('click', () => signInWithGoogle());  // 구글로 리다이렉트
+    const inAppLogin = mountInAppLogin({ $, track: trackEvent, platform: PLATFORM });
+    const googleOrBlocked = (from) => {
+      if (!inAppLogin.inApp) return signInWithGoogle();
+      trackEvent('inapp_google_blocked', { from, app: inAppLogin.app });
+      ui.toast(INAPP_COPY.blocked, 4000);
+    };
+    $('google-btn').addEventListener('click', () => googleOrBlocked('login'));  // 구글로 리다이렉트
     //  🍎 iOS: 로그인 화면엔 이 버튼 하나(안드로이드 '바로 플레이하기'와 같은 자리). Apple 창을 닫거나 실패하면
     //     묻지 않고 게스트로 시작한다 — 강제 로그인이 아니게(가이드라인 5.1.1). 성공은 authState 콜백이 enterPlay.
     $('apple-btn').addEventListener('click', async () => {
@@ -6534,7 +6546,7 @@
           if (r.ok) $('nudge-modal').classList.remove('show');
           else ui.toast('플레이 게임즈에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.');
         }
-      : () => signInWithGoogle();
+      : () => googleOrBlocked('nudge');
     if (IS_TOSS) {
       const banner = $('dex-guest'), bannerBtn = $('dex-google');
       banner.innerHTML = '🔒 <b>게스트 도감은 이 기기에서만 임시 보관</b>돼요.<br>토스 계정을 연결하면 <b>영구 보존</b>!';

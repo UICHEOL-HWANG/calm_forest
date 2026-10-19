@@ -37,7 +37,7 @@ export const CONFIG = {
   GTM_CONTAINER_ID: 'YOUR_GTM_ID',              // 예: GTM-XXXXXXX (선택)
 
   // ── 📣 Meta Pixel(웹 전용, 공개값) — 비어 있으면 로드하지 않는다(fbclid 보관만). js/meta-pixel.js ──
-  META_PIXEL_ID: '',
+  META_PIXEL_ID: '1986547471986641',
 
   // ── 센서/행동 데이터 로깅 설정 ───────────────────────────────
   //    마우스 좌표·캐릭터 위치·카메라 각도를 배치로 Supabase 전송
