@@ -29,9 +29,9 @@ test('cashFor — priceId 없으면 won 이 있어도 null', () => {
   assert.equal(cashFor('nope', null, 4000), null);
 });
 
-test('PRICE_IDS 는 꾸미기 35(코인 18 + 프리미엄 4 + 도구 세트 3 + 🎃 할로윈 10 + 🍁 2차 세트·꾸미기 11) + 펫 4 + 🛷 능력 썰매 3 = 56칸, 값은 null 이거나 pri_ 로 시작', () => {
+test('PRICE_IDS 는 꾸미기 35(코인 18 + 프리미엄 4 + 도구 세트 3 + 🎃 할로윈 10 + 🍁 2차 세트·꾸미기 11) + 펫 4 + 💎 유료 펫 4 + 🛷 능력 썰매 3 = 60칸, 값은 null 이거나 pri_ 로 시작', () => {
   const keys = Object.keys(PRICE_IDS);
-  assert.equal(keys.length, 56);
+  assert.equal(keys.length, 60);
   for (const it of ITEMS.filter(i => !i.reward)) assert.ok(keys.includes(it.id), it.id);   // 🤝 초대 보상은 비매품 — 가격 칸이 없다
   for (const it of ITEMS.filter(i => i.reward)) assert.ok(!keys.includes(it.id), `${it.id} 는 팔지 않는다`);
   for (const k of PET_KINDS) assert.ok(keys.includes(k.id), k.id);
@@ -50,6 +50,6 @@ test('카탈로그 cash 칸 — priceId 가 있는 항목만 {priceId,label}, �
   for (const k of PET_KINDS) {
     const pid = PRICE_IDS[k.id];
     if (!pid) { assert.equal(k.cash, null, k.id); continue; }
-    assert.deepEqual(k.cash, { priceId: pid, label: PET_CASH_LABEL }, k.id);
+    assert.deepEqual(k.cash, { priceId: pid, label: k.premium ? wonLabel(k.won) : PET_CASH_LABEL }, k.id);
   }
 });

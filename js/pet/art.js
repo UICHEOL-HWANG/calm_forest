@@ -26,6 +26,8 @@
 //    Rec.709 luma 최고값은 seed 0.816 이다. 색을 고치면 luma 를 다시 재라.
 // =============================================================
 
+import { buildPremiumPet, updatePremiumPetAnim } from './art-premium.js';
+
 /** 기본 종 — dev 콘솔의 pet.give() 기본값. 상점은 PET_KINDS 에서 고른다 */
 export const PET_KIND = 'leaf';
 
@@ -447,7 +449,7 @@ function makeTables(THREE) {
 export function buildPet(THREE, kind, stage) {
   const { BUILD } = tablesFor(THREE);
   const fn = BUILD[kind];
-  if (!fn) return null;
+  if (!fn) return buildPremiumPet(THREE, kind, stage);
   return fn(stage);
 }
 
@@ -458,7 +460,8 @@ export function buildPet(THREE, kind, stage) {
  *    빛나는 종을 나중에 붙이면 조형에서 이 규약만 채우면 된다.
  *  ▶ 위상은 pet3d.position 에서 딴다(시뮬의 그리드 좌표 c.x·c.z 와 같은 값이다) —
  *    같은 무대에 여러 마리가 서도 같은 박자로 맥동하지 않게. */
-export function updatePetAnim(pet3d, t) {
+export function updatePetAnim(pet3d, t, busy = false) {
+  if (updatePremiumPetAnim(pet3d, t, busy)) return;
   const u = pet3d.userData;
   if (!u.orbit) return;
   u.orbit.forEach(o => {

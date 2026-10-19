@@ -107,7 +107,8 @@ import { makeTrailWalk, WALK_CAM, TRAIL_DEMO } from './cosmetics/trail-walk.js';
 import { buildToolSkin, buildUmbrella, setToolSkinNight, disposeToolSkin, UMBRELLA_SHAFT } from './cosmetics/tool-skins.js';   // 🪓☂️ 💎 도구 테마 세트 조형
 import { SKIN_TOOLS, toolSkinOf, umbrellaShown } from './cosmetics/tool-skin-rules.js';   // 🪓☂️ 어떤 테마를 입었나 · 우산을 펼칠까
 import { buildShop, updateShopOwner } from './shop/building.js';   // 🏪 꾸미기 가게 조형(sims/shop-sim.html B안 — 정면 +Z)
-import { PET_RADIUS, CHAIN_MAX, PET_PRICE, PET_KINDS, petKindOf, emptyPet, stageOf, toNextStage, canCommand, pickPetTask, afterWork } from './pet/rules.js';   // 🐾 지시형 펫 규칙(순수 모듈 — 오프라인 정산 없음)
+import { disposePremiumPet } from './pet/art-premium.js';
+import { PET_RADIUS, CHAIN_MAX, PET_PRICE, PET_KINDS, petKindOf, emptyPet, stageOf, toNextStage, canCommand, pickPetTask, afterWork, abilityOf } from './pet/rules.js';   // 🐾 지시형 펫 규칙(순수 모듈 — 오프라인 정산 없음)
 import { spawnPet, snapIfFar, followPlayer, walkTo } from './pet/render.js';   // 🐾 펫 움직임(따라다니기·이동)
 import { updatePetAnim, PET_KIND } from './pet/art.js';             // 🐾 펫 조형 애니메이션 규약 + 확정 종
 // 📦 데이터 표 — 원문 그대로 옮겼다(분리 1단계, 2026-09-24). 값만 있고 상태는 없다
@@ -2734,6 +2735,8 @@ function applySave(saved) {
     name: typeof v.name === 'string' ? v.name : '',
     works: Number.isFinite(v.works) ? Math.max(0, Math.floor(v.works)) : 0,
     restUntil: Number.isFinite(v.restUntil) ? v.restUntil : 0,
+    ...(typeof v.bonusDay === 'string' ? { bonusDay: v.bonusDay, bonusN: Number.isFinite(v.bonusN) ? Math.max(0, Math.floor(v.bonusN)) : 0 } : {}),
+    ...(typeof v.giftDay === 'string' ? { giftDay: v.giftDay } : {}),
   } : null;
   gameState.pets = {};
   if (saved.pets && typeof saved.pets === 'object') {
@@ -7337,7 +7340,7 @@ function usePet(kind) {
 }
 
 function respawnPet() {
-  if (pet3d) { scene.remove(pet3d); pet3d = null; }
+  if (pet3d) { scene.remove(pet3d); disposePremiumPet(pet3d); pet3d = null; }
   if (!gameState.pet) return;
   pet3d = spawnPet(THREE, gameState.pet.kind, stageOf(gameState.pet.works));
   if (!pet3d) return;                                   // 모르는 종이면 아무것도 안 세운다
@@ -7371,7 +7374,7 @@ function petChoresNear() {
   const r2 = PET_RADIUS * PET_RADIUS, c = player.position;
   let near = false;
   for (const p of plots) { const dx = p.x - c.x, dz = p.z - c.z; if (dx * dx + dz * dz <= r2) { near = true; break; } }
-  return near && !!pickPetTask(petWorld(), c, PET_RADIUS);
+  return near && !!pickPetTask(petWorld(), c, PET_RADIUS, abilityOf(gameState.pet.kind).tasks);
 }
 
 

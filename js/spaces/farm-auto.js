@@ -27,7 +27,7 @@ import { HAUL_N, HIRE_COST, MASTER_SPEED, MASTER_YIELD, STEP_SEC, candidatesFor,
 import { logEcon } from '../metrics.js';
 import { updatePetAnim } from '../pet/art.js';
 import { followPlayer, snapIfFar, walkTo } from '../pet/render.js';
-import { CHAIN_MAX, PET_RADIUS, canCommand, pickPetTask, stageOf } from '../pet/rules.js';
+import { PET_RADIUS, abilityOf, burstTargets, canCommand, petGift, pickPetTask, stageOf } from '../pet/rules.js';
 import { Sound } from '../sound.js';
 import { createPlot, syncFarmCrops, syncFarmSoil, updateFarmPops } from '../spaces/farm.js';
 import { syncOrchardGateLock } from '../spaces/mist.js';
@@ -553,19 +553,42 @@ export function updatePet(dt, t) {
   // 🚪 공간을 옮겼거나 플레이어가 멀리 달아났다 — 발밑으로 붙고, 하던 일은 **한 만큼 쳐서** 끝낸다
   //    (그냥 버리면 이미 물을 준 칸이 works 에도 쿨다운에도 안 남는다)
   if (snapIfFar(pet3d, player.position) && petJob) finishPetJob();
-  updatePetAnim(pet3d, t);
+  updatePetAnim(pet3d, t, !!petJob);
+  maybePetGift();
   if (!petJob) { followPlayer(pet3d, player.position, dt); return; }
+  const ab = abilityOf(gameState.pet.kind);
   if (!petJob.task) {
-    if (petJob.done >= CHAIN_MAX) return finishPetJob();
-    petJob.task = pickPetTask(petWorld(), player.position, PET_RADIUS);
+    if (petJob.done >= ab.chain) return finishPetJob();
+    petJob.task = pickPetTask(petWorld(), player.position, PET_RADIUS, ab.tasks);
     if (!petJob.task) return finishPetJob();
   }
   const p = plots[petJob.task.i];
   if (!p) { petJob.task = null; return; }              // 밭이 사라졌으면 다시 고른다
   if (walkTo(pet3d, p.x, p.z, dt)) {
+    if (ab.burst) {
+      for (const i of burstTargets(petWorld(), player.position, PET_RADIUS, ab.chain - petJob.done)) {
+        if (petApply({ type: 'water', i })) { petJob.done++; spawnDust(plots[i].x, plots[i].z, 4); }
+      }
+      petJob.task = null;
+      return finishPetJob();
+    }
     if (petApply(petJob.task)) { petJob.done++; spawnDust(p.x, p.z, 4); }
     petJob.task = null;
   }
+}
+
+function maybePetGift() {
+  const pet = gameState.pet;
+  if (!pet || !pet3d?.visible) return;
+  const { n, pet: next } = petGift(pet, todayStr(), Math.random());
+  if (!n) return;
+  gameState.pets[pet.kind] = gameState.pet = next;
+  gameState.inventory.forage = (gameState.inventory.forage || 0) + n;
+  spawnFloatText(pet3d.position.x, 1.0, pet3d.position.z, `🎁 채집물 +${n}`);
+  spawnSparkle(pet3d.position.x, 0.5, pet3d.position.z, 14);
+  refreshInventoryUI();
+  trackEvent('pet_gift', { pet_kind: pet.kind, n });
+  requestSave();
 }
 
 // 🐾 펫이 보는 밭 — workerWorld 는 좌표를 안 담는다(일꾼은 밭 전체를 보니까).

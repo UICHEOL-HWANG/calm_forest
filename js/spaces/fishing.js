@@ -10,13 +10,14 @@ import {
   clock, currentTool, dexDiscover, diffParams, dist2D, doPlayerAction, fishDiff, fishMesh, fishState, gameState,
   indoor, noteSpecialExhibit, player, questEvent, refreshInventoryUI, rollDifficulty, scene, settleDifficulty,
   showCatchItem, situation, spawnFloatText, spawnLeafBurst, spawnSparkle, spawnWater, spawnWoodChips, trackGateBlocked,
-  trackDiffAbandon, trees, tryUnlockDrop, ui,
+  trackDiffAbandon, trees, tryUnlockDrop, ui, todayStr, requestSave,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackChop, trackEvent } from '../analytics.js';
 import { FISH_KINDS } from '../data/catalog.js';
 import { DOCK_POND, DOCK_POND_R, LAKE_R, SEA_GATE } from '../data/places.js';
 import { CHOP_WOOD, TOOLS, TREE_RESPAWN_SEC } from '../data/tools.js';
 import { rollKind } from '../dex-gates.js';
+import { petFishBonus } from '../pet/rules.js';
 import { fallDirAway } from '../tree-fall.js';
 import { Sound } from '../sound.js';
 import { refreshPond } from '../pond/index.js';
@@ -68,6 +69,14 @@ export function catchFish() {
   const kind = rollKind(FISH_KINDS, 'fish', situation(), fishRnd);
   doPlayerAction(castPos.x, castPos.z); // 낚아채기 제스처
   gameState.inventory.fish += 1; refreshInventoryUI();
+  const fb = petFishBonus(gameState.pet, todayStr(), Math.random());
+  if (fb.bonus) {
+    gameState.pets[fb.pet.kind] = gameState.pet = fb.pet;
+    gameState.inventory.fish += 1; refreshInventoryUI();
+    spawnFloatText(castPos.x, 1.2, castPos.z, '🦎 한 마리 더!');
+    trackEvent('pet_fish_bonus', { pet_kind: fb.pet.kind, n: fb.pet.bonusN });
+    requestSave();
+  }
   // 🎣 무엇을 낚았는지는 캐치 배너로(월드 플로트 텍스트는 밀착 줌에서 화면을 덮었다 — 베타 피드백).
   //    서브 문구는 📖도감 토스트와 겹치지 않게 '희소성'만 말한다(둘이 동시에 뜬다).
   ui.catchBanner?.(`🐟 ${kind.name} +1`,

@@ -890,6 +890,7 @@ const pendingCash = new Set();
 export function drawPetTab(box) {
   for (const k of PET_KINDS) {
     const mine = gameState.pets[k.id];
+    if (k.premium && !mine && !(cashAvailable(authState) && k.cash)) continue;
     const row = document.createElement('div');
     row.className = 'sh-row' + (petView === k.id ? ' try' : '');
     row.onclick = () => { petView = k.id; drawCosMenu(); };      // 줄 = 미리보기(구매 아님 — 꾸미기의 "입어보기"와 같은 결)
@@ -929,8 +930,9 @@ export function drawPetTab(box) {
     };
     const buys = document.createElement('div');
     buys.className = 'sh-buys';
-    buys.appendChild(btn);
+    if (!k.premium) buys.appendChild(btn);
     if (cashAvailable(authState) && k.cash) buys.appendChild(cashButton(k.cash, k.id, 'pet', !!mine));
+    else if (k.premium && mine) buys.appendChild(btn);
     row.appendChild(buys);
     box.appendChild(row);
   }
