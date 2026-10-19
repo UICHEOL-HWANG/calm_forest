@@ -2,8 +2,8 @@ import { COLD } from './cold.js';
 
 const CSS = `#cold-hud{position:fixed;left:50%;top:calc(var(--top-inset) + 64px);transform:translateX(-50%);display:none;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.85);font:700 12px system-ui;color:#2b2b30;pointer-events:none;z-index:15}
 #cold-hud.show{display:flex}
-#cold-hud .ch-bar{width:84px;height:8px;border-radius:999px;background:#e3eaf3;overflow:hidden}
-#cold-hud .ch-fill{height:100%;width:0;border-radius:999px;background:#7fb2e8;transition:width .3s}
+#cold-hud .ch-bar{display:block;width:84px;height:8px;border-radius:999px;background:#e3eaf3;overflow:hidden}
+#cold-hud .ch-fill{display:block;height:100%;width:0;border-radius:999px;background:#7fb2e8;transition:width .3s}
 #cold-hud.shiver .ch-fill{background:#4f86c6}
 #cold-hud.slow .ch-fill{background:#2f5fb0}
 @media (orientation: portrait){#cold-hud{top:calc(var(--top-inset) + 80px)}}`;

@@ -10,7 +10,7 @@ import { slopePoint, acornY, terrainHeight, SLOPE_M_PER_UNIT } from '../mountain
 import { buildMountainSpace, paintInterior, followCamera, poseObstacles, obstacleScales } from '../mountain/interior-art.js';
 import { applyLook } from '../mountain/interior-look.js';
 import { MOUNTAIN_THEMES, THEME_CHECK_S, mountainLook } from '../mountain/theme.js';
-import { CLIMB_PATH, PLAZA, clampLocal, ACORNS, CLIMB_START, collectAcorns } from '../mountain/climb.js';
+import { CLIMB_PATH, PLAZA, clampLocal, ACORNS, CLIMB_START, collectAcorns, climbProgress } from '../mountain/climb.js';
 import { buildCamp } from '../mountain/camp-art.js';
 import { CAMP, START_SPOT, atHut, inYard, pushOutProps, YARD, DOOR_SPOT, DOOR_R, CAFE_EXIT_SPOT, clampSummit, summitHeight } from '../mountain/camp-layout.js';
 import { createRunout, stepRunout, stopTurn } from '../mountain/runout.js';
@@ -547,6 +547,7 @@ function updateCold(dt, local) {
     nearFire: Math.hypot(local.x - CAMP.fire.x, local.z - CAMP.fire.z) < COLD.fireR,
     inCafe: inCafe(),
     frozen: sledActive(),
+    climb: atHut(local) || inYard(local) ? null : climbProgress(local),
   });
   const n = noticeCold(prev, cold, !!gameState.hintsSeen?.mountainCold);
   if (n.hint) {

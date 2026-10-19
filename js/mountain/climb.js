@@ -34,6 +34,18 @@ export function nearestOnPath(p) {
   return best;
 }
 
+const SEG_LEN = CLIMB_PATH.slice(1).map((b, i) => Math.hypot(b.x - CLIMB_PATH[i].x, b.z - CLIMB_PATH[i].z));
+const PATH_LEN = SEG_LEN.reduce((a, b) => a + b, 0);
+
+export function climbProgress(p) {
+  if (Math.hypot(p.x - PLAZA.x, p.z - PLAZA.z) <= PLAZA.r) return null;
+  const n = nearestOnPath(p);
+  if (n.dist > BAND + 1) return null;
+  const a = CLIMB_PATH[n.seg];
+  const before = SEG_LEN.slice(0, n.seg).reduce((s, l) => s + l, 0);
+  return Math.min(1, (before + Math.hypot(n.x - a.x, n.z - a.z)) / PATH_LEN);
+}
+
 export function collectAcorns(p, taken, r = 1.2) {
   return taken.map((t, i) => t || Math.hypot(p.x - ACORNS[i].x, p.z - ACORNS[i].z) <= r);
 }
