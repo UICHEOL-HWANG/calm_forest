@@ -13,8 +13,9 @@
 // =============================================================
 import { CONFIG, IS_DEV_SESSION } from '../config.js';
 import { PLATFORM } from '../platform.js';
-import { getLang } from '../i18n.js';
+import { getLang, clientId } from '../i18n.js';
 import { startFunnel, advance, stepOf, stepProps, clean } from './checkout-funnel.js';   // 📊 결제창 안 퍼널
+import { metaPurchase, metaAttribution } from '../meta-pixel.js';   // 📣 Meta Purchase · 광고 유입(attr)
 
 const PADDLE_JS = 'https://cdn.paddle.com/paddle/v2/paddle.js';
 let ready = null;          // Promise<Paddle> — 실패하면 null 로 되돌려 다음 클릭이 다시 시도한다
@@ -53,8 +54,16 @@ function onPaddleEvent(ev) {
     try { handlers.onStep(current, stepProps(ev, current.funnel)); } catch (_) { /* 트래킹 실패 무시 */ }
   }
   if (ev?.name === 'checkout.error' && clean(ev.error?.code)) current = { ...current, errorCode: clean(ev.error.code) };   // GA4 로 가는 값 — paddle_step 과 같은 정제
-  if (ev?.name === 'checkout.completed') { const c = current; current = null; handlers.onCompleted(c); }
+  if (ev?.name === 'checkout.completed') {
+    const c = current; current = null;
+    try { metaPurchase(ev.data, c); } catch (_) { /* 트래킹 실패 무시 */ }   // 📣 금액·통화·거래 id 는 여기에만 있다
+    handlers.onCompleted(c);
+  }
   else if (ev?.name === 'checkout.closed' || ev?.name === 'checkout.error') { const c = current; current = null; handlers.onClosed(c); }
+}
+
+function safeAttr() {
+  try { return metaAttribution(clientId()); } catch (_) { return {}; }   // 유입 정보 실패가 결제를 막지 않게
 }
 
 function injectScript() {
@@ -98,7 +107,7 @@ export async function openCheckout({ priceId, itemId, kind, userId, email }) {
     try {
       Paddle.Checkout.open({
         items: [{ priceId, quantity: 1 }],
-        customData: { user_id: userId, item_id: itemId, kind },
+        customData: { user_id: userId, item_id: itemId, kind, attr: safeAttr() },   // attr: 광고 유입(fbc·utm·jid) — 원장 raw 에 남는다. 서버는 user_id 만 믿는다
         customer: typeof email === 'string' && email.includes('@') ? { email } : undefined,
         settings: { displayMode: 'overlay', locale: getLang() === 'en' ? 'en' : 'ko' },
       });

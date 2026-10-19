@@ -3143,6 +3143,7 @@
     import { playChestReveal, stopChestReveal } from './js/boat-chest-reveal.js';   // 🧰 보물상자 개봉 화면(R3)
     import { questPanelView } from './js/quest-panel-view.js';
     import { trackLogin, trackEvent, setGaUser, onTrack, setInstallUserProps, setSurveyUserProps } from './js/analytics.js';
+    import { bootMetaPixel, metaFromTrack, metaSignup } from './js/meta-pixel.js';   // 📣 Meta Pixel(웹 전용) — 광고 → 가입 → 결제 여정
     import { bootInstallReferrer, syncInstallAttribution, cachedInstallAttribution } from './js/install-referrer-boot.js';   // 📲 안드로이드 설치 채널(Play Install Referrer)
     import { bootInstallSurvey, syncInstallSurvey } from './js/install-survey-ui.js';   // 🧭 첫 실행 "어디서 알게 되셨어요?"(iOS 전원·안드로이드 링크 없이 온 사람)
     import { e2Decision, e2HasInvite } from './js/exp-e2-boot.js';   // 🧪 E2 웹 로그인 화면 건너뛰기 — 배정(analytics 평가 때 이미 판정)
@@ -4854,6 +4855,7 @@
       }
       shell.layoutLeft();
       trackLogin(via || authState.loginVia || authState.provider || 'offline');   // [GA4] 로그인 이벤트 — 수단 기준(🍎 구글 계정에 붙은 Apple 은 apple)
+      authState.betaReady?.then(() => metaSignup({ userId: authState.userId, isGuest: authState.isGuest, createdAt: authState.createdAt })).catch(() => {});   // 📣 가입 직후 첫 진입만(createdAt 은 betaReady 가 채운다)
 
       // 🧪 [베타 2차] 일지 버튼 — 베타 테스터(beta_*)에게만. 새 탭으로 열어 게임은 그대로 둔다.
       // 🧪 [베타 2차] 명단 조회(비동기)가 끝난 뒤에만 variant 를 믿는다 — enterPlay 는 조회 전에 돈다
@@ -7012,6 +7014,7 @@
     (async () => {
       bootReferral({ track: trackEvent });           // 🤝 ?invite= 보관 — 인증(구글 리다이렉트)이 쿼리를 지우기 전에
       try { bootAppBanner(); } catch (e) { /* 저장소 없음 — 배너 연결만 빠진다 */ }   // 📲 jid·utm 보관 — 같은 이유로 인증 전에
+      try { bootMetaPixel(); onTrack(metaFromTrack); } catch (e) { /* Pixel 실패해도 게임 진행 */ }   // 📣 fbclid 보관 — 같은 이유로 인증 전에
       try { loginStore = mountLoginStore({ config: TUNING.appBanner, platform: PLATFORM, track: trackEvent, lang: LANG }); } catch (e) { console.warn('[login-store] skipped', e); }
       // 📲 안드로이드: 설치 채널(Play Install Referrer) — 첫 실행에 한 번 읽어 GA4 + Supabase. 기다리지 않는다(실패해도 게임 진행)
       let syncInstall = () => {};
