@@ -29,5 +29,5 @@ export const PRICE_IDS = Object.freeze({
   // 🐾 펫
   leaf: null, spirit: null, bird: null, golem: null,
   wind: null, acorn: null, skiff: null,
-  welcome_box: null,
+  welcome_box: 'pri_01m5a40se6z22skxbg2v9w4q79',
 });

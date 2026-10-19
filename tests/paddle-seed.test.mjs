@@ -55,3 +55,11 @@ test('patchPriceIds — 표에 없는 id 나 잘못된 priceId 는 거부', () =
   assert.throws(() => patchPriceIds(src, { nope: 'pri_01aaa' }));
   assert.throws(() => patchPriceIds(src, { star: 'abc' }));
 });
+
+test('buildPlan — 🎁 묶음 상품도 등록한다(kind bundle, 금액은 won)', async () => {
+  const { BUNDLES } = await import('../js/shop/bundles.js');
+  const box = buildPlan([], [], BUNDLES).find(p => p.itemId === 'welcome_box');
+  assert.deepEqual({ kind: box.kind, name: box.name, amount: box.amount, currency: box.currency },
+    { kind: 'bundle', name: '숲 환영 상자', amount: '4900', currency: 'KRW' });
+  assert.match(box.description, /도구 세트 1종/);
+});

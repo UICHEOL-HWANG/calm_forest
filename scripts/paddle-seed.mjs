@@ -15,6 +15,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { ITEMS } from '../js/cosmetics/catalog.js';
 import { CASH_SLED_IDS, SLED_LINEUP } from '../js/mountain/sled-lineup.js';
 import { buildPlan, patchPriceIds } from './lib/paddle-seed.mjs';
+import { BUNDLES } from '../js/shop/bundles.js';
 
 const PRICE_IDS_PATH = new URL('../js/shop/price-ids.js', import.meta.url);
 const BASES = { sandbox: 'https://sandbox-api.paddle.com', production: 'https://api.paddle.com' };
@@ -29,7 +30,7 @@ const env = process.env.PADDLE_ENV || 'sandbox';
 const base = BASES[env];
 if (!base) fail(`PADDLE_ENV 는 sandbox 또는 production: ${env}`);
 
-const plan = buildPlan(ITEMS, CASH_SLED_IDS.map(id => SLED_LINEUP[id])).filter(p => !only || p.itemId === only);
+const plan = buildPlan(ITEMS, CASH_SLED_IDS.map(id => SLED_LINEUP[id]), BUNDLES).filter(p => !only || p.itemId === only);
 if (!plan.length) fail(`카탈로그에 없는 id: ${only}`);
 
 if (dryRun) {

@@ -129,3 +129,13 @@ test('상자 카드 모듈: 문구 A안', () => {
   const m = src('js/shop/bundle-card.js');
   assert.match(m, /export function drawBundleCard\(/);
 });
+
+test('/shop 가격표: 상자 줄(구분·구성·가격)을 로그인 없이 볼 수 있게 싣는다', async () => {
+  const { bundleShopRows } = await import('../scripts/lib/shop-rows.mjs');
+  const [row] = bundleShopRows(BUNDLES);
+  assert.match(row, /<td>🎁 묶음<\/td>/);
+  assert.match(row, /숲 환영 상자/);
+  assert.match(row, /도구 세트 1종 \+ 🌟 반딧불 자국 · 계정당 1번/);
+  assert.match(row, /<td>₩4,900<\/td>/);
+  assert.match(src('scripts/build-web.mjs'), /bundleShopRows\(BUNDLES\)/);
+});
