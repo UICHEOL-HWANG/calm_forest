@@ -17,7 +17,7 @@ export function labelToAmount(label) {
 }
 
 /** 등록할 상품 — 💎 프리미엄(현금 전용, won)만. 기존 코인 아이템·펫은 코인 전용(2026-10-01 결정) */
-export function buildPlan(items, sleds = [], pets = []) {
+export function buildPlan(items, sleds = [], bundles = [], pets = []) {
   const cosmetics = items.filter(it => it.premium).map(it => ({
     itemId: it.id,
     kind: 'cosmetic',
@@ -34,6 +34,14 @@ export function buildPlan(items, sleds = [], pets = []) {
     amount: String(s.cashWon),
     currency: CURRENCY,
   }));
+  const bundleRows = bundles.map(b => ({
+    itemId: b.id,
+    kind: 'bundle',
+    name: '숲 환영 상자',
+    description: 'calm forest 묶음 상품 (도구 세트 1종 + 반딧불 자국, 계정당 1번)',
+    amount: String(b.won),
+    currency: CURRENCY,
+  }));
   const petRows = pets.filter(k => k.premium && k.won > 0).map(k => ({
     itemId: k.id,
     kind: 'pet',
@@ -42,7 +50,7 @@ export function buildPlan(items, sleds = [], pets = []) {
     amount: String(k.won),
     currency: CURRENCY,
   }));
-  return [...cosmetics, ...sledRows, ...petRows];
+  return [...cosmetics, ...sledRows, ...bundleRows, ...petRows];
 }
 
 /** price-ids.js 원문에서 지정한 id 의 값만 바꾼 새 원문을 돌려준다 */

@@ -29,9 +29,9 @@ test('cashFor — priceId 없으면 won 이 있어도 null', () => {
   assert.equal(cashFor('nope', null, 4000), null);
 });
 
-test('PRICE_IDS 는 꾸미기 35(코인 18 + 프리미엄 4 + 도구 세트 3 + 🎃 할로윈 10 + 🍁 2차 세트·꾸미기 11) + 펫 4 + 💎 유료 펫 4 + 🛷 능력 썰매 3 = 60칸, 값은 null 이거나 pri_ 로 시작', () => {
+test('PRICE_IDS 는 꾸미기 35(코인 18 + 프리미엄 4 + 도구 세트 3 + 🎃 할로윈 10 + 🍁 2차 세트·꾸미기 11) + 펫 4 + 💎 유료 펫 4 + 🛷 능력 썰매 3 + 🎁 환영 상자 1 = 61칸, 값은 null 이거나 pri_ 로 시작', () => {
   const keys = Object.keys(PRICE_IDS);
-  assert.equal(keys.length, 60);
+  assert.equal(keys.length, 61);
   for (const it of ITEMS.filter(i => !i.reward)) assert.ok(keys.includes(it.id), it.id);   // 🤝 초대 보상은 비매품 — 가격 칸이 없다
   for (const it of ITEMS.filter(i => i.reward)) assert.ok(!keys.includes(it.id), `${it.id} 는 팔지 않는다`);
   for (const k of PET_KINDS) assert.ok(keys.includes(k.id), k.id);

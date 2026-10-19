@@ -707,6 +707,11 @@
   /* ✉️ 이메일 코드 로그인 — 구글 아래 보조 버튼(반투명 테두리) + 단계 카드 */
   #email-btn { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 12px auto 0; border: 1px solid rgba(255,255,255,.7); background: rgba(255,255,255,.12); border-radius: 16px; padding: 12px 24px; font-size: 15px; font-weight: 700; color: #fff; cursor: pointer; font-family: inherit; transition: transform .12s; }
   #email-btn:active { transform: scale(0.96); }
+  body.inapp #google-btn { display: none; }
+  #inapp-handoff { margin: 0 auto; }
+  #inapp-handoff p { margin: 8px 0 0; font-size: 12.5px; color: rgba(255,255,255,.9); word-break: keep-all; text-wrap: balance; }
+  #inapp-open { display: inline-flex; align-items: center; gap: 8px; border: none; background: #fff; border-radius: 16px; padding: 13px 26px; font-size: 15px; font-weight: 700; color: #3a4a40; cursor: pointer; font-family: inherit; box-shadow: 0 8px 24px rgba(0,0,0,.2); transition: transform .12s; }
+  #inapp-open:active { transform: scale(0.96); }
   body.platform-toss #email-btn, body.platform-android #email-btn, body.platform-ios #email-btn { display: none; }   /* 토스·스토어 앱은 전용 로그인 */
   #login-main[hidden], .login-step[hidden] { display: none !important; }
   .login-step .step-title { font-size: 19px; font-weight: 800; margin: 4px 0 6px; text-shadow: 0 2px 10px rgba(0,0,0,.25); }
@@ -1734,6 +1739,28 @@
   .sh-row .sale-tag { display: block; font-size: 11px; opacity: .8; white-space: normal; }   /* 🎃 기간 한정 태그 — 폰 390 폭에선 이름 칸(nowrap·말줄임)이 날짜를 잘라서 줄바꿈 허용 */
   .sh-row .sh-buys { display: flex; gap: 6px; flex: 0 0 auto; }
   .sh-row .sh-cash { background: #fff3d6; border-color: #e8c98a; }   /* 💳 현금 — 코인 버튼과 색으로 구분 */
+  .bx-card { position: relative; overflow: hidden; flex: 0 0 auto; border-radius: 16px; padding: 12px 12px 10px; color: #f3f1ff; background: linear-gradient(170deg, #3a4670 0%, #2f3a5c 70%); box-shadow: var(--shadow); }
+  .bx-ribbon { position: absolute; top: 10px; right: -30px; transform: rotate(35deg); width: 116px; text-align: center; font-size: 10px; font-weight: 800; padding: 3px 0; background: #f2c14e; color: #4a3500; }
+  .bx-head { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; padding-right: 44px; }
+  .bx-ico { font-size: 30px; line-height: 1; }
+  .bx-titles b { display: block; font-size: 15px; }
+  .bx-titles small { display: block; font-size: 11.5px; color: #c9cdea; line-height: 1.4; word-break: keep-all; }
+  .bx-tiles { display: flex; gap: 8px; margin-bottom: 8px; }
+  .bx-tile { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; border-radius: 12px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); font-size: 11.5px; text-align: center; }
+  .bx-tile-ico { font-size: 20px; }
+  .bx-tile-won { font-size: 10.5px; opacity: .7; }
+  .bx-value { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; margin: 0 2px 8px; color: #dfe2ff; }
+  .bx-value s { opacity: .65; }
+  .bx-value b { color: #f2c14e; font-size: 13px; }
+  .bx-buy { width: 100%; border: none; border-radius: 12px; padding: 10px; font-size: 14px; font-weight: 800; cursor: pointer; font-family: inherit; background: #f2c14e; color: #4a3500; box-shadow: 0 4px 0 #b98b1d; }
+  .bx-buy:disabled { opacity: .55; cursor: default; box-shadow: none; }
+  .bx-note { margin: 6px 0 0; font-size: 11px; text-align: center; color: #c9cdea; }
+  .bx-pick-title { margin: 0 0 8px; font-size: 13px; font-weight: 800; }
+  .bx-opts { display: grid; gap: 6px; margin-bottom: 6px; }
+  .bx-opt { display: flex; align-items: center; gap: 8px; padding: 9px 10px; border-radius: 12px; border: 1.5px solid rgba(255,255,255,.18); background: rgba(255,255,255,.06); color: inherit; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; text-align: left; }
+  .bx-opt.on { border-color: #f2c14e; background: rgba(242,193,78,.16); }
+  .bx-opt-ico { font-size: 18px; }
+  .bx-back { display: block; margin: 8px auto 0; border: none; background: none; color: #c9cdea; font: inherit; font-size: 12px; text-decoration: underline; cursor: pointer; }
   .sh-row button:disabled { background: #dfe6e0; color: #8a9a8f; cursor: default; }        /* 이미 함께 있는 종 */
   .sh-row > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 700; }
   .sh-row button { flex: 0 0 auto; border: none; border-radius: 10px; padding: 6px 11px; font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; background: var(--mint); color: var(--ink); }
@@ -3129,6 +3156,7 @@
   <script type="module">
     import { initAuth, signInWithGoogle, signInWithApple, requestEmailCode, verifyEmailCode, signInWithToss, signInWithPlayGames, signInWithGameCenter, deleteMyAccount, signInAsGuest, startLocalGuest, loadGame, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow, fetchNotices, insertInstallAttribution, insertInstallSurvey } from './js/supabase-client.js';
     import { mountEmailLogin } from './js/auth/email-login.js';   // ✉️ 이메일 코드 로그인(웹·itch)
+    import { mountInAppLogin, INAPP_COPY } from './js/auth/in-app-login.js';
     import { savePhotoNative, sharePhotoNative, shareUrlNative } from './js/photo-native.js';   // 📱 앱: WebView 는 download·share 를 못 한다
     import { capPlugin } from './js/cap-bridge.js';
     import { SELL_ICO_G } from './js/data/places.js';
@@ -3143,6 +3171,7 @@
     import { playChestReveal, stopChestReveal } from './js/boat-chest-reveal.js';   // 🧰 보물상자 개봉 화면(R3)
     import { questPanelView } from './js/quest-panel-view.js';
     import { trackLogin, trackEvent, setGaUser, onTrack, setInstallUserProps, setSurveyUserProps } from './js/analytics.js';
+    import { bootMetaPixel, metaFromTrack, metaSignup } from './js/meta-pixel.js';   // 📣 Meta Pixel(웹 전용) — 광고 → 가입 → 결제 여정
     import { bootInstallReferrer, syncInstallAttribution, cachedInstallAttribution } from './js/install-referrer-boot.js';   // 📲 안드로이드 설치 채널(Play Install Referrer)
     import { bootInstallSurvey, syncInstallSurvey } from './js/install-survey-ui.js';   // 🧭 첫 실행 "어디서 알게 되셨어요?"(iOS 전원·안드로이드 링크 없이 온 사람)
     import { e2Decision, e2HasInvite } from './js/exp-e2-boot.js';   // 🧪 E2 웹 로그인 화면 건너뛰기 — 배정(analytics 평가 때 이미 판정)
@@ -4832,7 +4861,7 @@
           ? '연결이 잠깐 불안정했어요. 바로 플레이하기를 누르면 이어서 할 수 있어요.'
           : IS_IOS ? 'Apple로 로그인하면 마을이 안전하게 저장돼요.'   // 🍎 Apple 계정은 iOS 앱 전용 — '어느 기기에서든'은 거짓 약속
           : '로그인하면 어느 기기에서든 저장이 이어집니다.';
-      trackEvent('login_screen', { reason: why });   // [GA4] 토스 유저 중 몇 %가 이 화면을 보는지
+      trackEvent('login_screen', { reason: why, inapp: inAppLogin.app || undefined });   // [GA4] 토스 유저 중 몇 %가 이 화면을 보는지
       loginStore?.shown();
       const inv = inviteBanner();                    // 🤝 초대 링크로 왔으면 — 로그인하면 하트핀
       if (inv) { $('login-invite').textContent = inv; $('login-invite').classList.add('show'); }
@@ -4854,6 +4883,7 @@
       }
       shell.layoutLeft();
       trackLogin(via || authState.loginVia || authState.provider || 'offline');   // [GA4] 로그인 이벤트 — 수단 기준(🍎 구글 계정에 붙은 Apple 은 apple)
+      authState.betaReady?.then(() => metaSignup({ userId: authState.userId, isGuest: authState.isGuest, createdAt: authState.createdAt })).catch(() => {});   // 📣 가입 직후 첫 진입만(createdAt 은 betaReady 가 채운다)
 
       // 🧪 [베타 2차] 일지 버튼 — 베타 테스터(beta_*)에게만. 새 탭으로 열어 게임은 그대로 둔다.
       // 🧪 [베타 2차] 명단 조회(비동기)가 끝난 뒤에만 variant 를 믿는다 — enterPlay 는 조회 전에 돈다
@@ -4919,7 +4949,13 @@
     if (IS_ITCH) document.body.classList.add('platform-itch');
     if (IS_ANDROID) document.body.classList.add('platform-android');
     if (IS_IOS) document.body.classList.add('platform-ios');
-    $('google-btn').addEventListener('click', () => signInWithGoogle());  // 구글로 리다이렉트
+    const inAppLogin = mountInAppLogin({ $, track: trackEvent, platform: PLATFORM });
+    const googleOrBlocked = (from) => {
+      if (!inAppLogin.inApp) return signInWithGoogle();
+      trackEvent('inapp_google_blocked', { from, app: inAppLogin.app });
+      ui.toast(INAPP_COPY.blocked, 4000);
+    };
+    $('google-btn').addEventListener('click', () => googleOrBlocked('login'));  // 구글로 리다이렉트
     //  🍎 iOS: 로그인 화면엔 이 버튼 하나(안드로이드 '바로 플레이하기'와 같은 자리). Apple 창을 닫거나 실패하면
     //     묻지 않고 게스트로 시작한다 — 강제 로그인이 아니게(가이드라인 5.1.1). 성공은 authState 콜백이 enterPlay.
     $('apple-btn').addEventListener('click', async () => {
@@ -6532,7 +6568,7 @@
           if (r.ok) $('nudge-modal').classList.remove('show');
           else ui.toast('플레이 게임즈에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.');
         }
-      : () => signInWithGoogle();
+      : () => googleOrBlocked('nudge');
     if (IS_TOSS) {
       const banner = $('dex-guest'), bannerBtn = $('dex-google');
       banner.innerHTML = '🔒 <b>게스트 도감은 이 기기에서만 임시 보관</b>돼요.<br>토스 계정을 연결하면 <b>영구 보존</b>!';
@@ -7012,6 +7048,7 @@
     (async () => {
       bootReferral({ track: trackEvent });           // 🤝 ?invite= 보관 — 인증(구글 리다이렉트)이 쿼리를 지우기 전에
       try { bootAppBanner(); } catch (e) { /* 저장소 없음 — 배너 연결만 빠진다 */ }   // 📲 jid·utm 보관 — 같은 이유로 인증 전에
+      try { bootMetaPixel(); onTrack(metaFromTrack); } catch (e) { /* Pixel 실패해도 게임 진행 */ }   // 📣 fbclid 보관 — 같은 이유로 인증 전에
       try { loginStore = mountLoginStore({ config: TUNING.appBanner, platform: PLATFORM, track: trackEvent, lang: LANG }); } catch (e) { console.warn('[login-store] skipped', e); }
       // 📲 안드로이드: 설치 채널(Play Install Referrer) — 첫 실행에 한 번 읽어 GA4 + Supabase. 기다리지 않는다(실패해도 게임 진행)
       let syncInstall = () => {};

@@ -32,4 +32,5 @@ export const PRICE_IDS = Object.freeze({
   leaf: null, spirit: null, bird: null, golem: null,
   cloud_dragon: 'pri_01m5adkqg4dw4tc9f0rf6rx6qw', hedgehog: 'pri_01m5adkrzeyfhshf8w1rbqzrns', axolotl: 'pri_01m5adkt1gpm28sv8336893jra', unicorn: 'pri_01m5adkv3sh2rmcfzn0bs9epqg',
   wind: null, acorn: null, skiff: null,
+  welcome_box: 'pri_01m5a40se6z22skxbg2v9w4q79',
 });

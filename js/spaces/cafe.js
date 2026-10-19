@@ -45,6 +45,8 @@ import { playPurchaseReveal } from '../shop/purchase-reveal.js';
 import { revealModeOf, revealCardOf } from '../shop/reveal-pose.js';
 import { themeOf } from '../cosmetics/tool-skin-rules.js';   // 🪓 💎 도구 세트 → 테마(구매 연출 진열)
 import { awaitGrant, LATER_MSG } from '../shop/purchases.js';
+import { bundleById, bundleCardMode, bundleCash, bundleGrant, BUNDLE_COPY } from '../shop/bundles.js';
+import { drawBundleCard } from '../shop/bundle-card.js';
 import { refreshCafeModal } from '../mountain/cafe-ui.js';
 import { Sound } from '../sound.js';
 import { state as authState, fetchPurchases } from '../supabase-client.js';
@@ -879,6 +881,7 @@ export function closeCosPreview() {
   cosPreview?.refresh(null);
   cosPreview?.stop();
   premiumViewed = new Set();
+  boxPicking = false; boxPick = null;
 }
 
 // 🐾 펫 탭 — **종마다 따로 산다**(2026-09-23). 이름이 곧 선택지다 — 줄을 누르면 프리뷰가 그 종으로 바뀐다.
@@ -979,7 +982,7 @@ setCheckoutHandlers({
     const t0 = Date.now();
     pendingCash.add(c.itemId);                          // 원장에서 보일 때까지 이중 구매 차단
     cashBusy = null; redrawCash(c.kind);
-    const ok = await awaitGrant({ itemId: c.itemId, gameState, fetchPurchases, hooks: purchaseHooks() });
+    const ok = await awaitGrant({ itemId: grantWaitId(c), gameState, fetchPurchases, hooks: purchaseHooks() });
     if (ok) { pendingCash.delete(c.itemId); onGranted(c, t0); }
     else { ui.toast?.(LATER_MSG, 3000); pollSlowGrant(c, t0); }
     redrawCash(c.kind);
@@ -991,8 +994,21 @@ const cosShopOpen = () => !!document.getElementById('cos-menu')?.classList.conta
 function closeCosShopForWalk() { if (cosShopOpen()) document.getElementById('cos-close')?.click(); }
 
 // 💳 지급이 확인됐을 때 — 사면 바로 입힌다 / 데려간다(코인 구매와 같은 결). 빠른 경로·느린 경로 공용.
+const grantIdsOf = (c) => (c.kind === 'bundle' ? bundleGrant(bundleById(c.itemId), c.choice) : [c.itemId]);
+const grantWaitId = (c) => grantIdsOf(c).at(-1);
+
 function onGranted(c, t0) {
-  if (c.kind === 'cosmetic') {
+  const ids = grantIdsOf(c);
+  if (c.kind === 'bundle') {
+    let cos = gameState.cosmetics;
+    for (const id of ids) cos = equipCos(cos, id);
+    gameState.cosmetics = cos;
+    applyCosmetics(gameState.cosmetics);
+    cosTryOn = null; cosPreview?.refresh(null);
+    boxPicking = false; boxPick = null;
+    for (const id of ids) trackEvent('cosmetic_equip', { item_id: id, slot: findItem(id)?.slot, action: 'on', via: 'cash' });
+    ui.toast?.(BUNDLE_COPY.gotTrail, 3000);
+  } else if (c.kind === 'cosmetic') {
     gameState.cosmetics = equipCos(gameState.cosmetics, c.itemId);
     applyCosmetics(gameState.cosmetics);
     cosTryOn = null; cosPreview?.refresh(null);
@@ -1002,12 +1018,13 @@ function onGranted(c, t0) {
   requestSave();
   // 연출은 장식 — 실패해도 저장·트래킹(위)을 막지 않도록 맨 끝에서, 예외는 삼킨다
   //  가게를 닫은 뒤(10초 대기 중·느린 폴링) 잡힌 지급은 연출 없이 — 보트·다른 메뉴 위로 전면 오버레이가 뜨지 않게
-  if (c.kind === 'cosmetic' && findItem(c.itemId)?.premium && cosShopOpen()) {
+  const revealId = c.kind === 'bundle' ? (ids.find(id => themeOf(id)) || ids[0]) : c.itemId;
+  if ((c.kind === 'cosmetic' || c.kind === 'bundle') && findItem(revealId)?.premium && cosShopOpen()) {
     try {
       closeCheckout();   // 💳 Paddle 성공 창이 연출을 덮지 않게 먼저 닫는다
-      const item = findItem(c.itemId), mode = revealModeOf(item);
-      const toolTheme = themeOf(c.itemId);
-      playPurchaseReveal({ itemId: c.itemId, animalId: gameState.character, mode, card: revealCardOf(item),
+      const item = findItem(revealId), mode = revealModeOf(item);
+      const toolTheme = themeOf(revealId);
+      playPurchaseReveal({ itemId: revealId, animalId: gameState.character, mode, card: revealCardOf(item),
         //  🧥 스킨은 "입은 내 캐릭터"를, 🪓 도구 세트는 도구 4종 + 우산을 진열한다
         buildShowcase: toolTheme ? () => buildToolShowcase(toolTheme)
           : mode === 'boxburst' ? () => buildCharacterMesh(gameState.character, gameState.cosmetics) : null,
@@ -1023,7 +1040,7 @@ function pollSlowGrant(c, t0, n = 0) {
   if (n >= SLOW_POLL_TRIES) return;
   setTimeout(async () => {
     let ok = false;
-    try { ok = await awaitGrant({ itemId: c.itemId, tries: 1, delayMs: 0, gameState, fetchPurchases, hooks: purchaseHooks() }); }
+    try { ok = await awaitGrant({ itemId: grantWaitId(c), tries: 1, delayMs: 0, gameState, fetchPurchases, hooks: purchaseHooks() }); }
     catch (e) { console.warn('[paddle] 지급 재확인 실패:', e?.message || e); }
     if (ok) { pendingCash.delete(c.itemId); onGranted(c, t0); redrawCash(c.kind); }
     else pollSlowGrant(c, t0, n + 1);
@@ -1035,6 +1052,39 @@ const PREMIUM_LOGIN_MSG = '로그인하면 살 수 있어요';
 const PREMIUM_NA_MSG = '지금은 살 수 없어요';
 const REWARD_TAG = '🤝 초대 보상';
 let premiumViewed = new Set();   // 가게를 연 동안 premium_row_view 는 항목당 한 번(닫으면 비운다)
+const WELCOME = bundleById('welcome_box');
+let boxPicking = false, boxPick = null;
+
+async function openBundleCheckout(choice) {
+  const cash = bundleCash(WELCOME);
+  if (!cash || cashBusy || pendingCash.has(WELCOME.id)) return;
+  trackEvent('cash_checkout_open', { item_id: WELCOME.id, kind: 'bundle', price_id: cash.priceId });
+  cashBusy = WELCOME.id; drawCosMenu();
+  try {
+    const opened = await openCheckout({ priceId: cash.priceId, itemId: WELCOME.id, kind: 'bundle', userId: authState.userId, email: authState.email, choice });
+    if (!opened) { cashBusy = null; drawCosMenu(); }
+  } catch (e) {
+    console.warn('[paddle] 결제창 열기 실패:', e?.message || e);
+    cashBusy = null; drawCosMenu();
+    ui.toast?.(CASH_FAIL_MSG, 2500);
+  }
+}
+
+function drawWelcomeBox(box) {
+  if (!WELCOME) return;
+  const owned = gameState.cosmetics.owned;
+  const mode = bundleCardMode(WELCOME, { owned, platform: PLATFORM, online: !!authState.online, isGuest: !!authState.isGuest,
+    tokenSet: !!CONFIG.PADDLE.token, storeOpen: cashAvailable(authState) });
+  if (mode === 'hidden') return;
+  if (mode !== 'buy') { boxPicking = false; boxPick = null; }
+  if (!premiumViewed.has(WELCOME.id)) { premiumViewed = new Set([...premiumViewed, WELCOME.id]); trackEvent('premium_row_view', { item_id: WELCOME.id, mode, kind: 'bundle' }); }
+  drawBundleCard(box, { bundle: WELCOME, mode, owned, picking: boxPicking, pick: boxPick,
+    pending: pendingCash.has(WELCOME.id) || cashBusy === WELCOME.id,
+    onOpen: () => { boxPicking = true; boxPick = null; trackEvent('bundle_open', { item_id: WELCOME.id }); drawCosMenu(); },
+    onPick: (id) => { if (id === boxPick) return; boxPick = id; trackEvent('bundle_choice', { item_id: id }); cosTab = 'tools'; tryOnCos(findItem(id)); },
+    onBack: () => { boxPicking = false; boxPick = null; drawCosMenu(); },
+    onBuy: (choice) => openBundleCheckout(choice) });
+}
 
 export function drawCosMenu() {
   const rowsOf = slot => itemsOf(slot).filter(i => !i.shop);
@@ -1056,6 +1106,7 @@ export function drawCosMenu() {
   }
   const box = document.getElementById('cos-items');
   box.innerHTML = '';
+  drawWelcomeBox(box);
   //  🪞 프리뷰도 탭을 따라간다 — 펫 탭이면 펫을, 나머지 탭이면 내 캐릭터를 본다.
   //  ⚠️ 아직 안 샀으면 **다 자란 모습**을 건다(stageOf(Infinity) = 마지막 단계).
   //     1단계는 "씨앗 — 잎 1장" 이라 잎 하나 꽂힌 씨앗으로 읽히는데, 그걸 3,000🪙 짜리

@@ -36,6 +36,9 @@ export const CONFIG = {
   GA4_MEASUREMENT_ID: 'G-ELBTR8BXBF',           // calm forest 웹 스트림
   GTM_CONTAINER_ID: 'YOUR_GTM_ID',              // 예: GTM-XXXXXXX (선택)
 
+  // ── 📣 Meta Pixel(웹 전용, 공개값) — 비어 있으면 로드하지 않는다(fbclid 보관만). js/meta-pixel.js ──
+  META_PIXEL_ID: '1986547471986641',
+
   // ── 센서/행동 데이터 로깅 설정 ───────────────────────────────
   //    마우스 좌표·캐릭터 위치·카메라 각도를 배치로 Supabase 전송
   // LOG_FLUSH_INTERVAL_MS(1.5초) 는 없앴다 — 전송 주기는 js/log-shipper.js flushDelay(5s→15s→30s)
