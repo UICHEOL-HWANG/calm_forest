@@ -20,6 +20,7 @@
 // =============================================================
 
 import { PALETTE as P, petalOf, put } from './art.js';
+import { mapleLeafGeo } from './art-forest-set.js';
 
 export const TRAIL_S = 0.10;      // 자국 하나의 기준 반지름(월드) — 1차엔 0.34 로 캐릭터 몸통만 했다
 export const TRAIL_CAP = 12;      // 동시 표시 상한
@@ -184,6 +185,18 @@ function makeMarks(THREE) {
     //  🦇 박쥐 회오리 — 바닥엔 연보랏빛 달가루 원판만. 주인공은 위로 도는 박쥐(trail-fx.js).
     bat_swirl: (g, s, o) => {
       put(g, new THREE.Mesh(new THREE.CircleGeometry(s * 0.78, 14), film(0xcfc2ff, o * 0.30)), 0, 0.004, 0, false)
+        .rotation.x = -Math.PI / 2;
+    },
+    maple_trail: (g, s, o) => {
+      [[0xd4502e, 1.0, 0, 0, 0.3], [0xf0b04a, 0.62, s * 0.55, s * 0.35, -0.9], [0xe8843a, 0.5, -s * 0.5, -s * 0.3, 1.6]].forEach(([c, k, x, z, rot], i) => {
+        const lf = put(g, new THREE.Mesh(mapleLeafGeo(THREE, s * k, s * 0.06), film(c, o)), x, 0.006 + i * 0.003, z, false);
+        lf.rotation.set(-Math.PI / 2, 0, rot);
+      });
+    },
+    bubble_trail: (g, s, o) => {
+      put(g, new THREE.Mesh(new THREE.RingGeometry(s * 0.45, s * 0.62, 18), film(0xbfe8ff, o * 0.45)), 0, 0.004, 0, false)
+        .rotation.x = -Math.PI / 2;
+      put(g, new THREE.Mesh(new THREE.RingGeometry(s * 0.18, s * 0.28, 14), film(0xf6c8ea, o * 0.45)), s * 0.55, 0.005, s * 0.3, false)
         .rotation.x = -Math.PI / 2;
     },
   };

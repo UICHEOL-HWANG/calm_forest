@@ -12,7 +12,8 @@ import { NIGHT_MIN } from '../daynight.js';
 import { createBatSprites } from './trail-fx-sprites.js';
 import { TRAIL_FADE } from './trail.js';
 
-export const FX_IDS = Object.freeze(['firefly', 'rainbow', 'pumpkin_glow', 'bat_swirl']);
+export const FX_IDS = Object.freeze(['firefly', 'rainbow', 'pumpkin_glow', 'bat_swirl', 'bubble_trail']);
+const BUBBLE_HEXES = Object.freeze([0x9fd4f0, 0xe6a8d6, 0xb4e2a4, 0xf0d890]);
 const FLY_HEX = 0xc8e65a;          // 연두빛 — 블룸 임계 아래
 const EMBER_HEX = 0xff9a3c;     // 🎃 불씨 — 블룸 임계 아래의 주황
 const MOON_HEX = 0xdcd2ff;      // 🦇 달가루
@@ -64,6 +65,12 @@ export function spawnBat(pos, rnd, dir = 1) {
     age: 0, life: BAT_LIFE, phase: rnd() * 6.28, dir, hex: 0xc9b8ff, size: 0.19 };
 }
 
+export function spawnBubble(pos, rnd, hex) {
+  return { kind: 'bubble', x: pos.x, y: pos.y + 0.2, z: pos.z,
+    bx: pos.x + (rnd() - 0.5) * 0.3, bz: pos.z + (rnd() - 0.5) * 0.3,
+    vy: 0.28 + rnd() * 0.18, age: 0, life: 2.2 + rnd() * 0.8, phase: rnd() * 6.28, hex, size: 0.3 };
+}
+
 /** 🎃 호박등 온기 — 자국 자리에 머무는 주황 빛무리. 자국과 같은 수명(TRAIL_FADE)으로 같이 흐려진다 */
 export function spawnHalo(pos, rnd) {
   return { kind: 'halo', x: pos.x, y: pos.y + 0.03, z: pos.z, bx: pos.x, bz: pos.z,
@@ -71,7 +78,10 @@ export function spawnHalo(pos, rnd) {
 }
 
 /** 점 하나의 크기 배율 — 🎃 온기만 톡 커진다. 나머지(반딧불·반짝이·불씨)는 1 = 기존 그대로 */
-function sizeKOf(p) { return p.kind === 'halo' ? (HALO_SIZE / DOT_SIZE) * outBack(p.age / 0.32) : 1; }
+function sizeKOf(p) {
+  if (p.kind === 'bubble') return 1.6 * outBack(p.age / 0.4);
+  return p.kind === 'halo' ? (HALO_SIZE / DOT_SIZE) * outBack(p.age / 0.32) : 1;
+}
 
 /** 한 프레임 진행 — 새 객체. 수명이 다하면 null */
 export function particleStep(p, dt) {
@@ -83,7 +93,7 @@ export function particleStep(p, dt) {
       y: p.by + 0.06 + BAT_RISE * Math.pow(k, 0.75) };
   }
   if (p.kind === 'halo') return { ...p, age };   // 🎃 제자리
-  const sway = p.kind === 'fly' ? 0.35 : 0;
+  const sway = p.kind === 'fly' ? 0.35 : p.kind === 'bubble' ? 0.12 : 0;
   return { ...p, age,
     x: p.bx + Math.sin(age * 1.7 + p.phase) * sway,
     z: p.bz + Math.cos(age * 1.3 + p.phase) * sway,
@@ -100,6 +110,7 @@ function alphaOf(p, nightLevel) {
   if (p.kind === 'halo') return fade * (0.88 + 0.12 * Math.sin(p.age * 13 + p.phase))   // 자국과 같이 흐려지며 일렁인다
     * (nightLevel >= NIGHT_MIN ? HALO_ALPHA.night : HALO_ALPHA.day);
   if (p.kind === 'spark') return fade;
+  if (p.kind === 'bubble') return 0.5 * fade * Math.min(1, p.age * 4);
   const blink = 0.5 + 0.5 * Math.sin(p.age * 5 + p.phase);
   return blink * Math.min(1, p.age * 3) * fade * (nightLevel >= NIGHT_MIN ? 1 : 0.35);
 }
@@ -149,6 +160,10 @@ export function createTrailFx(THREE, { cap = 64, rnd = Math.random, blending = '
     if (id === 'pumpkin_glow') {
       push(spawnHalo(at, rnd));                                                 // 🎃 온기 — 밤에도 호박등이 빛나 보이게
       for (let i = 0; i < 2; i++) push(spawnSpark(at, EMBER_HEX, rnd));        // 🎃 불씨 2개(점 입자 재사용)
+      return { tint: null };
+    }
+    if (id === 'bubble_trail') {
+      for (let i = 0; i < 2; i++) push(spawnBubble(at, rnd, BUBBLE_HEXES[(step++) % BUBBLE_HEXES.length]));
       return { tint: null };
     }
     if (id === 'bat_swirl') {
