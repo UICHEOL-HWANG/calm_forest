@@ -1739,6 +1739,28 @@
   .sh-row .sale-tag { display: block; font-size: 11px; opacity: .8; white-space: normal; }   /* 🎃 기간 한정 태그 — 폰 390 폭에선 이름 칸(nowrap·말줄임)이 날짜를 잘라서 줄바꿈 허용 */
   .sh-row .sh-buys { display: flex; gap: 6px; flex: 0 0 auto; }
   .sh-row .sh-cash { background: #fff3d6; border-color: #e8c98a; }   /* 💳 현금 — 코인 버튼과 색으로 구분 */
+  .bx-card { position: relative; overflow: hidden; flex: 0 0 auto; border-radius: 16px; padding: 12px 12px 10px; color: #f3f1ff; background: linear-gradient(170deg, #3a4670 0%, #2f3a5c 70%); box-shadow: var(--shadow); }
+  .bx-ribbon { position: absolute; top: 10px; right: -30px; transform: rotate(35deg); width: 116px; text-align: center; font-size: 10px; font-weight: 800; padding: 3px 0; background: #f2c14e; color: #4a3500; }
+  .bx-head { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; padding-right: 44px; }
+  .bx-ico { font-size: 30px; line-height: 1; }
+  .bx-titles b { display: block; font-size: 15px; }
+  .bx-titles small { display: block; font-size: 11.5px; color: #c9cdea; line-height: 1.4; word-break: keep-all; }
+  .bx-tiles { display: flex; gap: 8px; margin-bottom: 8px; }
+  .bx-tile { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; border-radius: 12px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); font-size: 11.5px; text-align: center; }
+  .bx-tile-ico { font-size: 20px; }
+  .bx-tile-won { font-size: 10.5px; opacity: .7; }
+  .bx-value { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; margin: 0 2px 8px; color: #dfe2ff; }
+  .bx-value s { opacity: .65; }
+  .bx-value b { color: #f2c14e; font-size: 13px; }
+  .bx-buy { width: 100%; border: none; border-radius: 12px; padding: 10px; font-size: 14px; font-weight: 800; cursor: pointer; font-family: inherit; background: #f2c14e; color: #4a3500; box-shadow: 0 4px 0 #b98b1d; }
+  .bx-buy:disabled { opacity: .55; cursor: default; box-shadow: none; }
+  .bx-note { margin: 6px 0 0; font-size: 11px; text-align: center; color: #c9cdea; }
+  .bx-pick-title { margin: 0 0 8px; font-size: 13px; font-weight: 800; }
+  .bx-opts { display: grid; gap: 6px; margin-bottom: 6px; }
+  .bx-opt { display: flex; align-items: center; gap: 8px; padding: 9px 10px; border-radius: 12px; border: 1.5px solid rgba(255,255,255,.18); background: rgba(255,255,255,.06); color: inherit; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; text-align: left; }
+  .bx-opt.on { border-color: #f2c14e; background: rgba(242,193,78,.16); }
+  .bx-opt-ico { font-size: 18px; }
+  .bx-back { display: block; margin: 8px auto 0; border: none; background: none; color: #c9cdea; font: inherit; font-size: 12px; text-decoration: underline; cursor: pointer; }
   .sh-row button:disabled { background: #dfe6e0; color: #8a9a8f; cursor: default; }        /* 이미 함께 있는 종 */
   .sh-row > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 700; }
   .sh-row button { flex: 0 0 auto; border: none; border-radius: 10px; padding: 6px 11px; font: inherit; font-size: 12px; font-weight: 800; cursor: pointer; background: var(--mint); color: var(--ink); }

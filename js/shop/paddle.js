@@ -97,17 +97,17 @@ function loadPaddle() {
   return p;
 }
 
-export async function openCheckout({ priceId, itemId, kind, userId, email }) {
+export async function openCheckout({ priceId, itemId, kind, userId, email, choice }) {
   if (!CONFIG.PADDLE.token) throw new Error('paddle token missing');
   if (opening || current) return false;      // 재진입 — 로딩 중이든 결제창이 떠 있든 두 번째 클릭은 무시
   opening = true;
   try {
     const Paddle = await loadPaddle();
-    current = { priceId, itemId, kind, funnel: startFunnel(Date.now()), errorCode: null };
+    current = { priceId, itemId, kind, choice, funnel: startFunnel(Date.now()), errorCode: null };
     try {
       Paddle.Checkout.open({
         items: [{ priceId, quantity: 1 }],
-        customData: { user_id: userId, item_id: itemId, kind, attr: safeAttr() },   // attr: 광고 유입(fbc·utm·jid) — 원장 raw 에 남는다. 서버는 user_id 만 믿는다
+        customData: { user_id: userId, item_id: itemId, kind, ...(choice ? { choice } : {}), attr: safeAttr() },   // attr: 광고 유입(fbc·utm·jid) — 원장 raw 에 남는다. 서버는 user_id 만 믿는다
         customer: typeof email === 'string' && email.includes('@') ? { email } : undefined,
         settings: { displayMode: 'overlay', locale: getLang() === 'en' ? 'en' : 'ko' },
       });

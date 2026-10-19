@@ -84,7 +84,7 @@ test('verifySignature — 63자 h1 / 비hex h1 → bad_header', async () => {
 
 test('priceIndex — cash 가 있는 항목만 priceId → {itemId, kind}', () => {
   const idx = priceIndex();
-  for (const [pid, v] of idx) { assert.match(pid, /^pri_/); assert.ok(['cosmetic', 'pet', 'sled'].includes(v.kind)); assert.equal(typeof v.itemId, 'string'); }
+  for (const [pid, v] of idx) { assert.match(pid, /^pri_/); assert.ok(['cosmetic', 'pet', 'sled', 'bundle'].includes(v.kind)); assert.equal(typeof v.itemId, 'string'); }
 });
 
 const UID = '3f2b1c9e-8a7d-4e6f-9b0a-1c2d3e4f5a6b';

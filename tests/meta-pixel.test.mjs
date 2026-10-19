@@ -56,7 +56,7 @@ test('attributionData — fbc·fbp·jid·client_id·utm, 빈 값은 뺀다', () 
 
 test('연결 — paddle.js 가 customData.attr 를 싣고 completed 에서 Purchase · index.html 이 부팅·훅·가입', () => {
   const paddle = read('../js/shop/paddle.js'), html = read('../index.html'), cfg = read('../js/config.js');
-  assert.match(paddle, /customData: \{ user_id: userId, item_id: itemId, kind, attr: safeAttr\(\) \}/);
+  assert.match(paddle, /customData: \{ user_id: userId, item_id: itemId, kind, \.\.\.\(choice \? \{ choice \} : \{\}\), attr: safeAttr\(\) \}/);
   assert.match(paddle, /metaPurchase\(ev\.data, c\)/);
   assert.match(html, /bootMetaPixel\(\); onTrack\(metaFromTrack\)/);
   assert.match(html, /metaSignup\(\{ userId: authState\.userId/);

@@ -29,4 +29,5 @@ export const PRICE_IDS = Object.freeze({
   // 🐾 펫
   leaf: null, spirit: null, bird: null, golem: null,
   wind: null, acorn: null, skiff: null,
+  welcome_box: null,
 });
