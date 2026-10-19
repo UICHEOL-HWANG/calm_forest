@@ -117,25 +117,29 @@ test('GA4 사용자 속성 — 등록된 기기만 exp_entry', () => {
   assert.deepEqual(e2UserProps({ enrolled: false, arm: null }), {});
 });
 
-test('E2 종료: 등록 대상은 전부 바로 시작, 실험 속성은 더 안 보낸다', async () => {
+test('E2 종료: 등록 대상은 전부 로그인 화면부터, 이미 키운 게스트 마을은 이어 간다', async () => {
   const { concludeE2, E2_ENDED } = await import('../js/exp-e2.js');
   assert.equal(E2_ENDED, true);
-  const fresh = decideE2({ clientId: 'c-new', platform: 'web', newDevice: true });
-  const done = concludeE2(fresh);
-  assert.equal(done.enrolled, true);
-  assert.equal(done.arm, 'skip_login');
-  assert.equal(done.ended, true);
-  assert.deepEqual(e2UserProps(done), {});
-  const oldControl = concludeE2(decideE2({ clientId: 'c', platform: 'web', stored: { arm: 'control' } }));
-  assert.equal(oldControl.arm, 'skip_login');
-  assert.equal(skipLoginNow({ decision: oldControl, offline: false, justExited: false, hasInvite: false }), true);
-  assert.equal(keepGuestSession(oldControl), true);
+  const fresh = concludeE2(decideE2({ clientId: 'c-new', platform: 'web', newDevice: true }));
+  assert.equal(fresh.enrolled, true);
+  assert.equal(fresh.arm, 'control');
+  assert.equal(fresh.ended, true);
+  assert.deepEqual(e2UserProps(fresh), {});
+  assert.equal(skipLoginNow({ decision: fresh, offline: false, justExited: false, hasInvite: false }), false);
+  assert.equal(keepGuestSession(fresh), true);
+  for (const arm of ['control', 'skip_login']) {
+    const old = concludeE2(decideE2({ clientId: 'c', platform: 'web', stored: { arm } }));
+    assert.equal(old.arm, 'control');
+    assert.equal(skipLoginNow({ decision: old, offline: false, justExited: false, hasInvite: false }), false, arm);
+    assert.equal(keepGuestSession(old), true, arm);
+    assert.equal(keepGuestSession(old, { hasInvite: true }), false, '초대 링크는 하트핀 흐름');
+  }
   for (const d of [
     decideE2({ clientId: 'c', platform: 'toss', newDevice: true }),
     decideE2({ clientId: 'c', platform: 'web', newDevice: true, hasInvite: true }),
     decideE2({ clientId: 'c', platform: 'web', newDevice: false }),
   ]) assert.deepEqual(concludeE2(d), d);
-  const forced = decideE2({ clientId: 'c', platform: 'web', dev: true, forced: 'control' });
+  const forced = decideE2({ clientId: 'c', platform: 'web', dev: true, forced: 'skip_login' });
   assert.deepEqual(concludeE2(forced), forced);
 });
 
