@@ -41,6 +41,8 @@ import { onRequestGet as cardnewsImg } from '../functions/cardnews-img.js';
 import { onRequestGet as rssFeed } from '../functions/rss.js';
 import { onRequestGet as newsPages } from '../functions/news.js';
 import { onRequestGet as appLink } from '../functions/app-link.js';
+import { onRequestGet as utmLinksGet, onRequestPost as utmLinksPost } from '../functions/api/utm-links.js';
+import { handleGo } from '../functions/go-redirect.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -64,6 +66,11 @@ export default {
       if (pathname === '/app' || pathname === '/app/') {
         if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method Not Allowed', { status: 405 });
         return await appLink({ request, env });
+      }
+
+      if (pathname.startsWith('/go/')) {
+        if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method Not Allowed', { status: 405 });
+        return await handleGo(request, env, ctx);
       }
 
       if (pathname === '/rss.xml') {
@@ -252,6 +259,12 @@ async function routeApi(pathname, { request, env, ctx }) {
   if (pathname === '/api/cards-topics') {
     if (request.method === 'GET')   return await cardsTopicsGet({ request, env });
     if (request.method === 'PATCH') return await cardsTopicsPatch({ request, env });
+    return new Response('Method Not Allowed', { status: 405 });
+  }
+
+  if (pathname === '/api/utm-links') {
+    if (request.method === 'GET')  return await utmLinksGet({ request, env });
+    if (request.method === 'POST') return await utmLinksPost({ request, env });
     return new Response('Method Not Allowed', { status: 405 });
   }
 
