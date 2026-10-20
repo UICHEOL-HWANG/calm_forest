@@ -13,6 +13,41 @@ import { verifyAnyUser } from './orchard-events.js';
 const TOKEN_RE = /^[A-Za-z0-9:_-]{20,4096}$/;   // FCM 등록 토큰 문자 집합
 const TZ_RE = /^[A-Za-z0-9_/+-]{1,64}$/;
 
+const RESULTS = ['granted', 'denied', 'error', 'dismissed', 'skipped'];
+const STAGES = ['permission', 'register', 'post', 'exception'];
+const VIAS = ['card', 'settings', 'refresh'];
+const pick = (v, list) => (list.includes(v) ? v : null);
+
+async function logResult(env, user, body) {
+  const result = pick(body?.result, RESULTS);
+  if (!result) return json({ error: 'bad_result' }, 400);
+  const row = {
+    user_id: user.id,
+    platform: body?.platform === 'ios' ? 'ios' : 'android',
+    result,
+    stage: pick(body?.stage, STAGES),
+    via: pick(body?.via, VIAS),
+    reason: body?.reason ? String(body.reason).replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, 200) : null,
+  };
+  try {
+    const r = await fetch(`${env.SUPABASE_URL}/rest/v1/push_register_log`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: env.SUPABASE_SERVICE_KEY,
+        authorization: `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify(row),
+    });
+    if (!r.ok) { console.warn('[push-register] log', r.status); return json({ error: 'store_failed' }, 502); }
+  } catch (e) {
+    console.warn('[push-register] log', e?.message);
+    return json({ error: 'store_failed' }, 502);
+  }
+  return json({ ok: true });
+}
+
 const json = (obj, status = 200) =>
   new Response(JSON.stringify(obj), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
 
@@ -24,6 +59,7 @@ export async function onRequestPost({ request, env }) {
 
   let body;
   try { body = await request.json(); } catch { return json({ error: 'bad_json' }, 400); }
+  if (body?.event === 'result') return logResult(env, user, body);
   const token = String(body?.token || '');
   if (!TOKEN_RE.test(token)) return json({ error: 'bad_token' }, 400);
 
