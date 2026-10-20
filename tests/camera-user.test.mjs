@@ -30,10 +30,10 @@ test('거리 의미: zoom 은 거리 배수, 피치는 거리와 무관', () => 
 });
 
 test('범위 밖 값은 잘린다', () => {
-  assert.deepEqual(normalizeCam({ zoom: 9, tilt: 90 }), { zoom: ZOOM_MAX, tilt: PITCH_MAX });
-  assert.deepEqual(normalizeCam({ zoom: 0.1, tilt: 3 }), { zoom: ZOOM_MIN, tilt: PITCH_MIN });
-  assert.deepEqual(normalizeCam({ zoom: NaN, tilt: 'x' }), { zoom: 1, tilt: null });
-  assert.deepEqual(normalizeCam(null), { zoom: 1, tilt: null });
+  assert.deepEqual(normalizeCam({ zoom: 9, tilt: 90 }), { zoom: ZOOM_MAX, tilt: PITCH_MAX, yaw: 0 });
+  assert.deepEqual(normalizeCam({ zoom: 0.1, tilt: 3 }), { zoom: ZOOM_MIN, tilt: PITCH_MIN, yaw: 0 });
+  assert.deepEqual(normalizeCam({ zoom: NaN, tilt: 'x' }), { zoom: 1, tilt: null, yaw: 0 });
+  assert.deepEqual(normalizeCam(null), { zoom: 1, tilt: null, yaw: 0 });
 });
 
 test('자동 피치: 줌아웃할수록 살짝 눕고, 줌인은 그대로 — 기울기를 만지면 그 값이 이긴다', () => {
@@ -79,7 +79,7 @@ test('저장: 기기 localStorage — 기본값이면 지우고, 깨진 값·예
   const mem = new Map();
   const st = { getItem: k => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, v), removeItem: k => mem.delete(k) };
   saveCam(st, { zoom: 1.234567, tilt: 50.123 });
-  assert.deepEqual(loadCam(st), { zoom: 1.235, tilt: 50.12 });
+  assert.deepEqual(loadCam(st), { zoom: 1.235, tilt: 50.12, yaw: 0 });
   saveCam(st, defaultCam());
   assert.equal(mem.has(STORE_KEY), false);
   mem.set(STORE_KEY, '{bad');

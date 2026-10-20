@@ -11,7 +11,7 @@
 // =============================================================
 
 import {
-  classifyTwoFinger, effectivePitch, pitchFromDrag, withTilt, withZoom, zoomFromPinch, zoomFromWheel,
+  classifyTwoFinger, effectivePitch, fingerAngle, pitchFromDrag, withTilt, withYaw, withZoom, yawFromTwist, zoomFromPinch, zoomFromWheel,
 } from './camera-user.js';
 
 /**
@@ -66,11 +66,12 @@ export function initCameraGestures(o) {
       if (!A.mode) return;
       // 판단이 선 지점부터 상대량을 잰다 — 보류 구간(슬롭)만큼 튀지 않게
       A.a0 = a; A.b0 = b; A.d0 = Math.hypot(b.x - a.x, b.y - a.y);
-      const s = o.get(); A.zoom0 = s.zoom; A.pitch0 = effectivePitch(s);
+      const s = o.get(); A.zoom0 = s.zoom; A.pitch0 = effectivePitch(s); A.yaw0 = s.yaw || 0; A.ang0 = fingerAngle(a, b);
       return;
     }
     const s = o.get();
-    if (A.mode === 'pinch') o.set(withZoom(s, zoomFromPinch(A.zoom0, A.d0, Math.hypot(b.x - a.x, b.y - a.y))));
+    if (A.mode === 'rotate') o.set(withYaw(s, yawFromTwist(A.yaw0, A.ang0, fingerAngle(a, b))));
+    else if (A.mode === 'pinch') o.set(withZoom(s, zoomFromPinch(A.zoom0, A.d0, Math.hypot(b.x - a.x, b.y - a.y))));
     else {
       const dy = ((a.y - A.a0.y) + (b.y - A.b0.y)) / 2;
       o.set(withTilt(s, pitchFromDrag(A.pitch0, dy, window.innerHeight)));
@@ -119,15 +120,16 @@ export function initCameraGestures(o) {
   canvas.addEventListener('pointercancel', dragEnd);
 
   // ── 데스크톱: 키 — [ ] 기울기 · - = 줌(게임이 안 쓰는 키) ──
-  const KEYS = { BracketLeft: ['t', -3], BracketRight: ['t', 3], Minus: ['z', 1.08], Equal: ['z', 1 / 1.08] };
+  const KEYS = { BracketLeft: ['t', -3], BracketRight: ['t', 3], Minus: ['z', 1.08], Equal: ['z', 1 / 1.08], KeyQ: ['y', 5], KeyE: ['y', -5] };
   let keyTimer = null;
   window.addEventListener('keydown', (e) => {
     const k = KEYS[e.code]; if (!k || e.ctrlKey || e.metaKey || e.altKey) return;
     if (!o.enabled() || (o.keyOk && !o.keyOk(e))) return;
     const s = o.get();
-    o.set(k[0] === 't' ? withTilt(s, effectivePitch(s) + k[1]) : withZoom(s, s.zoom * k[1]));
+    o.set(k[0] === 't' ? withTilt(s, effectivePitch(s) + k[1]) : k[0] === 'y' ? withYaw(s, (s.yaw || 0) + k[1]) : withZoom(s, s.zoom * k[1]));
     e.preventDefault();
-    clearTimeout(keyTimer); keyTimer = setTimeout(() => o.commit(o.get(), 'key'), 600);
+    const how = k[0] === 'y' ? 'key_rotate' : 'key';
+    clearTimeout(keyTimer); keyTimer = setTimeout(() => o.commit(o.get(), how), 600);
   });
 
   return {
