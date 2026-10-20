@@ -55,6 +55,7 @@ writeFileSync(`${OUT}/index.html`, html);
 
 // ── 게임 모듈 + 자체 호스팅 라이브러리 ──
 cpSync('js', `${OUT}/js`, { recursive: true });
+cpSync('assets/decor-sets', `${OUT}/assets/decor-sets`, { recursive: true });
 cpSync('vendor', `${OUT}/vendor`, { recursive: true });
 
 const SUPA_PATH = `${OUT}/js/supabase-client.js`;

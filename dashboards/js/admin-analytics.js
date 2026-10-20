@@ -330,9 +330,10 @@ function renderFlow(f) {
     + rows.map((r) => `<tr${click ? ` data-zone="${esc(r.zone)}"${r.zone === drillZone ? ' class="on"' : ''}` : ''}><td>${esc(zoneLabel(r.zone))}${click ? ' <span style="color:var(--ink-3)">›</span>' : ''}</td><td class="r">${nf(r.n)}</td><td class="r">${r.share}%</td></tr>`).join('') + '</table>';
   $('flowEnds').innerHTML = list('처음 들른 곳', f.first) + '<div style="height:12px"></div>' + list('마지막으로 있던 곳', f.last, true);
   $('flowDef').textContent = `시설·관문 반경 안을 지난 순서(세션 ${nf(f.sessions)}개, 길은 제외). 세션당 = 그 이동 횟수 ÷ 세션 수.`;
+  if (!drillZone && f.last[0]) loadSessions(f.last[0].zone, { autoPick: true });
 }
 
-async function loadSessions(zone) {
+async function loadSessions(zone, { autoPick = false } = {}) {
   drillZone = zone;
   [...$('flowEnds').querySelectorAll('tr[data-zone]')].forEach((x) => x.classList.toggle('on', x.dataset.zone === zone));
   if (shareKey) { $('sessList').innerHTML = emptyState('공유 보기에서는 세션을 숨겨요', '관리자로 로그인하면 보입니다.'); return; }
@@ -348,6 +349,8 @@ async function loadSessions(zone) {
     + rows.map((r) => `<tr data-sid="${esc(r.session_id)}"><td>${hm(r.start)}${r.is_new ? ' <span class="chip new">신규</span>' : ''}</td>
       <td style="font-family:var(--mono);font-size:11px">${esc(r.uid)}</td><td class="r">${r.sec == null ? '—' : Math.max(1, Math.round(r.sec / 60)) + '분'}</td>
       <td style="font-size:11px">${esc(r.path.map(zoneLabel).join(' → '))}</td></tr>`).join('') + '</table>';
+  const first = autoPick && $('sessList').querySelector('tr[data-sid]');
+  if (first) { first.classList.add('on'); loadTrack(first.dataset.sid); }
 }
 
 async function loadTrack(sid) {
