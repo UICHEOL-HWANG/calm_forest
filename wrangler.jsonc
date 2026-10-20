@@ -36,6 +36,7 @@
   // 💳 Paddle 웹훅(functions/api/paddle-webhook.js): PADDLE_WEBHOOK_SECRET 을 Secret 으로 등록합니다.
   //    없으면 엔드포인트가 503 을 돌려주고 Paddle 이 재시도합니다(조용히 200 으로 삼키지 않음).
   //    샌드박스와 라이브의 시크릿이 다릅니다 — 승인 후 교체.
+  // 🔗 UTM 링크 생성기(functions/api/utm-links.js): UTM_SHEET_ID · GOOGLE_SA_JSON 도 Secret 으로 등록합니다(공개 저장소라 시트 ID 도 커밋하지 않음).
   "vars": {
     "OCI_NAMESPACE": "id8g5usnkx1c",
     "OCI_REGION": "us-ashburn-1",
@@ -96,7 +97,8 @@
   ],
 
   "kv_namespaces": [
-    { "binding": "CARDNEWS", "id": "478a47e93de9400d8413c6a9104a8e44" }
+    { "binding": "CARDNEWS", "id": "478a47e93de9400d8413c6a9104a8e44" },
+    { "binding": "UTM_LINKS", "id": "30357176edd24726b15fd119b1deab5c" }
   ],
 
   "placement": { "region": "gcp:us-east4" },
