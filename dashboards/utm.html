@@ -23,7 +23,7 @@
   .f select:focus, .f input:focus { outline: 2px solid color-mix(in srgb, var(--s1) 45%, transparent); outline-offset: 1px; }
   .two-f { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .lands { display: flex; flex-wrap: wrap; gap: 6px; }
-  .lands label { display: inline-flex; align-items: center; gap: 6px; padding: 7px 11px; border: 1px solid var(--line); border-radius: 999px; font-size: 13px; cursor: pointer; background: var(--surface-0); user-select: none; }
+  .lands label { white-space: nowrap; flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 7px 11px; border: 1px solid var(--line); border-radius: 999px; font-size: 13px; cursor: pointer; background: var(--surface-0); user-select: none; }
   .lands input { accent-color: var(--s1); margin: 0; }
   .lands label:has(input:checked) { border-color: var(--s1); background: color-mix(in srgb, var(--s1) 12%, transparent); }
   .btn { font: inherit; font-size: 13px; font-weight: 700; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-1); color: var(--ink); cursor: pointer; }
