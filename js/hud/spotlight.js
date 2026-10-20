@@ -14,6 +14,8 @@ body.spot-on #coach { visibility: hidden; }
 #spot-layer .sp-hand[data-h="tap"], #spot-layer .sp-hand[data-h="click"] { animation: sptap 1s ease-in-out infinite; }
 #spot-layer .sp-hand[data-h="hold"] { animation: sphold 1.8s ease-in-out infinite; }
 #spot-layer .sp-hand[data-h="drag"] { animation: spdrag 1.6s ease-in-out infinite; }
+#spot-layer .sp-hand[data-h="twist"] { animation: sptwist 1.6s ease-in-out infinite; }
+@keyframes sptwist { 0%, 100% { transform: rotate(-30deg); } 50% { transform: rotate(30deg); } }
 @keyframes sptap { 0%, 100% { transform: translate(0, 0) scale(1); } 45% { transform: translate(0, 6px) scale(.88); } }
 @keyframes sphold { 0% { transform: translate(0, 0) scale(1); } 25% { transform: translate(0, 6px) scale(.86); } 70% { transform: translate(-46px, -30px) scale(.86); } 100% { transform: translate(-46px, -30px) scale(1); opacity: .2; } }
 @keyframes spdrag { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(22px, -18px); } 50% { transform: translate(0, -30px); } 75% { transform: translate(-22px, -18px); } }
@@ -86,7 +88,7 @@ export function createSpotlight({ t, trackEvent, blocked = () => false }) {
     (s.keys || []).forEach((k) => { const kb = document.createElement('kbd'); kb.textContent = k; $('.sp-keys').appendChild(kb); });
     const hand = $('.sp-hand');
     hand.dataset.h = s.hand;
-    hand.textContent = s.hand === 'click' ? '🖱️' : s.hand === 'key' ? '' : '👆';
+    hand.textContent = s.hand === 'click' ? '🖱️' : s.hand === 'key' ? '' : s.hand === 'twist' ? '✌️' : '👆';
     $('.sp-dots').innerHTML = run.steps.map((_, k) => `<i class="${k <= run.i ? 'on' : ''}"></i>`).join('');
     const canSkip = run.skip === 'all' || (run.skip === 'optional' && !s.core);
     const sk = $('.sp-skip'); sk.textContent = t('건너뛰기 ›'); sk.classList.toggle('show', canSkip);

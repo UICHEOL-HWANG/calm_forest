@@ -38,7 +38,7 @@ import { trackChop, trackEvent, onTrack } from './analytics.js';          // [GA
 import { IS_ANDROID } from './platform.js';
 import { createPerfSampler, perfContext } from './perf-sample.js';   // 📱 플레이 앱 기기별 FPS(세션당 1회 perf_sample)
 import { createKeyState, isEditableTarget } from './keys.js';      // ⌨️ 키 눌림 상태(입력칸 무시·포커스 손실 리셋) + 우클릭 메뉴 예외 판정
-import { BASE_DIST, camOffsetFor, defaultCam, effectivePitch, isDefaultCam, loadCam, saveCam } from './camera-user.js';   // 🎥 플레이어 카메라(줌·기울기) — 순수 모델
+import { BASE_DIST, camOffsetFor, defaultCam, effectivePitch, isDefaultCam, loadCam, moveToWorld, saveCam } from './camera-user.js';   // 🎥 플레이어 카메라(줌·기울기) — 순수 모델
 import { initCameraGestures } from './camera-gestures.js';   // 🎥 두 손가락 핀치·기울기 / 휠 / 우클릭 드래그
 import { tierOf, paletteOf, GEM_COLOR, mineHitPower, expandWoodOf, seedSaved, digIsOneShot, sickleReach } from './tool-tiers.js';
 import { BLUEPRINTS, blueprintOfTool, hiddenQuestFor, tier2Status, sanitizeToolFlags } from './tool-blueprints.js';   // 🔨 도구 2단계(도면·히든 의뢰·제작)
@@ -5992,7 +5992,8 @@ function animate() {
     if (t - lastMini > 0.12) {   // 미니맵(캐릭터 위치) 갱신
       lastMini = t;
       const place = indoor ? 'house' : atFarm ? 'farm' : atOrchard ? 'orchard' : atMine ? 'mine' : atCafe ? 'cafe' : atMuseum ? 'museum' : atObservatory ? 'observatory' : atMountain ? 'mountain' : atNeighbor ? 'neighbor' : atMirror ? 'mirror' : atDream ? 'dream' : atRiver ? 'river' : atMist ? 'mist' : atSea ? 'sea' : atHalloween ? 'halloween' : 'village';
-      const md = { place, x: player.position.x, z: player.position.z, yaw: player.rotation.y };
+      const md = { place, x: player.position.x, z: player.position.z, yaw: player.rotation.y, camYaw: userCamOn() ? camUser.yaw : 0 };
+      if (!camTourAsked && userCamAdjustable()) camTourAsked = !!ui.camTour?.();
       if (place === 'village') {
         md.places = villagePlaces();   // 🗺️ 미니맵 아이콘 + 전체 지도 라벨의 출처
         // 주민 위치 — 배회·비행하니 실시간이어야 한다. 색은 이름표 배지와 같은 고유색이라
@@ -6164,6 +6165,7 @@ function updatePlayer(dt, t) {
   let { mx, mz } = keys.moveAxes(!!ui.anyModalOpen?.() || closeUp);
   // 모바일 조이스틱 아날로그 합산
   if (!closeUp) { mx += analog.x; mz += analog.z; }
+  if (userCamOn() && camUser.yaw) ({ x: mx, z: mz } = moveToWorld(mx, mz, camUser.yaw));
 
   const moving = Math.abs(mx) > 0.05 || Math.abs(mz) > 0.05;
   if (moving && sitting) sitting = false;   // 움직이면 일어남
@@ -6396,6 +6398,7 @@ function userCamAdjustable() {
 }
 const followOffset = () => userCamOn() ? camOffsetFor(camUser, _userOff) : camOffset;
 let _camBtnShown = null;
+let camTourAsked = false;
 function syncCamResetBtn() {
   const show = mode === 'play' && userCamOn() && !isDefaultCam(camUser);
   if (show === _camBtnShown) return;
@@ -6406,7 +6409,8 @@ function syncCamResetBtn() {
 function setCamUser(s) { camUser = s; syncCamResetBtn(); }
 function commitCamUser(s, how) {
   saveCam(_lsCam, s);
-  trackEvent('camera_adjust', { zoom: Math.round(s.zoom * 100) / 100, tilt: Math.round(effectivePitch(s)), how });   // [GA4] 제스처 끝날 때 1회
+  trackEvent('camera_adjust', { zoom: Math.round(s.zoom * 100) / 100, tilt: Math.round(effectivePitch(s)), yaw: Math.round(s.yaw || 0), how });   // [GA4] 제스처 끝날 때 1회
+  if (how === 'rotate' || how === 'key_rotate') ui.act?.('camrotate');
 }
 function resetCamUser() {
   setCamUser(defaultCam());
