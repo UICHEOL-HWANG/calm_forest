@@ -6,15 +6,27 @@ import { questPanelView } from '../js/quest-panel-view.js';
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const q = (title, extra = {}) => ({ title, name: '농부 삼촌', progress: 1, target: 2, ...extra });
 
-test('PC — 지금처럼 맨 위 한 건만 펼치고 나머지는 요약, 펼치기 버튼 없음', () => {
-  const v = questPanelView([q('A'), q('B')], { phone: false, open: false, short: false, more: 0 });
+test('PC 펼침 — 맨 위 한 건만 펼치고 나머지는 요약, 버튼은 접기', () => {
+  const v = questPanelView([q('A'), q('B')], { phone: false, open: true, short: false, more: 0 });
   assert.deepEqual(v.items.map(i => i.mode), ['lead', 'sub']);
-  assert.equal(v.toggle, null);
+  assert.equal(v.toggle, '접기');
   assert.equal(v.more, 0);
 });
 
+test('PC 접힘 — 폰처럼 한 줄 카드 한 건, 나머지는 "+N건 더"', () => {
+  const v = questPanelView([q('A'), q('B')], { phone: false, open: false, short: false, more: 0 });
+  assert.deepEqual(v.items.map(i => i.mode), ['line']);
+  assert.equal(v.more, 1);
+  assert.equal(v.toggle, '펼치기');
+});
+
+test('index.html — PC 는 처음에 펼친 채로 시작하고 접은 상태를 기기에 기억한다', () => {
+  assert.match(html, /let questOpen = !questPhoneMQ\.matches && readQuestOpen\(\);/);
+  assert.match(html, /if \(!questPhoneMQ\.matches\) saveQuestOpen\(questOpen\);/);
+});
+
 test('PC 짧은 창 — 전부 요약형(기존 규칙 유지)', () => {
-  const v = questPanelView([q('A'), q('B')], { phone: false, open: false, short: true, more: 0 });
+  const v = questPanelView([q('A'), q('B')], { phone: false, open: true, short: true, more: 0 });
   assert.deepEqual(v.items.map(i => i.mode), ['sub', 'sub']);
 });
 

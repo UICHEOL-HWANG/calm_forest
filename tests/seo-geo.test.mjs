@@ -106,8 +106,8 @@ test('SAME_AS: 공식 채널, GitHub 는 넣지 않는다', () => {
 test('index.html: 제목 A·og:title 유지·LD 하나(VideoGame+Organization sameAs)·설명에 엠대시 없음', () => {
   const html = read('index.html');
   const home = SEO_PAGES.find(p => p.path === '/');
-  assert.match(html, /<title>고요한 숲 · 설치 없이 하는 3D 힐링 농장 게임<\/title>/);
-  assert.equal(home.title, '고요한 숲 · 설치 없이 하는 3D 힐링 농장 게임');
+  assert.match(html, /<title>고요한 숲<\/title>/);
+  assert.equal(home.title, '고요한 숲');
   assert.match(html, /<meta property="og:title" content="고요한 숲 🌿" \/>/);
   assert.match(html, /<meta name="twitter:title" content="고요한 숲 🌿" \/>/);
   const desc = html.match(/<meta name="description" content="([^"]*)"/)[1];
