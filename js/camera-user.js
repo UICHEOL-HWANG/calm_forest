@@ -25,13 +25,20 @@ const EPS = 1e-6;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const finite = (v) => typeof v === 'number' && Number.isFinite(v);
 
-export function defaultCam() { return { zoom: 1, tilt: null }; }
+export function defaultCam() { return { zoom: 1, tilt: null, yaw: 0 }; }
+
+export function wrapYaw(v) {
+  if (v > -180 && v <= 180) return v;
+  const w = ((v + 180) % 360 + 360) % 360 - 180;
+  return w === -180 ? 180 : w;
+}
 
 /** 값 정리 — 저장소·제스처에서 들어온 어떤 값이든 범위 안으로 */
 export function normalizeCam(s) {
   const zoom = finite(s?.zoom) ? clamp(s.zoom, ZOOM_MIN, ZOOM_MAX) : 1;
   const tilt = finite(s?.tilt) ? clamp(s.tilt, PITCH_MIN, PITCH_MAX) : null;
-  return { zoom, tilt };
+  const yaw = finite(s?.yaw) ? wrapYaw(s.yaw) : 0;
+  return { zoom, tilt, yaw };
 }
 
 /** 줌에 딸린 자동 피치(기울기를 안 만졌을 때) */
@@ -48,25 +55,34 @@ export function effectivePitch(s) {
 }
 
 export function isDefaultCam(s) {
-  return Math.abs(s.zoom - 1) < 1e-3 && (s.tilt == null || Math.abs(s.tilt - BASE_PITCH) < 0.05);
+  return Math.abs(s.zoom - 1) < 1e-3 && (s.tilt == null || Math.abs(s.tilt - BASE_PITCH) < 0.05) && Math.abs(s.yaw || 0) < 0.5;
 }
 
 /** 상태 → 카메라 오프셋(포커스 기준, +z = 남쪽). out 을 주면 거기에 채운다(THREE.Vector3 도 됨). */
 export function camOffsetFor(s, out = { x: 0, y: 0, z: 0 }) {
   const zoom = clamp(s.zoom, ZOOM_MIN, ZOOM_MAX);
   const pitch = effectivePitch(s);
-  if (Math.abs(zoom - 1) < EPS && Math.abs(pitch - BASE_PITCH) < EPS) {   // 기본값은 예전 숫자 그대로(부동소수 오차 없이)
+  const yaw = finite(s.yaw) ? s.yaw : 0;
+  if (Math.abs(zoom - 1) < EPS && Math.abs(pitch - BASE_PITCH) < EPS && Math.abs(yaw) < EPS) {   // 기본값은 예전 숫자 그대로(부동소수 오차 없이)
     out.x = BASE_OFFSET.x; out.y = BASE_OFFSET.y; out.z = BASE_OFFSET.z; return out;
   }
   const r = pitch * Math.PI / 180, d = BASE_DIST * zoom;
-  out.x = 0; out.y = d * Math.sin(r); out.z = d * Math.cos(r);
+  const h = d * Math.cos(r), y = yaw * Math.PI / 180;
+  out.x = h * Math.sin(y); out.y = d * Math.sin(r); out.z = h * Math.cos(y);
   return out;
 }
 
 /** 줌을 바꾼다(기울기 상태는 유지) */
-export function withZoom(s, zoom) { return normalizeCam({ zoom, tilt: s.tilt }); }
+export function withZoom(s, zoom) { return normalizeCam({ zoom, tilt: s.tilt, yaw: s.yaw }); }
 /** 기울기를 바꾼다 — 이 순간부터 자동 결합은 꺼진다 */
-export function withTilt(s, pitch) { return normalizeCam({ zoom: s.zoom, tilt: pitch }); }
+export function withTilt(s, pitch) { return normalizeCam({ zoom: s.zoom, tilt: pitch, yaw: s.yaw }); }
+export function withYaw(s, yaw) { return normalizeCam({ zoom: s.zoom, tilt: s.tilt, yaw }); }
+
+export function moveToWorld(mx, mz, yawDeg) {
+  if (!yawDeg) return { x: mx, z: mz };
+  const y = yawDeg * Math.PI / 180, c = Math.cos(y), sn = Math.sin(y);
+  return { x: mx * c + mz * sn, z: -mx * sn + mz * c };
+}
 
 // ── 저장(기기별) ───────────────────────────────────────────────
 export function loadCam(storage) {
@@ -79,7 +95,7 @@ export function loadCam(storage) {
 export function saveCam(storage, s) {
   try {
     if (isDefaultCam(s)) storage?.removeItem(STORE_KEY);
-    else storage?.setItem(STORE_KEY, JSON.stringify({ zoom: +s.zoom.toFixed(3), tilt: s.tilt == null ? null : +s.tilt.toFixed(2) }));
+    else storage?.setItem(STORE_KEY, JSON.stringify({ zoom: +s.zoom.toFixed(3), tilt: s.tilt == null ? null : +s.tilt.toFixed(2), yaw: +(s.yaw || 0).toFixed(1) }));
   } catch (_) { /* 사파리 프라이빗·웹뷰 차단 — 이번 세션만 유지 */ }
 }
 
@@ -95,9 +111,15 @@ export function classifyTwoFinger(a0, b0, a, b) {
   const sameDir = ay * by > 0;
   const my = (ay + by) / 2;
   if (sameDir && Math.abs(my) > GESTURE_SLOP && Math.abs(my) > dd * 1.2) return 'tilt';
+  const arc = Math.abs(angleDiff(fingerAngle(a0, b0), fingerAngle(a, b))) * Math.PI / 180 * d / 2;
+  if (arc > GESTURE_SLOP && arc > dd * 1.2) return 'rotate';
   if (dd > GESTURE_SLOP) return 'pinch';
   return null;
 }
+export function fingerAngle(a, b) { return Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI; }
+export function angleDiff(from, to) { return wrapYaw(to - from); }
+export function yawFromTwist(yaw0, ang0, ang) { return wrapYaw(yaw0 + angleDiff(ang0, ang)); }
+
 /** 핀치 비율 → 줌. 벌리면(비율>1) 가까이(줌↓) */
 export function zoomFromPinch(zoom0, d0, d) {
   if (!(d0 > 0) || !(d > 0)) return clamp(zoom0, ZOOM_MIN, ZOOM_MAX);
