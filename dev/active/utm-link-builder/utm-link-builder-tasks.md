@@ -1,0 +1,9 @@
+- [x] _utm.js 테스트 → 구현
+- [x] _gsheets.js
+- [x] utm-links.js API 테스트 → 구현
+- [x] go-redirect.js 테스트 → 구현
+- [x] worker 라우트 · wrangler KV/vars
+- [x] 관리자 페이지 utm.html + 허브 타일
+- [x] 시트 I1 헤더
+- [x] 코드 리뷰 · 전체 테스트
+- [ ] 배포 (Secret 등록 후)

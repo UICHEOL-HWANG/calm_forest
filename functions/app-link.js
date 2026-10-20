@@ -2,7 +2,7 @@ import { DEFAULT_APP_BANNER, storeTarget, storeUrl } from '../js/app-banner.js';
 import { TUNING } from '../js/tuning.js';
 
 const clean = (v, max) => String(v || '').replace(/[^\w-]/g, '_').slice(0, max);
-const BOT = /bot\b|bot\/|crawler|spider|facebookexternalhit|yeti\/|kakaotalk-scrap|slack-imgproxy|whatsapp\//i;
+export const BOT = /bot\b|bot\/|crawler|spider|facebookexternalhit|yeti\/|kakaotalk-scrap|slack-imgproxy|whatsapp\//i;
 
 export function appLinkTarget({ ua, search, cfg = TUNING.appBanner }) {
   if (BOT.test(ua || '')) return { kind: 'page' };
