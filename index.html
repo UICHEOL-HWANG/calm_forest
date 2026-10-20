@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-<title>고요한 숲 · 설치 없이 하는 3D 힐링 농장 게임</title>
+<title>고요한 숲</title>
 <meta name="application-name" content="고요한 숲" />
 <meta name="apple-mobile-web-app-title" content="고요한 숲" />
 <meta name="theme-color" content="#bfe8c9" />
@@ -3282,6 +3282,11 @@
     }
     window.addEventListener('resize', layoutPrompts);   // 회전·주소창 변화 대응
 
+    const pendingToasts = [];
+    function flushPendingToasts() {
+      let at = 250;
+      pendingToasts.splice(0).forEach(([m, ms]) => { setTimeout(() => ui.toast(m, ms), at); at += ms + 200; });
+    }
     let toastTimer, catchTimer;   // 토스트와 🎣캐치 배너는 다른 줄·다른 타이머(서로 안 지운다)
     // 🪧 시설 배너 큐 — 그 앞에 있으면 3초(읽을 시간), 이미 지나쳤으면 1.4초로 빠르게 흘림.
     //    읽는 중 자리를 뜨면 최소 1.4초만 채우고 조기 페이드아웃 — 연속으로 지나쳐도 큐가 안 밀린다
@@ -3542,16 +3547,20 @@
 
     let noticeShown = [];   // 📮 지금 소식 창에 띄운 목록 — 닫을 때 가장 큰 id 를 읽음으로 기록
     let questLast = null;
-    let questOpen = false;
     const questBarLast = new Map();
     const questPhoneMQ = window.matchMedia('(max-width: 640px), (orientation: landscape) and (max-height: 500px)');
+    const QUEST_OPEN_KEY = 'cf_quest_open_pc';
+    const readQuestOpen = () => { try { return localStorage.getItem(QUEST_OPEN_KEY) !== '0'; } catch (e) { return true; } };
+    const saveQuestOpen = (v) => { try { localStorage.setItem(QUEST_OPEN_KEY, v ? '1' : '0'); } catch (e) {} };
+    let questOpen = !questPhoneMQ.matches && readQuestOpen();
     $('quest-panel').addEventListener('click', () => {
       if (!$('quest-panel').classList.contains('collapsible')) return;
       questOpen = !questOpen;
+      if (!questPhoneMQ.matches) saveQuestOpen(questOpen);
       trackEvent('quest_panel_toggle', { open: questOpen ? 1 : 0 });
       ui.setQuest(questLast);
     });
-    questPhoneMQ.addEventListener?.('change', () => ui.setQuest(questLast));
+    questPhoneMQ.addEventListener?.('change', () => { questOpen = !questPhoneMQ.matches && readQuestOpen(); ui.setQuest(questLast); });
     let hud = null, shell = null, lastToolArgs = null, lastNpcText = null, lastDoorArgs = null;
     const menuSheet = createMenuSheet({ Input, t, trackEvent, dotTarget: $('menu-btn'), onOpen: () => runMenuTour() });
     const spot = createSpotlight({ t, trackEvent, blocked: () => spotBlocked() });
@@ -3644,7 +3653,8 @@
         lastToolArgs = [idx, tools, page];
         hud?.onTool(idx, tools, page);
       },
-      toast(msg, ms = 1600) {
+      toast(msg, ms = 1600, opts = {}) {
+        if (opts.afterDialog && $('npc-modal').classList.contains('show')) { pendingToasts.push([msg, ms]); return; }
         const el = $('toast'); el.textContent = msg; el.classList.add('show');
         clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), ms);
       },
@@ -4487,7 +4497,7 @@
         }
       },
     };
-    const closeNpc = () => $('npc-modal').classList.remove('show');
+    const closeNpc = () => { $('npc-modal').classList.remove('show'); flushPendingToasts(); };
 
     // ── 💬 주민과 잡담 ───────────────────────────────────────────
     //  의뢰와 무관한 순수 플레이버다. 보상이 0 — 선물(재료를 쓴다)·접객의 가치를
