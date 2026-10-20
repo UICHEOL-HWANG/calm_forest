@@ -348,7 +348,7 @@ export function updateDoorInteract() {
     firstHintBanner('neighborGate', '🏡', '이웃 마을 가는 길', '다른 숲에서도 누군가 세계수를 지키고 있대요 · 내일 또 바뀌어요');
   }
   $w.nearDoor = nd;
-  if (nd === 'mine') firstHintBanner('mineGate', '⛏️', '채굴 동굴 입구', '⛏️괭이로 돌·석탄·💎보석을 캐는 곳');
+  if (nd === 'mine') firstHintBanner('mineGate', '⛏️', '채굴 동굴 입구', '⛏️괭이로 돌·석탄을 캐는 곳 · 💎 보석은 🌫️ 안개 날');
   // 자유주방/작업대/상점 — 마을(실외)에서 다른 프롬프트가 없을 때만
   const inVillage = !indoor && !atFarm && !atMine && !atRiver && !nd;
   $w.nearKitchen = inVillage && isOpen('kitchen') && dist2D(KITCHEN, player.position) < 2.2;               // 🍳 자유주방(요리 미니게임)

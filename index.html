@@ -869,7 +869,7 @@
   #hint-banner.tap { pointer-events: auto; cursor: pointer; }   /* onTap 배너만 입력을 받는다 */
   /* 🎯 이탈 예측 배너(attention) — 한 번 톡 튀어오르고 민트 빛이 번졌다 사라진다. 흔들기·깜빡임 없음 */
   #hint-banner.attn.show { animation: hbPop .5s ease-out, hbGlow 1.2s ease-out; }
-  @keyframes hbPop { 0% { transform: translateX(-50%) scale(.85); } 60% { transform: translateX(-50%) scale(1.06); } 100% { transform: translateX(-50%) scale(1); } }
+  @keyframes hbPop { 0% { scale: .85; } 60% { scale: 1.06; } 100% { scale: 1; } }
   @keyframes hbGlow { 0% { box-shadow: 0 0 0 0 rgba(143,214,160,.9); } 100% { box-shadow: 0 0 0 14px rgba(143,214,160,0); } }
   @media (prefers-reduced-motion: reduce) { #hint-banner.attn.show { animation: none; } }
   #hint-banner .hb-ico { font-size: 22px; flex: 0 0 auto; }
@@ -2234,6 +2234,7 @@
     body.is-touch #door-prompt, body.is-touch #fish-prompt, body.is-touch #zone-prompt { bottom: calc(104px + env(safe-area-inset-bottom)); }
     body.is-touch #toast, body.is-touch.coaching #toast, body.is-touch.hintbanner #toast, body.is-touch.decor-guide #toast, body.is-touch.mist-guide #toast { top: max(calc(72px + var(--top-inset)), var(--rcol-bottom, 0px)); left: auto; right: max(12px, env(safe-area-inset-right)); transform: none; max-width: min(260px, 34vw); font-size: 13px; padding: 8px 12px; }
   }
+  #hint-banner.slot-swap { right: auto !important; bottom: auto !important; transform: none !important; max-width: min(300px, calc(100vw - 24px)) !important; }
 </style>
 </head>
 <body>
@@ -3286,16 +3287,32 @@
     //    (실기기 피드백: 5초/2.2초는 안내가 한참 뒤에 떠서 답답했음)
     const hintBQ = []; let hintBShowing = false;
     const HINT_B_MIN = 1400, HINT_B_FULL = 3000, HINT_B_ATTN = 8000;   // attention 배너는 시선이 늦게 가도 읽게 8초
+    function swapIntoLeftSlot(el) {
+      if (!document.body.classList.contains('is-touch') || document.body.classList.contains('coaching')) return null;
+      const chip = $('story-chip'), qp = $('quest-panel'), mm = $('minimap').getBoundingClientRect();
+      let target = null, top = 0, left = 0;
+      if (chip?.classList.contains('show') && mm.height) { target = chip; top = mm.bottom + 8; left = mm.left; }
+      else if (qp?.classList.contains('show') && qp.getBoundingClientRect().height) { target = qp; ({ top, left } = qp.getBoundingClientRect()); }
+      if (!target) return null;
+      el.classList.add('slot-swap');
+      el.style.top = Math.round(top) + 'px'; el.style.left = Math.round(left) + 'px';
+      target.style.visibility = 'hidden';
+      return () => { target.style.visibility = ''; el.classList.remove('slot-swap'); el.style.top = ''; el.style.left = ''; };
+    }
     function nextHintBanner() {
       const item = hintBQ.shift();
       if (!item) { hintBShowing = false; document.body.classList.remove('hintbanner'); return; }
-      hintBShowing = true; document.body.classList.add('hintbanner');
+      hintBShowing = true;
+      if (item.slotQuest && document.body.classList.contains('cine-open')) { hintBQ.unshift(item); setTimeout(nextHintBanner, 400); return; }
+      document.body.classList.add('hintbanner');
       $('hb-ico').textContent = item.ico || '🌿';
       $('hb-img').hidden = !item.img;
       if (item.img) $('hb-img').src = item.img;
       $('hb-title').textContent = item.title || '';
       $('hb-line').textContent = item.line || '';
-      const el = $('hint-banner'); el.classList.toggle('attn', !!item.attention); el.classList.add('show');
+      const el = $('hint-banner'); el.classList.toggle('attn', !!item.attention);
+      const swapped = item.slotQuest ? swapIntoLeftSlot(el) : null;
+      el.classList.add('show');
       // 🌿 리텐션 안내만 프롬프트 줄 위로 내린다 — 상단 슬롯은 월드 라벨(NPC 이름표·간판)을 가린다.
       //    🪧 시설 배너는 "이 앞에 뭐가 있다"는 안내라 대상 근처인 상단이 맞다.
       el.classList.toggle('slot-bottom', !!item.slotBottom);
@@ -3309,6 +3326,7 @@
         settled = true;
         clearTimeout(timer); clearInterval(watch); el.onclick = null;
         el.classList.remove('show', 'tap');
+        if (swapped) setTimeout(swapped, 250);
         try { item.onDismiss?.(reason); } catch (e) { /* 계측 실패가 큐를 막지 않게 */ }
         setTimeout(nextHintBanner, 250);
       };
@@ -3576,7 +3594,7 @@
       },
       // 🪧 시설 첫 접근 비차단 배너 — 입력을 안 받아 이동이 안 끊긴다(상세 규칙은 입장 후 모달 담당)
       openDecorAlbum(html) { $('topleft').classList.remove('open'); $('decor-body').innerHTML = html; $('decor-body').scrollTop = 0; $('decor-album').classList.add('show'); $('decor-album').setAttribute('aria-hidden', 'false'); document.body.classList.add('decor-open'); },
-      showHintBanner({ ico, img, title, line, near, attention, onTap, onShow, onDismiss, slotBottom }) { hintBQ.push({ ico, img, title, line, near, attention, onTap, onShow, onDismiss, slotBottom }); if (!hintBShowing) nextHintBanner(); },
+      showHintBanner({ ico, img, title, line, near, attention, onTap, onShow, onDismiss, slotBottom, slotQuest }) { hintBQ.push({ ico, img, title, line, near, attention, onTap, onShow, onDismiss, slotBottom, slotQuest }); if (!hintBShowing) nextHintBanner(); },
       // 튜토리얼 코치 진행 중 여부 — game.js 가 근접 배너를 억제할 때 확인
       coachActive() { return tutIdx >= 0 || !!spot?.active(); },
       setInventory(inv) {

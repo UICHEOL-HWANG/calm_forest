@@ -163,7 +163,7 @@ export const BUFF_META = {
   speed: { ico: '👟', name: '빠른 발',     desc: '이동 속도가 40% 빨라져요. 넓은 마을과 텃밭·동굴을 오갈 때 시간을 아껴줘요.' },
   luck:  { ico: '🍀', name: '낚시 행운',   desc: '낚시할 때 희귀 물고기(🐠 붉은 물고기·🌈 무지개 물고기)가 잡힐 확률이 올라가요. 호수 부두에서 낚싯대(7번)로 낚아보세요!' },
   chop:  { ico: '🪓', name: '벌목 보너스', desc: '나무를 쓰러뜨릴 때마다 목재를 1개 더 받아요. 건축·작업대 재료를 모을 때 딱이에요.' },
-  mine:  { ico: '⛏️', name: '광부의 힘',   desc: '동굴에서 채굴할 때 광석(돌·석탄·💎보석)을 더 얻을 확률이 올라가요. 마을 서쪽 동굴 입구로!' },
+  mine:  { ico: '⛏️', name: '광부의 힘',   desc: '동굴에서 채굴할 때 돌·석탄을 더 얻을 확률이 올라가요. 💎 보석은 🌫️ 안개 낀 날에만 나와요. 마을 서쪽 동굴 입구로!' },
 };
 
 export const stationLabel = (rec) => { const d = OUTDOOR.find(o => o.id === rec.id); return `${d.ico} ${d.name}`; };
