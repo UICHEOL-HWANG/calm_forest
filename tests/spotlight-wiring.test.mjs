@@ -38,7 +38,7 @@ test('ui.act 신호가 스포트라이트로도 간다 · 코치 대기 판정�
 test('환영 창 자리에서 스포트라이트 → 코치 순서로 이어진다(E1 분기는 그대로)', () => {
   assert.match(HTML, /showTutorial\(src = 'welcome'\) \{ startOnboarding\(src\); \}/);
   assert.match(HTML, /async function startOnboarding\(src\) \{/);
-  assert.match(HTML, /Input\.markHintsSeen\(\['spotV2'\]\);\s*startCoach\(\);/);
+  assert.match(HTML, /Input\.markHintsSeen\(\['spotV2', 'spot_cam'\]\);\s*startCoach\(\);/);
   assert.match(HTML, /Input\.armTutorialMove\(\);\n\s*await spot\.run\(/);
   assert.match(GAME, /else if \(Input\.e1FirstScreen\(\)\)/);
 });

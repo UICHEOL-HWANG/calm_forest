@@ -20,6 +20,9 @@ body.is-touch #bag-btn .bag-emo { font-size: 23px; }
   font-weight: 800; font-size: 15px; box-shadow: var(--shadow); }
 .bag-chip.coin { background: #fff3cf; color: #7a5a00; }
 #minimap { top: calc(16px + var(--top-inset)); }
+#cam-reset-btn { position: fixed; z-index: 8; width: 40px; height: 40px; padding: 0; border-radius: 50%; background: var(--cream); color: var(--ink);
+  box-shadow: var(--shadow); display: grid; place-items: center; font-size: 21px; cursor: pointer; }
+body:not(.playing) #cam-reset-btn, body.cine-open #cam-reset-btn, body.menu-open #cam-reset-btn { display: none !important; }
 body.is-touch #minimap { top: calc(10px + var(--top-inset)); }
 #quest-panel, body.story-on #quest-panel, body.quest-open #quest-panel { --qp-top: calc(16px + var(--top-inset)) !important; }
 body:has(#hint-banner.show) #quest-panel, body.quest-open:has(#hint-banner.show) #quest-panel { --qp-top: calc(16px + var(--top-inset)) !important; }
@@ -43,6 +46,8 @@ export function initHudShell({ Input, t, trackEvent, menu }) {
   const dexBtn = mkBtn('hud-dex', '📖', '도감');
   const menuBtn = mkBtn('hud-menu', '<span class="burger"><i></i><i></i><i></i></span>', '메뉴');
   $('topright')?.append(dexBtn, menuBtn);
+  const camBtn = $('cam-reset-btn');
+  if (camBtn) document.body.appendChild(camBtn);
   dexBtn.addEventListener('click', (e) => { e.stopPropagation(); $('dex-tab')?.click(); });
   menuBtn.addEventListener('click', (e) => { e.stopPropagation(); menu.open(); });
 
@@ -66,6 +71,8 @@ export function initHudShell({ Input, t, trackEvent, menu }) {
     const q = qp.getBoundingClientRect();
     mm.style.top = q.height ? Math.round(q.bottom + 8) + 'px' : '';
     const m = mm.getBoundingClientRect();
+    const cb = $('cam-reset-btn');
+    if (cb) { cb.style.left = Math.round((m.width ? m.right : 12) + 8) + 'px'; cb.style.top = Math.round(m.width ? m.top : 10) + 'px'; }
     const below = m.height ? m.bottom : q.height ? q.bottom : 0;
     if (chip) chip.style.top = below ? Math.round(below + 8) + 'px' : '';
   }

@@ -266,6 +266,7 @@
   #hint-preview b { font-size: 13px; display: block; }
   #hint-preview span { font-size: 12.5px; opacity: .8; }   /* 🏡 이웃 공개 꺼짐 — 🎵 배경음악 끔과 같은 표시 */
   #cam-reset-btn[hidden] { display: none !important; }   /* 🎥 카메라를 만졌을 때만 보인다(기본 구도면 숨김) */
+  #cam-spot-zone { position: fixed; left: 15%; top: 30%; width: 70%; height: 32%; pointer-events: none; }
   #photo-btn:active, #emote-btn:active, #menu-btn:active, #cam-reset-btn:active, #util-btns button:active { transform: scale(0.94); }
   /* 이모트 팝업 */
   #emote-pop { position: fixed; top: calc(62px + var(--top-inset)); left: 16px; display: none; gap: 6px; z-index: 12; }
@@ -869,7 +870,7 @@
   #hint-banner.tap { pointer-events: auto; cursor: pointer; }   /* onTap 배너만 입력을 받는다 */
   /* 🎯 이탈 예측 배너(attention) — 한 번 톡 튀어오르고 민트 빛이 번졌다 사라진다. 흔들기·깜빡임 없음 */
   #hint-banner.attn.show { animation: hbPop .5s ease-out, hbGlow 1.2s ease-out; }
-  @keyframes hbPop { 0% { transform: translateX(-50%) scale(.85); } 60% { transform: translateX(-50%) scale(1.06); } 100% { transform: translateX(-50%) scale(1); } }
+  @keyframes hbPop { 0% { scale: .85; } 60% { scale: 1.06; } 100% { scale: 1; } }
   @keyframes hbGlow { 0% { box-shadow: 0 0 0 0 rgba(143,214,160,.9); } 100% { box-shadow: 0 0 0 14px rgba(143,214,160,0); } }
   @media (prefers-reduced-motion: reduce) { #hint-banner.attn.show { animation: none; } }
   #hint-banner .hb-ico { font-size: 22px; flex: 0 0 auto; }
@@ -2234,6 +2235,7 @@
     body.is-touch #door-prompt, body.is-touch #fish-prompt, body.is-touch #zone-prompt { bottom: calc(104px + env(safe-area-inset-bottom)); }
     body.is-touch #toast, body.is-touch.coaching #toast, body.is-touch.hintbanner #toast, body.is-touch.decor-guide #toast, body.is-touch.mist-guide #toast { top: max(calc(72px + var(--top-inset)), var(--rcol-bottom, 0px)); left: auto; right: max(12px, env(safe-area-inset-right)); transform: none; max-width: min(260px, 34vw); font-size: 13px; padding: 8px 12px; }
   }
+  #hint-banner.slot-swap { right: auto !important; bottom: auto !important; transform: none !important; max-width: min(300px, calc(100vw - 24px)) !important; }
 </style>
 </head>
 <body>
@@ -2245,7 +2247,7 @@
     <button id="photo-btn" title="사진 찍기">📷<span class="lbl"> 사진</span></button>
     <button id="emote-btn" title="이모트/앉기">🙂<span class="lbl"> 이모트</span></button>
     <!-- 🎥 손가락/휠로 카메라를 바꿨을 때만 나타나 기본 구도로 되돌린다(js/camera-user.js) -->
-    <button id="cam-reset-btn" title="카메라 되돌리기" aria-label="카메라 되돌리기" hidden>🎥</button>
+    <button id="cam-reset-btn" title="카메라 되돌리기" aria-label="카메라 되돌리기" hidden>🧭</button>
     <button id="menu-btn" title="메뉴">☰</button>
     <!-- ☰ 자주 쓰는 것 → 가끔 보는 것 → ⚙️ 설정(2026-09-29). 음악·언어·정책·나가기는 설정 창으로 옮겼다 —
          13줄이 같은 무게로 늘어서 폰에서 끝이 잘렸다. 옷 갈아입기는 🐾 캐릭터·꾸미기 안에 있다. -->
@@ -3286,16 +3288,32 @@
     //    (실기기 피드백: 5초/2.2초는 안내가 한참 뒤에 떠서 답답했음)
     const hintBQ = []; let hintBShowing = false;
     const HINT_B_MIN = 1400, HINT_B_FULL = 3000, HINT_B_ATTN = 8000;   // attention 배너는 시선이 늦게 가도 읽게 8초
+    function swapIntoLeftSlot(el) {
+      if (!document.body.classList.contains('is-touch') || document.body.classList.contains('coaching')) return null;
+      const chip = $('story-chip'), qp = $('quest-panel'), mm = $('minimap').getBoundingClientRect();
+      let target = null, top = 0, left = 0;
+      if (chip?.classList.contains('show') && mm.height) { target = chip; top = mm.bottom + 8; left = mm.left; }
+      else if (qp?.classList.contains('show') && qp.getBoundingClientRect().height) { target = qp; ({ top, left } = qp.getBoundingClientRect()); }
+      if (!target) return null;
+      el.classList.add('slot-swap');
+      el.style.top = Math.round(top) + 'px'; el.style.left = Math.round(left) + 'px';
+      target.style.visibility = 'hidden';
+      return () => { target.style.visibility = ''; el.classList.remove('slot-swap'); el.style.top = ''; el.style.left = ''; };
+    }
     function nextHintBanner() {
       const item = hintBQ.shift();
       if (!item) { hintBShowing = false; document.body.classList.remove('hintbanner'); return; }
-      hintBShowing = true; document.body.classList.add('hintbanner');
+      hintBShowing = true;
+      if (item.slotQuest && document.body.classList.contains('cine-open')) { hintBQ.unshift(item); setTimeout(nextHintBanner, 400); return; }
+      document.body.classList.add('hintbanner');
       $('hb-ico').textContent = item.ico || '🌿';
       $('hb-img').hidden = !item.img;
       if (item.img) $('hb-img').src = item.img;
       $('hb-title').textContent = item.title || '';
       $('hb-line').textContent = item.line || '';
-      const el = $('hint-banner'); el.classList.toggle('attn', !!item.attention); el.classList.add('show');
+      const el = $('hint-banner'); el.classList.toggle('attn', !!item.attention);
+      const swapped = item.slotQuest ? swapIntoLeftSlot(el) : null;
+      el.classList.add('show');
       // 🌿 리텐션 안내만 프롬프트 줄 위로 내린다 — 상단 슬롯은 월드 라벨(NPC 이름표·간판)을 가린다.
       //    🪧 시설 배너는 "이 앞에 뭐가 있다"는 안내라 대상 근처인 상단이 맞다.
       el.classList.toggle('slot-bottom', !!item.slotBottom);
@@ -3309,6 +3327,7 @@
         settled = true;
         clearTimeout(timer); clearInterval(watch); el.onclick = null;
         el.classList.remove('show', 'tap');
+        if (swapped) setTimeout(swapped, 250);
         try { item.onDismiss?.(reason); } catch (e) { /* 계측 실패가 큐를 막지 않게 */ }
         setTimeout(nextHintBanner, 250);
       };
@@ -3536,6 +3555,7 @@
     let hud = null, shell = null, lastToolArgs = null, lastNpcText = null, lastDoorArgs = null;
     const menuSheet = createMenuSheet({ Input, t, trackEvent, dotTarget: $('menu-btn'), onOpen: () => runMenuTour() });
     const spot = createSpotlight({ t, trackEvent, blocked: () => spotBlocked() });
+    const camSpotZone = document.createElement('div'); camSpotZone.id = 'cam-spot-zone'; document.body.appendChild(camSpotZone);
     const nickStep = createNickStep({ track: trackEvent });
     addEventListener('pagehide', () => nickStep.leave($('nick-input')?.value || ''));
     const ui = {
@@ -3576,7 +3596,7 @@
       },
       // 🪧 시설 첫 접근 비차단 배너 — 입력을 안 받아 이동이 안 끊긴다(상세 규칙은 입장 후 모달 담당)
       openDecorAlbum(html) { $('topleft').classList.remove('open'); $('decor-body').innerHTML = html; $('decor-body').scrollTop = 0; $('decor-album').classList.add('show'); $('decor-album').setAttribute('aria-hidden', 'false'); document.body.classList.add('decor-open'); },
-      showHintBanner({ ico, img, title, line, near, attention, onTap, onShow, onDismiss, slotBottom }) { hintBQ.push({ ico, img, title, line, near, attention, onTap, onShow, onDismiss, slotBottom }); if (!hintBShowing) nextHintBanner(); },
+      showHintBanner({ ico, img, title, line, near, attention, onTap, onShow, onDismiss, slotBottom, slotQuest }) { hintBQ.push({ ico, img, title, line, near, attention, onTap, onShow, onDismiss, slotBottom, slotQuest }); if (!hintBShowing) nextHintBanner(); },
       // 튜토리얼 코치 진행 중 여부 — game.js 가 근접 배너를 억제할 때 확인
       coachActive() { return tutIdx >= 0 || !!spot?.active(); },
       setInventory(inv) {
@@ -3901,6 +3921,7 @@
       // 신규 유저 튜토리얼 표시 · ❓도움말로도 같은 모달을 연다
       //    src: 'welcome'(온보딩 자동) | 'help'(도움말 버튼) — 닫을 때 이 값으로 이벤트를 가른다
       showTutorial(src = 'welcome') { startOnboarding(src); },
+      camTour() { return runCamTour(); },
       // 🎬 프롤로그 컷신 DOM — game.js(updateIntro)가 타임라인에 맞춰 호출
       introShow(on) {
         document.body.classList.toggle('intro-open', !!on);
@@ -4386,6 +4407,11 @@
         };
         // 플레이어 마커(+방향) — 공통. 스크린 좌표 pxx,pyy에 그림
         const drawPlayer = (pxx, pyy) => {
+          if (d.camYaw) {
+            const a = Math.atan2(-Math.cos(d.camYaw * Math.PI / 180), -Math.sin(d.camYaw * Math.PI / 180));
+            ctx.fillStyle = 'rgba(255,214,90,0.45)';
+            ctx.beginPath(); ctx.moveTo(pxx, pyy); ctx.arc(pxx, pyy, 18, a - 0.6, a + 0.6); ctx.closePath(); ctx.fill();
+          }
           const hx = Math.sin(d.yaw || 0), hz = Math.cos(d.yaw || 0);
           ctx.strokeStyle = '#2f7a44'; ctx.lineWidth = 2;
           ctx.beginPath(); ctx.moveTo(pxx, pyy); ctx.lineTo(pxx + hx * 9, pyy + hz * 9); ctx.stroke();
@@ -4792,7 +4818,7 @@
         Input.armTutorialMove();
         await spot.run(steps, { kind: 'full', startAt: src === 'help' ? 0 : left, skip: src === 'help' ? 'all' : 'optional', onStep: (s) => { Input.markHintsSeen(['spot_' + s.key]); requestSave(); } });
       }
-      Input.markHintsSeen(['spotV2']);
+      Input.markHintsSeen(['spotV2', 'spot_cam']);
       startCoach();
       showStoryMapOnce(null);
     }
@@ -4806,6 +4832,14 @@
       if (!spot || Input.hintSeen('spotMenu') || spot.kind() === 'menu') return;
       Input.markHintsSeen(['spotMenu']); requestSave();
       setTimeout(() => spot.run(spotSteps('menu', TOUCH), { kind: 'menu', blocked: () => !$('menu-sheet')?.classList.contains('show') }), 60);
+    }
+    function runCamTour() {
+      if (!spot || Input.needsTutorial() || !Input.hintSeen('spotV2')) return false;
+      if (Input.hintSeen('spot_cam')) return true;
+      if (spot.active() || spotBlocked()) return false;
+      Input.markHintsSeen(['spot_cam']); requestSave();
+      spot.run(spotSteps('cam', TOUCH), { kind: 'cam', skip: 'all' });
+      return true;
     }
     function runPillTour() {
       if (!spot || !TOUCH || Input.needsTutorial() || Input.hintSeen('spot_pill') || spot.active()) return;

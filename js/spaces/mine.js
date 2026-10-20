@@ -9,12 +9,13 @@ import {
   $w, ORES, atMine, buffOn, clayMat, clock, dexDiscover, dist2D, doPlayerAction, firstHint, gameState, makeSignBoard,
   mineGroup, mineTorches, nearDoor, obstacles, oreRocks, player, questEvent, refreshInventoryUI, scene, setSpaceVisible,
   situation, snapCamera, solidBox, solidCircle, spawnDust, spawnFloatText, spawnSparkle, trackGateBlocked,
-  ui, woodMat,
+  todayStr, ui, weatherOf, woodMat,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
 import { onPlay, decorBanner } from '../decor-drops/index.js';
 import { MINE, MINE_GATE, MINE_HALF } from '../data/places.js';
 import { DEX_GATES, gateOf, gateOpen } from '../dex-gates.js';
+import { gemFogBanner, nextFogOffset } from '../gem-fog-hint.js';
 import { Sound, setBGMTheme } from '../sound.js';
 import { mineHitPower } from '../tool-tiers.js';
 import * as THREE from 'three';
@@ -139,10 +140,23 @@ export function enterMine() {
   ui.setMine?.(true);   // ⛏️ 우상단 자원칩 → 🪨⚫💎 (마을 자원은 가방에서 그대로 볼 수 있다)
   player.position.set(MINE.x, 0, MINE.z - MINE_HALF + 3); player.rotation.y = 0;
   $w.nearDoor = null; ui.setDoorPrompt?.(null); snapCamera(); setSpaceVisible();
-  firstHint('mineInside', '⛏️', '채굴 동굴 · 광석 캐기', { steps: [{ ico: '⛏️', label: '괭이로 광맥' }, { ico: '🪨', label: '🪨⚫💎 얻기' }], note: '나갈 땐 남쪽 문', chip: '작업대 재료·판매' });
+  firstHint('mineInside', '⛏️', '채굴 동굴 · 광석 캐기', { steps: [{ ico: '⛏️', label: '괭이로 광맥' }, { ico: '🪨', label: '🪨⚫ 얻기' }, { ico: '💎', label: '🌫️ 안개 날' }], note: '나갈 땐 남쪽 문', chip: '작업대 재료·판매' });
   setBGMTheme('cave');   // 🎵 음산한 동굴 테마
   Sound.blip(); trackEvent('enter_mine'); // [GA4]
+  showGemFogBanner();
   decorBanner('mine');
+}
+
+let gemFogShownDay = null;
+function showGemFogBanner() {
+  const sit = situation();
+  if (gateOpen(gateOf('ore', 'gem'), sit)) return;
+  const today = todayStr();
+  if (gemFogShownDay === today) return;
+  const b = gemFogBanner(sit.weather, nextFogOffset(weatherOf), todayStr);
+  if (!b) return;
+  gemFogShownDay = today;
+  ui.showHintBanner?.({ ...b, slotQuest: true, onShow: () => trackEvent('gem_fog_hint', { weather: sit.weather }) });
 }
 
 export function exitMine() {

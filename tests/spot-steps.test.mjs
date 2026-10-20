@@ -9,10 +9,10 @@ const SRC = ['js/hud/hud-shell.js', 'js/hud/tool-fan.js', 'js/hud/mobile-hud.js'
   .map((p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8')).join('\n') + HTML;
 
 const all = [
-  ['full', true, 7], ['full', false, 8], ['new', true, 3], ['new', false, 3], ['menu', true, 3], ['menu', false, 3], ['pill', true, 1],
+  ['full', true, 8], ['full', false, 9], ['new', true, 3], ['new', false, 3], ['menu', true, 3], ['menu', false, 3], ['pill', true, 1], ['cam', true, 1], ['cam', false, 1],
 ];
 
-test('단계 수 — 모바일 7·PC 8·바뀐 점 3·메뉴 3·근접 알약 1', () => {
+test('단계 수 — 모바일 8·PC 9·바뀐 점 3·메뉴 3·근접 알약 1·시점 회전 1', () => {
   for (const [kind, touch, n] of all) assert.equal(spotSteps(kind, touch).length, n, `${kind}/${touch}`);
 });
 
