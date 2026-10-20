@@ -32,6 +32,7 @@ export function applyCafeResult(gs, r) {
 
 const CSS = `#hut-cafe-modal{position:fixed;left:0;right:0;bottom:0;z-index:40;display:none;justify-content:center;padding:0 calc(12px + env(safe-area-inset-right)) calc(14px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left))}
 #hut-cafe-modal.show{display:flex}
+@media (orientation:landscape) and (max-height:500px){#hut-cafe-modal .hc-sheet{max-height:calc(100dvh - 24px - env(safe-area-inset-bottom) - var(--top-inset,0px));padding:10px 14px 8px}#hut-cafe-modal .hc-head{font-size:15px;margin-bottom:6px}#hut-cafe-modal .hc-tabs{margin-bottom:6px}}
 #hut-cafe-modal .hc-sheet{width:min(520px,100%);max-height:62vh;display:flex;flex-direction:column;background:#fffaf2;border-radius:22px;box-shadow:0 -8px 40px rgba(30,25,20,.35);padding:16px 16px 12px;color:#2b2b30}
 #hut-cafe-modal .hc-head{display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:17px;margin-bottom:10px}
 #hut-cafe-modal .hc-tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
