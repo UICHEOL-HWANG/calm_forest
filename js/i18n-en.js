@@ -2534,6 +2534,13 @@ export const EN = {
   '화관': 'Flower Crown', '나뭇잎 머리띠': 'Leaf Band', '별 머리핀': 'Star Pin',
   '목도리': 'Scarf', '방울 목걸이': 'Bell Collar', '나비 넥타이': 'Bow Tie',
   '메신저 가방': 'Messenger Bag', '바구니': 'Basket', '망토': 'Cape',
+  '🌱 새싹반': '🌱 Sprout Class', '새싹반 모자': 'Sprout Class Hat', '튤립 이름표': 'Tulip Name Tag', '새싹반 가방': 'Sprout Class Bag',
+  '🌱 처음 오신 분을 위한 기본 꾸미기예요': '🌱 Starter outfits for new villagers',
+  '🎀 꾸미기 가게 구경하기': '🎀 Visit the Dress-Up Shop', '🎀 꾸미기 가게 들르기': '🎀 Stop by the Dress-Up Shop', '🌱 첫 꾸미기 달기': '🌱 Wear your first outfit',
+  '🗺️ 미니맵의 🎀 를 따라 마을 서쪽 꾸미기 가게로 가요': '🗺️ Follow the 🎀 on the minimap to the Dress-Up Shop in the west of the Village',
+  '🌱 새싹반 탭에서 마음에 드는 꾸미기를 사서 달아요': '🌱 Pick something you like in the Sprout Class tab and wear it',
+  '새싹반 꾸미기가 들어왔어요. 미니맵의 🎀 를 따라가요': 'Sprout Class outfits just arrived. Follow the 🎀 on the minimap',
+  '🎉 첫 꾸미기 완성! 🪙 +30': '🎉 First outfit done! 🪙 +30',
   //   계획의 i18n 블록엔 👣 발자국 5종 중 🌸꽃·⭐별이 빠져 있었다 — 카탈로그에 있는 상품이라 등재한다
   '발바닥': 'Paw Print', '물방울': 'Droplet', '꽃': 'Flower', '별': 'Star', '반짝이': 'Sparkle',
 

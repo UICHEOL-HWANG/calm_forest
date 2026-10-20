@@ -12,6 +12,9 @@
 
 import { SLOTS, findItem } from './catalog.js';
 
+const ID_SHAPE = /^[a-z0-9_]{1,64}$/;
+const OWNED_MAX = 128;
+
 /** 빈 상태 — 신규 유저이자 sanitize 의 실패 기본값 */
 export function emptyCosmetics() {
   return { owned: [], equipped: Object.fromEntries(SLOTS.map(s => [s, null])) };
@@ -60,7 +63,7 @@ export function sanitize(raw) {
   const out = emptyCosmetics();
   if (!raw || typeof raw !== 'object') return out;
   const owned = Array.isArray(raw.owned) ? raw.owned : [];
-  out.owned = [...new Set(owned.filter(id => typeof id === 'string' && findItem(id)))];
+  out.owned = [...new Set(owned.filter(id => typeof id === 'string' && (findItem(id) || ID_SHAPE.test(id))))].slice(0, OWNED_MAX);
   const eq = (raw.equipped && typeof raw.equipped === 'object') ? raw.equipped : {};
   for (const s of SLOTS) {
     const it = findItem(eq[s]);
