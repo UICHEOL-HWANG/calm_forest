@@ -6,7 +6,7 @@
 //     game.js 에 남은 let 에 쓸 때는 `$w.x = …` (읽기는 그냥 x). 도구·증명: tools/refactor/
 // =============================================================
 import {
-  $w, DIG_WINDOW, Input, RAIN_DAY, actAnim, atCafe, atDream, atMirror, atFarm, atMine, atMuseum, atObservatory, atMountain, catchCeremony, clayMat, clearCrop,
+  $w, DIG_WINDOW, Input, RAIN_DAY, actAnim, atCafe, atDream, atMirror, atHalloween, atFarm, atMine, atMuseum, atObservatory, atMountain, catchCeremony, clayMat, clearCrop,
   clock, cropMini, currentTool, dateHash, dayStr, dexDiscover, dist2D, doPlayerAction, farmBuildingRecs,
   farmHalf, finishPetJob, gameState, giveReward, indoor, lerpAngle, mergeGeos, mode, noteSpecialExhibit,
   obstacles, pendingDig, pet3d, petJob, player, plots, questEvent, refreshCropStage, refreshInventoryUI,
@@ -544,7 +544,7 @@ export function updatePet(dt, t) {
   if (!pet3d) return;
   // 👣 발자국과 같은 규칙 — 바닥이 없거나 카메라가 붙는 공간에선 끈다.
   //    다시 보일 땐 플레이어 발밑에서 시작한다(따라오느라 벽을 뚫지 않게).
-  const off = indoor || atCafe || atMuseum || atObservatory || atMountain || atMine || atDream || atMirror;
+  const off = indoor || atCafe || atMuseum || atObservatory || atMountain || atMine || atDream || atMirror || atHalloween;
   if (off) {
     if (pet3d.visible) { pet3d.visible = false; $w.petJob = null; }
     return;
