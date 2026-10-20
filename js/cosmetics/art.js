@@ -15,6 +15,7 @@ import { buildBatWing, buildBatCape } from './art-bats.js';
 import { buildEarmuff, buildSledPack } from './winter-art.js';
 import { buildFriendWing, buildFriendPin } from './art-friend.js';   // 🤝 친구 초대 보상(날개·하트핀)
 import { buildAcornCap, buildBeeBand, buildKittyPack, buildNestPack } from './art-forest-set.js';
+import { buildKinderHat, buildTulipTag, buildKinderBag } from './art-sprout.js';
 
 export const PALETTE = Object.freeze({
   straw: 0xd9bd7e, strawDark: 0xb99a5c,
@@ -347,6 +348,7 @@ function makeTables(THREE) {
         });
     },
 
+    kinder_hat: (g, k) => buildKinderHat(THREE, g, k, h),
     star_pin: (g, k) => {       // 별 머리핀 — 옆머리에 하나. 가장 작고 가장 싸다
       // ⚠️ 1차엔 옆머리 **뒤**에 박혀 정면에서 안 보였다. 앞쪽으로 당기고 키운다.
       const H = k.HR * 0.46, rad = ringR(k.HR, 0.46);
@@ -407,6 +409,7 @@ function makeTables(THREE) {
       const loop = put(g, new THREE.Mesh(new THREE.TorusGeometry(br * 0.24, br * 0.09, 5, 12), clay(P.bellLit)), 0, cy + br * 0.98, cz - br * 0.10, false);
       loop.rotation.x = 0.3;
     },
+    tulip_tag: (g, k) => buildTulipTag(THREE, g, k, h),
     bowtie: (g, k) => {         // 나비 넥타이 — 목띠 + 날개 두 장 + 가운데 매듭
       //  ▶ 날개는 **꼭짓점이 가운데를 향하는 사각뿔**이다. 저폴리에서 나비 날개를 그리는 제일 싼 방법 —
       //    옆에서 봐도 삼각으로 읽히고, 정면에선 두 삼각이 매듭에서 만나 나비가 된다.
@@ -471,11 +474,12 @@ function makeTables(THREE) {
     put(g, new THREE.Mesh(new THREE.TorusGeometry(r, tube, 4, 14), mat), 0, 0, 0, false);
 
   //  🦇 할로윈 등 장식(js/cosmetics/art-bats.js)에 넘기는 헬퍼 묶음 — 그쪽이 art.js 를 import 하면 순환이다
-  const h = { clay, put, P, clothShell };
+  const h = { clay, put, P, clothShell, strapOf, strapLoop };
 
   const BACK = {
     //  ▶ 가방류는 **옆구리(side 앵커)** 에 맨다. 등 한가운데는 🦊여우 꼬리 자리다.
     //    앵커는 어깨끈 링의 가장 낮은 점이라, 가방을 거기서 **아래로 매달면** 끈과 붙는다.
+    kinder_bag: (g, k) => buildKinderBag(THREE, g, k, h),
     pack: (g, k) => {           // 메신저 가방 — 왼쪽 옆구리에 걸치고 끈이 오른쪽 어깨를 넘어간다
       const R = k.R, w = R * 0.76;
       const out = 0;
