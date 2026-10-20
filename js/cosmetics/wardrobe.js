@@ -9,6 +9,7 @@
 
 import { itemsOf, findItem } from './catalog.js';
 import { equip, unequip } from './equip.js';
+import { effectiveTrail } from './skin-rules.js';
 
 /** 그 칸에서 산 것만 — 카탈로그 순서(가게와 같은 순서) */
 export function ownedIn(cos, slot) {
@@ -21,6 +22,10 @@ export function ownedIn(cos, slot) {
 export function wardrobeTabVisible(slot, cos, platform) {
   if ((slot !== 'skin' && slot !== 'tools') || platform === 'web') return true;   // 💎 현금 전용 칸만(스킨·도구 세트)
   return ownedIn(cos, slot).length > 0;
+}
+
+export function wardrobeShowsTrailWalk(slot, cos) {
+  return slot === 'trail' && !!effectiveTrail(cos);
 }
 
 /** 옷장 칸을 누르면 — 입은 거면 벗고, 아니면 입는다. action: 'on' | 'off' | null(안 바뀜) */

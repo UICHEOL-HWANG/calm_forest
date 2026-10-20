@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { emptyCosmetics, buy, equip } from '../js/cosmetics/equip.js';
-import { ownedIn, toggleWear, shopButton } from '../js/cosmetics/wardrobe.js';
+import { ownedIn, toggleWear, shopButton, wardrobeShowsTrailWalk } from '../js/cosmetics/wardrobe.js';
 
 const own = (...ids) => ids.reduce((c, id) => buy(c, 1e9, id).cos, emptyCosmetics());
 
@@ -49,4 +49,14 @@ test('shopButton: 안 산 건 가격, 산 건 입었든 안 입었든 "구매 �
 
 test('shopButton: 현금 전용이면 코인 버튼이 없다(null)', () => {
   assert.equal(shopButton({ id: 'firefly', premium: true, price: { coins: null, won: 4000 } }, own()), null);
+});
+
+test('wardrobeShowsTrailWalk: 이펙트 칸은 실제로 찍히는 자국이 있을 때만 걷는다', () => {
+  assert.equal(wardrobeShowsTrailWalk('trail', emptyCosmetics()), false);
+  const wear = (slots) => ({ owned: Object.values(slots), equipped: { head: null, neck: null, back: null, trail: null, skin: null, ...slots } });
+  assert.equal(wardrobeShowsTrailWalk('trail', wear({ trail: 'firefly' })), true);
+  assert.equal(wardrobeShowsTrailWalk('trail', { owned: ['firefly'], equipped: { trail: null } }), false);
+  assert.equal(wardrobeShowsTrailWalk('trail', wear({ skin: 'forest_spirit' })), true);
+  assert.equal(wardrobeShowsTrailWalk('head', wear({ trail: 'firefly' })), false);
+  assert.equal(wardrobeShowsTrailWalk('trail', null), false);
 });
