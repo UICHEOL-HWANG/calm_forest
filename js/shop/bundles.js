@@ -5,7 +5,7 @@ import { wonLabel } from './cash.js';
 const listWonOf = (ids) => ids.reduce((s, id) => s + (findItem(id)?.price?.won || 0), 0);
 
 const RAW = [
-  { id: 'welcome_box', ico: '🎁', won: 4900, fixed: ['firefly'], choose: ['tools_shroom', 'tools_moon', 'tools_bloom'] },
+  { id: 'welcome_box', ico: '🎁', won: 4900, fixed: ['firefly'], choose: ['tools_shroom', 'tools_moon', 'tools_bloom', 'tools_maple', 'tools_frost', 'tools_honey', 'tools_kitty', 'tools_shell'] },
 ];
 
 export const BUNDLES = Object.freeze(RAW.map(b => Object.freeze({

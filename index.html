@@ -1747,7 +1747,7 @@
   .bx-titles small { display: block; font-size: 11.5px; color: #c9cdea; line-height: 1.4; word-break: keep-all; }
   .bx-tiles { display: flex; gap: 8px; margin-bottom: 8px; }
   .bx-tile { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; border-radius: 12px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); font-size: 11.5px; text-align: center; }
-  .bx-tile-ico { font-size: 20px; }
+  .bx-tile-ico { font-size: 20px; max-width: 100%; overflow-wrap: anywhere; line-height: 1.25; }
   .bx-tile-won { font-size: 10.5px; opacity: .7; }
   .bx-value { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; margin: 0 2px 8px; color: #dfe2ff; }
   .bx-value s { opacity: .65; }
@@ -1756,7 +1756,7 @@
   .bx-buy:disabled { opacity: .55; cursor: default; box-shadow: none; }
   .bx-note { margin: 6px 0 0; font-size: 11px; text-align: center; color: #c9cdea; }
   .bx-pick-title { margin: 0 0 8px; font-size: 13px; font-weight: 800; }
-  .bx-opts { display: grid; gap: 6px; margin-bottom: 6px; }
+  .bx-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 6px; }
   .bx-opt { display: flex; align-items: center; gap: 8px; padding: 9px 10px; border-radius: 12px; border: 1.5px solid rgba(255,255,255,.18); background: rgba(255,255,255,.06); color: inherit; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; text-align: left; }
   .bx-opt.on { border-color: #f2c14e; background: rgba(242,193,78,.16); }
   .bx-opt-ico { font-size: 18px; }
