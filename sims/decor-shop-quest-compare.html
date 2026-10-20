@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>꾸미기 가게 퀘스트 시안</title>
+<style>
+  :root { --bg:#f4f1ea; --ink:#2b2a27; --muted:#77736a; --green:#cfeedd; --green-ink:#1f5b3c; --pre:#efe6ff; --pre-ink:#5b3ea8; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:-apple-system,"Apple SD Gothic Neo","Pretendard",sans-serif; }
+  header { padding:22px 28px 4px; max-width:1500px; }
+  h1 { margin:0 0 8px; font-size:22px; }
+  header p { margin:0 0 4px; color:var(--muted); font-size:14px; line-height:1.55; }
+  h2 { font-size:18px; margin:26px 28px 2px; }
+  .sub { margin:0 28px 6px; color:var(--muted); font-size:14px; line-height:1.5; max-width:1100px; }
+  .row { display:grid; grid-template-columns:1.2fr 1fr; gap:18px; padding:10px 28px 4px; align-items:start; max-width:1500px; }
+  .cap { font-size:12px; color:var(--muted); margin:6px 2px 0; }
+  .frame { position:relative; overflow:hidden; border-radius:14px; box-shadow:0 6px 22px rgba(0,0,0,.18); container-type:inline-size; background:#0b0c10; }
+  .pc { aspect-ratio:1200/674; }
+  .phone { aspect-ratio:844/390; border-radius:26px; border:6px solid #1b1b1f; }
+  .frame img.bg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .ov { position:absolute; }
+
+  .qcard { left:1.4%; top:31%; width:22%; background:rgba(255,255,255,.95); border-radius:1.1cqw; padding:.9cqw 1.1cqw; box-shadow:0 .3cqw 1cqw rgba(0,0,0,.22); font-size:1.15cqw; line-height:1.45; outline:.25cqw solid #8fd3ae; }
+  .qcard .t { font-weight:700; font-size:1.25cqw; }
+  .qcard .d { color:#5c584f; margin:.3cqw 0 .5cqw; }
+  .qcard .st { display:flex; justify-content:space-between; font-size:1.05cqw; padding:.15cqw 0; }
+  .pin { width:2.2cqw; height:2.2cqw; border-radius:50%; background:#fff; display:grid; place-items:center; font-size:1.3cqw; box-shadow:0 0 0 .25cqw #ff8fb1, 0 .2cqw .6cqw rgba(0,0,0,.3); }
+  .pulse { animation:p 1.4s ease-in-out infinite; }
+  @keyframes p { 50% { transform:scale(1.15); } }
+  .ctx { left:50%; top:12.5%; transform:translateX(-50%); background:rgba(255,255,255,.95); border-radius:1.2cqw; padding:.7cqw 1.3cqw; font-size:1.25cqw; box-shadow:0 .3cqw 1cqw rgba(0,0,0,.22); white-space:nowrap; text-align:center; }
+  .ctx small { display:block; color:#6f6a60; font-size:.85em; }
+  .bubble { background:#fff; border-radius:99px; font-size:2.6cqw; padding:.3cqw 1cqw; box-shadow:0 .2cqw .7cqw rgba(0,0,0,.3); }
+
+  .panel { left:30%; top:22%; width:40%; height:66%; background:rgba(250,250,248,.98); border-radius:1.6cqw; box-shadow:0 .5cqw 2cqw rgba(0,0,0,.25); padding:1.3cqw 1.4cqw; font-size:1.1cqw; display:flex; flex-direction:column; gap:.6cqw; }
+  .phone .panel { left:22%; top:6%; width:56%; height:88%; font-size:1.7cqw; padding:1.5cqw 1.8cqw; gap:.8cqw; }
+  .ph { display:flex; justify-content:space-between; align-items:center; font-weight:700; font-size:1.3em; }
+  .ph .coin { font-weight:600; color:#5c584f; font-size:.85em; }
+  .tabs { display:flex; gap:.4em; flex-wrap:wrap; }
+  .tab { background:#f0efea; border-radius:.6em; padding:.25em .65em; font-size:.92em; }
+  .tab.on { background:var(--green); color:var(--green-ink); font-weight:600; }
+  .banner { border-radius:.7em; padding:.5em .75em; font-size:.95em; line-height:1.4; }
+  .banner.gift { background:#fff1d6; }
+  .banner.sprout { background:#e4f6e8; }
+  .banner.coupon { background:#ffe7ef; }
+  .items { display:flex; flex-direction:column; gap:.4em; overflow:hidden; }
+  .it { display:flex; align-items:center; justify-content:space-between; background:#fff; border-radius:.7em; padding:.45em .75em; box-shadow:0 .08cqw .3cqw rgba(0,0,0,.08); }
+  .it.hl { outline:.2cqw solid #8fd3ae; }
+  .it .pr { background:var(--green); color:var(--green-ink); border-radius:.55em; padding:.15em .55em; font-weight:600; font-size:.92em; white-space:nowrap; }
+  .it .pr s { color:#7d8f84; font-weight:400; margin-right:.3em; }
+  .it.pre .pr { background:var(--pre); color:var(--pre-ink); }
+  .it.pre { background:#fbf8ff; }
+  .grp { font-size:.85em; color:#8a857b; margin-top:.1em; }
+  .gifts { display:grid; grid-template-columns:repeat(3,1fr); gap:.55em; }
+  .g { background:#fff; border-radius:.9em; padding:.7em .3em; text-align:center; box-shadow:0 .08cqw .3cqw rgba(0,0,0,.1); font-size:.92em; }
+  .g b { display:block; font-size:2em; margin-bottom:.15em; font-weight:400; }
+  .g.sel { outline:.22cqw solid #f2b84b; background:#fffaf0; }
+  .cta { margin-top:auto; display:flex; justify-content:flex-end; gap:.5em; }
+  .btn { border-radius:.7em; padding:.4em .95em; font-size:.95em; background:#f0efea; }
+  .btn.pri { background:#3f9d6a; color:#fff; font-weight:600; }
+
+  table { border-collapse:collapse; margin:8px 28px 40px; font-size:14px; background:#fff; border-radius:12px; overflow:hidden; }
+  th, td { padding:9px 14px; border-bottom:1px solid #eee9df; text-align:left; vertical-align:top; }
+  th { background:#ece7dc; }
+  @media (max-width:900px) { .row { grid-template-columns:1fr; padding:10px 16px; } h2,.sub,header { margin-left:16px; margin-right:16px; padding-left:0; } table { margin:8px 16px 40px; font-size:12.5px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎀 꾸미기 가게 구경하기 · 연결 시안</h1>
+  <p>튜토리얼이 끝나면 자동 의뢰로 받습니다(과수원 가는 길 의뢰와 같은 방식, NPC 없음). 꾸미기 가게까지 안내하고 첫 꾸미기를 달면 끝.</p>
+  <p>문제: 가게에서 가장 싼 물건이 <b>별 머리핀 600🪙</b>인데 튜토리얼 직후 코인은 수십~150🪙 정도입니다. 세 안은 <b>가는 길은 같고, 이 가격 차이를 메우는 방법</b>만 다릅니다.</p>
+</header>
+
+<h2>공통 · 가게까지 가는 길</h2>
+<p class="sub">① 튜토리얼 끝 → 의뢰 패널에 카드 추가 ② 미니맵에 🎀 핀(지금은 가게가 미니맵에 없음) ③ 가게 근처에서 머리 위 🎀 말풍선(이모지만) ④ 글자 안내는 화면 위 안내 줄로</p>
+<div class="row">
+  <div>
+    <div class="frame pc">
+      <img class="bg" src="../docs/beginner-guide/img/06_farm_harvest.jpg" alt="">
+      <div class="ov qcard">
+        <div class="t">🎀 꾸미기 가게 구경하기</div>
+        <div class="d">마을 서쪽 꾸미기 가게에 들러 보세요.</div>
+        <div class="st"><span>가게 들르기</span><span>0/1</span></div>
+        <div class="st"><span>첫 꾸미기 달기</span><span>0/1</span></div>
+      </div>
+      <div class="ov pin pulse" style="left:2.4%;top:15%">🎀</div>
+      <div class="ov ctx">🎀 꾸미기 가게는 마을 서쪽이에요<small>미니맵의 🎀 를 따라가요</small></div>
+    </div>
+    <p class="cap">PC · 튜토리얼 직후. 카드는 미니맵 아래 의뢰 패널 자리</p>
+  </div>
+  <div>
+    <div class="frame phone">
+      <img class="bg" src="../docs/beginner-guide/img/03_village_start.jpg" alt="">
+      <div class="ov bubble pulse" style="left:44%;top:30%">🎀</div>
+      <div class="ov ctx" style="top:4%;font-size:1.9cqw">🎀 문 앞에서 눌러 들어가요</div>
+    </div>
+    <p class="cap">가로 폰 · 가게 앞 도착. 말풍선은 🎀 만 (위치는 예시)</p>
+  </div>
+</div>
+
+<h2>A안 · 첫 손님 선물</h2>
+<p class="sub">가게 주인이 첫 방문 선물로 기본 꾸미기 3개 중 1개를 공짜로 줍니다. 코인 걱정 없이 바로 달아 봅니다. 선물 아래에 일반 상품과 💎 프리미엄 줄이 그대로 보입니다.</p>
+<div class="row">
+  <div>
+    <div class="frame pc">
+      <img class="bg" src="../docs/beginner-guide/img/26_shop.jpg" alt="">
+      <div class="ov panel">
+        <div class="ph"><span>🎀 꾸미기</span><span class="coin">🪙 64</span></div>
+        <div class="banner gift">🎁 <b>첫 손님 선물</b> · 하나 골라 가세요. 공짜예요!</div>
+        <div class="gifts">
+          <div class="g sel"><b>⭐</b>별 머리핀</div>
+          <div class="g"><b>🔔</b>방울 목걸이</div>
+          <div class="g"><b>🐾</b>발바닥 자국</div>
+        </div>
+        <div class="grp">더 둘러보기</div>
+        <div class="items">
+          <div class="it"><span>🍃 나뭇잎 머리띠</span><span class="pr">800🪙</span></div>
+          <div class="it pre"><span>🌟 반딧불 자국 · 💎</span><span class="pr">₩4,000</span></div>
+        </div>
+        <div class="cta"><span class="btn">닫기</span><span class="btn pri">⭐ 받고 달기</span></div>
+      </div>
+    </div>
+    <p class="cap">PC · 가게 첫 진입 화면</p>
+  </div>
+  <div>
+    <div class="frame phone">
+      <img class="bg" src="../docs/beginner-guide/img/26_shop.jpg" alt="" style="object-position:50% 70%">
+      <div class="ov panel">
+        <div class="ph"><span>🎀 꾸미기</span><span class="coin">🪙 64</span></div>
+        <div class="banner gift">🎁 <b>첫 손님 선물</b> · 하나 골라 가세요</div>
+        <div class="gifts">
+          <div class="g sel"><b>⭐</b>별 머리핀</div>
+          <div class="g"><b>🔔</b>방울</div>
+          <div class="g"><b>🐾</b>발바닥</div>
+        </div>
+        <div class="items">
+          <div class="it pre"><span>🌟 반딧불 · 💎</span><span class="pr">₩4,000</span></div>
+        </div>
+        <div class="cta"><span class="btn pri">⭐ 받고 달기</span></div>
+      </div>
+    </div>
+    <p class="cap">가로 폰</p>
+  </div>
+</div>
+
+<h2>B안 · 새싹 코너 (싼 기본템 추가)</h2>
+<p class="sub">50~100🪙짜리 기본 꾸미기 3개를 새로 만들어 가게 맨 앞 "새싹" 탭에 둡니다. 자기 코인으로 직접 사 보게 해서 "코인 모아 꾸미기" 흐름을 처음부터 익힙니다.</p>
+<div class="row">
+  <div>
+    <div class="frame pc">
+      <img class="bg" src="../docs/beginner-guide/img/26_shop.jpg" alt="">
+      <div class="ov panel">
+        <div class="ph"><span>🎀 꾸미기</span><span class="coin">🪙 64</span></div>
+        <div class="tabs"><span class="tab on">🌱 새싹</span><span class="tab">🎩 머리</span><span class="tab">🧣 목</span><span class="tab">🎒 가방</span><span class="tab">✨ 이펙트</span><span class="tab">🐾 펫</span></div>
+        <div class="banner sprout">🌱 <b>새싹 코너</b> · 처음 오신 분을 위한 기본 꾸미기예요</div>
+        <div class="items">
+          <div class="it hl"><span>🌱 새싹 머리핀</span><span class="pr">50🪙</span></div>
+          <div class="it"><span>🍀 클로버 배지</span><span class="pr">70🪙</span></div>
+          <div class="it"><span>🌼 들꽃 리본</span><span class="pr">100🪙</span></div>
+          <div class="grp">다음 목표</div>
+          <div class="it"><span>⭐ 별 머리핀</span><span class="pr">600🪙</span></div>
+          <div class="it pre"><span>🌟 반딧불 자국 · 💎</span><span class="pr">₩4,000</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="cap">PC · 새싹 탭이 열린 채로 시작</p>
+  </div>
+  <div>
+    <div class="frame phone">
+      <img class="bg" src="../docs/beginner-guide/img/26_shop.jpg" alt="" style="object-position:50% 70%">
+      <div class="ov panel">
+        <div class="ph"><span>🎀 꾸미기</span><span class="coin">🪙 64</span></div>
+        <div class="tabs"><span class="tab on">🌱 새싹</span><span class="tab">🎩 머리</span><span class="tab">🧣 목</span><span class="tab">✨</span></div>
+        <div class="items">
+          <div class="it hl"><span>🌱 새싹 머리핀</span><span class="pr">50🪙</span></div>
+          <div class="it"><span>🍀 클로버 배지</span><span class="pr">70🪙</span></div>
+          <div class="it"><span>🌼 들꽃 리본</span><span class="pr">100🪙</span></div>
+          <div class="it pre"><span>🌟 반딧불 · 💎</span><span class="pr">₩4,000</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="cap">가로 폰</p>
+  </div>
+</div>
+
+<h2>C안 · 첫 꾸미기 쿠폰</h2>
+<p class="sub">의뢰를 받을 때 "첫 꾸미기 90% 할인 쿠폰"을 줍니다. 기존 코인 상품 아무거나 1개에 쓸 수 있어(600🪙 → 60🪙) 새 아이템이 필요 없습니다. 프리미엄에는 쓸 수 없어요.</p>
+<div class="row">
+  <div>
+    <div class="frame pc">
+      <img class="bg" src="../docs/beginner-guide/img/26_shop.jpg" alt="">
+      <div class="ov panel">
+        <div class="ph"><span>🎀 꾸미기</span><span class="coin">🪙 64</span></div>
+        <div class="tabs"><span class="tab on">🎩 머리</span><span class="tab">🧣 목</span><span class="tab">🎒 가방</span><span class="tab">✨ 이펙트</span><span class="tab">🐾 펫</span></div>
+        <div class="banner coupon">🎟️ <b>첫 꾸미기 쿠폰</b> · 코인 상품 하나를 90% 싸게 살 수 있어요</div>
+        <div class="items">
+          <div class="it hl"><span>⭐ 별 머리핀</span><span class="pr"><s>600</s>60🪙</span></div>
+          <div class="it"><span>🍃 나뭇잎 머리띠</span><span class="pr"><s>800</s>80🪙</span></div>
+          <div class="it"><span>👒 밀짚모자</span><span class="pr"><s>1,200</s>120🪙</span></div>
+          <div class="it"><span>💐 화관</span><span class="pr"><s>1,400</s>140🪙</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="cap">PC · 쿠폰이 있는 동안 코인 상품이 할인가로 표시</p>
+  </div>
+  <div>
+    <div class="frame phone">
+      <img class="bg" src="../docs/beginner-guide/img/26_shop.jpg" alt="" style="object-position:50% 70%">
+      <div class="ov panel">
+        <div class="ph"><span>🎀 꾸미기</span><span class="coin">🪙 64</span></div>
+        <div class="banner coupon">🎟️ <b>첫 꾸미기 쿠폰</b> · 90% 할인</div>
+        <div class="items">
+          <div class="it hl"><span>⭐ 별 머리핀</span><span class="pr"><s>600</s>60🪙</span></div>
+          <div class="it"><span>🍃 나뭇잎 머리띠</span><span class="pr"><s>800</s>80🪙</span></div>
+          <div class="it"><span>👒 밀짚모자</span><span class="pr"><s>1,200</s>120🪙</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="cap">가로 폰</p>
+  </div>
+</div>
+
+<h2>비교</h2>
+<table>
+  <tr><th></th><th>A 첫 손님 선물</th><th>B 새싹 코너</th><th>C 첫 꾸미기 쿠폰</th></tr>
+  <tr><td>완료 조건</td><td>선물 받고 달기 (누구나 성공)</td><td>50🪙 이상 필요</td><td>60🪙 이상 필요</td></tr>
+  <tr><td>"코인으로 산다" 경험</td><td>✗ 공짜</td><td>✓ 자기 코인으로 구매</td><td>✓ 자기 코인으로 구매</td></tr>
+  <tr><td>프리미엄 줄 노출</td><td>선물 아래 1줄</td><td>새싹 탭 아래 1줄</td><td>프리미엄 탭에 가야 보임 (약함)</td></tr>
+  <tr><td>만들 것</td><td>선물 고르기 화면</td><td>새 꾸미기 3종 조형 + 탭</td><td>쿠폰 상태 · 할인가 표시</td></tr>
+  <tr><td>경제 영향</td><td>600~700🪙 아이템 1개 무료</td><td>거의 없음</td><td>1,800🪙 아이템이 180🪙 (비싼 것 쏠림)</td></tr>
+</table>
+</body>
+</html>

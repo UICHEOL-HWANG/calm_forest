@@ -1,0 +1,449 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>새싹반 꾸미기 시안</title>
+<style>
+  html,body{margin:0;height:100%;background:linear-gradient(#cfe4ee,#eaf2e6);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:#3a4a3a;overflow:hidden}
+  canvas{display:block}
+  #ui{position:fixed;left:0;right:0;bottom:0;padding:9px 14px 13px;background:rgba(255,255,255,.9);backdrop-filter:blur(6px);border-top:1px solid #cfdccf;font-size:13px}
+  #ui .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:5px 0}
+  button{font:inherit;padding:5px 10px;border-radius:8px;border:1px solid #b8c8b8;background:#fff;cursor:pointer}
+  button.on{background:#5b8f5b;color:#fff;border-color:#4a7a4a}
+  label{display:flex;gap:6px;align-items:center;white-space:nowrap}
+  input[type=range]{width:110px}
+  b{color:#2f5e2f}
+  #labels{position:fixed;top:0;left:0;right:0;pointer-events:none}
+  .tag{position:absolute;transform:translate(-50%,0);text-align:center;font-size:12px;font-weight:600;
+       background:rgba(255,255,255,.84);padding:3px 9px;border-radius:7px;white-space:nowrap;line-height:1.35}
+  .tag small{display:block;font-weight:400;opacity:.65;font-size:10.5px}
+  .tag.warn{background:rgba(255,228,220,.94);color:#a4462f}
+  @media (max-width:760px){ .tag{font-size:10.5px;padding:2px 6px} .tag small{display:none} }
+  #hud{position:fixed;top:10px;right:12px;background:rgba(255,255,255,.86);padding:8px 12px;border-radius:9px;font-size:12px;line-height:1.7;max-width:300px}
+  #hud .warn{color:#b4553a;font-weight:600}
+</style>
+<div id="labels"></div>
+<div id="hud"></div>
+<div id="ui">
+  <div class="row"><b>슬롯</b> <span id="slots"></span></div>
+  <div class="row"><b>보기</b> <span id="modes"></span> <span id="picks" style="margin-left:6px"></span></div>
+  <div class="row">
+    <label>거리 <input id="dist" type="range" min="1.6" max="12" step="0.1" value="5.0"><span id="distV">5.0</span></label>
+    <label>회전 <input id="ang" type="range" min="-180" max="180" step="5" value="24"><span id="angV">24°</span></label>
+    <label>높이 <input id="elev" type="range" min="-6" max="45" step="1" value="12"><span id="elevV">12°</span></label>
+    <label><input id="spin" type="checkbox"> 자동 회전</label>
+    <label><input id="night" type="checkbox"> 밤 조명</label>
+  </div>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+// 🎭 머리는 게임과 **같은 소스**를 쓴다 — 그래야 모자가 진짜 귀·볏을 뚫는지 여기서 드러난다.
+//    (animal-faces.js 는 THREE 만 의존하는 독립 모듈이라 시뮬이 그대로 import 할 수 있다.)
+import { buildAnimalHead, plushMat } from '../js/animal-faces.js';
+// 🎀 꾸미기 조형·앵커는 게임과 **같은 소스**를 쓴다 — 복제본을 두면 값이 갈린다.
+import { PALETTE as P, buildCosmetic, put } from '../js/cosmetics/art.js';
+import { buildTrailMark, TRAIL_SIDE } from '../js/cosmetics/trail.js';
+import { sideAnchor, backAnchor, headAnchor, neckAnchor, neckR as neckRadius, onSurf, domeTheta, DOME_BOT } from '../js/cosmetics/anchors.js';
+
+// =============================================================
+//  🎀 꾸미기 슬롯 시안 — 머리 · 목 · 등 · 발자국
+//  스펙: docs/superpowers/specs/2026-09-21-cosmetics-pet-design.md §3·§4
+//  ------------------------------------------------------------
+//  ▶ 이 시뮬의 목적은 "예쁜가"만이 아니다. 스펙 §3-3 의 함정 두 개를 **눈으로 잡는 것**이다:
+//      ① 🐰토끼 귀 · 🐤병아리 볏이 머리 장식을 뚫는가
+//      ② 🦊여우 꼬리(위로 솟는 bushy)가 등 장식과 겹치는가
+//    그래서 "동물 호환" 보기에서 장식 하나를 7종에 걸쳐 세운다.
+//
+//  ▶ 앵커 3개는 스펙 §3-2 의 값을 그대로 쓴다. 여기서 어긋나면 스펙을 고친다:
+//      head (0, HY + HR*0.82, 0)
+//      neck (0, HY - HR*0.55, 0)  반지름 HR*0.92   ← 🐶목줄이 이미 쓰는 좌표
+//      back (0, bodyY + R*0.30, -R*bs[2]*0.55)
+//
+//  ▶ ⚠️ 머리는 게임과 같은 소스지만 **몸·꼬리는 이 파일의 근사**다.
+//    ANIMALS 체형 수치(bodyR·bodyScale·headR·headY)는 js/game.js 에서 옮겨 적었고,
+//    꼬리는 실루엣만 흉내 낸다. 클리어런스 최종 확인은 인게임에서 한 번 더 한다.
+//    (tool-tier-sim 에서 복제본과 게임이 갈려 역이식된 사고가 있었다.)
+//
+//  ▶ ⚠️ 블룸 임계 0.85 — 넓은 면에 쓰는 색은 전부 그 아래. 부팅 시 검산해 HUD 에 띄운다.
+// =============================================================
+
+const BLOOM_LUMA = 0.85;
+const luma = h => (0.2126 * ((h >> 16) & 255) + 0.7152 * ((h >> 8) & 255) + 0.0722 * (h & 255)) / 255;
+
+
+// =============================================================
+//  동물 — 체형은 js/game.js ANIMALS 에서 옮겨 적음. 머리는 animal-faces.js 원본.
+// =============================================================
+const ANIMALS = [
+  { id: 'fox',    name: '여우',   ico: '🦊', body: 0xf0883a, belly: 0xf9ecd8, bodyR: 0.52, bodyScale: [0.90, 1.08, 0.90], headR: 0.37, headY: 1.26, tail: 'bushy' },
+  { id: 'dog',    name: '강아지', ico: '🐶', body: 0xf0913a, belly: 0xfaf3e8, bodyR: 0.56, bodyScale: [1.03, 0.99, 1.00], headR: 0.40, headY: 1.24, tail: 'curl' },
+  { id: 'rabbit', name: '토끼',   ico: '🐰', body: 0xf3eeea, belly: 0xffffff, bodyR: 0.46, bodyScale: [1.00, 0.96, 1.00], headR: 0.39, headY: 1.12, tail: 'puff' },
+  { id: 'cat',    name: '고양이', ico: '🐱', body: 0x9fa0c2, belly: 0xf2f2f8, bodyR: 0.50, bodyScale: [0.88, 1.10, 0.88], headR: 0.36, headY: 1.25, tail: 'long' },
+  { id: 'bear',   name: '곰',     ico: '🐻', body: 0x936a44, belly: 0xd2b38a, bodyR: 0.63, bodyScale: [1.08, 1.00, 1.06], headR: 0.44, headY: 1.34, tail: 'stub' },
+  { id: 'panda',  name: '판다',   ico: '🐼', body: 0xf6f6f6, belly: 0xffffff, bodyR: 0.63, bodyScale: [1.08, 1.00, 1.06], headR: 0.45, headY: 1.34, tail: 'stub' },
+  { id: 'chick',  name: '병아리', ico: '🐤', body: 0xffe05a, belly: 0xfff0a0, bodyR: 0.50, bodyScale: [1.02, 0.94, 1.02], headR: 0.35, headY: 1.06, tail: 'feather' },
+];
+
+/** 테이퍼 튜브 — 곡선을 따라 굵기가 변하는 관.
+ *  ⚠️ 처음엔 꼬리를 **구슬 몇 개로 근사**했다가 🦊여우 꼬리가 포도송이처럼 울퉁불퉁하게 나왔다.
+ *     게임(js/game.js buildAnimalMesh)은 taperedTube 로 매끈하게 뽑는다 — 근사가 아니라
+ *     같은 방식으로 만들어야 "꼬리 옆에 장식을 둬도 되는가"를 제대로 판정할 수 있다.
+ *  colorFn 이 있으면 정점색을 굽는다(🦊 끝 1/3 이 흰색).
+ */
+function taperedTube(pts, radiusFn, colorFn = null, segs = 40, radial = 9) {
+  const curve = new THREE.CatmullRomCurve3(pts);
+  const frames = curve.computeFrenetFrames(segs, false);
+  const pos = [], col = [], idx = [];
+  for (let i = 0; i <= segs; i++) {
+    const u = i / segs;
+    const P = curve.getPointAt(u), N = frames.normals[i], B = frames.binormals[i];
+    const r = radiusFn(u), c = colorFn && colorFn(u);
+    for (let j = 0; j < radial; j++) {
+      const A = (j / radial) * Math.PI * 2, ca = Math.cos(A), sa = Math.sin(A);
+      pos.push(P.x + (N.x * ca + B.x * sa) * r, P.y + (N.y * ca + B.y * sa) * r, P.z + (N.z * ca + B.z * sa) * r);
+      if (c) col.push(c.r, c.g, c.b);
+    }
+  }
+  for (let i = 0; i < segs; i++) for (let j = 0; j < radial; j++) {
+    const a = i * radial + j, b = i * radial + (j + 1) % radial;
+    const c2 = (i + 1) * radial + j, d = (i + 1) * radial + (j + 1) % radial;
+    idx.push(a, c2, b, b, c2, d);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  if (col.length) geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  geo.setIndex(idx); geo.computeVertexNormals();
+  return { geo, end: curve.getPointAt(1) };
+}
+
+/** 앵커 3개 — 스펙 §3-2.
+ *  ⚠️ 1차 실측으로 스펙의 값 두 개가 틀린 게 드러나 고쳤다:
+ *
+ *  ① head 를 `HY + HR*0.82` 라는 **고정 높이**로 잡았더니 🐱고양이에서 챙이 얼굴
+ *     한가운데를 가로질렀다. 동물마다 얼굴을 그리는 높이가 달라(animal-faces.js)
+ *     "머리 위"가 한 값으로 안 떨어진다. 그래서 앵커는 **머리 중심(HY)** 에 두고,
+ *     높이는 아이템이 저마다 HR 비례로 정한다 — 모자는 위, 머리띠는 이마.
+ *
+ *  ② back 의 z 계수 0.55 는 몸 표면(bs[2] 배)의 절반, 즉 **몸 속**이었다.
+ *     등 뒤에서 찍었는데 배낭이 통째로 파묻혀 안 보였다. 표면에 밀착하도록 0.98 로.
+ */
+function anchorsOf(a) {
+  const R = a.bodyR, bs = a.bodyScale, HR = a.headR, HY = a.headY;
+  const bodyY = R * bs[1] + 0.02;
+  //  ▶ 좌표는 전부 js/cosmetics/anchors.js 가 푼다(테스트: tests/cosmetics-anchors.test.mjs).
+  //    🎒 옆구리 — 등 한가운데는 🦊여우 꼬리가 차지하고 있어 가방이 먹힌다(실측).
+  //      옆으로 매면 충돌 자체가 없고 동물별 예외도 필요 없다.
+  //      ⚠️ **왼쪽(−x)** 이다. 도구 든 손이 오른쪽(game.js heldGroup.x = 0.78)이라 오른쪽에 매면 부딪힌다.
+  //      ⚠️ 좌표를 손으로 정하지 않는다 — 방향(BAG_DIR)만 정하고 **타원체 표면까지의 거리**를 푼다.
+  //         어깨끈도 같은 점에서 출발하므로 가방과 끈이 저절로 맞물린다.
+  return {
+    R, HR, HY, bs, bodyY, tail: a.tail,
+    head: headAnchor(HY),                       // 머리 중심
+    neck: neckAnchor(HR, HY),
+    neckR: neckRadius(HR),
+    back: backAnchor(bs, R, bodyY),
+    side: sideAnchor(bs, R, bodyY),
+  };
+}
+
+function buildAnimal(a) {
+  const g = new THREE.Group();
+  const { R, bs, bodyY } = anchorsOf(a);
+
+  const body = put(g, new THREE.Mesh(new THREE.SphereGeometry(R, 28, 20), plushMat(a.body)), 0, bodyY, 0);
+  body.scale.set(bs[0], bs[1], bs[2]);
+  const belly = put(g, new THREE.Mesh(new THREE.SphereGeometry(R * 0.62, 20, 14), plushMat(a.belly)), 0, bodyY - R * 0.16, R * 0.55, false);
+  belly.scale.set(1, 1.1, 0.6);
+
+  // 머리 — 게임과 같은 소스(귀·볏 포함)
+  g.add(buildAnimalHead(a.id, { HR: a.headR, HY: a.headY, body: a.body, belly: a.belly }));
+
+  // 꼬리 — 곡선점·굵기식·색 경계 모두 js/game.js buildAnimalMesh 에서 그대로 옮겨 왔다.
+  //   🦊bushy 는 등 장식과 부딪히는 유일한 꼬리라 특히 실물과 같아야 한다.
+  const tm = plushMat(a.body);
+  const tail = new THREE.Group();
+  tail.position.set(0, bodyY + R * 0.10, -R * bs[2] * 0.86);
+  g.add(tail);
+  const base = tail.position;
+  const V = (x, y, z) => new THREE.Vector3(R * x, R * y, R * z);
+  const tube = (pts, radFn, colFn) => {
+    const { geo, end } = taperedTube(pts, radFn, colFn);
+    const m = new THREE.Mesh(geo, colFn
+      ? new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 })
+      : tm);
+    m.castShadow = true; tail.add(m);
+    return end;
+  };
+
+  if (a.tail === 'bushy') {   // 🦊 짧고 통통하게 위로 솟고 끝 1/3 이 흰색(정점색)
+    const pts = [V(0, -0.05, 0.10), V(0, 0.06, -0.30), V(0, 0.30, -0.50), V(0, 0.60, -0.58), V(0, 0.88, -0.54)];
+    const rad = u => R * (0.29 + 0.05 * Math.sin(Math.PI * u)) * (1 - 0.38 * Math.max(0, u - 0.70) / 0.30);
+    const c0 = new THREE.Color(a.body), c1 = new THREE.Color(a.belly);
+    const end = tube(pts, rad, u => u < 0.60 ? c0 : u < 0.68 ? c0.clone().lerp(c1, (u - 0.60) / 0.08) : c1);
+    put(tail, new THREE.Mesh(new THREE.SphereGeometry(rad(1) * 0.98, 12, 9), plushMat(a.belly)), end.x, end.y, end.z);
+  } else if (a.tail === 'long') {   // 🐱 밑동 굵게 위로 쭉, 끝이 살짝 뒤로 휜다
+    const pts = [V(0, -0.05, 0.10), V(0, 0.08, -0.36), V(0, 0.45, -0.60), V(0, 0.90, -0.58), V(0, 1.22, -0.36)];
+    const rad = u => R * (0.17 * (1 - u * 0.62) + 0.02) * (1 - 0.30 * Math.max(0, u - 0.85) / 0.15);
+    const end = tube(pts, rad);
+    put(tail, new THREE.Mesh(new THREE.SphereGeometry(rad(1) * 0.98, 10, 8), tm), end.x, end.y, end.z);
+  } else if (a.tail === 'curl') {   // 🐶 짧게 위로 말린 곡선
+    const pts = [V(0, -0.05, 0.10), V(0, 0.05, -0.22), V(0, 0.30, -0.40), V(0, 0.58, -0.36), V(0, 0.72, -0.14)];
+    const rad = u => R * (0.15 * (1 - u) + 0.05);
+    const end = tube(pts, rad);
+    put(tail, new THREE.Mesh(new THREE.SphereGeometry(rad(1) * 0.98, 10, 8), tm), end.x, end.y, end.z);
+  } else if (a.tail === 'puff') {
+    put(g, new THREE.Mesh(new THREE.SphereGeometry(R * 0.30, 12, 10), plushMat(a.belly)), 0, base.y + R * 0.04, base.z - R * 0.06);
+  } else if (a.tail === 'feather') {
+    [-1, 0, 1].forEach(s => {
+      const f = put(g, new THREE.Mesh(new THREE.ConeGeometry(R * 0.10, R * 0.44, 3), tm), s * R * 0.09, base.y + R * 0.34, base.z - R * 0.12);
+      f.rotation.set(Math.PI / 2 - 0.85, 0, s * 0.24);
+    });
+  } else {   // stub
+    put(g, new THREE.Mesh(new THREE.SphereGeometry(R * 0.16, 10, 8), tm), 0, base.y, base.z);
+  }
+  return g;
+}
+
+
+
+
+
+// =============================================================
+//  카탈로그 — 스펙 §4. 가격의 cash 는 채널이 열릴 때 채운다(지금은 null)
+// =============================================================
+const SLOTS = [
+  { id: 'kinder', ico: '🌱', name: '새싹반', items: [
+    { id: 'kinder_hat',  name: '새싹반 모자', price: 50,  anchor: 'head' },
+    { id: 'tulip_tag',   name: '튤립 이름표', price: 70,  anchor: 'neck' },
+    { id: 'kinder_bag',  name: '새싹반 가방', price: 100, anchor: 'side' },
+  ]},
+  { id: 'head', ico: '🎩', name: '머리', items: [
+    { id: 'beanie',       name: '털모자',        price: 1600, earSafe: 'dome' },
+    { id: 'cap',          name: '캡',            price: 1500, earSafe: 'dome' },
+    { id: 'mushroom',     name: '버섯 모자',     price: 1800, earSafe: 'dome' },
+    { id: 'flower_crown', name: '화관',          price: 1400, earSafe: 'low' },
+    { id: 'straw_hat',    name: '밀짚모자',      price: 1200, earSafe: 'dome' },
+    { id: 'leaf_band',    name: '나뭇잎 머리띠', price: 800,  earSafe: 'low' },
+    { id: 'star_pin',     name: '별 머리핀',     price: 600,  earSafe: 'low' },
+  ]},
+  { id: 'neck', ico: '🧣', name: '목', items: [
+    { id: 'scarf',      name: '목도리',        price: 900 },
+    { id: 'bell',       name: '방울 목걸이',   price: 700 },
+    { id: 'bowtie',     name: '나비 넥타이',   price: 850 },
+  ]},
+  // 🎒 가방류는 side(옆구리) 앵커, 망토만 back(등) 앵커를 쓴다 — 아이템이 붙을 면을 고른다
+  { id: 'back', ico: '🎒', name: '가방', items: [
+    { id: 'pack',   name: '메신저 가방', price: 1500, anchor: 'side' },
+    { id: 'basket', name: '바구니',      price: 1200, anchor: 'side' },
+    { id: 'cape',   name: '망토',        price: 1800, anchor: 'back' },
+  ]},
+  { id: 'trail', ico: '👣', name: '발자국', items: [
+    // 등급 사다리 — 기본(바닥 자국만) → 고급(장식이 핀다) → 특별(빛이 떠오른다)
+    { id: 'paw',     name: '발바닥',  price: 700,  tier: '기본' },
+    { id: 'drop',    name: '물방울',  price: 900,  tier: '기본' },
+    { id: 'flower',  name: '꽃',      price: 1500, tier: '고급' },
+    { id: 'star',    name: '별',      price: 2200, tier: '특별' },
+    { id: 'sparkle', name: '반짝이',  price: 2600, tier: '특별' },
+  ]},
+];
+
+/** 동물 + 장식 하나 = 한 덩어리 */
+function dressed(a, slot, itemId) {
+  const g = new THREE.Group();
+  g.add(buildAnimal(a));
+  if (!itemId || slot.id === 'trail') return g;
+  const k = anchorsOf(a);
+  const it = slot.items.find(i => i.id === itemId);
+  const holder = new THREE.Group();
+  holder.position.copy(k[(it && it.anchor) || slot.id]);   // 아이템이 붙을 면을 고른다
+  const cos = buildCosmetic(THREE, itemId, k);
+  if (cos) holder.add(cos);
+  g.add(holder);
+  return g;
+}
+
+/** 👣 발자국 한 줄 — 걸어온 자취(뒤로 갈수록 옅어진다) */
+function trailRow(itemId, a = null) {
+  const g = new THREE.Group();
+  const N = 7;                           // 자국 하나의 기준 반지름은 trail.js 의 TRAIL_S(0.10)
+  for (let i = 0; i < N; i++) {
+    const o = 1.0 - 0.82 * (i / N);      // 뒤로 갈수록 옅어진다(첫 자국은 또렷하게)
+    const step = new THREE.Group();
+    // 좌우로 번갈아 — 실제 걸음처럼 보이게. 한 줄로 찍으면 자국이 아니라 점선이다
+    step.position.set((i % 2 ? 1 : -1) * TRAIL_SIDE, 0, -i * 0.30);
+    step.rotation.y = (i % 2 ? 1 : -1) * 0.20;
+    step.add(buildTrailMark(THREE, itemId, o, a && a.id));
+    g.add(step);
+  }
+  return g;
+}
+
+// =============================================================
+//  무대
+// =============================================================
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xdbe9ee);
+scene.fog = new THREE.Fog(0xdbe9ee, 18, 40);
+const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.1, 100);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const hemi = new THREE.HemisphereLight(0xdfefff, 0x6f7f68, 0.88); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff3df, 1.12);
+sun.position.set(4, 8, 5); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -8, right: 8, top: 8, bottom: -8, near: 0.5, far: 26 });
+sun.shadow.camera.updateProjectionMatrix();
+scene.add(sun);
+const rim = new THREE.DirectionalLight(0xbfd8e8, 0.34); rim.position.set(-5, 3, -4); scene.add(rim);
+
+const ground = new THREE.Mesh(new THREE.CircleGeometry(16, 48), new THREE.MeshStandardMaterial({ color: 0x9fc08a, roughness: 1 }));
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+
+const root = new THREE.Group(); scene.add(root);
+const labels = document.getElementById('labels');
+let tags = [];
+
+// ── 배치 ─────────────────────────────────────────────────────
+let slotId = 'kinder', mode = 'items', pickIdx = 0;
+const GX = 1.45;
+
+function slot() { return SLOTS.find(s => s.id === slotId); }
+
+function layout() {
+  [...root.children].forEach(c => root.remove(c));
+  labels.innerHTML = ''; tags = [];
+  const S = slot();
+  const addTag = (x, z, y, html, warn) => {
+    const el = document.createElement('div'); el.className = 'tag' + (warn ? ' warn' : '');
+    el.innerHTML = html; labels.appendChild(el); tags.push({ el, x, z, y });
+  };
+
+  if (S.id === 'trail') {
+    if (mode === 'animals') {
+      // 🐾 발바닥은 동물마다 다르다 — 7종을 나란히 놓고 본다
+      const it = S.items[Math.min(pickIdx, S.items.length - 1)];
+      ANIMALS.forEach((a, i) => {
+        const x = (i - (ANIMALS.length - 1) / 2) * 0.86;
+        const row = trailRow(it.id, a); row.position.set(x, 0, 0.6); root.add(row);
+        addTag(x, 1.35, 0.30, `${a.ico} <b>${a.name}</b>`);
+      });
+      return;
+    }
+    // 자취로 본다 — 등급 순으로 나란히
+    S.items.forEach((it, i) => {
+      const x = (i - (S.items.length - 1) / 2) * 1.05;
+      const row = trailRow(it.id); row.position.set(x, 0, 0.6); root.add(row);
+      addTag(x, 1.35, 0.30, `👣 <b>${it.name}</b><small>${it.tier} · ${it.price.toLocaleString()}🪙</small>`);
+    });
+    return;
+  }
+
+  if (mode === 'items') {
+    // 아이템 비교 — 한 동물(🦊여우)에 이 슬롯의 아이템을 전부 얹는다
+    const a = ANIMALS[0];
+    S.items.forEach((it, i) => {
+      const x = (i - (S.items.length - 1) / 2) * GX;
+      const d = dressed(a, S, it.id); d.position.set(x, 0, 0); root.add(d);
+      addTag(x, 0, 1.98, `${S.ico} <b>${it.name}</b><small>${it.price.toLocaleString()}🪙${it.earSafe ? ' · earSafe ' + it.earSafe : ''}</small>`);
+    });
+  } else {
+    // 동물 호환 — 아이템 하나를 7종에 걸쳐 세운다. 여기서 귀·꼬리 함정이 드러난다
+    const it = S.items[Math.min(pickIdx, S.items.length - 1)];
+    ANIMALS.forEach((a, i) => {
+      const x = (i - (ANIMALS.length - 1) / 2) * 1.28;
+      const d = dressed(a, S, it.id); d.position.set(x, 0, 0); root.add(d);
+      // 옆구리 가방으로 옮긴 뒤로 🦊꼬리 충돌은 망토(back 앵커)에만 남는다
+      const usesBack = (S.items[Math.min(pickIdx, S.items.length - 1)].anchor || S.id) === 'back';
+      const risky = (S.id === 'head' && (a.id === 'rabbit' || a.id === 'chick'))
+                 || (S.id === 'back' && usesBack && a.tail === 'bushy');
+      addTag(x, 0, 2.20, `${a.ico} <b>${a.name}</b>${risky ? '<small>⚠️ 함정 지점</small>' : ''}`, risky);
+    });
+  }
+}
+
+const v = new THREE.Vector3();
+function placeTags() {
+  tags.forEach(t => {
+    v.set(t.x, t.y, t.z); root.localToWorld(v); v.project(camera);
+    t.el.style.left = ((v.x * 0.5 + 0.5) * innerWidth) + 'px';
+    t.el.style.top = ((-v.y * 0.5 + 0.5) * innerHeight) + 'px';
+    t.el.style.display = v.z > 1 ? 'none' : '';
+  });
+}
+
+// ── 조작 ─────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+let dist = 5.0, angle = 24, elev = 12;
+const setDist = d => { dist = d; $('dist').value = d; $('distV').textContent = d.toFixed(1); };
+
+function renderBtns() {
+  const mk = (box, label, on, fn) => {
+    const b = document.createElement('button'); b.textContent = label; if (on) b.className = 'on';
+    b.onclick = () => { fn(); renderBtns(); layout(); }; box.appendChild(b);
+  };
+  const sb = $('slots'); sb.innerHTML = '';
+  SLOTS.forEach(s => mk(sb, `${s.ico} ${s.name}`, slotId === s.id, () => {
+    slotId = s.id; pickIdx = 0;
+    setDist(s.id === 'trail' ? (mode === 'animals' ? 5.4 : 4.6) : mode === 'animals' ? 7.4 : 5.0);
+  }));
+
+  const mb = $('modes'); mb.innerHTML = '';
+  const pb = $('picks'); pb.innerHTML = '';
+  mk(mb, '아이템 비교', mode === 'items', () => { mode = 'items'; setDist(slotId === 'trail' ? 4.6 : 5.0); });
+  mk(mb, '동물 호환', mode === 'animals', () => { mode = 'animals'; setDist(slotId === 'trail' ? 5.4 : 7.4); });
+  if (mode === 'animals') slot().items.forEach((it, i) => mk(pb, it.name, pickIdx === i, () => { pickIdx = i; }));
+}
+
+$('dist').oninput = e => { dist = +e.target.value; $('distV').textContent = dist.toFixed(1); };
+$('ang').oninput = e => { angle = +e.target.value; $('angV').textContent = angle + '°'; };
+$('elev').oninput = e => { elev = +e.target.value; $('elevV').textContent = elev + '°'; };
+$('night').onchange = e => {
+  const n = e.target.checked;
+  hemi.intensity = n ? 0.32 : 0.88; sun.intensity = n ? 0.22 : 1.12;
+  hemi.color.set(n ? 0x9fb4d8 : 0xdfefff); rim.intensity = n ? 0.16 : 0.34;
+  ground.material.color.set(n ? 0x4a6350 : 0x9fc08a);
+  scene.fog.color.set(n ? 0x36485c : 0xdbe9ee); scene.background.set(n ? 0x36485c : 0xdbe9ee);
+  document.body.style.background = n ? 'linear-gradient(#2b3a52,#3d4f52)' : 'linear-gradient(#cfe4ee,#eaf2e6)';
+};
+
+// ── HUD — 블룸 검산 ──
+{
+  const nums = Object.entries(P).filter(([, c]) => typeof c === 'number');
+  const over = nums.filter(([, c]) => luma(c) > BLOOM_LUMA);
+  $('hud').innerHTML =
+    `🎀 <b>꾸미기 슬롯 시안</b><br><span style="opacity:.62">머리·목·등 = 앵커 · 발자국 = 월드 이펙트</span><br>` +
+    `<span style="opacity:.62">머리 조형은 게임과 같은 소스</span><br>` +
+    (over.length
+      ? `<span class="warn">⚠️ 블룸 초과 ${over.length}색: ${over.map(([k]) => k).join(', ')}</span>`
+      : `<span style="color:#3f7a4a">✓ 블룸 임계 0.85 — ${nums.length}색 전부 통과</span>`);
+  console.log('[cosmetic-sim] 블룸 검산', Object.fromEntries(nums.map(([k, c]) => [k, +luma(c).toFixed(3)])));
+}
+
+renderBtns(); layout();
+function tick() {
+  requestAnimationFrame(tick);
+  if ($('spin').checked) { angle = (angle + 0.28) % 360; $('ang').value = angle > 180 ? angle - 360 : angle; $('angV').textContent = Math.round(angle) + '°'; }
+  const r = THREE.MathUtils.degToRad(angle), e = THREE.MathUtils.degToRad(elev);
+  camera.position.set(Math.sin(r) * Math.cos(e) * dist, Math.sin(e) * dist + 0.85, Math.cos(r) * Math.cos(e) * dist);
+  camera.lookAt(0, 0.85, 0);
+  placeTags();
+  renderer.render(scene, camera);
+}
+tick();
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// 헤드리스 캡처용
+window.__cosSim = {
+  SLOTS: SLOTS.map(s => ({ id: s.id, name: s.name, items: s.items.map(i => i.id) })),
+  set: (sid, m, pi = 0) => { slotId = sid; mode = m; pickIdx = pi; setDist(sid === 'trail' ? 3.6 : m === 'animals' ? 7.4 : 5.0); renderBtns(); layout(); },
+};
+</script>

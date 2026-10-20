@@ -79,6 +79,8 @@ import { checkNickname, NICK_FAIL_MSG } from './nickname-filter.js';
 import { makeChickenState, stepChickens } from './coop-chickens.js';   // 🐔 닭 배회·오두막 출입(벽 통과 금지)
 import { ORCHARD_AUTO_TOOLS, orchardToolFor, FRUITS, TREE_SLOTS, YIELD_PER_DAY, ORCHARD_STREAM_LOCAL, ORCHARD_SLOTS_LOCAL, fruitOf, fruitKeyOf, sapKeyOf, nearStream, harvestable, settleTrees, chopHit, freeSlots, daysBetween } from './orchard.js';   // 🍎 과수원 규칙(과일 표·물·수확·베기·빈 자리·정산)
 import { restoreStage } from './orchard-onboard.js';
+import { restoreStage as restoreCosStage } from './cos-onboard.js';
+import { cosQuestActive, maybeOfferCosQuest, noteCosQuestVisit, updateCosQuestBubble } from './spaces/cos-quest.js';
 import { ORCHARD_TREE, GATE_PATCH, buildOrchardDecor, fruitSpots, buildTreeSoil, disposeOwned } from './orchard-art.js';   // 🍎 과수원 외관(나무 모양·안쪽 소품·입구 잔디 판)
 import { logOrchardEvent } from './orchard-log.js';   // 🍎 과수원 이벤트 원장(Supabase, fire-and-forget) — GA4 유실·지연 대비
 import { CONFIG, IS_DEV_SESSION } from './config.js';  // 🔵 API_BASE — 앱인토스 번들에서 API 를 절대 URL 로 호출 / 🧪 dev 세션
@@ -1948,7 +1950,8 @@ export const Input = {
     return { half: 0.12 * e, targetMs: 1200, tol: 400 * e, tolRatio: 0.5 * e };
   },
   craftMgBase(itemId) { return mgBaseOf(itemId); },     // 🍎 과일 가공은 원조 품목의 조작을 빌린다(index.html 분기 키)
-  orchardQuestAfterTutorial() { maybeOfferOrchardQuest({ needHarvested: true }); },   // 🌾→🍎 튜토리얼(수확이 8단계)이 끝나면 미뤄 둔 의뢰를 건다
+  orchardQuestAfterTutorial() { maybeOfferOrchardQuest({ needHarvested: true }); },
+  cosQuestAfterTutorial() { maybeOfferCosQuest({ via: 'tutorial' }); },   // 🌾→🍎 튜토리얼(수확이 8단계)이 끝나면 미뤄 둔 의뢰를 건다
   queueChapterShot(after) { return queueChapterShot(after); },
   // 🔥 미니게임 판정 — 조작은 index.html 이 받고 판정은 순수 모듈이 한다
   craftScore(itemId, input) {
@@ -2806,6 +2809,7 @@ function applySave(saved) {
   // 🌾→🍎 과수원 가는 길 의뢰(js/orchard-onboard.js) — 모르는 값은 버린다
   gameState.progress.orchardQuest = restoreStage(saved.progress?.orchardQuest, gameState.progress.advHarvest);
   gameState.progress.orchardRefill = saved.progress?.orchardRefill === true || undefined;
+  gameState.progress.cosQuest = restoreCosStage(saved.progress?.cosQuest, gameState.cosmetics.owned.length);
   syncBridge();            // 🌉 복원된 unlocks(legacy·flags.bridge)로 다리를 다시 맞춘다 — 빌더는 로드 전에 돈다
   syncOrchardGateLock();   // 🔒 복원된 진행도로 가로대를 다시 계산 — 입구를 세울 땐 progress 가 아직 기본값 0 이라 항상 잠긴 것으로 보인다
   // 🍎 복원된 나무를 그린다. buildWorld() 의 rebuildOrchard() 는 **로그인 전**이라 나무 목록이
@@ -5838,6 +5842,7 @@ const VILLAGE_PLACES = [
   { ico: '🔧', name: '작업대',        x: BENCH.x,       z: BENCH.z,       pri: 1 },
   { ico: '🍳', name: '자유주방',      x: KITCHEN.x,     z: KITCHEN.z,     pri: 2 },
   { ico: '🏪', name: '상점',          x: SHOP.x,        z: SHOP.z,        pri: 1 },
+  { ico: '🎀', name: '꾸미기 가게',   x: SHOP_POS.x,    z: SHOP_POS.z,    pri: 1 },
   { ico: '📊', name: '시세판',        x: MARKET.x,      z: MARKET.z,      pri: 2 },
   { ico: '🏆', name: '리더보드',      x: RANK.x,        z: RANK.z,        pri: 2 },
   { ico: '🏞️', name: '호수',          x: LAKE.x,        z: LAKE.z,        pri: 2 },
@@ -5996,6 +6001,7 @@ function animate() {
       if (!camTourAsked && userCamAdjustable()) camTourAsked = !!ui.camTour?.();
       if (place === 'village') {
         md.places = villagePlaces();   // 🗺️ 미니맵 아이콘 + 전체 지도 라벨의 출처
+        md.target = cosQuestActive() ? { x: SHOP_POS.x, z: SHOP_POS.z, ico: '🎀' } : null;
         // 주민 위치 — 배회·비행하니 실시간이어야 한다. 색은 이름표 배지와 같은 고유색이라
         //   지도의 점만 보고도 누구인지 알 수 있다(예전 보라 점 6개를 대신한다).
         //   q = 머리 위 말풍선과 같은 글자('!' 받을 수 있음 / '…' 진행 중 / '✓' 완료) —
@@ -6058,6 +6064,7 @@ function animate() {
   updateSetFx(clock.elapsedTime);
   updateTraceBubbles(dt, t, player.position);   // 🐾 흔적 말풍선 — 통통·가까이 가면 확대·고리
   updateVisitorBubbles(dt, t);                  // 🔍 방문객 말풍선 — 같은 연출
+  updateCosQuestBubble(dt, t, player.position, !indoor);
   updateAura(dt);       // 🏮 빛 공방 오라
   updateTrail(dt);      // 👣 발자국 자취(꾸미기 trail 슬롯)
   updateUmbrella(dt);   // ☂️ 💎 도구 테마 세트 — 비 오는 날 바깥에서 우산
@@ -7178,6 +7185,7 @@ function handleAction() {
   if (nearCosShop) {                       // 🏪 꾸미기 가게 → 🎀 꾸미기 패널
     trackEvent('shop_enter', { from: 'walk' });
     trackEvent('shop_open', { tab: 'cosmetics' });
+    noteCosQuestVisit();
     return ui.openCosShop?.();
   }
   // 🍄 채집 — 도구가 필요 없는 "줍기". 단, 도끼를 들고 더 가까운 나무가 있으면 벌목에 양보

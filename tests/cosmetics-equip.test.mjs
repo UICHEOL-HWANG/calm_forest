@@ -60,16 +60,31 @@ test('equippedItems: 장착한 품목 객체들 — 렌더가 이걸 받아 그�
   assert.deepEqual(equippedItems(emptyCosmetics()), []);
 });
 
-test('sanitize: 세이브의 낯선 id·중복·잘못된 슬롯을 걸러 낸다', () => {
+test('sanitize: 중복·비문자열·잘못된 슬롯을 걸러 낸다', () => {
   const c = sanitize({
-    owned: ['scarf', 'scarf', 'ghost_item', 42],
+    owned: ['scarf', 'scarf', 42],
     equipped: { head: 'scarf', neck: 'scarf', back: 'nope', trail: null, wing: 'x' },
   });
-  assert.deepEqual(c.owned, ['scarf'], '중복·미등록·비문자열 제거');
-  assert.equal(c.equipped.head, null, 'scarf 는 neck 이라 head 에 못 온다');
+  assert.deepEqual(c.owned, ['scarf']);
+  assert.equal(c.equipped.head, null);
   assert.equal(c.equipped.neck, 'scarf');
-  assert.equal(c.equipped.back, null, '카탈로그에 없는 id');
-  assert.equal(c.equipped.wing, undefined, '없는 슬롯은 만들지 않는다');
+  assert.equal(c.equipped.back, null);
+  assert.equal(c.equipped.wing, undefined);
+});
+
+test('sanitize: 모르는 id 는 소유 목록에 남긴다 · 장착은 하지 않는다', () => {
+  const c = sanitize({ owned: ['scarf', 'future_hat'], equipped: { head: 'future_hat', neck: 'scarf' } });
+  assert.deepEqual(c.owned, ['scarf', 'future_hat']);
+  assert.equal(c.equipped.head, null);
+  assert.equal(c.equipped.neck, 'scarf');
+});
+
+test('sanitize: 모르는 id 는 id 모양 문자열만 · 개수 상한', () => {
+  const junk = ['<script>', 'A B', 'x'.repeat(65), ''];
+  const many = Array.from({ length: 300 }, (_, i) => `future_${i}`);
+  const c = sanitize({ owned: [...junk, ...many], equipped: {} });
+  assert.ok(c.owned.every(id => /^[a-z0-9_]{1,64}$/.test(id)));
+  assert.ok(c.owned.length <= 128);
 });
 
 test('sanitize: 안 산 것은 장착에서 뺀다 — 세이브 조작 방어', () => {
