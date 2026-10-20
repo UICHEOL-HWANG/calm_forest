@@ -107,9 +107,10 @@ if (CONFIG.PADDLE.storeOpen) {
 // 💳 /shop — 가격표를 카탈로그에서 생성한다(가격 단일 출처). pages/shop.template.html 의 <!--ROWS--> 자리.
 if (CONFIG.PADDLE.storeOpen) {
   const { ITEMS } = await import('../js/cosmetics/catalog.js');
-  const { shopRows } = await import('./lib/shop-rows.mjs');
+  const { shopRows, bundleShopRows } = await import('./lib/shop-rows.mjs');
+  const { BUNDLES } = await import('../js/shop/bundles.js');
   //  💎 현금 상품만(scripts/lib/shop-rows.mjs) — 코인 전용 아이템·펫은 현금으로 팔지 않는다
-  const rows = shopRows(ITEMS).join('\n');
+  const rows = [...shopRows(ITEMS), ...bundleShopRows(BUNDLES)].join('\n');
   const tpl = await readFile(path.join(ROOT, 'pages/shop.template.html'), 'utf8');
   await writeFile(path.join(DIST, 'shop.html'), tpl.replace('<!--ROWS-->', rows));
 }

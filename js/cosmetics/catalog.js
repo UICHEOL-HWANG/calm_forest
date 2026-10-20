@@ -62,6 +62,17 @@ const RAW = [
   { id: 'tools_harvest',  slot: 'tools', ico: '🌽', name: '수확제 세트',    won: 4500, tier: '프리미엄', sale: 'halloween' },
   { id: 'bat_wing', slot: 'back', ico: '🦇', name: '박쥐 날개', won: 4500, tier: '프리미엄', anchor: 'back', sale: 'halloween' },
   { id: 'bat_cape', slot: 'back', ico: '🧛', name: '박쥐 망토', won: 4500, tier: '프리미엄', anchor: 'back', sale: 'halloween' },
+  { id: 'tools_maple', slot: 'tools', ico: '🍁', name: '단풍 숲 세트',    won: 5000, tier: '프리미엄' },
+  { id: 'tools_frost', slot: 'tools', ico: '❄️', name: '눈꽃 겨울 세트',  won: 5000, tier: '프리미엄' },
+  { id: 'tools_honey', slot: 'tools', ico: '🐝', name: '꿀벌 꿀단지 세트', won: 5000, tier: '프리미엄' },
+  { id: 'tools_kitty', slot: 'tools', ico: '🐱', name: '냥냥 고양이 세트', won: 5000, tier: '프리미엄' },
+  { id: 'tools_shell', slot: 'tools', ico: '🐚', name: '바닷가 조개 세트', won: 5000, tier: '프리미엄' },
+  { id: 'acorn_cap',    slot: 'head',  ico: '🌰', name: '도토리 모자',        won: 3500, tier: '프리미엄', earSafe: 'low' },
+  { id: 'bee_band',     slot: 'head',  ico: '🐝', name: '꿀벌 더듬이 머리띠', won: 3500, tier: '프리미엄', earSafe: 'low' },
+  { id: 'kitty_pack',   slot: 'back',  ico: '🎒', name: '냥냥 배낭',          won: 4500, tier: '프리미엄', anchor: 'back' },
+  { id: 'nest_pack',    slot: 'back',  ico: '🪺', name: '아기새 둥지 배낭',   won: 4500, tier: '프리미엄', anchor: 'back' },
+  { id: 'maple_trail',  slot: 'trail', ico: '🍁', name: '단풍잎',             won: 4000, tier: '프리미엄' },
+  { id: 'bubble_trail', slot: 'trail', ico: '🫧', name: '비눗방울',           won: 4000, tier: '프리미엄' },
   // 🤝 친구 초대 보상 — 비매품(dev/active/referral-reward). 1명 무지개 크리스탈 세트 · 5명 날개 · 초대받은 친구 하트핀(🌈 3명 아치는 야외 장식)
   //    id tools_star 는 서버 가드·원장에 이미 등록돼 그대로 둔다(이름만 2026-10-08 시안 B 선택에 맞춰 바꿈)
   { id: 'tools_star',  slot: 'tools', ico: '💎', name: '무지개 크리스탈 세트', reward: 'referral', tier: '친구 초대' },

@@ -19,12 +19,23 @@ import { cashFor } from '../shop/cash.js';
 /** 🐾 파는 종 — 조형은 js/pet/art.js 의 BUILD 가 **같은 id** 로 갖고 있다.
  *  ⚠️ 여기와 BUILD 가 갈리면 상점엔 뜨는데 안 그려지는 종이 생긴다 — tests/pet-rules 가 맞물림을 못 보므로
  *     새 종을 넣을 땐 두 곳을 같이 고쳐라(art.js 는 THREE 가 필요해 순수 테스트에서 못 부른다). */
+export const PREMIUM_PET_WON = 6900;
+export const FISH_BONUS = Object.freeze({ p: 0.1, cap: 4 });
+export const GIFT_RANGE = Object.freeze({ min: 1, max: 3 });
 export const PET_KINDS = Object.freeze([
   { id: 'leaf',   ico: '🍃', name: '씨앗이', blurb: '바람이 데려온 씨앗' },
   { id: 'spirit', ico: '✨', name: '빛정령', blurb: '빛나라에서 온 조각' },
   { id: 'bird',   ico: '🐦', name: '피앙새', blurb: '노래를 잃고 온 새' },
   { id: 'golem',  ico: '🫘', name: '꼬마돌', blurb: '개울에서 굴러온 돌' },
-].map(k => Object.freeze({ ...k, cash: cashFor(k.id, null) })));   // 💳 현금 칸 — priceId 없으면 null(스펙 2026-09-30 §2-1)
+  { id: 'cloud_dragon', ico: '☁️', name: '몽실 구름용',   blurb: '소나기: 목마른 밭 5칸을 한 번에 적셔요', won: PREMIUM_PET_WON,
+    ability: { tasks: ['water'], chain: 5, rest: 30, burst: true } },
+  { id: 'hedgehog',     ico: '🦔', name: '꽃송이 고슴도치', blurb: '꼼꼼 손질: 잡초와 해충을 6칸까지 돌봐요', won: PREMIUM_PET_WON,
+    ability: { tasks: ['weed', 'pest'], chain: 6, rest: 24 } },
+  { id: 'axolotl',      ico: '🦎', name: '반짝 우파루파', blurb: '물가 행운: 낚시할 때 가끔 한 마리 더 낚아요', won: PREMIUM_PET_WON,
+    ability: { chain: 4, fishBonus: true } },
+  { id: 'unicorn',      ico: '🦄', name: '아기 유니콘',   blurb: '꽃길 선물: 하루 한 번 채집물을 물어 와요', won: PREMIUM_PET_WON,
+    ability: { chain: 4, gift: true } },
+].map(k => Object.freeze({ ...k, premium: k.won != null, cash: cashFor(k.id, null, k.won ?? null) })));   // 💳 현금 칸 — priceId 없으면 null(스펙 2026-09-30 §2-1)
 
 /** id → 종 정의. 모르는 id 면 null(세이브가 낯선 값을 들고 와도 화면이 안 깨지게) */
 export function petKindOf(id) { return PET_KINDS.find(k => k.id === id) || null; }
@@ -36,6 +47,29 @@ export const GROW_NEED = Object.freeze([0, 40, 140]);   // 일꾼(0/120/400)보�
 export const WORK_SEC = 2.5;        // 한 칸 처리 시간
 export const REST_SEC = 20;         // 쿨다운 — 일급이 없는 대신 이게 브레이크다
 export const CHAIN_MAX = 5;         // 한 번 시키면 최대 몇 칸
+
+export function abilityOf(kind) {
+  const a = petKindOf(kind)?.ability || {};
+  return Object.freeze({ tasks: a.tasks || PET_TASKS, chain: a.chain ?? CHAIN_MAX, rest: a.rest ?? REST_SEC, burst: !!a.burst, fishBonus: !!a.fishBonus, gift: !!a.gift });
+}
+
+export function choresPerMin(kind, walkSec = WORK_SEC) {
+  const a = abilityOf(kind), work = a.burst ? 1 : a.chain * walkSec;
+  return a.chain / ((work + a.rest) / 60);
+}
+
+export function petFishBonus(pet, day, rnd) {
+  if (!pet || !abilityOf(pet.kind).fishBonus) return { bonus: 0, pet };
+  const n = pet.bonusDay === day ? (pet.bonusN || 0) : 0;
+  if (n >= FISH_BONUS.cap || rnd >= FISH_BONUS.p) return { bonus: 0, pet };
+  return { bonus: 1, pet: { ...pet, bonusDay: day, bonusN: n + 1 } };
+}
+
+export function petGift(pet, day, rnd) {
+  if (!pet || !abilityOf(pet.kind).gift || pet.giftDay === day) return { n: 0, pet };
+  const n = GIFT_RANGE.min + Math.min(GIFT_RANGE.max - GIFT_RANGE.min, Math.floor(rnd * (GIFT_RANGE.max - GIFT_RANGE.min + 1)));
+  return { n, pet: { ...pet, giftDay: day } };
+}
 
 export function emptyPet(kind) {
   return { kind, name: '', works: 0, restUntil: 0 };
@@ -57,7 +91,7 @@ export function canCommand(pet, now) {
 }
 
 /** 반경 안에서 가장 급한 잡일 하나. 없으면 null */
-export function pickPetTask(plots, center, radius) {
+export function pickPetTask(plots, center, radius, tasks = PET_TASKS) {
   const r2 = radius * radius;
   const near = (plots || []).filter(p => {
     const dx = p.x - center.x, dz = p.z - center.z;
@@ -66,17 +100,24 @@ export function pickPetTask(plots, center, radius) {
   // 1. 💧 목마른 밭 — 잡초가 덮인 밭은 물을 줘도 안 자란다
   const thirsty = near.filter(p => p.state === 'growing' && !p.wet && !p.weed)
     .sort((a, b) => (a.wiltAt ?? Infinity) - (b.wiltAt ?? Infinity));
-  if (thirsty.length) return { type: 'water', i: thirsty[0].i };
+  if (thirsty.length && tasks.includes('water')) return { type: 'water', i: thirsty[0].i };
   // 2. 🌿 잡초
-  const weed = near.find(p => p.weed);
+  const weed = tasks.includes('weed') && near.find(p => p.weed);
   if (weed) return { type: 'weed', i: weed.i };
   // 3. 🐛 해충
-  const pest = near.find(p => p.pest);
+  const pest = tasks.includes('pest') && near.find(p => p.pest);
   if (pest) return { type: 'pest', i: pest.i };
   return null;   // 🌾수확·🌰파종은 여기 없다 — 일부러다
 }
 
 export function afterWork(pet, done, now) {
-  const n = Math.max(0, Math.min(CHAIN_MAX, done | 0));
-  return { ...pet, works: (pet.works || 0) + n, restUntil: now + REST_SEC * 1000 };
+  const a = abilityOf(pet.kind);
+  const n = Math.max(0, Math.min(a.chain, done | 0));
+  return { ...pet, works: (pet.works || 0) + n, restUntil: now + a.rest * 1000 };
+}
+
+export function burstTargets(plots, center, radius, n) {
+  const r2 = radius * radius;
+  return (plots || []).filter(p => { const dx = p.x - center.x, dz = p.z - center.z; return dx * dx + dz * dz <= r2 && p.state === 'growing' && !p.wet && !p.weed; })
+    .sort((a, b) => (a.wiltAt ?? Infinity) - (b.wiltAt ?? Infinity)).slice(0, Math.max(0, n)).map(p => p.i);
 }

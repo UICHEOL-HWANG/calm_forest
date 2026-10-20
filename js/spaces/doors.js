@@ -6,7 +6,7 @@
 //     game.js 에 남은 let 에 쓸 때는 `$w.x = …` (읽기는 그냥 x). 도구·증명: tools/refactor/
 // =============================================================
 import {
-  $w, DIG_WINDOW, WEATHER, atCafe, atDream, atMirror, atFarm, atMine, atMist, atMuseum, atObservatory, atMountain, atOrchard, atNeighbor, atRiver, atSea, boat, clock,
+  $w, DIG_WINDOW, WEATHER, atCafe, atDream, atMirror, atHalloween, atFarm, atMine, atMist, atMuseum, atObservatory, atMountain, atOrchard, atNeighbor, atRiver, atSea, boat, clock,
   currentTool, decorNearRing, dist2D, farmActionFirst, farmHalf, fertTarget, firstHintBanner, gameState,
   houseFloor, indoor, isNight, isOpen, lastDoorPrompt, lastFloorChoiceKey, lastNearHouse, lastZoneHint, mapLocked,
   nearBench, nearBoat, nearBoatShop, nearCafeGuest, nearCoop, nearCosShop, nearDecorMesh, nearLightWorkshop, nearDoor, nearDoorFloor,
@@ -39,6 +39,7 @@ import { bridgePrompt, nearBrokenBridge } from '../spaces/bridge.js';
 import { dreamNightHint, dreamPrompt } from '../spaces/dream.js';
 import { mirrorPrompt, mirrorVillagePrompt } from '../spaces/mirror.js';
 import { neighborPrompt } from '../spaces/neighbor.js';
+import { halloweenPrompt, halloweenVillagePrompt } from './halloween.js';
 import { worldTreeNear, worldTreePrompt } from '../spaces/world-tree.js';
 import { nearestOutdoor, outdoorZone } from '../spaces/outdoor-decor.js';
 import { chestHintNow, updateRiverInteract } from '../spaces/river.js';
@@ -183,6 +184,14 @@ export function updateDoorInteract() {
     if (lastZoneHint !== null) { $w.lastZoneHint = null; ui.setZoneHint?.(null); }
     return;
   }
+  if (atHalloween) {
+    const hp = halloweenPrompt(player.position);
+    nd = hp.nd; prompt = hp.prompt;
+    $w.nearDoor = nd;
+    if (prompt !== lastDoorPrompt) { $w.lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt); }
+    updateToolPageAuto();
+    return;
+  }
   if (atNeighbor) {    // 🏡 이웃 마을: 마당(나가는 길·집 문) / 🏠 이웃 집 실내(마당으로·계단·정원 문·가구 이름표) — js/spaces/neighbor.js
     const np = neighborPrompt(player.position);
     nd = np.nd; prompt = np.prompt;
@@ -195,7 +204,8 @@ export function updateDoorInteract() {
     updateToolPageAuto();   // 🎒 맨 끝까지 안 가고 돌아가니 여기서 — ZONE_PAGE.neighbor 'none'(맨손)
     return;
   }
-  const mv = !indoor && mirrorVillagePrompt();   // 🚏 거울 마을 정류장 — 아래 사슬의 마을 분기에서 쓴다
+  const mv = !indoor && mirrorVillagePrompt();
+  const hv = !indoor && halloweenVillagePrompt(player.position);   // 🚏 거울 마을 정류장 — 아래 사슬의 마을 분기에서 쓴다
   if (indoor) {
     const gd = gardenDoorLocal(curHalf()), nearGardenDoor = dist2D({ x: INT.x + gd.x, z: INT.z + gd.z }, player.position) < 1.7;
     if (gameState.houseStage >= 7 && houseFloor === 0 && nearGardenDoor) { nd = 'floor'; $w.nearDoorFloor = 3; prompt = '🌿 정원으로'; }   // 🌿 1층 오른쪽 벽 문 → 정원
@@ -331,6 +341,8 @@ export function updateDoorInteract() {
   } else if (isOpen('observatory') && dist2D({ x: OBSERVATORY_GATE.x, z: OBSERVATORY_GATE.z + 6.3 }, player.position) < 2.4) {
     nd = 'observatory'; prompt = '🌌 별 보러 가기';
     firstHintBanner('observatoryGate', '🔭', '천문대', '망원경으로 별자리를 이어 보는 곳');
+  } else if (hv) {
+    nd = hv.nd; prompt = hv.prompt;
   } else if (isOpen('neighbor') && dist2D({ x: NEIGHBOR_GATE.x, z: NEIGHBOR_GATE.z + 1.2 }, player.position) < 2.2) {
     nd = 'neighbor'; prompt = '🏡 이웃 마을 가는 길';
     firstHintBanner('neighborGate', '🏡', '이웃 마을 가는 길', '다른 숲에서도 누군가 세계수를 지키고 있대요 · 내일 또 바뀌어요');
@@ -466,7 +478,7 @@ export function updateZoneHint() {
   if (hint !== lastZoneHint) { $w.lastZoneHint = hint; ui.setZoneHint?.(hint); }
 }
 
-export function inVillage2() { return !indoor && !atFarm && !atMine && !atCafe && !atRiver && !atMist && !atSea && !atMuseum && !atObservatory && !atMountain && !atOrchard && !atNeighbor && !atDream && !atMirror; }
+export function inVillage2() { return !indoor && !atFarm && !atMine && !atCafe && !atRiver && !atMist && !atSea && !atMuseum && !atObservatory && !atMountain && !atOrchard && !atNeighbor && !atDream && !atMirror && !atHalloween; }
 
 // 🛋️🪵 "옮기기" 대상 밑 호박색 링(가구·야외 장식 공용, 지연 생성) — 매 프레임 초반에 숨기고 대상이 있을 때만 켠다
 export function ensureNearRing() {

@@ -15,6 +15,12 @@
 import { mergeGeos } from './trail.js';
 import { halloweenThemes, halloweenKit, BT, HV } from './tool-skins-halloween.js';   // 🎃 달밤 보라 · 수확제
 import { crystalThemes, crystalKit, RB } from './tool-skins-crystal.js';            // ⭐ 별빛(무지개 크리스탈) — 🤝 친구 초대 보상
+import { extraKit } from './tool-skins-extra-kit.js';
+import { mapleThemes, MAPLE_UMBRELLA, mapleUmbrellaLook } from './tool-skins-maple.js';
+import { frostThemes, FROST_UMBRELLA, frostUmbrellaLook } from './tool-skins-frost.js';
+import { honeyThemes, HONEY_UMBRELLA, honeyUmbrellaLook } from './tool-skins-honey.js';
+import { kittyThemes, KITTY_UMBRELLA, kittyUmbrellaLook } from './tool-skins-kitty.js';
+import { shellThemes, SHELL_UMBRELLA, shellUmbrellaLook } from './tool-skins-shell.js';
 
 // ── 팔레트 ─────────────────────────────────────────────────
 const SH = { stem: 0xeee2c8, stemD: 0xcdb894, cap: 0xd1473a, spot: 0xfff5e6, gill: 0xe6cfa6, birch: 0x5b4636, door: 0x8a5a3a };
@@ -435,7 +441,19 @@ function themeBuilders(THREE, K) {
 
     // ⭐ 별빛 도구 세트(star) — 🌈 무지개 크리스탈 · js/cosmetics/tool-skins-crystal.js
     ...crystalThemes(THREE, K),
+
+    ...extraThemes(THREE, K),
   };
+}
+
+const EXTRA = [[mapleThemes, mapleUmbrellaLook, 'maple'], [frostThemes, frostUmbrellaLook, 'frost'], [honeyThemes, honeyUmbrellaLook, 'honey'], [kittyThemes, kittyUmbrellaLook, 'kitty'], [shellThemes, shellUmbrellaLook, 'shell']];
+function extraThemes(THREE, K) {
+  const X = extraKit(THREE, K);
+  return Object.assign({}, ...EXTRA.map(([themes]) => themes(THREE, K, X)));
+}
+function extraUmbrellaLook(THREE, K, theme, ctx) {
+  const hit = EXTRA.find(([, , id]) => id === theme);
+  return hit ? hit[1](THREE, K, extraKit(THREE, K), ctx) : null;
 }
 
 // ── ⚡ 굽기: 메시 더미 → 재질 종류(평면/부드러움 · 면 · 투명 · 발광)별 정점색 메시 몇 개 ──
@@ -507,6 +525,7 @@ const UMBRELLAS = {
   harvest:  { N: 10, R: 1.35, th: 0.62, overlap: 1, shape: { w: () => 1, tip: 0 } },   // 짚 갓우산
   // ⭐ 별빛 — 무지개 6폭 육각 갓(폭마다 한 빛) · 꼭지는 수정. 시안 sims/referral-reward-sim.html 에서 확인
   star:     { N: 6, R: 1.0, th: 0.95, overlap: 1, shape: { w: () => 1, tip: 0 }, twist: Math.PI / 6 },
+  maple: MAPLE_UMBRELLA, frost: FROST_UMBRELLA, honey: HONEY_UMBRELLA, kitty: KITTY_UMBRELLA, shell: SHELL_UMBRELLA,
 };
 export const UMBRELLA_SHAFT = 1.55;   // 쥐는 곳 → 꼭지
 
@@ -626,7 +645,7 @@ export function buildUmbrella(THREE, theme) {
       },
       finial(c) { c.add(CK.crystal(0.05, clay(RB.lilac), 1.6).translateY(0.07)); c.add(CK.crystal(0.022, CK.gem(), 1.5).translateY(0.17)); },
     },
-  }[theme];
+  }[theme] ?? extraUmbrellaLook(THREE, K, theme, { root, L, def, jHook });
   look.shaft();
   const canopy = new THREE.Group(); canopy.position.y = L; root.add(canopy);
   const outerGeo = goreGeo(THREE, def.R, def.th, Math.PI / def.N * def.overlap, def.shape);

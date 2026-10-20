@@ -12,3 +12,8 @@ export function shopRows(items) {
   return items.filter(it => it.premium).map(it =>
     `    <tr><td>${SLOT_KO[it.slot]}</td><td><a href="/shop/${it.id}">${it.ico} ${it.name}</a></td><td>${it.price.cash?.label ?? won(it.price.won)}</td></tr>`);
 }
+
+export function bundleShopRows(bundles) {
+  return bundles.map(b =>
+    `    <tr><td>🎁 묶음</td><td>${b.ico} 숲 환영 상자 (도구 세트 1종 + 🌟 반딧불 자국 · 계정당 1번)</td><td>${won(b.won)}</td></tr>`);
+}

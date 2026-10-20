@@ -76,8 +76,8 @@ test('PET_PRICE 는 꾸미기 최고가(2,600)보다 비싸다 — 펫이 가장
 //  🐾 4종 확장(2026-09-23) — 상점 목록과 조형 표(js/pet/art.js BUILD)의 id 가 갈리면
 //     상점엔 뜨는데 안 그려지는 종이 생긴다. art.js 는 THREE 가 필요해 여기서 못 부르므로,
 //     **id 집합을 못박아** 한쪽만 바뀌면 이 테스트가 먼저 깨지게 한다.
-test('PET_KINDS: 네 종의 id 가 조형 표와 같아야 한다 (js/pet/art.js BUILD)', () => {
-  assert.deepEqual(PET_KINDS.map(k => k.id), ['leaf', 'spirit', 'bird', 'golem']);
+test('PET_KINDS: 코인 4종 + 💎 유료 4종 id 가 조형 표와 같아야 한다 (js/pet/art.js BUILD · js/pet/art-premium.js)', () => {
+  assert.deepEqual(PET_KINDS.map(k => k.id), ['leaf', 'spirit', 'bird', 'golem', 'cloud_dragon', 'hedgehog', 'axolotl', 'unicorn']);
 });
 
 test('PET_KINDS: 이름·설명·아이콘이 빠진 종이 없다 — 상점 줄이 빈칸으로 뜬다', () => {

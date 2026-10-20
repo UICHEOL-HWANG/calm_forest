@@ -12,7 +12,7 @@ import {
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다
 import { trackEvent } from '../analytics.js';
 import { PLATFORM } from '../platform.js';
-import { ownedIn, toggleWear, wardrobeTabVisible } from '../cosmetics/wardrobe.js';
+import { ownedIn, toggleWear, wardrobeShowsTrailWalk, wardrobeTabVisible } from '../cosmetics/wardrobe.js';
 import { auraTabVisible, drawAuraTab } from '../aura/wardrobe-aura.js';
 import { PET_KINDS, stageOf, toNextStage } from '../pet/rules.js';
 
@@ -74,11 +74,12 @@ export function drawWardrobe(tabsEl, box, preview, hintEl) {
     tabsEl.appendChild(b);
   }
   preview?.showPet(null);
-  preview?.showTrail(slot === 'trail');                  // ✨ 이펙트 칸 — 캐릭터 대신 자국이 걸어온다(가게와 같다)
+  const trailWalk = wardrobeShowsTrailWalk(slot, gameState.cosmetics);
+  preview?.showTrail(trailWalk);
   preview?.showTools(slot === 'tools');                  // 🪓 도구 칸 — 입은 도구 세트를 진열(가게와 같다)
   preview?.refresh(null);                                // 옷장엔 가상 장착이 없다 — 늘 실제 모습
   //  걷는 자국은 돌리지 않는다 → 안내를 감춘다. visibility 라 자리는 남는다(칸을 오갈 때 상자 높이가 안 튄다)
-  if (hintEl) hintEl.style.visibility = slot === 'trail' ? 'hidden' : '';
+  if (hintEl) hintEl.style.visibility = trailWalk ? 'hidden' : '';
   box.innerHTML = '';
   if (slot === 'aura') { drawAuraTab(box, redraw); return; }
   const items = ownedIn(gameState.cosmetics, slot);

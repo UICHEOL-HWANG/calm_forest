@@ -15,7 +15,7 @@ test('연출은 reveal-pose 의 시간축·문구를 쓴다', () => {
   assert.match(rev, /from '\.\/reveal-pose\.js'/);
 });
 test('가게 onGranted 가 프리미엄 현금 구매에 연출을 띄운다', () => {
-  assert.match(cafe, /playPurchaseReveal\(\{ itemId: c\.itemId/);
+  assert.match(cafe, /playPurchaseReveal\(\{ itemId: revealId/);
   assert.match(cafe, /trackEvent\('premium_reveal_close'/);
 });
 test('onGranted — 연출은 저장 뒤, try 안에서(장식이 지급 저장을 막지 않는다)', () => {

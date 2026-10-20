@@ -46,8 +46,8 @@ test('doors.js · 고정 목록 · index.html · BGM', () => {
   assert.match(DOORS, /\} else if \(mv\) \{/);
   assert.match(DOORS, /inVillage2\(\) \{ return [^}]*!atMirror/);
   assert.match(read('js/spaces/outdoor-decor.js'), /outdoorZone\(\) \{ return [^}]*!atMirror/);
-  assert.match(read('js/spaces/farm-auto.js'), /atMine \|\| atDream \|\| atMirror;/);
-  assert.match(GAME, /const off = indoor \|\| atCafe \|\| atMuseum \|\| atObservatory \|\| atMountain \|\| atMine \|\| atDream \|\| atMirror;/);
+  assert.match(read('js/spaces/farm-auto.js'), /atMine \|\| atDream \|\| atMirror( \|\| atHalloween)?;/);
+  assert.match(GAME, /const off = indoor \|\| atCafe \|\| atMuseum \|\| atObservatory \|\| atMountain \|\| atMine \|\| atDream \|\| atMirror( \|\| atHalloween)?;/);
   assert.match(HTML, /d\.place === 'mirror' \? 'rgba\(80,98,154,0\.8\)'/);
   assert.match(HTML, /d\.place === 'mirror' \? '🪞 거울 마을'/);
   assert.match(HTML, /<div id="mirror-arrive-modal">/);
