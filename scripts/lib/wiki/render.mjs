@@ -1,17 +1,28 @@
 import { seoHead, escapeHtml } from '../seo-meta.mjs';
 import { SITE } from '../seo-pages.mjs';
 import { SECTION_ORDER, renderBlock, linkedRefs, toPlain, firstSentence } from './content.mjs';
+import { CONFIG } from '../../../js/config.js';
+import { faqOf } from './faq.mjs';
 
 const WIKI_KEYWORDS = ['고요위키', '고요한 숲', '고요한 숲 공략', '고요한 숲 도감', 'calm forest wiki'];
 
 export const docPath = (e) => `/wiki/${e.cat}/${e.id}`;
 export const catPath = (c) => `/wiki/${c.id}/`;
 
+export const gameHref = (campaign) => escapeHtml(`/?utm_source=wiki&utm_medium=referral&utm_campaign=${encodeURIComponent(campaign)}`);
+
+function gaTag() {
+  const id = CONFIG.GA4_MEASUREMENT_ID;
+  if (!/^G-[A-Z0-9]+$/.test(id ?? '')) return '';
+  return `<script async src="https://www.googletagmanager.com/gtag/js?id=${id}"></script>
+<script>window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', '${id}');</script>`;
+}
+
 export function buildIndex(entries) {
   return new Map(entries.map(e => [`${e.cat}/${e.id}`, e]));
 }
 
-function shell({ path, title, description, jsonLd, body, type = 'article' }) {
+function shell({ path, title, description, jsonLd, body, campaign, type = 'article' }) {
   return `<!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -21,6 +32,7 @@ function shell({ path, title, description, jsonLd, body, type = 'article' }) {
 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 <link rel="stylesheet" href="/wiki/wiki.css" />
 ${seoHead({ path, title, description, type, jsonLd, keywords: WIKI_KEYWORDS })}
+${gaTag()}
 </head>
 <body>
 <header class="wk-top">
@@ -31,7 +43,7 @@ ${seoHead({ path, title, description, type, jsonLd, keywords: WIKI_KEYWORDS })}
 <main class="wk-wrap">
 ${body}
 </main>
-<footer class="wk-foot"><a href="/">🌿 고요한 숲 하러 가기</a> · <a href="/guide/">초보자 안내서</a> · <a href="/wiki/">고요위키 대문</a></footer>
+<footer class="wk-foot"><a href="${gameHref(campaign)}">🌿 고요한 숲 하러 가기</a> · <a href="/guide/">초보자 안내서</a> · <a href="/wiki/">고요위키 대문</a></footer>
 <script src="/wiki/wiki.js" defer></script>
 </body>
 </html>
@@ -60,13 +72,16 @@ export function renderDoc(entry, secs, ctx) {
   const facts = [['영문명', entry.nameEn], ['분류', cat.name], ...entry.facts, ['박물관', entry.museum]].filter(([, v]) => v);
   const rel = relatedOf(entry, secs, ctx);
   const title = `${entry.name} · 고요위키`;
+  const qa = faqOf(entry);
   const jsonLd = {
     '@context': 'https://schema.org',
     '@graph': [
-      { '@type': 'Article', headline: entry.name, alternativeHeadline: entry.nameEn ?? undefined, description, inLanguage: 'ko', url: SITE + path, isPartOf: { '@type': 'WebSite', name: '고요위키', url: `${SITE}/wiki/` }, about: { '@type': 'VideoGame', name: '고요한 숲', url: `${SITE}/` } },
+      { '@type': 'Article', headline: entry.name, alternativeHeadline: entry.nameEn ?? undefined, description, inLanguage: 'ko', url: SITE + path, dateModified: ctx.lastmod ?? undefined, isPartOf: { '@type': 'WebSite', name: '고요위키', url: `${SITE}/wiki/` }, about: { '@type': 'VideoGame', name: '고요한 숲', url: `${SITE}/` } },
       crumbLd([['고요위키', '/wiki/'], [cat.name, catPath(cat)], [entry.name, path]]),
+      ...(qa.length ? [{ '@type': 'FAQPage', mainEntity: qa.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) }] : []),
     ],
   };
+  const faqHtml = qa.length ? `<section class="wk-faq"><h2>자주 묻는 질문</h2><dl>${qa.map(([q, a]) => `<dt>${escapeHtml(q)}</dt><dd>${escapeHtml(a)}</dd>`).join('')}</dl></section>\n` : '';
   const body = `<h1>${escapeHtml(entry.name)}</h1>
 <nav class="wk-crumb"><a href="/wiki/">고요위키</a> › <a href="${catPath(cat)}">${escapeHtml(cat.name)}</a> › ${escapeHtml(entry.name)}</nav>
 <div class="wk-cats">분류: <a href="${catPath(cat)}">${escapeHtml(cat.name)}</a></div>
@@ -81,9 +96,9 @@ ${order.map((h, i) => `<h2 id="s-${i + 1}"><span>${i + 1}.</span>${h}</h2>\n${re
 ${facts.map(([k, v]) => `<tr><th>${escapeHtml(k)}</th><td>${escapeHtml(v)}</td></tr>`).join('\n')}
 </table></aside>
 </div>
-<section class="wk-rel"><h2>함께 보면 좋아요</h2><div class="wk-cards">${rel.map(e => `<a href="${docPath(e)}">${e.ico} ${escapeHtml(e.name)}</a>`).join('')}</div>
-<a class="wk-cta" href="/">🌿 게임에서 만나러 가기</a></section>`;
-  return shell({ path, title, description, jsonLd, body });
+${faqHtml}<section class="wk-rel"><h2>함께 보면 좋아요</h2><div class="wk-cards">${rel.map(e => `<a href="${docPath(e)}">${e.ico} ${escapeHtml(e.name)}</a>`).join('')}</div>
+<a class="wk-cta" href="${gameHref(`${entry.cat}_${entry.id}`)}">🌿 게임에서 만나러 가기</a></section>`;
+  return shell({ path, title, description, jsonLd, body, campaign: `${entry.cat}_${entry.id}` });
 }
 
 export function renderCat(cat, entries, ctx) {
@@ -102,7 +117,7 @@ export function renderCat(cat, entries, ctx) {
 ${rows}
 </table>
 <section class="wk-rel"><h2>다른 분류</h2><div class="wk-cards">${others}</div></section>`;
-  return shell({ path, title: `${cat.name} · 고요위키`, description, jsonLd, body, type: 'website' });
+  return shell({ path, title: `${cat.name} · 고요위키`, description, jsonLd, body, campaign: `cat_${cat.id}`, type: 'website' });
 }
 
 export function renderHome(cats, entries) {
@@ -116,8 +131,8 @@ export function renderHome(cats, entries) {
 <p class="wk-lead">${escapeHtml(description)} 지금 ${entries.length}개 문서가 있어요.</p>
 <div class="wk-grid">${cats.map(card).join('')}</div>
 <section class="wk-rel"><h2>처음이라면</h2><div class="wk-cards"><a href="/guide/">📖 초보자 안내서</a><a href="/wiki/fish/">🐟 물고기 도감</a><a href="/wiki/cook/">🍳 요리 목록</a><a href="/wiki/npc/">🧑‍🌾 주민 소개</a></div>
-<a class="wk-cta" href="/">🌿 고요한 숲 하러 가기</a></section>`;
-  return shell({ path: '/wiki/', title: '고요위키 · 고요한 숲 공식 위키', description, jsonLd, body, type: 'website' });
+<a class="wk-cta" href="${gameHref('wiki_home')}">🌿 고요한 숲 하러 가기</a></section>`;
+  return shell({ path: '/wiki/', title: '고요위키 · 고요한 숲 공식 위키', description, jsonLd, body, campaign: 'wiki_home', type: 'website' });
 }
 
 export function searchIndex(entries, cats) {

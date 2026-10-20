@@ -11,6 +11,7 @@
 import { ITEMS } from '../../js/cosmetics/catalog.js';
 import { PET_KINDS } from '../../js/pet/rules.js';
 import { CASH_SLED_IDS, sledCash } from '../../js/mountain/sled-lineup.js';
+import { BUNDLES, bundleCash, bundleById, bundleGrant } from '../../js/shop/bundles.js';
 
 export const TOLERANCE_SEC = 300;   // Paddle SDK 기본 5초는 시계 오차에 너무 빡빡하다
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -59,6 +60,7 @@ export function priceIndex(sledCashOf = sledCash) {
   for (const it of ITEMS) if (it.price.cash) m.set(it.price.cash.priceId, { itemId: it.id, kind: 'cosmetic' });
   for (const k of PET_KINDS) if (k.cash) m.set(k.cash.priceId, { itemId: k.id, kind: 'pet' });
   for (const id of CASH_SLED_IDS) { const c = sledCashOf(id); if (c) m.set(c.priceId, { itemId: id, kind: 'sled' }); }
+  for (const b of BUNDLES) { const c = bundleCash(b); if (c) m.set(c.priceId, { itemId: b.id, kind: 'bundle' }); }
   return m;
 }
 
@@ -79,18 +81,21 @@ export function ledgerRows(evt, index = priceIndex()) {
     if (!hit) { skipped.push(String(pid)); continue; }
     if (seenPriceIds.has(pid)) continue;
     seenPriceIds.add(pid);
-    rows.push({
-      event_id: `${d.id}:${pid}`,          // 멱등 키 = 거래 id + 가격 id — 알림 id 를 쓰면 재전송·다중 엔드포인트가 매출을 이중 기록한다
+    const row = (eventId, itemId, kind, amount) => ({
+      event_id: eventId,
       transaction_id: d.id,
       user_id: uid,
-      item_id: hit.itemId,
-      kind: hit.kind,
+      item_id: itemId,
+      kind,
       price_id: pid,
-      amount: Number.isFinite(total) ? total : null,
+      amount,
       currency: d.currency_code || null,
       occurred_at: evt.occurred_at,
       raw: d,
     });
+    rows.push(row(`${d.id}:${pid}`, hit.itemId, hit.kind, Number.isFinite(total) ? total : null));   // 멱등 키 = 거래 id + 가격 id — 알림 id 를 쓰면 재전송·다중 엔드포인트가 매출을 이중 기록한다
+    const bundle = hit.kind === 'bundle' ? bundleById(hit.itemId) : null;
+    if (bundle) for (const id of bundleGrant(bundle, d.custom_data?.choice)) rows.push(row(`${d.id}:${pid}:${id}`, id, 'cosmetic', null));
   }
   return { rows, skipped };
 }

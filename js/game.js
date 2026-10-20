@@ -107,7 +107,8 @@ import { makeTrailWalk, WALK_CAM, TRAIL_DEMO } from './cosmetics/trail-walk.js';
 import { buildToolSkin, buildUmbrella, setToolSkinNight, disposeToolSkin, UMBRELLA_SHAFT } from './cosmetics/tool-skins.js';   // 🪓☂️ 💎 도구 테마 세트 조형
 import { SKIN_TOOLS, toolSkinOf, umbrellaShown } from './cosmetics/tool-skin-rules.js';   // 🪓☂️ 어떤 테마를 입었나 · 우산을 펼칠까
 import { buildShop, updateShopOwner } from './shop/building.js';   // 🏪 꾸미기 가게 조형(sims/shop-sim.html B안 — 정면 +Z)
-import { PET_RADIUS, CHAIN_MAX, PET_PRICE, PET_KINDS, petKindOf, emptyPet, stageOf, toNextStage, canCommand, pickPetTask, afterWork } from './pet/rules.js';   // 🐾 지시형 펫 규칙(순수 모듈 — 오프라인 정산 없음)
+import { disposePremiumPet } from './pet/art-premium.js';
+import { PET_RADIUS, CHAIN_MAX, PET_PRICE, PET_KINDS, petKindOf, emptyPet, stageOf, toNextStage, canCommand, pickPetTask, afterWork, abilityOf } from './pet/rules.js';   // 🐾 지시형 펫 규칙(순수 모듈 — 오프라인 정산 없음)
 import { spawnPet, snapIfFar, followPlayer, walkTo } from './pet/render.js';   // 🐾 펫 움직임(따라다니기·이동)
 import { updatePetAnim, PET_KIND } from './pet/art.js';             // 🐾 펫 조형 애니메이션 규약 + 확정 종
 // 📦 데이터 표 — 원문 그대로 옮겼다(분리 1단계, 2026-09-24). 값만 있고 상태는 없다
@@ -125,7 +126,7 @@ import {
 import {
   INT, ROOF_Y, LAKE_R, BENCH, KITCHEN, SHOP, MARKET, RANK, SELL_ICO_G, FARM, FARM_GATE, MINE, MINE_HALF, MINE_GATE,
   PIER, onPier, COOP_STREAK, COOP, PARK_BENCHES, COOP_COST, COOP_FEED, GLADE, GLADE_R, BUG_KINDS, CAFE_GATE, MUSEUM_GATE,
-  OBSERVATORY, OBSERVATORY_GATE, OBSERVATORY_R, MOUNTAIN, MOUNTAIN_GATE, MOUNTAIN_LANDMARK, MOUNTAIN_LANDMARK_R, MOUNTAIN_R, LIGHT_WORKSHOP, DREAM, MIRROR, MIRROR_STOP, MUSEUM, CAFE, CAFE_HALF, CAFE_ORDERS, CAFE_BONUS, CAFE_SEATS, CAFE_BOARD, CAFE_GUESTS, cafeGuestDef, FOREST, FOREST_R,
+  OBSERVATORY, OBSERVATORY_GATE, OBSERVATORY_R, MOUNTAIN, MOUNTAIN_GATE, MOUNTAIN_LANDMARK, MOUNTAIN_LANDMARK_R, MOUNTAIN_R, LIGHT_WORKSHOP, DREAM, MIRROR, MIRROR_STOP, HALLOWEEN, MUSEUM, CAFE, CAFE_HALF, CAFE_ORDERS, CAFE_BONUS, CAFE_SEATS, CAFE_BOARD, CAFE_GUESTS, cafeGuestDef, FOREST, FOREST_R,
   FOREST_LOGS, FOREST_LOG_R, FOREST_LOG_SPOTS, FORAGE_RESPAWN, FORAGE_KINDS, DOCK_GATE, DOCK_POND, DOCK_POND_R, RIVER,
   RIVER_DOCK_HALF, RIVER_W, RIVER_LEN, BOAT_RUNS_PER_DAY, BOAT_LAMPS, BOAT_BASE_SPEED, BOAT_BOOST_CD, RIVER_OBS, RIVER_PICKS,
   BOAT_UPGRADES, SHOP_POS, SHOP_DOOR, MIST_GATE, MIST, MIST_HALF, MIST_WAVES, TREE_LIGHT_MAX, MIST_DRAIN, SOOTHE_GLOW,
@@ -186,6 +187,7 @@ import { applyE1, e1FirstScreen, enrollE1, updateE1Bubble } from './spaces/e1-st
 import { sanitizeE1 } from './exp-e1.js';
 import { DREAM_MAP, clampToDream, dreamAction, dreamCutActive, dreamMinimapMarks, dreamReturnPos, openSleepChoice, setDreamVisible, skipDreamCut, startDream, updateDream, updateDreamCut } from './spaces/dream.js';   // 📦 🌙 꿈의 숲 — 침대에서 꿈꾸기(js/dream/*)
 import { normalizeDream } from './dream/layout.js';   // 🏡 세이브 필드 neighbors { visited, seenAt }
+import { clampToHalloween, halloweenAction, halloweenMinimapMarks, halloweenReturnPos, setHalloweenVisible, settleHalloween, spawnHalloweenGate, updateHalloween } from './spaces/halloween.js';
 import { MIRROR_MAP, clampToMirror, mirrorAction, mirrorMinimapMarks, mirrorReturnPos, mirrorRideActive, setMirrorVisible, skipMirrorRide, syncVillageCarriage, updateMirror, updateMirrorRide } from './spaces/mirror.js';   // 📦 🪞 거울 마을(js/mirror/*)
 import { normalizeMirror } from './mirror/quests.js';   // 🪞 세이브 필드 mirror { visits, day, done, hinted, total }
 import {
@@ -293,6 +295,7 @@ export const $w = {
   get atNeighbor() { return atNeighbor; }, set atNeighbor(v) { atNeighbor = v; },
   get atDream() { return atDream; }, set atDream(v) { atDream = v; },
   get atMirror() { return atMirror; }, set atMirror(v) { atMirror = v; },
+  get atHalloween() { return atHalloween; }, set atHalloween(v) { atHalloween = v; },
   get sleeping() { return sleeping; }, set sleeping(v) { sleeping = v; },
   get atObservatory() { return atObservatory; }, set atObservatory(v) { atObservatory = v; },
   get atMountain() { return atMountain; }, set atMountain(v) { atMountain = v; },
@@ -497,6 +500,7 @@ let atObservatory = false, observatoryGroup = null;   // 🔭 천문대 실내
 let atMountain = false, mountainGroup = null;
 let atDream = false;                                  // 🌙 꿈의 숲(떠 있는 섬) 안에 있는지 — js/spaces/dream.js
 let atMirror = false;                                 // 🪞 거울 마을 안에 있는지 — js/spaces/mirror.js
+let atHalloween = false;
 let atNeighbor = false;                               // 🏡 이웃 마을(남의 앞마당) 안에 있는지 — 공간은 js/neighbors/scene.js 가 입장 때 짓고 퇴장 때 치운다
 let cafeInGroup = null, cafeGuestObjs = [];     // 홀 그룹 / 앉은 손님 런타임 { order, group, sprite, phase }
 let nearCafeGuest = null;
@@ -586,12 +590,13 @@ function setSpaceVisible() {
   if (seaGroup) seaGroup.visible = atSea;
   if (orchardGroup) orchardGroup.visible = atOrchard;
   setDreamVisible(atDream);   // 🌙 꿈의 숲(처음 꿈꿀 때 지어진다)
-  setMirrorVisible(atMirror);   // 🪞 거울 마을(처음 탈 때 지어진다)
+  setMirrorVisible(atMirror);
+  setHalloweenVisible(atHalloween);   // 🪞 거울 마을(처음 탈 때 지어진다)
   // 🌓 그림자: 마을에서만 섀도맵을 갱신한다. 어떤 공간을 멈출지는 js/shadow-scope.js(SUBSPACE_FLAGS).
   //   텃밭은 실외라 outdoorZone() 에는 들어가지만 z=84 로 그림자 상자 밖이라 여기선 함께 멈춘다.
   setShadowActive(shadowActiveFor(spaceFlags()));
   // 🌧️ 빗소리: 비 오는 날 야외(마을·텃밭·강)에서만 — 실내·동굴·카페에선 정지
-  if (RAIN_DAY && mode === 'play' && !indoor && !atMine && !atCafe && !atMuseum && !atObservatory && !atMountain && !atDream && !atMirror && !neighborIndoorFrame()) startRainSound();
+  if (RAIN_DAY && mode === 'play' && !indoor && !atMine && !atCafe && !atMuseum && !atObservatory && !atMountain && !atDream && !atMirror && !atHalloween && !neighborIndoorFrame()) startRainSound();
   else stopRainSound();
 }
 // ── 🪙 오늘의 시세 — 품목별 판매가가 날짜 시드로 매일 0.7~1.3배 변동(전원 동일) ──
@@ -999,7 +1004,7 @@ function rollLuckyBox(qid) {
 
 // ── 게임 상태(저장/불러오기 대상) ────────────────────────────
 const gameState = {
-  inventory: { wood: 0, seed: 8, crop: 0, fish: 0, coins: 0, coal: 0, stone: 0, gem: 0, egg: 0, bug: 0, forage: 0, star: 0, glow: 0, fert: 0, bait: 0, shard: 0, mirror: 0,
+  inventory: { wood: 0, seed: 8, crop: 0, fish: 0, coins: 0, coal: 0, stone: 0, gem: 0, egg: 0, bug: 0, forage: 0, star: 0, glow: 0, fert: 0, bait: 0, shard: 0, mirror: 0, candy: 0,
     wheat: 0, corn: 0, grape: 0, seed_wheat: 0, seed_corn: 0, seed_grape: 0, honey: 0,
     apple: 0, pear: 0, peach: 0, persimmon: 0, chestnut: 0,
     sap_apple: 0, sap_pear: 0, sap_peach: 0, sap_persimmon: 0, sap_chestnut: 0,
@@ -1034,6 +1039,8 @@ const gameState = {
   e1: null,                                 // 🧪 E1 첫 5분 수확 실험 { arm, seeded, harvested } — 등록된 신규만(js/exp-e1.js)
   dream: { visits: 0, day: '', got: [], total: 0 },   // 🌙 꿈의 숲 — 누적 방문·그날 주운 조각 자리·누적 획득(js/dream/layout.js normalizeDream)
   mirror: { visits: 0, day: '', done: 0, hinted: [], total: 0 },   // 🪞 거울 마을 — 누적 방문·그날 마친 의뢰·힌트 쓴 의뢰·누적 조각(js/mirror/quests.js normalizeMirror)
+  halloween: null,
+  hwBundles: null,
   noticeSeenId: 0,                          // 📮 마지막으로 본 소식(notices.id) — 서버 세이브라 기기 바꿔도 두 번 안 뜬다
   character: null,                          // 선택한 동물 캐릭터 id
   houseStyle: { roof: 0, wall: 0, door: 0 }, // 집 외관 색(팔레트 인덱스)
@@ -1700,7 +1707,8 @@ function toolZoneKey() {
   if (atMountain) return 'mountain';
   if (atNeighbor) return 'neighbor';       // 🏡 남의 마당 — 맨손(ZONE_PAGE)
   if (atDream) return 'dream';             // 🌙 꿈속 — 맨손
-  if (atMirror) return 'mirror';           // 🪞 거울 마을 — 맨손
+  if (atMirror) return 'mirror';
+  if (atHalloween) return 'halloween';           // 🪞 거울 마을 — 맨손
   if (atMist) return 'mist';
   if (atRiver) return 'river';
   if (atFarm) return 'farm';
@@ -1905,6 +1913,7 @@ export const Input = {
       .filter(d => !d.dream || (gameState.dream?.visits || 0) > 0 || (kept[d.id] || 0) > 0)   // 🌙 꿈을 꿔 보기 전엔 ✨ 화폐가 뭔지 모른다 — 숨긴다
       .filter(d => !d.mirror || (gameState.mirror?.visits || 0) > 0 || (kept[d.id] || 0) > 0)   // 🪞 거울 마을을 다녀오기 전엔 🪞 화폐가 뭔지 모른다
       .filter(d => !d.hut || (kept[d.id] || 0) > 0)
+      .filter(d => !d.candy || (kept[d.id] || 0) > 0)
       .map(d => ({ ...d, locked: !decorUnlocked(d, st), tag: saleTagOf(d) }));
   },
   getKitchen() { return kitchenView(); },               // 🍳 자유주방 메뉴판(레시피+코스+최고점수)
@@ -2676,7 +2685,7 @@ export async function enterGame() {
   setTimeout(announceMapOpens, 4000);   // 🧪 [베타 2차] 열린 맵 안내 — 시작 직후 코치·환영 배너와 겹치지 않게 4초 뒤
   startMetrics(() => ({                // [계측] 세션 요약(60초/이탈 시 upsert)용 스냅샷
     coins: gameState.inventory.coins || 0,
-    place: indoor ? 'house' : atFarm ? 'farm' : atOrchard ? 'orchard' : atMine ? 'mine' : atCafe ? 'cafe' : atMuseum ? 'museum' : atObservatory ? 'observatory' : atMountain ? 'mountain' : atNeighbor ? 'neighbor' : atMirror ? 'mirror' : atDream ? 'dream' : atRiver ? 'river' : atMist ? 'mist' : atSea ? 'sea' : 'village',
+    place: indoor ? 'house' : atFarm ? 'farm' : atOrchard ? 'orchard' : atMine ? 'mine' : atCafe ? 'cafe' : atMuseum ? 'museum' : atObservatory ? 'observatory' : atMountain ? 'mountain' : atNeighbor ? 'neighbor' : atMirror ? 'mirror' : atDream ? 'dream' : atRiver ? 'river' : atMist ? 'mist' : atSea ? 'sea' : atHalloween ? 'halloween' : 'village',
     x: player.position.x, z: player.position.z,
   }));
   gameState.firstDay = ensureFirstDay(gameState.firstDay, todayStr());
@@ -2734,6 +2743,8 @@ function applySave(saved) {
     name: typeof v.name === 'string' ? v.name : '',
     works: Number.isFinite(v.works) ? Math.max(0, Math.floor(v.works)) : 0,
     restUntil: Number.isFinite(v.restUntil) ? v.restUntil : 0,
+    ...(typeof v.bonusDay === 'string' ? { bonusDay: v.bonusDay, bonusN: Number.isFinite(v.bonusN) ? Math.max(0, Math.floor(v.bonusN)) : 0 } : {}),
+    ...(typeof v.giftDay === 'string' ? { giftDay: v.giftDay } : {}),
   } : null;
   gameState.pets = {};
   if (saved.pets && typeof saved.pets === 'object') {
@@ -2836,6 +2847,7 @@ function applySave(saved) {
   if (saved.boat) gameState.boat = { ...gameState.boat, ...saved.boat, up: { oar: 0, hull: 0, lamp: 0, ...(saved.boat.up || {}) } }; // 🛶 나룻배 횟수·기록·업그레이드 복원
   gameState.dream = normalizeDream(saved.dream, todayStr());   // 🌙 꿈의 숲 — 타입·범위 검증, 날이 바뀌면 got 을 비운다
   gameState.mirror = normalizeMirror(saved.mirror, todayStr());   // 🪞 거울 마을 — 타입·범위 검증, 날이 바뀌면 done·hinted 를 비운다
+  gameState.halloween = saved.halloween ?? null; gameState.hwBundles = saved.hwBundles ?? null; settleHalloween();
   if (saved.mist) gameState.mist = { ...gameState.mist, ...saved.mist };  // 🌫️ 안개 숲 정화 상태 복원
   if (saved.sea) gameState.sea = { ...gameState.sea, ...saved.sea };      // 🌊 바다터(오늘의 대어) 복원
   //   🏛️ 최고 무게·조건부 전시는 세이브를 믿지 않고 정제한다(모르는 어종·깨진 값은 버린다). 필드가 없는 옛 세이브는 빈 값.
@@ -2932,6 +2944,7 @@ function applySave(saved) {
 
 export function getGameState() {
   gameState.playerPos = atNeighbor ? neighborReturnPos() : (atMirror || mirrorRideActive()) ? mirrorReturnPos() : atDream ? dreamReturnPos() : atMountain ? mountainReturnPos() : { x: player.position.x, z: player.position.z };
+  if (atHalloween) gameState.playerPos = halloweenReturnPos();
   gameState.plots = plots.map(p => ({ x: p.x, z: p.z, state: p.state, growth: p.growth, crop: p.cropType?.id,   // crop: 밤손님 판정·복원용 작물 종류
     ...(p.fert ? { fert: 1 } : {}), ...(p.weed ? { weed: 1 } : {}), ...(p.pest ? { pest: 1 } : {}) }));   // 🌾 고급 작물 공정 — 켜진 것만 기록(옛 스키마와 호환), claimedBy 는 런타임 전용
   gameState.timeOfDay = atDream ? WAKE_TIME : timeOfDay;   // 시간대 저장 — 🌙 꿈속에서 끊기면 아침에 깬 것으로
@@ -3037,11 +3050,11 @@ function setShadowActive(on) {
 }
 
 // 현재 공간 플래그 묶음 — updateDayNight 가 매 프레임 부르므로 객체를 재사용한다(프레임당 할당 0).
-const _spaceFlags = { indoor: false, atFarm: false, atMine: false, atCafe: false, atRiver: false, atMist: false, atSea: false, atMuseum: false, atObservatory: false, atMountain: false, atOrchard: false, atNeighbor: false, atDream: false, atMirror: false };
+const _spaceFlags = { indoor: false, atFarm: false, atMine: false, atCafe: false, atRiver: false, atMist: false, atSea: false, atMuseum: false, atObservatory: false, atMountain: false, atOrchard: false, atNeighbor: false, atDream: false, atMirror: false, atHalloween: false };
 function spaceFlags() {
   _spaceFlags.indoor = indoor; _spaceFlags.atFarm = atFarm; _spaceFlags.atMine = atMine;
   _spaceFlags.atCafe = atCafe; _spaceFlags.atRiver = atRiver; _spaceFlags.atMist = atMist;
-  _spaceFlags.atSea = atSea; _spaceFlags.atMuseum = atMuseum; _spaceFlags.atObservatory = atObservatory; _spaceFlags.atMountain = atMountain; _spaceFlags.atOrchard = atOrchard; _spaceFlags.atNeighbor = atNeighbor; _spaceFlags.atDream = atDream; _spaceFlags.atMirror = atMirror;
+  _spaceFlags.atSea = atSea; _spaceFlags.atMuseum = atMuseum; _spaceFlags.atObservatory = atObservatory; _spaceFlags.atMountain = atMountain; _spaceFlags.atOrchard = atOrchard; _spaceFlags.atNeighbor = atNeighbor; _spaceFlags.atDream = atDream; _spaceFlags.atMirror = atMirror; _spaceFlags.atHalloween = atHalloween;
   return _spaceFlags;
 }
 
@@ -3788,7 +3801,7 @@ function updateTrail(dt) {
     for (const m of trailPool) m.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
     trailPool.length = 0; trailItem = id;
   }
-  const off = indoor || atCafe || atMuseum || atObservatory || atMountain || atMine || atDream || atMirror;
+  const off = indoor || atCafe || atMuseum || atObservatory || atMountain || atMine || atDream || atMirror || atHalloween;
   if (!id || off) { if (trailLive.length) clearTrail(); else trailFx.clear(); return; }
 
   if (player.position.distanceTo(trailLastPos) >= TRAIL_STEP) {
@@ -3846,7 +3859,7 @@ function umbrellaHeld() { return !!umbrellaMesh && umbrellaMesh.visible && umbre
 function updateUmbrella(dt) {
   const theme = toolSkinOf(gameState.cosmetics);
   //  🌊 바다터는 양팔로 릴대를 잡는다 · 클로즈업(요리·밤손님 대결)은 카메라가 붙어 우산이 화면을 가린다
-  const outdoors = !(indoor || atCafe || atMuseum || atObservatory || atMountain || atDream || atMirror || atMine || atSea || mgView || duelActive);
+  const outdoors = !(indoor || atCafe || atMuseum || atObservatory || atMountain || atDream || atMirror || atHalloween || atMine || atSea || mgView || duelActive);
   const show = !!charGroup && !!charK && umbrellaShown(theme, WEATHER, outdoors);
   if (umbrellaMesh && (umbrellaTheme !== theme || umbrellaMesh.parent !== charGroup)) dropUmbrella();   // 세트를 바꿨거나 캐릭터를 다시 지었다
   //  🪓 동작(도구질·줍기·삽질) 중엔 갓을 뒤로 젖힌다 — 머리 위 갓이 숙인 몸과 도구를 가렸다(2026-10-02 실측).
@@ -4680,13 +4693,13 @@ function buildSeasonDrift() {
 }
 function updateSeasonDrift(dt, t) {
   if (!seasonDrift) return;
-  const show = mode === 'play' && !indoor && !atMine && !atCafe && !atMuseum && !atObservatory && !atMountain && !atDream && !atMirror && !neighborIndoorFrame();
+  const show = mode === 'play' && !indoor && !atMine && !atCafe && !atMuseum && !atObservatory && !atMountain && !atDream && !atMirror && !atHalloween && !neighborIndoorFrame();
   seasonDrift.update(dt, t, player.position.x, player.position.z, show);
 }
 
 function updateRain(dt) {
   if (!rainLines) return;
-  const show = mode === 'play' && !indoor && !atMine && !atCafe && !atMuseum && !atObservatory && !atMountain && !atDream && !atMirror && !neighborIndoorFrame();
+  const show = mode === 'play' && !indoor && !atMine && !atCafe && !atMuseum && !atObservatory && !atMountain && !atDream && !atMirror && !atHalloween && !neighborIndoorFrame();
   rainLines.visible = show;
   if (!show) return;
   const { vel, snow, len } = rainLines.userData;
@@ -4798,7 +4811,8 @@ function buildEnvironment() {
   lockFrom('observatory'); spawnObservatoryGate(); lockTo(); // 🔭 천문대(마을 남동쪽) — 처음부터 있음
   spawnMountainGate();
   buildWorldTree();   // 🌳 마을 북쪽 세계수(판 진척만큼 잎·꽃) — js/spaces/world-tree.js
-  lockFrom('neighbor'); spawnNeighborGate(); lockTo();    // 🏡 이웃 마을 가는 길(마을 남쪽, 🍄숲·🌟계곡 사이) — 처음부터 있음
+  lockFrom('neighbor'); spawnNeighborGate(); lockTo();
+  spawnHalloweenGate();    // 🏡 이웃 마을 가는 길(마을 남쪽, 🍄숲·🌟계곡 사이) — 처음부터 있음
   buildCafeHall();   // ☕ 카페 홀(별도 공간)
   lockFrom('forest'); buildForest(); lockTo();     // 🍄 채집 숲(남서쪽) — 줍기
   lockFrom('river'); buildDockGate(); lockTo();   // 🛶 나루터(마을 북쪽 12시) — 처음부터 있음
@@ -5977,7 +5991,7 @@ function animate() {
     emitBuffs();          // 활성 버프 HUD 갱신(만료 처리 포함)
     if (t - lastMini > 0.12) {   // 미니맵(캐릭터 위치) 갱신
       lastMini = t;
-      const place = indoor ? 'house' : atFarm ? 'farm' : atOrchard ? 'orchard' : atMine ? 'mine' : atCafe ? 'cafe' : atMuseum ? 'museum' : atObservatory ? 'observatory' : atMountain ? 'mountain' : atNeighbor ? 'neighbor' : atMirror ? 'mirror' : atDream ? 'dream' : atRiver ? 'river' : atMist ? 'mist' : atSea ? 'sea' : 'village';
+      const place = indoor ? 'house' : atFarm ? 'farm' : atOrchard ? 'orchard' : atMine ? 'mine' : atCafe ? 'cafe' : atMuseum ? 'museum' : atObservatory ? 'observatory' : atMountain ? 'mountain' : atNeighbor ? 'neighbor' : atMirror ? 'mirror' : atDream ? 'dream' : atRiver ? 'river' : atMist ? 'mist' : atSea ? 'sea' : atHalloween ? 'halloween' : 'village';
       const md = { place, x: player.position.x, z: player.position.z, yaw: player.rotation.y };
       if (place === 'village') {
         md.places = villagePlaces();   // 🗺️ 미니맵 아이콘 + 전체 지도 라벨의 출처
@@ -5995,6 +6009,8 @@ function animate() {
       }
       if (place === 'dream') {   // 🌙 섬 네 개를 한 화면에 — 중심을 섬들 가운데로 옮긴다
         md.cx = DREAM_MAP.cx; md.cz = DREAM_MAP.cz; md.half = DREAM_MAP.half; md.marks = []; dreamMinimapMarks(md.marks);
+      } else if (place === 'halloween') {
+        md.cx = HALLOWEEN.x; md.cz = HALLOWEEN.z; md.half = 15; md.marks = []; halloweenMinimapMarks(md.marks);
       } else if (place === 'mirror') {   // 🪞 거울 마을 — 원 하나를 한 화면에
         md.cx = MIRROR_MAP.cx; md.cz = MIRROR_MAP.cz; md.half = MIRROR_MAP.half; md.marks = []; mirrorMinimapMarks(md.marks);
       } else if (place !== 'village') {   // 서브 공간: 중심·반경·랜드마크를 함께 전달
@@ -6029,7 +6045,8 @@ function animate() {
   updateFireflyBugs(dt, t); // 🌟 반딧불이(밤에만 계곡에 출현)
   updateMist(dt, t);        // 🌫️ 안개 숲(정령 웨이브·수호목 빛)
   updateDream(dt, t);       // 🌙 꿈의 숲(조각 줍기·디딤돌·반딧불)
-  updateMirror(dt, t); syncVillageCarriage(inVillage2());   // 🪞 거울 마을(주민·의뢰·정류장 마차)
+  updateMirror(dt, t); syncVillageCarriage(inVillage2());
+  updateHalloween(dt, t);   // 🪞 거울 마을(주민·의뢰·정류장 마차)
   updateCafeGuests(dt, t);  // ☕ 카페 손님(숨쉬기·주문 말풍선)
   updateForage(dt, t);      // 🍄 채집물(돋아나기·재생성)
   updatePlots(dt);
@@ -6205,6 +6222,7 @@ function updatePlayer(dt, t) {
   } else if (atMountain) { clampToMountain(player.position);
   } else if (atNeighbor) { clampToNeighbor(player.position);   // 🏡 원형 마당 안쪽으로 제한
   } else if (atDream) { clampToDream(player.position);   // 🌙 섬 ∪ 디딤돌 다리 위만(허공으로 못 나간다)
+  } else if (atHalloween) { clampToHalloween(player.position);
   } else if (atMirror) { clampToMirror(player.position);   // 🪞 원 안만(숲 링 너머로 못 나간다)
   } else if (atRiver) { // 🛶 나루터 데크: 물에 빠지지 않게 데크 안쪽으로 제한
     player.position.x = Math.max(RIVER.x - RIVER_DOCK_HALF + 0.7, Math.min(RIVER.x + RIVER_DOCK_HALF - 0.7, player.position.x));
@@ -6241,6 +6259,7 @@ function updatePlayer(dt, t) {
   //    실내(집)는 가구를 직접 배치하는 공간이라 제외 — 잘못 놓으면 갇힐 수 있음
   resolveColliders(player.position);   // 실내에서도 — 놓은 가구(solidBox)가 막아야 한다(전엔 실내를 통째로 건너뛰어 가구를 그냥 통과했다)
   if (atDream) clampToDream(player.position);   // 🌙 구름 침대 상자가 섬 가장자리 밖으로 밀어낼 수 있다 — 밀린 뒤 한 번 더 섬 안으로
+  if (atHalloween) clampToHalloween(player.position);
   if (atMirror) clampToMirror(player.position);   // 🪞 집·연못 상자가 밀어낸 뒤 한 번 더
   if (inVillage2()) clampToLandmark(player.position);
   if (inVillage2()) clampToStream(player.position);   // 🌉 개울은 다리 위로만(무너졌으면 못 건넌다)
@@ -6872,6 +6891,17 @@ function updateDayNight(dt) {
     scene.fog.color.setHex(0x2e2858); scene.fog.near = 26; scene.fog.far = 90;
     scene.background = scene.fog.color;
   }
+  if (atHalloween) {
+    hemiLight.intensity = 0.85; ambient.intensity = 0.55; sunLight.intensity = 0.7;
+    ambient.color.setHex(0x8a80c8);
+    sunLight.color.setHex(0xd8ccff);
+    sunLight.position.set(HALLOWEEN.x - 8, 22, HALLOWEEN.z + 6);
+    sunLight.target.position.set(HALLOWEEN.x, 0, HALLOWEEN.z);
+    sunLight.target.updateMatrixWorld();
+    if (playerLight) playerLight.intensity = 0.7;
+    scene.fog.color.setHex(0x2a2440); scene.fog.near = 22; scene.fog.far = 70;
+    scene.background = scene.fog.color;
+  }
   // ☕ 카페 홀: 시간대 무관 따뜻하고 밝게(펜던트 등이 켜져 있는 실내)
   if (atCafe) {
     hemiLight.intensity = 0.55; ambient.intensity = 0.62; sunLight.intensity = 0.3;
@@ -6921,6 +6951,7 @@ function updateDayNight(dt) {
   if (bloomPass) bloomPass.strength = (0.5 + nightAmt * 0.5) * (boat.active && boatView === 'first' ? 0.4 : 1);
   // 밤 푸른 톤 그레이딩
   if (gradePass) gradePass.uniforms.uNight.value = mgView && STAGE_TYPES.has(mgView.type) ? 0 : atDream || atMirror ? 0.25 : nightAmt;   // 🌙 꿈속은 밤이어도 파스텔이 살게 남색 그레이딩을 약하게   // 🍳 무대는 밤 톤(남색·30% 감광)도 끈다
+  if (gradePass && atHalloween) gradePass.uniforms.uNight.value = 0.35;
 
   // 밤낮 판정은 js/daynight.js 단일 출처 — 아이콘과 🛏️자기 프롬프트가 같은 순간에 바뀌어야 한다
   //   (예전 daylight > 0.4 는 NIGHT_MIN 0.45 와 달라 하루 두 번 20여 초씩 어긋났다)
@@ -7084,6 +7115,7 @@ function handleAction() {
   if (nearDoor === 'worldtree') return openWorldTree();   // 🌳 세계수 판
   if (atMountain || nearDoor === 'mountain') return mountainAction(nearDoor);
   if (atObservatory || nearDoor === 'observatory') return observatoryAction(nearDoor);   // 🔭 문·나가기·망원경 — 실내에선 그 밖의 액션 없음
+  if (atHalloween || nearDoor === 'halloween') return halloweenAction(nearDoor);
   if (atNeighbor || nearDoor === 'neighbor') return neighborAction(nearDoor);   // 🏡 팻말·나가기 — 이웃 공간 안에선 그 밖의 액션 없음
   if (nearDoor === 'river') return enterRiver();
   if (nearDoor === 'riverexit') return exitRiver();
@@ -7337,7 +7369,7 @@ function usePet(kind) {
 }
 
 function respawnPet() {
-  if (pet3d) { scene.remove(pet3d); pet3d = null; }
+  if (pet3d) { scene.remove(pet3d); disposePremiumPet(pet3d); pet3d = null; }
   if (!gameState.pet) return;
   pet3d = spawnPet(THREE, gameState.pet.kind, stageOf(gameState.pet.works));
   if (!pet3d) return;                                   // 모르는 종이면 아무것도 안 세운다
@@ -7371,7 +7403,7 @@ function petChoresNear() {
   const r2 = PET_RADIUS * PET_RADIUS, c = player.position;
   let near = false;
   for (const p of plots) { const dx = p.x - c.x, dz = p.z - c.z; if (dx * dx + dz * dz <= r2) { near = true; break; } }
-  return near && !!pickPetTask(petWorld(), c, PET_RADIUS);
+  return near && !!pickPetTask(petWorld(), c, PET_RADIUS, abilityOf(gameState.pet.kind).tasks);
 }
 
 
@@ -7691,7 +7723,7 @@ function spawnConfetti(x, y, z) {
 // =============================================================
 // 🪧 간판·좁은 자리용 아이콘만(라벨 없이). RES_LABEL 은 이모지가 붙은 것과 안 붙은 것이 섞여 있어 따로 둔다.
 const RES_ICON = { wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', coins: '🪙' };
-const RES_LABEL = { charcoal: '⚫숯', flour: '🌾밀가루', brick: '🧱벽돌', bread: '🥐빵', juice: '🍷포도즙', apple_jam: '🥫사과잼', roast_chestnut: '🌰군밤', gotgam: '🍡곶감', wood: '목재', seed: '씨앗', crop: '작물', fish: '물고기', coins: '🪙코인', stone: '돌', coal: '석탄', gem: '보석', egg: '달걀', bug: '반딧불이', forage: '채집물', star: '⭐별조각', glow: '✨정령빛', fert: '🌱비료', bait: '🪱미끼',
+const RES_LABEL = { charcoal: '⚫숯', flour: '🌾밀가루', brick: '🧱벽돌', bread: '🥐빵', juice: '🍷포도즙', apple_jam: '🥫사과잼', roast_chestnut: '🌰군밤', gotgam: '🍡곶감', wood: '목재', seed: '씨앗', crop: '작물', fish: '물고기', coins: '🪙코인', stone: '돌', coal: '석탄', gem: '보석', egg: '달걀', bug: '반딧불이', forage: '채집물', star: '⭐별조각', glow: '✨정령빛', fert: '🌱비료', bait: '🪱미끼', candy: '🍬사탕',
   wheat: '🌾밀', corn: '🌽옥수수', grape: '🍇포도', seed_wheat: '🌾밀 씨앗', seed_corn: '🌽옥수수 씨앗', seed_grape: '🍇포도 씨앗', honey: '🍯꿀',
   apple: '🍎사과', pear: '🍐배', peach: '🍑복숭아', persimmon: '🍊감', chestnut: '🌰밤',
   sap_apple: '🍎사과나무 묘목', sap_pear: '🍐배나무 묘목', sap_peach: '🍑복숭아나무 묘목',
@@ -7899,7 +7931,7 @@ function refreshCollectQuests() {
 function rewardText(r) { return Object.entries(r).map(([k, v]) => `${t(RES_LABEL[k] || k)}+${v}`).join(', '); }
 // 🎁 짧은 보상 표기 — 아이콘+숫자만("🌰3 · 🪙5"). 의뢰 카드·보상 토스트용(문구가 길다는 피드백, 2026-10-17)
 //    아이콘이 없는 자원은 원래 라벨로(번역 그대로)
-const RES_ICO = { wood: '🪵', seed: '🌰', crop: '🥕', fish: '🐟', coins: '🪙', stone: '🪨', coal: '⚫', gem: '💎', egg: '🥚', bug: '✨', forage: '🍄', star: '⭐', glow: '✨', fert: '🌱', bait: '🪱', honey: '🍯' };
+const RES_ICO = { wood: '🪵', seed: '🌰', crop: '🥕', fish: '🐟', coins: '🪙', stone: '🪨', coal: '⚫', gem: '💎', egg: '🥚', bug: '✨', forage: '🍄', star: '⭐', glow: '✨', fert: '🌱', bait: '🪱', honey: '🍯', candy: '🍬' };
 function rewardShort(r) { return Object.entries(r).map(([k, v]) => RES_ICO[k] ? `${RES_ICO[k]}${v}` : `${t(RES_LABEL[k] || k)}+${v}`).join(' · '); }   // [i18n] 라벨을 원천에서 번역 — 플로트/토스트/퀘스트 어디서든 조합돼도 영어 유지
 
 // 🎚️ 이 판의 난이도를 뽑고 순회 카운터를 올린다. 돌려준 { ease, arm, dda } 를 그대로 결과 이벤트에 싣는다.
@@ -7985,7 +8017,7 @@ function onResize() {
 export {
   BARN, DIG_WINDOW, FORAGE_NODES, GLADE_MAX, HINT_H, HINT_W, IS_MOBILE, LAKE, ORES, RAIN_DAY, RES_ICON, RES_LABEL,
   SEASON, SEVERE_TODAY, SEVERE_TOMORROW, WEATHER, _camLook, _camTarget, _hintAnyPrev, _seaPrevTool, _v, actAnim, analog,
-  applyCosmetics, applyHouseStyle, armWristK, atCafe, atDream, atMirror, atFarm, atMine, atMist, atMuseum, atObservatory, atOrchard, atNeighbor, atRiver, atSea, atMountain,
+  applyCosmetics, applyHouseStyle, armWristK, atCafe, atDream, atMirror, atHalloween, atFarm, atMine, atMist, atMuseum, atObservatory, atOrchard, atNeighbor, atRiver, atSea, atMountain,
   awardBadge, baitActive, biteAt, biteEnd, blockIfLocked, boat, boatView, bobber, buffOn, buffs, bugJarMesh,
   bugRespawnAt, cafeGuestCache, cafeGuestFetcher, cafeGuestObjs, cafeInGroup, camera, castPos, catchCeremony,
   churnTrigger, clayMat, clearCrop, clearPest, clock, colliders, cookTier, cosmeticShop, cropMini, currentQuest,

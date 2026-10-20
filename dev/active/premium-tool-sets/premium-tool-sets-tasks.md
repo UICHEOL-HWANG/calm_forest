@@ -1,0 +1,12 @@
+# Tasks
+- [x] Read tool-skins rules and existing sims
+- [x] Worktree + dev docs
+- [x] Tool-set sim (5 themes x 9 tools + umbrella) — sims/premium-tool-sets-sim.html, calls per tool <=4
+- [x] Decoration sim (6 items)
+- [x] PC + mobile screenshots (compare-*.jpg, night-pc.png)
+- [x] Record user choice (all 5 + all 6)
+- [x] tool-skins-<theme>.js, catalog, price-ids slots, _premium_cosmetic_ids SQL files, copy, tests
+- [x] Run migrate_premium_sets_2.sql on prod (2026-10-19, list 20 -> 31)
+- [x] Paddle production seed -> price-ids.js (11 products, 2026-10-19)
+- [x] Commit
+- [ ] 4-platform deploy (web, toss, itch, android; old clients strip unknown ids)

@@ -11,6 +11,7 @@
 
 export const SALE_WINDOWS = Object.freeze({
   halloween: Object.freeze({ from: '2026-10-17', to: '2026-11-02' }),
+  halloweenGarden: Object.freeze({ from: '2026-10-22', to: '2026-11-02' }),
 });
 
 const DAY_MS = 86400000;

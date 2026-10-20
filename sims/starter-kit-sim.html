@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>스타터 키트 시안</title>
+<style>
+  :root { --cream: #fff7ec; --mint: #bfe8c9; --ink: #4a5a4f; --ink-soft: #6f7d73; --leaf: #5aa36f; --gold: #f2c14e; --night: #2f3a5c; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; color: var(--ink);
+    background: radial-gradient(120% 80% at 50% 0%, #e7f3e3 0%, #cfe3cf 55%, #a9c9ad 100%); min-height: 100vh; padding: 28px 16px 48px; }
+  header { max-width: 1240px; margin: 0 auto 22px; }
+  header h1 { margin: 0 0 6px; font-size: 22px; }
+  header p { margin: 0; font-size: 13.5px; color: var(--ink-soft); }
+  .grid { max-width: 1240px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; align-items: start; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; max-width: 420px; } }
+  .col h2 { font-size: 15px; margin: 0 0 4px; }
+  .col .where { font-size: 12.5px; color: var(--ink-soft); margin: 0 0 12px; line-height: 1.5; min-height: 38px; }
+  .card { position: relative; border-radius: 24px; padding: 22px 20px 18px; box-shadow: 0 14px 36px rgba(30,50,40,.22); overflow: hidden; }
+  .ribbon { position: absolute; top: 14px; right: -34px; transform: rotate(35deg); width: 130px; text-align: center; font-size: 11px; font-weight: 800; padding: 4px 0; letter-spacing: .5px; }
+  .hero { font-size: 46px; line-height: 1; margin-bottom: 8px; }
+  .title { font-size: 21px; font-weight: 800; margin: 0 0 4px; letter-spacing: -.3px; }
+  .sub { font-size: 13px; margin: 0 0 16px; line-height: 1.5; word-break: keep-all; }
+  .items { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 8px; }
+  .items li { display: flex; align-items: center; gap: 10px; border-radius: 14px; padding: 9px 12px; font-size: 14px; font-weight: 600; }
+  .items .ico { font-size: 22px; width: 28px; text-align: center; }
+  .items .qty { margin-left: auto; font-weight: 800; }
+  .tag { display: inline-block; font-size: 10.5px; font-weight: 800; padding: 2px 7px; border-radius: 999px; margin-left: 6px; vertical-align: 1px; }
+  .value { display: flex; align-items: baseline; justify-content: space-between; font-size: 12.5px; margin: 0 2px 12px; }
+  .value s { opacity: .65; }
+  .value b { font-size: 13px; }
+  .buy { width: 100%; border: none; border-radius: 16px; padding: 14px; font-size: 16px; font-weight: 800; cursor: pointer; font-family: inherit; }
+  .note { margin: 10px 0 0; font-size: 11.5px; text-align: center; opacity: .8; }
+
+  .a { background: var(--cream); }
+  .a .ribbon { background: var(--leaf); color: #fff; }
+  .a .sub { color: var(--ink-soft); }
+  .a .items li { background: #fff; box-shadow: 0 2px 0 rgba(74,90,79,.06); }
+  .a .coin-big { display: flex; align-items: center; gap: 10px; background: linear-gradient(180deg, #fff3cf, #ffe7a3); border-radius: 18px; padding: 12px 14px; margin-bottom: 10px; }
+  .a .coin-big .n { font-size: 26px; font-weight: 900; color: #8a5a00; }
+  .a .coin-big .t { font-size: 12px; color: #8a5a00; line-height: 1.4; }
+  .a .tag { background: #e7f5ea; color: var(--leaf); }
+  .a .buy { background: var(--leaf); color: #fff; box-shadow: 0 6px 0 #3f8255; }
+
+  .b { background: linear-gradient(180deg, #e9f8ec 0%, #d4f0db 100%); }
+  .b .ribbon { background: var(--leaf); color: #fff; }
+  .b .sub { color: #557063; }
+  .b .stage { position: relative; height: 128px; border-radius: 20px; background: radial-gradient(80% 90% at 50% 100%, #9fd4a9 0%, #c8ead0 60%, #e9f8ec 100%); margin-bottom: 12px; display: grid; place-items: center; }
+  .b .stage .who { font-size: 54px; filter: drop-shadow(0 6px 6px rgba(0,0,0,.15)); }
+  .b .stage .hat { position: absolute; top: 14px; left: 50%; transform: translateX(-50%) rotate(-8deg); font-size: 30px; }
+  .b .stage .trail { position: absolute; bottom: 16px; left: 18%; font-size: 16px; letter-spacing: 10px; opacity: .9; }
+  .b .stage .only { position: absolute; top: 10px; left: 12px; font-size: 11px; font-weight: 800; background: #fff; color: var(--leaf); padding: 3px 8px; border-radius: 999px; }
+  .b .items li { background: rgba(255,255,255,.75); }
+  .b .tag { background: var(--leaf); color: #fff; }
+  .b .buy { background: #fff; color: var(--leaf); box-shadow: 0 6px 0 #9fcfaa; }
+
+  .c { background: linear-gradient(170deg, #3a4670 0%, var(--night) 70%); color: #f3f1ff; }
+  .c .ribbon { background: var(--gold); color: #4a3500; }
+  .c .sub { color: #c9cdea; }
+  .c .box { display: flex; gap: 10px; margin-bottom: 12px; }
+  .c .box div { flex: 1; border-radius: 16px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); padding: 12px 8px; text-align: center; font-size: 12px; line-height: 1.4; }
+  .c .box .e { display: block; font-size: 30px; margin-bottom: 4px; }
+  .c .box .p { display: block; margin-top: 4px; font-size: 11px; opacity: .7; }
+  .c .items li { background: rgba(255,255,255,.08); }
+  .c .tag { background: var(--gold); color: #4a3500; }
+  .c .value { color: #dfe2ff; }
+  .c .value b { color: var(--gold); }
+  .c .buy { background: var(--gold); color: #4a3500; box-shadow: 0 6px 0 #b98b1d; }
+  .c .pick { font-size: 11.5px; text-align: center; margin: -4px 0 12px; color: #c9cdea; }
+
+  .meta { margin-top: 12px; font-size: 12px; line-height: 1.6; background: rgba(255,255,255,.55); border-radius: 14px; padding: 10px 12px; }
+  .meta b { color: var(--ink); }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎁 스타터 키트 시안 3종</h1>
+  <p>웹 전용(Paddle) · 계정당 1번 · 아래 가격·구성은 시안입니다. 실제 판매 전 Paddle 상품 등록과 지급 규칙(코인 지급·환불 회수)이 필요합니다.</p>
+</header>
+<main class="grid">
+  <section class="col">
+    <h2>A. 새싹 꾸러미 · 코인 중심</h2>
+    <p class="where">첫 수확 직후, 가게를 처음 열었는데 코인이 모자랄 때 한 번</p>
+    <div class="card a">
+      <div class="ribbon">계정당 1번</div>
+      <div class="hero">🌱</div>
+      <p class="title">새싹 꾸러미</p>
+      <p class="sub">마을을 막 시작한 분께. 첫 꾸미기를 바로 살 수 있을 만큼 담았어요.</p>
+      <div class="coin-big"><span style="font-size:30px">🪙</span><span class="n">1,500</span><span class="t">별 머리핀·나뭇잎 머리띠를<br>바로 살 수 있어요</span></div>
+      <ul class="items">
+        <li><span class="ico">🌱</span>비료<span class="qty">×5</span></li>
+        <li><span class="ico">🪱</span>미끼<span class="qty">×10회</span></li>
+        <li><span class="ico">🌰</span>씨앗<span class="qty">×20</span></li>
+      </ul>
+      <div class="value"><span>코인으로 사면 <s>🪙1,750</s></span><b>첫 구매 특가</b></div>
+      <button class="buy">₩1,900에 받기</button>
+      <p class="note">결제 후 가방으로 바로 들어와요</p>
+    </div>
+    <div class="meta"><b>장점</b> 가장 싸고 첫 결제 문턱이 낮다 · 새 그림 없음<br><b>주의</b> 코인을 현금으로 파는 첫 상품이라 경제 밸런스·환불 회수 규칙이 필요하다</div>
+  </section>
+
+  <section class="col">
+    <h2>B. 첫 단장 세트 · 꾸미기 중심</h2>
+    <p class="where">캐릭터 고르기 직후 또는 옷장을 처음 열었을 때</p>
+    <div class="card b">
+      <div class="ribbon">계정당 1번</div>
+      <div class="stage">
+        <span class="only">키트 전용</span>
+        <span class="hat">👒</span>
+        <span class="who">🦊</span>
+        <span class="trail">🌱🌱🌱</span>
+      </div>
+      <p class="title">첫 단장 세트</p>
+      <p class="sub">처음부터 내 캐릭터답게. 여기서만 받을 수 있는 새싹 발자국이 들어 있어요.</p>
+      <ul class="items">
+        <li><span class="ico">🌱</span>새싹 발자국<span class="tag">키트 전용</span><span class="qty">1</span></li>
+        <li><span class="ico">👒</span>밀짚모자<span class="qty">1</span></li>
+        <li><span class="ico">🪙</span>코인<span class="qty">500</span></li>
+      </ul>
+      <div class="value"><span>밀짚모자 <s>🪙1,200</s> + 전용 발자국</span><b>여기서만</b></div>
+      <button class="buy">₩2,900에 단장하기</button>
+      <p class="note">옷장에서 바로 입을 수 있어요</p>
+    </div>
+    <div class="meta"><b>장점</b> 보이는 변화가 확실하고 경제에 손대지 않는다 · 광고 소재로 쓰기 좋다<br><b>주의</b> 새싹 발자국 조형 1종 새로 그려야 한다</div>
+  </section>
+
+  <section class="col">
+    <h2>C. 숲 환영 상자 · 프리미엄 맛보기</h2>
+    <p class="where">도감 3종 넛지 자리 또는 프리미엄 줄을 처음 봤을 때</p>
+    <div class="card c">
+      <div class="ribbon">첫 구매 45%↓</div>
+      <div class="hero">🎁</div>
+      <p class="title">숲 환영 상자</p>
+      <p class="sub">프리미엄 두 가지를 반값 가까이. 처음 한 번만 열 수 있는 상자예요.</p>
+      <div class="box">
+        <div><span class="e">🌙</span>도구 세트 1종<span class="p">₩5,000</span></div>
+        <div><span class="e">🌟</span>반딧불 발자국<span class="p">₩4,000</span></div>
+      </div>
+      <p class="pick">도구 세트는 🍄 버섯 숲 · 🌙 달밤 · 🌸 꽃정원 중 하나를 골라요</p>
+      <ul class="items">
+        <li><span class="ico">🪙</span>코인<span class="qty">300</span></li>
+      </ul>
+      <div class="value"><span>따로 사면 <s>₩9,000</s></span><b>₩4,900</b></div>
+      <button class="buy">₩4,900에 열기</button>
+      <p class="note">고른 세트와 발자국은 옷장에 들어가요</p>
+    </div>
+    <div class="meta"><b>장점</b> 이미 있는 프리미엄 상품을 묶어 새 그림이 없다 · 객단가가 가장 높다<br><b>주의</b> 정가 상품 가치를 깎아 보일 수 있다 · 세트 고르기 단계가 하나 더 생긴다</div>
+  </section>
+</main>
+</body>
+</html>

@@ -67,12 +67,12 @@ export function skipLoginNow({ decision, offline, justExited, hasInvite }) {
 
 // 재방문 시 남아 있는 익명(게스트) 세션을 지우지 않고 이어 갈까 — 처치 무리만. 초대 링크로 왔으면 기존대로(로그인 화면 하트핀 안내)
 export function keepGuestSession(decision, { hasInvite = false } = {}) {
-  return !!(decision?.enrolled && decision.arm === 'skip_login' && !hasInvite);
+  return !!(decision?.enrolled && (decision.arm === 'skip_login' || decision.ended) && !hasInvite);
 }
 
 export function concludeE2(decision) {
   if (!E2_ENDED || !decision?.enrolled || decision.reason === 'forced') return decision;
-  return { ...decision, arm: 'skip_login', ended: true };
+  return { ...decision, arm: 'control', ended: true };
 }
 
 // GA4 사용자 속성 — 등록된 기기만

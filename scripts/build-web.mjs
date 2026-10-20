@@ -56,6 +56,8 @@ const INCLUDE = [
   'assets/badges/app-store-en.svg',
   'assets/badges/google-play-ko.png',
   'assets/badges/google-play-en.png',
+  'assets/qr/app-link.svg',            // 📱 /app 안내 페이지 QR(폰이 알아서 스토어로)
+  ['pages/app.html', 'app.html'],      // 📱 /app — PC 에서 연 사람용 안내(워커가 휴대폰은 스토어로 바로 보냄)
   'sw.js',           // service worker — 오프라인 안내 페이지만 캐시
   ['pages/offline.html', 'offline.html'],       // 오프라인 안내 페이지 — sw.js 가 /offline.html 로 프리캐시
   // ⚖️ 구글 플레이 필수 — 스토어 등록정보의 "개인정보처리방침 URL"·"계정 삭제 URL" 이 이 둘을 가리킨다.
@@ -105,9 +107,10 @@ if (CONFIG.PADDLE.storeOpen) {
 // 💳 /shop — 가격표를 카탈로그에서 생성한다(가격 단일 출처). pages/shop.template.html 의 <!--ROWS--> 자리.
 if (CONFIG.PADDLE.storeOpen) {
   const { ITEMS } = await import('../js/cosmetics/catalog.js');
-  const { shopRows } = await import('./lib/shop-rows.mjs');
+  const { shopRows, bundleShopRows } = await import('./lib/shop-rows.mjs');
+  const { BUNDLES } = await import('../js/shop/bundles.js');
   //  💎 현금 상품만(scripts/lib/shop-rows.mjs) — 코인 전용 아이템·펫은 현금으로 팔지 않는다
-  const rows = shopRows(ITEMS).join('\n');
+  const rows = [...shopRows(ITEMS), ...bundleShopRows(BUNDLES)].join('\n');
   const tpl = await readFile(path.join(ROOT, 'pages/shop.template.html'), 'utf8');
   await writeFile(path.join(DIST, 'shop.html'), tpl.replace('<!--ROWS-->', rows));
 }
@@ -115,11 +118,12 @@ if (CONFIG.PADDLE.storeOpen) {
 const { SEO_PAGES } = await import('./lib/seo-pages.mjs');
 const { seoHead, injectHead } = await import('./lib/seo-meta.mjs');
 const { sitemapXml, robotsTxt } = await import('./lib/sitemap.mjs');
+const { gitDate } = await import('./lib/git-date.mjs');
 const { guidePage } = await import('./lib/guide-page.mjs');
 const sitemapPaths = [];
 for (const page of SEO_PAGES) {
   if (page.store && !CONFIG.PADDLE.storeOpen) continue;
-  sitemapPaths.push(page.path);
+  sitemapPaths.push({ path: page.path, lastmod: page.src ? gitDate(page.src) : null });
   if (!page.file) continue;
   const f = path.join(DIST, page.file);
   await writeFile(f, injectHead(await readFile(f, 'utf8'), seoHead(page)));
@@ -140,6 +144,10 @@ if (CONFIG.PADDLE.storeOpen) {
 }
 const { writeWiki } = await import('./lib/wiki/build.mjs');
 sitemapPaths.push(...await writeWiki(DIST));
+const { loadWiki } = await import('./lib/wiki/load-data.mjs');
+const { llmsTxt } = await import('./lib/llms.mjs');
+const wikiData = await loadWiki();
+await writeFile(path.join(DIST, 'llms.txt'), llmsTxt({ ...wikiData, asof: new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10) }));
 await writeFile(path.join(DIST, 'sitemap.xml'), sitemapXml(sitemapPaths));
 await writeFile(path.join(DIST, 'robots.txt'), robotsTxt());
 

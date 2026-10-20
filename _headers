@@ -19,3 +19,7 @@
   ! Cache-Control
   Access-Control-Allow-Origin: *
   Cache-Control: public, max-age=3600
+
+/llms.txt
+  ! Content-Type
+  Content-Type: text/plain; charset=utf-8

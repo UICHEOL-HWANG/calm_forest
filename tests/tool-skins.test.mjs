@@ -14,18 +14,18 @@ import { gameSource } from './helpers/game-source.mjs';
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
 const owning = (id) => ({ owned: [id], equipped: { ...emptyCosmetics().equipped, tools: id } });
 
-test('🪓 도구 칸 — 테마 세트 3종 ₩5,000 + 🎃 할로윈 2종 ₩4,500, 현금 전용', () => {
+test('🪓 도구 칸 — 테마 세트 3종 ₩5,000 + 🎃 할로윈 2종 ₩4,500 + 🍁 2차 5종 ₩5,000, 현금 전용', () => {
   assert.ok(SLOTS.includes('tools'));
   const ids = itemsOf('tools').filter(i => !i.reward).map(i => i.id);   // ⭐ 초대 보상은 tests/referral-items.test.mjs
-  assert.deepEqual(ids, ['tools_shroom', 'tools_moon', 'tools_bloom', 'tools_batnight', 'tools_harvest']);
+  assert.deepEqual(ids, ['tools_shroom', 'tools_moon', 'tools_bloom', 'tools_batnight', 'tools_harvest', 'tools_maple', 'tools_frost', 'tools_honey', 'tools_kitty', 'tools_shell']);
   for (const id of ids) {
     const it = findItem(id);
-    assert.equal(it.price.won, ids.indexOf(id) < 3 ? 5000 : 4500); assert.equal(it.price.coins, null); assert.equal(it.premium, true);
+    assert.equal(it.price.won, it.sale === 'halloween' ? 4500 : 5000); assert.equal(it.price.coins, null); assert.equal(it.premium, true);
   }
 });
 
 test('테마 = 버섯·달밤·꽃 + 🎃 달밤 보라·수확제 · 카탈로그 id ↔ 테마', () => {
-  assert.deepEqual([...TOOL_THEMES], ['shroom', 'moon', 'bloom', 'batnight', 'harvest', 'star']);   // ⭐ star = 🤝 초대 보상
+  assert.deepEqual([...TOOL_THEMES], ['shroom', 'moon', 'bloom', 'batnight', 'harvest', 'star', 'maple', 'frost', 'honey', 'kitty', 'shell']);   // ⭐ star = 🤝 초대 보상
   assert.equal(themeOf('tools_moon'), 'moon');
   assert.equal(themeOf('cape'), null);
   assert.equal(themeOf(null), null);
@@ -69,10 +69,10 @@ test('구매 연출 — 도구 세트는 상자 폭발 + 도구 세트 카드', 
   for (const id of ['tools_shroom', 'tools_moon', 'tools_bloom']) assert.ok(REVEAL_COPY[id]?.desc, id);
 });
 
-test('Paddle 등록 계획 — 도구 세트 5종이 ₩5,000(3)·₩4,500(할로윈 2)으로 들어간다', () => {
+test('Paddle 등록 계획 — 도구 세트 10종이 ₩5,000(8)·₩4,500(할로윈 2)으로 들어간다', () => {
   const plan = buildPlan(itemsOf('tools'));
-  assert.equal(plan.length, 5);
-  plan.forEach((p, i) => { assert.equal(p.amount, i < 3 ? '5000' : '4500'); assert.match(p.description, /도구/); });
+  assert.equal(plan.length, 10);
+  plan.forEach(p => { assert.equal(p.amount, ['tools_batnight', 'tools_harvest'].includes(p.itemId) ? '4500' : '5000'); assert.match(p.description, /도구/); });
 });
 
 test('price-ids.js 에 세 칸이 있다(값은 사용자가 시드로 채운다)', () => {

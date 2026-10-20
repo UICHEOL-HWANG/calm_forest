@@ -20,6 +20,9 @@ export const GUIDE_IMAGES = [
   '23_night.jpg', '25_rain.jpg', '13_dex.jpg', '15_story.jpg', '14_menu.jpg',
   // 2부(2026-09-28)
   '22_farm_stage3.jpg', '23_kitchen_menu.jpg', '24_npc_window.jpg', '25_museum.jpg', '26_shop.jpg',
+  // 새 세이브·새 기능(2026-10-18)
+  '31_tree_board.jpg', '32_bridge.jpg', '33_mountain_sled.jpg', '34_hut_cafe.jpg',
+  '35_dream.jpg', '36_observatory.jpg', '37_mirror.jpg', '38_pond.jpg',
 ];
 
 test('guide/img 에 필요한 이미지가 전부 있다', () => {
@@ -48,8 +51,8 @@ for (const [lang, read] of BOTH) test(`[${lang}] fragment 에 문서 껍데기·
   assert.doesNotMatch(h, /<(!doctype|html|head|body|script|style|link)\b/i);
 });
 
-// 1부(sec-01..20) + 2부 간지(sec-21) + 2부 5장(sec-22..26) — docs: dev/active/guide-refresh
-const SECTION_COUNT = 26;
+// 1부(sec-01..21, 2026-10-18 세계수 장 추가) + 2부 간지(sec-22) + 2부 9장(sec-23..31) — docs: dev/active/app-link-guide
+const SECTION_COUNT = 31;
 for (const [lang, read] of BOTH) test(`[${lang}] 섹션 ${SECTION_COUNT}개 · id sec-01..sec-${SECTION_COUNT} · 각각 eyebrow + h2[data-chip]`, () => {
   const h = read();
   const secs = [...h.matchAll(/<section class="gd-sec" id="(sec-\d\d)">/g)].map(m => m[1]);

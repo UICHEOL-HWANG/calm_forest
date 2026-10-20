@@ -23,6 +23,17 @@ export const REVEAL_COPY = Object.freeze({
   tools_harvest: Object.freeze({ name: '수확제 세트', desc: '짚과 옥수수로 만든 도구 9종, 비 오는 날엔 짚 우산' }),
   bat_wing: Object.freeze({ name: '박쥐 날개', desc: '등에서 활짝 펼쳐지는 보랏빛 날개예요' }),
   bat_cape: Object.freeze({ name: '박쥐 망토', desc: '꼬마 박쥐가 달린 보랏빛 망토예요' }),
+  tools_maple: Object.freeze({ name: '단풍 숲 세트', desc: '단풍잎 날과 도토리, 비 오는 날엔 단풍 우산' }),
+  tools_frost: Object.freeze({ name: '눈꽃 겨울 세트', desc: '고드름 날과 눈사람 물조리개, 비 오는 날엔 눈꽃 우산' }),
+  tools_honey: Object.freeze({ name: '꿀벌 꿀단지 세트', desc: '벌집 날과 꿀단지, 비 오는 날엔 벌집 우산' }),
+  tools_kitty: Object.freeze({ name: '냥냥 고양이 세트', desc: '귀 달린 도끼와 젤리 발바닥 망치, 비 오는 날엔 고양이 우산' }),
+  tools_shell: Object.freeze({ name: '바닷가 조개 세트', desc: '가리비 날과 소라 물조리개, 비 오는 날엔 파라솔' }),
+  acorn_cap: Object.freeze({ name: '도토리 모자', desc: '정수리에 쏙 얹은 꼬마 도토리 모자예요' }),
+  bee_band: Object.freeze({ name: '꿀벌 더듬이 머리띠', desc: '줄무늬 구슬이 달린 꿀벌 더듬이예요' }),
+  kitty_pack: Object.freeze({ name: '냥냥 배낭', desc: '고양이 얼굴이 웃고 있는 배낭이에요' }),
+  nest_pack: Object.freeze({ name: '아기새 둥지 배낭', desc: '등에 멘 둥지에서 아기새가 고개를 내밀어요' }),
+  maple_trail: Object.freeze({ name: '단풍잎 자국', desc: '걸음마다 단풍잎이 내려앉아요' }),
+  bubble_trail: Object.freeze({ name: '비눗방울 자국', desc: '걸을 때마다 비눗방울이 둥실 떠올라요' }),
 });
 
 const clamp01 = (x) => Math.max(0, Math.min(1, x));

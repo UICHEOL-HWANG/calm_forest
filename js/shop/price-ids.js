@@ -24,9 +24,13 @@ export const PRICE_IDS = Object.freeze({
   // 🎃 할로윈 한정(2026-10-06) — 승인 후 scripts/paddle-seed.mjs(PADDLE_ENV=production)가 채운다
   pumpkin_glow: 'pri_01m4807j5j6khycksbzbmdnwkj', bat_swirl: 'pri_01m480837szjr9ww3dstdfxjc9', ghost_nightcap: 'pri_01m4809jq5tmmvq053cvzs02k5', ghost_cloud: 'pri_01m4809kqxdvecnhv3p1zhmvvw', witch_classic: 'pri_01m4808g6tec957hrz23713efg', witch_starry: 'pri_01m4809nv8rkt0143xtqpqhddn',
   tools_batnight: 'pri_01m4809qsv0w8brw987qtez6ms', tools_harvest: 'pri_01m480aknmys2r48mde2w5vqyh', bat_wing: 'pri_01m480aq6xna9gesjz68aeydf1', bat_cape: 'pri_01m480as9abr8k1xdbmet9y3n7',
+  tools_maple: 'pri_01m5a9y676axgxpae4314js2t4', tools_frost: 'pri_01m5a9y7e9ahbj4v3qpadjtv72', tools_honey: 'pri_01m5a9y933tg1tgkr60b0nvse9', tools_kitty: 'pri_01m5a9yap2d6007fj8nck6rma4', tools_shell: 'pri_01m5a9ybjfzt88nvrtf96e8ehw',
+  acorn_cap: 'pri_01m5a9ychgrc9agj79a9tteyas', bee_band: 'pri_01m5a9ydfq1d8kpj9d5qzqessc', kitty_pack: 'pri_01m5a9yeba8017sqegc2bqb2kv', nest_pack: 'pri_01m5a9yf7epajd64yk3sh17tpr', maple_trail: 'pri_01m5a9yg6jsqcrfhjp6efgd54e', bubble_trail: 'pri_01m5a9yh375zx5zen91ns1t1wh',
   // 👣 발자국
   paw: null, drop: null, flower: null, star: null, sparkle: null, snowflake: null,
   // 🐾 펫
   leaf: null, spirit: null, bird: null, golem: null,
+  cloud_dragon: 'pri_01m5adkqg4dw4tc9f0rf6rx6qw', hedgehog: 'pri_01m5adkrzeyfhshf8w1rbqzrns', axolotl: 'pri_01m5adkt1gpm28sv8336893jra', unicorn: 'pri_01m5adkv3sh2rmcfzn0bs9epqg',
   wind: null, acorn: null, skiff: null,
+  welcome_box: 'pri_01m5a40se6z22skxbg2v9w4q79',
 });
