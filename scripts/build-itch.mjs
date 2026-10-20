@@ -42,6 +42,7 @@ writeFileSync(`${OUT}/index.html`, html);
 
 // 게임 모듈(전부 절차 생성이라 정적 자산은 js/ 뿐 — 안내서는 웹 오리진에서 fetch)
 cpSync('js', `${OUT}/js`, { recursive: true });
+cpSync('assets/decor-sets', `${OUT}/assets/decor-sets`, { recursive: true });
 
 // ② API_BASE 치환 — 앵커가 사라지면 조용히 깨진 번들이 나가지 않도록 빌드를 실패시킨다
 const CONFIG_PATH = `${OUT}/js/config.js`;
