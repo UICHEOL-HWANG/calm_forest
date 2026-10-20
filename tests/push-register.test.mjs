@@ -72,3 +72,27 @@ test('🍎 platform — ios 만 그대로, 그 밖의 값은 android', async () 
   const odd = await call({ token: TOKEN, platform: 'web' });
   assert.equal(JSON.parse(odd.calls.find(c => c.url.includes('push_tokens')).init.body).platform, 'android');
 });
+
+test('📝 등록 결과 기록 — event:result 는 토큰 없이 push_register_log 에 남긴다', async () => {
+  const r = await call({ event: 'result', result: 'error', stage: 'register', reason: 'no valid\n aps-environment', via: 'card', platform: 'ios', user_id: 'x' });
+  assert.equal(r.status, 200);
+  const ins = r.calls.find(c => c.url.includes('/rest/v1/push_register_log'));
+  assert.ok(ins, 'push_register_log 로 insert');
+  const row = JSON.parse(ins.init.body);
+  assert.deepEqual(Object.keys(row).sort(), ['platform', 'reason', 'result', 'stage', 'user_id', 'via']);
+  assert.equal(row.user_id, 'uid-1');
+  assert.equal(row.platform, 'ios');
+  assert.equal(row.reason, 'no valid  aps-environment');
+  assert.ok(!r.calls.some(c => c.url.includes('push_tokens')), '토큰 테이블은 건드리지 않는다');
+});
+
+test('📝 등록 결과 기록 — 모르는 값은 버리고, 결과가 이상하면 400', async () => {
+  assert.equal((await call({ event: 'result', result: 'hacked' })).status, 400);
+  const r = await call({ event: 'result', result: 'dismissed', stage: 'drop table', via: 'x', reason: 'r'.repeat(900) });
+  const row = JSON.parse(r.calls.find(c => c.url.includes('push_register_log')).init.body);
+  assert.equal(row.stage, null);
+  assert.equal(row.via, null);
+  assert.equal(row.reason.length, 200);
+  assert.equal(row.platform, 'android');
+  assert.equal((await call({ event: 'result', result: 'denied' }, { upsert: 500 })).status, 502);
+});

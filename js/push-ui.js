@@ -57,9 +57,12 @@ function setPref(on, token) {
   if (b) { b.classList.toggle('off', !on); b.querySelector('.uico').textContent = on ? '🔔' : '🔕'; }
 }
 
+const report = (r, via) => post({ event: 'result', result: r.result, stage: r.stage || null, reason: r.reason || null, via }).catch(() => false);
+
 async function askPush(via) {
   const r = await enablePush(ctx());
   trackEvent('push_permission', { result: r.result, via });
+  report(r, via);
   if (r.result === 'granted') { setPref(true, r.token); ui.toast?.('🔔 꼭 필요한 날에만 밭 소식을 보내 드릴게요', 2800); }
   else if (r.result === 'denied') {
     setPref(false);
@@ -93,7 +96,7 @@ function showCard() {
     preview: { title: '🌙 밭이 조금 수상해요', body: '오늘 밤 누군가 찾아올지도 몰라요.' },
     body: '이렇게 하루 한 번만, 꼭 필요한 날에만 보내요.',
     ok: { label: '알려 주세요 🔔', onClick: () => { trackEvent('push_prompt', { action: 'accept' }); askPush('card'); } },
-    alt: { label: '괜찮아요', onClick: () => { trackEvent('push_prompt', { action: 'later' }); setPref(false); } },
+    alt: { label: '괜찮아요', onClick: () => { trackEvent('push_prompt', { action: 'later' }); report({ result: 'dismissed' }, 'card'); setPref(false); } },
   });
 }
 
@@ -124,6 +127,9 @@ export function initPush() {
   onPushOpen(listen, d => trackEvent('push_open', { kind: String(d.kind || ''), send_id: String(d.send_id || '') }));
   setupToggle();
   if (store.get(PREF_KEY) === 'on') {
-    refreshPush(ctx()).then(r => { if (r.result === 'granted') setPref(true, r.token); else if (r.result === 'skipped') setPref(false); });
+    refreshPush(ctx()).then(r => {
+      if (r.result !== 'granted') report(r, 'refresh');
+      if (r.result === 'granted') setPref(true, r.token); else if (r.result === 'skipped') setPref(false);
+    });
   }
 }

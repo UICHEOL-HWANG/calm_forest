@@ -105,6 +105,7 @@ export const CONFIG = {
   ORCHARD_EVENTS_API: `${API_BASE}/api/orchard-events`,
   AURA_ORDER_API: `${API_BASE}/api/aura-order`,   // 🏮 빛 공방 오라 주문
   PUSH_REGISTER_API: `${API_BASE}/api/push-register`,   // 🔔 안드로이드 푸시 토큰 등록·켜기/끄기
+  GA_MP_API: `${API_BASE}/api/ga-mp`,
 
   // 🤝 친구 초대 — POST { action: code|bind|claim } (functions/api/referral.js). 판정·지급은 서버 SQL.
   //    REFERRAL_ON: ☰ 친구 초대·도착 배너·연결/정산을 켤지. ⚠️ 4곳(웹·토스·안드로이드·itch) 배포가 끝난 뒤에만 true —
