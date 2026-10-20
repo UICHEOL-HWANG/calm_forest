@@ -1094,7 +1094,7 @@ function dexDiscover(cat, id) {
   gameState.dex[cat][id] = Date.now();
   const entry = DEX[cat].find(e => e.id === id);
   const total = dexCount();
-  ui.toast?.(`📖 도감 등록! ${entry?.ico || ''} ${entry?.name || id} (${total}/${DEX_TOTAL})`, 2400);
+  ui.toast?.(`📖 도감 등록! ${entry?.ico || ''} ${entry?.name || id} (${total}/${DEX_TOTAL})`, 2400, { afterDialog: true });
   refreshMuseumGate(true);   // 🏛️ 이번 등록으로 층이 열렸으면 건물이 자란다
   if (unlocksOn()) applyUnlocks();   // 🔓 다시 지은 건물도 잠금 상태를 따른다(아직 안 선 박물관이면 알림도 없다 — cafe.js)
   refreshCollectQuests();    // 📖 도감 목표(collect_dex·dex_one) 진행 — 🪏땅속은 인벤이 안 늘어 이 경로가 없었다
