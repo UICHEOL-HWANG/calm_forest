@@ -53,7 +53,8 @@ const CSS = `#hut-cafe-modal{position:fixed;left:0;right:0;bottom:0;z-index:40;d
 #hut-cafe-modal .hc-buys{display:flex;flex-direction:column;gap:6px;flex:none}
 #hut-cafe-modal .hc-row button.sh-cash{background:#2f6fd6;color:#fff}
 #hut-cafe-modal .hc-row button:disabled{background:#e6e1d8;color:#8a8f99}
-#hut-cafe-modal .hc-close{margin-top:10px;border:0;color:#2b2b30;font-family:inherit;border-radius:12px;padding:10px;background:#efe6d8;font-weight:700}`;
+#hut-cafe-modal .hc-close{margin-top:10px;border:0;color:#2b2b30;font-family:inherit;border-radius:12px;padding:10px;background:#efe6d8;font-weight:700}
+@media (orientation:landscape) and (max-height:500px){#hut-cafe-modal .hc-sheet{max-height:calc(100dvh - 24px - env(safe-area-inset-bottom) - var(--top-inset,0px));padding:10px 14px 8px}#hut-cafe-modal .hc-head{font-size:15px;margin-bottom:6px}#hut-cafe-modal .hc-tabs{margin-bottom:6px}}`;
 
 let root = null, tab = 'drink', hooks = null;
 

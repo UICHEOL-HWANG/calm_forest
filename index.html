@@ -2235,6 +2235,74 @@
     body.is-touch #door-prompt, body.is-touch #fish-prompt, body.is-touch #zone-prompt { bottom: calc(104px + env(safe-area-inset-bottom)); }
     body.is-touch #toast, body.is-touch.coaching #toast, body.is-touch.hintbanner #toast, body.is-touch.decor-guide #toast, body.is-touch.mist-guide #toast { top: max(calc(72px + var(--top-inset)), var(--rcol-bottom, 0px)); left: auto; right: max(12px, env(safe-area-inset-right)); transform: none; max-width: min(260px, 34vw); font-size: 13px; padding: 8px 12px; }
   }
+  /* ── 폰 가로모드 — 아래에 붙는 메뉴 창(상점·꾸미기·가방·작업대…) ──
+     세로 기준 bottom 90px(핫바 자리)을 그대로 두면 높이 390 대(iPhone 가로 + 홈 인디케이터 21px)에서
+     창 위쪽(제목·탭)이 화면 밖으로 잘렸다. 메뉴가 열리면 조이스틱·액션 버튼은 숨으므로(menu-open)
+     바닥까지 내려 쓰고, 높이는 화면 안으로 묶는다. 넘치는 건 목록만 스크롤 — 제목·탭·닫기는 고정.
+     ⚠️ 각 창의 기본 규칙·모바일(640) 규칙보다 **뒤**에 있어야 이긴다. */
+  @media (orientation: landscape) and (max-height: 500px) {
+    #shop-menu, #cos-menu, #decor-menu, #ext-menu, #cafe-menu, #craft-menu, #kitchen-menu, #bag-menu {
+      --menu-bottom: calc(8px + env(safe-area-inset-bottom));
+      bottom: var(--menu-bottom);
+      max-height: calc(100dvh - var(--menu-bottom) - 8px - var(--top-inset, 0px));
+      gap: 6px;
+    }
+    #shop-menu, #cos-menu, #decor-menu, #ext-menu, #cafe-menu, #craft-menu, #kitchen-menu { padding: 9px 14px; }
+    #cook-menu { --menu-bottom: calc(8px + env(safe-area-inset-bottom)); }
+    #shop-menu .dm-head, #cos-menu .dm-head, #decor-menu .dm-head, #ext-menu .dm-head, #cafe-menu .dm-head, #kitchen-menu .dm-head, #craft-menu .dm-head { font-size: 13px; }
+    #shop-menu .sh-tab, #cos-tabs .sh-tab, #kitchen-menu .ck-tab { padding: 4px 11px; font-size: 12px; }
+    #shop-menu .dm-actions button, #cos-menu .dm-actions button, #decor-menu .dm-actions button, #ext-menu .dm-actions button,
+    #cafe-menu .dm-actions button, #craft-menu .dm-actions button, #kitchen-menu .dm-actions button { padding-top: 7px; padding-bottom: 7px; }
+    /* 목록만 스크롤: 창은 고정 높이 안에서 머리말·꼬리말을 지키고 목록이 남는 자리를 먹는다 */
+    #shop-menu, #decor-menu, #cafe-menu, #kitchen-menu, #cos-menu { overflow: hidden; }
+    #shop-menu > *, #decor-menu > *, #cafe-menu > *, #kitchen-menu > *, #cos-menu > * { flex: 0 0 auto; }
+    #sell-items, #buy-items, #dm-items, #cafe-orders, #kt-items, #kt-free {
+      flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y;
+    }
+    #sell-items, #buy-items, #dm-items, #kt-items { align-content: flex-start; }
+    #decor-menu .dm-hint, #cafe-menu .dm-hint, #kitchen-menu .dm-hint { font-size: 11px; line-height: 1.35; max-height: 2.8em; overflow-y: auto; }
+    /* 🎀 꾸미기 — 프리뷰 + 목록 가로 배치는 유지, 높이는 창이 정한다(목록 42dvh 상한을 풀어 남는 자리를 다 쓴다) */
+    #cos-menu { width: min(600px, 92vw); }
+    #cos-tabs { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; scrollbar-width: none; touch-action: pan-x; }
+    #cos-tabs::-webkit-scrollbar { display: none; }
+    #cos-tabs .sh-tab { flex: 0 0 auto; }
+    #cos-tabs .sh-tab:first-child { margin-left: auto; }   /* 다 들어가면 가운데, 넘치면 왼쪽부터 스크롤 */
+    #cos-tabs .sh-tab:last-child { margin-right: auto; }
+    #cos-body { flex: 1 1 auto; min-height: 0; align-items: stretch; }
+    #cos-items { max-height: none; min-height: 0; }
+    #cos-preview-box { flex-basis: 120px; justify-content: center; padding: 6px 4px; }
+    #cos-preview { width: 104px; height: 120px; }
+    /* 🔥 가공·🏠 외관 — 구역이 여럿이라 창째 스크롤하되 닫기 줄은 바닥에 붙여 둔다 */
+    #craft-menu .dm-actions, #ext-menu .dm-actions {
+      position: sticky; bottom: -9px; margin: 0 -14px -9px; padding: 6px 14px 9px;
+      background: linear-gradient(rgba(255,255,255,0), rgba(255,255,255,0.94) 40%); z-index: 1;
+    }
+    /* ── 가운데 뜨는 카드 모달(.tut-card) — 세로 기준 여백(28px)·제목(20px)이 가로 높이의 1/4 을 먹어
+       설정·지도·상인 창의 닫기가 스크롤 아래로 밀렸다. 여백을 줄이고 닫기 줄은 카드 바닥에 붙인다.
+       (#char-modal·#tree-modal 처럼 따로 맞춘 창은 id 규칙이 더 세서 그대로 이긴다) */
+    .tut-card { max-height: calc(100dvh - 16px - var(--top-inset, 0px)); padding: 14px 18px 12px; border-radius: 20px; }
+    .tut-card h2 { margin: 0 0 8px; font-size: 17px; }
+    .tut-emoji { font-size: 30px; }
+    #hire-modal .tut-card { max-height: calc(100dvh - 16px - var(--top-inset, 0px)); }
+    #merchant-body { margin-bottom: 10px !important; }
+    .merchant-actions { flex-direction: row-reverse; gap: 8px; }
+    .merchant-actions button { flex: 1 1 0; min-height: 40px; padding: 9px 14px; font-size: 14px; }
+    .tut-card > .dm-actions:last-child, .tut-card > .merchant-actions:last-child {
+      position: sticky; bottom: -12px; margin-bottom: -12px; padding: 6px 0 12px;
+      background: linear-gradient(rgba(255,255,255,0), #fff 35%); z-index: 1;
+    }
+    /* ⚙️ 설정 — 9줄 세로 목록은 가로 높이에 안 들어간다 → 두 줄로 */
+    #settings-modal .tut-card { max-width: 520px !important; width: min(520px, 92vw) !important; }
+    #settings-list { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    #settings-list button { padding: 8px 12px; font-size: 13px; }
+    #settings-list #delacc-btn { margin-top: 0; }
+    #settings-close { position: sticky; bottom: 0; margin-top: 10px; padding: 9px 16px; }
+    /* 🗺️ 지도 — 안내문을 빼고 지도 하한을 낮춰 닫기까지 한 화면에 */
+    #worldmap .market-hint { display: none; }
+    #wm-canvas { width: max(180px, min(100%, calc((100dvh - 150px) * 66 / 57))); margin-top: 4px; }
+    #worldmap .dm-actions { margin-top: 8px; }
+    .wm-quests { margin-top: 6px; }
+  }
   #hint-banner.slot-swap { right: auto !important; bottom: auto !important; transform: none !important; max-width: min(300px, calc(100vw - 24px)) !important; }
 </style>
 </head>
