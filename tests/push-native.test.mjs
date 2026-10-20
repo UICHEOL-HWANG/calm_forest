@@ -80,3 +80,19 @@ test('🍎 연결부 — 안드로이드·iOS 앱에서 켜지고 등록 때 플
   assert.match(ui, /platform: PLATFORM/);
   assert.match(readFileSync(new URL('../sql/migrations/migrate_push_ios.sql', import.meta.url), 'utf8'), /platform in \('android', ?'ios'\)/);
 });
+
+test('실패 단계·사유를 함께 돌려준다 — 서버 기록용', async () => {
+  const denied = await enablePush({ ...fakePlugin({ after: 'denied' }), post: async () => true });
+  assert.deepEqual({ result: denied.result, stage: denied.stage }, { result: 'denied', stage: 'permission' });
+  const reg = await enablePush({ ...fakePlugin({ regError: 'no valid aps-environment' }), post: async () => true });
+  assert.deepEqual({ result: reg.result, stage: reg.stage, reason: reg.reason }, { result: 'error', stage: 'register', reason: 'no valid aps-environment' });
+  const post = await enablePush({ ...fakePlugin(), post: async () => false });
+  assert.deepEqual({ result: post.result, stage: post.stage }, { result: 'error', stage: 'post' });
+  const boom = await enablePush({ plugin: { checkPermissions: async () => { throw new Error('bridge gone'); } }, listen: () => ({}), post: async () => true });
+  assert.deepEqual({ result: boom.result, stage: boom.stage, reason: boom.reason }, { result: 'error', stage: 'exception', reason: 'bridge gone' });
+});
+
+test('등록 오류 사유는 문자열·객체 어느 쪽이든 200자 안으로', async () => {
+  const obj = await enablePush({ ...fakePlugin({ regError: { message: 'x'.repeat(500) } }), post: async () => true });
+  assert.equal(obj.reason.length, 200);
+});

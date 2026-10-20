@@ -11,7 +11,7 @@
 
 import { CONFIG, isGaConfigured, IS_DEV_SESSION } from './config.js';
 import { PLATFORM } from './platform.js';         // 'web' | 'toss' — 모든 이벤트에 세그먼트로 부착
-import { LANG, assignVariant } from './i18n.js';   // 표시 언어 + A/B 변형 → GA4 유저 속성
+import { LANG, assignVariant, clientId } from './i18n.js';  // 표시 언어 + A/B 변형 → GA4 유저 속성
 import { renameReservedParams, overParamLimit } from './ga-params.js';  // source/medium 등 GA4 예약어 충돌 방지
 import { e2Decision } from './exp-e2-boot.js';   // 🧪 E2 배정 — 이 모듈 평가(로그인 판단보다 먼저)에서 처음 판정된다
 import { e2UserProps } from './exp-e2.js';
@@ -22,6 +22,7 @@ import { cachedInstallAttribution } from './install-referrer-boot.js';
 import { readSurvey, surveyUserProps } from './install-survey.js';           // 🧭 첫 실행 설문 → heard_from
 import { withExpArm } from './exp-e1.js';   // 🧪 E1 — 획득 이벤트에 exp_arm
 import { devLog } from './devlog.js';
+import { startMpQueue, mpGtag } from './ga-mp.js';
 
 let firstChopFired = false;
 const sessionStart = Date.now();
@@ -64,6 +65,14 @@ function applyAliasCampaign() {
 //   미설정 시엔 아무것도 로드하지 않고 trackEvent 가 콘솔 폴백.
 (function loadGA() {
   if (IS_DEV_SESSION) return;   // 🧪 dev 세션 — gtag.js 자체를 로드하지 않음
+  if (PLATFORM === 'ios') {
+    const q = startMpQueue({ endpoint: CONFIG.GA_MP_API, clientId: clientId() });
+    window.gtag = mpGtag(q);
+    abVariant = assignVariant();
+    window.gtag('set', 'user_properties', allUserProps());
+    window.gtag('event', 'page_view', { page_location: 'app://calmforest/ios', platform: PLATFORM });
+    return;
+  }
   window.dataLayer = window.dataLayer || [];
   window.gtag = window.gtag || function () { window.dataLayer.push(arguments); };
   gtag('js', new Date());

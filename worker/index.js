@@ -26,6 +26,7 @@ import { onRequestGet as dailyQuests } from '../functions/api/daily-quests.js';
 import { onRequestGet as npcTalk } from '../functions/api/npc-talk.js';
 import { onRequestPost as orchardEvents } from '../functions/api/orchard-events.js';
 import { onRequestPost as pushRegister } from '../functions/api/push-register.js';
+import { onRequestPost as gaMp } from '../functions/api/ga-mp.js';
 import { onRequestPost as clientLogs } from '../functions/api/logs.js';   // 🧯 클라이언트 오류 로그
 import { onRequestPost as referral } from '../functions/api/referral.js';
 import { onRequest as auraOrder } from '../functions/api/aura-order.js';
@@ -217,6 +218,11 @@ async function routeApi(pathname, { request, env, ctx }) {
   if (pathname === '/api/push-register') {
     if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
     return await pushRegister({ request, env });
+  }
+
+  if (pathname === '/api/ga-mp') {
+    if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
+    return await gaMp({ request, env });
   }
 
   // 🍎 과수원 이벤트 원장 — GA4 유실·지연 대비, 유저 본인 토큰으로 orchard_events 에 적재

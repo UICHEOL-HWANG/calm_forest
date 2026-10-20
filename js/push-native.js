@@ -21,19 +21,26 @@ function registerForToken(plugin, listen) {
       subs.forEach(s => { try { s?.remove?.(); } catch { /* 이미 떨어진 리스너 */ } });
       resolve(v);
     };
-    const timer = setTimeout(() => finish(null), REGISTER_TIMEOUT_MS);
-    subs.push(listen('registration', t => finish(t?.value || null)));
-    subs.push(listen('registrationError', () => finish(null)));
-    Promise.resolve(plugin.register()).catch(() => finish(null));
+    const timer = setTimeout(() => finish({ reason: 'timeout' }), REGISTER_TIMEOUT_MS);
+    subs.push(listen('registration', t => finish(t?.value ? { token: t.value } : { reason: 'empty_token' })));
+    subs.push(listen('registrationError', e => finish({ reason: reasonOf(e?.error ?? e) || 'registration_error' })));
+    Promise.resolve(plugin.register()).catch(e => finish({ reason: reasonOf(e) || 'register_rejected' }));
   });
+}
+
+export const REASON_MAX = 200;
+export function reasonOf(e) {
+  const raw = typeof e === 'string' ? e : (e?.message || e?.errorMessage || e?.code || '');
+  return String(raw).slice(0, REASON_MAX);
 }
 
 async function registerAndPost({ plugin, listen, post, lang, tz, channelName }) {
   try { await plugin.createChannel?.({ id: PUSH_CHANNEL, name: channelName || '밭 소식', importance: 3, visibility: 1 }); } catch { /* 채널은 없어도 기본 채널로 온다 */ }
-  const token = await registerForToken(plugin, listen);
-  if (!token) return { result: 'error' };
+  const reg = await registerForToken(plugin, listen);
+  if (!reg.token) return { result: 'error', stage: 'register', reason: reg.reason };
+  const token = reg.token;
   const ok = await post({ token, enabled: true, lang: lang === 'en' ? 'en' : 'ko', tz: tz || null }).catch(() => false);
-  return ok ? { result: 'granted', token } : { result: 'error', token };
+  return ok ? { result: 'granted', token } : { result: 'error', stage: 'post', token };
 }
 
 /** 안내 카드의 "알려 주세요" — 필요하면 시스템 권한 팝업을 띄운다 */
@@ -42,9 +49,9 @@ export async function enablePush({ plugin, listen, post, lang, tz, channelName }
   try {
     let perm = await plugin.checkPermissions();
     if (perm?.receive !== 'granted' && perm?.receive !== 'denied') perm = await plugin.requestPermissions();
-    if (perm?.receive !== 'granted') return { result: 'denied' };
+    if (perm?.receive !== 'granted') return { result: 'denied', stage: 'permission' };
     return await registerAndPost({ plugin, listen, post, lang, tz, channelName });
-  } catch { return { result: 'error' }; }
+  } catch (e) { return { result: 'error', stage: 'exception', reason: reasonOf(e) }; }
 }
 
 /** 앱을 켤 때 — 이미 허용된 사람만 조용히 재등록(토큰 교체·계정 변경 반영). 팝업은 절대 안 띄운다 */
@@ -54,7 +61,7 @@ export async function refreshPush({ plugin, listen, post, lang, tz, channelName 
     const perm = await plugin.checkPermissions();
     if (perm?.receive !== 'granted') return { result: 'skipped' };
     return await registerAndPost({ plugin, listen, post, lang, tz, channelName });
-  } catch { return { result: 'error' }; }
+  } catch (e) { return { result: 'error', stage: 'exception', reason: reasonOf(e) }; }
 }
 
 /** ⚙️ 설정에서 끄기 — 토큰은 남기고 서버 쪽 enabled 만 끈다(다시 켜면 팝업 없이 바로) */

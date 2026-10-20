@@ -34,8 +34,19 @@ export function handoffUrl({ href, os, app } = {}) {
 }
 
 const UTM_KEYS = ['source', 'medium', 'campaign', 'content'];
+const HANDOFF_RE = /^[a-z0-9]{8}$/;
+const ID_CHARS = 'abcdefghijklmnopqrstuvwxyz0123456789';
 
-export function withAttribution(href, { touch, fbc, invite } = {}) {
+export function handoffId(rand = Math.random) {
+  return Array.from({ length: 8 }, () => ID_CHARS[Math.floor(rand() * ID_CHARS.length) % ID_CHARS.length]).join('');
+}
+
+export function arrivalHandoff(search) {
+  const ho = new URLSearchParams(typeof search === 'string' ? search : '').get('ho');
+  return ho && HANDOFF_RE.test(ho) ? ho : null;
+}
+
+export function withAttribution(href, { touch, fbc, invite, handoff } = {}) {
   let u;
   try { u = new URL(href); } catch { return href; }
   const q = u.searchParams;
@@ -45,5 +56,6 @@ export function withAttribution(href, { touch, fbc, invite } = {}) {
   const fbclid = typeof fbc === 'string' ? fbc.match(/^fb\.1\.\d+\.([\w-]{1,500})$/)?.[1] : null;
   put('fbclid', fbclid);
   put('invite', invite);
+  if (typeof handoff === 'string' && HANDOFF_RE.test(handoff)) put('ho', handoff);
   return u.href;
 }
