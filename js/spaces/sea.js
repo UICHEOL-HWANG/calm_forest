@@ -24,6 +24,8 @@ import {
 import { Sound } from '../sound.js';
 import { sendSeaRecord } from '../supabase-client.js';
 import { refreshPond } from '../pond/index.js';
+import { addGateWalk } from './gate-cue.js';
+import { makeWalk } from './gate-walk.js';
 import * as THREE from 'three';
 
 export const SEA_LINE_N = 18;
@@ -175,7 +177,9 @@ export function spawnSeaGate() {
   g.add(makeSignpost('🌊 바다터', -1.6, 1.2));    // 다른 게이트와 같은 문법의 표지판
   obstacles.push({ x: SEA_GATE.x, z: SEA_GATE.z, r: 2.2 });                     // 밭 금지(게이트 앞)
   obstacles.push({ x: SEA_COVE.x, z: SEA_COVE.z, r: SEA_COVE.r + 1 });          // 밭 금지(후미)
-  solidCircle(SEA_COVE.x, SEA_COVE.z, SEA_COVE.r - 0.35);                       // 🚧 물엔 못 들어감
+  const water = solidCircle(SEA_COVE.x, SEA_COVE.z, SEA_COVE.r - 0.35);         // 🚧 물엔 못 들어감(돌다리 위만 예외)
+  addGateWalk(g, 'sea', { water, color: 0x8fe8ff, ringR: 0.85,
+    walk: makeWalk({ ax: SEA_GATE.x + 0.2, az: SEA_GATE.z - 0.1, bx: SEA_GATE.x + 3.4, bz: SEA_GATE.z - 3.9, hw: 0.5, y: 0.36 }) });
 }
 
 export function buildSea() {

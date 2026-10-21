@@ -14,6 +14,8 @@ import {
   tryUnlockDrop, ui, wantAction, woodMat,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
+import { addGateWalk } from './gate-cue.js';
+import { makeWalk } from './gate-walk.js';
 import { onPlay, decorBanner } from '../decor-drops/index.js';
 import { BOAT_LAMP, BOAT_LAMP_POST } from '../boat-lamp.js';
 import { BOAT_BASE_SPEED, BOAT_BOOST_CD, BOAT_LAMPS, BOAT_RUNS_PER_DAY, BOAT_UPGRADES, DOCK_GATE, DOCK_POND, DOCK_POND_R, RIVER, RIVER_DOCK_HALF, RIVER_LEN, RIVER_OBS, RIVER_PICKS, RIVER_W } from '../data/places.js';
@@ -59,7 +61,7 @@ export function buildDockGate() {
   // 정박한 나룻배(장식) — "여기서 탄다"는 걸 한눈에
   const moored = makeBoatHull(0.9, true); moored.position.set(2.2, 0.22, -5.2); moored.rotation.y = 0.35; g.add(moored);
   // 노가 걸린 표지판
-  g.add(makeSignpost('🛶 나루터', 0, 1.6));
+  g.add(makeSignpost('🛶 나루터', -1.45, 1.15));
   const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.24, 8, 8),
     new THREE.MeshStandardMaterial({ color: 0xffe9a8, emissive: 0xffcf6a, emissiveIntensity: 0.8 }));
   lamp.position.set(-2.2, 1.5, 0.6); g.add(lamp);   // 물가 잔디 위(연못 밖)에 세움
@@ -67,7 +69,9 @@ export function buildDockGate() {
   pole.position.set(-2.2, 0.75, 0.6); g.add(pole);
   scene.add(g); $w.dockGroup = g;
   obstacles.push({ x: DOCK_POND.x, z: DOCK_POND.z, r: DOCK_POND_R + 0.5 });   // 연못 위엔 밭 금지
-  solidCircle(DOCK_POND.x, DOCK_POND.z, DOCK_POND_R - 0.3);                    // 🚧 물엔 못 들어감(물가에서 막힘)
+  const pondSolid = solidCircle(DOCK_POND.x, DOCK_POND.z, DOCK_POND_R - 0.3);      // 🚧 물엔 못 들어감(데크 위만 예외)
+  addGateWalk(g, 'dock', { water: pondSolid, color: 0xffd27a, ringR: 0.85,
+    walk: makeWalk({ ax: DOCK_GATE.x, az: DOCK_GATE.z + 1.0, bx: DOCK_GATE.x, bz: DOCK_GATE.z - 4.5, hw: 1.0, y: 0.4 }) });
 }
 
 // 🛶 나룻배 — 청록 선체 + 나무 뱃전/뱃머리 + 붉은 좌석 + 고물 장식(곤돌라 풍).
