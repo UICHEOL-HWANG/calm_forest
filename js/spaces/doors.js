@@ -44,6 +44,7 @@ import { worldTreeNear, worldTreePrompt } from '../spaces/world-tree.js';
 import { nearestOutdoor, outdoorZone } from '../spaces/outdoor-decor.js';
 import { chestHintNow, updateRiverInteract } from '../spaces/river.js';
 import { seaPrompt } from '../spaces/sea.js';
+import { gateWalkEnd } from './gate-cue.js';
 import { TELESCOPE_SPOT } from '../spaces/observatory.js';
 import { MOUNTAIN_EXIT_LOCAL, mountainOpen, sledStartReady, hutDoorReady, inCafe, atCafeSpot } from '../spaces/mountain.js';
 import { state as authState } from '../supabase-client.js';
@@ -135,6 +136,8 @@ export function goFloor(f) {
 }
 
 // 문 근접 감지(입장/퇴장 프롬프트)
+function nearGateEnd(kind) { const e = gateWalkEnd(kind); return !!e && dist2D(e, player.position) < 1.2; }
+
 export function updateDoorInteract() {
   let nd = null, prompt = null, floorChoiceOpts = null;   // 🪜 floorChoiceOpts — 같은 자리에서 두 방향 다 갈 수 있을 때만(6단계 2층)
   $w.nearDecorMesh = null; $w.nearOutdoorMesh = null; if (decorNearRing) decorNearRing.visible = false;   // 🛋️🪵 옮기기 링은 대상이 있을 때만
@@ -305,13 +308,17 @@ export function updateDoorInteract() {
     const locked = mapLocked('mist');   // 🧪 [베타 2차] 프레임당 한 번만 판정(프롬프트·배너 억제 공용)
     prompt = locked ? lockLine('mist', mapOpenDay(authState.mapOrder, 'mist')) : '🌫️ 안개 낀 숲에 들어가기';
     if (!locked) firstHintBanner('mistGate', '🌫️', '안개 낀 숲', '등불과 ♪음악으로 안개를 정화하는 숲');
-  } else if (isOpen('river') && dist2D({ x: DOCK_GATE.x, z: DOCK_GATE.z + 1.2 }, player.position) < 2.4) {
+  } else if (isOpen('river') && nearGateEnd('dock')) {
     nd = 'river'; prompt = chestHintNow() ? '🛶 나루터 · 🧰 오늘의 보물상자가 떠내려와요' : '🛶 나루터 (나룻배 타러 가기)';   // 🧰 상자는 나룻배에만 — 입구에서 알린다
+  } else if (isOpen('river') && dist2D({ x: DOCK_GATE.x, z: DOCK_GATE.z + 1.2 }, player.position) < 2.4) {
     firstHintBanner('dockGate', '🛶', '나루터', '나룻배 타고 하루 3번 강을 내려가요');
-  } else if (isOpen('sea') && dist2D({ x: SEA_GATE.x - 0.4, z: SEA_GATE.z + 1 }, player.position) < 2.4) {
+  } else if (isOpen('sea') && nearGateEnd('sea')) {
     nd = 'sea';
-    const locked = mapLocked('sea');   // 🧪 [베타 2차] 프레임당 한 번만 판정(프롬프트·배너 억제 공용)
+    const locked = mapLocked('sea');
     prompt = locked ? lockLine('sea', mapOpenDay(authState.mapOrder, 'sea')) : '🌊 바다터 (먼 바다로 나가볼까요?)';
+  } else if (isOpen('sea') && dist2D({ x: SEA_GATE.x - 0.4, z: SEA_GATE.z + 1 }, player.position) < 2.4) {
+    const locked = mapLocked('sea');   // 🧪 [베타 2차] 프레임당 한 번만 판정(프롬프트·배너 억제 공용)
+    if (locked) { nd = 'sea'; prompt = lockLine('sea', mapOpenDay(authState.mapOrder, 'sea')); }
     // [GA4] 입구 첫 도달(세이브당 1회) — sea_enter 와 짝지어 "왔는데 안 들어갔나"를 본다
     if (!locked && firstHintBanner('seaGate', '🌊', '바다터', '먼 바다 대형 물고기와 줄다리기 낚시'))
       trackEvent('sea_gate_hint', { night: isNight(), weather: WEATHER });
