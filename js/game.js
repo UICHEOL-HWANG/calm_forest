@@ -181,6 +181,7 @@ import {
 import {
   buildSea, enterSea, exitSea, seaAction, seaCamera, seaPrompt, spawnSeaGate, updateSea, updateSeaVisuals,
 } from './spaces/sea.js';   // 📦 🌊 바다터 — 대형 낚시 (docs/design/SEA_FISHING_PLAN.md · 프로토타입 sims/sea-sim.html)
+import { keepOnGateWalks, updateGateCues, updateGateWalks } from './spaces/gate-cue.js';
 import { clampToLandmark, clampToMountain, maybeRevealMountain, mountainAction, mountainLookFrame, mountainMinimapMarks, mountainReturnPos, sledActive, spawnMountainGate, updateMountain, mountainSpeedMult } from './spaces/mountain.js';
 import { applyObservatoryLight, clampToObservatory, observatoryAction, observatoryCamFocus, observatoryLensOpen, observatoryMinimapMarks, spawnObservatoryGate, updateObservatory, updateObservatoryStairs } from './spaces/observatory.js';   // 📦 🔭 천문대 — 별자리 리듬 실내 공간
 import { clampToNeighbor, initNeighbors, neighborAction, neighborIndoorElevated, neighborIndoorFrame, neighborMinimapMarks, neighborReturnPos, spawnNeighborGate, updateNeighbor } from './spaces/neighbor.js';   // 📦 🏡 이웃 마을 — 남의 앞마당 구경(js/neighbors/*)
@@ -6046,6 +6047,7 @@ function animate() {
   updateSeasonDrift(dt, t);   // 🌸🍂 꽃잎·낙엽
   updateSway(t);
   updateSeaVisuals(t);  // 🌊 일렁이는 수면(후미·바다터) + 등대 야간 빔
+  updateGateCues(t, dt);
   updateTrees(dt);
   updateOreRocks();
   updateChickens(dt);   // 🐔 닭 배회(닭장 건설 후)
@@ -6262,6 +6264,7 @@ function updatePlayer(dt, t) {
         player.position.z = LAKE.z + (player.position.z - LAKE.z) * k;
       }
     }
+    keepOnGateWalks(player.position);
   }
 
   // 🚧 건물·바위·가구 밀어내기 — 공간 클램프 뒤에 마지막으로(벽 모서리에 끼지 않게)
@@ -6272,6 +6275,7 @@ function updatePlayer(dt, t) {
   if (atMirror) clampToMirror(player.position);   // 🪞 집·연못 상자가 밀어낸 뒤 한 번 더
   if (inVillage2()) clampToLandmark(player.position);
   if (inVillage2()) clampToStream(player.position);   // 🌉 개울은 다리 위로만(무너졌으면 못 건넌다)
+  updateGateWalks(dt, player.position);
   // 테스트: ?dbg=1 — 현재 좌표·카메라·콜라이더 수를 <body data-dbg> 에 기록(충돌 디버깅용)
   if (_wq.has('dbg')) {
     document.body.dataset.dbg = `${player.position.x.toFixed(2)},${player.position.z.toFixed(2)} cam ${camera.position.x.toFixed(1)},${camera.position.z.toFixed(1)} col ${colliders.length}`;
