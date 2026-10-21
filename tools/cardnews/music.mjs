@@ -1,7 +1,7 @@
 // =============================================================
 //  calm forest · 🎹 쇼츠 배경음악 (자체 제작, 저작권 free)
 //  ------------------------------------------------------------
-//  node music.mjs [--style piano|lofi|night|dream|harvest] [--secs 32] [--out out/music/calm.wav]
+//  node music.mjs [--style piano|lofi|night|dream|harvest|halloween] [--secs 32] [--out out/music/calm.wav]
 //
 //  왜 직접 만드나:
 //    클래식은 **곡**의 저작권이 풀렸어도 **연주 녹음**은 따로 보호된다.
@@ -29,9 +29,9 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
 const arg = (n, d) => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] : d; };
 const SECS = Number(arg('--secs', '32'));
-/** --style piano(기본, 느린 피아노) | lofi(로파이 하우스 105BPM, 모던한 플레이 영상용) | night(밤손님 릴스 전용, --secs 31) | dream(꿈의 숲 릴스 전용, --secs 26) | harvest(수확제 광장 릴스 전용, --secs 34) */
+/** --style piano(기본, 느린 피아노) | lofi(로파이 하우스 105BPM, 모던한 플레이 영상용) | night(밤손님 릴스 전용, --secs 31) | dream(꿈의 숲 릴스 전용, --secs 26) | harvest(수확제 광장 릴스 전용, --secs 34) | halloween(할로윈 광고 13초, --secs 14) */
 const STYLE = arg('--style', 'piano');
-const DEFAULT_OUT = { piano: 'out/music/calm.wav', lofi: 'out/music/lofi.wav', night: 'out/music/night.wav', dream: 'out/music/dream.wav', harvest: 'out/music/harvest.wav' };
+const DEFAULT_OUT = { piano: 'out/music/calm.wav', lofi: 'out/music/lofi.wav', night: 'out/music/night.wav', dream: 'out/music/dream.wav', harvest: 'out/music/harvest.wav', halloween: 'out/music/halloween.wav' };
 if (!DEFAULT_OUT[STYLE]) throw new Error(`--style 은 ${Object.keys(DEFAULT_OUT).join('|')} 중 하나: ${STYLE}`);
 const OUT = arg('--out', DEFAULT_OUT[STYLE]);
 
@@ -720,6 +720,64 @@ kick(T(51), 0.7); sub(29, T(51), BEAT * 2, 0.36);
 for (const [o, m] of [[0, 77], [0.5, 81], [1, 84], [2, 81], [3, 79], [4, 77]]) bell(m, T(51 + o), 0.07);
 `;
 
+/** 🎃 할로윈 광고(13초, ad-scenes.mjs halloween) — "무섭지 않고 귀여운 으스스함"
+ *  레퍼런스(2026-10-21 검색): 할로윈 스톡 음악의 공통 레시피 — 3/4 왈츠 · 피치카토 현 · 첼레스타/오르골 ·
+ *  하프시코드 · 단조(반음계 하강·이끎음), 공포 악기를 "마법 같은 프레이즈"로 누그러뜨린다.
+ *  컷과 1:1 — 마디 길이를 컷에 맞춰 BPM 146.5(마디 1.229초):
+ *   0~2.4 훅(오르골 반음계 하강·시계·심장) · 2.4 왈츠 시작 · 2.7/3.3/3.9/4.5 장식이 생길 때마다 "딸깍" 벨
+ *   4.86~11 멜로디(E 화성단음계: Em–Am–B7–C–B7) · 8.54 산책(셰이커) · 11.0 엔드카드 Em 해결
+ *  악기는 NIGHT 의 것(KIT). 실행: --style halloween --secs 14 (영상 13초 + TAIL 페이드 여유 1초) */
+const HALLOWEEN = KIT + `
+const BAR = (11.0 - 2.4) / 7, W0 = 2.4;               // 마디(초) — 왈츠 시작 2.4초 → 엔드카드 11.0초에 7마디가 딱 끝난다
+const B3 = BAR / 3;                                  // 한 박(초)
+const at = (bar, beat) => W0 + bar * BAR + beat * B3;
+lp.frequency.setValueAtTime(1400, 0);
+lp.frequency.exponentialRampToValueAtTime(5200, W0);
+
+// ① 훅 0~2.4 — 낮은 드론 위로 오르골이 반음씩 내려온다, 째깍째깍
+pad([40, 47, 52], 0, 2.6, 0.03);
+thump(0.0, 0.45); thump(1.2, 0.35);
+for (const [t, m] of [[0.1, 88], [0.45, 87], [0.8, 86], [1.15, 85], [1.6, 83], [2.0, 79]]) bell(m, t, 0.07);
+for (const t of [0.3, 0.9, 1.5, 2.1]) tick(t, 0.05);
+
+// ② 왈츠 — 마디마다 쿵(피치카토 베이스)·짝·짝(짧은 코드 플럭)
+const CH = {
+  Em: { r: 40, st: [55, 59, 64] }, Am: { r: 45, st: [57, 60, 64] },
+  B7: { r: 47, st: [57, 63, 66] }, C:  { r: 36, st: [55, 60, 64] },
+};
+const PROG = ['Em', 'Em', 'Em', 'Am', 'B7', 'C', 'B7'];
+PROG.forEach((k, bar) => {
+  const c = CH[k], v = bar < 2 ? 0.7 : 1;             // 장식 구간은 살짝 작게 — 딸깍이 들리게
+  pluck(c.r + 12, at(bar, 0), B3 * 0.9, 0.11 * v, 900);
+  sub(c.r, at(bar, 0), B3 * 0.8, 0.12 * v);
+  for (const b of [1, 2]) for (const m of c.st) pluck(m, at(bar, b), B3 * 0.45, 0.025 * v, 2600);
+  if (bar >= 5) { shaker(at(bar, 0.5), 0.04); shaker(at(bar, 1.5), 0.04); shaker(at(bar, 2.5), 0.04); }   // 산책
+});
+
+// ③ 장식이 생길 때 — 딸깍(위로 올라가는 벨 + 작은 쿵)
+[[2.7, 88], [3.3, 91], [3.9, 95], [4.5, 100]].forEach(([t, m]) => { bell(m, t, 0.09); bell(m - 12, t, 0.04); kick(t, 0.25); });
+
+// ④ 멜로디(첼레스타 = 벨 + 한 옥타브 아래 플럭) — E 화성단음계, 이끎음 D#(75)
+const MEL = [
+  [2, [[0, 76, 1], [1, 75, 0.5], [1.5, 76, 0.5], [2, 79, 1]]],
+  [3, [[0, 81, 1.5], [1.5, 79, 0.5], [2, 76, 1]]],
+  [4, [[0, 75, 1], [1, 78, 1], [2, 71, 1]]],
+  [5, [[0, 79, 1], [1, 76, 0.5], [1.5, 79, 0.5], [2, 84, 1]]],
+  [6, [[0, 83, 1], [1, 81, 0.5], [1.5, 78, 0.5], [2, 75, 1]]],
+];
+for (const [bar, ns] of MEL) for (const [b, m, len] of ns) {
+  bell(m, at(bar, b), 0.075);
+  pluck(m - 12, at(bar, b), B3 * len * 0.9, 0.03, 3200);
+}
+
+// ⑤ 엔드 11.0 — Em 으로 해결, 높은 벨 아르페지오가 반짝
+const END = at(7, 0);
+crash(END, 0.12);
+pluck(52, END, 1.6, 0.11, 900); sub(40, END, 1.4, 0.14);
+pad([52, 55, 59, 64, 66], END, 2.4, 0.04);
+for (const [o, m] of [[0, 76], [0.18, 79], [0.36, 83], [0.54, 88], [0.9, 91]]) bell(m, END + o, 0.07);
+`;
+
 const TAIL = `
 // 끝 3초 페이드아웃 — 영상 끝에서 뚝 끊기면 싸구려로 들린다
 master.gain.setValueAtTime(master.gain.value, Math.max(0, DUR - 3));
@@ -750,7 +808,7 @@ for (let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode.apply(nul
 return btoa(bin);
 `;
 
-const SCORE = HEAD + { piano: PIANO, lofi: LOFI, night: NIGHT, dream: DREAM, harvest: HARVEST }[STYLE] + TAIL;
+const SCORE = HEAD + { piano: PIANO, lofi: LOFI, night: NIGHT, dream: DREAM, harvest: HARVEST, halloween: HALLOWEEN }[STYLE] + TAIL;
 
 const browser = await chromium.launch();
 const page = await browser.newPage();
