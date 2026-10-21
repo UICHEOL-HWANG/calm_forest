@@ -145,6 +145,29 @@ export function habitatMet(tree, id) {
   const def = BY_ID.get(id), b = branchState(tree, id);
   return !!(def && b && meetsHabitat(def, b.tiles));
 }
+export function recommendDecor(tree, id) {
+  const def = BY_ID.get(id), b = branchState(tree, id);
+  if (!def || !b || meetsHabitat(def, b.tiles)) return [];
+  const pool = TREE_DECOR.filter(d => !d.bloom);
+  const free = b.tiles.filter(x => !x).length;
+  const env0 = tagTotals(tree, id);
+  let best = null;
+  const walk = (start, picks, cost) => {
+    if (best && cost > best.cost) return;
+    const env = { ...env0 };
+    for (const d of picks) for (const [t, n] of Object.entries(d.tags)) env[t] = (env[t] || 0) + n;
+    if (Object.entries(def.habitat).every(([t, n]) => (env[t] || 0) >= n)) {
+      if (!best || cost < best.cost || (cost === best.cost && picks.length < best.picks.length)) best = { cost, picks: [...picks] };
+      return;
+    }
+    if (picks.length >= free) return;
+    for (let i = start; i < pool.length; i++) walk(i, [...picks, pool[i]], cost + sum(pool[i].cost));
+  };
+  walk(0, [], 0);
+  if (!best) return [];
+  return pool.map(d => ({ id: d.id, n: best.picks.filter(p => p === d).length })).filter(r => r.n > 0);
+}
+
 /** 서식지 완성 — 단조 플래그 */
 export const habitatDone = (tree, id) => !!branchState(tree, id)?.habitat;
 

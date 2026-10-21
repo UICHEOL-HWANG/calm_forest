@@ -3256,7 +3256,7 @@
     import { nicknameChecks } from './js/nickname-filter.js';
     import { createNickStep } from './js/nickname-step.js';
     import { createSpotlight } from './js/hud/spotlight.js';
-    import { spotSteps } from './js/onboarding/spot-steps.js';
+    import { spotSteps, treeSteps } from './js/onboarding/spot-steps.js';
     import { Sound, startBGM, toggleBGM, isBGMOn } from './js/sound.js';
     import { initCafeGuests } from './js/cafe-guests.js';   // ☕ 카페 손님 동적 생성(서버 프록시 경유)
     import { initNightVisit } from './js/night-visit.js';   // 🦝 밤손님 판정·주민 쪽지(서버 프록시 경유)
@@ -4001,6 +4001,8 @@
       //    src: 'welcome'(온보딩 자동) | 'help'(도움말 버튼) — 닫을 때 이 값으로 이벤트를 가른다
       showTutorial(src = 'welcome') { startOnboarding(src); },
       camTour() { return runCamTour(); },
+      treeTour(plan) { runTreeTour(plan); },
+      treeSpot(sig) { spot?.notify(sig); },
       // 🎬 프롤로그 컷신 DOM — game.js(updateIntro)가 타임라인에 맞춰 호출
       introShow(on) {
         document.body.classList.toggle('intro-open', !!on);
@@ -4919,6 +4921,11 @@
       if (!spot || Input.hintSeen('spotMenu') || spot.kind() === 'menu') return;
       Input.markHintsSeen(['spotMenu']); requestSave();
       setTimeout(() => spot.run(spotSteps('menu', TOUCH), { kind: 'menu', blocked: () => !$('menu-sheet')?.classList.contains('show') }), 60);
+    }
+    function runTreeTour(plan) {
+      if (!spot || !plan || Input.hintSeen('spotTree') || spot.active()) return;
+      Input.markHintsSeen(['spotTree']); requestSave();
+      setTimeout(() => spot.run(treeSteps(plan), { kind: 'tree', skip: 'all', blocked: () => !$('tree-modal')?.classList.contains('show') }), 60);
     }
     function runCamTour() {
       if (!spot || Input.needsTutorial() || !Input.hintSeen('spotV2')) return false;
