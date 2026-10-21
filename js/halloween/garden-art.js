@@ -1,6 +1,6 @@
 import { kit, buildHalloween } from '../spaces/halloween-art.js';
 import { buildJack, buildGhostKid, buildCandyStall } from '../spaces/halloween-event-art.js';
-import { HW_R } from './layout.js';
+import { GHOST_SPOTS, HW_R } from './layout.js';
 
 const PURPLE = 0x6b4a9a, PURPLE_D = 0x4a3170, BAND = 0xe8822e, WOOD = 0x6b4a2e;
 
@@ -83,9 +83,9 @@ export const DEAD_TREES = Object.freeze([[-9, -10, 1.4], [9.5, -9, 1.6], [-12, 4
 
 export function buildGarden(T, onNight) {
   const ctx = makeSharedCtx(T, onNight), k = kit(T), rnd = seeded(11), g = new T.Group(), parts = [];
-  const ground = new T.Mesh(new T.CircleGeometry(HW_R + 8, 48).rotateX(-Math.PI / 2), new T.MeshStandardMaterial({ color: 0x5a6a6a, roughness: 1 }));
+  const ground = new T.Mesh(new T.CircleGeometry(HW_R + 8, 48).rotateX(-Math.PI / 2), new T.MeshStandardMaterial({ color: 0x463a62, roughness: 1 }));
   ground.position.y = 0.02; ground.receiveShadow = true; ground.userData.keep = true; g.add(ground);
-  const rim = new T.Mesh(new T.RingGeometry(HW_R + 8, 70, 48).rotateX(-Math.PI / 2), new T.MeshStandardMaterial({ color: 0x2a3638, roughness: 1 }));
+  const rim = new T.Mesh(new T.RingGeometry(HW_R + 8, 70, 48).rotateX(-Math.PI / 2), new T.MeshStandardMaterial({ color: 0x1c1430, roughness: 1 }));
   rim.position.y = 0.01; rim.userData.keep = true; g.add(rim);
   for (let i = 0; i < 6; i++) parts.push(k.cyl(0.55 + rnd() * 0.2, 0.6, 0.06, (rnd() - 0.5) * 0.6, 0.04, 10.6 - i * 1.6, 0x8a8478, 7));
   const gate = buildHalloween(T, 'webarch', 'tree', ctx); gate.position.set(0, 0, 12.2); gate.scale.setScalar(1.3); g.add(gate);
@@ -98,11 +98,18 @@ export function buildGarden(T, onNight) {
   for (let i = 0; i < 44; i++) {
     const a = (i / 44) * Math.PI * 2 + rnd() * 0.2, r = 13.5 + rnd() * 5.5, x = Math.cos(a) * r, z = Math.sin(a) * r;
     if (z > 9 && Math.abs(x) < 3.2) continue;
-    pine(k, parts, x, z, 1.1 + rnd() * 0.6, 0x2e3e3c);
+    pine(k, parts, x, z, 1.1 + rnd() * 0.6, 0x241a3c);
   }
   g.add(new T.Mesh(k.merge(parts), ctx.vtxMat()));
-  const mist = new T.MeshBasicMaterial({ color: 0x9a8acc, transparent: true, opacity: 0.18, depthWrite: false });
+  const mist = new T.MeshBasicMaterial({ color: 0x6fd08a, transparent: true, opacity: 0.07, depthWrite: false });
   for (let i = 0; i < 9; i++) { const m = new T.Mesh(new T.CircleGeometry(2.5 + rnd() * 2, 20).rotateX(-Math.PI / 2), mist); m.position.set((rnd() - 0.5) * 22, 0.15 + i * 0.01, (rnd() - 0.6) * 20); m.renderOrder = 1; g.add(m); }
+  const wisp = ctx.glowMat(0xc8ffd4, 0x7dff9a, 0.85), dome = new T.SphereGeometry(1, 8, 5, 0, Math.PI * 2, 0, Math.PI / 2), wr = seeded(29);
+  for (let i = 0; i < 40; i++) {
+    const a = wr() * Math.PI * 2, r = 3 + Math.sqrt(wr()) * 9.5, x = Math.cos(a) * r, z = Math.sin(a) * r, s = 0.09 + wr() * 0.08;
+    if (Math.abs(x) < 1.4 && z > -1) continue;
+    if ([...GHOST_SPOTS, ...GRAVES.map(([gx, gz]) => ({ x: gx, z: gz }))].some(p => Math.hypot(p.x - x, p.z - z) < 1.2)) continue;
+    const m = new T.Mesh(dome, wisp); m.position.set(x, 0.03, z); m.scale.set(s, s * 0.8, s); g.add(m);
+  }
   mergeStatic(T, g);
   return g;
 }
