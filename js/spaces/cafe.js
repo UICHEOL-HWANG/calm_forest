@@ -385,9 +385,12 @@ export function openMuseumView(i) {
   group.position.set(MUSEUM.x + slot.x + inward[0] * 1.25, 1.75, MUSEUM.z + slot.z + inward[1] * 1.25);   // 명판(화면 중앙) 위로 띄운다
   scene.add(group);
   player.visible = false;   // 🔍 관람 중엔 캐릭터를 숨긴다 — 몸이 화면 절반을 가린다(1인칭처럼 물건만)
-  museumView = { group, mesh, idx: i, spin: 0, inward, frame: null };
+  const inCase = museumGroup?.children.find(o => o.userData.slot === i) || null;
+  if (inCase) inCase.visible = false;
+  document.body.classList.add('museum-view');
+  museumView = { group, mesh, idx: i, spin: 0, inward, frame: null, inCase };
   const at = gameState.dex[item.cat][item.id], d = new Date(at);
-  ui.setZoneHint?.(`${item.ico} ${item.name} — ${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일에 처음 발견`);
+  ui.setZoneHint?.(`${item.ico} ${item.name} · ${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()} 처음 발견`);
   ui.setDoorPrompt?.('🔙 돌아가기');
   museumView.frame = museumViewFrame(mesh);     // ⚠️ 프롬프트를 띄운 **뒤에** 재야 아래 여백이 실제 자리로 잡힌다
   setTimeout(() => { if (museumView && museumView.mesh === mesh) museumView.frame = museumViewFrame(mesh); }, 220);   // 프롬프트 줄이 앉은 뒤 한 번 더(트랜지션 .15s)
@@ -398,6 +401,8 @@ export function openMuseumView(i) {
 export function closeMuseumView() {
   if (!museumView) return;
   scene.remove(museumView.group); disposeTree(museumView.group);
+  if (museumView.inCase) museumView.inCase.visible = true;
+  document.body.classList.remove('museum-view');
   museumView = null;
   player.visible = true;
   ui.setDoorPrompt?.(null); $w.lastZoneHint = null;
@@ -496,7 +501,7 @@ export function buildMuseumHall() {
       add('stone', box(0.55, 0.03, 0.55, x, 0.815, z, ry));
       if (!got) { add('cloth', box(0.42, 0.12, 0.42, x, 0.89, z, ry)); return; }   // 🎀 곧 열릴 전시 — 작은 천 덮개
       const ex = museumExhibitMesh(item);
-      ex.position.set(x, 0.83, z); ex.rotation.y = ry + 0.35; ex.scale.setScalar(1.3);   // 뚜껑 없는 탁자 — 카메라 거리에서 읽히게 키운다
+      ex.position.set(x, 0.83, z); ex.rotation.y = ry + 0.35; ex.scale.setScalar(1.3); ex.userData.slot = i;   // 뚜껑 없는 탁자 — 카메라 거리에서 읽히게 키운다
       exhibitMeshes.push(ex); g.add(ex);
       return;
     }
@@ -518,7 +523,7 @@ export function buildMuseumHall() {
     add('glass', box(0.86, 0.88, 0.54, x, 1.41, z, ry));
     add('trim',  box(0.94, 0.07, 0.62, x, 1.88, z, ry));
     const ex = museumExhibitMesh(item);
-    ex.position.set(x, 0.97, z); ex.rotation.y = ry + 0.35; ex.scale.setScalar(1.15);   // 받침 위 — 모델 바닥이 y=0 이다(유리 높이 0.88 안에 들어가는 최대 크기)
+    ex.position.set(x, 0.97, z); ex.rotation.y = ry + 0.35; ex.scale.setScalar(1.15); ex.userData.slot = i;   // 받침 위 — 모델 바닥이 y=0 이다(유리 높이 0.88 안에 들어가는 최대 크기)
     exhibitMeshes.push(ex); g.add(ex);   // 병합하지 않는다 — 전시물 자체가 이미 재질별로 병합돼 있다(≤3 메시)
   });
 

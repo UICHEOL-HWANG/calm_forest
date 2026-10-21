@@ -15,7 +15,7 @@ body.is-touch #hotbar > .slot { display: none !important; }
   display: grid; place-items: center; padding: 0; touch-action: none; cursor: pointer; font-family: inherit; color: var(--ink); }
 #tool-btn, #tool-fan, #near-pill { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
 #tool-btn:not(.placed), #tool-name:not(.placed) { visibility: hidden; }
-body.menu-open #tool-btn, body.menu-open #tool-name { display: none; }
+body.menu-open #tool-btn, body.menu-open #tool-name, body.museum-view #tool-btn, body.museum-view #tool-name { display: none; }
 #tool-btn[data-page="out"] { border-color: #6fb3dc; background: #eaf5fc; }
 #tool-btn[data-page="none"] { border-color: #b8c6bd; background: #fff; }
 #tool-btn .tb-ico { font-size: 27px; line-height: 1; display: grid; place-items: center; }
