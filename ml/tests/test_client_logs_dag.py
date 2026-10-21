@@ -97,6 +97,7 @@ def test_summarize_counts_rows_suppressed_users_and_platforms(m):
     out = {r["sig"]: r for r in m.summarize(rows, dt.date(2026, 10, 13), "client-logs/2026/10/13.ndjson.gz")}
     http = out[m.error_sig(ROW)]
     assert http["n"] == 3 + 2                  # 행 3 + 반복이라 뺀 2
+    assert http["rows"] == 3
     assert http["users"] == 2                  # uid 없는 행은 세지 않는다
     assert http["platforms"] == {"web": 2, "android": 1}
     assert http["day"] == "2026-10-13"
@@ -105,10 +106,32 @@ def test_summarize_counts_rows_suppressed_users_and_platforms(m):
 
 
 def test_spike_rule(m):
-    assert m.is_spike(200, [10, 12, 9, 11, 10, 8, 13]) is True
-    assert m.is_spike(40, [10, 12, 9, 11, 10, 8, 13]) is False      # 최소 건수(50) 미만
-    assert m.is_spike(60, []) is True                                # 첫날 — 바닥값만
-    assert m.is_spike(30, []) is False
+    assert m.is_spike(200, [10, 12, 9, 11, 10, 8, 13], users=5) is True
+    assert m.is_spike(40, [10, 12, 9, 11, 10, 8, 13], users=5) is False      # 최소 건수(50) 미만
+    assert m.is_spike(60, [], users=5) is True                                # 첫날 — 바닥값만
+    assert m.is_spike(30, [], users=5) is False
+
+
+def test_spike_needs_minimum_users(m):
+    assert m.is_spike(200, [10, 12, 9], users=2) is False
+    assert m.is_spike(200, [10, 12, 9], users=m.SPIKE_MIN_USERS) is True
+
+
+def test_day_users_counts_distinct_uids_across_signatures(m):
+    rows = [ROW, {**ROW, "id": "2", "kind": "error", "msg": "boom"},
+            {**ROW, "id": "3", "uid8": "11111111"}, {**ROW, "id": "4", "uid8": None}]
+    assert m.day_users(rows) == 2
+
+
+def test_spike_total_ignores_suppressed(m):
+    rows = [{**ROW, "suppressed": 40}, {**ROW, "id": "2", "suppressed": 0}]
+    summary = m.summarize(rows, dt.date(2026, 10, 20), "k")
+    assert m.spike_total(summary) == 2
+
+
+def test_prior_day_value_prefers_rows_over_n(m):
+    assert m.prior_day_value({"n": 54, "rows": 37}) == 37
+    assert m.prior_day_value({"n": 54, "rows": None}) == 54
 
 
 def test_sigv4_headers_are_deterministic(m):
