@@ -84,14 +84,18 @@ def test_to_date_rejects_garbage(m):
         m.to_date("next monday")
 
 
-def test_window_without_start_previews_last_14_days_and_skips_sheet(m):
-    w = m.resolve_window(None, latest=D(2026, 10, 14))
-    assert w == {"start": D(2026, 10, 1), "land_end": D(2026, 10, 14), "end": D(2026, 10, 14), "publish": False}
+def test_window_without_start_previews_last_21_days_and_skips_sheet(m):
+    w = m.resolve_window(None, latest=D(2026, 10, 21))
+    assert w == {"start": D(2026, 10, 1), "land_end": D(2026, 10, 21), "end": D(2026, 10, 21), "publish": False}
 
 
-def test_window_caps_landing_at_14_days_but_keeps_following_events(m):
-    w = m.resolve_window(D(2026, 10, 20), latest=D(2026, 11, 6))
-    assert w == {"start": D(2026, 10, 20), "land_end": D(2026, 11, 2), "end": D(2026, 11, 6), "publish": True}
+def test_window_caps_landing_at_21_days_but_keeps_following_events(m):
+    w = m.resolve_window(D(2026, 10, 24), latest=D(2026, 11, 16))
+    assert w == {"start": D(2026, 10, 24), "land_end": D(2026, 11, 13), "end": D(2026, 11, 16), "publish": True}
+
+
+def test_publish_window_covers_funnel_rows_3_to_23(m):
+    assert m.FIRST_ROW + m.CAMPAIGN_DAYS - 1 == 23
 
 
 def test_window_before_campaign_has_no_data_yet(m):
