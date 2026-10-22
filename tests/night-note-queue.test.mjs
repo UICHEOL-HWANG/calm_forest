@@ -1,83 +1,67 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { initNoteQueue, noteArrived, noteArrivedOpen, showIfIdle, beforeDuel } from '../js/duel/note-queue.js';
+import { initNoteQueue, noteArrived, afterDuel, defenseTip, FALLBACK_NOTES } from '../js/duel/note-queue.js';
 
-const NOTE = { author: '농부 삼촌', text: '어젯밤 멧돼지 녀석이…' };
+const NOTE = { author: '농부 삼촌', text: '멧돼지가 오늘은 한 수 위였네요.' };
+const FALL = { author: '농부 삼촌', text: '기본 쪽지' };
 
-// 📜 밤손님 쪽지는 대결 한가운데 뜨면 판을 덮는다(2026-09-26 실기기 제보) —
-//    순서는 늘 "쪽지 → 대결", 대결 중에 도착하면 끝난 뒤로 미룬다.
-test('도착하면 일단 쥐고 있는다 — 띄우는 건 한 박자 뒤(출석 창 등과 안 겹치게)', () => {
+test('도착한 쪽지는 쥐고만 있다', () => {
   const s = noteArrived(initNoteQueue(), NOTE);
   assert.equal(s.note, NOTE);
   assert.equal(s.shown, false);
 });
 
-test('한가하면(대결 밖) 보여 준다', () => {
-  const r = showIfIdle(noteArrived(initNoteQueue(), NOTE), { duelActive: false });
+test('빈 쪽지는 무시한다', () => {
+  assert.equal(noteArrived(initNoteQueue(), { author: 'x', text: '' }).note, null);
+});
+
+test('졌을 때만 쪽지를 보여 준다', () => {
+  const held = noteArrived(initNoteQueue(), NOTE);
+  const r = afterDuel(held, { result: 'lose', fallback: FALL });
   assert.equal(r.show, NOTE);
   assert.equal(r.state.shown, true);
 });
 
-test('대결 중이면 보여 주지 않고 계속 쥐고 있다', () => {
-  const r = showIfIdle(noteArrived(initNoteQueue(), NOTE), { duelActive: true });
+test('이기면 쪽지를 띄우지 않는다', () => {
+  const r = afterDuel(noteArrived(initNoteQueue(), NOTE), { result: 'win', fallback: FALL });
   assert.equal(r.show, null);
   assert.equal(r.state.shown, false);
 });
 
-test('대결이 끝나면 쥐고 있던 쪽지를 그때 보여 준다', () => {
-  const held = showIfIdle(noteArrived(initNoteQueue(), NOTE), { duelActive: true }).state;
-  const r = showIfIdle(held, { duelActive: false });
-  assert.equal(r.show, NOTE);
-});
-
-test('도착 뒤 한 박자 사이에 흔적을 조사하면 쪽지 먼저 — 대결은 닫은 뒤에', () => {
-  const r = beforeDuel(noteArrived(initNoteQueue(), NOTE));
-  assert.equal(r.show, NOTE);
-  assert.equal(r.state.shown, true);
-  assert.equal(showIfIdle(r.state, { duelActive: false }).show, null, '한 박자 타이머가 늦게 와도 두 번 뜨지 않는다');
-});
-
-test('이미 본 쪽지는 대결 전에도 뒤에도 다시 띄우지 않는다', () => {
-  const seen = showIfIdle(noteArrived(initNoteQueue(), NOTE), { duelActive: false }).state;
-  assert.equal(beforeDuel(seen).show, null);
-  assert.equal(showIfIdle(seen, { duelActive: false }).show, null);
-});
-
-test('쪽지가 아직 안 왔으면 대결을 기다리게 하지 않는다', () => {
-  const r = beforeDuel(initNoteQueue());
+test('중간에 그만두면 쪽지를 띄우지 않는다', () => {
+  const r = afterDuel(noteArrived(initNoteQueue(), NOTE), { result: 'quit', fallback: FALL });
   assert.equal(r.show, null);
-  assert.equal(showIfIdle(r.state, { duelActive: false }).show, null);
 });
 
-test('빈 쪽지(본문 없음)는 무시한다 — 서버 실패 응답', () => {
-  const s = noteArrived(initNoteQueue(), { author: 'x', text: '' });
-  assert.equal(s.note, null);
-  assert.equal(showIfIdle(s, { duelActive: false }).show, null);
+test('졌는데 쪽지가 아직 없으면 기본 쪽지를 쓴다', () => {
+  const r = afterDuel(initNoteQueue(), { result: 'lose', fallback: FALL });
+  assert.equal(r.show, FALL);
+  assert.equal(r.state.shown, true);
+});
+
+test('한 번 보여 준 뒤엔 다시 지더라도 또 띄우지 않는다', () => {
+  const first = afterDuel(noteArrived(initNoteQueue(), NOTE), { result: 'lose', fallback: FALL });
+  assert.equal(afterDuel(first.state, { result: 'lose', fallback: FALL }).show, null);
 });
 
 test('상태를 변형하지 않는다', () => {
   const s0 = initNoteQueue();
   const s1 = noteArrived(s0, NOTE);
+  afterDuel(s1, { result: 'lose', fallback: FALL });
   assert.deepEqual(s0, { note: null, shown: false });
-  showIfIdle(s1, { duelActive: false });
-  beforeDuel(s1);
   assert.equal(s1.shown, false);
 });
 
-test('접속하자마자 띄운 편지 카드가 열려 있으면, 도착한 쪽지를 그 카드에 바로 채운다', () => {
-  const r = noteArrivedOpen(initNoteQueue(), NOTE, { cardOpen: true });
-  assert.equal(r.show, NOTE);
-  assert.equal(r.state.shown, true);
+test('기본 쪽지는 두 동물 모두 있고 엠대시가 없다', () => {
+  for (const a of ['boar', 'raccoon']) {
+    assert.ok(FALLBACK_NOTES[a]?.length > 10);
+    assert.doesNotMatch(FALLBACK_NOTES[a], /—/);
+  }
 });
 
-test('카드를 이미 닫았으면 쪽지를 쥐고 있다가 흔적 조사 때 보여 준다', () => {
-  const r = noteArrivedOpen(initNoteQueue(), NOTE, { cardOpen: false });
-  assert.equal(r.show, null);
-  assert.equal(r.state.shown, false);
-  assert.equal(beforeDuel(r.state).show, NOTE);
-});
-
-test('빈 쪽지는 카드에 채우지 않는다', () => {
-  const r = noteArrivedOpen(initNoteQueue(), { author: 'x', text: '' }, { cardOpen: true });
-  assert.equal(r.show, null);
+test('방어 팁은 지금 밭에 없는 것부터 권한다', () => {
+  assert.match(defenseTip({ scarecrow: false, fence: false }), /허수아비/);
+  assert.match(defenseTip({ scarecrow: true, fence: false }), /울타리/);
+  assert.match(defenseTip({ scarecrow: true, fence: true }), /이기면/);
+  assert.match(defenseTip({ scarecrow: false, fence: true }), /^🎃/);
 });

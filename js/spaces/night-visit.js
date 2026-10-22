@@ -7,13 +7,13 @@
 // =============================================================
 import {
   camera, clearCrop, cropMini, dexDiscover, doPlayerAction, duelFetcher, farmCropMeshes, farmSoilMesh, firstHint, floatTexts,
-  gameState, giveReward, nightFetcher, nightNoteFetcher, player, plots, refreshInventoryUI, requestSave,
+  gameState, giveReward, isNight, nightFetcher, nightNoteFetcher, player, plots, refreshInventoryUI, requestSave,
   roundRect, scene, showCatchItem, spawnDust, spawnSparkle, todayStr, triggerMoment, ui, updatePlotVisual, worldGround, worldGroundPatches,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
 import { decorBanner } from '../decor-drops/index.js';
 import { DEX } from '../data/dex.js';
-import { initNoteQueue, noteArrived, noteArrivedOpen, showIfIdle, beforeDuel } from '../duel/note-queue.js';
+import { initNoteQueue, noteArrived, afterDuel, defenseTip, FALLBACK_NOTES, NOTE_AUTHOR } from '../duel/note-queue.js';
 import { makeRaidScar } from '../duel/raid-art.js';
 import { truceUntil } from '../duel/truce.js';
 import { computeNightDefense } from '../duel/night-defense.js';
@@ -28,16 +28,15 @@ import * as THREE from 'three';
 //      (🍳 요리가 mgView 로 막는 것과 같은 자리). 무대만 만들고 이걸 빠뜨려 한 번 겪었다.
 export let duelActive = false;
 
-// 📜 주민 쪽지 — 대결을 덮지 않게 순서는 js/duel/note-queue.js 가 정한다(쪽지 → 대결, 대결 중 도착은 끝난 뒤로)
 let noteQ = initNoteQueue();
-let noteCardOpen = false;
-function showNote(n, onClose) {
-  ui.showHintModal?.({ ico: '📜', title: n.author || '주민 쪽지', body: n.text, ok: onClose ? { onClick: onClose } : undefined });
-}
-function showNoteIfIdle() {
-  const r = showIfIdle(noteQ, { duelActive });
+function showLoseNote(animal, result) {
+  const fallback = { author: t(NOTE_AUTHOR), text: t(FALLBACK_NOTES[animal] || FALLBACK_NOTES.raccoon), fallback: true };
+  const r = afterDuel(noteQ, { result, fallback });
   noteQ = r.state;
-  if (r.show) showNote(r.show);
+  if (!r.show) return;
+  const tip = t(defenseTip(computeNightDefense(plots, gameState.outdoor)));
+  ui.showNoteSheet?.({ author: r.show.author || t(NOTE_AUTHOR), text: r.show.text, tip });
+  trackEvent('night_note_show', { animal, src: r.show.fallback ? 'fallback' : 'ai' });
 }
 
 export const NIGHT_ANIMAL = {
@@ -131,13 +130,6 @@ export async function maybeDuel(t) {
   const st = gameState.night, today = todayStr();
   if (st.duelDate !== today) { st.duelDate = today; st.duelDone = []; }   // 날이 바뀌면 비운다
   if (st.duelDone.includes(t.animal)) return;            // 오늘 이 동물과는 이미 붙었다
-  // 📜 안 본 쪽지가 있으면 먼저 — 닫아야 대결이 열린다(가위바위보 한가운데 쪽지가 뜨던 문제, 2026-09-26).
-  //   duelDone 을 적고 저장하기 **전에** 기다린다 — 쪽지가 떠 있는 동안 창을 닫아도 "오늘 붙었다"가 남지 않게.
-  //   안내 창이 없으면(연결 전) 기다리지 않는다 — 콜백이 영영 안 불려 대결이 멈추면 안 된다.
-  const pre = beforeDuel(noteQ);
-  noteQ = pre.state;
-  if (pre.show && ui.showHintModal) await new Promise(res => showNote(pre.show, res));
-  if (st.duelDone.includes(t.animal)) return;            // 쪽지를 읽는 사이 같은 동물 흔적을 또 조사해 먼저 열렸다
   st.duelDone = [...st.duelDone, t.animal];
   // 그 동물이 오늘 가져간 작물 전부 — 방금 조사한 것 + 아직 조사 안 한 흔적
   const crops = [t.crop || '', ...st.traces.filter(x => x.animal === t.animal).map(x => x.crop || '')];
@@ -169,10 +161,14 @@ export async function maybeDuel(t) {
   // 🥕 그릇에 넣어 보여줄 작물 아이콘 — 고급 작물만 제 아이콘이 있고 나머지는 🥕(tryHarvest 와 같은 규칙)
   const firstId = crops.find(c => c) || '';
   const cropIco = (firstId && ADV_CROPS.find(c => c.id === firstId)?.ico) || '🥕';
-  duelFetcher({ animal: t.animal, x: t.x, z: t.z, crops, cropIco, stage: { THREE, scene, camera, player, keep: duelKeep(), crops: Object.values(farmCropMeshes || {}) } })
-    .then(won => { if (won) winDuel(t.animal, crops); requestSave(); return won; })
-    .catch(e => { console.warn('[승부] 진행 실패 — 오늘은 넘어간다', e?.message || e); return false; })
-    .then(won => { duelActive = false; if (won) setTimeout(() => winCeremony(crops), 400); setTimeout(showNoteIfIdle, won ? 2200 : 800); });   // 대결 중 도착한 쪽지는 이제
+  duelFetcher({ animal: t.animal, x: t.x, z: t.z, crops, cropIco, stage: { THREE, scene, camera, player, night: isNight(), keep: duelKeep(), crops: Object.values(farmCropMeshes || {}) } })
+    .then(result => { if (result === 'win') winDuel(t.animal, crops); requestSave(); return result; })
+    .catch(e => { console.warn('[승부] 진행 실패 — 오늘은 넘어간다', e?.message || e); return 'quit'; })
+    .then(result => {
+      duelActive = false;
+      if (result === 'win') setTimeout(() => winCeremony(crops), 400);
+      if (result === 'lose') setTimeout(() => showLoseNote(t.animal, result), 800);
+    });
 }
 
 // 🥊 일대일 무대에 남길 것 — 땅과 밭(흙·작물)만. 나머지(주민·건물·나무·이름표·밭 배지)는
@@ -256,27 +252,16 @@ export async function resolveNightVisit() {
   const a = NIGHT_ANIMAL[v.animal] || NIGHT_ANIMAL.raccoon;
   trackEvent('night_visit', { animal: v.animal, stolen: stolen.length });   // [GA4] 밤손님 발생률
   const lossText = `${a.ico} 밤사이 ${a.name}가 ${stolen.join('·')} ${stolen.length}개를 가져갔어요… 🐾 흔적을 조사해보세요`;
-  const firstTime = !gameState.hintsSeen.night;
   setTimeout(() => {   // 출석 모달·날씨 토스트와 겹치지 않게 한 박자 늦게
     ui.toast?.(lossText, 3800);
-    if (!firstTime && nightNoteFetcher && ui.showHintModal) {
-      const ready = beforeDuel(noteQ);
-      noteQ = ready.state;
-      if (ready.show) showNote(ready.show);
-      else {
-        noteCardOpen = true;
-        ui.showHintModal({ ico: '📜', title: t('농부 삼촌'), body: t('삼촌이 쪽지를 쓰고 있어요…'), ok: { onClick: () => { noteCardOpen = false; } } });
-      }
-    }
     firstHint('night', a.ico, '밤손님이 다녀갔어요',
       { steps: [{ ico: '🐾', label: '파헤친 흙 조사' }, { ico: '🎁', label: '수집품' }], note: '🎃 허수아비·🪵 울타리로 피해 줄이기' });
   }, 1200);
-  // 📜 주민 쪽지(Gemini·자정 캐시) — 도착하면 카드로. 실패하면 조용히 생략
   if (nightNoteFetcher) {
     const firstCrop = cands[(v.stolenIdx || [])[0]]?.p?.cropType?.id || '';
     nightNoteFetcher({ date: today, animal: v.animal, crop: firstCrop })
-      .then(n => { const r = noteArrivedOpen(noteQ, n, { cardOpen: noteCardOpen }); noteQ = r.state; if (r.show) showNote(r.show); else if (noteCardOpen) ui.showHintModal?.({ ico: '📜', title: t('농부 삼촌'), body: lossText }); })
-      .catch(() => { if (noteCardOpen) ui.showHintModal?.({ ico: '📜', title: t('농부 삼촌'), body: lossText }); });
+      .then(n => { noteQ = noteArrived(noteQ, n); })
+      .catch(() => {});
   }
   requestSave();
 }

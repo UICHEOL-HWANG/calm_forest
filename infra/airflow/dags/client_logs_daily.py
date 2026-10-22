@@ -12,7 +12,8 @@
   ④ client_error_daily 요약 upsert(날짜 × 오류 서명: 건수·유저 수·플랫폼·파일 경로)
   ⑤ ②③④ 가 전부 성공했을 때만 Supabase 원본 어제치를 지운다
   ⑥ 30일 지난 버킷 파일 1개 정리(lifecycle 대신 — 콘솔 설정 없이 코드로)
-  ⑦ 어제 총건수가 직전 7일 평균의 3배 이상(최소 50건)이면 슬랙 #cf-data
+  ⑦ 어제 행 수(같은 오류 반복으로 묶인 suppressed 제외)가 직전 7일 평균의 3배 이상(최소 50건)이고
+     영향받은 유저가 3명 이상이면 슬랙 #cf-data
 
 배포
   scp infra/airflow/dags/client_logs_daily.py oracle-calmforest:/opt/airflow/dags/
@@ -54,7 +55,7 @@ PREFIX = "client-logs"
 KEEP_DAYS = 30
 PAGE = 1000
 MAX_ROWS = 25000                  # DB 함수 하루 상한(2만) + 여유 — 넘으면 이상 상황이라 멈춘다
-SPIKE_MIN, SPIKE_MULT = 50, 3.0
+SPIKE_MIN, SPIKE_MULT, SPIKE_MIN_USERS = 50, 3.0, 3
 
 BQ_SCHEMA = [
     ("day", "DATE"), ("id", "STRING"), ("received_at", "TIMESTAMP"), ("ts", "TIMESTAMP"),
@@ -97,9 +98,10 @@ def summarize(rows: list[dict], day: dt.date, file_key: str) -> list[dict]:
     for r in rows:
         sig = error_sig(r)
         g = groups.setdefault(sig, {"day": day.isoformat(), "sig": sig, "kind": r.get("kind") or "",
-                                    "sample_msg": (r.get("msg") or "")[:600], "n": 0, "users": 0,
+                                    "sample_msg": (r.get("msg") or "")[:600], "n": 0, "rows": 0, "users": 0,
                                     "platforms": {}, "file_key": file_key})
         g["n"] += 1 + int(r.get("suppressed") or 0)
+        g["rows"] += 1
         if r.get("uid8"):
             users[sig].add(r["uid8"])
         p = r.get("platform") or "unknown"
@@ -107,8 +109,16 @@ def summarize(rows: list[dict], day: dt.date, file_key: str) -> list[dict]:
     return [{**g, "users": len(users[g["sig"]])} for g in groups.values()]
 
 
-def is_spike(today_total: int, prior_totals: list[int]) -> bool:
-    if today_total < SPIKE_MIN:
+def day_users(rows: list[dict]) -> int:
+    return len({r["uid8"] for r in rows if r.get("uid8")})
+
+
+def spike_total(summary: list[dict]) -> int:
+    return sum(g["rows"] for g in summary)
+
+
+def is_spike(today_total: int, prior_totals: list[int], users: int) -> bool:
+    if today_total < SPIKE_MIN or users < SPIKE_MIN_USERS:
         return False
     if not prior_totals:
         return True
@@ -222,16 +232,20 @@ def purge_day(sb: dict, start: str, end: str) -> None:
         raise RuntimeError(f"purge {status}: {body[:200]!r}")
 
 
+def prior_day_value(r: dict) -> int:
+    return int(r["n"] if r.get("rows") is None else r["rows"])
+
+
 def prior_totals(sb: dict, day: dt.date) -> list[int]:
     since = (day - dt.timedelta(days=7)).isoformat()
-    url = (f"{sb['url']}/rest/v1/client_error_daily?select=day,n"
+    url = (f"{sb['url']}/rest/v1/client_error_daily?select=day,n,rows"
            f"&day=gte.{since}&day=lt.{day.isoformat()}")
     status, body, _ = _http("GET", url, _sb_headers(sb))
     if status != 200:
         return []
     by_day: dict[str, int] = defaultdict(int)
     for r in json.loads(body):
-        by_day[r["day"]] += int(r["n"])
+        by_day[r["day"]] += prior_day_value(r)
     return list(by_day.values())
 
 
@@ -274,17 +288,18 @@ def _run(**context) -> dict:
         purge_day(sb, start, end)                                   # ⑤ 위가 전부 성공했을 때만
 
     old_status, _, _ = oci_call(oci, "DELETE", expired_key(day))    # ⑥ 없으면 404 — 무시
-    total = sum(g["n"] for g in summary)
-    result = {"day": day.isoformat(), "rows": len(rows), "total": total, "sigs": len(summary),
+    total = spike_total(summary)
+    users = day_users(rows)
+    result = {"day": day.isoformat(), "rows": len(rows), "total": total, "users": users, "sigs": len(summary),
               "file": key if rows else None, "expired_delete": old_status}
     print(json.dumps(result, ensure_ascii=False))
 
-    if is_spike(total, prior_totals(sb, day)):
+    if is_spike(total, prior_totals(sb, day), users):
         from airflow.models import Variable
 
-        top = sorted(summary, key=lambda g: -g["n"])[:3]
-        lines = [f"🧯 클라이언트 오류 급증 · {day} · {total}건 (직전 7일 평균의 {SPIKE_MULT:g}배 이상)"]
-        lines += [f"• {g['n']}건 · 유저 {g['users']}명 · {g['sample_msg'][:120]}" for g in top]
+        top = sorted(summary, key=lambda g: -g["rows"])[:3]
+        lines = [f"🧯 클라이언트 오류 급증 · {day} · {total}건 · 유저 {users}명 (직전 7일 평균의 {SPIKE_MULT:g}배 이상)"]
+        lines += [f"• {g['rows']}건 · 유저 {g['users']}명 · {g['sample_msg'][:120]}" for g in top]
         lines.append(f"원본: OCI {key}")
         _post_slack("\n".join(lines), Variable.get("anomaly_slack_channel", default_var=DEFAULT_CHANNEL))
     return result

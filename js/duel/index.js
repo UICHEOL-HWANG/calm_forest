@@ -3,7 +3,7 @@
 //  ------------------------------------------------------------
 //  스펙: docs/superpowers/specs/2026-09-21-night-duel-design.md
 //  ▶ game.js 의 setDuelSource() 확장점에 끼운다(night-visit.js 와 같은 문법).
-//  ▶ 여기서 true 를 돌려주면 game.js 가 작물 회수와 🤝 휴전을 처리한다.
+//  ▶ 'win' 을 돌려주면 game.js 가 작물 회수와 🤝 휴전을 처리한다('lose'·'quit' 은 아무것도 안 준다).
 //    보상 규칙을 이쪽에 두지 않는다 — 인벤토리는 game.js 의 것이다.
 //  ▶ ⚠️ rps 와 shells 가 같은 이름(initMatch·applyRound)을 export 한다. 별칭으로 받는다.
 // =============================================================
@@ -99,7 +99,7 @@ export function initDuel() {
     const started = Date.now();
     let handle = null;
     try {
-      handle = enterDuelStage(ctx.stage, { animal: ctx.animal, x: ctx.x, z: ctx.z });
+      await ui.playIntro({ animal: ctx.animal, onDark: () => { handle = enterDuelStage(ctx.stage, { animal: ctx.animal, x: ctx.x, z: ctx.z }); } });
       ui.openDuel();
       ui.setBanner(ctx.animal === 'boar' ? ui.COPY.boarOpen : ui.COPY.raccoonOpen);
       const m = game === 'rps' ? await playRps(onRound, handle, ctx.animal) : await playShells(onRound, ctx.cropIco, ctx.animal, handle);
@@ -122,7 +122,7 @@ export function initDuel() {
         await ui.guard(endMatch(handle, won));
         await ui.guard(new Promise(r => setTimeout(r, 1400)));   // 결과를 읽을 틈
       } catch { /* 결과 뒤 그만두기 — 승부는 유효 */ }
-      return won;
+      return won ? 'win' : 'lose';
     } catch (e) {
       // ⚠️ askHand/askShell 은 closeDuel() 로 끊기면 Error('duel-closed') 로 reject 한다.
       //    여기서 잡지 않으면 false 로 굴러 떨어져 "패배"로 집계되며 승률 지표가 어긋난다.
@@ -130,7 +130,7 @@ export function initDuel() {
       //   secs 를 같이 남겨야 "지루해서 나갔나 / 급한 일로 나갔나"를 가른다.
       trackEvent('duel_quit', { animal: ctx.animal, game, round: at, secs: Math.round((Date.now() - started) / 1000) });
       console.warn('[승부] 중단', e?.message || e);
-      return false;
+      return 'quit';
     } finally {
       ui.closeDuel();
       if (handle) exitDuelStage(handle);
