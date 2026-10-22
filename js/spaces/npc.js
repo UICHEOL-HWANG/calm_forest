@@ -647,6 +647,7 @@ export function updateMerchantVisit(dt) {
     const offer = welcomeOffer(gameState.inventory, { reworld: storyReworld(gameState, unlocksOn()) });   // 🔓 첫 수확으로도 돌아온다(E1 처치는 당근부터 거둔다)
     if (!offer) return;
     gameState.hintsSeen.merchantVisit = true;            // 즉시 소진(세이브에 남아 재발동 없음)
+    gameState.hintsSeen.merchantArrived = true;
     merchantVisit = { state: 'walk', t: 0, offer };
     syncUnlocks();   // 🔓 이 방문이 곧 상인의 귀환 — 숨어 있던 상인·좌판·시세판이 지금 선다(해금 꺼짐이면 아무 일 없음)
     return;

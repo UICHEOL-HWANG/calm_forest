@@ -190,6 +190,7 @@ export async function initAuth(onStatusChange, { keepGuest = false } = {}) {
     const { data } = await supabase.auth.getSession();
     const s = data?.session;
     if (s && !isAnon(s)) {
+      takeHeldGuest();
       applySession(s);                       // 구글 재방문 → 예전 마을 이어서
       return { needLogin: false, offline: false };
     }
@@ -242,6 +243,7 @@ export async function verifyEmailCode(email, token) {
       console.warn('[이메일 코드 확인 실패]', error?.code || error?.status, error?.message || 'no session');
       return { ok: false, error: error || { message: 'no session' } };
     }
+    takeHeldGuest();
     applySession(data.session);
     devLog('[이메일] 세션 연결 완료', state.userId);
     return { ok: true };
@@ -576,7 +578,22 @@ let pendingGuest = null;   // { userId, state } | null
 //  게스트 이관을 받는 정식 계정 — 토스·플레이 게임즈 + 🍎 iOS 앱의 게임센터·Apple
 //  ⚠️ Apple ID 이메일이 기존 구글 계정과 같으면 Supabase 가 그 계정에 apple 신원을 붙인다 → provider 는 'google'
 //     (2026-10-11 실기기 확인). iOS 에서 Apple 로 붙어도 게스트 진행도를 넘겨받게 google 도 넣는다.
-const APP_ACCOUNTS = ['toss', 'pgs', 'gc', 'apple', ...(IS_IOS ? ['google'] : [])];
+const APP_ACCOUNTS = ['toss', 'pgs', 'gc', 'apple', 'email', ...(IS_IOS || !IS_NATIVE ? ['google'] : [])];
+const GUEST_HOLD_KEY = 'cf_guest_hold';
+
+export function holdGuestForLogin(stateNow) {
+  if (state.provider !== 'anonymous' || !state.userId || !stateNow) return false;
+  try { sessionStorage.setItem(GUEST_HOLD_KEY, JSON.stringify({ userId: state.userId, state: stateNow })); return true; } catch { return false; }
+}
+
+function takeHeldGuest() {
+  try {
+    const raw = sessionStorage.getItem(GUEST_HOLD_KEY);
+    sessionStorage.removeItem(GUEST_HOLD_KEY);
+    const g = raw && JSON.parse(raw);
+    if (g?.userId && g.state && typeof g.state === 'object') pendingGuest = g;
+  } catch { }
+}
 
 //  🍎 iOS: 놀던 게스트가 넛지·로그인 버튼으로 계정을 붙이는 경우 — 세션이 바뀌기 전에(익명 세션 RLS 로) 게스트 저장을 읽어 둔다.
 //  ⚠️ 시도마다 새로 읽는다 — 이전 실행·실패한 시도의 낡은 스냅숏으로 비교하면 방금 논 진행도를 버린다(리뷰 2026-10-11).

@@ -121,20 +121,10 @@ test('인앱이 아니거나 웹이 아니면 inapp_view 를 남기지 않는다
   });
 });
 
-test('외부로 열기를 누르면 같은 넘김 id 를 이벤트와 주소에 함께 싣는다', () => {
+test('인앱 로그인 화면은 외부 열기 버튼을 만들지 않는다(이메일로 통일)', () => {
   withFakeBrowser((els) => {
-    const calls = [];
-    mountInAppLogin({ $: () => fakeEl(), track: (n, p) => calls.push([n, p]), platform: 'web', ua: IG_ANDROID });
-    const btn = els.find((e) => e.listeners.click);
-    btn.listeners.click();
-    const [name, p] = calls[1];
-    assert.equal(name, 'inapp_handoff');
-    assert.match(p.hid, /^[a-z0-9]{8}$/);
-    assert.equal(p.ok, true);
-    assert.ok(globalThis.location.href.startsWith('intent://'));
-    const fallback = decodeURIComponent(globalThis.location.href.match(/S\.browser_fallback_url=([^;]+)/)[1]);
-    assert.equal(new URL(fallback).searchParams.get('ho'), p.hid);
-    assert.equal(new URL(fallback).searchParams.get('utm_content'), 'halloween');
+    mountInAppLogin({ $: () => fakeEl(), track: () => {}, platform: 'web', ua: IG_ANDROID });
+    assert.equal(els.filter((e) => e.listeners?.click).length, 0);
   });
 });
 

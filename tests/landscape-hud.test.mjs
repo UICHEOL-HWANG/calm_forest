@@ -44,11 +44,22 @@ test('가로 폰 블록은 터치에만 — 높이가 낮은 PC 창에는 안 �
   for (const s of sels) assert.match(s, /body\.is-touch/, `터치 한정이 아닌 규칙: ${s}`);
 });
 
-test('🎓 진행바 카드 — 점 17개를 막대 하나와 "n / 17" 로', () => {
+test('🎓 코치는 미니맵 아래 한 줄 알약 — 짧은 문구 "n/17", 탭하면 설명·진행바·건너뛰기가 펼쳐진다', () => {
   assert.doesNotMatch(html, /id="coach-dots"/);
-  assert.match(html, /<div id="coach-foot"><div id="coach-bar"><i id="coach-fill"><\/i><\/div><span id="coach-count"><\/span><button id="coach-skip">건너뛰기<\/button><\/div>/);
-  assert.match(html, /\$\('coach-fill'\)\.style\.width = Math\.round\(\(tutIdx \+ 1\) \/ TUT_STEPS\.length \* 100\) \+ '%';/);
-  assert.match(html, /\$\('coach-count'\)\.textContent = `\$\{tutIdx \+ 1\} \/ \$\{TUT_STEPS\.length\}`;/);
+  assert.match(html, /<button id="coach-head" type="button"><span id="coach-short"><\/span><span id="coach-count"><\/span><span id="coach-chev">▾<\/span><\/button>/);
+  assert.match(html, /<div id="coach-foot"><div id="coach-bar"><i id="coach-fill"><\/i><\/div><button id="coach-skip">건너뛰기<\/button><\/div><\/div>/);
+  assert.match(html, /#coach\.open #coach-body \{ display: flex; \}/);
+  assert.match(html, /\$\('coach-count'\)\.textContent = `\$\{tutIdx \+ 1\}\/\$\{TUT_STEPS\.length\}`;/);
+  assert.match(html, /\$\('coach-short'\)\.textContent = t\(TUT_STEPS\[tutIdx\]\.short\);/);
+  assert.match(html, /body\.menu-open #coach \{ display: none !important; \}/);
+  assert.match(html, /body:has\(\[id\$="-modal"\]\.show\) #coach \{ display: none !important; \}/);
+});
+
+test('🎓 코치 짧은 문구 16개 — 전부 있고 영어 사전에도 있다', async () => {
+  const shorts = [...html.matchAll(/short: '([^']+)'/g)].map(m => m[1]);
+  assert.equal(shorts.length, 16);
+  const { EN } = await import('../js/i18n-en.js');
+  for (const s of shorts) assert.ok(EN[s], s);
 });
 
 test('🎓 진행바 카드 — 원문(번역 키)으로 번역한 뒤 앞 번호만 뗀다(순서가 바뀌어도 영어가 안 깨진다)', () => {
@@ -56,9 +67,9 @@ test('🎓 진행바 카드 — 원문(번역 키)으로 번역한 뒤 앞 번�
   assert.doesNotMatch(html, /const CIRC = '①②③/);
 });
 
-test('🎓 가로 폰에선 코치를 상단 바 아래 가운데로 — 캐릭터 위를 덮지 않게', () => {
-  const b = landBlock();
-  assert.match(b, /body\.is-touch #coach \{[^}]*top: calc\(72px \+ var\(--top-inset\)\);[^}]*width: min\(400px, 48vw\);/);
+test('🎓 코치 자리는 미니맵 바로 아래(가로·세로 폰 공통) — 캐릭터 위를 덮지 않게', () => {
+  assert.doesNotMatch(landBlock(), /body\.is-touch #coach \{/);
+  assert.match(html, /document\.body\.style\.setProperty\('--coach-top', Math\.round\(r\.bottom \+ 8\) \+ 'px'\);/);
 });
 
 test('is-touch 는 playing 보다 먼저 — 세이브 로드 동안 폰에 키보드 안내가 넘쳐 보였다', () => {
@@ -76,8 +87,9 @@ test('가로 판정은 터치 기기만 — 높이 낮은 PC 창에서 문의하
   assert.match(html, /if \(!_phone\.matches \|\| \(!_narrow\.matches && !TOUCH\)\) \{ fb\.style\.top/);
 });
 
-test('꾸미기 단계도 코치 문구 앞 번호를 뗀다', () => {
-  assert.match(html, /\$\('coach-text'\)\.textContent = t\(text\)\.replace\(\/\^\[①-⑰\]\\s\*\/, ''\); off\(\); return;/);
+test('꾸미기는 튜토리얼 단계가 아니다 — 실내 꾸미기 안내는 자기 카드로', () => {
+  assert.doesNotMatch(html, /key: 'decor'/);
+  assert.doesNotMatch(html, /TUT_STEPS\[tutIdx\]\.key === 'decor'/);
 });
 
 test('가로 폰 — 문·구역 프롬프트는 도구바 바로 위로(코치 카드 아래 공간 확보)', () => {
