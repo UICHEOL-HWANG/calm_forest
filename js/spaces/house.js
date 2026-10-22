@@ -17,6 +17,7 @@ import { EXPANSIONS, buildInfo } from '../house-cost.js';
 import { HOUSE_ADDONS, addonState } from '../house/addons.js';
 import { buildHouseModel, mountHouseAddons } from '../house/index.js';
 import { t } from '../i18n.js';
+import { maybeOfferCosQuest } from './cos-quest.js';
 import { logEcon } from '../metrics.js';
 import { Sound } from '../sound.js';
 import { expandWoodOf } from '../tool-tiers.js';
@@ -207,6 +208,7 @@ export function buildHouseStage(stage, silent = false) {
     parts.forEach(applyRise);                    // 아래→위로 톡 솟기
     spawnDust(HOUSE_POS.x, HOUSE_POS.z, 10);     // 약한 먼지
     Sound.build();
+    if (stage === 1 || stage === 2) ui.act?.(`house${stage}`);
     if (stage === 3) {
       // [파티클] 집 완성 축하: 색종이 + 반짝이
       spawnConfetti(HOUSE_POS.x, 3.4, HOUSE_POS.z);
@@ -215,6 +217,7 @@ export function buildHouseStage(stage, silent = false) {
       ui.toast?.('🎉 집 완성! 축하해요');
       refreshCollectQuests();                    // 퀘스트 진행(진행도는 houseStage 에서 읽는다)
       ui.act?.('build');                         // 튜토리얼: 집 완성
+      maybeOfferCosQuest({ via: 'house' });
       triggerMoment();                           // 📷 순간 줌인
       tryUnlockDrop(1);                          // 🎨 집 완성 보상: 랜덤 색 1개 확정
       trackEvent('house_complete');              // [GA4] 집 완성 이벤트

@@ -1,8 +1,8 @@
 export const COS_STAGES = ['visit', 'buy', 'done'];
 export const COS_REWARD = 30;
 
-export function shouldOffer({ tutorialSeen = false, owned = [], stage } = {}) {
-  return !!tutorialSeen && !stage && !(Array.isArray(owned) && owned.length > 0);
+export function shouldOffer({ tutorialSeen = false, owned = [], stage, houseStage = 0 } = {}) {
+  return !!tutorialSeen && (houseStage || 0) >= 3 && !stage && !(Array.isArray(owned) && owned.length > 0);
 }
 
 export function afterVisit(stage) { return stage === 'visit' ? 'buy' : stage; }

@@ -202,6 +202,7 @@ export function bridgeInteract() {
   ui.toast?.('🌉 다리를 고쳤어요! 개울 건너 박물관으로 갈 수 있어요', 3200);
   trackEvent('bridge_repaired', { wood: BRIDGE_COST.wood, stone: BRIDGE_COST.stone, house_stage: gameState.houseStage || 0 });   // [GA4] 1장 퍼널
   requestSave();
+  ui.act?.('bridge');
   syncUnlocks(false);   // 🔓 🏛️ 박물관 + 🧑‍🦳 큐레이터 귀환(귀환 모달) → 📖 1장 완료는 game.js 가 모달이 닫힌 뒤 이어 준다
   return true;
 }

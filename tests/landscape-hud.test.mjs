@@ -55,9 +55,9 @@ test('🎓 코치는 미니맵 아래 한 줄 알약 — 짧은 문구 "n/17", �
   assert.match(html, /body:has\(\[id\$="-modal"\]\.show\) #coach \{ display: none !important; \}/);
 });
 
-test('🎓 코치 짧은 문구 16개 — 전부 있고 영어 사전에도 있다', async () => {
+test('🎓 코치 짧은 문구 11개 — 전부 있고 영어 사전에도 있다', async () => {
   const shorts = [...html.matchAll(/short: '([^']+)'/g)].map(m => m[1]);
-  assert.equal(shorts.length, 16);
+  assert.equal(shorts.length, 11);
   const { EN } = await import('../js/i18n-en.js');
   for (const s of shorts) assert.ok(EN[s], s);
 });

@@ -3420,6 +3420,13 @@
       let at = 250;
       pendingToasts.splice(0).forEach(([m, ms]) => { setTimeout(() => ui.toast(m, ms, { afterDialog: true }), at); at += ms + 200; });
     }
+    let shownAfterDialog = null;
+    function parkAfterDialogToast() {
+      const el = $('toast');
+      if (!shownAfterDialog || !el.classList.contains('show')) { shownAfterDialog = null; return; }
+      clearTimeout(toastTimer); el.classList.remove('show');
+      pendingToasts.unshift(shownAfterDialog); shownAfterDialog = null;
+    }
     let toastTimer, catchTimer;   // 토스트와 🎣캐치 배너는 다른 줄·다른 타이머(서로 안 지운다)
     // 🪧 시설 배너 큐 — 그 앞에 있으면 3초(읽을 시간), 이미 지나쳤으면 1.4초로 빠르게 흘림.
     //    읽는 중 자리를 뜨면 최소 1.4초만 채우고 조기 페이드아웃 — 연속으로 지나쳐도 큐가 안 밀린다
@@ -3789,7 +3796,8 @@
       toast(msg, ms = 1600, opts = {}) {
         if (opts.afterDialog && ($('npc-modal').classList.contains('show') || $('char-modal').classList.contains('show') || document.body.classList.contains('intro-open'))) { pendingToasts.push([msg, ms]); return; }
         const el = $('toast'); el.textContent = msg; el.classList.add('show');
-        clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), ms);
+        shownAfterDialog = opts.afterDialog ? [msg, ms] : null;
+        clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.classList.remove('show'); shownAfterDialog = null; }, ms);
       },
       // 🦋 환경 미터 — 라벨·문구는 game.js 가 js/habitat.js 에서 가져와 한 번 넘긴다(여기서 다시 적지 않는다)
       _hmLabel: {}, _hmBlock: {},
@@ -4015,6 +4023,7 @@
           grid.appendChild(c);
         });
         Input.setAnalog(0, 0);
+        parkAfterDialogToast();
         $('char-modal').classList.add('show');
         // 모달이 보인 뒤에 프리뷰 생성/리사이즈(캔버스 크기 확보)
         requestAnimationFrame(() => {
@@ -4067,6 +4076,7 @@
       camTour() { return runCamTour(); },
       // 🎬 프롤로그 컷신 DOM — game.js(updateIntro)가 타임라인에 맞춰 호출
       introShow(on) {
+        if (on) parkAfterDialogToast();
         document.body.classList.toggle('intro-open', !!on);
         if (!on) {   // 종료(완주/스킵) → 자막·타이틀·페이드 초기화 후 튜토리얼로 이어감
           $('intro-caption').classList.remove('show'); clearTimeout(ui._capSwap); ui._capText = null;
@@ -4887,29 +4897,18 @@
       { key: 'move', short: '🕹️ 걷고 행동하기',     text: TOUCH
           ? `① 🕹️${MOVE}으로 걷고 오른쪽 동그란 (액션) 버튼으로 행동해요`
           : `① ${MOVE}로 걷고, Space로 행동해요` },
-      { key: 'toolpage', short: '🧰 도구 바꾸기', text: TOUCH
-          ? '② 오른쪽 아래 도구 버튼을 탭해서 골라요'
-          : '② 1 키로 도구 세트 바꾸기 — 도구는 2~6' },
       { key: 'chop', short: '🪓 나무 베기',    text: TOUCH
-          ? `③ 나무 옆에 서면 🪓도끼를 저절로 들어요. 베면 🪵목재가 나와요 ${A}`
-          : `③ 🪓도끼(2)로 나무를 베면 집 지을 🪵목재가 나와요 ${A}` },
-      { key: 'sell', short: '🪵 목재 팔기',    text: `④ 🪵목재 5개를 모으면 🧙상인이 찾아와요. 팔아서 🪙코인 ${A}` },
-      { key: 'till', short: '⛏️ 땅 갈기',    text: TOUCH ? `⑤ ⛏️괭이로 빈 땅 갈기 ${A}` : `⑤ ⛏️괭이(2)로 빈 땅 갈기 ${A}` },
-      { key: 'seed', short: '🌰 씨앗 심기',    text: TOUCH ? `⑥ 🌰씨앗을 갈아둔 밭에 심기 ${A}` : `⑥ 🌰씨앗(3)을 갈아둔 밭에 심기 ${A}` },
-      { key: 'water', short: '💧 물 주기',   text: TOUCH ? `⑦ 💧물조리개로 물 주기 ${A}` : `⑦ 💧물조리개(4)로 물 주기 ${A}` },
-      { key: 'harvest', short: '🌾 작물 거두기', text: TOUCH ? `⑧ 다 자란 작물을 낫으로 수확 ${A}` : `⑧ 다 자란 작물을 낫(5)으로 수확 ${A}` },
-      { key: 'market', short: '📊 시세 보고 팔기',  text: `⑨ 📊전광판을 열어 오늘 비싼 것·싼 것을 확인해요 ${A}` },
-      { key: 'quest', short: '❕ 주민 의뢰 받기',   text: '⑩ ❕주민과 대화 → 목표 달성 → 다시 대화로 보상' },   // ${A} 금지: '→' 와 겹치면 i18n 글루 패턴에 먹힌다
-      { key: 'mine', short: '⛏️ 동굴에서 광석 캐기',    text: TOUCH ? `⑪ 서쪽 ⛏️동굴에서 괭이로 광석 캐기 ${A}` : `⑪ 서쪽 ⛏️동굴에서 괭이(2)로 광석 캐기 ${A}` },
-      { key: 'carve', short: '🗿 조각 주문 받기',   text: `⑫ 🔧작업대 🗿조각 탭에서 오늘의 주문 (🪵목재가 필요해요) ${A}` },
-      { key: 'dex', short: '📖 도감 확인하기',     text: '⑬ 📖도감에서 발견한 것·🏅배지 확인 — 다 채우면 🪙150' },
-      { key: 'fish', short: '🎣 낚시하기',    text: TOUCH
-          ? `⑭ 호숫가에 서면 🎣낚싯대를 저절로 들어요. 던지고, 물면 ${A}`
-          : `⑭ 🎣낚싯대(4)로 호숫가에 던지고, 물면 ${A}` },
-      { key: 'build', short: '🔨 집 짓기',   text: TOUCH ? '⑮ 집 터에 서면 🔨망치를 저절로 들어요. 🪵목재·🪨돌·🪙코인으로 집 3단계 완성 🏠' : '⑮ 🔨망치(3)로 집 터에 🪵목재·🪨돌·🪙코인을 넣어 집 3단계 완성 🏠' },
-      { key: 'enter', short: '🚪 집에 들어가기',   text: TOUCH
-          ? '⑯ 집 문 앞에서 🚪버튼으로 들어가기'
-          : '⑯ 집 문 앞에서 Space로 들어가기' },
+          ? `② 나무 옆에 서면 🪓도끼를 저절로 들어요. 베면 집 지을 🪵목재가 나와요 ${A}`
+          : `② 🪓도끼(2)로 나무를 베면 집 지을 🪵목재가 나와요 ${A}` },
+      { key: 'sell', short: '🧙 상인 맞이하기',    text: `③ 🪵목재 5개를 모으면 떠돌이 🧙상인이 마을에 와요. 목재를 팔아 🪙코인 ${A}` },
+      { key: 'mine', short: '⛏️ 돌 캐기',    text: TOUCH ? `④ 다리 앞 ⛏️동굴에서 괭이로 집 지을 🪨돌 캐기 ${A}` : `④ 다리 앞 ⛏️동굴에서 괭이(2)로 집 지을 🪨돌 캐기 ${A}` },
+      { key: 'house1', short: '🔨 집 바닥 깔기',   text: TOUCH ? '⑤ 집 터에 서면 🔨망치를 저절로 들어요. 🪵목재 15개로 바닥을 깔아요' : '⑤ 🔨망치(3)로 집 터에 🪵목재 15개를 넣어 바닥을 깔아요' },
+      { key: 'house2', short: '🔨 벽 세우기',   text: '⑥ 🪵목재 20개·🪨돌 10개로 통나무 벽을 세워요' },
+      { key: 'harvest', short: '🌾 밭에서 코인 벌기', text: TOUCH ? `⑦ ⛏️괭이로 갈고 🌰심고 💧물 주면 자라요. 다 자라면 거둬서 팔아요 ${A}` : `⑦ ⛏️괭이(2)로 갈고 🌰심고 💧물 주면 자라요. 다 자라면 낫(5)으로 거둬서 팔아요 ${A}` },
+      { key: 'build', short: '🔨 지붕 올리기',   text: '⑧ 🪵목재 25개·🪨돌 15개·🪙코인 80으로 지붕을 올려 집 완성 🏠' },
+      { key: 'dress', short: '🎀 집들이 꾸미기',   text: '⑨ 집들이엔 새 옷! 미니맵 🎀 꾸미기 가게에서 새싹반 꾸미기 하나 달기' },
+      { key: 'bridge', short: '🌉 다리 고치기',   text: `⑩ 동굴 옆 무너진 🌉다리를 🪵목재 10개·🪨돌 5개로 고쳐요 ${A}` },
+      { key: 'curator', short: '🧑‍🦳 할아버지 만나기',   text: '⑪ 다리 건너 🏛️박물관의 🧑‍🦳할아버지와 이야기해요' },
     ];
     let tutIdx = -1;
     // ── 🎨 첫 가구 배치 단계 안내(1회) — "소파 어떻게 옮겨요?"·"미리보기가 안 보여요" 베타 피드백
@@ -4942,13 +4941,20 @@
     function startDecorGuideIfNew() { if (Input.hintSeen?.('decorGuide') || decorGuideStep >= 0) return; setDecorGuide(0); }
     // 단계가 지시하는 도구 — 그 도구가 있는 🎒 페이지를 미리 펴 준다.
     //   안내문은 "🪓도끼(1)" 처럼 번호로 말하는데, 모바일엔 숫자키가 없어 다른 페이지 도구는 손이 닿지 않는다.
-    const TUT_TOOL = { chop: 'axe', till: 'hoe', seed: 'seed', water: 'water', harvest: 'sickle',
-                       mine: 'hoe', fish: 'rod', build: 'hammer' };
+    const TUT_TOOL = { chop: 'axe', harvest: 'hoe', mine: 'hoe', house1: 'hammer', house2: 'hammer', build: 'hammer' };
+    const TUT_OLD_KEYS = { toolpage: 'chop', till: 'mine', seed: 'mine', water: 'mine', market: 'mine', quest: 'mine',
+                           carve: 'mine', dex: 'mine', fish: 'mine', enter: 'dress' };
     const STEP_DONE = {
       move: () => Input.hintSeen('spot_t_move') || Input.hintSeen('spot_pc_move'),
       toolpage: () => Input.hintSeen('spot_t_tool') || Input.hintSeen('spot_pc_set'),
-      dex: () => Input.hintSeen('spot_t_dex') || Input.hintSeen('spot_pc_dex'),
+      sell: () => Input.hintSeen('merchantArrived'),
+      mine: () => Input.houseStage() >= 2,
+      house1: () => Input.houseStage() >= 1,
+      house2: () => Input.houseStage() >= 2,
+      harvest: () => Input.houseStage() >= 3,
       build: () => Input.houseStage() >= 3,
+      dress: () => (Input.cosOwnedCount?.() || 0) > 0,
+      bridge: () => !!Input.bridgeFixed?.(),
     };
     function renderCoach() {
       while (tutIdx < TUT_STEPS.length && STEP_DONE[TUT_STEPS[tutIdx].key]?.()) {
@@ -5041,7 +5047,8 @@
     }
     function startCoach(fromKey) {
       applyBetaTutorialOrder();   // 명단 조회가 늦게 끝났을 때를 대비해 여기서도 한 번 더
-      const at = fromKey ? TUT_STEPS.findIndex(s => s.key === fromKey) : 0;
+      const key = TUT_OLD_KEYS[fromKey] || fromKey;
+      const at = key ? TUT_STEPS.findIndex(s => s.key === key) : 0;
       if (at < 0) { Input.setTutStep('done'); return; }
       Input.armTutorialMove(); tutIdx = at;
       document.body.classList.add('coaching');   // 코치 표시 중 → 토스트를 코치 아래로 내림
@@ -5057,7 +5064,7 @@
       document.body.classList.remove('coaching', 'coach-quest');   // 코치 종료 → 토스트 원위치
       if (done) {
         ui.toast('🎉 튜토리얼 졸업! 이제 마을을 자유롭게 가꿔보세요 🌿');
-        Input.markHintsSeen?.(['shop', 'market', 'mineGate', 'bench']);   // 코치 ⑧⑨⑪⑫가 이미 설명한 시설 — 졸업 후 배너 중복 방지
+        Input.markHintsSeen?.(['shop', 'mineGate']);
         trackEvent('tutorial_complete');
       }
       else trackEvent('tutorial_skip', { at });   // [①] 중간 이탈(어느 단계에서)

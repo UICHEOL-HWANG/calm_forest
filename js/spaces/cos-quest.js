@@ -15,10 +15,9 @@ export function cosQuestActive() {
 
 export function maybeOfferCosQuest({ via = 'tutorial' } = {}) {
   const p = gameState.progress;
-  if (ui.coachActive?.()) return;
-  if (!shouldOffer({ tutorialSeen: gameState.tutorialSeen, owned: gameState.cosmetics?.owned, stage: p.cosQuest })) return;
+  if (!shouldOffer({ tutorialSeen: gameState.tutorialSeen, owned: gameState.cosmetics?.owned, stage: p.cosQuest, houseStage: gameState.houseStage })) return;
   p.cosQuest = 'visit';
-  ui.showHintBanner?.({ ico: '🎀', title: COS_LINES.title, line: COS_LINES.offer, near: () => true });
+  if (!ui.coachActive?.()) ui.showHintBanner?.({ ico: '🎀', title: COS_LINES.title, line: COS_LINES.offer, near: () => true });
   step('offered', { via });
   refreshQuestPanel(); requestSave();
 }
@@ -33,6 +32,7 @@ export function noteCosQuestVisit() {
 
 export function noteCosQuestBuy(itemId, via = 'coins') {
   const p = gameState.progress;
+  ui.act?.('dress');
   if (!cosQuestActive()) return;
   p.cosQuest = afterBuy(p.cosQuest);
   giveReward({ coins: COS_REWARD }, 'cos_quest', itemId);

@@ -7,7 +7,7 @@ body.is-touch #talk-btn { display: none !important; }
     top: auto !important; bottom: calc(var(--hud-bottom, 230px) + 14px); }
   body.is-touch:has(#hint-banner.slot-bottom.show) #toast { bottom: calc(282px + 70px + env(safe-area-inset-bottom)); }
 }
-body.is-touch:not(.coaching) #hint-banner:not(.slot-bottom) { top: var(--rcol-bottom, calc(64px + var(--top-inset))); left: auto; right: max(12px, calc(env(safe-area-inset-right) + 8px)); transform: none; }
+body.is-touch:not(.coaching) #hint-banner:not(.slot-bottom) { top: max(var(--rcol-bottom, calc(64px + var(--top-inset))), var(--qp-bottom, 0px)); left: auto; right: max(12px, calc(env(safe-area-inset-right) + 8px)); transform: none; }
 
 body.is-touch #hotbar { left: 0; top: 0; bottom: auto; transform: none; padding: 0; width: 0; height: 0; overflow: visible; background: none; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
 body.is-touch #hotbar > .slot { display: none !important; }

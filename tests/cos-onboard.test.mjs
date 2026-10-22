@@ -6,14 +6,28 @@ import {
 } from '../js/cos-onboard.js';
 
 test('튜토리얼을 마치고 꾸미기가 하나도 없는 유저에게만 건다', () => {
-  assert.equal(shouldOffer({ tutorialSeen: true, owned: [] }), true);
-  assert.equal(shouldOffer({ tutorialSeen: false, owned: [] }), false);
-  assert.equal(shouldOffer({ tutorialSeen: true, owned: ['scarf'] }), false);
-  assert.equal(shouldOffer({ tutorialSeen: true }), true);
+  assert.equal(shouldOffer({ tutorialSeen: true, owned: [], houseStage: 3 }), true);
+  assert.equal(shouldOffer({ tutorialSeen: false, owned: [], houseStage: 3 }), false);
+  assert.equal(shouldOffer({ tutorialSeen: true, owned: ['scarf'], houseStage: 3 }), false);
+  assert.equal(shouldOffer({ tutorialSeen: true, houseStage: 4 }), true);
+});
+
+test('집을 완성(3단계)하기 전에는 걸지 않는다', () => {
+  assert.equal(shouldOffer({ tutorialSeen: true, owned: [] }), false);
+  assert.equal(shouldOffer({ tutorialSeen: true, owned: [], houseStage: 2 }), false);
 });
 
 test('한 번 건 의뢰는 다시 걸지 않는다', () => {
-  for (const s of COS_STAGES) assert.equal(shouldOffer({ tutorialSeen: true, owned: [], stage: s }), false, s);
+  for (const s of COS_STAGES) assert.equal(shouldOffer({ tutorialSeen: true, owned: [], stage: s, houseStage: 3 }), false, s);
+});
+
+test('집 완성(지붕)에 꾸미기 가게 의뢰를 건다 · 튜토리얼 중엔 배너 없이 의뢰만', () => {
+  const quest = readFileSync(new URL('../js/spaces/cos-quest.js', import.meta.url), 'utf8');
+  assert.match(quest, /houseStage: gameState\.houseStage/);
+  assert.match(quest, /if \(!ui\.coachActive\?\.\(\)\) ui\.showHintBanner/);
+  assert.match(quest, /ui\.act\?\.\('dress'\);\n  if \(!cosQuestActive\(\)\) return;/);
+  const house = readFileSync(new URL('../js/spaces/house.js', import.meta.url), 'utf8');
+  assert.match(house, /ui\.act\?\.\('build'\);[^\n]*\n\s*maybeOfferCosQuest\(\{ via: 'house' \}\);/);
 });
 
 test('가게를 열면 visit → buy, 다른 단계는 그대로', () => {

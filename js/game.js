@@ -276,7 +276,7 @@ import { drawPets, drawWardrobe } from './spaces/wardrobe.js';   // 🧥 ☰ 캐
 import { HALLOWEEN_OUTDOOR_IDS, HALLOWEEN_STYLE, buildHalloween, makeCtx } from './spaces/halloween-art.js';   // 🎃 할로윈 코인 장식 조형
 import { resolveFirstDay, ensureFirstDay } from './mountain/unlock.js';
 import { UNLOCK_IDS, defaultUnlocks, newlyUnlocked, restoreUnlocks, unlockQuestCtx, unlockedSet, unlocksForSave } from './world/unlocks.js';   // 🔓 마을 해금(순수) — docs/superpowers/specs/2026-10-16-world-unlocks-design.md
-import { BRIDGE_ANG, BRIDGE_COST, ISLE, ISLE_R, bridgeFoot, bridgePoint, streamR } from './world/bridge.js';   // 🌉 박물관 섬 개울·다리(순수)
+import { BRIDGE_ANG, BRIDGE_COST, ISLE, ISLE_R, bridgeBroken, bridgeFoot, bridgePoint, streamR } from './world/bridge.js';   // 🌉 박물관 섬 개울·다리(순수)
 import { bridgeBrokenNow, bridgeInteract, buildBridge, clampToStream, syncBridge } from './spaces/bridge.js';   // 📦 🌉 무너진 다리(해금 4단계)
 import { defaultTree, restoreTree } from './world/tree-board.js';   // 🌳 세계수 판(순수) — docs/superpowers/specs/2026-10-16-world-tree-board-design.md
 import { defaultBloom, restoreBloom } from './world/tree-bloom.js';
@@ -2138,6 +2138,8 @@ export const Input = {
   tutStep() { return gameState.hintsSeen.tutStep || null; },
   setTutStep(k) { gameState.hintsSeen = { ...gameState.hintsSeen, tutStep: k }; requestSave(); },
   houseStage() { return gameState.houseStage || 0; },
+  cosOwnedCount() { return (gameState.cosmetics?.owned || []).length; },
+  bridgeFixed() { return !bridgeBroken(gameState, unlocksOn()); },
 };
 
 // ── 🧪 [베타 2차] 맵 계단식 열기 — 판정은 tuning.js, 여기선 상태만 넘긴다 ──────────
