@@ -43,7 +43,7 @@ test('1장 조망샷: 띠·장 제목·🦉 대사는 STORY_REWORLD 에서 · �
   assert.match(read('js/game.js'), /queueChapterShot\(after\) \{ return queueChapterShot\(after\); \}/);
 });
 
-test('마을 밖에서 튜토리얼이 끝나면 후속 안내는 8초 뒤 먼저 내보내고 1장 연출은 마을에 돌아올 때까지 남는다', () => {
-  assert.match(wt, /q\.kind === 'chapter' && q\.after && performance\.now\(\) - q\.at > CHAPTER_WAIT_MS\) \{ const after = q\.after; q\.after = null; after\(\); \}/);
+test('마을 밖에서 튜토리얼이 끝나면 후속 안내는 8초 뒤 먼저 내보내고 1장 연출은 마을에 돌아올 때까지 남는다(집 안 졸업은 나올 때까지 기다린다)', () => {
+  assert.match(wt, /q\.kind === 'chapter' && q\.after && !Input\.isIndoor\?\.\(\) && performance\.now\(\) - q\.at > CHAPTER_WAIT_MS\) \{ const after = q\.after; q\.after = null; after\(\); \}/);
   assert.doesNotMatch(wt, /CHAPTER_WAIT_MS\) \{ shotQueue\.shift\(\)/);
 });

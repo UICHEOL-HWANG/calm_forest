@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>튜토리얼 안내창 축소 시안</title>
+<style>
+:root { --mint: #bfe8c9; --ink: #4a5a4f; --panel: rgba(255,255,255,0.72); --shadow: 0 6px 18px rgba(90,120,100,0.18); }
+body { margin: 0; background: #e9efe9; font-family: -apple-system, 'Apple SD Gothic Neo', sans-serif; color: var(--ink); }
+.row { display: flex; gap: 18px; padding: 18px; }
+.col h2 { font-size: 15px; margin: 0 0 8px; }
+.col p { font-size: 12px; margin: 6px 0 0; width: 390px; line-height: 1.45; }
+.phone { position: relative; width: 390px; height: 664px; background: url(coach-compact/now.png) center / cover; border-radius: 22px; overflow: hidden; box-shadow: 0 6px 20px rgba(0,0,0,.18); }
+.panel { position: absolute; background: var(--panel); backdrop-filter: blur(8px); box-shadow: var(--shadow); border: 2px solid var(--mint); color: var(--ink); box-sizing: border-box; }
+.bar { height: 6px; border-radius: 999px; background: rgba(0,0,0,0.08); overflow: hidden; flex: 1 1 auto; }
+.bar i { display: block; width: 18%; height: 100%; background: #6fd08c; border-radius: 999px; }
+.cnt { font-size: 11px; font-weight: 800; color: rgba(43,58,48,0.55); font-variant-numeric: tabular-nums; }
+.skip { font-size: 11px; opacity: .55; text-decoration: underline; }
+.now { top: 150px; left: 12px; right: 12px; border-radius: 18px; padding: 9px 11px; display: flex; flex-direction: column; gap: 7px; }
+.now .t { font-size: 12.5px; font-weight: 700; line-height: 1.35; }
+.foot { display: flex; align-items: center; gap: 8px; }
+.a { top: 100px; left: 12px; width: 196px; border-radius: 14px; padding: 7px 10px; display: flex; flex-direction: column; gap: 5px; border-width: 1.5px; }
+.a .t { font-size: 12.5px; font-weight: 700; line-height: 1.3; }
+.a .skip { font-size: 10.5px; }
+.b { top: 100px; left: 12px; border-radius: 999px; padding: 6px 12px; display: flex; align-items: center; gap: 8px; border-width: 1.5px; white-space: nowrap; }
+.b .t { font-size: 13px; font-weight: 800; }
+.b .chev { font-size: 11px; opacity: .5; }
+.c { top: 100px; left: 12px; width: 96px; border-radius: 12px; padding: 6px 7px; display: flex; flex-direction: column; align-items: center; gap: 4px; border-width: 1.5px; text-align: center; }
+.c .ico { font-size: 20px; line-height: 1; }
+.c .t { font-size: 11.5px; font-weight: 800; line-height: 1.2; }
+.c .foot { width: 100%; gap: 5px; }
+.c .cnt { font-size: 10px; }
+</style></head><body>
+<div class="row">
+  <div class="col"><h2>현재</h2>
+    <div class="phone"><div class="panel now"><div class="t">나무 옆에 서면 🪓도끼를 저절로 들어요. 베면 🪵목재가 나와요 (액션)</div><div class="foot"><div class="bar"><i></i></div><span class="cnt">3 / 17</span><span class="skip">건너뛰기</span></div></div></div>
+    <p>화면 폭을 다 쓰고 문장이 길어 캐릭터 위를 가린다.</p></div>
+  <div class="col"><h2>A안 · 미니맵 아래 작은 카드</h2>
+    <div class="phone"><div class="panel a"><div class="t">🪓 나무 옆에서 베면 🪵목재</div><div class="foot"><div class="bar"><i></i></div><span class="cnt">3/17</span><span class="skip">건너뛰기</span></div></div></div>
+    <p>미니맵 바로 아래, 폭 196px. 문구를 한 줄짜리로 줄이고 진행바·건너뛰기는 유지.</p></div>
+  <div class="col"><h2>B안 · 미니맵 아래 한 줄 알약</h2>
+    <div class="phone"><div class="panel b"><span class="t">🪓 나무 베기</span><span class="cnt">3/17</span><span class="chev">▾</span></div></div>
+    <p>가장 작다. 탭하면 자세한 설명·건너뛰기가 펼쳐진다. 진행바 없이 숫자만.</p></div>
+  <div class="col"><h2>C안 · 미니맵 폭 미니 카드</h2>
+    <div class="phone"><div class="panel c"><div class="ico">🪓</div><div class="t">나무 베기</div><div class="foot"><div class="bar"><i></i></div><span class="cnt">3/17</span></div></div></div>
+    <p>미니맵과 같은 폭으로 붙여 한 덩어리처럼. 아이콘+두 단어. 건너뛰기는 탭해서.</p></div>
+</div>
+<p style="padding:0 18px 18px;font-size:13px">세 안 공통: 가방·메뉴·상점 같은 창이 열리면 숨기고, 닫히면 다시 보여요.</p>
+</body></html>

@@ -5,7 +5,7 @@ const CAM_PC = { key: 'cam', target: null, keys: ['Q', 'E'], hand: 'key', text: 
 
 const TOUCH_FULL = [
   { key: 't_move', core: true, target: '#joy-base', hand: 'drag', text: '🕹️ 끌어서 걸어 보세요', done: 'act:move' },
-  { key: 't_tool', core: true, target: '#tool-btn', hand: 'hold', text: '🧰 꾹 누른 채 밀어서 도구를 골라요', done: 'act:toolpage' },
+  { key: 't_tool', core: true, target: '#tool-btn', hand: 'tap', text: '🧰 탭해서 도구를 골라요', done: 'act:toolpage' },
   { key: 't_use', core: true, target: '#action-btn', hand: 'tap', text: '⭕ 큰 버튼으로 도구를 써요', done: 'act:use' },
   CAM_TOUCH,
   { key: 't_bag', target: '#bag-btn', hand: 'tap', text: '🎒 가방엔 재화와 재료가 있어요', done: 'open:bag-menu' },
@@ -27,7 +27,7 @@ const PC_FULL = [
 ];
 
 const TOUCH_NEW = [
-  { key: 'new_tool', target: '#tool-btn', hand: 'hold', text: '🧰 도구는 이 버튼을 꾹! 밀어서 골라요', done: 'act:toolpage' },
+  { key: 'new_tool', target: '#tool-btn', hand: 'tap', text: '🧰 도구는 이 버튼을 탭해서 골라요', done: 'act:toolpage' },
   { key: 'new_top', target: '#topright', hand: 'tap', text: '🎒📖☰ 가방·도감·메뉴는 여기 모였어요', done: 'tap' },
   { key: 'new_menu', target: '#hud-menu', hand: 'tap', text: '☰ 사진·소식함·설정은 여기 있어요', done: 'menu' },
 ];

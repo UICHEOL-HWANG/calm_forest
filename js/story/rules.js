@@ -4,6 +4,9 @@ const num = (v) => Number(v) || 0;
 const count = (o) => Object.keys(o || {}).length;
 const frac = (have, need) => `${Math.min(have, need)}/${need}`;
 const trees = (s) => (s.orchard?.trees || []).length;
+const branchHab = (s, id) => !!s?.tree?.branches?.[id]?.habitat;
+const BRANCH_NAME = { water: '물의 가지', farm: '밭의 가지', kitchen: '부엌의 가지', forest: '숲의 가지' };
+const gated = (rule, ids) => ({ done: rule.done, progress: s => { const miss = ids.find(id => !branchHab(s, id)); return miss ? `🌳 ${BRANCH_NAME[miss]} 빈터 0/1` : rule.progress(s); } });
 
 export const STORY_RULES = {
   home:      { done: s => num(s.houseStage) >= 3,                 progress: s => `공사 ${frac(num(s.houseStage), 3)}` },
@@ -19,7 +22,11 @@ export const STORY_RULES = {
   memory:    { done: s => count(s.museum?.special) >= 1,          progress: s => `특별 진열 ${frac(count(s.museum?.special), 1)}` },
   stars:     { done: s => count(s.star?.cleared) >= 1,            progress: s => `별자리 ${frac(count(s.star?.cleared), 1)}` },
   neighbors: { done: s => num(s.neighbors?.visited) >= 1,         progress: s => `방문 ${frac(num(s.neighbors?.visited), 1)}` },   // 🏡 이웃 마을 첫 방문(js/spaces/neighbor.js exitNeighbor)
+  branchWater: { done: s => branchHab(s, 'water'), progress: s => `💧 물의 가지 빈터 ${branchHab(s, 'water') ? 1 : 0}/1` },
 };
+STORY_RULES.tasteGated = gated(STORY_RULES.taste, ['farm', 'kitchen']);
+STORY_RULES.secretGated = gated(STORY_RULES.secret, ['farm', 'kitchen', 'forest']);
+STORY_RULES.livingGated = gated(STORY_RULES.living, ['farm']);
 
 /**
  * 🌉 1·2장을 「세계수를 지키는 법」 판으로 볼까 — 해금 켜짐 + 새 세이브(legacy 아님).

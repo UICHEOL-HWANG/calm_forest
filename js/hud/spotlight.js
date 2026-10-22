@@ -4,6 +4,8 @@ const CSS = `
 #spot-layer { position: fixed; inset: 0; z-index: 48; pointer-events: none; display: none; }
 #spot-layer.on { display: block; }
 body.spot-on #coach { visibility: hidden; }
+body.tool-fan-open #spot-layer .sp-bar { pointer-events: none; }
+body.tool-fan-open #tool-fan { z-index: 49; }
 #spot-layer .sp-bar { position: absolute; background: rgba(20,16,10,.66); pointer-events: auto; }
 #spot-layer.dim-only .sp-bar { background: rgba(20,16,10,.38); }
 #spot-layer .sp-catch { position: absolute; pointer-events: auto; background: transparent; }
