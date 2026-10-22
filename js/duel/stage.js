@@ -13,6 +13,7 @@
 
 import { makeBoar, makeRaccoon, DUEL_ART_H } from './art.js';
 import { makeRaidScar } from './raid-art.js';
+import { arenaKind, buildArena } from './arena.js';
 import { nearIndices } from './clearance.js';
 import { idle, hop, recoil, pump, pop, zoomPunch, flee, shake, decayTrauma, ZOOM_IN } from './motion.js';
 
@@ -106,26 +107,37 @@ export function enterDuelStage(stage, { animal, x, z }) {
   // ⚠️ 한 번 끄는 것으론 부족하다 — 게임 루프가 매 프레임 visible 을 다시 쓰는 것들이 있다
   //    (🏠집터 안내판·고리, 시설 표지 등. 실측: "나무 바닥(데크)" 표지가 결투 하늘에 떴다).
   //    렌더 직전마다 다시 끈다 — 누가 무엇을 켜든 대결 중엔 안 나온다. 끝나면 훅을 원래대로.
-  const ownHook = Object.prototype.hasOwnProperty.call(scene, 'onBeforeRender');
-  const prevHook = scene.onBeforeRender;
-  scene.onBeforeRender = function (...args) {
-    for (const o of hidden) o.visible = false;
-    return prevHook.apply(this, args);
-  };
-  const restoreHook = () => { if (ownHook) scene.onBeforeRender = prevHook; else delete scene.onBeforeRender; };
-
   // 🐾 발밑 — 털린 밭. 밭 위 흔적과 같은 조형(raid-art.js)이라 "그 밭에서 붙는다"가 읽힌다.
   const scar = makeRaidScar(THREE, { animal, seed: x * 31 + z * 17, away: [dirX, dirZ] });
   scar.position.set(x, 0, z);
   scene.add(scar);
 
-  const handle = { THREE: stage.THREE, scene, camera, player, savedCamPos, savedCamQuat, savedPlayerRotY, savedPlayerPos, animalMesh, hidden, scar, restoreHook, throws: [],
+  const arena = buildArena(THREE, { kind: arenaKind(!!stage.night), mid: { x: midX, z: midZ }, perp: { x: perpX, z: perpZ }, camPos: camera.position, seed: x * 31 + z * 17 });
+  scene.add(arena.group);
+  const savedFog = scene.fog ? { color: scene.fog.color, near: scene.fog.near, far: scene.fog.far } : null;
+  const savedBackground = scene.background;
+  const ownHook = Object.prototype.hasOwnProperty.call(scene, 'onBeforeRender');
+  const prevHook = scene.onBeforeRender;
+  scene.onBeforeRender = function (...args) {
+    for (const o of hidden) o.visible = false;
+    scene.background = arena.sky;
+    if (scene.fog) { scene.fog.color = arena.sky; scene.fog.near = arena.fogNear; scene.fog.far = arena.fogFar; }
+    return prevHook.apply(this, args);
+  };
+  const restoreHook = () => { if (ownHook) scene.onBeforeRender = prevHook; else delete scene.onBeforeRender; };
+
+  const handle = { THREE: stage.THREE, scene, camera, player, savedCamPos, savedCamQuat, savedPlayerRotY, savedPlayerPos, animalMesh, hidden, scar, restoreHook, arena, savedFog, savedBackground, throws: [],
            mid: { x: midX, z: midZ }, perp: { x: perpX, z: perpZ }, k, bowls: null,
            bowlMid: { x: midX + dirX * 0.5, z: midZ + dirZ * 0.5 } };
-  handle.feet = { meshes: stage.crops || [], base: [player.position.clone(), animalMesh.position.clone()] };
-  handle.feet.points = handle.feet.base;
-  handle.clearedCrops = clearFeet(THREE, handle.feet.meshes, handle.feet.points);
-  startMotion(handle, { dirX, dirZ });
+  try {
+    handle.feet = { meshes: stage.crops || [], base: [player.position.clone(), animalMesh.position.clone()] };
+    handle.feet.points = handle.feet.base;
+    handle.clearedCrops = clearFeet(THREE, handle.feet.meshes, handle.feet.points);
+    startMotion(handle, { dirX, dirZ });
+  } catch (e) {
+    exitDuelStage(handle);
+    throw e;
+  }
   return handle;
   // ⚠️ 0.9 는 동물 발치까지 밀려 그릇을 깔고 앉은 꼴이었다(실측). 0.5 면 밭(반폭 1)을
   //    갓 벗어나면서 동물과도 떨어진다.
@@ -337,13 +349,16 @@ export function exitDuelStage(handle) {
   stopMotion(handle);                                  // 🎬 연출 루프를 먼저 멈춘다 — 안 멈추면 되돌린 카메라를 다음 프레임에 다시 덮어쓴다
   restoreFeet(handle);
   hideBowls(handle);                                   // 중단해도 그릇·작물이 씬에 남지 않게
-  const { scene, camera, player, savedCamPos, savedCamQuat, savedPlayerRotY, savedPlayerPos, animalMesh, hidden, scar, restoreHook } = handle;
+  const { scene, camera, player, savedCamPos, savedCamQuat, savedPlayerRotY, savedPlayerPos, animalMesh, hidden, scar, restoreHook, arena, savedFog, savedBackground } = handle;
   clearThrow(handle);
   restoreHook?.();                                     // ⚠️ 되살리기 **전에** 풀어야 다음 프레임에 다시 꺼지지 않는다
   for (const o of hidden) o.visible = true;
   scene.remove(animalMesh);
   disposeTree(animalMesh);
   if (scar) { scene.remove(scar); disposeTree(scar); }
+  if (arena) { scene.remove(arena.group); arena.dispose(); }
+  if (arena) scene.background = savedBackground;
+  if (savedFog && scene.fog) { scene.fog.color = savedFog.color; scene.fog.near = savedFog.near; scene.fog.far = savedFog.far; }
   if (savedPlayerPos) player.position.copy(savedPlayerPos);
   camera.position.copy(savedCamPos);
   camera.quaternion.copy(savedCamQuat);

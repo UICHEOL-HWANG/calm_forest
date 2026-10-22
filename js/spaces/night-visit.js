@@ -7,7 +7,7 @@
 // =============================================================
 import {
   camera, clearCrop, cropMini, dexDiscover, doPlayerAction, duelFetcher, farmCropMeshes, farmSoilMesh, firstHint, floatTexts,
-  gameState, giveReward, nightFetcher, nightNoteFetcher, player, plots, refreshInventoryUI, requestSave,
+  gameState, giveReward, isNight, nightFetcher, nightNoteFetcher, player, plots, refreshInventoryUI, requestSave,
   roundRect, scene, showCatchItem, spawnDust, spawnSparkle, todayStr, triggerMoment, ui, updatePlotVisual, worldGround, worldGroundPatches,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
@@ -161,7 +161,7 @@ export async function maybeDuel(t) {
   // 🥕 그릇에 넣어 보여줄 작물 아이콘 — 고급 작물만 제 아이콘이 있고 나머지는 🥕(tryHarvest 와 같은 규칙)
   const firstId = crops.find(c => c) || '';
   const cropIco = (firstId && ADV_CROPS.find(c => c.id === firstId)?.ico) || '🥕';
-  duelFetcher({ animal: t.animal, x: t.x, z: t.z, crops, cropIco, stage: { THREE, scene, camera, player, keep: duelKeep(), crops: Object.values(farmCropMeshes || {}) } })
+  duelFetcher({ animal: t.animal, x: t.x, z: t.z, crops, cropIco, stage: { THREE, scene, camera, player, night: isNight(), keep: duelKeep(), crops: Object.values(farmCropMeshes || {}) } })
     .then(result => { if (result === 'win') winDuel(t.animal, crops); requestSave(); return result; })
     .catch(e => { console.warn('[승부] 진행 실패 — 오늘은 넘어간다', e?.message || e); return 'quit'; })
     .then(result => {

@@ -6965,7 +6965,7 @@ function updateDayNight(dt) {
   //   (피드백: "물보라 발광이 과해 계속 보면 눈이 피로해요") 주행 중엔 절반 아래로 낮춘다.
   if (bloomPass) bloomPass.strength = (0.5 + nightAmt * 0.5) * (boat.active && boatView === 'first' ? 0.4 : 1);
   // 밤 푸른 톤 그레이딩
-  if (gradePass) gradePass.uniforms.uNight.value = mgView && STAGE_TYPES.has(mgView.type) ? 0 : atDream || atMirror ? 0.25 : nightAmt;   // 🌙 꿈속은 밤이어도 파스텔이 살게 남색 그레이딩을 약하게   // 🍳 무대는 밤 톤(남색·30% 감광)도 끈다
+  if (gradePass) gradePass.uniforms.uNight.value = mgView && STAGE_TYPES.has(mgView.type) || duelActive ? 0 : atDream || atMirror ? 0.25 : nightAmt;   // 🌙 꿈속은 밤이어도 파스텔이 살게 남색 그레이딩을 약하게   // 🍳 무대는 밤 톤(남색·30% 감광)도 끈다
   if (gradePass && atHalloween) gradePass.uniforms.uNight.value = 0.35;
 
   // 밤낮 판정은 js/daynight.js 단일 출처 — 아이콘과 🛏️자기 프롬프트가 같은 순간에 바뀌어야 한다
