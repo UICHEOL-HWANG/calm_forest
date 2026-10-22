@@ -1,38 +1,25 @@
-// =============================================================
-//  📜 밤손님 쪽지 순서 — 쪽지가 대결을 덮지 않게 "언제 보여 줄지"만 정한다(순수 규칙)
-//  ------------------------------------------------------------
-//  ▶ 순서는 늘 쪽지 → 대결. 흔적을 조사했는데 아직 안 본 쪽지가 있으면 쪽지를 먼저 띄우고
-//    닫은 뒤 대결을 연다. 대결 중에 도착한 쪽지는 끝난 뒤로 미룬다(2026-09-26 실기기 제보:
-//    가위바위보 한가운데 🧑‍🌾 쪽지가 떠서 판을 덮었다).
-//  ▶ 쪽지가 아직 안 왔으면(Gemini 응답 대기) 대결을 기다리게 하지 않는다 — 대결 뒤에 도착하면 그때 보여 준다.
-//  ▶ 한 번 보여 준 쪽지는 다시 띄우지 않는다. 상태는 변형하지 않고 새 값을 돌려준다.
-//  사용처: js/spaces/night-visit.js · 테스트: tests/night-note-queue.test.mjs
-// =============================================================
-
 export const initNoteQueue = () => ({ note: null, shown: false });
 
-// 쪽지 도착 — 일단 쥐고 있는다(띄우는 건 한 박자 뒤 showIfIdle, 또는 대결 직전 beforeDuel)
+export const NOTE_AUTHOR = '농부 삼촌';
+
+export const FALLBACK_NOTES = {
+  boar: '멧돼지가 오늘은 한 수 위였네요. 가져간 작물은 숲속 새끼들이랑 나눠 먹을 거예요. 너무 속상해하지 말아요.',
+  raccoon: '너구리 녀석, 그릇 섞는 솜씨가 보통이 아니네요. 가져간 작물은 겨울 준비에 쓰려나 봐요. 다음엔 꼭 찾아낼 수 있을 거예요.',
+};
+
 export function noteArrived(state, note) {
   return note?.text ? { note, shown: false } : state;
 }
 
-export function noteArrivedOpen(state, note, { cardOpen }) {
-  if (!note?.text) return { state, show: null };
-  if (cardOpen) return { state: { note, shown: true }, show: note };
-  return { state: noteArrived(state, note), show: null };
+export function afterDuel(state, { result, fallback }) {
+  if (result !== 'lose' || state.shown) return { state, show: null };
+  const note = state.note || (fallback?.text ? fallback : null);
+  if (!note) return { state, show: null };
+  return { state: { ...state, shown: true }, show: note };
 }
 
-// 한가할 때(대결 밖) 쥐고 있던 쪽지를 보여 준다 — 도착 한 박자 뒤와 대결이 끝난 뒤에 부른다
-export function showIfIdle(state, { duelActive }) {
-  return duelActive ? { state, show: null } : pendingShow(state);
-}
-
-// 흔적 조사 직후·대결 직전 — 아직 안 본 쪽지가 있으면 그걸 먼저
-export function beforeDuel(state) {
-  return pendingShow(state);
-}
-
-function pendingShow(state) {
-  if (!state.note || state.shown) return { state, show: null };
-  return { state: { ...state, shown: true }, show: state.note };
+export function defenseTip({ scarecrow, fence }) {
+  if (!scarecrow) return '🎃 밭 가까이 허수아비를 세워 봐요';
+  if (!fence) return '🪵 밭 둘레에 울타리를 4개 이상 둘러 봐요';
+  return '🤝 다음에 이기면 당분간 안 와요';
 }

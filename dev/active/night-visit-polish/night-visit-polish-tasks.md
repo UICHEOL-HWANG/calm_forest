@@ -1,0 +1,11 @@
+# Tasks
+- [x] Mockups: note card A/B/C, transition A/B/C, trace button — PC + mobile captures (sims/night-visit-polish/)
+- [x] User pick: note C (bottom sheet), transition A (claw), trace = existing near-pill circle (not a new button)
+- [x] Note timing → lose only (+ tests)
+- [x] night-note prompt kind=lose + fallback copy + i18n
+- [x] Note sheet implementation
+- [x] Duel transition implementation (stage composition unchanged — verified vs main capture)
+- [x] Trace prompt → near-pill 🐾 + action icon
+- [x] GA4 night_note_show
+- [ ] Code review fixes
+- [ ] Commit, deploy 5 platforms (web, toss, itch, android, iOS) — night-note API change ships with web worker

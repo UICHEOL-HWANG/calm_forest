@@ -1516,6 +1516,45 @@
     background: linear-gradient(rgba(20,40,30,0) 55%, rgba(20,40,30,0.42)); touch-action: manipulation; -webkit-user-select: none; user-select: none; }
   #mg-layer.show { display: flex; }
   /* 🐗🦝 밤손님 대결 — 3D 클로즈업 위에 얹는 오버레이. #mg-layer 와 같은 문법(z-index 40) */
+  #note-modal { position: fixed; inset: 0; z-index: 41; display: none; align-items: flex-end; justify-content: center;
+    padding: 0 12px calc(18px + env(safe-area-inset-bottom)); background: rgba(24,42,33,0.38); backdrop-filter: blur(2px); cursor: pointer; }
+  #note-modal.show { display: flex; }
+  #note-sheet { position: relative; width: min(520px, 100%); margin-top: 40px; background: linear-gradient(180deg, #fffefa, #fbf6ea);
+    border: 1px solid rgba(120,150,120,.18); border-radius: 22px; padding: 18px 18px 16px; color: #2f3d33;
+    box-shadow: 0 -2px 0 rgba(255,255,255,.6) inset, 0 20px 44px -12px rgba(30,50,35,.5); animation: noteUp .32s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  @keyframes noteUp { from { opacity: 0; transform: translateY(18px); } }
+  #note-portrait { position: absolute; left: 16px; top: -34px; width: 68px; height: 68px; border-radius: 50%; background: #eef5ea;
+    display: grid; place-items: center; font-size: 38px; border: 4px solid #fffdf6; box-shadow: 0 6px 16px rgba(30,50,35,.25); }
+  #note-name { display: inline-block; margin: -6px 0 0 78px; background: #2f5d43; color: #fff7e6; font-weight: 700; font-size: 13px; padding: 4px 11px; border-radius: 999px; }
+  #note-text { margin: 14px 2px 0; font-size: 15px; line-height: 1.7; word-break: keep-all; }
+  #note-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
+  #note-tip { background: #f1ecdd; border-radius: 999px; padding: 7px 13px; font-size: 13px; font-weight: 600; color: #5a4a32; }
+  #note-close { flex: none; font-size: 12.5px; color: #8b9a8e; }
+  #note-close i { font-style: normal; display: inline-block; animation: noteBob 1s ease-in-out infinite; }
+  @keyframes noteBob { 50% { transform: translateY(3px); } }
+  body.duel-open .sp-bar { display: none !important; }
+  #duel-intro { position: fixed; inset: 0; z-index: 60; display: none; pointer-events: none; overflow: hidden; }
+  #duel-intro.play { display: block; }
+  #duel-intro .di-flood { position: absolute; inset: 0; background: #121a28; opacity: 0; }
+  #duel-intro.play .di-flood { animation: diFlood 1.8s ease both; }
+  @keyframes diFlood { 0%, 18% { opacity: 0; } 30%, 76% { opacity: 1; } 92%, 100% { opacity: 0; } }
+  #duel-intro .di-slash { position: absolute; left: 10%; width: 80%; height: 30px; transform-origin: 100% 50%; transform: rotate(-30deg) scaleX(0);
+    background: linear-gradient(180deg, #ffe7a3 0 3px, #121a28 3px calc(100% - 3px), #ffe7a3 calc(100% - 3px));
+    clip-path: polygon(0 50%, 12% 30%, 100% 0, 88% 50%, 100% 100%, 12% 70%); filter: drop-shadow(0 0 10px rgba(255,220,140,.55)); }
+  #duel-intro .di-slash:nth-child(2) { top: 40%; }
+  #duel-intro .di-slash:nth-child(3) { top: 47%; }
+  #duel-intro .di-slash:nth-child(4) { top: 54%; }
+  #duel-intro.play .di-slash { animation: diSlash 1.8s cubic-bezier(.75,0,.25,1) both; }
+  #duel-intro.play .di-slash:nth-child(3) { animation-delay: .05s; }
+  #duel-intro.play .di-slash:nth-child(4) { animation-delay: .1s; }
+  @keyframes diSlash { 0% { transform: rotate(-30deg) scaleX(0); opacity: 1; } 12%, 22% { transform: rotate(-30deg) scaleX(1); opacity: 1; }
+    32%, 100% { transform: rotate(-30deg) scaleX(1) scaleY(1.6); opacity: 0; } }
+  #duel-intro .di-card { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; color: #fff6dc; opacity: 0; }
+  #duel-intro.play .di-card { animation: diCard 1.8s ease both; }
+  @keyframes diCard { 0%, 16% { opacity: 0; transform: scale(1.5); } 26% { opacity: 1; transform: scale(.96); } 32%, 74% { opacity: 1; transform: scale(1); } 86%, 100% { opacity: 0; } }
+  #di-ani { font-size: clamp(54px, 14vw, 86px); filter: drop-shadow(0 8px 10px rgba(0,0,0,.4)); }
+  #di-title { font-size: clamp(30px, 8vw, 54px); font-weight: 900; letter-spacing: -0.02em; text-shadow: 0 4px 0 rgba(0,0,0,.35); }
+  #di-sub { margin-top: 10px; font-size: clamp(13px, 3.4vw, 17px); font-weight: 600; opacity: .9; }
   #duel-layer { position: fixed; inset: 0; z-index: 40; display: none; align-items: end; justify-content: center;
                 padding: 0 12px calc(18px + env(safe-area-inset-bottom)); pointer-events: none; }
   #duel-layer.show { display: flex; }
@@ -2629,6 +2668,20 @@
     </div>
   </div>
 
+  <div id="duel-intro" aria-hidden="true">
+    <div class="di-flood"></div><div class="di-slash"></div><div class="di-slash"></div><div class="di-slash"></div>
+    <div class="di-card"><div id="di-ani"></div><div id="di-title"></div><div id="di-sub"></div></div>
+  </div>
+
+  <div id="note-modal">
+    <div id="note-sheet" role="dialog" aria-labelledby="note-name">
+      <div id="note-portrait">🧑‍🌾</div>
+      <span id="note-name"></span>
+      <p id="note-text"></p>
+      <div id="note-foot"><span id="note-tip"></span><span id="note-close">눌러서 닫기 <i>▼</i></span></div>
+    </div>
+  </div>
+
   <!-- 🗿 조각 공방 HUD — 3D 무대 위 최소 오버레이(캔버스 탭이 곧 조작이라 판은 안 가림) -->
   <div id="cv-layer">
     <div id="cv-top"><span id="cv-title">🗿 조각</span><button id="cv-quit">그만두기</button></div>
@@ -3290,6 +3343,7 @@
     let lastInv = { wood: 0, seed: 0, crop: 0 };   // 최근 인벤토리(꾸미기 메뉴용)
     let lastToolIco = '✋';                          // 현재 도구 아이콘(액션버튼 복원용)
     let placingDecorItem = null;                    // 배치 중인 가구(액션버튼에 표시)
+    let noteKeyHandler = null;
     let nearNpcNow = false, nearDoorNow = false;    // 액션버튼 맥락 표시용(주민/문 근접)
     let doorIcon = '🚪';                             // 문/작업대 프롬프트 아이콘(🚪 또는 🍳)
     let boatRunning = false;                        // 🛶 나룻배 런 진행 중(액션버튼 = 노 젓기)
@@ -4220,6 +4274,20 @@
       },
       closeMerchantModal() { $('merchant-modal').classList.remove('show'); },
       // 어떤 모달/메뉴든 열려 있으면 true — 상인 방문 같은 강제 이벤트가 겹쳐 뜨지 않게
+      showNoteSheet({ author, text, tip }) {
+        $('note-name').textContent = author || '';
+        $('note-text').textContent = text || '';
+        $('note-tip').textContent = tip || '';
+        $('note-tip').hidden = !tip;
+        const m = $('note-modal');
+        if (noteKeyHandler) window.removeEventListener('keydown', noteKeyHandler, true);
+        const close = () => { m.classList.remove('show'); m.onclick = null; window.removeEventListener('keydown', noteKeyHandler, true); noteKeyHandler = null; };
+        noteKeyHandler = (e) => { if (['Escape', 'Enter', ' '].includes(e.key)) { e.preventDefault(); e.stopImmediatePropagation(); close(); } };
+        m.onclick = close;
+        window.addEventListener('keydown', noteKeyHandler, true);
+        Input.setAnalog(0, 0);
+        m.classList.add('show');
+      },
       anyModalOpen() {
         // ⚠️ 여기 안 걸리면 그 화면 뒤에서 게임이 계속 돈다 — 조이스틱이 살아 걷고,
         //    상인 방문·맵 해금 배너가 뒤에 묻힌 채 1회권만 소진된다.
@@ -4304,7 +4372,7 @@
           : t.includes('요리') ? '🍳' : t.includes('만들기') ? '🔧' : t.includes('상점') ? '🛒' : t.includes('일차에 열려요') ? '🔒' : t.includes('랭킹') ? '🏆' : t.includes('닭장') ? '🐔'
           : t.includes('리듬') || t.includes('달래기') ? '♪' : t.includes('등불 켜기') ? '🏮' : t.includes('정화') ? '🌳'
           : t.includes('던지기') || t.includes('기다리는') ? '🎣' : t.includes('당기세요') ? '🎣' : t.includes('버텨') ? '💪'
-          : t.includes('텃밭') ? '🌾' : t.includes('동굴') ? '⛏️' : t.includes('· 자기') ? '🛏️' : t.includes('옮기기') ? '✋' : t.includes('맡기기') ? '🐾'
+          : t.includes('텃밭') ? '🌾' : t.includes('동굴') ? '⛏️' : t.includes('· 자기') ? '🛏️' : t.includes('옮기기') ? '✋' : t.includes('흔적') ? '🐾' : t.includes('맡기기') ? '🐾'
           : t.includes('광장') ? '🌾' : t.includes('수확제 좌판') ? '🍂'
           : t.includes('깨어나') ? '🛏️' : t.includes('조각을 찾아') ? '✨' : '🚪';   // 🌙 꿈의 숲 — 안내 줄이 문(🚪)으로 보이지 않게
         refreshActionIcon();
