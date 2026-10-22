@@ -58,6 +58,10 @@ export function equippedItems(cos) {
   return SLOTS.map(s => findItem(cos?.equipped?.[s])).filter(Boolean);
 }
 
+export function hidesTail(cos) {
+  return equippedItems(cos).some(it => it.hidesTail);
+}
+
 /** 세이브에서 읽은 값 → 믿을 수 있는 상태 */
 export function sanitize(raw) {
   const out = emptyCosmetics();

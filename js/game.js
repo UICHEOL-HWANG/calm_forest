@@ -100,7 +100,7 @@ import { build as buildVatModel, VAT_SCALE, VAT_BOX } from './craft/vat-model.js
 import { headAnchor, neckAnchor, neckR, sideAnchor, backAnchor } from './cosmetics/anchors.js';
 import { buildCosmetic } from './cosmetics/art.js';
 import { itemsOf } from './cosmetics/catalog.js';
-import { equippedItems, sanitize as sanitizeCosmetics, buy as buyCos, equip as equipCos, unequip as unequipCos } from './cosmetics/equip.js';
+import { equippedItems, hidesTail, sanitize as sanitizeCosmetics, buy as buyCos, equip as equipCos, unequip as unequipCos } from './cosmetics/equip.js';
 import { buildTrailMark, tintTrailMark, TRAIL_CAP, TRAIL_STEP, TRAIL_FADE, TRAIL_SIDE } from './cosmetics/trail.js';   // 👣 발자국 자취(월드 이펙트)
 import { applySkin, disposeSkin, showSkinParts } from './cosmetics/skin.js';   // 🧥 전신 스킨 — 캐릭터에 덧입힌다
 import { effectiveTrail, squashOf, skinSquashes } from './cosmetics/skin-rules.js';   // 🌱 정령 자취 · 🧸 말랑
@@ -3768,6 +3768,7 @@ function applyCosmetics(cos) {
     if (m) charAnchors[it.anchor || it.slot].add(m);   // 아이템이 붙을 면을 고른다
   }
   showSkinParts(charGroup, cos);   // 🌱 모자·🎒 가방을 입으면 스킨의 머리·등 부위를 숨긴다
+  if (tailPivot) tailPivot.visible = !hidesTail(cos);
   refreshHeldTool(cos);                        // 🪓 💎 도구 테마 세트를 입고 벗으면 손에 든 도구도 바로 바뀐다(우산은 updateUmbrella 가 따라온다)
 }
 
@@ -3975,6 +3976,7 @@ export function buildCharacterMesh(id, cos = gameState.cosmetics) {
     if (m) built.anchors[it.anchor || it.slot].add(m);
   }
   showSkinParts(built.group, cos);   // 🌱 입어보기 꾸미기도 같은 규칙
+  if (built.tail) built.tail.visible = !hidesTail(cos);
   return built.group;
 }
 

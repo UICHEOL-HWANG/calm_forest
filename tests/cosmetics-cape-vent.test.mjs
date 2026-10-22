@@ -1,4 +1,4 @@
-// tests/cosmetics-cape-vent.test.mjs — 망토 뒤트임이 꼬리 "객체"를 읽는지 (여우·고양이는 넓게)
+// tests/cosmetics-cape-vent.test.mjs — 꼬리 판정 · 망토를 입으면 꼬리를 숨기고 트임은 좁게
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -20,8 +20,19 @@ test('game.js — 여우 bushy · 고양이 long 은 큰 꼬리, 나머지는 �
   assert.ok(big.length >= 2);
 });
 
-test('art.js — 망토 BIG_TAIL 은 tailType 으로 판정한다(문자열 직접 비교 금지)', () => {
-  const src = readFileSync(new URL('../js/cosmetics/art.js', import.meta.url), 'utf8');
-  assert.match(src, /BIG_TAIL = \[[^\]]*\]\.includes\(tailType\(k\.tail\)\)/);
-  assert.doesNotMatch(src, /k\.tail === '/);
+test('망토를 입으면 꼬리를 숨긴다 — 트임은 꼬리와 무관하게 좁다', async () => {
+  const art = readFileSync(new URL('../js/cosmetics/art.js', import.meta.url), 'utf8');
+  assert.match(art, /const VENT = 0\.06;/);
+  assert.doesNotMatch(art, /BIG_TAIL/);
+  const bats = readFileSync(new URL('../js/cosmetics/art-bats.js', import.meta.url), 'utf8');
+  assert.match(bats, /const VENT = 0\.06, VENT_TOP = 0\.30;/);
+  const { hidesTail } = await import('../js/cosmetics/equip.js');
+  assert.equal(hidesTail({ equipped: { back: 'cape' } }), true);
+  assert.equal(hidesTail({ equipped: { back: 'bat_cape' } }), true);
+  assert.equal(hidesTail({ equipped: { back: 'bat_wing' } }), false);
+  assert.equal(hidesTail({ equipped: {} }), false);
+  assert.equal(hidesTail(null), false);
+  const game = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  assert.match(game, /if \(tailPivot\) tailPivot\.visible = !hidesTail\(cos\);/);
+  assert.match(game, /if \(built\.tail\) built\.tail\.visible = !hidesTail\(cos\);/);
 });
