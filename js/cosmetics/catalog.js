@@ -37,7 +37,7 @@ const RAW = [
   // 🎒 가방 — 가방류는 옆구리, 망토만 등
   { id: 'pack',   slot: 'back', ico: '🎒', name: '메신저 가방', coins: 1500, anchor: 'side' },
   { id: 'basket', slot: 'back', ico: '🧺', name: '바구니',      coins: 1200, anchor: 'side' },
-  { id: 'cape',   slot: 'back', ico: '🦸', name: '망토',        coins: 1800, anchor: 'back' },
+  { id: 'cape',   slot: 'back', ico: '🦸', name: '망토',        coins: 1800, anchor: 'back', hidesTail: true },
   // 💎 프리미엄 — 현금 전용(won). 코인으로 못 산다(2026-10-01 스펙 §2)
   { id: 'firefly', slot: 'trail', ico: '🌟', name: '반딧불', won: 4000, tier: '프리미엄' },
   { id: 'rainbow', slot: 'trail', ico: '🌈', name: '무지개', won: 3000, tier: '프리미엄' },
@@ -61,7 +61,7 @@ const RAW = [
   { id: 'tools_batnight', slot: 'tools', ico: '🦇', name: '달밤 보라 세트', won: 4500, tier: '프리미엄', sale: 'halloween' },
   { id: 'tools_harvest',  slot: 'tools', ico: '🌽', name: '수확제 세트',    won: 4500, tier: '프리미엄', sale: 'halloween' },
   { id: 'bat_wing', slot: 'back', ico: '🦇', name: '박쥐 날개', won: 4500, tier: '프리미엄', anchor: 'back', sale: 'halloween' },
-  { id: 'bat_cape', slot: 'back', ico: '🧛', name: '박쥐 망토', won: 4500, tier: '프리미엄', anchor: 'back', sale: 'halloween' },
+  { id: 'bat_cape', slot: 'back', ico: '🧛', name: '박쥐 망토', won: 4500, tier: '프리미엄', anchor: 'back', sale: 'halloween', hidesTail: true },
   { id: 'tools_maple', slot: 'tools', ico: '🍁', name: '단풍 숲 세트',    won: 5000, tier: '프리미엄' },
   { id: 'tools_frost', slot: 'tools', ico: '❄️', name: '눈꽃 겨울 세트',  won: 5000, tier: '프리미엄' },
   { id: 'tools_honey', slot: 'tools', ico: '🐝', name: '꿀벌 꿀단지 세트', won: 5000, tier: '프리미엄' },

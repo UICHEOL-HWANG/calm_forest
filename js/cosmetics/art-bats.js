@@ -38,8 +38,15 @@ function capeKit(k) {
   const hAt = y => { const dy = (y + anchorY - k.bodyY) / (R * bs[1]); return R * bs[0] * Math.sqrt(Math.max(0.02, 1 - dy * dy)); };
   const bodyMax = R * Math.max(bs[0], bs[2]);
   const tail = tailType(k.tail);
-  const BIG = tail === 'bushy' || tail === 'long';
-  return { R, bs, zc, anchorY, yTop, rNeck, hAt, bodyMax, BIG, tail, ARC: Math.PI * 1.06 };
+  return { R, bs, zc, anchorY, yTop, rNeck, hAt, bodyMax, tail, ARC: Math.PI * 1.06 };
+}
+
+export function capeClearR(k, th, y, pad = 0.07) {
+  const R = k.R, bs = k.bs, ey = (y + R * 0.30) / (R * bs[1]);
+  const f = Math.sqrt(Math.max(0, 1 - ey * ey));
+  if (f === 0) return 0;
+  const a = R * bs[0] * f, c = R * bs[2] * f;
+  return (a * c) / Math.hypot(c * Math.sin(th), a * Math.cos(th)) * (1 + pad);
 }
 
 /** 그룹으로 조립한 메시의 행렬을 지오메트리에 굽고 g 바로 아래로 올린다(mergeStatics 가 직계 자식만 본다) */
@@ -162,12 +169,12 @@ function roundCape(THREE, g, K, h, o) {
   const { R, zc, yTop, rNeck, hAt, bodyMax, ARC } = K;
   const yBot = R * o.bot;
   const rShoulder = Math.max(hAt(yTop - R * 0.45), bodyMax) * (1.10 + o.foldAmt), rHem = rShoulder * o.flare;
-  const VENT = K.BIG ? 0.26 : 0.06, VENT_TOP = K.BIG ? 0.45 : 0.30;
+  const VENT = 0.06, VENT_TOP = 0.30;
   const surf = (u, v) => {
     const vent = VENT * (VENT_TOP + (1 - VENT_TOP) * smooth(0.04, 0.42, v));
     const s = u < 0.5 ? -1 : 1, t = u < 0.5 ? (0.5 - u) * 2 : (u - 0.5) * 2, th = s * (vent + (ARC / 2 - vent) * t);
-    const r = (rNeck + (rShoulder - rNeck) * smooth(0, 0.30, v) + (rHem - rShoulder) * smooth(0.30, 1, v)) * (1 + o.foldAmt * smooth(0.12, 1, v) * Math.cos(o.folds * th));
     const y = yTop + (yBot - yTop) * v + o.hem * R * v * v * Math.cos(o.folds * th + Math.PI);
+    const r = Math.max(capeClearR(K, th, y), (rNeck + (rShoulder - rNeck) * smooth(0, 0.30, v) + (rHem - rShoulder) * smooth(0.30, 1, v)) * (1 + o.foldAmt * smooth(0.12, 1, v) * Math.cos(o.folds * th)));
     return { x: Math.sin(th) * r, y, z: zc - Math.cos(th) * r - 0.10 * R * v * v };
   };
   //  ⚠️ segU 는 짝수 — u=0.5(좌·우 폭 경계)가 열 경계에 와야 split 으로 뒤트임이 갈린다

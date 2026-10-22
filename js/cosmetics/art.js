@@ -10,8 +10,8 @@
 //  ▶ ⚠️ 블룸 임계 0.85 — PALETTE 전 색이 그 아래다. 색을 고치면 luma 를 다시 재라.
 // =============================================================
 
-import { ringR, domeTheta, DOME_BOT, onSurf, tailType } from './anchors.js';
-import { buildBatWing, buildBatCape } from './art-bats.js';
+import { ringR, domeTheta, DOME_BOT, onSurf } from './anchors.js';
+import { buildBatWing, buildBatCape, capeClearR } from './art-bats.js';
 import { buildEarmuff, buildSledPack } from './winter-art.js';
 import { buildFriendWing, buildFriendPin } from './art-friend.js';   // 🤝 친구 초대 보상(날개·하트핀)
 import { buildAcornCap, buildBeeBand, buildKittyPack, buildNestPack } from './art-forest-set.js';
@@ -527,13 +527,8 @@ function makeTables(THREE) {
       //     팔이 망토를 뚫고 나온다(sims/cape-concepts 에 팔을 넣고 실측했다).
       //     팔 어깨는 game.js mkArm 기준 등에서 ±102~104° — 1.06π(±95°) 면 팔 뒤에서 끝난다.
       const ARC = Math.PI * 1.06;
-      //  ⚠️ 뒤트임 폭은 **꼬리 종류가 정한다.** 한 값으로 고정했다가 두 번 틀렸다:
-      //     0.50 고정 → 곰·판다에서 등이 통째로 열려 망토가 커튼 두 장이 됐다.
-      //     0 고정   → 🦊여우 꼬리가 천 한가운데를 뚫고 나왔다.
-      //     큰 꼬리(bushy·long)만 지나갈 만큼 열고, 나머지는 장식 트임만 남긴다.
-      const BIG_TAIL = ['bushy', 'long'].includes(tailType(k.tail));
-      const VENT = BIG_TAIL ? 0.26 : 0.06;
-      const VENT_TOP = BIG_TAIL ? 0.45 : 0.30;   // 깃 밑에서의 폭 비율(자락으로 갈수록 1 에 수렴)
+      const VENT = 0.06;
+      const VENT_TOP = 0.30;   // 깃 밑에서의 폭 비율(자락으로 갈수록 1 에 수렴)
 
       const anchorY = k.bodyY + R * 0.30;                 // anchors.backAnchor 와 같은 값
       const yTop = (k.HY - k.HR * 0.58) - anchorY;        // 깃은 목에서 — 목줄이 이미 쓰는 높이
@@ -552,11 +547,12 @@ function makeTables(THREE) {
         const s = u < 0.5 ? -1 : 1;                            // 왼폭 / 오른폭
         const t = u < 0.5 ? (0.5 - u) * 2 : (u - 0.5) * 2;     // 0(트임) → 1(앞단)
         const th = s * (vent + (ARC / 2 - vent) * t);
-        const r = (rNeck + (rShoulder - rNeck) * smoothK(0, 0.30, v)
+        const rCloth = (rNeck + (rShoulder - rNeck) * smoothK(0, 0.30, v)
                          + (rHem - rShoulder) * smoothK(0.30, 1, v))
                 * (1 + FOLD_AMT * smoothK(0.12, 1, v) * Math.cos(FOLDS * th));
         // 자락은 주름 사이가 처진다 — 일직선 밑단이면 천이 아니라 판때기다
         const y = yTop + (yBot - yTop) * v + 0.09 * R * v * v * Math.cos(FOLDS * th + Math.PI);
+        const r = Math.max(capeClearR(k, th, y), rCloth);
         return { x: Math.sin(th) * r, y, z: zc - Math.cos(th) * r - 0.10 * R * v * v };
       };
       const cloth = put(g, new THREE.Mesh(
