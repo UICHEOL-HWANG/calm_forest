@@ -1431,7 +1431,6 @@ export const EN = {
   '목각 인형': 'Wooden Doll',
   '보석 목걸이': 'Gem Necklace',
   '농부 삼촌': 'Farmer',
-  '삼촌이 쪽지를 쓰고 있어요…': 'The farmer is writing you a note…',
   '목수 아저씨': 'Carpenter',
   '방랑 상인': 'Wandering Merchant',
   '낚시꾼 할아버지': 'Old Fisherman',
@@ -2493,6 +2492,15 @@ export const EN = {
   //   ▶ 통문장을 키로 쓴다 — ui.js COPY 값과 한 글자도 다르지 않게 맞춘다(어긋나면 영어 빌드에서
   //     한국어로 조용히 새는데, 이 스크립트는 그걸 못 잡는다).
   '멧돼지가 길을 막아섰어요': 'The boar blocks your path',
+  '밤손님과 대결!': 'Night visitor showdown!',
+  '이기면 가져간 작물을 되찾아요': 'Win to get your crops back',
+  '눌러서 닫기': 'Tap to close',
+  '🐾 흔적 살펴보기': '🐾 Look at the tracks',
+  '🎃 밭 가까이 허수아비를 세워 봐요': '🎃 Try a scarecrow near your field',
+  '🪵 밭 둘레에 울타리를 4개 이상 둘러 봐요': '🪵 Try 4 or more fences around your field',
+  '🤝 다음에 이기면 당분간 안 와요': '🤝 Win next time and it stays away for a while',
+  '멧돼지가 오늘은 한 수 위였네요. 가져간 작물은 숲속 새끼들이랑 나눠 먹을 거예요. 너무 속상해하지 말아요.': 'The boar was one step ahead today. It will share those crops with its little ones in the woods. Try not to feel too down.',
+  '너구리 녀석, 그릇 섞는 솜씨가 보통이 아니네요. 가져간 작물은 겨울 준비에 쓰려나 봐요. 다음엔 꼭 찾아낼 수 있을 거예요.': 'That raccoon sure knows how to shuffle bowls. Looks like those crops are for its winter stores. You will spot it next time.',
   '너구리가 작물을 훔쳐서 그릇에 숨겼어요!': 'The raccoon stole a crop and hid it under a bowl!',
   '무엇을 낼까요?': 'What will you throw?',
   '어느 그릇에 있을까요?': 'Which bowl is it under?',

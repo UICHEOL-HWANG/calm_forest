@@ -7071,7 +7071,7 @@ let nightNoteFetcher = null;  // async ({date,animal,crop}) => {author,text}
 export function setNightVisitSource(fn) { nightFetcher = fn || null; }
 export function setNightNoteSource(fn) { nightNoteFetcher = fn || null; }
 
-let duelFetcher = null;   // async (ctx) => boolean — js/duel/index.js 가 등록. true 면 이겼다
+let duelFetcher = null;   // async (ctx) => 'win' | 'lose' | 'quit' — js/duel/index.js 가 등록
 /** 🐗🦝 대결 등록 — 안 끼우면 흔적 조사는 지금까지처럼 조사 보상만 주고 끝난다(기능 플래그 겸용) */
 export function setDuelSource(fn) { duelFetcher = fn || null; }
 
@@ -7112,6 +7112,7 @@ function handleAction() {
   if (nearDoor === 'farmbench') return ui.openCook?.('out');   // 🔧 자재 작업대 → 제작 메뉴(🌷야외 탭 = 밭 시설)
   if (nearDoor === 'warehouse') return withdrawWarehouse();
   if (nearDoor === 'hireboard') return hireBoardInteract();   // 📋 일꾼 게시판 → 고용 창   // 🧺 작물 창고 옆에서 액션 = 내용물 꺼내기
+  if (nearDoor === 'trace') { const tr = traceTarget(); if (tr) return investigateTrace(tr); }
   if (nearDoor === 'pet') return commandPet();   // 🐾 밭 근처에서 액션 = 맡기기(물·잡초·해충 최대 5칸)
   if (nearDoor === 'mine') return enterMine();
   if (nearDoor === 'mineexit') return exitMine();

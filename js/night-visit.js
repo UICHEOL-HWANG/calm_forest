@@ -59,7 +59,7 @@ export function initNightVisit() {
     setNightNoteSource(async ({ date, animal, crop }) => {
       const url = `${CONFIG.NIGHT_NOTE_API}?date=${encodeURIComponent(date)}`
         + `&animal=${encodeURIComponent(animal)}&crop=${encodeURIComponent(crop || '')}`
-        + `&lang=${LANG}`;   // [i18n] 표시 언어로 쪽지 생성(서버가 ko/en 화이트리스트)
+        + `&lang=${LANG}&kind=lose`;   // [i18n] 표시 언어로 쪽지 생성(서버가 ko/en 화이트리스트)
       const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(NOTE_TIMEOUT_MS) });
       if (!res.ok) return null;
       const n = await res.json();

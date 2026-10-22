@@ -31,6 +31,7 @@ import { Sound } from '../sound.js';
 import { museumDims, _museumNear, museumFloor, museumFloorItems, museumPlateText, museumStairs, updateCafeInteract } from '../spaces/cafe.js';
 import { surveyBenchWorld, surveyDeskWorld } from '../spaces/farm-field.js';
 import { visitorTarget } from '../spaces/visitors.js';
+import { traceTarget } from '../spaces/shovel.js';
 import { forageTarget } from '../spaces/forest.js';
 import { houseExitPoint, nearHouseDoor } from '../spaces/house.js';
 import { INT_HALF, STAIR_PROMPT_R, curHalf, nearestDecor, placeDecor, stairLayout, stopDecorPlacing } from '../spaces/indoor.js';
@@ -396,6 +397,7 @@ export function updateDoorInteract() {
     prompt = '🏮 빛 공방에 들어가기';
     firstHintBanner('lightWorkshop', '🏮', '빛 공방을 찾았어요', '밤에 한 줄로 주문하면 내일 아침 빛을 받아요');
   }
+  if (!prompt && !indoor && !placingOutdoor && traceTarget()) { $w.nearDoor = 'trace'; prompt = '🐾 흔적 살펴보기'; }
   if (!prompt) {   // 🪏 반쯤 판 밭 앞: 남은 유예를 프롬프트 줄로(모바일 규칙 — 안내는 컨텍스트 슬롯에만)
     const dp = plots.find(p => p.digAt && dist2D(p.group.position, player.position) < 1.6);
     if (dp) prompt = `🪏 한 번 더 파면 밭이 사라져요 (${Math.max(1, Math.ceil(DIG_WINDOW - (clock.elapsedTime - dp.digAt)))})`;

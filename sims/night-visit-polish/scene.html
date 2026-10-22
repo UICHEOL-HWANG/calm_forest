@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Night Visit Mockups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #4a5a4f; --mint: #bfe8c9; --shadow: 0 6px 18px rgba(90,120,100,0.18);
+    --night: #172235; --night-2: #24344d; --moon: #ffe7a3;
+    --paper: #fbf4e4; --paper-line: rgba(150,120,80,0.14);
+    --forest: #2f5d43; --forest-ink: #23402f;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #8a9a78;
+    font-family: 'Apple SD Gothic Neo', system-ui, sans-serif; color: var(--ink); word-break: keep-all; }
+  #bg { position: fixed; inset: 0; background-size: cover; background-position: center; }
+  #patch { position: fixed; left: 0; right: 0; bottom: 0; height: 350px; display: none; background: linear-gradient(180deg, rgba(160,170,133,0) 0, #a0a985 40px, #9ea782 100%); }
+  body.m #patch { display: block; }
+  .dim { position: fixed; inset: 0; background: rgba(20,40,30,0.55); }
+  .dim.soft { background: rgba(24,42,33,0.38); backdrop-filter: blur(2px); }
+  .center { position: fixed; inset: 0; display: grid; place-items: center; padding: 16px; }
+
+  .tut-card { width: min(440px, 92vw); background: #fff; border-radius: 24px; box-shadow: 0 20px 60px rgba(30,50,40,0.4);
+    padding: 28px 26px 22px; text-align: center; font-family: 'Segoe UI', system-ui, sans-serif; }
+  .tut-card .em { font-size: 40px; }
+  .tut-card h2 { margin: 4px 0 16px; font-size: 20px; }
+  .tut-card p { font-size: 14px; line-height: 1.6; opacity: .85; margin: 0 0 18px; }
+  .tut-card button { border: none; border-radius: 14px; padding: 13px 30px; background: var(--mint); color: var(--ink); font-weight: 700; font-size: 15px; box-shadow: var(--shadow); }
+
+  .letter { position: relative; width: min(380px, 88vw); transform: rotate(-1.2deg);
+    background:
+      repeating-linear-gradient(180deg, transparent 0 31px, var(--paper-line) 31px 32px),
+      radial-gradient(120% 80% at 0% 0%, #fffaf0 0%, var(--paper) 60%, #f3e6c9 100%);
+    background-position: 0 14px, 0 0;
+    border-radius: 6px; padding: 34px 28px 26px;
+    box-shadow: 0 1px 0 rgba(255,255,255,.6) inset, 0 24px 50px -14px rgba(20,30,20,.55), 0 4px 10px rgba(60,40,20,.12);
+    font-family: 'Gowun Batang', 'AppleMyungjo', serif; color: #4a3b28; }
+  .letter::before { content: ''; position: absolute; top: -12px; left: 50%; width: 96px; height: 26px; transform: translateX(-50%) rotate(2deg);
+    background: rgba(196, 220, 186, .78); box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    clip-path: polygon(4% 0, 96% 6%, 100% 50%, 95% 100%, 3% 94%, 0 50%); }
+  .letter .kicker { font-family: 'Apple SD Gothic Neo', sans-serif; font-size: 11.5px; letter-spacing: .08em; color: #a08560; margin-bottom: 10px; }
+  .letter p { margin: 0; font-size: 16px; line-height: 32px; }
+  .letter .sign { margin-top: 14px; text-align: right; font-size: 15px; color: #6b553a; }
+  .letter .seal { position: absolute; right: 22px; bottom: -18px; width: 46px; height: 46px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #d9785a, #a8452c 70%); display: grid; place-items: center; font-size: 20px;
+    box-shadow: 0 4px 10px rgba(110,40,20,.35), inset 0 -2px 4px rgba(0,0,0,.2); transform: rotate(8deg); }
+  .letter-actions { margin-top: 34px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .chip { background: rgba(255,250,238,.92); border-radius: 999px; padding: 7px 13px; font-size: 13px; font-weight: 600; color: #5a4a32;
+    box-shadow: 0 4px 12px rgba(0,0,0,.12); }
+  .btn-forest { border: none; border-radius: 14px; padding: 13px 34px; background: var(--forest); color: #fff7e6; font-weight: 700; font-size: 15px;
+    box-shadow: 0 8px 18px -6px rgba(30,60,40,.6); font-family: 'Apple SD Gothic Neo', sans-serif; }
+
+  .result { width: min(380px, 90vw); border-radius: 22px; overflow: hidden; background: #fffdf7;
+    box-shadow: 0 28px 60px -18px rgba(10,20,30,.65); }
+  .result .head { position: relative; height: 128px; background:
+      radial-gradient(circle at 78% 34%, rgba(255,231,163,.95) 0 15px, rgba(255,231,163,.18) 16px 34px, transparent 35px),
+      linear-gradient(160deg, var(--night-2), var(--night));
+    color: #e9eef8; padding: 18px 20px; display: flex; flex-direction: column; justify-content: flex-end; }
+  .result .head .stars { position: absolute; inset: 0; background-image:
+      radial-gradient(1.4px 1.4px at 14% 22%, #fff 99%, transparent), radial-gradient(1.2px 1.2px at 34% 44%, #fff 99%, transparent),
+      radial-gradient(1.6px 1.6px at 56% 18%, #fff 99%, transparent), radial-gradient(1px 1px at 64% 60%, #fff 99%, transparent),
+      radial-gradient(1.2px 1.2px at 90% 70%, #fff 99%, transparent); opacity: .8; }
+  .result .head .beast { position: absolute; right: 18px; bottom: -14px; font-size: 54px; filter: drop-shadow(0 6px 8px rgba(0,0,0,.35)); }
+  .result .head small { font-size: 11.5px; letter-spacing: .1em; opacity: .7; }
+  .result .head b { font-size: 20px; margin-top: 4px; }
+  .result .body { padding: 22px 20px 18px; }
+  .result .who { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
+  .result .av { width: 32px; height: 32px; border-radius: 50%; background: #eef5ea; display: grid; place-items: center; font-size: 18px; }
+  .result .who span { font-weight: 700; color: var(--forest); font-size: 14.5px; }
+  .result p { margin: 0; font-size: 14.5px; line-height: 1.7; color: #3c4a40; }
+  .result .tip { margin-top: 14px; display: flex; gap: 10px; align-items: center; background: #f4f1e6; border-radius: 14px; padding: 10px 12px; }
+  .result .tip .ic { font-size: 22px; }
+  .result .tip small { display: block; font-size: 11px; color: #9a8f74; }
+  .result .tip b { font-size: 13.5px; color: #4b4130; }
+  .result .btn-forest { width: 100%; margin-top: 16px; }
+
+  .sheet-wrap { position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; padding: 0 12px calc(18px + env(safe-area-inset-bottom)); }
+  .sheet { position: relative; width: min(520px, 96vw); background: linear-gradient(180deg, #fffefa, #fbf6ea);
+    border-radius: 22px; padding: 18px 18px 16px 18px; box-shadow: 0 -2px 0 rgba(255,255,255,.6) inset, 0 20px 44px -12px rgba(30,50,35,.5);
+    border: 1px solid rgba(120,150,120,.18); }
+  .sheet .portrait { position: absolute; left: 16px; top: -34px; width: 68px; height: 68px; border-radius: 50%; background: #eef5ea;
+    display: grid; place-items: center; font-size: 38px; border: 4px solid #fffdf6; box-shadow: 0 6px 16px rgba(30,50,35,.25); }
+  .sheet .name { margin-left: 78px; margin-top: -6px; display: inline-flex; align-items: center; gap: 6px; background: var(--forest); color: #fff7e6;
+    font-weight: 700; font-size: 13px; padding: 4px 11px; border-radius: 999px; }
+  .sheet p { margin: 14px 2px 0; font-size: 15px; line-height: 1.7; color: #2f3d33; }
+  .sheet .foot { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
+  .sheet .foot .chip { box-shadow: none; background: #f1ecdd; }
+  .sheet .next { font-size: 12.5px; color: #8b9a8e; display: flex; align-items: center; gap: 4px; }
+  .sheet .next i { font-style: normal; animation: bob 1s ease-in-out infinite; display: inline-block; }
+  @keyframes bob { 50% { transform: translateY(3px); } }
+
+  .tr { position: fixed; inset: 0; pointer-events: none; }
+  .title-card { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: #fff6dc; }
+  .title-card .ttl { font-size: clamp(30px, 8vw, 54px); font-weight: 900; letter-spacing: -0.02em; text-shadow: 0 4px 0 rgba(0,0,0,.35); }
+  .title-card .sub { margin-top: 10px; font-size: clamp(13px, 3.4vw, 17px); opacity: .9; font-weight: 600; }
+  .title-card .ani { font-size: clamp(54px, 14vw, 86px); filter: drop-shadow(0 8px 10px rgba(0,0,0,.4)); }
+
+  .flood { position: absolute; inset: 0; background: #121a28; animation: flood 1.8s ease both; }
+  @keyframes flood { 0%, 18% { opacity: 0; } 30%, 76% { opacity: 1; } 92%, 100% { opacity: 0; } }
+  .slash { position: absolute; left: 10%; width: 80%; height: 30px; transform-origin: 100% 50%;
+    background: linear-gradient(180deg, #ffe7a3 0 3px, #121a28 3px calc(100% - 3px), #ffe7a3 calc(100% - 3px));
+    clip-path: polygon(0 50%, 12% 30%, 100% 0, 88% 50%, 100% 100%, 12% 70%);
+    filter: drop-shadow(0 0 10px rgba(255,220,140,.55)); animation: slashIn 1.8s cubic-bezier(.75,0,.25,1) both; }
+  .slash:nth-child(2) { top: 40%; animation-delay: 0s; }
+  .slash:nth-child(3) { top: 47%; animation-delay: .05s; }
+  .slash:nth-child(4) { top: 54%; animation-delay: .1s; }
+  @keyframes slashIn { 0% { transform: rotate(-30deg) scaleX(0); opacity: 1; } 12% { transform: rotate(-30deg) scaleX(1); opacity: 1; }
+    22% { transform: rotate(-30deg) scaleX(1); opacity: 1; }
+    32% { transform: rotate(-30deg) scaleX(1) scaleY(1.6); opacity: 0; } 100% { transform: rotate(-30deg) scaleX(1); opacity: 0; } }
+  .trA .title-card { animation: ttlA 1.8s ease both; }
+  @keyframes ttlA { 0%, 16% { opacity: 0; transform: scale(1.5); } 26% { opacity: 1; transform: scale(.96); } 32%, 74% { opacity: 1; transform: scale(1); } 86%, 100% { opacity: 0; } }
+
+  @property --r { syntax: '<length>'; inherits: false; initial-value: 0px; }
+  .iris { position: absolute; inset: 0; background: #0f1726;
+    -webkit-mask: radial-gradient(circle at 50% 54%, transparent var(--r), #000 calc(var(--r) + 1px));
+            mask: radial-gradient(circle at 50% 54%, transparent var(--r), #000 calc(var(--r) + 1px));
+    animation: irisAn 1.9s cubic-bezier(.65,0,.35,1) both; }
+  @keyframes irisAn { 0% { --r: 120vmax; } 28% { --r: 70px; } 34% { --r: 70px; } 42%, 70% { --r: 0px; } 100% { --r: 120vmax; } }
+  .iris::after { content: ''; position: absolute; left: 50%; top: 54%; width: 150px; height: 150px; transform: translate(-50%,-50%); border-radius: 50%;
+    box-shadow: 0 0 0 3px rgba(255,231,163,.7); animation: irisRing 1.9s ease both; }
+  @keyframes irisRing { 0%, 22% { opacity: 0; } 28%, 34% { opacity: 1; } 42%, 100% { opacity: 0; } }
+  .trB .title-card { animation: ttlB 1.9s ease both; }
+  @keyframes ttlB { 0%, 34% { opacity: 0; transform: translateY(14px); } 44%, 68% { opacity: 1; transform: none; } 76%, 100% { opacity: 0; } }
+  .trB .ttl { color: var(--moon); }
+
+  .band { position: absolute; top: 50%; height: 26%; width: 62%; display: flex; align-items: center; gap: 14px;
+    padding: 0 6%; color: #fff6dc; font-weight: 800; }
+  .band.l { left: 0; justify-content: flex-start; background: linear-gradient(90deg, #2f5d43, #3e7a57);
+    clip-path: polygon(0 0, 100% 0, 86% 100%, 0 100%); animation: bandL 1.9s cubic-bezier(.2,.9,.2,1) both; }
+  .band.r { right: 0; justify-content: flex-end; background: linear-gradient(270deg, #24344d, #3a2f4c);
+    clip-path: polygon(14% 0, 100% 0, 100% 100%, 0 100%); animation: bandR 1.9s cubic-bezier(.2,.9,.2,1) both; }
+  .band .big { font-size: clamp(44px, 11vw, 76px); filter: drop-shadow(0 6px 8px rgba(0,0,0,.35)); }
+  .band .lbl { font-size: clamp(14px, 3.6vw, 20px); }
+  @keyframes bandL { 0% { transform: translate(-105%,-50%); } 20%, 76% { transform: translate(0,-50%); } 100% { transform: translate(-105%,-50%); } }
+  @keyframes bandR { 0% { transform: translate(105%,-50%); } 20%, 76% { transform: translate(0,-50%); } 100% { transform: translate(105%,-50%); } }
+  .vs { position: absolute; left: 50%; top: 50%; font-size: clamp(40px, 10vw, 68px); font-weight: 900; font-style: italic;
+    color: var(--moon); text-shadow: 0 4px 0 #8a5a1a, 0 10px 18px rgba(0,0,0,.4); animation: vsAn 1.9s ease both; }
+  @keyframes vsAn { 0%, 18% { opacity: 0; transform: translate(-50%,-50%) scale(2.4) rotate(-8deg); } 26% { opacity: 1; transform: translate(-50%,-50%) scale(.9) rotate(-4deg); }
+    32%, 74% { opacity: 1; transform: translate(-50%,-50%) scale(1) rotate(-4deg); } 84%, 100% { opacity: 0; transform: translate(-50%,-50%) scale(1) rotate(-4deg); } }
+  .vs-top { position: absolute; left: 0; right: 0; top: calc(37% - 50px); text-align: center; color: #fff6dc; font-weight: 900;
+    font-size: clamp(22px, 6vw, 36px); text-shadow: 0 3px 0 rgba(0,0,0,.35); animation: fadeMid 1.9s ease both; }
+  .vs-sub { position: absolute; left: 0; right: 0; top: calc(63% + 16px); text-align: center; color: #fff6dc; font-weight: 600; font-size: clamp(13px, 3.4vw, 16px);
+    text-shadow: 0 2px 4px rgba(0,0,0,.5); animation: fadeMid 1.9s ease both; }
+  @keyframes fadeMid { 0%, 20% { opacity: 0; } 30%, 74% { opacity: 1; } 84%, 100% { opacity: 0; } }
+  .trC .shade { position: absolute; inset: 0; background: rgba(10,16,26,.55); animation: fadeMid 1.9s ease both; }
+
+  .trace { position: fixed; display: grid; justify-items: center; }
+  .trace .bub { width: 46px; height: 46px; border-radius: 14px; background: #fff; display: grid; place-items: center; font-size: 26px;
+    box-shadow: 0 6px 14px rgba(0,0,0,.25); position: relative; z-index: 1; }
+  .trace .bub::after { content: ''; position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%); border: 8px solid transparent; border-top-color: #fff; border-bottom: 0; }
+  .trace .ring { position: absolute; top: 58px; width: 74px; height: 26px; border-radius: 50%; border: 3px solid rgba(255,240,200,.85); }
+  .trace .dirt { position: absolute; top: 62px; left: 7px; width: 60px; height: 20px; border-radius: 50%; background: #6d4a2e; opacity: .85; }
+  .look-btn { position: fixed; left: 50%; transform: translateX(-50%); border: none; border-radius: 999px; padding: 13px 24px;
+    background: #fff; color: var(--forest-ink); font-weight: 800; font-size: 16px; display: flex; align-items: center; gap: 8px;
+    box-shadow: 0 10px 22px -6px rgba(20,40,30,.45), 0 0 0 3px rgba(255,231,163,.9); font-family: inherit; }
+  .look-btn .k { font-size: 11px; font-weight: 700; background: #eef2ee; border-radius: 6px; padding: 2px 6px; color: #6b7a6f; }
+  .guide { position: fixed; display: flex; align-items: center; gap: 8px; background: rgba(23,34,53,.88); color: #fff3d6; border-radius: 999px;
+    padding: 8px 14px 8px 10px; font-size: 13.5px; font-weight: 700; box-shadow: 0 8px 18px rgba(0,0,0,.25); }
+  .guide .arr { width: 26px; height: 26px; border-radius: 50%; background: var(--moon); color: #3a2a08; display: grid; place-items: center; font-size: 15px; }
+  .mm-dot { position: fixed; width: 18px; height: 18px; border-radius: 50%; background: #fff3d6; display: grid; place-items: center; font-size: 11px;
+    box-shadow: 0 0 0 3px rgba(255,200,80,.6); }
+</style>
+</head>
+<body>
+<div id="bg"></div><div id="patch"></div>
+<div id="root"></div>
+<script>
+const q = new URLSearchParams(location.search);
+const dev = q.get('dev') || 'mobile';
+const kind = q.get('kind') || 'noteA';
+const t = q.get('t');
+const animal = q.get('animal') || 'boar';
+document.body.classList.toggle('m', dev !== 'pc');
+document.getElementById('bg').style.backgroundImage = `url(${dev === 'pc' ? 'bg-pc.jpg' : 'bg-mobile.png'})`;
+
+const A = animal === 'boar'
+  ? { ico: '🐗', name: '멧돼지', crop: '당근', note: '멧돼지가 오늘은 한 수 위였네요. 가져간 당근은 숲속 새끼들이랑 나눠 먹을 거예요. 밭 옆에 허수아비를 하나 세워 두면 한동안 덜 올 겁니다.' }
+  : { ico: '🦝', name: '너구리', crop: '토마토', note: '너구리 녀석, 그릇 섞는 솜씨가 보통이 아니네요. 가져간 토마토는 겨울 준비에 쓰려나 봐요. 밭 둘레에 울타리를 네 개쯤 둘러 두면 덜 넘어올 거예요.' };
+const tip = animal === 'boar' ? { ic: '🎃', t: '밭 근처에 허수아비 세우기' } : { ic: '🪵', t: '밭 둘레에 울타리 4개 두르기' };
+
+const html = {
+  noteNow: `<div class="dim"></div><div class="center"><div class="tut-card"><div class="em">📜</div><h2>농부 삼촌</h2><p>${A.note}</p><button>알겠어요 🌱</button></div></div>`,
+  noteA: `<div class="dim"></div><div class="center"><div>
+    <div class="letter"><div class="kicker">밭에 남겨 둔 쪽지</div><p>${A.note}</p><div class="sign">농부 삼촌 드림</div><div class="seal">🌾</div></div>
+    <div class="letter-actions"><div class="chips"><span class="chip">${tip.ic} ${tip.t}</span></div><button class="btn-forest">고마워요</button></div></div></div>`,
+  noteB: `<div class="dim"></div><div class="center"><div class="result">
+    <div class="head"><div class="stars"></div><small>오늘의 승부</small><b>${A.name}에게 졌어요</b><div class="beast">${A.ico}</div></div>
+    <div class="body"><div class="who"><div class="av">🧑‍🌾</div><span>농부 삼촌</span></div><p>${A.note}</p>
+    <div class="tip"><div class="ic">${tip.ic}</div><div><small>다음엔 이렇게</small><b>${tip.t}</b></div></div>
+    <button class="btn-forest">밭으로 돌아가기</button></div></div></div>`,
+  noteC: `<div class="dim soft"></div><div class="sheet-wrap"><div class="sheet"><div class="portrait">🧑‍🌾</div><span class="name">농부 삼촌</span>
+    <p>${A.note}</p><div class="foot"><span class="chip">${tip.ic} ${tip.t}</span><span class="next">눌러서 닫기 <i>▼</i></span></div></div></div>`,
+  transA: `<div class="tr trA"><div class="flood"></div><div class="slash"></div><div class="slash"></div><div class="slash"></div>
+    <div class="title-card"><div><div class="ani">${A.ico}</div><div class="ttl">밤손님과 대결!</div><div class="sub">이기면 가져간 ${A.crop}을 되찾아요</div></div></div></div>`,
+  transB: `<div class="tr trB"><div class="iris"></div>
+    <div class="title-card"><div><div class="ani">${A.ico}</div><div class="ttl">밤손님과 대결!</div><div class="sub">${A.name}가 길을 막아섰어요</div></div></div></div>`,
+  transC: `<div class="tr trC"><div class="shade"></div><div class="band l"><span class="big">🐻</span><span class="lbl">나</span></div>
+    <div class="band r"><span class="lbl">${A.name}</span><span class="big">${A.ico}</span></div><div class="vs">VS</div>
+    <div class="vs-top">밤손님과 대결!</div><div class="vs-sub">이기면 가져간 ${A.crop}을 되찾아요</div></div>`,
+  button: dev === 'pc'
+    ? `<div class="trace" style="left:578px;top:250px"><div class="dirt"></div><div class="ring"></div><div class="bub">🐾</div></div>
+       <button class="look-btn" style="bottom:122px"><span>🐾 흔적 살펴보기</span><span class="k">Space</span></button>
+       <div class="guide" style="left:150px;top:200px"><span class="arr">→</span>🐾 흔적 3곳 · 밭에 있어요</div>
+       <div class="mm-dot" style="left:44px;top:96px">🐾</div>`
+    : `<div class="trace" style="left:262px;top:420px"><div class="dirt"></div><div class="ring"></div><div class="bub">🐾</div></div>
+       <button class="look-btn" style="bottom:calc(310px + env(safe-area-inset-bottom))">🐾 흔적 살펴보기</button>
+       <div class="guide" style="left:16px;top:224px"><span class="arr">↓</span>🐾 흔적 3곳 · 밭에 있어요</div>`,
+};
+document.getElementById('root').innerHTML = html[kind] || '';
+if (t !== null) {
+  document.querySelectorAll('.tr, .tr *').forEach(el => {
+    const cs = getComputedStyle(el);
+    if (cs.animationName === 'none') return;
+    const base = parseFloat(cs.animationDelay) || 0;
+    el.style.animationDelay = `${base - parseFloat(t)}s`;
+    el.style.animationPlayState = 'paused';
+  });
+}
+</script>
+</body>
+</html>

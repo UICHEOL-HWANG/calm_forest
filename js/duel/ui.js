@@ -29,6 +29,8 @@ export const COPY = {
   //    완성된 문장 셋을 둔다(이 저장소는 통문장을 i18n 키로 쓴다).
   shell1: '첫 번째 그릇', shell2: '가운데 그릇', shell3: '마지막 그릇',
   quit: '그만두기',
+  introTitle: '밤손님과 대결!',
+  introSub: '이기면 가져간 작물을 되찾아요',
 };
 const HAND_LABEL = { rock: COPY.rock, scissors: COPY.scissors, paper: COPY.paper };
 const SHELL_LABEL = [COPY.shell1, COPY.shell2, COPY.shell3];   // 화면 자리(slot) → 이름
@@ -76,6 +78,27 @@ function cancelableWait(ms, signal) {
     const onAbort = () => { clearTimeout(timer); reject(new Error('duel-closed')); };
     const timer = setTimeout(() => { signal.removeEventListener('abort', onAbort); resolve(); }, ms);
     signal.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
+const INTRO_MS = 1800;
+const INTRO_DARK_MS = 620;
+
+export function playIntro({ animal, onDark }) {
+  const el = $('duel-intro');
+  const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  if (!el || reduce) { onDark?.(); return Promise.resolve(); }
+  $('di-ani').textContent = animal === 'boar' ? '🐗' : '🦝';
+  $('di-title').textContent = t(COPY.introTitle);
+  $('di-sub').textContent = t(COPY.introSub);
+  el.classList.remove('play');
+  void el.offsetWidth;
+  el.classList.add('play');
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      try { onDark?.(); } catch (e) { el.classList.remove('play'); reject(e); return; }
+      setTimeout(() => { el.classList.remove('play'); resolve(); }, INTRO_MS - INTRO_DARK_MS);
+    }, INTRO_DARK_MS);
   });
 }
 
