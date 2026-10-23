@@ -66,7 +66,7 @@ test('☰ 카드를 처음 열면 메뉴 투어, 근접 알약이 처음 뜨면 
   assert.match(HTML, /onOpen: \(\) => runMenuTour\(\)/);
   assert.match(HTML, /spotSteps\('menu', TOUCH\)/);
   assert.match(read('js/hud/menu-sheet.js'), /c\.dataset\.for = el\.id;/);
-  assert.match(HTML, /onPill: \(\) => runPillTour\(\)/);
+  assert.match(HTML, /onPill: \(info\) => runPillTour\(info\)/);
 });
 
 test('대상이 사라지면 3초 뒤 넘기고, 자기 조건이 깨진 투어(☰ 닫힘)는 끝낸다', () => {

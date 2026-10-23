@@ -66,7 +66,7 @@ export function initMobileHud({ Input, t, act, trackEvent, onPill = null }) {
   const pill = document.createElement('button');
   pill.id = 'near-pill'; pill.type = 'button';
   document.body.appendChild(pill);
-  let npc = null, door = null, target = null, kind = null, raf = 0;
+  let npc = null, door = null, doorText = null, target = null, kind = null, raf = 0;
   pill.addEventListener('pointerdown', (e) => e.stopPropagation());
   pill.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -87,14 +87,14 @@ export function initMobileHud({ Input, t, act, trackEvent, onPill = null }) {
     pill.classList.toggle('show', !!kind);
     document.body.classList.toggle('near-pill-on', kind === 'door' || kind === 'target');
     if (kind && !raf) raf = requestAnimationFrame(tick);
-    if (kind) onPill?.();
+    if (kind) onPill?.({ kind, icon: pill.textContent, text: kind === 'door' ? doorText : null });
   }
 
   return {
     onTool(idx, tools, page) { fan.mount($('hotbar')); fan.onTool(idx, tools, page); fan.layout(); },
     onNpc(text) { npc = text || null; refreshPill(); },
     onTarget(icon) { target = icon || null; refreshPill(); },
-    onDoor(text, info, icon) { door = text && !info ? icon : null; refreshPill(); },
+    onDoor(text, info, icon) { door = text && !info ? icon : null; doorText = door ? text : null; refreshPill(); },
     setCoachStep(key) { document.body.classList.toggle('coach-toolpage', key === 'toolpage'); },
   };
 }
