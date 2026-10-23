@@ -42,4 +42,4 @@
 
 ## 개정 기록 (원본 기준은 고치지 않고 덧붙인다)
 - 개정 1 (2026-10-12, 배포 전) 처치에 시작 안내 카드 3장 → `dev/active/e1-harvest-start/prereg-amendment-01.md`
-- 개정 2 (2026-10-23, 메타 광고 시작 전 · 승인 대기) 앱 배너 겹침 · 10/23 온보딩 배포 · 광고 유입 보고 층 · 7일 재방문 = 웹+앱 합산 → `first5min-harvest-experiment-prereg-amendment-02.md`
+- 개정 2 (2026-10-23, 메타 광고 시작 전 · 고정) 앱 배너 겹침 · 10/23 온보딩 배포 · 광고 유입 보고 층 · 7일 재방문 = 웹+앱 합산 → `first5min-harvest-experiment-prereg-amendment-02.md`
