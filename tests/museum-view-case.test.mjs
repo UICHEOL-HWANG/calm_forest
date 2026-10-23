@@ -21,7 +21,7 @@ test('관람 중엔 도구 바퀴·도구 이름을 숨긴다', () => {
 });
 
 test('돌아가기 버튼은 🔙 아이콘, 명판 문구는 엠대시 없이 번역 글루 형식', () => {
-  assert.match(src('index.html'), /\|🎁\|🔙\)\/u\.test\(t\)/);
+  assert.match(src('index.html'), /\|🎁\|🔙(\|🎃)?\)\/u\.test\(t\)/);
   assert.doesNotMatch(open.split('\n').find(l => l.includes('setZoneHint')), /—/);
   assert.match(open, /· \$\{d\.getFullYear\(\)\}\.\$\{d\.getMonth\(\) \+ 1\}\.\$\{d\.getDate\(\)\} 처음 발견/);
   assert.match(src('js/i18n-en.js'), /'\{0\} \{1\} · \{2\}\.\{3\}\.\{4\} 처음 발견'/);
