@@ -50,8 +50,8 @@ function build(anchor, onFarm) {
   geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
   const trail = new THREE.Points(geo, new THREE.PointsMaterial({ map: sparkTexture(), size: 0.22, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
   trail.frustumCulled = false; group.add(trail);
-  const ring = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.7, 40), new THREE.MeshBasicMaterial({ color: 0xe8be6e, transparent: true, opacity: 0.85, depthWrite: false }));
-  ring.rotation.x = -Math.PI / 2; ring.position.y = 0.04; ring.visible = false; group.add(ring);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.7, 40), new THREE.MeshBasicMaterial({ color: 0xf2b45a, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false, fog: false }));
+  ring.rotation.x = -Math.PI / 2; ring.position.y = 0.06; ring.visible = false; group.add(ring);
   const seeds = Array.from({ length: n }, (_, i) => [((i * 0.6180339) % 1), ((i * 0.381966) % 1) - 0.5, ((i * 0.7548776) % 1) - 0.5]);
   scene.add(group);
   return { group, anchor, onFarm, spots, jacks, ghost, trail, ring, seeds, t0: null, near: -1 };
@@ -113,8 +113,8 @@ export function updateHalloweenArrival(dt, time) {
   state.ring.visible = state.near >= 0;
   if (state.near >= 0) {
     const s = state.spots[state.near];
-    state.ring.position.set(s.x, 0.04, s.z);
-    state.ring.material.opacity = 0.7 + 0.2 * Math.sin(time * 4);
+    state.ring.position.set(s.x, 0.06, s.z);
+    state.ring.material.opacity = 0.75 + 0.2 * Math.sin(time * 4);
   }
 }
 
