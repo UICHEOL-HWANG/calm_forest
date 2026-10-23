@@ -45,16 +45,16 @@ const MENU = [
 ];
 
 const PILL = [
-  { key: 'pill', target: '#near-pill', hand: 'tap', text: '💬 이 동그라미를 누르면 말을 걸어요', done: 'click' },
+  { key: 'pill', target: '#near-pill', hand: 'tap', text: '👆 말 걸기', done: 'click' },
 ];
 
 export function pillText(info) {
   if (!info || info.kind === 'npc') return PILL[0].text;
-  if (info.kind === 'target') return '🔍 이 동그라미를 누르면 손님을 살펴봐요';
-  if (info.icon === '🎃') return '🎃 이 동그라미를 누르면 달빛 유령 정원으로 이동해요';
+  if (info.kind === 'target') return '👆 살펴보기';
+  if (info.icon === '🎃') return '👆 정원으로';
   const m = /^\S+\s+(.+?)(으로|로)\s*(가기|나가기|돌아가기)$/u.exec(info.text || '');
-  if (m) return `${info.icon} 이 동그라미를 누르면 ${m[1]}${m[2]} 이동해요`;
-  return `${info.icon} 이 동그라미를 누르면 바로 할 수 있어요`;
+  if (m) return `👆 ${m[1]}${m[2]}`;
+  return '👆 바로 하기';
 }
 
 export function pillHintKey(info) {
