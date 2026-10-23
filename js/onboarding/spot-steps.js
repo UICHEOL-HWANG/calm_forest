@@ -48,11 +48,26 @@ const PILL = [
   { key: 'pill', target: '#near-pill', hand: 'tap', text: '💬 이 동그라미를 누르면 말을 걸어요', done: 'click' },
 ];
 
-export function spotSteps(kind, touch) {
+export function pillText(info) {
+  if (!info || info.kind === 'npc') return PILL[0].text;
+  if (info.kind === 'target') return '🔍 이 동그라미를 누르면 손님을 살펴봐요';
+  if (info.icon === '🎃') return '🎃 이 동그라미를 누르면 달빛 유령 정원으로 이동해요';
+  const m = /^\S+\s+(.+?)(으로|로)\s*(가기|나가기|돌아가기)$/u.exec(info.text || '');
+  if (m) return `${info.icon} 이 동그라미를 누르면 ${m[1]}${m[2]} 이동해요`;
+  return `${info.icon} 이 동그라미를 누르면 바로 할 수 있어요`;
+}
+
+export function pillHintKey(info) {
+  if (info?.kind === 'target') return 'spot_pill_look';
+  if (info?.kind === 'door' && info.icon === '🎃') return 'spot_pill_hw';
+  return 'spot_pill';
+}
+
+export function spotSteps(kind, touch, info = null) {
   if (kind === 'full') return touch ? TOUCH_FULL : PC_FULL;
   if (kind === 'new') return touch ? TOUCH_NEW : PC_NEW;
   if (kind === 'menu') return MENU;
-  if (kind === 'pill') return PILL;
+  if (kind === 'pill') return [{ ...PILL[0], text: pillText(info) }];
   if (kind === 'cam') return [touch ? CAM_TOUCH : CAM_PC];
   return [];
 }

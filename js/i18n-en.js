@@ -900,6 +900,8 @@ export const EN = {
   '🐾 캐릭터와 옷을 바꿔요': '🐾 Change your character and outfit',
   '📖 막히면 초보자 안내서를 봐요': '📖 Stuck? Read the beginner guide',
   '💬 이 동그라미를 누르면 말을 걸어요': '💬 Tap this circle to talk',
+  '🔍 이 동그라미를 누르면 손님을 살펴봐요': '🔍 Tap this circle to look at the visitor',
+  '🎃 이 동그라미를 누르면 달빛 유령 정원으로 이동해요': '🎃 Tap this circle to go to the Moonlit Ghost Garden',
   '🎒 도구를 등에 멨어요. 여기선 맨손으로 해요. 나가면 다시 꺼내 들어요': '🎒 Tools slung on your back. Use bare hands here. You take them out again when you leave',
   '✋ 맨손이에요. 오른쪽 아래 도구 버튼을 탭해서 꺼내세요': '✋ Bare hands. Tap the tool button (bottom right) to take one out',
   '🧰 도구': '🧰 Tools',
