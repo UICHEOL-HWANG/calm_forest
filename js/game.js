@@ -190,6 +190,7 @@ import { applyE1, e1FirstScreen, enrollE1, updateE1Bubble } from './spaces/e1-st
 import { sanitizeE1 } from './exp-e1.js';
 import { DREAM_MAP, clampToDream, dreamAction, dreamCutActive, dreamMinimapMarks, dreamReturnPos, openSleepChoice, setDreamVisible, skipDreamCut, startDream, updateDream, updateDreamCut } from './spaces/dream.js';   // 📦 🌙 꿈의 숲 — 침대에서 꿈꾸기(js/dream/*)
 import { normalizeDream } from './dream/layout.js';   // 🏡 세이브 필드 neighbors { visited, seenAt }
+import { pumpkinAction, updateHalloweenArrival } from './spaces/halloween-arrival.js';
 import { clampToHalloween, halloweenAction, halloweenMinimapMarks, halloweenReturnPos, setHalloweenVisible, settleHalloween, spawnHalloweenGate, updateHalloween } from './spaces/halloween.js';
 import { MIRROR_MAP, clampToMirror, mirrorAction, mirrorMinimapMarks, mirrorReturnPos, mirrorRideActive, setMirrorVisible, skipMirrorRide, syncVillageCarriage, updateMirror, updateMirrorRide } from './spaces/mirror.js';   // 📦 🪞 거울 마을(js/mirror/*)
 import { normalizeMirror } from './mirror/quests.js';   // 🪞 세이브 필드 mirror { visits, day, done, hinted, total }
@@ -1510,6 +1511,7 @@ let nearDoor = null;       // 'enter' | 'exit' | null
 let lastDoorPrompt = null; // 도어/빌드 프롬프트 중복 갱신 방지
 let lastNearHouse = false; // 🎨 집 근처 여부(외관 꾸미기 버튼 표시) 변화 감지
 let placingDecor = null;   // 배치 중인 가구 id
+let lastVisitorPill = false;
 let nearDecorMesh = null, decorNearRing = null;   // 🛋️ 근접 프롬프트 대상 가구 / 그 밑 호박색 링
 let decorRot = 0;          // 배치 방향(0~3 → 90°씩) — 가로/세로 전환
 let decorGhost = null;     // 🫥 바닥 미리보기(반투명 가구 + 초록 링) — 놓일 자리·방향을 미리 보여준다
@@ -6076,6 +6078,7 @@ function animate() {
   updateDream(dt, t);       // 🌙 꿈의 숲(조각 줍기·디딤돌·반딧불)
   updateMirror(dt, t); syncVillageCarriage(inVillage2());
   updateHalloween(dt, t);   // 🪞 거울 마을(주민·의뢰·정류장 마차)
+  updateHalloweenArrival(dt, t);
   updateCafeGuests(dt, t);  // ☕ 카페 손님(숨쉬기·주문 말풍선)
   updateForage(dt, t);      // 🍄 채집물(돋아나기·재생성)
   updatePlots(dt);
@@ -6085,7 +6088,9 @@ function animate() {
   updatePops(dt);
   updateSetFx(clock.elapsedTime);
   updateTraceBubbles(dt, t, player.position);   // 🐾 흔적 말풍선 — 통통·가까이 가면 확대·고리
-  updateVisitorBubbles(dt, t);                  // 🔍 방문객 말풍선 — 같은 연출
+  updateVisitorBubbles(dt, t);
+  const visitorPill = !!visitorTarget() && !nearDoor;
+  if (visitorPill !== lastVisitorPill) { lastVisitorPill = visitorPill; ui.setNearTarget?.(visitorPill ? '🔍' : null); }                  // 🔍 방문객 말풍선 — 같은 연출
   updateCosQuestBubble(dt, t, player.position, !indoor);
   updateAura(dt);       // 🏮 빛 공방 오라
   updateTrail(dt);      // 👣 발자국 자취(꾸미기 trail 슬롯)
@@ -7151,6 +7156,7 @@ function handleAction() {
   if (nearDoor === 'worldtree') return openWorldTree();   // 🌳 세계수 판
   if (atMountain || nearDoor === 'mountain') return mountainAction(nearDoor);
   if (atObservatory || nearDoor === 'observatory') return observatoryAction(nearDoor);   // 🔭 문·나가기·망원경 — 실내에선 그 밖의 액션 없음
+  if (nearDoor === 'hwpumpkin') return pumpkinAction();
   if (atHalloween || nearDoor === 'halloween') return halloweenAction(nearDoor);
   if (atNeighbor || nearDoor === 'neighbor') return neighborAction(nearDoor);   // 🏡 팻말·나가기 — 이웃 공간 안에선 그 밖의 액션 없음
   if (nearDoor === 'river') return enterRiver();

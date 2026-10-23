@@ -3702,7 +3702,7 @@
       ui.setQuest(questLast);
     });
     questPhoneMQ.addEventListener?.('change', () => { questOpen = !questPhoneMQ.matches && readQuestOpen(); ui.setQuest(questLast); });
-    let hud = null, shell = null, lastToolArgs = null, lastNpcText = null, lastDoorArgs = null;
+    let hud = null, shell = null, lastToolArgs = null, lastNpcText = null, lastDoorArgs = null, lastTargetIcon = null;
     const menuSheet = createMenuSheet({ Input, t, trackEvent, dotTarget: $('menu-btn'), onOpen: () => runMenuTour() });
     const spot = createSpotlight({ t, trackEvent, blocked: () => spotBlocked() });
     const camSpotZone = document.createElement('div'); camSpotZone.id = 'cam-spot-zone'; document.body.appendChild(camSpotZone);
@@ -4388,7 +4388,7 @@
         const el = $('door-prompt');
         nearDoorNow = !!text && !opts?.info;   // 안내만 있는 줄(누를 게 없음)은 액션 버튼을 문으로 바꾸지 않는다 — 🪞 단서 줄이 🚪 로 떠 "뭔지 모르겠다"(2026-10-09)
         const t = text || '';
-        doorIcon = /^(🪞|🚏|💬|💧|🎁|🔙)/u.test(t) ? t.match(/^(🪞|🚏|💬|💧|🎁|🔙)/u)[1]   // 🪞 거울 마을 — 문구 첫 이모지 = 버튼 아이콘(영어판도 같다). 키워드 사슬보다 먼저(「요리사 판다」가 🍳 로 떴다)
+        doorIcon = /^(🪞|🚏|💬|💧|🎁|🔙|🎃)/u.test(t) ? t.match(/^(🪞|🚏|💬|💧|🎁|🔙|🎃)/u)[1]   // 🪞 거울 마을 — 문구 첫 이모지 = 버튼 아이콘(영어판도 같다). 키워드 사슬보다 먼저(「요리사 판다」가 🍳 로 떴다)
           : t.includes('비료') ? '🌱' : t.includes('주문판') ? '📋'
           : (t.includes('서빙') || t.includes('재료 부족') || t.includes('카페')) ? '☕'
           : t.includes('요리') ? '🍳' : t.includes('만들기') ? '🔧' : t.includes('상점') ? '🛒' : t.includes('일차에 열려요') ? '🔒' : t.includes('랭킹') ? '🏆' : t.includes('닭장') ? '🐔'
@@ -4403,6 +4403,7 @@
         el.textContent = text; el.classList.add('show');
         layoutPrompts();
       },
+      setNearTarget(icon) { lastTargetIcon = icon || null; hud?.onTarget(lastTargetIcon); },
       setUnread(n) { shell?.setUnread(n); menuSheet.setUnread(n); },
       // 가구 배치 완료 → 액션버튼에서 가구 아이콘 제거(배치 모드 종료)
       onDecorPlaced() {
@@ -5121,6 +5122,7 @@
         if (lastToolArgs) hud.onTool(...lastToolArgs);
         hud.onNpc(lastNpcText);
         if (lastDoorArgs) hud.onDoor(...lastDoorArgs);
+        hud.onTarget(lastTargetIcon);
         if (tutIdx >= 0) hud.setCoachStep(TUT_STEPS[tutIdx].key);
       }
       shell.layoutLeft();
