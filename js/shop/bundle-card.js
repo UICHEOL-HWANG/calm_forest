@@ -25,7 +25,7 @@ function tile(ico, name, won) {
   return d;
 }
 
-function overview(card, bundle, { mode, pending, onOpen }) {
+function overview(card, bundle, { mode, pending, onOpen, onLogin }) {
   const tiles = el('div', 'bx-tiles');
   const sets = bundle.choose.map(id => findItem(id)?.ico || '').join('');
   const set0 = findItem(bundle.choose[0]);
@@ -41,8 +41,8 @@ function overview(card, bundle, { mode, pending, onOpen }) {
   const btn = el('button', 'bx-buy');
   btn.type = 'button';
   btn.textContent = mode === 'buy' ? fill(BUNDLE_COPY.buy, wonLabel(bundle.won)) : mode === 'login' ? BUNDLE_COPY.login : BUNDLE_COPY.na;
-  btn.disabled = mode !== 'buy' || pending;
-  btn.onclick = (ev) => { ev.stopPropagation(); if (!btn.disabled) onOpen(); };
+  btn.disabled = (mode !== 'buy' && mode !== 'login') || pending;
+  btn.onclick = (ev) => { ev.stopPropagation(); if (!btn.disabled) mode === 'login' ? onLogin?.() : onOpen(); };
   card.append(tiles, value, btn, el('p', 'bx-note', BUNDLE_COPY.note));
 }
 
@@ -69,12 +69,12 @@ function picker(card, bundle, { owned, pick, pending, onPick, onBuy, onBack }) {
   card.append(opts, el('p', 'bx-note', BUNDLE_COPY.pickNote), buy, back);
 }
 
-export function drawBundleCard(box, { bundle, mode, owned = [], picking = false, pick = null, pending = false, onOpen, onPick, onBuy, onBack }) {
+export function drawBundleCard(box, { bundle, mode, owned = [], picking = false, pick = null, pending = false, onOpen, onLogin, onPick, onBuy, onBack }) {
   if (!bundle || mode === 'hidden') return null;
   const card = el('div', 'bx-card');
   card.append(el('span', 'bx-ribbon', BUNDLE_COPY.ribbon), head(bundle));
   if (picking && mode === 'buy') picker(card, bundle, { owned, pick, pending, onPick, onBuy, onBack });
-  else overview(card, bundle, { mode, pending, onOpen });
+  else overview(card, bundle, { mode, pending, onOpen, onLogin });
   box.append(card);
   return card;
 }

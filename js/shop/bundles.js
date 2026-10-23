@@ -22,7 +22,7 @@ export const BUNDLE_COPY = Object.freeze({
   pick: '어떤 도구 세트를 고를까요?',
   list: '따로 사면',
   buy: '{0}에 열기',
-  login: '로그인하면 열 수 있어요',
+  login: '🔐 로그인 후 구매 가능',
   note: '고른 세트와 발자국은 옷장에 들어가요',
   pickBuy: '이 세트로 열기 · {0}',
   pickNote: '🌟 반딧불 발자국은 함께 들어 있어요',
