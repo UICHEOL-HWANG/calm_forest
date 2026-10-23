@@ -522,6 +522,8 @@ export const EN = {
   '잠시 후 다시 들어오면 도착해 있어요': 'It will be there next time you come in',
   '결제를 지금은 열 수 없어요': 'Checkout is unavailable right now',
   '로그인하면 살 수 있어요': 'Log in to buy',
+  '🔐 로그인 후 구매 가능': '🔐 Log in to buy',
+  '💎 로그인 후 구매 가능': '💎 Log in to buy',
   '지금은 살 수 없어요': 'Not available right now',
   '반딧불': 'Fireflies',
   '무지개': 'Rainbow',

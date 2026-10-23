@@ -26,9 +26,13 @@ let handlers = { onCompleted: () => {}, onClosed: () => {}, onStep: () => {} };
 
 //  현금 버튼이 보이는 조건: 웹 + 온라인 + 로그인 계정 + Paddle 클라이언트 토큰 + **상점이 열렸거나 개발 세션**
 //  (샌드박스 토큰으로 검증하는 동안 실유저에게 버튼이 보이면 안 된다 — 개발 세션(?dbg 등)에서만 결제한다).
+export function storeOpen() {
+  return !!CONFIG.PADDLE.storeOpen || IS_DEV_SESSION;
+}
+
 export function cashAvailable(state) {
   return PLATFORM === 'web' && !!state?.online && !state?.isGuest && !!CONFIG.PADDLE.token
-    && (!!CONFIG.PADDLE.storeOpen || IS_DEV_SESSION);
+    && storeOpen();
 }
 
 export function setCheckoutHandlers(h) {

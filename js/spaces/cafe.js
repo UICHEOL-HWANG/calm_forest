@@ -39,7 +39,7 @@ import { NPCS } from '../data/npcs.js';
 import { PLATFORM } from '../platform.js';
 import { PET_KINDS, PET_PRICE, emptyPet, stageOf, toNextStage } from '../pet/rules.js';
 import { buildShop } from '../shop/building.js';
-import { cashAvailable, closeCheckout, openCheckout, setCheckoutHandlers } from '../shop/paddle.js';
+import { cashAvailable, closeCheckout, openCheckout, setCheckoutHandlers, storeOpen } from '../shop/paddle.js';
 import { closeProps } from '../shop/checkout-funnel.js';   // 📊 결제창을 닫을 때 어디까지 갔나
 import { premiumRowMode, slotVisible, gatedRow } from '../shop/premium-row.js';
 import { saleOpen, saleTagOf } from '../shop/sale-window.js';
@@ -901,7 +901,9 @@ const pendingCash = new Set();
 export function drawPetTab(box) {
   for (const k of PET_KINDS) {
     const mine = gameState.pets[k.id];
-    if (k.premium && !mine && !(cashAvailable(authState) && k.cash)) continue;
+    const petMode = k.premium && !mine && k.cash ? premiumRowMode({ ...k, price: { cash: k.cash } }, { owned: false, platform: PLATFORM,
+      online: !!authState.online, isGuest: !!authState.isGuest, tokenSet: !!CONFIG.PADDLE.token, storeOpen: storeOpen() }) : null;
+    if (k.premium && !mine && !(cashAvailable(authState) && k.cash) && petMode !== 'login') continue;
     const row = document.createElement('div');
     row.className = 'sh-row' + (petView === k.id ? ' try' : '');
     row.onclick = () => { petView = k.id; drawCosMenu(); };      // 줄 = 미리보기(구매 아님 — 꾸미기의 "입어보기"와 같은 결)
@@ -943,6 +945,7 @@ export function drawPetTab(box) {
     buys.className = 'sh-buys';
     if (!k.premium) buys.appendChild(btn);
     if (cashAvailable(authState) && k.cash) buys.appendChild(cashButton(k.cash, k.id, 'pet', !!mine));
+    else if (petMode === 'login') buys.appendChild(loginChip(k.id, 'pet'));
     else if (k.premium && mine) buys.appendChild(btn);
     row.appendChild(buys);
     box.appendChild(row);
@@ -1057,7 +1060,18 @@ function pollSlowGrant(c, t0, n = 0) {
 }
 
 //  💎 프리미엄(현금 전용) 행 — 문구는 스펙 2026-10-01 §8 검수 문구
-const PREMIUM_LOGIN_MSG = '로그인하면 살 수 있어요';
+const PREMIUM_LOGIN_MSG = '🔐 로그인 후 구매 가능';
+function loginChipClick(itemId, kind) {
+  trackEvent('premium_login_click', { item_id: itemId, kind });
+  ui.loginNudge?.('shop');
+}
+function loginChip(itemId, kind) {
+  const b = document.createElement('button');
+  b.className = 'sh-cash sh-login';
+  b.textContent = PREMIUM_LOGIN_MSG;
+  b.onclick = (ev) => { ev.stopPropagation(); loginChipClick(itemId, kind); };
+  return b;
+}
 const PREMIUM_NA_MSG = '지금은 살 수 없어요';
 const REWARD_TAG = '🤝 초대 보상';
 let premiumViewed = new Set();   // 가게를 연 동안 premium_row_view 는 항목당 한 번(닫으면 비운다)
@@ -1083,12 +1097,13 @@ function drawWelcomeBox(box) {
   if (!WELCOME) return;
   const owned = gameState.cosmetics.owned;
   const mode = bundleCardMode(WELCOME, { owned, platform: PLATFORM, online: !!authState.online, isGuest: !!authState.isGuest,
-    tokenSet: !!CONFIG.PADDLE.token, storeOpen: cashAvailable(authState) });
+    tokenSet: !!CONFIG.PADDLE.token, storeOpen: storeOpen() });
   if (mode === 'hidden') return;
   if (mode !== 'buy') { boxPicking = false; boxPick = null; }
   if (!premiumViewed.has(WELCOME.id)) { premiumViewed = new Set([...premiumViewed, WELCOME.id]); trackEvent('premium_row_view', { item_id: WELCOME.id, mode, kind: 'bundle' }); }
   drawBundleCard(box, { bundle: WELCOME, mode, owned, picking: boxPicking, pick: boxPick,
     pending: pendingCash.has(WELCOME.id) || cashBusy === WELCOME.id,
+    onLogin: () => loginChipClick(WELCOME.id, 'bundle'),
     onOpen: () => { boxPicking = true; boxPick = null; trackEvent('bundle_open', { item_id: WELCOME.id }); drawCosMenu(); },
     onPick: (id) => { if (id === boxPick) return; boxPick = id; trackEvent('bundle_choice', { item_id: id }); cosTab = 'tools'; tryOnCos(findItem(id)); },
     onBack: () => { boxPicking = false; boxPick = null; drawCosMenu(); },
@@ -1100,7 +1115,7 @@ export function drawCosMenu() {
   document.getElementById('cos-coin').textContent = `🪙 ${gameState.inventory.coins.toLocaleString()}`;
   const rowCtx = (it) => ({ owned: gameState.cosmetics.owned.includes(it.id), platform: PLATFORM,
     online: !!authState.online, isGuest: !!authState.isGuest, tokenSet: !!CONFIG.PADDLE.token,
-    storeOpen: cashAvailable(authState) });   // cashAvailable = 상점 열림 또는 개발 세션(+웹·로그인·토큰)
+    storeOpen: storeOpen() });
   //  🧥 토스·안드로이드·itch 에서 안 산 스킨만 있는 칸 = 빈 탭 → 탭 자체를 숨긴다(외부 결제 안내 금지)
   if (cosTab === 'sprout' && !sproutOpen(gameState.cosmetics)) cosTab = defaultCosTab(gameState.cosmetics);
   if (cosTab !== 'pet' && !slotVisible(rowsOf(cosTab), rowCtx)) cosTab = 'head';
@@ -1196,10 +1211,11 @@ export function drawCosMenu() {
       buys.appendChild(tag);
     } else if (it.premium) {
       if (mode === 'buy' || mode === 'owned') buys.appendChild(cashButton(it.price.cash || { label: '', priceId: '' }, it.id, 'cosmetic', mode === 'owned'));
+      else if (mode === 'login') buys.appendChild(loginChip(it.id, 'cosmetic'));
       else {
         const off = document.createElement('button');
         off.className = 'sh-cash'; off.disabled = true;
-        off.textContent = mode === 'login' ? PREMIUM_LOGIN_MSG : PREMIUM_NA_MSG;
+        off.textContent = PREMIUM_NA_MSG;
         buys.appendChild(off);
       }
     } else if (cashAvailable(authState) && it.price.cash) {
