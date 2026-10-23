@@ -69,6 +69,7 @@ export function initHudShell({ Input, t, trackEvent, menu }) {
     if (!qp || !mm) return;
     qp.style.top = '';
     const q = qp.getBoundingClientRect();
+    document.documentElement.style.setProperty('--qp-bottom', q.height ? Math.round(q.bottom + 8) + 'px' : '0px');
     mm.style.top = q.height ? Math.round(q.bottom + 8) + 'px' : '';
     const m = mm.getBoundingClientRect();
     const cb = $('cam-reset-btn');

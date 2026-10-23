@@ -38,7 +38,7 @@ test('ui.act 신호가 스포트라이트로도 간다 · 코치 대기 판정�
 test('환영 창 자리에서 스포트라이트 → 코치 순서로 이어진다(E1 분기는 그대로)', () => {
   assert.match(HTML, /showTutorial\(src = 'welcome'\) \{ startOnboarding\(src\); \}/);
   assert.match(HTML, /async function startOnboarding\(src\) \{/);
-  assert.match(HTML, /Input\.markHintsSeen\(\['spotV2', 'spot_cam'\]\);\s*startCoach\(\);/);
+  assert.match(HTML, /Input\.markHintsSeen\(\['spotV2', 'spot_cam'\]\);\s*if \(\$\('worldmap'\)\.classList\.contains\('show'\)\) closeWorldMap\(\);\s*startCoach\(\);/);
   assert.match(HTML, /Input\.armTutorialMove\(\);\n\s*await spot\.run\(/);
   assert.match(GAME, /else if \(Input\.e1FirstScreen\(\)\)/);
 });
@@ -50,11 +50,23 @@ test('중간에 나가도 이어서 — 단계마다 저장, 기존 유저는 �
   assert.match(HTML, /maybeHudTour\(\);/);
 });
 
+test('🎓 코치 단계도 세이브에 남기고 다시 들어오면 그 단계부터 이어 간다', () => {
+  assert.match(HTML, /Input\.setTutStep\(TUT_STEPS\[tutIdx\]\.key\);/);
+  assert.match(HTML, /Input\.setTutStep\('done'\);/);
+  assert.match(HTML, /if \(Input\.hintSeen\('spotV2'\)\) \{ const k = Input\.tutStep\(\); if \(k && k !== 'done'\) startCoach\(k\); return; \}/);
+  assert.match(GAME, /setTutStep\(k\) \{ gameState\.hintsSeen = \{ \.\.\.gameState\.hintsSeen, tutStep: k \}; requestSave\(\); \}/);
+});
+
+test('🎓 이미 끝낸 단계는 건너뛴다 — 스포트라이트에서 한 걷기·도구·도감, 먼저 지은 집', () => {
+  assert.match(HTML, /build: \(\) => Input\.houseStage\(\) >= 3,/);
+  assert.match(HTML, /while \(tutIdx < TUT_STEPS\.length && STEP_DONE\[TUT_STEPS\[tutIdx\]\.key\]\?\.\(\)\)/);
+});
+
 test('☰ 카드를 처음 열면 메뉴 투어, 근접 알약이 처음 뜨면 알약 투어', () => {
   assert.match(HTML, /onOpen: \(\) => runMenuTour\(\)/);
   assert.match(HTML, /spotSteps\('menu', TOUCH\)/);
   assert.match(read('js/hud/menu-sheet.js'), /c\.dataset\.for = el\.id;/);
-  assert.match(HTML, /onPill: \(\) => runPillTour\(\)/);
+  assert.match(HTML, /onPill: \(info\) => runPillTour\(info\)/);
 });
 
 test('대상이 사라지면 3초 뒤 넘기고, 자기 조건이 깨진 투어(☰ 닫힘)는 끝낸다', () => {

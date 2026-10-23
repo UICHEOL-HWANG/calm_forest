@@ -23,7 +23,7 @@ export function createToolFan({ Input, t, act, trackEvent }) {
     btn.querySelector('.tb-ico').innerHTML = bare ? '✋' : (tool?.ico || '');
     btn.dataset.page = page;
     name.textContent = bare ? t('맨손') : t(tool?.name || '');
-    btn.querySelector('.tb-tip').textContent = t('꾹 눌러 도구 바꾸기');
+    btn.querySelector('.tb-tip').textContent = t('탭해서 도구 바꾸기');
     btn.classList.toggle('fresh', !seen());
   }
 
@@ -111,7 +111,6 @@ export function createToolFan({ Input, t, act, trackEvent }) {
     try { btn.setPointerCapture(e.pointerId); } catch (err) {}
     start = { x: e.clientX, y: e.clientY }; swiped = false; held = false;
     clearTimeout(timer);
-    timer = setTimeout(() => { held = true; openFan(); }, FAN.hold);
   });
   btn.addEventListener('pointermove', (e) => {
     if (!start) return;

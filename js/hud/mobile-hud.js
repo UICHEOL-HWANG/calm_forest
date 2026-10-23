@@ -7,7 +7,7 @@ body.is-touch #talk-btn { display: none !important; }
     top: auto !important; bottom: calc(var(--hud-bottom, 230px) + 14px); }
   body.is-touch:has(#hint-banner.slot-bottom.show) #toast { bottom: calc(282px + 70px + env(safe-area-inset-bottom)); }
 }
-body.is-touch:not(.coaching) #hint-banner:not(.slot-bottom) { top: var(--rcol-bottom, calc(64px + var(--top-inset))); left: auto; right: max(12px, calc(env(safe-area-inset-right) + 8px)); transform: none; }
+body.is-touch:not(.coaching) #hint-banner:not(.slot-bottom) { top: max(var(--rcol-bottom, calc(64px + var(--top-inset))), var(--qp-bottom, 0px)); left: auto; right: max(12px, calc(env(safe-area-inset-right) + 8px)); transform: none; }
 
 body.is-touch #hotbar { left: 0; top: 0; bottom: auto; transform: none; padding: 0; width: 0; height: 0; overflow: visible; background: none; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
 body.is-touch #hotbar > .slot { display: none !important; }
@@ -66,7 +66,7 @@ export function initMobileHud({ Input, t, act, trackEvent, onPill = null }) {
   const pill = document.createElement('button');
   pill.id = 'near-pill'; pill.type = 'button';
   document.body.appendChild(pill);
-  let npc = null, door = null, kind = null, raf = 0;
+  let npc = null, door = null, doorText = null, target = null, kind = null, raf = 0;
   pill.addEventListener('pointerdown', (e) => e.stopPropagation());
   pill.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -82,18 +82,19 @@ export function initMobileHud({ Input, t, act, trackEvent, onPill = null }) {
     raf = requestAnimationFrame(tick);
   }
   function refreshPill() {
-    kind = npc ? 'npc' : door ? 'door' : null;
-    pill.textContent = npc ? '💬' : door || '';
+    kind = npc ? 'npc' : target ? 'target' : door ? 'door' : null;
+    pill.textContent = npc ? '💬' : target || door || '';
     pill.classList.toggle('show', !!kind);
-    document.body.classList.toggle('near-pill-on', kind === 'door');
+    document.body.classList.toggle('near-pill-on', kind === 'door' || kind === 'target');
     if (kind && !raf) raf = requestAnimationFrame(tick);
-    if (kind) onPill?.();
+    if (kind) onPill?.({ kind, icon: pill.textContent, text: kind === 'door' ? doorText : null });
   }
 
   return {
     onTool(idx, tools, page) { fan.mount($('hotbar')); fan.onTool(idx, tools, page); fan.layout(); },
     onNpc(text) { npc = text || null; refreshPill(); },
-    onDoor(text, info, icon) { door = text && !info ? icon : null; refreshPill(); },
+    onTarget(icon) { target = icon || null; refreshPill(); },
+    onDoor(text, info, icon) { door = text && !info ? icon : null; doorText = door ? text : null; refreshPill(); },
     setCoachStep(key) { document.body.classList.toggle('coach-toolpage', key === 'toolpage'); },
   };
 }

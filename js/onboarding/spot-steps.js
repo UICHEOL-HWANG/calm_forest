@@ -5,7 +5,7 @@ const CAM_PC = { key: 'cam', target: null, keys: ['Q', 'E'], hand: 'key', text: 
 
 const TOUCH_FULL = [
   { key: 't_move', core: true, target: '#joy-base', hand: 'drag', text: '🕹️ 끌어서 걸어 보세요', done: 'act:move' },
-  { key: 't_tool', core: true, target: '#tool-btn', hand: 'hold', text: '🧰 꾹 누른 채 밀어서 도구를 골라요', done: 'act:toolpage' },
+  { key: 't_tool', core: true, target: '#tool-btn', hand: 'tap', text: '🧰 탭해서 도구를 골라요', done: 'act:toolpage' },
   { key: 't_use', core: true, target: '#action-btn', hand: 'tap', text: '⭕ 큰 버튼으로 도구를 써요', done: 'act:use' },
   CAM_TOUCH,
   { key: 't_bag', target: '#bag-btn', hand: 'tap', text: '🎒 가방엔 재화와 재료가 있어요', done: 'open:bag-menu' },
@@ -27,7 +27,7 @@ const PC_FULL = [
 ];
 
 const TOUCH_NEW = [
-  { key: 'new_tool', target: '#tool-btn', hand: 'hold', text: '🧰 도구는 이 버튼을 꾹! 밀어서 골라요', done: 'act:toolpage' },
+  { key: 'new_tool', target: '#tool-btn', hand: 'tap', text: '🧰 도구는 이 버튼을 탭해서 골라요', done: 'act:toolpage' },
   { key: 'new_top', target: '#topright', hand: 'tap', text: '🎒📖☰ 가방·도감·메뉴는 여기 모였어요', done: 'tap' },
   { key: 'new_menu', target: '#hud-menu', hand: 'tap', text: '☰ 사진·소식함·설정은 여기 있어요', done: 'menu' },
 ];
@@ -45,14 +45,29 @@ const MENU = [
 ];
 
 const PILL = [
-  { key: 'pill', target: '#near-pill', hand: 'tap', text: '💬 이 동그라미를 누르면 말을 걸어요', done: 'click' },
+  { key: 'pill', target: '#near-pill', hand: 'tap', text: '👆 말 걸기', done: 'click' },
 ];
 
-export function spotSteps(kind, touch) {
+export function pillText(info) {
+  if (!info || info.kind === 'npc') return PILL[0].text;
+  if (info.kind === 'target') return '👆 살펴보기';
+  if (info.icon === '🎃') return '👆 정원으로';
+  const m = /^\S+\s+(.+?)(으로|로)\s*(가기|나가기|돌아가기)$/u.exec(info.text || '');
+  if (m) return `👆 ${m[1]}${m[2]}`;
+  return '👆 바로 하기';
+}
+
+export function pillHintKey(info) {
+  if (info?.kind === 'target') return 'spot_pill_look';
+  if (info?.kind === 'door' && info.icon === '🎃') return 'spot_pill_hw';
+  return 'spot_pill';
+}
+
+export function spotSteps(kind, touch, info = null) {
   if (kind === 'full') return touch ? TOUCH_FULL : PC_FULL;
   if (kind === 'new') return touch ? TOUCH_NEW : PC_NEW;
   if (kind === 'menu') return MENU;
-  if (kind === 'pill') return PILL;
+  if (kind === 'pill') return [{ ...PILL[0], text: pillText(info) }];
   if (kind === 'cam') return [touch ? CAM_TOUCH : CAM_PC];
   return [];
 }

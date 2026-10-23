@@ -70,9 +70,21 @@ export const STORY_REWORLD = {
     done: '다리를 고쳐 할아버지를 만났어요.',
   },
   friends: {
-    ico: '🌿', title: '첫 번째 가지',
-    start: '돌아온 이웃들의 ❕ 부탁을 들어주자.',
-    done: '이웃 셋을 도왔어요. 세계수 가지가 살짝 흔들려요.',
+    ico: '💧', title: '첫 번째 가지', goal: '물의 가지 빈터 꾸미기', rule: 'branchWater',
+    start: '🌳 세계수 판에서 💧물의 가지 빈터를 꾸며 🎣낚시꾼 할아버지를 불러오자.',
+    done: '물의 가지에 생기가 돌고 낚시꾼 할아버지가 돌아왔어요.',
+  },
+  taste: {
+    rule: 'tasteGated',
+    start: '🌳 밭의 가지와 부엌의 가지 빈터를 꾸미면 🐼판다와 카페가 돌아와요. 요리하고 서빙해 보자.',
+  },
+  secret: {
+    rule: 'secretGated',
+    start: '🌳 숲의 가지 빈터를 꾸미면 안개 숲이 열려요. 안개를 걷어내 보자.',
+  },
+  living: {
+    rule: 'livingGated',
+    start: '🌳 밭의 가지가 살아나면 과수원이 열려요. 밭을 넓히고 과일나무를 심어 보자.',
   },
 };
 const REWORLD = STORY.map(c => (STORY_REWORLD[c.id] ? { ...c, ...STORY_REWORLD[c.id] } : c));

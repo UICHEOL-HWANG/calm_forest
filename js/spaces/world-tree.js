@@ -416,7 +416,7 @@ function updateTreeShot(t) {
   if (!shotReady()) {
     idleSince = -1;
     const q = shotQueue[0];
-    if (q.kind === 'chapter' && q.after && performance.now() - q.at > CHAPTER_WAIT_MS) { const after = q.after; q.after = null; after(); }
+    if (q.kind === 'chapter' && q.after && !Input.isIndoor?.() && performance.now() - q.at > CHAPTER_WAIT_MS) { const after = q.after; q.after = null; after(); }
     return;
   }
   if (idleSince < 0) idleSince = t;

@@ -100,7 +100,7 @@ import { build as buildVatModel, VAT_SCALE, VAT_BOX } from './craft/vat-model.js
 import { headAnchor, neckAnchor, neckR, sideAnchor, backAnchor } from './cosmetics/anchors.js';
 import { buildCosmetic } from './cosmetics/art.js';
 import { itemsOf } from './cosmetics/catalog.js';
-import { equippedItems, sanitize as sanitizeCosmetics, buy as buyCos, equip as equipCos, unequip as unequipCos } from './cosmetics/equip.js';
+import { equippedItems, hidesTail, sanitize as sanitizeCosmetics, buy as buyCos, equip as equipCos, unequip as unequipCos } from './cosmetics/equip.js';
 import { buildTrailMark, tintTrailMark, TRAIL_CAP, TRAIL_STEP, TRAIL_FADE, TRAIL_SIDE } from './cosmetics/trail.js';   // 👣 발자국 자취(월드 이펙트)
 import { applySkin, disposeSkin, showSkinParts } from './cosmetics/skin.js';   // 🧥 전신 스킨 — 캐릭터에 덧입힌다
 import { effectiveTrail, squashOf, skinSquashes } from './cosmetics/skin-rules.js';   // 🌱 정령 자취 · 🧸 말랑
@@ -190,6 +190,7 @@ import { applyE1, e1FirstScreen, enrollE1, updateE1Bubble } from './spaces/e1-st
 import { sanitizeE1 } from './exp-e1.js';
 import { DREAM_MAP, clampToDream, dreamAction, dreamCutActive, dreamMinimapMarks, dreamReturnPos, openSleepChoice, setDreamVisible, skipDreamCut, startDream, updateDream, updateDreamCut } from './spaces/dream.js';   // 📦 🌙 꿈의 숲 — 침대에서 꿈꾸기(js/dream/*)
 import { normalizeDream } from './dream/layout.js';   // 🏡 세이브 필드 neighbors { visited, seenAt }
+import { pumpkinAction, updateHalloweenArrival } from './spaces/halloween-arrival.js';
 import { clampToHalloween, halloweenAction, halloweenMinimapMarks, halloweenReturnPos, setHalloweenVisible, settleHalloween, spawnHalloweenGate, updateHalloween } from './spaces/halloween.js';
 import { MIRROR_MAP, clampToMirror, mirrorAction, mirrorMinimapMarks, mirrorReturnPos, mirrorRideActive, setMirrorVisible, skipMirrorRide, syncVillageCarriage, updateMirror, updateMirrorRide } from './spaces/mirror.js';   // 📦 🪞 거울 마을(js/mirror/*)
 import { normalizeMirror } from './mirror/quests.js';   // 🪞 세이브 필드 mirror { visits, day, done, hinted, total }
@@ -276,7 +277,7 @@ import { drawPets, drawWardrobe } from './spaces/wardrobe.js';   // 🧥 ☰ 캐
 import { HALLOWEEN_OUTDOOR_IDS, HALLOWEEN_STYLE, buildHalloween, makeCtx } from './spaces/halloween-art.js';   // 🎃 할로윈 코인 장식 조형
 import { resolveFirstDay, ensureFirstDay } from './mountain/unlock.js';
 import { UNLOCK_IDS, defaultUnlocks, newlyUnlocked, restoreUnlocks, unlockQuestCtx, unlockedSet, unlocksForSave } from './world/unlocks.js';   // 🔓 마을 해금(순수) — docs/superpowers/specs/2026-10-16-world-unlocks-design.md
-import { BRIDGE_ANG, BRIDGE_COST, ISLE, ISLE_R, bridgeFoot, bridgePoint, streamR } from './world/bridge.js';   // 🌉 박물관 섬 개울·다리(순수)
+import { BRIDGE_ANG, BRIDGE_COST, ISLE, ISLE_R, bridgeBroken, bridgeFoot, bridgePoint, streamR } from './world/bridge.js';   // 🌉 박물관 섬 개울·다리(순수)
 import { bridgeBrokenNow, bridgeInteract, buildBridge, clampToStream, syncBridge } from './spaces/bridge.js';   // 📦 🌉 무너진 다리(해금 4단계)
 import { defaultTree, restoreTree } from './world/tree-board.js';   // 🌳 세계수 판(순수) — docs/superpowers/specs/2026-10-16-world-tree-board-design.md
 import { defaultBloom, restoreBloom } from './world/tree-bloom.js';
@@ -1186,14 +1187,14 @@ function syncStory(trigger = '') {
     st.ch = i + 1;
     if (storyBooted) {
       const next = STORY[st.ch];
-      Sound.complete(); spawnConfetti(player.position.x, 2.6, player.position.z);
-      ui.showHintModal?.({
+      spawnConfetti(player.position.x, 2.6, player.position.z);
+      queueStoryModal({
         ico: c.ico, title: `${st.ch}장 완료 · ${c.title}`,
         // 짧게 — 한 줄 이야기 + 보상 + 다음 장(목표는 HUD 칩이 보여 준다). 세 문단이 길다는 피드백(2026-10-17)
         body: `${c.done}\n\n🎁 보상 🪙${c.reward.coins}${c.reward.seed ? ` · 🌰${c.reward.seed}` : ''}`
           + (!next ? '' : next.soon ? '\n🏡 다음 이야기는 곧 열려요.'   // 잠긴 장은 목표 대신 예고만
             : `\n➡️ 다음: ${next.ico} ${st.ch + 1}장 「${next.title}」`),
-      });
+      }, `${c.ico} ${st.ch}장 완료 · ${c.title}`);
     } else retro++;
   }
   // 현재 장의 시작을 1회만 기록(퍼널 시작점) — 잠긴 장은 시작이 아니다
@@ -1299,9 +1300,14 @@ function unlockMinutes() {
 }
 /** 이야기 모달을 줄 세운다 — 미니게임·승부·다른 모달이 떠 있으면 기다렸다가(최대 ~50초) 띄우고, 튜토리얼 중이면 토스트로만 */
 let storyModalsWaiting = 0;   // 줄 서 있는 이야기 모달 수 — afterModals 가 이들이 다 뜨고 닫힐 때까지 기다린다
+let owlBridgeQueued = false;
 function queueStoryModal(opts, toastLine, tries = 0) {
   if (tries) storyModalsWaiting--;
-  if (ui.coachActive?.()) { ui.toast?.(toastLine, 3200); return; }   // 튜토리얼 카드를 덮지 않는다 — 토스트로만
+  if (ui.coachActive?.()) {
+    if (!tries) ui.toast?.(toastLine, 3200);
+    storyModalsWaiting++; setTimeout(() => queueStoryModal(opts, toastLine, Math.max(1, tries)), 3000);
+    return;
+  }
   // 🌳 세계수 조망샷이 줄 서 있거나 도는 중이면 짧게 기다린다 — 판 닫힘 → 조망샷 → 귀환 모달 순서(시도 횟수는 안 쓴다)
   if (treeShotBusy()) { storyModalsWaiting++; setTimeout(() => queueStoryModal(opts, toastLine, Math.max(1, tries)), 400); return; }
   if (mgView || duelActive || ui.anyModalOpen?.()) {
@@ -1310,6 +1316,7 @@ function queueStoryModal(opts, toastLine, tries = 0) {
     return;
   }
   Sound.complete();
+  if (opts.seenKey) { gameState.hintsSeen[opts.seenKey] = true; requestSave(); }
   ui.showHintModal?.(opts);
 }
 /** 모달이 다 닫힌 뒤 fn — 🧑‍🦳 귀환 모달을 읽은 다음에 📖 1장 완료 모달이 뜨게(줄 선 이야기 모달도 기다린다) */
@@ -1323,9 +1330,9 @@ function showReturnModal(def) {
 }
 // 🦉 집을 다 지으면 한 번 — 1장의 다음 걸음(다리)을 올빼미가 알려 준다. 부팅 소급(이미 집이 있는 새 세이브)도 한 번
 function maybeOwlBridgeHint(delay = 0) {
-  if (!unlocksOn() || !isOpen('bridgeRepair') || !bridgeBrokenNow() || gameState.hintsSeen.owlBridge) return;
-  gameState.hintsSeen.owlBridge = true; requestSave();
-  setTimeout(() => queueStoryModal({ ico: '🦉', title: '의뢰 올빼미',
+  if (!unlocksOn() || !isOpen('bridgeRepair') || !bridgeBrokenNow() || gameState.hintsSeen.owlBridge || owlBridgeQueued) return;
+  owlBridgeQueued = true;
+  setTimeout(() => queueStoryModal({ ico: '🦉', title: '의뢰 올빼미', seenKey: 'owlBridge',
     body: `"저 나무, 우리가 지켜야 해. 서쪽 박물관 할아버지가 방법을 알 거야."\n\n🌉 다리 고치기: 🪵${BRIDGE_COST.wood} 🪨${BRIDGE_COST.stone}` },
   '🦉 서쪽 개울의 무너진 다리를 고쳐 보자'), delay);
 }
@@ -1336,6 +1343,10 @@ function announceUnlock(id) {
     trackEvent('unlock', { id, kind: def ? 'npc' : 'place', minutes_since_start: unlockMinutes() });   // [GA4] 처음 10분 해금 간격(스펙 §7)
   }
   if (id === 'bridgeRepair') maybeOwlBridgeHint(1200);   // 🏠 집 완성 → 🦉 다리 이야기(집 완성 축하가 먼저 지나가게)
+  if (id === 'shop' || id === 'market') {
+    const p = id === 'shop' ? SHOP : MARKET;
+    spawnSparkle(p.x, 1.2, p.z, 24); spawnDust(p.x, p.z, 16);
+  }
   if (!def) return;
   if (id === 'merchant') return;   // 🧙 상인은 기존 환영 방문(updateMerchantVisit)이 곧 귀환 연출이다
   const o = npcObjs.find(x => x.def.id === id);
@@ -1440,7 +1451,7 @@ function checkDailyBonus() {
                          ok: { onClick: () => { if (pendingNotices.length) ui.showNotices?.(pendingNotices, 'new'); } } });
     return true;
   }
-  ui.toast?.(`🎁 출석 보상 +${coins}🪙`);                         // 신규 유저: 캐릭터 선택/튜토리얼과 안 겹치게 토스트만
+  ui.toast?.(`🎁 출석 보상 +${coins}🪙`, 1600, { afterDialog: true });                         // 신규 유저: 캐릭터 선택/튜토리얼과 안 겹치게 토스트만
   return false;
 }
 
@@ -1464,14 +1475,17 @@ export function markNoticesSeen(list) {
 
 // 스테이션 첫 접근 시 1회만 뜨는 카드 모달 안내(초보 온보딩)
 let firstHintRetries = {};   // key → 미룬 횟수(무한 재시도 방지)
-function firstHint(key, ico, title, body) {
+const hintPlace = () => [indoor, atFarm, atMine, atCafe, atRiver, atMist, atSea, atMuseum, atObservatory, atMountain, atOrchard, atDream, atMirror].map(Number).join('');
+function firstHint(key, ico, title, body, place = hintPlace()) {
   if (gameState.hintsSeen[key]) return;
+  const away = place.includes('1') && place !== hintPlace();
   // 🍳 미니게임(조리·조각) 무대 위에 모달을 띄우면 판을 통째로 덮어 버린다 —
   //   버프 안내는 요리를 끝내고 먹은 뒤에 오는데, 바로 "🍳 한 번 더" 로 다음 판을 시작하면
   //   800ms 뒤 도착한 안내가 새 판을 가렸다. 소진하지 말고 미룬다(announceMapOpens 와 같은 규칙).
   //   🐗🦝 밤손님 대결도 같다 — '밤손님이 다녀갔어요' 안내가 가위바위보를 덮었다(2026-09-26).
-  if (mgView || duelActive || ui.coachActive?.()) {
-    if ((firstHintRetries[key] = (firstHintRetries[key] || 0) + 1) <= 20) setTimeout(() => firstHint(key, ico, title, body), 2500);
+  if (away || mgView || duelActive || ui.coachActive?.() || ui.anyModalOpen?.() || treeShotBusy() || document.body.classList.contains('intro-open')) {
+    const n = ui.coachActive?.() ? (firstHintRetries[key] || 0) : (firstHintRetries[key] = (firstHintRetries[key] || 0) + 1);
+    if (n <= 20) setTimeout(() => firstHint(key, ico, title, body, place), 2500);
     return;
   }
   gameState.hintsSeen[key] = true;
@@ -1497,6 +1511,7 @@ let nearDoor = null;       // 'enter' | 'exit' | null
 let lastDoorPrompt = null; // 도어/빌드 프롬프트 중복 갱신 방지
 let lastNearHouse = false; // 🎨 집 근처 여부(외관 꾸미기 버튼 표시) 변화 감지
 let placingDecor = null;   // 배치 중인 가구 id
+let lastVisitorPill = false;
 let nearDecorMesh = null, decorNearRing = null;   // 🛋️ 근접 프롬프트 대상 가구 / 그 밑 호박색 링
 let decorRot = 0;          // 배치 방향(0~3 → 90°씩) — 가로/세로 전환
 let decorGhost = null;     // 🫥 바닥 미리보기(반투명 가구 + 초록 링) — 놓일 자리·방향을 미리 보여준다
@@ -2122,6 +2137,11 @@ export const Input = {
   getStored() { return gameState.house.stored || {}; },
   isIndoor() { return indoor; },
   hintSeen(key) { return !!gameState.hintsSeen[key]; },   // 첫 안내 1회 판정(🎨 가구 배치 단계 안내 등)
+  tutStep() { return gameState.hintsSeen.tutStep || null; },
+  setTutStep(k) { gameState.hintsSeen = { ...gameState.hintsSeen, tutStep: k }; requestSave(); },
+  houseStage() { return gameState.houseStage || 0; },
+  cosOwnedCount() { return (gameState.cosmetics?.owned || []).length; },
+  bridgeFixed() { return !bridgeBroken(gameState, unlocksOn()); },
 };
 
 // ── 🧪 [베타 2차] 맵 계단식 열기 — 판정은 tuning.js, 여기선 상태만 넘긴다 ──────────
@@ -2695,7 +2715,7 @@ export async function enterGame() {
   gameState.firstDay = ensureFirstDay(gameState.firstDay, todayStr());
   const bonusModal = checkDailyBonus(); // [출석] 오늘 첫 접속이면 보상 지급(모달 표시 여부 반환)
   if (WEATHER !== 'clear') {            // [날씨] 궂은 날 안내 + 세션 태깅
-    if (!bonusModal) ui.toast?.(WEATHER_MSG[WEATHER], 2800);   // 출석 모달에 이미 합쳐 안내했으면 생략
+    if (!bonusModal) ui.toast?.(WEATHER_MSG[WEATHER], 2800, { afterDialog: true });   // 출석 모달에 이미 합쳐 안내했으면 생략
     if (RAIN_DAY) startRainSound();
     trackEvent('weather_day', { type: WEATHER }); // [GA4] 세션 요약 counts 에 자동 집계 → 날씨별 행동 비교
   }
@@ -2716,7 +2736,7 @@ export async function enterGame() {
   respawnPet();                         // 🐾 펫 3D — 세이브 복원 뒤. ⚠️ 여기에 정산은 없다(펫은 오프라인에 아무것도 안 한다)
   if (SEVERE_TOMORROW) {                // 🔮 내일 궂은 날씨 예고 — 다른 안내와 안 겹치게 늦게
     const s = SEVERE_INFO[SEVERE_TOMORROW];
-    setTimeout(() => ui.toast?.(`${s.ico} 내일 ${s.name} 예보! 오늘 수확하거나 작업대에서 🛡️ 덮개를 준비하세요`, 3600), 3000);
+    setTimeout(() => ui.toast?.(`${s.ico} 내일 ${s.name} 예보! 오늘 수확하거나 작업대에서 🛡️ 덮개를 준비하세요`, 3600, { afterDialog: true }), 3000);
   }
 
   // 신규: 캐릭터(동물) 미선택이면 선택 화면 → 그 뒤 튜토리얼. 이미 선택했으면 튜토리얼만.
@@ -3768,6 +3788,7 @@ function applyCosmetics(cos) {
     if (m) charAnchors[it.anchor || it.slot].add(m);   // 아이템이 붙을 면을 고른다
   }
   showSkinParts(charGroup, cos);   // 🌱 모자·🎒 가방을 입으면 스킨의 머리·등 부위를 숨긴다
+  if (tailPivot) tailPivot.visible = !hidesTail(cos);
   refreshHeldTool(cos);                        // 🪓 💎 도구 테마 세트를 입고 벗으면 손에 든 도구도 바로 바뀐다(우산은 updateUmbrella 가 따라온다)
 }
 
@@ -3975,6 +3996,7 @@ export function buildCharacterMesh(id, cos = gameState.cosmetics) {
     if (m) built.anchors[it.anchor || it.slot].add(m);
   }
   showSkinParts(built.group, cos);   // 🌱 입어보기 꾸미기도 같은 규칙
+  if (built.tail) built.tail.visible = !hidesTail(cos);
   return built.group;
 }
 
@@ -6056,6 +6078,7 @@ function animate() {
   updateDream(dt, t);       // 🌙 꿈의 숲(조각 줍기·디딤돌·반딧불)
   updateMirror(dt, t); syncVillageCarriage(inVillage2());
   updateHalloween(dt, t);   // 🪞 거울 마을(주민·의뢰·정류장 마차)
+  updateHalloweenArrival(dt, t);
   updateCafeGuests(dt, t);  // ☕ 카페 손님(숨쉬기·주문 말풍선)
   updateForage(dt, t);      // 🍄 채집물(돋아나기·재생성)
   updatePlots(dt);
@@ -6065,7 +6088,9 @@ function animate() {
   updatePops(dt);
   updateSetFx(clock.elapsedTime);
   updateTraceBubbles(dt, t, player.position);   // 🐾 흔적 말풍선 — 통통·가까이 가면 확대·고리
-  updateVisitorBubbles(dt, t);                  // 🔍 방문객 말풍선 — 같은 연출
+  updateVisitorBubbles(dt, t);
+  const visitorPill = !!visitorTarget() && !nearDoor;
+  if (visitorPill !== lastVisitorPill) { lastVisitorPill = visitorPill; ui.setNearTarget?.(visitorPill ? '🔍' : null); }                  // 🔍 방문객 말풍선 — 같은 연출
   updateCosQuestBubble(dt, t, player.position, !indoor);
   updateAura(dt);       // 🏮 빛 공방 오라
   updateTrail(dt);      // 👣 발자국 자취(꾸미기 trail 슬롯)
@@ -7131,6 +7156,7 @@ function handleAction() {
   if (nearDoor === 'worldtree') return openWorldTree();   // 🌳 세계수 판
   if (atMountain || nearDoor === 'mountain') return mountainAction(nearDoor);
   if (atObservatory || nearDoor === 'observatory') return observatoryAction(nearDoor);   // 🔭 문·나가기·망원경 — 실내에선 그 밖의 액션 없음
+  if (nearDoor === 'hwpumpkin') return pumpkinAction();
   if (atHalloween || nearDoor === 'halloween') return halloweenAction(nearDoor);
   if (atNeighbor || nearDoor === 'neighbor') return neighborAction(nearDoor);   // 🏡 팻말·나가기 — 이웃 공간 안에선 그 밖의 액션 없음
   if (nearDoor === 'river') return enterRiver();
@@ -7221,7 +7247,7 @@ function handleAction() {
   const fp = fertTarget();
   if (fp && !fertBlockedByWatering(TOOLS[currentTool].id, toolPage, clock.elapsedTime < (fp.wetUntil || 0))) return applyFert(fp);
   // ✋ 맨손 — 도구를 등에 메고 있으니 도구질은 안 된다(줍기·대화·문은 위에서 이미 처리됨)
-  if (toolPage === 'none') { ui.toast?.(touchHud() ? '✋ 맨손이에요. 오른쪽 아래 도구 버튼을 꾹 눌러 꺼내세요' : '✋ 맨손이에요 — 하단 왼쪽 버튼(숫자 1)으로 도구를 꺼내세요'); return; }
+  if (toolPage === 'none') { ui.toast?.(touchHud() ? '✋ 맨손이에요. 오른쪽 아래 도구 버튼을 탭해서 꺼내세요' : '✋ 맨손이에요 — 하단 왼쪽 버튼(숫자 1)으로 도구를 꺼내세요'); return; }
   // 🌾 농사 도구(괭이·씨앗·물조리개·낫)는 밭 상태에 맞는 도구로 바꿔 바로 실행 — 🪏삽은 명시적으로만
   if (FARM_AUTO_TOOLS.includes(TOOLS[currentTool].id)) return farmAutoAction();
   switch (TOOLS[currentTool].id) {

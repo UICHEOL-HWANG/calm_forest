@@ -95,9 +95,12 @@ test('storyFor(true): id·순서·보상은 같고 1·2장 문구만 바뀐다',
   assert.deepEqual(R.map(c => c.reward), STORY.map(c => c.reward));
   assert.equal(R[0].title, '세계수를 지키는 법');
   assert.equal(R[0].goal, '할아버지 만나기');   // 폰 HUD 칩에서 두 줄로 꺾이지 않게 짧게(2026-10-17)
-  assert.equal(R[1].goal, STORY[1].goal);   // 2장 규칙(의뢰 3번)은 그대로 — 세계수 판이 생기면 바꾼다
+  assert.equal(R[1].goal, '물의 가지 빈터 꾸미기');
+  assert.equal(R[1].rule, 'branchWater');
   assert.notEqual(R[1].start, STORY[1].start);
-  assert.deepEqual(R.slice(2), STORY.slice(2));
+  assert.deepEqual(R.slice(2).map(c => [c.id, c.title, c.goal, c.done]), STORY.slice(2).map(c => [c.id, c.title, c.goal, c.done]));
+  assert.deepEqual(R.slice(2, 5).map(c => c.rule), ['tasteGated', 'secretGated', 'livingGated']);
+  assert.deepEqual(R.slice(5), STORY.slice(5));
   assert.equal(STORY[0].title, '나의 첫 집');   // 원본 표는 안 건드린다
   for (const k of Object.keys(STORY_REWORLD)) assert.ok(STORY.some(c => c.id === k));
 });
@@ -110,7 +113,12 @@ test('1장(reworld): 집만 지어선 안 끝나고, 다리를 고치면 끝난�
   assert.equal(chapterDone(R, 0, fixed), true);
   assert.equal(chapterProgress(R, 0, fixed), '공사 3/3 · 다리 1/1');
   assert.deepEqual(pendingChapters(R, fresh({ houseStage: 5 })), []);
-  assert.deepEqual(pendingChapters(R, { ...fixed, story: { ch: 0, q: 3 } }), [0, 1]);   // 2장(의뢰 3번)은 같은 규칙
+  assert.deepEqual(pendingChapters(R, { ...fixed, story: { ch: 0, q: 3 } }), [0]);   // 2장은 의뢰 수가 아니라 물의 가지 — 1장과 같이 끝나지 않는다
+  const water = { ...fixed, tree: { branches: { water: { habitat: true } } }, story: { ch: 1, q: 0 } };
+  assert.deepEqual(pendingChapters(R, water), [1]);
+  assert.equal(chapterProgress(R, 1, fixed), '💧 물의 가지 빈터 0/1');
+  assert.equal(chapterProgress(R, 2, water), '🌳 밭의 가지 빈터 0/1');
+  assert.equal(chapterProgress(R, 3, { ...water, tree: { branches: { water: { habitat: true }, farm: { habitat: true }, kitchen: { habitat: true } } } }), '🌳 숲의 가지 빈터 0/1');
   // 꺼짐(예전 표)에선 같은 상태가 집만으로 끝난다
   assert.equal(chapterDone(STORY, 0, fresh({ houseStage: 3 })), true);
   const v = buildStoryView(R, fresh({ houseStage: 3 }));

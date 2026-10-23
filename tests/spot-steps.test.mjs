@@ -46,3 +46,16 @@ test('첫 실행 핵심 조작(걷기·도구 고르기·쓰기)만 core', () =>
   assert.deepEqual(spotSteps('full', true).filter((s) => s.core).map((s) => s.key), ['t_move', 't_tool', 't_use']);
   assert.deepEqual(spotSteps('full', false).filter((s) => s.core).map((s) => s.key), ['pc_move', 'pc_set', 'pc_pick', 'pc_use']);
 });
+
+test('동그라미 안내 문구는 동그라미가 하는 일에 맞춘다', async () => {
+  const { pillText, pillHintKey } = await import('../js/onboarding/spot-steps.js');
+  assert.equal(pillText({ kind: 'npc', icon: '💬' }), '👆 말 걸기');
+  assert.equal(pillText({ kind: 'door', icon: '🎃', text: '🎃 달빛 유령 정원으로 가기' }), '👆 정원으로');
+  assert.equal(pillText({ kind: 'door', icon: '🚪', text: '🚪 마을로 나가기' }), '👆 마을로');
+  assert.equal(pillText({ kind: 'target', icon: '🔍' }), '👆 살펴보기');
+  assert.equal(pillText({ kind: 'door', icon: '🍳', text: '🍳 요리하기' }), '👆 바로 하기');
+  for (const k of ['npc', 'target']) assert.ok(pillText({ kind: k }).length <= 8);
+  assert.equal(pillHintKey({ kind: 'door', icon: '🎃' }), 'spot_pill_hw');
+  assert.equal(pillHintKey({ kind: 'target', icon: '🔍' }), 'spot_pill_look');
+  assert.equal(pillHintKey({ kind: 'npc', icon: '💬' }), 'spot_pill');
+});

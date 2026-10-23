@@ -41,6 +41,7 @@ import { dreamNightHint, dreamPrompt } from '../spaces/dream.js';
 import { mirrorPrompt, mirrorVillagePrompt } from '../spaces/mirror.js';
 import { neighborPrompt } from '../spaces/neighbor.js';
 import { halloweenPrompt, halloweenVillagePrompt } from './halloween.js';
+import { arrivalPrompt } from './halloween-arrival.js';
 import { worldTreeNear, worldTreePrompt } from '../spaces/world-tree.js';
 import { nearestOutdoor, outdoorZone } from '../spaces/outdoor-decor.js';
 import { chestHintNow, updateRiverInteract } from '../spaces/river.js';
@@ -148,6 +149,13 @@ export function updateDoorInteract() {
   if (boat.active) {   // 🛶 런 중엔 프롬프트를 전부 끔(액션 = 노 젓기)
     $w.nearDoor = null; $w.nearBoat = $w.nearBoatShop = false;
     if (lastDoorPrompt !== null) { $w.lastDoorPrompt = null; ui.setDoorPrompt?.(null); }
+    if (lastZoneHint !== null) { $w.lastZoneHint = null; ui.setZoneHint?.(null); }
+    return;
+  }
+  const ap = !indoor && arrivalPrompt(player.position);
+  if (ap) {
+    $w.nearDoor = ap.nd;
+    if (ap.prompt !== lastDoorPrompt) { $w.lastDoorPrompt = ap.prompt; ui.setDoorPrompt?.(ap.prompt); }
     if (lastZoneHint !== null) { $w.lastZoneHint = null; ui.setZoneHint?.(null); }
     return;
   }

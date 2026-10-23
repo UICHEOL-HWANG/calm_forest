@@ -647,6 +647,7 @@ export function updateMerchantVisit(dt) {
     const offer = welcomeOffer(gameState.inventory, { reworld: storyReworld(gameState, unlocksOn()) });   // 🔓 첫 수확으로도 돌아온다(E1 처치는 당근부터 거둔다)
     if (!offer) return;
     gameState.hintsSeen.merchantVisit = true;            // 즉시 소진(세이브에 남아 재발동 없음)
+    gameState.hintsSeen.merchantArrived = true;
     merchantVisit = { state: 'walk', t: 0, offer };
     syncUnlocks();   // 🔓 이 방문이 곧 상인의 귀환 — 숨어 있던 상인·좌판·시세판이 지금 선다(해금 꺼짐이면 아무 일 없음)
     return;
@@ -783,6 +784,7 @@ export function talkToNPC() {
       trackEvent('ferry_quiz_offer', { quiz_date: todayStr(), available: view.quiz.available ? 1 : 0, reason: view.quiz.available ? 'ok' : 'done' });   // [GA4] 노출
     }
     Sound.blip(); ui.openNPCModal?.(view); ui.act?.('talk'); // 튜토리얼
+    if (view.npc.id === 'curator') ui.act?.('curator');
     dexDiscover('npc', view.npc.id);                         // 📖 도감(이웃 첫 대화)
     // [GA4] 대화 이벤트 — 주민별 대화 횟수 / mode(offer·progress·claim·done)로 대화→수락 전환 분석.
     //   ※ GA4 전용(스키마 자유). Supabase game_logs(고정 스키마)엔 넣지 않아 연동 충돌 없음.

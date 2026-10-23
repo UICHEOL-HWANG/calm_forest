@@ -87,7 +87,7 @@ function fadeThen(fn) {
 
 function clearPrompts() { $w.nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); $w.lastZoneHint = null; $w.lastDoorPrompt = null; }
 
-export function enterHalloween() {
+export function enterHalloween(via = 'gate') {
   if (busy || !inVillage2() || !halloweenOpen()) return;
   ensureWorld();
   fadeThen(() => {
@@ -100,7 +100,7 @@ export function enterHalloween() {
     clearPrompts(); snapCamera(); setSpaceVisible();
     arrivedAt = performance.now();
     Sound.blip();
-    trackEvent('hw_enter', { visit_n: gameState.halloween.visits, left_today: ghostsLeft(gameState.halloween, todayStr()).length, candy: candy() });
+    trackEvent('hw_enter', { via, visit_n: gameState.halloween.visits, left_today: ghostsLeft(gameState.halloween, todayStr()).length, candy: candy() });
     if (!gameState.halloween.gifted) showArriveCard(() => {
       const r = takeFirstGift(hwState());
       gameState.halloween = r.hw;

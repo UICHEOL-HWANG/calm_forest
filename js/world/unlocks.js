@@ -37,9 +37,9 @@ export const UNLOCKS = [
   { id: 'plaza',      kind: 'place', when: always },   // 계절 규칙(plazaMapVisible)은 그대로
   { id: 'mountain',   kind: 'place', when: always },   // 둘째 날 규칙(isMountainOpen)은 그대로
   // ── ① 상인 환영 방문(목재 5 또는 물고기 1) — js/spaces/npc.js 의 기존 연출을 귀환으로 쓴다 ──
-  { id: 'merchant',   kind: 'npc',   when: s => !!s?.hintsSeen?.merchantVisit },
-  { id: 'shop',       kind: 'place', when: s => !!s?.hintsSeen?.merchantVisit },
-  { id: 'market',     kind: 'place', when: s => !!s?.hintsSeen?.merchantVisit },
+  { id: 'merchant',   kind: 'npc',   when: s => !!(s?.hintsSeen?.merchantVisit || s?.hintsSeen?.merchantArrived) },
+  { id: 'shop',       kind: 'place', when: s => !!(s?.hintsSeen?.merchantVisit || s?.hintsSeen?.merchantArrived) },
+  { id: 'market',     kind: 'place', when: s => !!(s?.hintsSeen?.merchantVisit || s?.hintsSeen?.merchantArrived) },
   // ── ② 집 기초 ──
   { id: 'builder',    kind: 'npc',   when: s => (s?.houseStage || 0) >= 1 },
   // ── ③ 집 완성 → 다리 수리 가능 / ④ 다리 수리 → 박물관·할아버지 ──
