@@ -39,6 +39,9 @@ function collectScripts(html, outDir) {
   if (!scripts.some(s => s.name === 'main')) {
     throw new Error('[bundle-boot] index.html 에서 게임 인라인 모듈(./js/game.js import)을 못 찾음');
   }
+  if (!scripts.some(s => s.name === 'boot-i18n')) {
+    throw new Error('[bundle-boot] index.html 에서 로딩 화면 번역 모듈(./js/i18n.js import)을 못 찾음');
+  }
   return scripts;
 }
 

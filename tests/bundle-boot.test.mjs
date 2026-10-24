@@ -61,6 +61,14 @@ test('bundle-boot: 원본 js/ 는 그대로 남는다(대시보드가 직접 imp
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
+test('bundle-boot: 로딩 화면 번역 모듈을 못 찾으면 빌드를 멈춘다', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'cf-boot-'));
+  try {
+    writeFileSync(path.join(dir, 'index.html'), `<script type="module">import { x } from './js/game.js';</script>`);
+    await assert.rejects(() => bundleBoot(dir), /로딩 화면 번역/);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test('bundle-boot: 게임 인라인 모듈을 못 찾으면 빌드를 멈춘다', async () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'cf-boot-'));
   try {

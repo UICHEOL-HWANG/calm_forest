@@ -10,6 +10,7 @@ import { CONFIG, IS_DEV_SESSION } from './config.js';
 import { PLATFORM } from './platform.js';
 import { createErrorReporter } from './client-errors.js';
 import { installErrorHooks, makeSender } from './client-errors-hooks.js';
+import { installStaleChunkReload } from './stale-chunk-reload.js';
 
 const ENDPOINT = `${CONFIG.API_BASE}/api/logs`;
 const FLUSH_EVERY_MS = 10_000;
@@ -35,6 +36,7 @@ function boot() {
     enabled: !IS_DEV_SESSION,
   });
   installErrorHooks({ win: window, doc: document, reporter, consoleObj: console, fetchScope: window, endpoint: '/api/logs' });
+  installStaleChunkReload(window);
   setInterval(() => reporter.flush(), FLUSH_EVERY_MS);
   reporter.flush();   // 지난 실행에서 못 보낸 잔여분
   return reporter;
