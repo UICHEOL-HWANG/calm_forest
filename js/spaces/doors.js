@@ -443,6 +443,7 @@ export function updateDoorInteract() {
   //   🔍 텃밭 방문객을 살펴볼 수 있으면 그게 먼저 — farmActionFirst 는 손님이 있으면 false 라 그것만으론 못 막는다.
   //      안 비키면 handleAction 맨 위의 문 분기가 commandPet 으로 채가서 손님을 못 살펴봤다(2026-10-12).
   if (!prompt && !farmActionFirst() && !visitorTarget() && petChoresNear()) { $w.nearDoor = 'pet'; prompt = '🐾 맡기기'; }
+  if (placingOutdoor) prompt = null;
   if (prompt !== lastDoorPrompt) { $w.lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt); }
   // 🪜 양방향 선택 UI(6단계 2층 전용) — door-prompt 와 같은 중복 갱신 방지 패턴.
   //   opts 가 바뀔 때만 버튼을 다시 그린다(매 프레임 onclick 재바인딩 낭비 방지).

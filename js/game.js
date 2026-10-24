@@ -7122,6 +7122,11 @@ function handleAction() {
   //    액션은 안 막혀서, 대화창을 띄운 채 Space 를 누르면 나무를 베거나 — NPC 옆이면
   //    퀘스트 모달이 대화창 **위에 겹쳐** 떴다. 모달 위에서는 아무 일도 일어나지 않아야 한다.
   if (ui.anyModalOpen?.()) return;
+  if (placingOutdoor && !indoor) {   // 🪵 야외 장식·밭 시설 — 탭으로 조준한 자리(없으면 발밑)에 놓는다
+    const ax = outdoorTarget.pinned ? outdoorTarget.x : player.position.x;
+    const az = outdoorTarget.pinned ? outdoorTarget.z : player.position.z;
+    return placeOutdoor(ax, az);
+  }
   // 문/게이트(입장/퇴장) 우선
   if (nearDoor === 'enter') return enterHouse();
   if (nearDoor === 'exit') return exitHouse();
@@ -7195,11 +7200,6 @@ function handleAction() {
     if (placingDecor) commitDecor(decorTarget.x, decorTarget.z);   // 고스트 자리(탭한 곳 또는 발 앞)에 놓기
     else ui.toast?.('🎨 꾸미기 버튼으로 가구를 골라 배치하세요');
     return;
-  }
-  if (placingOutdoor) {   // 🪵 야외 장식·밭 시설 — 탭으로 조준한 자리(없으면 발밑)에 놓는다
-    const ax = outdoorTarget.pinned ? outdoorTarget.x : player.position.x;
-    const az = outdoorTarget.pinned ? outdoorTarget.z : player.position.z;
-    return placeOutdoor(ax, az);
   }
   if (nearKitchen) { trackEvent('kitchen_open'); decorBanner('cook'); return ui.openKitchen?.(kitchenView()); } // 🍳 자유주방 → 요리 미니게임 메뉴판
   if (nearStation) return ui.openCraft?.(craftPanelData(nearStation.id));   // 🔥🫙 가공 시설 근처 → 가공 창
