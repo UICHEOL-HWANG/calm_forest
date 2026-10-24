@@ -65,6 +65,10 @@ if (leftovers.length) {
   throw new Error('[build-itch] itch.zone 에서 404 가 될 경로가 남아 있습니다:\n  ' + leftovers.join('\n  '));
 }
 
+const { bundleBoot } = await import('./lib/bundle-boot.mjs');
+const boot = await bundleBoot(OUT);
+console.log(`[build-itch] 첫 화면 JS ${boot.bootFiles.length}개로 묶음`);
+
 // ④ zip — index.html 이 zip 루트에 오도록 OUT 안에서 묶는다
 execFileSync('zip', ['-qr', `../${ZIP}`, '.', '-x', '.DS_Store'], { cwd: OUT, stdio: 'inherit' });
 const mb = (statSync(ZIP).size / 1024 / 1024).toFixed(2);

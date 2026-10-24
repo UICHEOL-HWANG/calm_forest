@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFileSync, rmSync, existsSync } from 'node:fs';
+import { readFileSync, rmSync, existsSync, readdirSync } from 'node:fs';
 
 async function detectWith(win, search = '') {
   globalThis.window = win;
@@ -31,7 +31,10 @@ test('build-cap: 플래그 주입 · vendor 치환 · API_BASE 절대 URL · SW 
     execFileSync('node', ['scripts/build-cap.mjs'], { stdio: 'pipe' });
     const html = readFileSync('dist-cap/index.html', 'utf8');
     assert.match(html, /<head>\s*<script>window\.__ANDROID__ = true;<\/script>/);
-    assert.match(html, /"three": "\.\/vendor\/three\/three\.module\.js"/);
+    assert.doesNotMatch(html, /importmap/);
+    assert.match(html, /<script type="module" src="\.\/js\/b\/main-[A-Z0-9]+\.js"><\/script>/);
+    const bundled = readdirSync('dist-cap/js/b').map(f => readFileSync(`dist-cap/js/b/${f}`, 'utf8')).join('\n');
+    assert.doesNotMatch(bundled, /esm\.sh\/@supabase/, '앱 묶음은 supabase 를 vendor 에서 가져와야 오프라인에서 뜬다');
     assert.doesNotMatch(html, /unpkg\.com/);
     assert.doesNotMatch(html, /serviceWorker\.register/);
     assert.doesNotMatch(html, /id="login-links"/, '구글 플레이 정책 — 외부 결제 안내 링크(#login-links)는 앱 번들에 없어야 한다');

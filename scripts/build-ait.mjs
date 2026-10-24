@@ -47,4 +47,8 @@ if (leftovers.length) {
   throw new Error('[build-ait] 상대경로 API 호출이 남아 있습니다 — CONFIG.API_BASE 를 앞에 붙이세요:\n  ' + leftovers.join('\n  '));
 }
 
+const { bundleBoot } = await import('./lib/bundle-boot.mjs');
+const boot = await bundleBoot('dist-toss');
+console.log(`[build-ait] 첫 화면 JS ${boot.bootFiles.length}개로 묶음`);
+
 console.log(`[build-ait] dist-toss 준비 완료 (플랫폼 플래그 주입 · API_BASE=${API_ORIGIN})`);
