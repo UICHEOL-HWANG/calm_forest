@@ -34,12 +34,13 @@ test('client sends through SLED_TABLE and skips dev sessions', () => {
 
 test('min-time trigger looks up the floor by version and rejects unknown versions', () => {
   assert.doesNotMatch(sql, /course_v = 1 and/);
-  assert.match(sql, /case new\.course_v when 1 then 13750 else null end/);
+  assert.match(sql, /case new\.course_v when 1 then 13750 when 2 then 13750 else null end/);
   assert.match(sql, /floor_ms is null or new\.time_ms is null or new\.time_ms < floor_ms/);
 });
 
 test('version checks, octet_length cap, nonneg check and server-set run_date', () => {
-  assert.match(sql, /sled_runs_course_v check \(course_v = 1\)/);
+  assert.match(sql, /sled_runs_course_v check \(course_v in \(1, 2\)\)/);
+  assert.match(sql, /drop constraint if exists sled_runs_course_v;/);
   assert.match(sql, /octet_length\(splits::text\)/);
   assert.doesNotMatch(sql, /pg_column_size/);
   assert.match(sql, /sled_runs_nonneg/);
@@ -77,4 +78,13 @@ test('every phys_v list in the sled migrations accepts each physics version up t
     assert.ok(lists.length > 0, f);
     for (const [, l] of lists) assert.deepEqual(l.split(',').map(Number), want, f);
   }
+});
+
+test('v2 adds move counters with a non-negative check and keeps the floor in step with the client', async () => {
+  const { COURSE, COURSE_V, minTimeMs } = await import('../js/mountain/course.js');
+  for (const col of ['drift_count', 'jump_count', 'trick_ok', 'trick_fail', 'gusts', 'mover_hits', 'pet_shield', 'ghost_delta_ms']) {
+    assert.match(sql, new RegExp(`add column if not exists ${col} (smallint|integer);`), col);
+  }
+  assert.match(sql, /sled_runs_v2_nonneg check \(/);
+  assert.match(sql, new RegExp(`when ${COURSE_V} then ${minTimeMs(COURSE)}`));
 });

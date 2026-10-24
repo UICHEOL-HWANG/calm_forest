@@ -336,6 +336,7 @@ function ctxOf() {
     daysSinceUnlock: daysSinceUnlock(gameState.firstDay, todayStr()),
     input: run.input ? run.input.input() : initialInput(isTouchDevice()),
     orientation: innerWidth < innerHeight ? 'portrait' : 'landscape',
+    ghostT: run.ride?.ghost?.t ?? null,
   };
 }
 

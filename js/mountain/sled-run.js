@@ -81,6 +81,19 @@ function sledRow(ctx, outcome, stage, sled, timeMs, pay, bestBefore) {
     arm: dp.arm ?? null,
     dda: dp.dda ?? null,
     probe_v: dp.probe_v ?? null,
+    ...moveCounts(sled),
+    ghost_delta_ms: sled && outcome === 'finish' && Number.isFinite(ctx.ghostT) ? Math.round(sled.t - ctx.ghostT) : null,
+  };
+}
+
+const countOf = v => (Array.isArray(v) ? v.length : Number.isFinite(v) ? v : 0);
+
+function moveCounts(sled) {
+  if (!sled) return { drift_count: null, jump_count: null, trick_ok: null, trick_fail: null, gusts: null, mover_hits: null, pet_shield: null };
+  return {
+    drift_count: countOf(sled.driftsAt), jump_count: countOf(sled.jumps), trick_ok: countOf(sled.tricksOk),
+    trick_fail: countOf(sled.tricksFail), gusts: countOf(sled.gustsAt), mover_hits: countOf(sled.moverHitIds),
+    pet_shield: Math.min(1, countOf(sled.shieldUsed)),
   };
 }
 
@@ -109,6 +122,10 @@ export function sledSettle(sled, ctx, env = {}) {
     run_id: ctx.runId, time_ms: timeMs, flags: sled.flagsPassed, boosts: sled.boostsAt.length,
     acorns: ctx.acornsCollected, hits: sled.hits.length, new_best: newBest ? 1 : 0, rewarded: rewarded ? 1 : 0,
     ...(ctx.diff ? diffParams(ctx.diff) : {}),
+  });
+  const moves = moveCounts(sled);
+  trackEvent('sled_detail', {
+    run_id: ctx.runId, drifts: moves.drift_count, jumps: moves.jump_count, tricks: moves.trick_ok, gusts: moves.gusts, shield: moves.pet_shield,
   });
   onPlay('sled');
   sendSledRun(sledRow(ctx, 'finish', null, sled, timeMs, { rewarded, coins, fpsAvg: env.fpsAvg }, st.best));

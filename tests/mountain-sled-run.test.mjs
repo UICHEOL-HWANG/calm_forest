@@ -95,7 +95,7 @@ test('every GA4 payload stays within 25 params and carries no arrays', () => {
     assert.ok(sent.length <= 25, `${name} has ${sent.length}`);
     assert.ok(!sent.some(Array.isArray), `${name} has an array`);
   }
-  assert.deepEqual(events.map(e => e[0]), ['sled_start', 'sled_result']);
+  assert.deepEqual(events.map(e => e[0]), ['sled_start', 'sled_result', 'sled_detail']);
 });
 
 test('fractional times are rounded to integers everywhere', () => {
@@ -185,4 +185,35 @@ test('a new best saves the run path as the ghost, later plays keep it', () => {
   assert.deepEqual(plain(c.gameState.mountain.sled.ghost.pts), pts);
   c.sledBegin(CTX);
   assert.deepEqual(plain(c.gameState.mountain.sled.ghost.pts), pts);
+});
+
+test('a finish row carries the v2 move counters and the gap to the ghost', () => {
+  const { c, rows } = run();
+  const sled = { ...SLED(24000, 12), t: 24000, driftsAt: [[1, 1], [2, 2]], jumps: 3, tricksOk: 2, tricksFail: 1, gustsAt: [9], moverHitIds: [0, 2], shieldUsed: 1 };
+  c.sledSettle(sled, { ...CTX, ghostT: 25000 }, { fpsAvg: 58 });
+  const r = rows[0];
+  assert.deepEqual([r.drift_count, r.jump_count, r.trick_ok, r.trick_fail, r.gusts, r.mover_hits, r.pet_shield, r.ghost_delta_ms], [2, 3, 2, 1, 1, 2, 1, -1000]);
+});
+
+test('rows without a sled or ghost leave the v2 fields empty', () => {
+  const { c, rows } = run();
+  c.sledAbandon('climb', CTX, null);
+  c.sledSettle(SLED(30000, 12), CTX, { fpsAvg: 58 });
+  assert.equal(rows[0].drift_count, null);
+  assert.equal(rows[0].ghost_delta_ms, null);
+  assert.equal(rows[1].drift_count, 0);
+  assert.equal(rows[1].ghost_delta_ms, null);
+});
+
+test('v2 moves go to GA4 as a separate sled_detail event with at most six keys', () => {
+  const { c, events } = run();
+  const sled = { ...SLED(24000, 12), driftsAt: [[1, 1]], jumps: 2, tricksOk: 1, gustsAt: [], shieldUsed: 0 };
+  c.sledSettle(sled, CTX, { fpsAvg: 58 });
+  const detail = events.find(e => e[0] === 'sled_detail');
+  assert.ok(detail, 'sled_detail sent');
+  const keys = Object.keys(detail[1]).filter(k => !['ts', 'platform', 'exp_arm'].includes(k));
+  assert.deepEqual(keys.sort(), ['drifts', 'gusts', 'jumps', 'run_id', 'shield', 'tricks']);
+  assert.deepEqual([detail[1].drifts, detail[1].jumps, detail[1].tricks, detail[1].gusts, detail[1].shield], [1, 2, 1, 0, 0]);
+  const result = events.find(e => e[0] === 'sled_result');
+  assert.ok(Object.keys(result[1]).length <= 23 + 3);
 });

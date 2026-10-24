@@ -42,8 +42,8 @@ create table if not exists public.sled_runs (
   constraint sled_runs_json_size check (
     coalesce(octet_length(splits::text), 0) + coalesce(octet_length(boosts_at::text), 0) + coalesce(octet_length(hits::text), 0) <= 8192
   ),
-  constraint sled_runs_course_v check (course_v = 1),
-  constraint sled_runs_phys_v check (phys_v in (1, 2, 3)),
+  constraint sled_runs_course_v check (course_v in (1, 2)),
+  constraint sled_runs_phys_v check (phys_v in (1, 2, 3, 4)),
   constraint sled_runs_nonneg check (
     (time_ms is null or time_ms >= 0) and (penalty_ms is null or penalty_ms >= 0) and (coins is null or coins >= 0)
     and (climb_ms is null or climb_ms >= 0) and (steer_left_ms is null or steer_left_ms >= 0) and (steer_right_ms is null or steer_right_ms >= 0)
@@ -53,6 +53,23 @@ create table if not exists public.sled_runs (
 alter table public.sled_runs add column if not exists idle_ms integer;
 alter table public.sled_runs drop constraint if exists sled_runs_idle_nonneg;
 alter table public.sled_runs add constraint sled_runs_idle_nonneg check (idle_ms is null or idle_ms >= 0);
+
+alter table public.sled_runs drop constraint if exists sled_runs_course_v;
+alter table public.sled_runs add constraint sled_runs_course_v check (course_v in (1, 2));
+alter table public.sled_runs add column if not exists drift_count smallint;
+alter table public.sled_runs add column if not exists jump_count smallint;
+alter table public.sled_runs add column if not exists trick_ok smallint;
+alter table public.sled_runs add column if not exists trick_fail smallint;
+alter table public.sled_runs add column if not exists gusts smallint;
+alter table public.sled_runs add column if not exists mover_hits smallint;
+alter table public.sled_runs add column if not exists pet_shield smallint;
+alter table public.sled_runs add column if not exists ghost_delta_ms integer;
+alter table public.sled_runs drop constraint if exists sled_runs_v2_nonneg;
+alter table public.sled_runs add constraint sled_runs_v2_nonneg check (
+  (drift_count is null or drift_count >= 0) and (jump_count is null or jump_count >= 0) and (trick_ok is null or trick_ok >= 0)
+  and (trick_fail is null or trick_fail >= 0) and (gusts is null or gusts >= 0) and (mover_hits is null or mover_hits >= 0)
+  and (pet_shield is null or pet_shield between 0 and 1)
+);
 
 create index if not exists sled_runs_user_idx on public.sled_runs (user_id);
 create index if not exists sled_runs_date_idx on public.sled_runs (run_date);
@@ -64,7 +81,7 @@ language plpgsql set search_path = public as $$
 declare
   floor_ms integer;
 begin
-  floor_ms := case new.course_v when 1 then 13750 else null end;
+  floor_ms := case new.course_v when 1 then 13750 when 2 then 13750 else null end;
   if new.outcome = 'finish' and (floor_ms is null or new.time_ms is null or new.time_ms < floor_ms) then
     raise exception 'sled time below theoretical minimum';
   end if;
