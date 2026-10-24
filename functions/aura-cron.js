@@ -56,6 +56,7 @@ export function recipeFromResult(o, result) {
 const iso = ms => new Date(ms).toISOString();
 const asFallback = (o, now) => ({ ...o, status: 'fallback', recipe: fallbackRecipe(o.cards, o.id), ready_at: iso(now) });
 const groupBy = (list, key) => list.reduce((m, x) => m.set(key(x), [...(m.get(key(x)) || []), x]), new Map());
+export const isRegionBlocked = e => e?.status === 403 && e?.error?.error?.type === 'forbidden';
 
 export async function runAuraCron(env, { phase = 'tick', fetch = globalThis.fetch, now = Date.now(), notify = defaultNotify } = {}) {
   if (!storeReady(env) || !env?.ANTHROPIC_API_KEY) return { skipped: 'not_configured' };
@@ -81,6 +82,7 @@ export async function runAuraCron(env, { phase = 'tick', fetch = globalThis.fetc
       const left = await read('status=in.(pending,submitted)&select=*&limit=500');
       await upsert(left.map(o => asFallback(o, now)));
       out.fallback = left.length;
+      if (left.length) await notify(env, '🟠 빛 공방: 대체 레시피로 마감', `${phase}: 새벽 동안 처리 못 한 주문 ${left.length}건을 카드 기반 레시피로 마감했어요 (대기 ${left.filter(o => o.status === 'pending').length} · 제출 ${left.filter(o => o.status === 'submitted').length})`);
     } else {
       // ① 수집 — 제출된 주문을 배치별로 묶어 끝난 배치만
       const submitted = await read('status=eq.submitted&select=*&limit=500');
@@ -120,7 +122,8 @@ export async function runAuraCron(env, { phase = 'tick', fetch = globalThis.fetc
     }
   } catch (e) {
     out.error = String(e?.message || e).slice(0, 400);
-    await notify(env, '🔴 빛 공방 크론 실패', `${phase}: ${out.error}`);
+    if (isRegionBlocked(e)) out.error = `region_blocked: ${out.error}`.slice(0, 400);
+    else await notify(env, '🔴 빛 공방 크론 실패', `${phase}: ${out.error}`);
   }
   await fetch(`${base}/ai_pregen_runs`, {
     method: 'POST', headers: storeHeaders(env, 'return=minimal'),

@@ -63,7 +63,7 @@ const STEPS = [
 ];
 
 const summarize = (v) => { try { const s = JSON.stringify(v, (k, x) => typeof x === 'function' ? 'fn' : x); return s && s.length > 400 ? s.slice(0, 400) + '…' : s; } catch { return String(v); } };
-const DISMISS = ['intro-skip', 'coach-skip', 'tut-skip', 'seed-ok', 'hint-ok', 'notice-ok'];
+const DISMISS = ['intro-skip', 'coach-skip', 'tut-skip', 'seed-ok', 'hint-ok', 'daily-ok', 'notice-ok'];
 
 mkdirSync(OUT, { recursive: true });
 const b = await launch(+cdpPort);

@@ -427,8 +427,38 @@
   .boat-up button:disabled { opacity: .45; cursor: default; }
   .boat-up.maxed { opacity: .7; }
   /* 튜토리얼 / 씨앗 안내 모달 (공통 카드 스타일) */
-  #tutorial-modal, #seed-modal, #hint-modal, #photo-modal, #char-modal, #merchant-modal, #notice-modal, #settings-modal, #invite-modal { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
-  #tutorial-modal.show, #seed-modal.show, #hint-modal.show, #photo-modal.show, #char-modal.show, #merchant-modal.show, #notice-modal.show, #settings-modal.show, #invite-modal.show { display: grid; }
+  #tutorial-modal, #seed-modal, #hint-modal, #photo-modal, #char-modal, #merchant-modal, #notice-modal, #settings-modal, #invite-modal, #daily-modal { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
+  #tutorial-modal.show, #seed-modal.show, #hint-modal.show, #photo-modal.show, #char-modal.show, #merchant-modal.show, #notice-modal.show, #settings-modal.show, #invite-modal.show, #daily-modal.show { display: grid; }
+  #daily-modal { z-index: 44; }
+  #daily-modal .daily-card { width: min(380px, 94vw); background: #f6f0e4; border-radius: 28px; padding: 14px; text-align: left; }
+  .dc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .dc-t { background: #fff; border-radius: 18px; padding: 12px; min-width: 0; }
+  .dc-t small { display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .08em; opacity: .5; margin-bottom: 4px; }
+  .dc-t b { display: block; font-size: 15px; color: #24382d; }
+  .dc-t span { display: block; font-size: 11.5px; opacity: .7; font-weight: 600; margin-top: 2px; }
+  .dc-hero { grid-column: span 2; background: #24382d; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .dc-hero small { color: #fff; opacity: .6; }
+  .dc-hero b { color: #fff; font-size: 24px; letter-spacing: -.03em; }
+  .dc-dots { display: flex; gap: 5px; flex: none; }
+  .dc-dots i { width: 12px; height: 12px; border-radius: 50%; background: rgba(255,255,255,.18); }
+  .dc-dots i.on { background: var(--mint); }
+  .dc-dots i.now { background: #ffd66b; box-shadow: 0 0 0 3px rgba(255,214,107,.3); }
+  .dc-rew { background: #ffe9a8; }
+  .dc-rew b { font-size: 24px; font-weight: 900; color: #6b4a10; }
+  .dc-rew span { color: #8a6a24; opacity: 1; font-weight: 700; }
+  .dc-wide { grid-column: span 2; }
+  .dc-warn { background: #ffe1dc; }
+  .dc-new { display: inline-block; font-style: normal; font-size: 9.5px; font-weight: 900; background: #b9a6ff; color: #fff; padding: 1px 5px; border-radius: 5px; margin-left: 5px; vertical-align: 2px; }
+  .dc-season { grid-column: span 2; background: #fde3d3; font-size: 12.5px; font-weight: 700; color: #8a4a2a; padding: 9px 12px; }
+  #daily-ok { width: 100%; border: none; border-radius: 16px; padding: 14px; background: var(--mint); color: #24382d; font-weight: 800; font-size: 15px; cursor: pointer; font-family: inherit; box-shadow: var(--shadow); }
+  @media (max-width: 380px) {
+    #daily-modal .daily-card { padding: 10px; }
+    .dc-t { padding: 9px 10px; }
+    .dc-hero b { font-size: 19px; }
+    .dc-dots i { width: 9px; height: 9px; }
+    .dc-rew b { font-size: 20px; }
+    .dc-season { font-size: 11.5px; }
+  }
   /* 📮 소식함 — 공지·개발자 답장 목록(최신이 위). 답장은 내 문의 원문을 한 줄 인용 */
   #notice-list { text-align: left; margin: 0 0 16px; }
   .nt-item { padding: 12px 0; border-bottom: 1px solid #f0f4f0; }
@@ -1760,14 +1790,19 @@
   .cf-btn.go { background: var(--mint); width: 100%; }
   .cf-btn:disabled { opacity: .45; cursor: default; }
   .cf-hint { font-size: 11.5px; opacity: .62; text-align: center; line-height: 1.45; }
-  #shop-menu { display: none; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: min(460px, 92vw); flex-direction: column; gap: 10px; max-height: calc(100dvh - 114px - env(safe-area-inset-bottom) - var(--top-inset, 0px)); overflow-y: auto; }
+  #shop-menu { --menu-bottom: calc(90px + env(safe-area-inset-bottom));
+    display: none; bottom: var(--menu-bottom); left: 50%; transform: translateX(-50%); width: min(460px, 92vw); flex-direction: column; gap: 10px;
+    max-height: max(220px, calc(100dvh - var(--menu-bottom) - var(--top-inset) - 12px)); overflow: hidden; }
   #shop-menu.show { display: flex; }
+  #shop-menu > *:not(#sell-items):not(#buy-items) { flex: 0 0 auto; }
   .sh-tab { border: none; border-radius: 10px; padding: 6px 16px; font-weight: 700; font-size: 13px; cursor: pointer; background: #eef2ee; color: var(--ink); }
   .sh-tab.active { background: var(--mint); }
   /* 🧥 가게·옷장 탭이 6·5개 — 한 글자씩 꺾이지 않게 nowrap, 넘치면 줄 단위로 감싼다 */
   #cos-tabs, #wd-slots { flex-wrap: wrap; }
   #cos-tabs .sh-tab, #wd-slots .sh-tab { white-space: nowrap; padding: 6px 12px; }
-  #sell-items, #buy-items { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  #sell-items, #buy-items { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+    flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y;
+    align-content: flex-start; padding: 2px 0; }
   /* 🎀 꾸미기 상점 — #shop-menu 와 같은 자리·같은 폭. 목록 옆에 🪞입어보기 프리뷰를 세운다.
      ⚠️ 프리뷰를 목록 **위**에 얹지 않는다 — 목록이 스크롤되면 프리뷰가 같이 밀려 올라간다.
         옆에 두고 목록만 스크롤해야 입어보는 내내 보인다. */
@@ -2187,7 +2222,8 @@
     #boat-view { top: calc(50px + var(--top-inset)); }
     /* 런 중에는 도구 하트바가 없으므로 조이스틱·액션버튼이 그대로 노출된다(조향+노 젓기) */
     /* 작업대/상점/자유주방 메뉴: 좁은 화면 대응 — 탭 축소, 내용 스크롤 */
-    #shop-menu, #kitchen-menu { width: 94vw; bottom: calc(78px + env(safe-area-inset-bottom)); max-height: 66dvh; overflow-y: auto; }
+    #kitchen-menu { width: 94vw; bottom: calc(78px + env(safe-area-inset-bottom)); max-height: 66dvh; overflow-y: auto; }
+    #shop-menu { --menu-bottom: calc(78px + env(safe-area-inset-bottom)); width: 94vw; max-height: 66dvh; }
     /* 🎀 꾸미기: 375px 에서 패널 94vw=352 — 프리뷰 108 + 간격 8 + 목록 ≈220. 버튼이 안 넘친다 */
     #cos-menu { width: 94vw; bottom: calc(78px + env(safe-area-inset-bottom)); padding: 10px 12px; gap: 8px; }
     #cos-body { gap: 8px; }
@@ -3131,6 +3167,12 @@
   </div>
 
   <!-- 시설 첫 접근 안내 모달 (작업대·상점·텃밭) -->
+  <div id="daily-modal">
+    <div class="tut-card daily-card">
+      <div id="daily-body" class="dc-grid"></div>
+      <button id="daily-ok">좋아요 🌱</button>
+    </div>
+  </div>
   <div id="hint-modal">
     <div class="tut-card">
       <div class="tut-emoji" id="hint-emoji">🌿</div>
@@ -3290,6 +3332,7 @@
 
   <script type="module">
     import { initAuth, signInWithGoogle, signInWithApple, requestEmailCode, verifyEmailCode, holdGuestForLogin, signInWithToss, signInWithPlayGames, signInWithGameCenter, deleteMyAccount, signInAsGuest, startLocalGuest, loadGame, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow, fetchNotices, insertInstallAttribution, insertInstallSurvey } from './js/supabase-client.js';
+    import { renderDailyCard } from './js/daily-card.js';
     import { mountEmailLogin } from './js/auth/email-login.js';   // ✉️ 이메일 코드 로그인(웹·itch)
     import { mountInAppLogin, INAPP_COPY, trackHandoffArrival } from './js/auth/in-app-login.js';
     import { savePhotoNative, sharePhotoNative, shareUrlNative } from './js/photo-native.js';   // 📱 앱: WebView 는 download·share 를 못 한다
@@ -3297,6 +3340,7 @@
     import { SELL_ICO_G } from './js/data/places.js';
     import { consumeExit, markExit } from './js/exit-flag.js';   // 🚪 나가기 직후엔 토스·플레이 앱 자동 연결을 건너뛴다 · 🗑️ 계정 삭제 뒤에도
     import { pickText, quoteLine, parseBody } from './js/notices.js';   // 📮 소식함 — 언어별 본문·답장 원문 인용·'|' 표 파서
+    import { isTouchDevice } from './js/touch-sim.js';
     import { PLATFORM, IS_TOSS, IS_ITCH, IS_ANDROID, IS_IOS, IS_NATIVE } from './js/platform.js';   // 🔵 앱인토스 웹뷰 여부(로그인 버튼 전환) · 🎮 itch iframe 여부 · 📱 구글 플레이 앱
     import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input, markNoticesSeen, resyncPurchases } from './js/game.js';
     import { bootReferral, inviteBanner, referralOnPlay, openInviteSheet, referralEnabled } from './js/referral/index.js';   // 🤝 친구 초대
@@ -4175,6 +4219,12 @@
         b.classList.add('pulse'); clearTimeout(photoPulseT);
         photoPulseT = setTimeout(() => b.classList.remove('pulse'), 2200);
       },
+      showDailyCard(view, onOk) {
+        renderDailyCard($('daily-body'), view);
+        $('daily-ok').onclick = () => { $('daily-modal').classList.remove('show'); onOk?.(); };
+        Input.setAnalog(0, 0);
+        $('daily-modal').classList.add('show');
+      },
       // 시설 첫 접근 안내 카드 모달
       showHintModal({ ico, title, body, ok, alt, preview }) {
         $('hint-emoji').textContent = ico || '🌿';
@@ -4889,7 +4939,7 @@
 
     // ── 인터랙티브 튜토리얼(코치) 상태머신 ──
     // 기기별 조작 안내(터치=조이스틱/액션버튼, 데스크톱=키보드/클릭)
-    const TOUCH = ('ontouchstart' in window) || navigator.maxTouchPoints > 0 || new URLSearchParams(location.search).has('touchsim');   // 📱 js/touch-sim.js 와 같은 판정
+    const TOUCH = isTouchDevice();   // 📱 js/touch-sim.js 와 같은 판정
     const A = TOUCH ? '(액션)' : '(Space)';   // ⭕(U+2B55)는 빨간 원으로 렌더돼 민트색 액션 버튼과 어긋난다
     const MOVE = TOUCH ? '왼쪽 조이스틱' : 'WASD·방향키';
     // 코치 카드는 모바일에서 폭 213px(375px 화면) — 한 단계가 30자를 넘으면 4~6줄로 터진다.
@@ -6587,7 +6637,7 @@
     $('hint-ok').addEventListener('click', () => $('hint-modal').classList.remove('show'));
     window.addEventListener('keydown', e => {                // 데스크톱: 안내 모달이 떠 있으면 Space = 알겠어요 — 게임 조작으로 안 새게 capture
       if (e.code !== 'Space' || e.repeat) return;
-      const OK_BTN = { 'hint-modal': 'hint-ok', 'seed-modal': 'seed-ok', 'notice-modal': 'notice-ok', 'dream-arrive-modal': 'dream-arrive-ok', 'mirror-arrive-modal': 'mirror-arrive-ok' };
+      const OK_BTN = { 'hint-modal': 'hint-ok', 'seed-modal': 'seed-ok', 'notice-modal': 'notice-ok', 'dream-arrive-modal': 'dream-arrive-ok', 'mirror-arrive-modal': 'mirror-arrive-ok', 'daily-modal': 'daily-ok' };
       const open = Object.keys(OK_BTN).find(id => $(id).classList.contains('show'));
       if (!open) return;
       e.preventDefault(); e.stopPropagation();

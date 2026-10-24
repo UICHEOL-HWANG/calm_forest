@@ -1,4 +1,4 @@
-import { $, esc, CHAR, bootAdmin, showMsg } from './admin-common.js';
+import { $, esc, CHAR, bootAdmin, showMsg, showNotAdmin } from './admin-common.js';
 
 const API = '/api/utm-links';
 const DEFAULT_LANDINGS = ['web', 'play', 'ios'];
@@ -140,7 +140,7 @@ function wire() {
   const [{ data: isAdmin, error }, { data: sess }] = await Promise.all([sb.rpc('cf_is_admin'), sb.auth.getSession()]);
   if (error || !isAdmin) {
     $('who').textContent = '';
-    showMsg(`<img class="msg-char" src="${CHAR('panda')}" alt="">🚫 관리자 계정이 아닙니다.<br><small style="opacity:.6">${esc(sess?.session?.user?.email || '')}</small>`);
+    showNotAdmin(sb, showMsg, { email: sess?.session?.user?.email, prefix: `<img class="msg-char" src="${CHAR('panda')}" alt="">` });
     return;
   }
   $('who').innerHTML = `<b>${esc(sess.session.user.email)}</b> 로 로그인됨`;

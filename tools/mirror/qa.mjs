@@ -33,7 +33,7 @@ const KEYS = { Space: [' ', 32], Escape: ['Escape', 27], ArrowUp: ['ArrowUp', 38
 const key = async (code, type) => { const [k, vk] = KEYS[code]; await b.send('Input.dispatchKeyEvent', { type, code, key: k, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk }); };
 const press = async (code) => { await key(code, 'keyDown'); await b.sleep(80); await key(code, 'keyUp'); };
 const hold = async (code, ms) => { await key(code, 'keyDown'); await b.sleep(ms); await key(code, 'keyUp'); };
-const DISMISS = ['intro-skip', 'coach-skip', 'tut-skip', 'seed-ok', 'hint-ok', 'notice-ok'];
+const DISMISS = ['intro-skip', 'coach-skip', 'tut-skip', 'seed-ok', 'hint-ok', 'daily-ok', 'notice-ok'];
 await b.goto(`http://127.0.0.1:${process.env.QA_PORT || 8033}/?dbg=1&weather=clear&time=0.42${lang ? '&lang=' + lang : ''}`, 9000);
 for (let i = 0; i < 30; i++) { if (await ev(`(() => { const g=document.getElementById('guest-btn'); if (g && g.offsetParent) { g.click(); return true; } return false; })()`) === true) break; await b.sleep(1000); }
 

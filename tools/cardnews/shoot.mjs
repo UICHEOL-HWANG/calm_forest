@@ -138,7 +138,7 @@ async function farmRoutine(page) {
     throw new Error('옆 칸으로 못 감');
   };
 
-  await page.evaluate(() => document.querySelector('#hint-modal.show') && document.querySelector('#hint-ok')?.click());
+  await page.evaluate(() => (document.querySelector('#daily-modal.show') && document.querySelector('#daily-ok')?.click(), document.querySelector('#hint-modal.show') && document.querySelector('#hint-ok')?.click()));
   await page.waitForTimeout(250);
   await tap('KeyW', 900);                  // 남쪽 출구 판정에서 벗어난다
   await page.waitForTimeout(250);
