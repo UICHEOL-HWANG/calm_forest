@@ -78,3 +78,16 @@ test('the runtime wires v2: pet shield, press, props, fov, ghost and chips', () 
   assert.match(ride, /showChips\(chipsFor\(/);
   assert.match(ride, /PET_SEAT = Object\.freeze\(\{ x: 0, y: [0-9.]+, z: -0\.62/);
 });
+
+test('the riding pet and the ghost are cached on the mountain group and rebuilt only when they change', () => {
+  const ride = src('mountain/sled-ride.js');
+  assert.match(ride, /group\.userData\.sledPet = /);
+  assert.match(ride, /cached\?\.key === key/);
+  assert.match(ride, /cached\?\.skin === skin/);
+  const close = ride.slice(ride.indexOf('export function closeRide'));
+  assert.doesNotMatch(close, /disposePremiumPet/);
+  const m = src('spaces/mountain.js');
+  assert.match(m, /skin: run\.sledId \}\)/);
+  const fin = m.slice(m.indexOf('function finishSled'), m.indexOf('function finishSled') + 400);
+  assert.match(fin, /air: false, trick: false/);
+});

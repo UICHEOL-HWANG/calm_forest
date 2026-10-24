@@ -32,7 +32,7 @@ test('a fresh sled is on the ground with no drift, combo or tricks', () => {
 });
 
 test('holding a full turn charges a drift that fires on release', () => {
-  const held = run(at(20), 1, DRIFT.t1 + 100, empty);
+  const held = run(at(20, { x: centerX(20) - 6 }), 1, DRIFT.t1 + 100, empty);
   assert.ok(held.driftMs >= DRIFT.t1);
   const fired = stepSled(held, 16, 0, empty);
   assert.equal(fired.driftsAt.length, 1);
@@ -42,7 +42,7 @@ test('holding a full turn charges a drift that fires on release', () => {
 });
 
 test('a longer drift fires the stronger boost, flipping direction also fires', () => {
-  const held = run(at(20), -1, DRIFT.t2 + 100, empty);
+  const held = { ...at(20), driftDir: -1, driftMs: DRIFT.t2 + 50, vx: -PHYS.steerRate };
   const fired = stepSled(held, 16, 1, empty);
   assert.equal(fired.driftsAt.length, 1);
   assert.ok(fired.kickLeftMs >= DRIFT.ms2 - 16);
@@ -92,11 +92,34 @@ test('pressing in the air starts a trick, a full spin on landing boosts', () => 
   assert.ok(landed.kickLeftMs > 0);
 });
 
-test('a late trick that lands mid-spin wobbles the sled', () => {
-  const late = pressSled(at(40, { air: true, vy: -2, y: 0.3 }));
+test('a press too late to finish a spin is ignored, not punished', () => {
+  const s = at(40, { air: true, vy: -2, y: 0.3 });
+  const late = pressSled(s);
+  assert.equal(late.trick, false);
+  assert.equal(late.acorns, s.acorns);
   const landed = run(late, 0, 400, empty);
+  assert.equal(landed.tricksFail, 0);
+  assert.equal(landed.slowLeftMs, 0);
+});
+
+test('a trick that cannot quite finish still wobbles on landing', () => {
+  const landed = run({ ...at(40, { air: true, vy: 0.5, y: 0.3 }), trick: true, spin: 0 }, 0, 600, empty);
   assert.equal(landed.tricksFail, 1);
   assert.ok(landed.slowLeftMs > 0);
+});
+
+test('pinning against the course edge does not charge a drift', () => {
+  const edge = { ...at(40), x: centerX(40) + COURSE.width / 2, vx: 0 };
+  const held = run(edge, 1, DRIFT.t2 + 200, empty);
+  assert.equal(held.driftMs, 0);
+  assert.equal(stepSled(held, 16, 0, empty).driftsAt.length, 0);
+});
+
+test('a charged drift fires when the sled leaves the ground', () => {
+  const charged = { ...at(20), driftDir: 1, driftMs: DRIFT.t1 + 100, vx: PHYS.steerRate };
+  const launched = stepSled({ ...charged, air: true, vy: JUMP.vy, y: 0.01 }, 16, 1, empty);
+  assert.equal(launched.driftsAt.length, 1);
+  assert.ok(launched.kickLeftMs > 0);
 });
 
 test('pressing on the ground still spends an acorn boost', () => {

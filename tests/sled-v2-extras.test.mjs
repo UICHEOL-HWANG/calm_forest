@@ -44,6 +44,9 @@ test('only well-formed ghosts of the current version survive a save', () => {
   assert.equal(validGhost({ ...ok, pts: [[1, 2]] }), false);
   assert.equal(validGhost({ ...ok, pts: Array.from({ length: 2000 }, () => [0, 0, 0]) }), false);
   assert.equal(validGhost({ ...ok, t: 1.5 }), false);
+  assert.equal(validGhost({ ...ok, pts: [[0, 999999, 0]] }), false);
+  assert.equal(validGhost({ ...ok, pts: [[-5, 0, 0]] }), false);
+  assert.equal(validGhost({ ...ok, t: 999999 }), false);
   assert.equal(validGhost(null), false);
   assert.ok(JSON.stringify(ok).length < 6000);
 });
@@ -73,7 +76,7 @@ test('chips describe ghost gap, drift, combo, air and pet shield', () => {
 
 test('a valid ghost survives restore, a stale one is dropped', async () => {
   const { restoreMountain } = await import('../js/mountain/save.js');
-  const ghost = { v: GHOST_V, t: 24000, pts: [[0, 0, 0], [13, 100, 0]] };
+  const ghost = { v: GHOST_V, t: 24000, pts: Array.from({ length: 240 }, (_, i) => [i * 13, 100, 0]) };
   assert.deepEqual(restoreMountain({ sled: { best: 24000, ghost } }).sled.ghost, ghost);
   assert.equal('ghost' in restoreMountain({ sled: { best: 24000, ghost: { ...ghost, v: 'c1p3' } } }).sled, false);
 });

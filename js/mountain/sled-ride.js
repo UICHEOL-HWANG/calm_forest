@@ -28,33 +28,57 @@ export function sledProps(group) {
   return group.userData.sledProps;
 }
 
-function ghostMesh(group, sledMesh) {
-  if (group.userData.sledGhost) return group.userData.sledGhost;
-  const g = sledMesh.clone(true);
-  g.traverse(o => {
-    if (!o.material) return;
-    o.material = o.material.clone();
-    o.material.transparent = true;
-    o.material.opacity = GHOST_LOOK.opacity;
-    o.material.depthWrite = false;
-    o.material.color?.lerp(new THREE.Color(GHOST_LOOK.color), 0.6);
-  });
-  g.visible = false;
-  group.add(g);
-  group.userData.sledGhost = g;
+function ghostMaterial(m) {
+  const g = m.clone();
+  g.transparent = true;
+  g.opacity = GHOST_LOOK.opacity;
+  g.depthWrite = false;
+  g.color?.lerp(new THREE.Color(GHOST_LOOK.color), 0.6);
   return g;
 }
 
-export function openRide({ group, sledMesh, pet, ghost }) {
+const eachMaterial = (o, fn) => (Array.isArray(o.material) ? o.material.forEach(fn) : o.material && fn(o.material));
+
+function ghostMesh(group, sledMesh, skin) {
+  const cached = group.userData.sledGhost;
+  if (cached?.skin === skin) return cached.obj;
+  if (cached) {
+    group.remove(cached.obj);
+    cached.obj.traverse(o => eachMaterial(o, m => m.dispose()));
+  }
+  const obj = sledMesh.clone(true);
+  obj.traverse(o => {
+    if (o.material) o.material = Array.isArray(o.material) ? o.material.map(ghostMaterial) : ghostMaterial(o.material);
+  });
+  obj.visible = false;
+  group.add(obj);
+  group.userData.sledGhost = { skin, obj };
+  return obj;
+}
+
+function ridingPet(group, pet) {
+  const key = `${pet.kind}:${stageOf(pet.works)}`;
+  const cached = group.userData.sledPet;
+  if (cached?.key === key) return cached.obj;
+  if (cached) {
+    cached.obj.parent?.remove(cached.obj);
+    disposePremiumPet(cached.obj);
+  }
+  const obj = spawnPet(THREE, pet.kind, stageOf(pet.works));
+  if (obj) {
+    obj.position.set(PET_SEAT.x, PET_SEAT.y, PET_SEAT.z);
+    obj.scale.multiplyScalar(PET_SEAT.scale);
+  }
+  group.userData.sledPet = obj ? { key, obj } : null;
+  return obj;
+}
+
+export function openRide({ group, sledMesh, pet, ghost, skin }) {
   const props = sledProps(group);
   props.update(0);
-  const ghostObj = ghost ? ghostMesh(group, sledMesh) : null;
-  const pet3d = pet ? spawnPet(THREE, pet.kind, stageOf(pet.works)) : null;
-  if (pet3d) {
-    pet3d.position.set(PET_SEAT.x, PET_SEAT.y, PET_SEAT.z);
-    pet3d.scale.multiplyScalar(PET_SEAT.scale);
-    sledMesh.add(pet3d);
-  }
+  const ghostObj = ghost ? ghostMesh(group, sledMesh, skin) : null;
+  const pet3d = pet ? ridingPet(group, pet) : null;
+  if (pet3d) sledMesh.add(pet3d);
   return { props, ghost, ghostObj, pet3d, sledMesh, path: [], hop: 0, frame: 0 };
 }
 
@@ -127,7 +151,6 @@ export function closeRide(ride) {
   stopRide(ride);
   if (ride.pet3d) {
     ride.sledMesh.remove(ride.pet3d);
-    disposePremiumPet(ride.pet3d);
     ride.pet3d = null;
   }
   ride.props.update(0);

@@ -1,10 +1,12 @@
-import { COURSE_V } from './course.js';
+import { COURSE, COURSE_V } from './course.js';
 import { PHYS_V } from './sled.js';
 import { COMBO, driftTier } from './sled-moves.js';
 
 export const GHOST_V = `c${COURSE_V}p${PHYS_V}`;
 export const GHOST_STEP_MS = 100;
 const GHOST_MAX_PTS = 1200;
+const GHOST_X_MAX = 3000;
+const GHOST_Y_MAX = 2000;
 
 export function recordGhost(path, s) {
   if (path.length * GHOST_STEP_MS > s.t) return path;
@@ -35,8 +37,10 @@ export function ghostGapMs(ghost, s) {
 export function validGhost(g) {
   if (!g || typeof g !== 'object' || g.v !== GHOST_V) return false;
   if (!Number.isInteger(g.t) || g.t <= 0 || !Array.isArray(g.pts)) return false;
-  if (g.pts.length < 1 || g.pts.length > GHOST_MAX_PTS) return false;
-  return g.pts.every(p => Array.isArray(p) && p.length === 3 && p.every(Number.isInteger));
+  if (g.pts.length < 1 || g.pts.length > GHOST_MAX_PTS || g.t > (g.pts.length + 1) * GHOST_STEP_MS) return false;
+  const zMax = COURSE.length * 10 + 50;
+  return g.pts.every(p => Array.isArray(p) && p.length === 3 && p.every(Number.isInteger)
+    && p[0] >= 0 && p[0] <= zMax && Math.abs(p[1]) <= GHOST_X_MAX && p[2] >= 0 && p[2] <= GHOST_Y_MAX);
 }
 
 export function sledEvents(a, b) {

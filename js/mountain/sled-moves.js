@@ -1,7 +1,7 @@
 import { SLOPE_M_PER_UNIT } from './terrain.js';
 import { moverPos } from './course.js';
 
-export const DRIFT = Object.freeze({ min: 0.7, t1: 600, t2: 1400, ms1: 500, ms2: 900 });
+export const DRIFT = Object.freeze({ min: 0.7, slip: 0.3, t1: 600, t2: 1400, ms1: 500, ms2: 900 });
 export const JUMP = Object.freeze({ vy: 7.5, g: 20, airSteer: 0.35, spinMs: 550, okMs: 600, failMs: 800 });
 export const COMBO = Object.freeze({ n: 3, ms: 1000 });
 export const KICK_MULT = 1.35;
@@ -12,9 +12,11 @@ export function driftTier(s) {
 }
 
 export function driftStep(prev, next, steer, dtMs) {
-  if (prev.air) return { driftDir: 0, driftMs: 0 };
-  const dir = Math.abs(steer) >= DRIFT.min ? Math.sign(steer) : 0;
-  if (dir && dir === prev.driftDir) return { driftMs: prev.driftMs + dtMs };
+  const dir = prev.air || Math.abs(steer) < DRIFT.min ? 0 : Math.sign(steer);
+  if (dir && dir === prev.driftDir) {
+    const sliding = Math.abs(next.vx) >= DRIFT.slip * next.phys.steerRate;
+    return { driftMs: sliding ? prev.driftMs + dtMs : prev.driftMs };
+  }
   const tier = driftTier(prev);
   const fire = prev.driftDir && tier;
   return {
@@ -80,7 +82,12 @@ export function flyStep(s, dtMs) {
   return { ...landed, tricksFail: s.tricksFail + 1, slowLeftMs: Math.max(s.slowLeftMs, JUMP.failMs) };
 }
 
+export function airLeftMs(s) {
+  if (!s.air) return 0;
+  return ((s.vy + Math.sqrt(s.vy * s.vy + 2 * JUMP.g * Math.max(0, s.y))) / JUMP.g) * 1000;
+}
+
 export function startTrick(s) {
-  if (!s.air || s.trick) return s;
+  if (!s.air || s.trick || airLeftMs(s) < JUMP.spinMs) return s;
   return { ...s, trick: true, spin: 0 };
 }

@@ -463,7 +463,7 @@ function startSled() {
   run.yaw = sledYaw(0);
   rideSlope(0, 0);
   setSledSkin($w.mountainGroup.userData.sled, THREE, run.sledId);
-  run.ride = openRide({ group: $w.mountainGroup, sledMesh: $w.mountainGroup.userData.sled, pet: gameState.pet, ghost: gameState.mountain?.sled?.ghost ?? null });
+  run.ride = openRide({ group: $w.mountainGroup, sledMesh: $w.mountainGroup.userData.sled, pet: gameState.pet, ghost: gameState.mountain?.sled?.ghost ?? null, skin: run.sledId });
   showSled(true);
   setCameraRig(sledCamera);
   showCountdown(3);
@@ -486,6 +486,7 @@ function closeRun() {
 
 function finishSled() {
   const fpsAvg = run.frames ? Math.round(1000 / (run.frameMs / run.frames)) : null;
+  run.sled = { ...run.sled, y: 0, vy: 0, air: false, trick: false, spin: 0 };
   run.result = sledSettle(run.sled, ctxOf(), { fpsAvg, ghostPts: run.ride?.path });
   stopRide(run.ride);
   restoreFov();
