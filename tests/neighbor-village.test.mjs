@@ -44,7 +44,7 @@ test('팻말 세우기 · 나무/꽃 산포 제외 · 지도 지명 · 문 프�
   assert.match(SRC, /\{ ico: '🏡', name: '이웃 마을 가는 길', x: NEIGHBOR_GATE\.x, z: NEIGHBOR_GATE\.z, pri: 1 \}/);
   assert.match(DOORS, /nd = 'neighbor'; prompt = '🏡 이웃 마을 가는 길';/);
   assert.match(DOORS, /firstHintBanner\('neighborGate', '🏡', '이웃 마을 가는 길', '다른 숲에서도 누군가 세계수를 지키고 있대요 · 내일 또 바뀌어요'\)/);
-  assert.match(SPACE, /gateArt = buildNeighborBalloon\(THREE, t\('이웃 마을'\)\)/);
+  assert.match(SPACE, /gateArt = buildNeighborBalloon\(THREE\);/);
   assert.match(SPACE, /solidCircle\(NEIGHBOR_GATE.x, NEIGHBOR_GATE.z, 0.65\)/);
 });
 
@@ -68,10 +68,11 @@ test('8장 해제 — 기존 4장 완료자처럼 7장 완료자에게도 새 �
   assert.match(bodyOf('syncStory'), /if \(!storyBooted && !retro && \(st\.ch === 4 \|\| st\.ch === 7\)\)/);
 });
 
-// 🎈 열기구 "이웃 마을" 풍선 허리 띠(2026-10-11 시안 A) — 글씨 칸이 마을 쪽(+z)을 보게
-test('neighbor balloon: sash label faces the village', () => {
+test('neighbor balloon: quilt patchwork with house patches front and back, no text', () => {
   const ART = readFileSync(new URL('../js/neighbors/gate-art.js', import.meta.url), 'utf8');
-  assert.match(ART, /copies: 2/);
-  assert.match(ART, /CylinderGeometry\(1\.255, 1\.255, 0\.42, 32, 1, true, -Math\.PI \/ 2, Math\.PI \* 2\)/);
-  assert.doesNotMatch(ART, /nblabel|style ===/);
+  assert.match(ART, /export const QUILT_COLORS = \[/);
+  assert.match(ART, /export const HOUSE_PATCH_U = \[0\.25, 0\.75\]/);
+  assert.match(ART, /export function buildNeighborBalloon\(THREE\)/);
+  assert.doesNotMatch(ART, /fillText|label/);
+  assert.match(ART, /bow/);
 });

@@ -323,7 +323,7 @@ export function spawnNeighborGate() {
   if (gateGroup) return gateGroup;   // 두 번 불려도 열기구·충돌체가 겹치지 않게
   gateGroup = new THREE.Group();
   gateGroup.position.copy(NEIGHBOR_GATE);
-  gateArt = buildNeighborBalloon(THREE, t('이웃 마을'));
+  gateArt = buildNeighborBalloon(THREE);
   gateGroup.add(gateArt.group);
   scene.add(gateGroup);
   solidCircle(NEIGHBOR_GATE.x, NEIGHBOR_GATE.z, 0.65);                 // 바구니 충돌(1×1)
