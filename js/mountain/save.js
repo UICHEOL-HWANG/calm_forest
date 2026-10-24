@@ -1,5 +1,6 @@
 import { COURSE, minTimeMs } from './course.js';
 import { SLED_IDS } from './sled-lineup.js';
+import { validGhost } from './sled-extras.js';
 
 export const DAILY_REWARD_CAP = 3;
 
@@ -37,6 +38,7 @@ export function restoreMountain(saved) {
       plays: Number.isInteger(s.plays) && s.plays >= 0 ? s.plays : 0,
       daily: restoreDaily(s.daily),
       perfect: s.perfect === true,
+      ...(validGhost(s.ghost) ? { ghost: s.ghost } : {}),
     },
     hut: restoreHut(isObj(saved) ? saved.hut : null, Number.isInteger(s.best)),
   };

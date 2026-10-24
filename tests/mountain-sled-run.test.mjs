@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import { ddaOutcome } from '../js/difficulty.js';
 import { PHYS, PHYS_V, finalTimeMs } from '../js/mountain/sled.js';
 import { COURSE, COURSE_V } from '../js/mountain/course.js';
+import { GHOST_V } from '../js/mountain/sled-extras.js';
 
 function run(day = '2026-10-20', mountain = undefined) {
   const paid = [], saves = [], events = [], settled = [], rows = [], abandons = [], plays = [];
@@ -19,7 +20,7 @@ function run(day = '2026-10-20', mountain = undefined) {
     trackDiffAbandon: (...a) => abandons.push(a),
     onPlay: src => plays.push(src),
     diffParams: r => ({ ease: r.ease, dda: r.dda, arm: r.arm, probe_v: 2 }),
-    ddaOutcome, finalTimeMs, PHYS, PHYS_V, COURSE, COURSE_V,
+    ddaOutcome, finalTimeMs, PHYS, PHYS_V, COURSE, COURSE_V, GHOST_V,
   };
   const c = vm.createContext({ ...ctx, todayStr: () => c.today });
   vm.runInContext(readFileSync(new URL('../js/mountain/sled-run.js', import.meta.url), 'utf8')
@@ -173,4 +174,15 @@ test('every finished run rolls one decor drop, abandons do not', () => {
   c.sledSettle(SLED(41000, 12), CTX, { fpsAvg: 58 });
   c.sledAbandon('sled', CTX, SLED(12000, 3));
   assert.deepEqual(plays, ['sled', 'sled']);
+});
+
+test('a new best saves the run path as the ghost, later plays keep it', () => {
+  const { c } = run();
+  const pts = [[0, 0, 0], [13, 100, 0]];
+  c.sledSettle({ ...SLED(24000, 12), t: 24000 }, CTX, { fpsAvg: 58, ghostPts: pts });
+  assert.deepEqual(plain(c.gameState.mountain.sled.ghost), { v: GHOST_V, t: 24000, pts });
+  c.sledSettle({ ...SLED(30000, 12), t: 30000 }, CTX, { fpsAvg: 58, ghostPts: [[0, 0, 0]] });
+  assert.deepEqual(plain(c.gameState.mountain.sled.ghost.pts), pts);
+  c.sledBegin(CTX);
+  assert.deepEqual(plain(c.gameState.mountain.sled.ghost.pts), pts);
 });

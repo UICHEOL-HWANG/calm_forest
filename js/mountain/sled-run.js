@@ -1,4 +1,5 @@
 import { diffParams, gameState, giveReward, requestSave, settleDifficulty, todayStr, trackDiffAbandon } from '../game.js';
+import { GHOST_V } from './sled-extras.js';
 import { trackEvent } from '../analytics.js';
 import { onPlay } from '../decor-drops/index.js';
 import { sendSledRun } from '../supabase-client.js';
@@ -26,7 +27,8 @@ export function sledState() {
 const intOrNull = v => (Number.isFinite(v) ? Math.round(v) : null);
 
 function writeSled(next) {
-  gameState.mountain = { ...(gameState.mountain || {}), sled: next };
+  const ghost = next.ghost ?? gameState.mountain?.sled?.ghost;
+  gameState.mountain = { ...(gameState.mountain || {}), sled: { ...next, ...(ghost ? { ghost } : {}) } };
 }
 
 function rewardedToday(st, today) {
@@ -99,7 +101,8 @@ export function sledSettle(sled, ctx, env = {}) {
     }
   }
   const doneAfter = rewarded ? done + 1 : done;
-  writeSled({ ...st, best: newBest ? timeMs : st.best, daily: { date: today, rewarded: doneAfter }, perfect: st.perfect || sled.flagsPassed === COURSE.flags.length });
+  const ghost = newBest && env.ghostPts?.length ? { v: GHOST_V, t: Math.round(sled.t), pts: env.ghostPts } : undefined;
+  writeSled({ ...st, best: newBest ? timeMs : st.best, daily: { date: today, rewarded: doneAfter }, perfect: st.perfect || sled.flagsPassed === COURSE.flags.length, ...(ghost ? { ghost } : {}) });
   requestSave();
   if (ctx.diff) settleDifficulty('sled', ddaOutcome('sled', { flagsPassed: sled.flagsPassed }));
   trackEvent('sled_result', {

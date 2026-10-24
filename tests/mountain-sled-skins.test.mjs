@@ -94,7 +94,7 @@ test('the ride sled is painted from the saved colour when a run starts', () => {
   assert.match(start, /run\.sledId = sledSkin\(\)/);
   assert.ok(start.indexOf('run.sledId = ') < start.indexOf('createSled('));
   assert.equal(start.match(/sledSkin\(\)/g).length, 1);
-  assert.match(start, /createSled\([^\n]*physOf\(run\.sledId\)\)/);
+  assert.match(start, /createSled\([^\n]*physOf\(run\.sledId\)(, \{[^\n]*\})?\)/);
   assert.match(start, /setSledSkin\(\$w\.mountainGroup\.userData\.sled, THREE, run\.sledId\)/);
   assert.match(start, /run\.seat = sledSeat\(run\.sledId\)/);
   assert.ok(start.indexOf('run.seat') < start.indexOf('rideSlope('));
