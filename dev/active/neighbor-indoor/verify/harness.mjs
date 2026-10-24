@@ -25,6 +25,7 @@ export async function open({ w = 1280, h = 800, mobile = false, cdpPort = 9361 }
     await b.sleep(3500);
     for (let i = 0; i < 30; i++) {
       const r = await ev(`(() => { const m=document.getElementById('char-modal'); if (!m || !m.classList.contains('show')) return 'closed'; const c=[...document.querySelectorAll('#char-grid *')].find(e=>/곰|Bear/.test(e.textContent)); c?.click();
+        const n=document.getElementById('nick-input'); if (n && !n.value) { n.value='검수곰'; n.dispatchEvent(new Event('input', { bubbles: true })); }
         [...document.querySelectorAll('#char-modal button')].find(x=>/시작|확인|결정|이 친구|Start/.test(x.textContent))?.click(); return 'open'; })()`);
       if (r === 'closed' && i > 2) break;
       await b.sleep(1000);

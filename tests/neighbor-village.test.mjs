@@ -68,10 +68,10 @@ test('8장 해제 — 기존 4장 완료자처럼 7장 완료자에게도 새 �
   assert.match(bodyOf('syncStory'), /if \(!storyBooted && !retro && \(st\.ch === 4 \|\| st\.ch === 7\)\)/);
 });
 
-test('neighbor balloon: quilt patchwork with house patches front and back, no text', () => {
+test('neighbor balloon: quilt patchwork with a ribbon, no text or house patch', () => {
   const ART = readFileSync(new URL('../js/neighbors/gate-art.js', import.meta.url), 'utf8');
   assert.match(ART, /export const QUILT_COLORS = \[/);
-  assert.match(ART, /export const HOUSE_PATCH_U = \[0\.25, 0\.75\]/);
+  assert.doesNotMatch(ART, /HOUSE_PATCH|arc\(/);
   assert.match(ART, /export function buildNeighborBalloon\(THREE\)/);
   assert.doesNotMatch(ART, /fillText|label/);
   assert.match(ART, /bow/);

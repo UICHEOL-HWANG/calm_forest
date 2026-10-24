@@ -1,6 +1,6 @@
 // =============================================================
 //  🎈 이웃 마을 입구 — 땅에 매인 작은 열기구(높이 ~5.5m)
-//  2026-10-25 시안 D 확정: 글씨 띠를 없애고 조각보(퀼트) 풍선 + 집 자수 패치 + 꼭대기 리본.
+//  2026-10-25 시안 D 확정: 글씨 띠를 없애고 조각보(퀼트) 풍선 + 꼭대기 리본(집 자수 패치는 사용자 요청으로 뺌).
 //  이름 안내는 가까이 갔을 때 프롬프트 줄("🏡 이웃 마을 가는 길")이 맡는다.
 //  (THREE) → { group, update(dt, t) } — 원점이 입구 자리, +z 가 길 쪽
 // =============================================================
@@ -10,10 +10,8 @@ const glow = (THREE, color, k = 1.6) => new THREE.MeshStandardMaterial({ color, 
 function add(g, mesh, x, y, z, shadow = true) { mesh.position.set(x, y, z); if (shadow) mesh.castShadow = true; g.add(mesh); return mesh; }
 
 export const QUILT_COLORS = [0xf6b99a, 0xa9d8c0, 0xfbe3b8, 0xb9cdee, 0xf3c4d6, 0xc8e2a8];
-export const HOUSE_PATCH_U = [0.25, 0.75];
 
 const hex = (n) => '#' + n.toString(16).padStart(6, '0');
-function roundRect(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
 
 function quiltTexture(THREE) {
   const W = 1024, H = 512, cols = 12, rows = 6, cw = W / cols, rh = H / rows;
@@ -27,15 +25,6 @@ function quiltTexture(THREE) {
   for (let x = 0; x <= cols; x++) { c.beginPath(); c.moveTo(x * cw, 0); c.lineTo(x * cw, H); c.stroke(); }
   for (let y = 0; y <= rows; y++) { c.beginPath(); c.moveTo(0, y * rh); c.lineTo(W, y * rh); c.stroke(); }
   c.setLineDash([]);
-  for (const u of HOUSE_PATCH_U) {
-    const bx = W * u, by = H * 0.52, s = 86;
-    c.fillStyle = '#fff8ec'; c.beginPath(); c.arc(bx, by, 74, 0, Math.PI * 2); c.fill();
-    c.lineWidth = 6; c.setLineDash([9, 7]); c.strokeStyle = '#e0705a'; c.beginPath(); c.arc(bx, by, 64, 0, Math.PI * 2); c.stroke(); c.setLineDash([]);
-    const cy = by + 6;
-    c.fillStyle = '#f6c86a'; c.fillRect(bx - s * 0.36, cy - s * 0.05, s * 0.72, s * 0.5);
-    c.fillStyle = '#e0705a'; c.beginPath(); c.moveTo(bx - s * 0.5, cy); c.lineTo(bx, cy - s * 0.45); c.lineTo(bx + s * 0.5, cy); c.closePath(); c.fill();
-    c.fillStyle = '#9a6a3c'; roundRect(c, bx - s * 0.1, cy + s * 0.15, s * 0.2, s * 0.3, s * 0.06); c.fill();
-  }
   const tex = new THREE.CanvasTexture(cv);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 4;
