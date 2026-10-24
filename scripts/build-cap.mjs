@@ -66,6 +66,11 @@ const CONFIG_PATH = `${OUT}/js/config.js`;
 writeFileSync(CONFIG_PATH, replaceOnce(readFileSync(CONFIG_PATH, 'utf8'),
   API_ANCHOR, `const API_BASE = '${API_ORIGIN}';`, 'js/config.js'));                                   // ③
 
+const { bundleBoot } = await import('./lib/bundle-boot.mjs');
+const boot = await bundleBoot(OUT);
+html = readFileSync(`${OUT}/index.html`, 'utf8');
+console.log(`[build-cap] 첫 화면 JS ${boot.bootFiles.length}개로 묶음`);
+
 // ── 검증: 오프라인에서 필요한 코드가 외부에서 오면 안 된다 ──
 const problems = [];
 for (const m of html.matchAll(/(?:href|src)="\/[a-z]/g)) problems.push(`index.html: 루트 절대경로 ${m[0]}`);
