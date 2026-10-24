@@ -708,7 +708,6 @@ export function updatePlots(dt) {
     if (plot.digBackT > 0) {
       plot.digBackT = Math.max(0, plot.digBackT - dt);
       setPlotDug(plot, plot.digBackT / DIG_RESTORE);
-      if (plot.digBackT === 0) demotePlotRidges(plot);   // 🪏 복구 끝 → 인스턴스로 강등
     }
   }
   updateDigFx(dt);
