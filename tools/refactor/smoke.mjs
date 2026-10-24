@@ -37,7 +37,7 @@ const STOPS = [
   ['mist', '__space.mist[0]()', '__space.mist[1]()'],
   ['sea', '__space.sea[0]()', '__space.sea[1]()'],
 ];
-const DISMISS = ['intro-skip', 'coach-skip', 'tut-skip', 'seed-ok', 'hint-ok', 'notice-ok'];
+const DISMISS = ['intro-skip', 'coach-skip', 'tut-skip', 'seed-ok', 'hint-ok', 'daily-ok', 'notice-ok'];
 
 async function enterGame(b, params) {
   await b.goto(BASE + '?dbg=1&weather=clear&' + params, 9000);

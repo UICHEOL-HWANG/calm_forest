@@ -11,6 +11,7 @@
 import { atFarm, gameState, player, plots, refreshCropStage, scene, snapCamera, ui, updatePlotVisual } from '../game.js';
 import { setExpArm, trackEvent } from '../analytics.js';
 import { IS_DEV_SESSION } from '../config.js';
+import { isTouchDevice } from '../touch-sim.js';
 import { animateBubble, makeRing, onTop } from '../bubble-fx.js';
 import { FARM } from '../data/places.js';
 import { CROP_TYPES } from '../data/tools.js';
@@ -24,8 +25,7 @@ import { createPlot, syncFarmCrops, syncFarmSoil } from './farm.js';
 import { enterFarm, startVisitors } from './visitors.js';
 import * as THREE from 'three';
 
-const TOUCH = ('ontouchstart' in window) || navigator.maxTouchPoints > 0
-  || new URLSearchParams(location.search).has('touchsim');   // index.html TOUCH 와 같은 판정(둘째 카드 문구)
+const TOUCH = isTouchDevice();   // index.html TOUCH 와 같은 판정(둘째 카드 문구)
 let bubble = null, ring = null;   // 3D 말풍선 + 퍼지는 고리(첫 수확 전에만 있다)
 let active = false;   // 이번 세션에 등록됐는가 — 세이브의 e1 만으로 처치를 켜지 않는다(앱에서 웹 처치 세이브를 열 때, 리뷰 M5)
 const BUBBLE = { w: 0.85, h: 0.85, y: 1.35 };   // 🔍 방문객 말풍선과 같은 크기·높이

@@ -5,7 +5,8 @@
 //  - 색은 _dash.css 토큰에서만 읽는다(V)
 // =============================================================
 import { CONFIG, isSupabaseConfigured } from '../../js/config.js';
-import { LOGIN_GATE_HTML, mountLoginGate } from './admin-login.js';
+import { LOGIN_GATE_HTML, mountLoginGate, ADMIN_AUTH, showNotAdmin } from './admin-login.js';
+export { showNotAdmin };
 
 export const $ = (id) => document.getElementById(id);
 export const V = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -30,7 +31,7 @@ export async function bootAdmin({ allowShare = true } = {}) {
     return null;
   }
   const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
-  const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, { auth: { detectSessionInUrl: true, persistSession: true } });
+  const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, { auth: ADMIN_AUTH });
   if (allowShare && shareKey) return sb;
 
   const { data } = await sb.auth.getSession();
@@ -40,6 +41,11 @@ export async function bootAdmin({ allowShare = true } = {}) {
     return null;
   }
   return sb;
+}
+
+export function showRpcError(sb, error, fn) {
+  if (!shareKey && String(error?.message || error).includes('권한')) return showNotAdmin(sb, showMsg, { prefix: `<img class="msg-char" src="${CHAR('panda')}" alt="">` });
+  showMsg(explainRpcError(error, fn));
 }
 
 /** RPC 오류를 사람이 읽을 안내로 바꾼다. */

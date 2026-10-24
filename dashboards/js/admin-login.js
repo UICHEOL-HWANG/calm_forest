@@ -37,6 +37,14 @@ function sendFailMsg(err) {
   return MESSAGES.send_fail;
 }
 
+export const ADMIN_AUTH = { storageKey: 'cf-admin-auth', detectSessionInUrl: true, persistSession: true };
+
+export function showNotAdmin(sb, show, { email = '', prefix = '' } = {}) {
+  const who = email ? `<br><small style="opacity:.6">${String(email).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)}</small>` : '';
+  show(`${prefix}🚫 관리자 계정이 아닙니다.${who}<div class="lg-or">관리자 계정으로 다시 로그인</div>${LOGIN_GATE_HTML}`);
+  mountLoginGate(sb);
+}
+
 export const LOGIN_GATE_HTML = `
   <div class="lg-gate">
     <button id="lgGoogle" type="button">구글로 로그인</button>
@@ -55,6 +63,7 @@ export const LOGIN_GATE_HTML = `
 export function mountLoginGate(sb, { onSignedIn = () => location.reload() } = {}) {
   const q = (id) => document.getElementById(id);
   const flow = createLoginFlow(sb);
+  document.body.classList.add('admin-gated');
   const note = (t, bad = false) => { q('lgNote').textContent = t; q('lgNote').classList.toggle('bad', bad); };
   const busy = (form, on) => form.querySelectorAll('button, input').forEach((x) => { x.disabled = on; });
 

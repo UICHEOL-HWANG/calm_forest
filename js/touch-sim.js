@@ -14,14 +14,16 @@ export function touchSimOn(search = '') {
 }
 
 /** 순수 판정 — 실제 터치 기기이거나 touchsim */
-export function isTouchEnv({ hasTouchEvent = false, maxTouchPoints = 0, search = '' } = {}) {
-  return !!hasTouchEvent || maxTouchPoints > 0 || touchSimOn(search);
+export function isTouchEnv({ hasTouchEvent = false, maxTouchPoints = 0, search = '', coarsePointer = true } = {}) {
+  if (touchSimOn(search)) return true;
+  return (!!hasTouchEvent || maxTouchPoints > 0) && !!coarsePointer;
 }
 
 /** 브라우저에서 — 모든 터치 판정이 이 함수를 쓴다 */
 export function isTouchDevice() {
   try {
-    return isTouchEnv({ hasTouchEvent: 'ontouchstart' in window, maxTouchPoints: navigator.maxTouchPoints || 0, search: location.search });
+    const coarsePointer = typeof window.matchMedia === 'function' ? window.matchMedia('(pointer: coarse)').matches : true;
+    return isTouchEnv({ hasTouchEvent: 'ontouchstart' in window, maxTouchPoints: navigator.maxTouchPoints || 0, search: location.search, coarsePointer });
   } catch {
     return false;
   }

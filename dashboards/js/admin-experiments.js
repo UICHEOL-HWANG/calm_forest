@@ -4,7 +4,7 @@
 //          결과 원재료는 ml/scripts/experiment_summary.py 가 매일 03:00 채운다.
 //  계산·판정: ./admin-metrics.js analyzeExperiment (테스트: tests/admin-experiments.test.mjs)
 // =============================================================
-import { $, V, nf, esc, CHAR, shareKey, bootAdmin, explainRpcError, showMsg, createLoader } from './admin-common.js';
+import { $, V, nf, esc, CHAR, shareKey, bootAdmin, explainRpcError, showRpcError, showMsg, createLoader } from './admin-common.js';
 import { analyzeExperiment, twoProp } from './admin-metrics.js';
 
 const STEPS = [
@@ -34,7 +34,7 @@ const kst = (iso) => new Date(iso).toLocaleString('ko-KR', { timeZone: 'Asia/Seo
   if (!sb) { loader.done(); $('dash').hidden = true; return; }
   const { data, error } = await sb.rpc('cf_admin_experiments', shareKey ? { token: shareKey } : {});
   loader.done();
-  if (error) { $('dash').hidden = true; showMsg(explainRpcError(error, 'cf_admin_experiments')); return; }
+  if (error) { $('dash').hidden = true; showRpcError(sb, error, 'cf_admin_experiments'); return; }
   today = data.today;
   rows = (data.experiments || []).map((e) => ({ e, a: analyzeExperiment(e, today) }));
   if (!rows.some((r) => r.e.id === sel)) sel = rows.find((r) => r.e.status === 'obs')?.e.id || rows[0]?.e.id;

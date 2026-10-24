@@ -76,7 +76,7 @@ const SCENES = [
   ['8-orchard', 'time=0.36', toOrchard],
   ['5-night', 'time=0.80&house=6', async () => { await ev('__tp(-3, 2)'); }, ['iphone']],
 ];
-const DISMISS = ['intro-skip', 'coach-skip', 'tut-skip', 'seed-ok', 'hint-ok', 'notice-ok'];
+const DISMISS = ['intro-skip', 'coach-skip', 'tut-skip', 'seed-ok', 'hint-ok', 'daily-ok', 'notice-ok'];
 // 캡처 직전 정리 — 오프라인 표기·토스트·초보자 안내서 배너(클래스 제거로는 안 사라져 fixed 컨테이너를 숨긴다)
 const CLEAN = `(() => { document.body.classList.remove('hintbanner');
   for (const el of document.querySelectorAll('#topleft *')) if (el.childNodes.length===1 && el.firstChild.nodeType===3 && /오프라인|offline/.test(el.textContent)) el.textContent = el.textContent.replace('(오프라인)','').replace(' (offline)','');
