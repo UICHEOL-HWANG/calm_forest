@@ -1,20 +1,21 @@
 import { COURSE, centerX, obstacleRadius } from './course.js';
 import { SLOPE_M_PER_UNIT } from './terrain.js';
+import { JUMP, KICK_MULT, driftStep, comboStep, shieldStep, moverStep, launchStep, flyStep, startTrick } from './sled-moves.js';
 
-export const PHYS_V = 3;
+export const PHYS_V = 4;
 
 export const PHYS = Object.freeze({
-  baseSpeed: 8.6,
+  baseSpeed: 12.9,
   maxSpeed: 16,
-  accel: 6.0,
-  steerRate: 6.5,
+  accel: 13.5,
+  steerRate: 9.75,
   boostMult: 1.5,
-  boostMs: 2000,
+  boostMs: 1333,
   hitSlowMult: 0.5,
   hitRecoverMs: 1500,
   flagPenaltyMs: 1000,
-  steerGrip: 25,
-  steerGlide: 2.8,
+  steerGrip: 37.5,
+  steerGlide: 4.2,
   edgeBounce: 0.3,
 });
 
@@ -32,14 +33,23 @@ export function hitReach(o) {
   return { x: r + SLED_HALF.w, z: (r + SLED_HALF.l) / SLOPE_M_PER_UNIT };
 }
 
-export function createSled(acorns, phys = PHYS) {
+export function createSled(acorns, phys = PHYS, { shield = 0 } = {}) {
   return {
     phys,
     x: centerX(0), z: 0, vx: 0, speed: phys.baseSpeed * 0.5, t: 0, acorns,
-    boostLeftMs: 0, slowLeftMs: 0, flagIdx: 0, flagsPassed: 0,
+    boostLeftMs: 0, kickLeftMs: 0, slowLeftMs: 0, flagIdx: 0, flagsPassed: 0,
     splits: [], hits: [], hitIds: [], boostsAt: [],
     steerLeftMs: 0, steerRightMs: 0, finished: false,
+    y: 0, vy: 0, air: false, trick: false, spin: 0,
+    driftDir: 0, driftMs: 0, driftsAt: [], combo: 0, gustsAt: [],
+    jumps: 0, tricksOk: 0, tricksFail: 0,
+    shield, shieldUsed: 0, moverHitIds: [],
   };
+}
+
+export function pressSled(s) {
+  if (s.finished) return s;
+  return s.air ? startTrick(s) : tryBoost(s);
 }
 
 export function tryBoost(s) {
@@ -48,7 +58,7 @@ export function tryBoost(s) {
 }
 
 function targetSpeed(s) {
-  const boost = s.boostLeftMs > 0 ? s.phys.boostMult : 1;
+  const boost = Math.max(s.boostLeftMs > 0 ? s.phys.boostMult : 1, s.kickLeftMs > 0 ? KICK_MULT : 1);
   const slow = s.slowLeftMs > 0 ? s.phys.hitSlowMult : 1;
   return Math.min(s.phys.maxSpeed * s.phys.boostMult, s.phys.baseSpeed * boost * slow);
 }
@@ -97,18 +107,23 @@ export function stepSled(s, dtMs, steer, course = COURSE) {
   const z = Math.min(course.length, s.z + speed * dt);
   const half = course.width / 2;
   const cx = centerX(z);
-  const { x, vx } = slide(s, steer, dt, cx, half);
+  const { x, vx } = slide(s, s.air ? steer * JUMP.airSteer : steer, dt, cx, half);
   const t = s.t + dtMs;
   const moved = {
     ...s, x, vx, z, speed, t,
     boostLeftMs: Math.max(0, s.boostLeftMs - dtMs),
+    kickLeftMs: Math.max(0, (s.kickLeftMs || 0) - dtMs),
     slowLeftMs: Math.max(0, s.slowLeftMs - dtMs),
     steerLeftMs: s.steerLeftMs + (steer < 0 ? -steer * dtMs : 0),
     steerRightMs: s.steerRightMs + (steer > 0 ? steer * dtMs : 0),
   };
-  const flagged = { ...moved, ...crossFlags(moved, x, t, course) };
-  const hit = collide(flagged, course);
-  return { ...hit, finished: z >= course.length };
+  const drifted = { ...moved, ...driftStep(s, moved, steer, dtMs) };
+  const flagged = { ...drifted, ...crossFlags(drifted, x, t, course) };
+  const combo = { ...flagged, ...comboStep(s.splits.length, flagged) };
+  const struck = shieldStep(combo, collide(combo, course));
+  const hit = s.air ? combo : shieldStep(struck, moverStep(struck, course));
+  const flown = flyStep(launchStep(s, hit, course), dtMs);
+  return { ...flown, finished: z >= course.length };
 }
 
 export function finalTimeMs(s, course = COURSE) {

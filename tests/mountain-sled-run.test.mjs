@@ -45,8 +45,8 @@ test('coins are base + perFlag×flags, new best adds bonus', () => {
   const r = c.sledSettle(SLED(40000, 10), CTX, { fpsAvg: 58 });
   assert.equal(r.timeMs, 40000 + 2 * PHYS.flagPenaltyMs);
   assert.equal(r.newBest, true);
-  assert.deepEqual(plain(paid[0]), [{ coins: 15 + 2 * 10 }, 'sled_run', 'v1']);
-  assert.deepEqual(plain(paid[1]), [{ coins: 10 }, 'sled_best', 'v1']);
+  assert.deepEqual(plain(paid[0]), [{ coins: 15 + 2 * 10 }, 'sled_run', 'v2']);
+  assert.deepEqual(plain(paid[1]), [{ coins: 10 }, 'sled_best', 'v2']);
 });
 
 test('a new day resets the reward counter', () => {
@@ -65,7 +65,7 @@ test('settle saves, settles difficulty with flag share and sends one full row', 
     assert.ok(k in row, `missing ${k}`);
   }
   assert.equal(row.outcome, 'finish');
-  assert.equal(row.course_v, 1);
+  assert.equal(row.course_v, 2);
 });
 
 test('steer ms report the screen side pressed: world -x (steerLeftMs) is screen-right, world +x (steerRightMs) is screen-left', () => {
@@ -163,7 +163,7 @@ test('row records the sled id and the current physics version', () => {
   c.sledAbandon('climb', CTX, null);
   assert.equal(rows[0].sled, 'acorn');
   assert.equal(rows[0].phys_v, PHYS_V);
-  assert.equal(rows[0].phys_v, 3);
+  assert.equal(rows[0].phys_v, 4);
   assert.equal(rows[1].sled, 'basic');
 });
 

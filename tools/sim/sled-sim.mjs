@@ -1,5 +1,6 @@
 import { pathToFileURL } from 'node:url';
-import { centerX, COURSE } from '../../js/mountain/course.js';
+import { centerX, COURSE, moverPos } from '../../js/mountain/course.js';
+import { SLOPE_M_PER_UNIT } from '../../js/mountain/terrain.js';
 import { PHYS, createSled, stepSled, tryBoost, finalTimeMs, hitReach } from '../../js/mountain/sled.js';
 
 function rng(seed) {
@@ -8,10 +9,14 @@ function rng(seed) {
 }
 
 function nextObstacle(s, lookahead, course = COURSE) {
-  return course.obstacles.find((o, i) => {
-    const r = hitReach(o);
-    return !s.hitIds.includes(i) && o.z + r.z > s.z && o.z - s.z < lookahead;
-  });
+  const fixed = course.obstacles
+    .filter((o, i) => !s.hitIds.includes(i))
+    .map(o => ({ z: o.z, x: o.x, rz: hitReach(o).z, rx: hitReach(o).x, cz: o.z }));
+  const moving = (course.movers || []).map((m, mi) => moverAhead(s, m, mi, course)).filter(Boolean)
+    .map(c => ({ z: (c.z + c.end) / 2, x: c.x, rz: (c.end - c.z) / 2, rx: c.r + SLED_W, cz: (c.z + c.end) / 2 }));
+  return [...fixed, ...moving]
+    .filter(o => o.z + o.rz > s.z && o.z - s.z < lookahead)
+    .sort((a, b) => a.z - b.z)[0];
 }
 
 function gateAim(s, plan, aim, course = COURSE) {
@@ -26,10 +31,27 @@ function steerToward(s, aim, gain = 2.5) {
 
 const CHAIN = 2;
 
+const SLED_W = 0.43, SLED_L = 0.75, PAD = 0.45;
+
 function window(c, sides, course) {
   if (c.flag) return [c.flag.x - c.flag.half + 0.4, c.flag.x + c.flag.half - 0.4];
-  const o = course.obstacles[c.i], r = hitReach(o), half = course.width / 2, cx = centerX(o.z);
-  return sides[c.i] > 0 ? [o.x + r.x + 0.45, cx + half - 0.3] : [cx - half + 0.3, o.x - r.x - 0.45];
+  const half = course.width / 2, cx = centerX(c.z);
+  if (c.mover) {
+    const gap = c.r + SLED_W + PAD;
+    return sides[c.i] > 0 ? [c.x + gap, cx + half - 0.3] : [cx - half + 0.3, c.x - gap];
+  }
+  const o = course.obstacles[c.i], r = hitReach(o);
+  return sides[c.i] > 0 ? [o.x + r.x + PAD, cx + half - 0.3] : [cx - half + 0.3, o.x - r.x - PAD];
+}
+
+function moverAhead(s, m, mi, course) {
+  if (s.moverHitIds.includes(mi)) return null;
+  const reach = (m.r + SLED_L) / SLOPE_M_PER_UNIT, sp = Math.max(s.speed, 1);
+  const now = moverPos(m, s.t);
+  if (now.z + reach < s.z) return null;
+  const dt = m.kind === 'ball' ? (now.z - s.z) / Math.max(0.5, sp - m.v) : (m.z - s.z) / sp;
+  const p = moverPos(m, s.t + Math.max(0, dt) * 1000);
+  return { z: p.z - reach, end: p.z + reach, i: course.obstacles.length + mi, mover: true, x: p.x, r: m.r };
 }
 
 function chainAhead(s, course) {
@@ -37,7 +59,8 @@ function chainAhead(s, course) {
   const obs = course.obstacles
     .map((o, i) => ({ z: o.z - hitReach(o).z, end: o.z + hitReach(o).z, i }))
     .filter(c => !s.hitIds.includes(c.i) && c.end > s.z);
-  return [...flags, ...obs].sort((a, b) => a.z - b.z).slice(0, CHAIN);
+  const movers = (course.movers || []).map((m, mi) => moverAhead(s, m, mi, course)).filter(Boolean);
+  return [...flags, ...obs, ...movers].sort((a, b) => a.z - b.z).slice(0, CHAIN);
 }
 
 function lineSteer(s, sides, course) {
@@ -68,13 +91,16 @@ export function perfectLine(course = COURSE, acorns = 0, sides = [], phys = PHYS
   const res = rideLine(sides, course, acorns, phys);
   if (res.sled) return { sides, sled: res.sled };
   if (res.fail) return null;
-  return perfectLine(course, acorns, [...sides, 1], phys) || perfectLine(course, acorns, [...sides, -1], phys);
+  const pick = side => Object.assign([...sides], { [res.need]: side });
+  return perfectLine(course, acorns, pick(1), phys) || perfectLine(course, acorns, pick(-1), phys);
 }
+
+const TIME_SCALE = PHYS.baseSpeed / 8.6;
 
 export function simulate({ skill, acorns, seed }) {
   const r = rng(seed);
-  const reaction = 1 + Math.round((1 - skill) * 20);
-  const lookahead = 5 + skill * 15;
+  const reaction = 1 + Math.round(((1 - skill) * 20) / TIME_SCALE);
+  const lookSec = (5 + skill * 15) / 8.6;
   const lead = 1.5 + (1 - skill) * 6;
   const margin = 0.75 + (1 - skill) * 1.2;
   const boostZ = Array.from({ length: acorns }, (_, i) => 20 + i * (280 / Math.max(1, acorns)));
@@ -85,16 +111,17 @@ export function simulate({ skill, acorns, seed }) {
   while (!s.finished && s.t < 120000) {
     if (boostZ.length && s.z >= boostZ[0]) { s = tryBoost(s); boostZ.shift(); }
     if (frame % reaction === 0) {
-      const o = nextObstacle(s, lookahead);
+      const o = nextObstacle(s, s.speed * lookSec);
       const seen = o && r() < 0.15 + skill * 0.85;
       if (seen) {
-        const dir = o.x >= centerX(o.z) ? -1 : 1;
-        plan = { z: o.z + hitReach(o).z, front: o.z - hitReach(o).z, x: o.x + dir * (hitReach(o).x + margin) };
+        const dir = o.x >= centerX(o.cz) ? -1 : 1;
+        plan = { z: o.z + o.rz, front: o.z - o.rz, x: o.x + dir * (o.rx + margin) };
       }
       if (plan && s.z > plan.z) plan = null;
       const wobble = (r() - 0.5) * (1 - skill) * 3;
       const aim = gateAim(s, plan, plan ? plan.x : centerX(s.z + lead)) + wobble;
-      steer = Math.abs(aim - s.x - s.vx * 0.36) < 0.12 ? 0 : Math.sign(aim - s.x - s.vx * 0.36);
+      const glide = s.vx / PHYS.steerGlide;
+      steer = Math.abs(aim - s.x - glide) < 0.12 ? 0 : Math.sign(aim - s.x - glide);
     }
     s = stepSled(s, 16, steer);
     frame += 1;

@@ -1,0 +1,451 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>썰매 v2 체감 시안 · calm forest</title>
+<style>
+  :root{--top-inset:env(safe-area-inset-top)}
+  html,body{margin:0;height:100%;overflow:hidden;background:#cfe3ef;touch-action:none;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif}
+  canvas.gl{display:block;position:fixed;inset:0;width:100%;height:100%}
+  #panel{position:fixed;left:10px;top:calc(var(--top-inset) + 10px);z-index:60;background:rgba(255,253,247,.95);border-radius:14px;padding:10px 12px;width:min(280px,calc(100vw - 20px));box-shadow:0 4px 18px rgba(20,28,40,.18);font-size:13px;color:#24343f;max-height:calc(100vh - 20px);overflow:auto}
+  #panel.closed .body{display:none}
+  #panel h1{font-size:15px;margin:0;display:flex;justify-content:space-between;align-items:center;gap:8px;cursor:pointer}
+  #panel .presets{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin:8px 0}
+  #panel button{font:inherit;font-size:12.5px;padding:6px 8px;border-radius:8px;border:1px solid #d9e3ea;background:#fff;cursor:pointer}
+  #panel button.on{background:#3a7aa8;color:#fff;border-color:#3a7aa8}
+  #panel label{display:flex;align-items:center;gap:6px;padding:3px 0}
+  #panel input[type=range]{flex:1}
+  #panel .sub{color:#61727e;font-size:11.5px;margin:2px 0 6px 24px;line-height:1.4}
+  #panel .row{display:flex;gap:6px;margin-top:8px}
+  #panel .row button{flex:1}
+  #chips{position:fixed;right:10px;top:calc(var(--top-inset) + 12px);z-index:45;display:flex;flex-direction:column;align-items:flex-end;gap:6px;pointer-events:none}
+  .chip{padding:4px 11px;border-radius:999px;background:rgba(255,255,255,.92);color:#24343f;font-size:14px;font-weight:700;white-space:nowrap}
+  .chip.ahead{color:#2f7a45}.chip.behind{color:#b4453a}
+  .chip.blue{background:#d7ecff;color:#1f5f9c}.chip.orange{background:#ffe2b8;color:#a8550f}
+  @media (orientation: portrait){#chips{top:calc(var(--top-inset) + 120px)}}
+</style>
+<canvas class="gl"></canvas>
+<div id="chips" data-sled-ui></div>
+<div id="panel" data-sled-ui>
+  <h1 id="ptitle"><span>🛷 썰매 v2 시안</span><span>⚙️</span></h1>
+  <div class="body">
+    <div class="presets" id="presets"></div>
+    <label><input type="checkbox" data-f="speed">🚀 속도·카메라 체감</label>
+    <label style="margin-left:24px"><span>속도</span><input type="range" id="mult" min="1" max="1.8" step="0.1"><b id="multv"></b></label>
+    <div class="sub">카메라를 낮고 가깝게, 빠를수록 시야가 넓어지고 눈발이 스쳐요.</div>
+    <label><input type="checkbox" data-f="drift">🔵 드리프트 가속</label>
+    <div class="sub">한쪽으로 끝까지 0.6초 꺾으면 파랑, 1.4초면 주황. 놓거나 반대로 꺾으면 가속.</div>
+    <label><input type="checkbox" data-f="jump">🛫 점프대·공중 회전</label>
+    <div class="sub">점프대에서 뜬 동안 부스터 버튼(Space) = 한 바퀴. 다 돌고 내리면 가속, 덜 돌면 휘청.</div>
+    <label><input type="checkbox" data-f="movers">⛄ 움직이는 장애물</label>
+    <div class="sub">굴러 내려오는 눈덩이 2개, 길을 건너는 펭귄 2마리.</div>
+    <label><input type="checkbox" data-f="ghost">👻 내 최고 기록 유령</label>
+    <label><input type="checkbox" data-f="combo">🚩 깃발 3연속 눈바람</label>
+    <label><input type="checkbox" data-f="pet">🐾 펫 동승</label>
+    <label style="margin-left:24px">펫 <select id="pet"></select></label>
+    <label style="margin-left:24px">자리 <select id="petspot"></select></label>
+    <label><input type="checkbox" data-f="auto">🤖 자동 주행</label>
+    <div class="row"><button id="restart">↻ 다시 출발</button><button id="close">접기</button></div>
+    <div class="sub" style="margin-left:0">PC: ←/→ 조향 · Space 부스터/트릭. 폰: 화면 아무 데나 눌러 끌기. 코스는 지금 코스 그대로라 빨라지면 판이 짧아져요(구현 때 코스를 늘려 30~40초로 맞춤).</div>
+  </div>
+</div>
+<script type="module">
+import * as THREE from '../vendor/three/three.module.js';
+import { COURSE, centerX, obstacleRadius } from '../js/mountain/course.js';
+import { createSled, stepSled, tryBoost, hitReach, finalTimeMs, PHYS } from '../js/mountain/sled.js';
+import { slopePoint, SLOPE_M_PER_UNIT } from '../js/mountain/terrain.js';
+import { sledCamTargets, sledPose, sledYaw } from '../js/mountain/sled-view.js';
+import { buildSledMesh } from '../js/mountain/sled-art.js';
+import { bindSledInput, worldSteer } from '../js/mountain/sled-input.js';
+import { showRunHud, showStick, boostButton, showBoostFx, showResult, hideSledHud } from '../js/mountain/sled-hud.js';
+import { Sound } from '../js/sound.js';
+import { buildPet, updatePetAnim } from '../js/pet/art.js';
+import { PET_KINDS } from '../js/pet/rules.js';
+
+const PRESETS = {
+  '① 지금': { speed: false, drift: false, jump: false, movers: false, ghost: false, combo: false, pet: false },
+  '② 속도·카메라': { speed: true, drift: false, jump: false, movers: false, ghost: false, combo: false, pet: false },
+  '③ +드리프트': { speed: true, drift: true, jump: false, movers: false, ghost: false, combo: false, pet: false },
+  '④ 전부': { speed: true, drift: true, jump: true, movers: true, ghost: true, combo: true, pet: true },
+};
+const F = { ...PRESETS['④ 전부'], auto: false };
+let MULT = 1.5;
+const STEER_SCALE = 1.0;
+
+
+const DRIFT = { min: 0.7, t1: 600, t2: 1400, boost1: 500, boost2: 900 };
+const JUMP = { vy: 7.5, g: 20, airSteer: 0.35, spinS: 0.55, okMs: 600, failMs: 800 };
+const GUST_MS = 1000, COMBO_N = 3;
+const RAMPS = [75, 175, 275].map(z => ({ z, x: centerX(z), half: 2.6 }));
+const MOVERS = [
+  { kind: 'ball', z0: 120, v: 4, off: -1.2, r: 0.85 },
+  { kind: 'ball', z0: 215, v: 3.5, off: 1.4, r: 0.85 },
+  { kind: 'walker', z: 145, amp: 5, w: 1.1, ph: 0, r: 0.6 },
+  { kind: 'walker', z: 245, amp: 5, w: 1.3, ph: 2, r: 0.6 },
+];
+const SIDES = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+const AUTO_Z = Array.from({ length: 6 }, (_, i) => 20 + i * (280 / 6));
+
+function moverPos(m, tMs) {
+  const t = tMs / 1000;
+  if (m.kind === 'ball') { const z = Math.min(COURSE.length, m.z0 + m.v * t); return { z, x: centerX(z) + m.off, spin: t * m.v / m.r }; }
+  return { z: m.z, x: centerX(m.z) + Math.sin(t * m.w + m.ph) * m.amp, face: Math.cos(t * m.w + m.ph) };
+}
+function physFor() {
+  const m = F.speed ? MULT : 1;
+  return { ...PHYS, baseSpeed: PHYS.baseSpeed * m, maxSpeed: PHYS.maxSpeed * m, accel: PHYS.accel * m, steerRate: PHYS.steerRate * (1 + (m - 1) * STEER_SCALE) };
+}
+
+function newRun() {
+  return { sled: createSled(6, physFor()), y: 0, vy: 0, air: false, trick: false, spin: 0, driftDir: 0, driftMs: 0, combo: 0, flagSeen: 0, shield: true, moverHit: new Set(), path: [], autoIdx: 0, ev: [], stats: { jumps: 0, tricksOk: 0, tricksFail: 0, drifts: 0, gusts: 0, moverHits: 0, shields: 0 } };
+}
+
+function driftTier(r) { return r.driftMs >= DRIFT.t2 ? 2 : r.driftMs >= DRIFT.t1 ? 1 : 0; }
+function boostMs(r, ms) { r.sled = { ...r.sled, boostLeftMs: Math.max(r.sled.boostLeftMs, ms) }; }
+
+function pressButton(r) {
+  if (r.sled.finished) return;
+  if (F.jump && r.air) { if (!r.trick) { r.trick = true; r.spin = 0; r.ev.push('trick'); } return; }
+  const a = r.sled.acorns;
+  r.sled = tryBoost(r.sled);
+  if (r.sled.acorns < a) r.ev.push('boost');
+}
+
+function step(r, dt, steerIn) {
+  if (r.sled.finished) return;
+  const s0 = r.sled;
+  if (F.drift && !r.air) {
+    const sgn = Math.abs(steerIn) >= DRIFT.min ? Math.sign(steerIn) : 0;
+    if (sgn && sgn === r.driftDir) r.driftMs += dt * 1000;
+    else {
+      const tier = driftTier(r);
+      if (r.driftDir && tier) { boostMs(r, tier === 2 ? DRIFT.boost2 : DRIFT.boost1); r.stats.drifts++; r.ev.push(tier === 2 ? 'drift2' : 'drift1'); }
+      r.driftDir = sgn; r.driftMs = 0;
+    }
+  } else { r.driftDir = 0; r.driftMs = 0; }
+  const steer = r.air ? steerIn * JUMP.airSteer : steerIn;
+  let s = stepSled(r.sled, dt * 1000, steer, COURSE);
+  if (s.hitIds.length > s0.hitIds.length) {
+    if (r.air) s = { ...s, hitIds: s0.hitIds, hits: s0.hits, slowLeftMs: s0.slowLeftMs };
+    else if (F.pet && r.shield) { r.shield = false; s = { ...s, slowLeftMs: 0, speed: s0.speed }; r.stats.shields++; r.ev.push('shield'); }
+    else r.ev.push('hit');
+  }
+  r.sled = s;
+  if (F.movers && !r.air) MOVERS.forEach((m, i) => {
+    if (r.moverHit.has(i)) return;
+    const p = moverPos(m, s.t);
+    const dx = Math.abs(p.x - s.x) - 0.43, dz = Math.abs(p.z - s.z) * SLOPE_M_PER_UNIT - 0.75;
+    if (Math.max(0, dx) ** 2 + Math.max(0, dz) ** 2 < m.r * m.r) {
+      r.moverHit.add(i);
+      if (F.pet && r.shield) { r.shield = false; r.stats.shields++; r.ev.push('shield'); }
+      else { r.sled = { ...r.sled, slowLeftMs: r.sled.phys.hitRecoverMs, hits: [...r.sled.hits, [r.sled.t, 'mover']] }; r.stats.moverHits++; r.ev.push('hit'); }
+    }
+  });
+  if (F.jump && !r.air) {
+    const ramp = RAMPS.find(q => s0.z < q.z && r.sled.z >= q.z && Math.abs(r.sled.x - q.x) <= q.half);
+    if (ramp) { r.air = true; r.vy = JUMP.vy; r.y = 0.01; r.stats.jumps++; r.ev.push('jump'); }
+  }
+  if (r.air) {
+    r.y += r.vy * dt; r.vy -= JUMP.g * dt;
+    if (r.trick) r.spin += dt / JUMP.spinS;
+    if (r.y <= 0) {
+      r.y = 0; r.air = false;
+      if (r.trick) {
+        if (r.spin >= 1) { boostMs(r, JUMP.okMs); r.stats.tricksOk++; r.ev.push('trickOk'); }
+        else { r.sled = { ...r.sled, slowLeftMs: Math.max(r.sled.slowLeftMs, JUMP.failMs) }; r.stats.tricksFail++; r.ev.push('trickFail'); }
+      } else r.ev.push('land');
+      r.trick = false; r.spin = 0;
+    }
+  }
+  while (r.flagSeen < r.sled.splits.length) {
+    const ok = r.sled.splits[r.flagSeen][0];
+    r.flagSeen++;
+    if (!F.combo) continue;
+    r.combo = ok ? r.combo + 1 : 0;
+    if (r.combo >= COMBO_N) { r.combo = 0; boostMs(r, GUST_MS); r.stats.gusts++; r.ev.push('gust'); }
+    else if (ok) r.ev.push('combo');
+  }
+  if (!r.path.length || r.sled.t - r.path[r.path.length - 1].t >= 50) r.path.push({ t: r.sled.t, z: r.sled.z, x: r.sled.x, y: r.y });
+}
+
+function windowOf(c) {
+  if (c.flag) return [c.flag.x - c.flag.half + 0.4, c.flag.x + c.flag.half - 0.4];
+  const o = COURSE.obstacles[c.i], r = hitReach(o), half = COURSE.width / 2, cx = centerX(o.z);
+  return SIDES[c.i] > 0 ? [o.x + r.x + 0.45, cx + half - 0.3] : [cx - half + 0.3, o.x - r.x - 0.45];
+}
+function autopilot(s) {
+  const flags = COURSE.flags.slice(s.flagIdx).map(f => ({ z: f.z, flag: f }));
+  const obs = COURSE.obstacles.map((o, i) => ({ z: o.z - hitReach(o).z, end: o.z + hitReach(o).z, i })).filter(c => !s.hitIds.includes(c.i) && c.end > s.z);
+  const chain = [...flags, ...obs].sort((a, b) => a.z - b.z).slice(0, 2);
+  const aim = chain.reduceRight((next, c) => { const [lo, hi] = windowOf(c); return Math.max(lo, Math.min(hi, next ?? (lo + hi) / 2)); }, null) ?? centerX(s.z + 3);
+  return Math.max(-1, Math.min(1, (aim - s.x) * 2.5));
+}
+function autoStep(r, dt) {
+  const z0 = AUTO_Z[r.autoIdx];
+  if (z0 !== undefined && r.sled.z >= z0 && !r.air) { r.autoIdx++; pressButton(r); }
+  if (F.jump && r.air && !r.trick && r.vy < JUMP.vy - 1) pressButton(r);
+  step(r, dt, autopilot(r.sled));
+}
+
+function measure(flags) {
+  const keep = { ...F };
+  Object.assign(F, flags);
+  const r = newRun();
+  while (!r.sled.finished && r.sled.t < 120000) autoStep(r, 0.016);
+  Object.assign(F, keep);
+  return { time: +(finalTimeMs(r.sled) / 1000).toFixed(2), flags: r.sled.flagsPassed, hits: r.sled.hits.length, ...r.stats };
+}
+
+const renderer = new THREE.WebGLRenderer({ canvas: document.querySelector('canvas.gl'), antialias: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xcfe3ef);
+scene.fog = new THREE.Fog(0xcfe3ef, 18, 74);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x9ab4c8, 1.5));
+const sun = new THREE.DirectionalLight(0xffffff, 1.3);
+sun.position.set(12, 40, -24);
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 200);
+
+function ribbon(width, color, lift) {
+  const rows = 240, cols = 10, pos = [], idx = [];
+  for (let r = 0; r <= rows; r++) {
+    const z = (r / rows) * COURSE.length;
+    for (let c = 0; c <= cols; c++) { const p = slopePoint(z, centerX(z) - width / 2 + (c / cols) * width); pos.push(p.x, p.y + lift, p.z); }
+  }
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) { const a = r * (cols + 1) + c, b = a + cols + 1; idx.push(a, b, a + 1, a + 1, b, b + 1); }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+  return new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide }));
+}
+scene.add(ribbon(60, 0xe3edf4, -0.05), ribbon(COURSE.width, 0xffffff, 0));
+COURSE.obstacles.forEach(o => {
+  const p = slopePoint(o.z, o.x), r = obstacleRadius(o);
+  const m = new THREE.Mesh(o.kind === 'rock' ? new THREE.DodecahedronGeometry(r, 0) : new THREE.SphereGeometry(r, 14, 10), new THREE.MeshLambertMaterial({ color: o.kind === 'rock' ? 0x7d8790 : 0xf7fbfe, flatShading: true }));
+  m.position.set(p.x, p.y + r * 0.6, p.z); scene.add(m);
+});
+COURSE.flags.forEach(f => [[-1, 0xe5484d], [1, 0x3a7aa8]].forEach(([sd, col]) => {
+  const p = slopePoint(f.z, f.x + sd * f.half);
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.6), new THREE.MeshLambertMaterial({ color: 0x555555 }));
+  pole.position.set(p.x, p.y + 0.8, p.z);
+  const flag = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.4), new THREE.MeshLambertMaterial({ color: col, side: THREE.DoubleSide }));
+  flag.position.set(p.x - sd * 0.3, p.y + 1.4, p.z); scene.add(pole, flag);
+}));
+const rampMeshes = RAMPS.map(q => {
+  const g = new THREE.Group();
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(q.half * 2, 0.12, 2.2), new THREE.MeshLambertMaterial({ color: 0x9fd0f0 }));
+  deck.rotation.x = -0.32; deck.position.set(0, 0.35, -0.2);
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(q.half * 2, 0.13, 0.25), new THREE.MeshLambertMaterial({ color: 0xe5484d }));
+  stripe.rotation.x = -0.32; stripe.position.set(0, 0.7, 0.8);
+  g.add(deck, stripe);
+  const p = slopePoint(q.z, q.x); g.position.set(p.x, p.y, p.z - 0.6);
+  scene.add(g); return g;
+});
+function penguin() {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.32, 0.4, 4, 10), new THREE.MeshLambertMaterial({ color: 0x24303e }));
+  body.position.y = 0.6;
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.27, 12, 10), new THREE.MeshLambertMaterial({ color: 0xfafafa }));
+  belly.scale.set(0.9, 1.3, 0.6); belly.position.set(0, 0.55, 0.16);
+  const beak = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.16, 8), new THREE.MeshLambertMaterial({ color: 0xf2a33a }));
+  beak.rotation.x = Math.PI / 2; beak.position.set(0, 0.92, 0.32);
+  g.add(body, belly, beak); return g;
+}
+const moverMeshes = MOVERS.map(m => {
+  const o = m.kind === 'ball' ? new THREE.Mesh(new THREE.IcosahedronGeometry(m.r, 1), new THREE.MeshLambertMaterial({ color: 0xf4f8fc, flatShading: true })) : penguin();
+  scene.add(o); return o;
+});
+
+const rig = new THREE.Group(), flip = new THREE.Group();
+const sledMesh = buildSledMesh(THREE, 'basic');
+const rider = new THREE.Group();
+const rb = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 0.35, 4, 10), new THREE.MeshLambertMaterial({ color: 0xe5484d })); rb.position.y = 0.55;
+const rh = new THREE.Mesh(new THREE.SphereGeometry(0.26, 14, 10), new THREE.MeshLambertMaterial({ color: 0xf0c48a })); rh.position.y = 1.05;
+rider.add(rb, rh); rider.position.y = 0.15;
+flip.add(sledMesh, rider); rig.add(flip); scene.add(rig);
+let pet = null, petKind = 'hedgehog', petHop = 0;
+const PET_SPOTS = { back: { x: 0, y: 0.5, z: -0.62, label: '썰매 뒤끝' }, side: { x: -0.62, y: 0.42, z: 0, label: '오른쪽 옆' }, head: { x: 0, y: 1.38, z: 0, label: '머리 위' }, front: { x: 0, y: 0.5, z: 0.55, label: '앞(지금)' } };
+let petSpot = new URLSearchParams(location.search).get('petspot') || 'back';
+function mountPet() { if (pet) flip.remove(pet); pet = buildPet(THREE, petKind, 2); pet.scale.setScalar(1.6); const q = PET_SPOTS[petSpot]; pet.position.set(q.x, q.y, q.z); pet.userData.baseY = q.y; flip.add(pet); pet.visible = F.pet; }
+const ghost = new THREE.Group();
+ghost.add(buildSledMesh(THREE, 'basic'), rider.clone(true));
+ghost.traverse(o => { if (o.material) { o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = 0.35; o.material.depthWrite = false; o.material.color?.lerp(new THREE.Color(0xbfe0ff), 0.6); } });
+scene.add(ghost);
+
+const puffGeo = new THREE.IcosahedronGeometry(0.09, 0), puffs = [];
+function puff(p, color = 0xf4f8fc, back = 3, spread = 2.4, up = 1.3) {
+  const m = new THREE.Mesh(puffGeo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9 }));
+  m.position.set(p.x + (Math.random() - 0.5) * 0.6, p.y + 0.15, p.z - 0.5);
+  m.userData = { vel: new THREE.Vector3((Math.random() - 0.5) * spread, up + Math.random() * up, -back - Math.random() * back), age: 0 };
+  m.scale.setScalar(1.4 + Math.random() * 1.4); scene.add(m); puffs.push(m);
+}
+function stepPuffs(dt) {
+  for (let i = puffs.length - 1; i >= 0; i--) {
+    const m = puffs[i], u = m.userData; u.age += dt; u.vel.y -= 6 * dt;
+    m.position.addScaledVector(u.vel, dt); m.scale.multiplyScalar(1 + dt * 0.8);
+    m.material.opacity = 0.9 * Math.max(0, 1 - u.age / 0.7);
+    if (u.age >= 0.7) { scene.remove(m); m.material.dispose(); puffs.splice(i, 1); }
+  }
+}
+const flakeN = 160, flakePos = new Float32Array(flakeN * 3);
+const flakes = new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(flakePos, 3)), new THREE.PointsMaterial({ color: 0xffffff, size: 0.035, transparent: true, opacity: 0.8 }));
+flakes.frustumCulled = false; scene.add(flakes);
+let flakesSeeded = false;
+function seedFlake(i, c) { flakePos[i * 3] = c.x + (Math.random() - 0.5) * 16; flakePos[i * 3 + 1] = c.y - 1 + (Math.random() - 0.5) * 6; flakePos[i * 3 + 2] = c.z + 6 + Math.random() * 18; }
+
+const chips = document.getElementById('chips');
+let chipsHtml = '';
+function setChips(list) { const h = list.map(([t, cls]) => `<div class="chip ${cls || ''}">${t}</div>`).join(''); if (h !== chipsHtml) { chipsHtml = h; chips.innerHTML = h; } }
+
+let run = newRun(), best = null, yaw = sledYaw(0), camPos = null, camLook = null, doneAt = 0, input;
+function restart() {
+  run = newRun(); yaw = sledYaw(0); camPos = null; doneAt = 0;
+  hideSledHud(); boostButton().onclick = () => pressButton(run);
+  if (pet) pet.visible = F.pet;
+}
+
+function camTarget(r, dt) {
+  const t = sledCamTargets(r.sled);
+  const pos = new THREE.Vector3(t.pos.x, t.pos.y, t.pos.z), look = new THREE.Vector3(t.look.x, t.look.y, t.look.z);
+  let fov = 42;
+  if (F.speed) {
+    const p = slopePoint(r.sled.z, r.sled.x);
+    pos.set(p.x, p.y + 4.2 + r.y * 0.6, p.z - 4);
+    const az = r.sled.z + 45;
+    const a = slopePoint(az, r.sled.x * 0.85 + centerX(az) * 0.15);
+    look.set(a.x, a.y + r.y * 0.4, a.z);
+    fov = Math.min(56, 46 + Math.max(0, r.sled.speed / r.sled.phys.baseSpeed - 1) * 18);
+  }
+  if (!camPos) { camPos = pos.clone(); camLook = look.clone(); }
+  const k = 1 - Math.pow(0.02, dt);
+  camPos.lerp(pos, k); camLook.lerp(look, k);
+  camera.position.copy(camPos); camera.lookAt(camLook);
+  camera.fov += (fov - camera.fov) * Math.min(1, dt * 4); camera.updateProjectionMatrix();
+}
+
+function ghostGap(r) {
+  if (!best) return null;
+  const k = best.path.findIndex(q => q.z >= r.sled.z);
+  return k < 0 ? null : (r.sled.t - best.path[k].t) / 1000;
+}
+function ghostAt(t) {
+  if (!best || t > best.path[best.path.length - 1].t) return null;
+  let lo = 0, hi = best.path.length - 1;
+  while (lo < hi) { const m = (lo + hi) >> 1; if (best.path[m].t < t) lo = m + 1; else hi = m; }
+  return best.path[lo];
+}
+
+function handleEvents(r, pose) {
+  r.ev.forEach(e => {
+    if (e === 'boost' || e === 'gust' || e === 'trickOk' || e === 'drift2' || e === 'drift1') { Sound.sledBoost(); const col = e === 'drift2' ? 0xffb35c : e === 'drift1' ? 0x8cc8ff : 0xf4f8fc; for (let i = 0; i < 14; i++) puff(pose, col, 2, 3, 1.6); petHop = 1; }
+    if (e === 'combo') Sound.starGood?.(r.combo);
+    if (e === 'jump') { Sound.blip?.(); petHop = 1.2; }
+    if (e === 'trickFail' || e === 'hit') Sound.starMiss?.();
+    if (e === 'shield') { Sound.starPerfect?.(2); petHop = 1.8; for (let i = 0; i < 18; i++) puff(pose, 0xf4f8fc, -1.5, 4, 2); }
+  });
+  r.ev = [];
+}
+
+function render(dt) {
+  const r = run;
+  yaw += (sledYaw(r.sled.vx / r.sled.phys.steerRate) - yaw) * Math.min(1, dt * 8);
+  const pose = sledPose(r.sled, yaw);
+  handleEvents(r, pose);
+  rig.position.set(pose.x, pose.y + r.y, pose.z);
+  rig.rotation.set(r.air ? pose.pitch * 0.3 : pose.pitch, pose.yaw, 0, 'YXZ');
+  flip.rotation.x = r.trick ? -Math.min(1, r.spin) * Math.PI * 2 : 0;
+  if (F.drift && r.driftDir && driftTier(r)) puff(pose, driftTier(r) === 2 ? 0xffb35c : 0x8cc8ff, 1.2, 1.5, 0.4);
+  if (r.sled.boostLeftMs > 0 && !r.sled.finished) for (let i = 0; i < 2; i++) puff(pose);
+  if (pet) {
+    pet.visible = F.pet;
+    petHop = Math.max(0, petHop - dt * 2.2);
+    pet.position.y = pet.userData.baseY + Math.sin(Math.min(1, petHop) * Math.PI) * 0.45 + Math.sin(performance.now() / 180) * 0.03;
+    pet.rotation.y = petHop > 1 ? (petHop - 1) * 10 : 0;
+    updatePetAnim(pet, performance.now() / 1000, petHop > 0);
+  }
+  rampMeshes.forEach(m => { m.visible = F.jump; });
+  MOVERS.forEach((m, i) => {
+    const o = moverMeshes[i]; o.visible = F.movers;
+    if (!F.movers) return;
+    const p = moverPos(m, r.sled.t), s = slopePoint(p.z, p.x);
+    o.position.set(s.x, s.y + (m.kind === 'ball' ? m.r * 0.9 : 0), s.z);
+    if (m.kind === 'ball') o.rotation.x = p.spin; else { o.rotation.y = p.face > 0 ? Math.PI / 2 : -Math.PI / 2; o.position.y += Math.abs(Math.sin(performance.now() / 120)) * 0.08; }
+  });
+  const g = F.ghost ? ghostAt(r.sled.t) : null;
+  ghost.visible = !!g;
+  if (g) { const gp = sledPose({ ...r.sled, z: g.z, x: g.x }, yaw); ghost.position.set(gp.x, gp.y + (g.y || 0), gp.z); ghost.rotation.set(gp.pitch, gp.yaw, 0, 'YXZ'); }
+  stepPuffs(dt);
+  camTarget(r, dt);
+  flakes.visible = F.speed;
+  if (F.speed) {
+    const c = camera.position, sp = r.sled.speed * SLOPE_M_PER_UNIT * 2.2;
+    for (let i = 0; i < flakeN; i++) {
+      if (!flakesSeeded) seedFlake(i, c);
+      flakePos[i * 3 + 2] -= sp * dt; flakePos[i * 3 + 1] -= 0.6 * dt;
+      if (flakePos[i * 3 + 2] < c.z + 2 || flakePos[i * 3 + 2] - c.z > 30) seedFlake(i, c);
+    }
+    flakesSeeded = true;
+    flakes.geometry.attributes.position.needsUpdate = true;
+  }
+  renderer.render(scene, camera);
+  showStick(input.stick());
+  showBoostFx(r.sled, dt);
+  showRunHud({ timeMs: r.sled.t, acorns: r.sled.acorns });
+  const list = [];
+  if (F.ghost) { const gap = ghostGap(r); list.push(gap === null ? [best ? '👻 유령 도착' : '👻 첫 판 · 유령 없음'] : [`👻 ${gap <= 0 ? '−' : '+'}${Math.abs(gap).toFixed(1)}초`, gap <= 0 ? 'ahead' : 'behind']); }
+  if (F.drift && r.driftDir && driftTier(r)) list.push([driftTier(r) === 2 ? '🟠 드리프트' : '🔵 드리프트', driftTier(r) === 2 ? 'orange' : 'blue']);
+  if (F.combo) list.push([`🚩 연속 ${r.combo}/${COMBO_N}`]);
+  if (F.jump && r.air) list.push([r.trick ? (r.spin >= 1 ? '🌀 한 바퀴!' : '🌀 도는 중') : '🛫 지금 누르면 회전']);
+  if (F.pet) list.push([r.shield ? '🛡️ 펫 방패 1' : '💨 펫이 막았어요']);
+  setChips(list);
+}
+
+function finish() {
+  const r = run, ms = finalTimeMs(r.sled);
+  const prev = best ? best.t : null, beat = !best || ms < best.t;
+  if (beat) best = { t: ms, path: r.path };
+  showResult({ timeMs: ms, best: best.t, newBest: beat && prev !== null, coins: 0, leftToday: 0, flags: r.sled.flagsPassed }, restart);
+  doneAt = performance.now();
+}
+
+let last = performance.now();
+function update(dt) {
+  const r = run;
+  if (!r.sled.finished) {
+    if (F.auto) autoStep(r, dt); else step(r, dt, worldSteer(input.read()));
+    if (r.sled.finished) finish();
+  } else if (F.auto && performance.now() - doneAt > 2500) restart();
+  render(dt);
+}
+function frame(now) { update(Math.max(0, Math.min(0.05, (now - last) / 1000))); last = now; requestAnimationFrame(frame); }
+
+function resize() { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
+addEventListener('resize', resize);
+
+const presetsEl = document.getElementById('presets');
+Object.keys(PRESETS).forEach(name => {
+  const b = document.createElement('button'); b.textContent = name;
+  b.onclick = () => { Object.assign(F, PRESETS[name]); syncUI(); restart(); };
+  presetsEl.appendChild(b);
+});
+function syncUI() {
+  document.querySelectorAll('[data-f]').forEach(cb => { cb.checked = !!F[cb.dataset.f]; });
+  document.getElementById('mult').value = MULT; document.getElementById('multv').textContent = `${MULT.toFixed(1)}배`;
+  [...presetsEl.children].forEach(b => { const p = PRESETS[b.textContent]; b.classList.toggle('on', Object.keys(p).every(k => p[k] === F[k])); });
+}
+document.querySelectorAll('[data-f]').forEach(cb => cb.onchange = () => { F[cb.dataset.f] = cb.checked; syncUI(); if (cb.dataset.f !== 'auto') restart(); });
+document.getElementById('mult').oninput = e => { MULT = +e.target.value; syncUI(); restart(); };
+document.getElementById('restart').onclick = restart;
+document.getElementById('close').onclick = () => document.getElementById('panel').classList.add('closed');
+document.getElementById('ptitle').onclick = () => document.getElementById('panel').classList.toggle('closed');
+const petSel = document.getElementById('pet');
+PET_KINDS.forEach(k => { const o = document.createElement('option'); o.value = k.id; o.textContent = `${k.ico} ${k.name}`; petSel.appendChild(o); });
+petSel.value = petKind; petSel.onchange = () => { petKind = petSel.value; mountPet(); };
+const spotSel = document.getElementById('petspot');
+Object.entries(PET_SPOTS).forEach(([k, q]) => { const o = document.createElement('option'); o.value = k; o.textContent = q.label; spotSel.appendChild(o); });
+spotSel.value = petSpot; spotSel.onchange = () => { petSpot = spotSel.value; mountPet(); };
+
+input = bindSledInput(document.body, () => pressButton(run), { initial: matchMedia('(pointer: coarse)').matches ? 'touch' : 'keys' });
+mountPet(); syncUI(); resize(); restart();
+requestAnimationFrame(frame);
+window.__proto = { F, measure, setSpot: k => { petSpot = k; spotSel.value = k; mountPet(); }, PRESETS, setMult: m => { MULT = m; syncUI(); restart(); }, tick: ms => { for (let i = 0; i < ms / 16; i++) update(0.016); }, get run() { return run; }, press: () => pressButton(run) };
+</script>

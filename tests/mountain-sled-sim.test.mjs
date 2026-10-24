@@ -11,7 +11,7 @@ test('higher skill means more flags and a clearly faster median', () => {
   const lo = profile(0.3, 3, 200);
   const hi = profile(0.9, 3, 200);
   assert.ok(hi.meanFlags > lo.meanFlags);
-  assert.ok(lo.p50 - hi.p50 >= 1500, `gap=${lo.p50 - hi.p50}`);
+  assert.ok(lo.p50 - hi.p50 >= 1000, `gap=${lo.p50 - hi.p50}`);
 });
 
 test('median time falls monotonically with skill', () => {
@@ -25,16 +25,16 @@ test('skilled players hit fewer obstacles', () => {
   assert.ok(profile(0.9, 3, 200).meanHits < profile(0.3, 3, 200).meanHits);
 });
 
-test('an expert with six acorns takes at least 30 s and a novice without acorns at most 60 s', () => {
-  assert.ok(profile(0.9, 6, 200).p50 >= 30000);
-  assert.ok(profile(0.3, 0, 200).p90 <= 60000);
+test('an expert with six acorns takes at least 20 s and a novice without acorns at most 40 s', () => {
+  assert.ok(profile(0.9, 6, 200).p50 >= 20000);
+  assert.ok(profile(0.3, 0, 200).p90 <= 40000);
 });
 
 test('six acorns are worth a visible but not dominant gain', () => {
   const none = profile(0.7, 0, 200).p50;
   const six = profile(0.7, 6, 200).p50;
   const gain = none - six;
-  assert.ok(gain >= 3000 && gain <= 9000, `gain=${gain}`);
+  assert.ok(gain >= 2000 && gain <= 6000, `gain=${gain}`);
 });
 
 test('boosted speeds stay within the server min-time assumption of 24 m/s', () => {
