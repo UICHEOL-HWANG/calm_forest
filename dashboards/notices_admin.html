@@ -154,7 +154,7 @@
 
   <script type="module">
     import { CONFIG, isSupabaseConfigured } from '../js/config.js';
-    import { LOGIN_GATE_HTML, mountLoginGate } from './js/admin-login.js';
+    import { LOGIN_GATE_HTML, mountLoginGate, ADMIN_AUTH, showNotAdmin } from './js/admin-login.js';
     import { parseBody } from '../js/notices.js';   // 게임 소식함과 같은 '|' 표 규칙
     const $ = (id) => document.getElementById(id);
     const showMsg = (html) => { $('load').style.display = 'none'; const m = $('msg'); m.style.display = 'block'; m.innerHTML = html; };
@@ -174,7 +174,7 @@
       if (!isSupabaseConfigured()) { showMsg('⚠️ Supabase 키가 설정되지 않았습니다. <code>js/config.js</code>를 먼저 채워주세요.'); return; }
       $('load').style.display = 'block';
       const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
-      sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, { auth: { detectSessionInUrl: true, persistSession: true } });
+      sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, { auth: ADMIN_AUTH });
       const { data: s } = await sb.auth.getSession();
       if (!s?.session) {
         showMsg('관리자 로그인이 필요합니다.' + LOGIN_GATE_HTML);
@@ -187,7 +187,7 @@
         else showMsg('오류: ' + esc(error.message));
         return;
       }
-      if (!isAdmin) { showMsg('🚫 관리자 계정이 아닙니다.<br><small style="opacity:.6">sql/migrations/migrate_notices_admin.sql 의 허용목록에 이메일을 추가하세요.</small>'); return; }
+      if (!isAdmin) { showNotAdmin(sb, showMsg, { email: s.session.user.email }); return; }
       $('load').style.display = 'none'; $('dash').style.display = 'block';
       wire(); wireVillage(); loadModerationLog(); loadReports().catch((e) => rMsg('불러오기 실패: ' + (e?.message || e), true));
       await loadNotices(); await loadFeedback();   // 피드백의 '답장함' 표시는 소식 목록을 참조하므로 순서 유지

@@ -148,7 +148,7 @@
 
   <script type="module">
     import { CONFIG, isSupabaseConfigured } from '../js/config.js';
-    import { LOGIN_GATE_HTML, mountLoginGate } from './js/admin-login.js';
+    import { LOGIN_GATE_HTML, mountLoginGate, ADMIN_AUTH, showNotAdmin } from './js/admin-login.js';
     const $ = (id) => document.getElementById(id);
     const showMsg = (html) => { $('load').style.display='none'; const m=$('msg'); m.style.display='block'; m.innerHTML=html; };
     // 차트 색은 _dash.css 토큰에서 읽습니다(라이트/다크 자동 대응).
@@ -192,7 +192,7 @@
     (async () => {
       if (!isSupabaseConfigured()) { showMsg('⚠️ Supabase 키가 설정되지 않았습니다. <code>js/config.js</code>를 먼저 채워주세요.'); return; }
       const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
-      sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, { auth:{ detectSessionInUrl:true, persistSession:true }});
+      sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, { auth: ADMIN_AUTH });
 
       // 공유 링크(?k=토큰)면 로그인 게이트를 건너뜁니다.
       // 토큰의 유효성/만료는 서버(cf_beta_overview)가 판정하므로 여기선 통과만 시킵니다.
@@ -218,7 +218,7 @@
       if (error) {
         if (String(error.message).includes('권한')) {
           if (shareKey) showMsg('🔒 공유 링크가 만료됐거나 올바르지 않습니다.<br><small style="opacity:.6">관리자에게 새 링크를 요청해 주세요.</small>');
-          else showMsg('🚫 관리자 계정이 아닙니다.<br><small style="opacity:.6">sql/analytics/admin_analytics.sql 의 허용목록에 이메일을 추가하세요.</small>');
+          else showNotAdmin(sb, showMsg);
         }
         else if (/function|does not exist/i.test(String(error.message))) showMsg('함수를 찾을 수 없습니다.<br><small style="opacity:.6">sql/analytics/admin_analytics.sql 을 SQL Editor 에서 <b>다시</b> 실행하세요 (cf_beta_overview 가 정의돼 있는지 확인).</small>');
         else showMsg('오류: ' + escapeHtml(error.message));

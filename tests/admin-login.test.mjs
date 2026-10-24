@@ -63,3 +63,19 @@ test('every admin page gate uses the shared login gate', () => {
     assert.doesNotMatch(src, /게임에서 먼저 로그인/, f);
   }
 });
+
+test('admin pages keep their own auth storage, apart from the game guest session', async () => {
+  const { ADMIN_AUTH } = await import('../dashboards/js/admin-login.js');
+  assert.ok(ADMIN_AUTH.storageKey && !/^sb-/.test(ADMIN_AUTH.storageKey));
+  for (const f of ['dashboards/js/admin-common.js', 'dashboards/notices_admin.html', 'dashboards/beta_monitor.html']) {
+    const src = readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
+    assert.match(src, /createClient\([^)]*auth: ADMIN_AUTH/, f);
+  }
+});
+
+test('a signed-in non-admin still gets the login gate', () => {
+  for (const f of ['dashboards/js/admin-common.js', 'dashboards/js/admin-hub.js', 'dashboards/js/admin-utm.js', 'dashboards/notices_admin.html', 'dashboards/beta_monitor.html']) {
+    const src = readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
+    assert.match(src, /showNotAdmin\(/, f);
+  }
+});

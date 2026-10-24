@@ -3,7 +3,7 @@
 //  데이터: RPC cf_admin_dashboard(days, token) — sql/analytics/admin_dashboard.sql
 //  계산: ./admin-metrics.js(순수 함수, 테스트 있음) · 공통: ./admin-common.js
 // =============================================================
-import { $, V, nf, esc, CHAR, shareKey, bootAdmin, explainRpcError, showMsg, createLoader } from './admin-common.js';
+import { $, V, nf, esc, CHAR, shareKey, bootAdmin, explainRpcError, showRpcError, showMsg, createLoader } from './admin-common.js';
 import { MAPS, delta, worstLeak, rate, heatGrid, userStatus, funnelSteps, mapHourGrid, heatCellsFor, HEAT_SLOTS, zoneFlow, zoneLabel, ZONE_CIRCLES, VILLAGE_R, trackSegments } from './admin-metrics.js';
 
 const page = $('page');
@@ -100,7 +100,7 @@ async function load() {
   const { data: d, error } = await sb.rpc('cf_admin_dashboard', shareKey ? { days, token: shareKey } : { days });
   btns.forEach((b) => { b.disabled = false; b.setAttribute('aria-busy', 'false'); });
   loader.done();
-  if (error) { $('wrap').hidden = true; showMsg(explainRpcError(error, 'cf_admin_dashboard')); return; }
+  if (error) { $('wrap').hidden = true; showRpcError(sb, error, 'cf_admin_dashboard'); return; }
   data = d;
   $('msg').style.display = 'none';
   $('wrap').hidden = false;     // 앞선 요청이 실패해 숨겼더라도 성공하면 다시 연다
