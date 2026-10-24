@@ -55,7 +55,7 @@ begin
   elsif p_board = 'sled' then
     select jsonb_agg(jsonb_build_object('u', user_id, 's', s)) into sc
     from (select user_id, -min(time_ms)::bigint as s from sled_runs
-          where run_date = kst_today and outcome = 'finish' and course_v = 1 and phys_v in (1, 2)
+          where run_date = kst_today and outcome = 'finish' and course_v = 1 and phys_v in (1, 2, 3)
             and user_id is not null and time_ms is not null
           group by user_id) x;
   else
