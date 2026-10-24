@@ -25,6 +25,18 @@ test('터치 판정 = 실제 터치 기기 또는 touchsim', () => {
   assert.equal(isTouchEnv({ hasTouchEvent: false, maxTouchPoints: 0, search: '?touchsim=1' }), true);
 });
 
+test('터치스크린 노트북처럼 주 입력이 마우스면 데스크톱 조작', () => {
+  assert.equal(isTouchEnv({ hasTouchEvent: true, maxTouchPoints: 10, search: '', coarsePointer: false }), false);
+  assert.equal(isTouchEnv({ hasTouchEvent: true, maxTouchPoints: 5, search: '', coarsePointer: true }), true);
+  assert.equal(isTouchEnv({ hasTouchEvent: false, maxTouchPoints: 0, search: '?touchsim=1', coarsePointer: false }), true);
+  assert.equal(isTouchEnv({ hasTouchEvent: false, maxTouchPoints: 0, search: '', coarsePointer: true }), false);
+});
+
+test('index.html 튜토리얼 안내·E1 카드도 같은 판정 함수를 쓴다', () => {
+  assert.match(INDEX, /const TOUCH = isTouchDevice\(\)/);
+  assert.match(read('../js/spaces/e1-start.js'), /const TOUCH = isTouchDevice\(\)/);
+});
+
 test('touchsim 은 dev 세션이 아니다 — 페르소나 로그가 끊기면 안 된다', () => {
   assert.ok(!DEV_PARAMS.includes('touchsim'));
   assert.equal(isDevSession('?touchsim=1'), false);
@@ -33,7 +45,7 @@ test('touchsim 은 dev 세션이 아니다 — 페르소나 로그가 끊기면 
 test('모바일 컨트롤·IS_MOBILE·튜토리얼 안내가 같은 판정을 쓴다', () => {
   assert.match(CONTROLS, /isTouchDevice\(\)/);
   assert.match(GAME, /const IS_MOBILE = [^\n]*touchSimOn\(location\.search\)/);
-  assert.match(INDEX, /const TOUCH = [^\n]*touchsim/);
+  assert.match(INDEX, /const TOUCH = isTouchDevice\(\)/);
 });
 
 test('touchsim 일 때만 조이스틱·액션 버튼이 마우스(pointer) 입력도 받는다', () => {
