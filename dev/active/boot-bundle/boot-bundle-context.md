@@ -1,6 +1,6 @@
 # boot-bundle 컨텍스트
 
-Last Updated: 2026-10-24 16:35 KST
+Last Updated: 2026-10-24 16:55 KST (웹·토스·Play 배포, iOS 업로드 대기)
 
 ## 핵심 파일
 - `index.html` 2569~: 로딩 화면 번역 부트 스크립트, PWA, importmap(unpkg three 0.160.0), 큰 인라인 모듈(약 3,667줄)
