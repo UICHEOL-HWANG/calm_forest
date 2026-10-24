@@ -19,10 +19,11 @@ test('첫 안내 카드는 15곳', () => {
   assert.equal(CALLS.length, 15, CALLS.map((c) => c.key).join(','));
 });
 
-test('15곳 모두 새 틀(조작 칸 steps) — 긴 문장 본문은 쓰지 않는다', () => {
+test('15곳 모두 새 틀(조작 칸 steps 또는 칸 카드 tiles) — 긴 문장 본문은 쓰지 않는다', () => {
   for (const c of CALLS) {
-    assert.match(c.chunk, /steps: \[/, `${c.f} ${c.key}`);
-    assert.doesNotMatch(c.chunk.slice(0, c.chunk.indexOf('steps: [')), /\\n·/, `${c.f} ${c.key}`);
+    assert.match(c.chunk, /steps: \[|tiles: /, `${c.f} ${c.key}`);
+    const at = c.chunk.search(/steps: \[|tiles: /);
+    assert.doesNotMatch(c.chunk.slice(0, at), /\\n·/, `${c.f} ${c.key}`);
   }
 });
 

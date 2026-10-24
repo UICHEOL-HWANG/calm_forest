@@ -13,6 +13,7 @@ import {
   swayables, syncBadges, syncStory, todayStr, trackDiffAbandon, triggerMoment, ui, woodMat,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
+import { mistClearTiles } from '../ui-cards.js';
 import { onPlay, decorBanner } from '../decor-drops/index.js';
 import { LANTERN_CALM_R, MIST, MIST_DRAIN, MIST_GATE, MIST_HALF, MIST_LANTERN_POS, MIST_PRACTICE_STEPS, MIST_WAVES, ORCHARD, ORCHARD_GATE, ORCHARD_HALF, PURIFY_GLOW, SOOTHE_GLOW, SPIRITS, TREE_LIGHT_MAX } from '../data/places.js';
 import { FRUITS, sapKeyOf } from '../orchard.js';
@@ -390,7 +391,7 @@ export function mistEnd(result) {
     giveReward({ glow: PURIFY_GLOW }, 'mist_purify', 'day');
     Sound.complete();
     spawnConfetti(MIST.x, 4, MIST.z - 3); spawnSparkle(MIST.x, 3, MIST.z - 3, 40);
-    ui.showHintModal?.({ ico: '🌤️', title: '숲이 맑아졌어요!', body: `정령들이 하늘로 돌아가고 안개가 걷혔어요. 보너스 ✨${PURIFY_GLOW} — 모은 정령빛은 상점 야외 장식 ‘✨정령 등불’에 쓸 수 있어요. 내일 다시 안개가 차면 정령들이 돌아와요.` });
+    ui.showHintModal?.({ ico: '🌤️', title: '숲이 맑아졌어요!', body: { tiles: mistClearTiles(PURIFY_GLOW) } });
     awardBadge('purifier'); syncBadges();
   } else if (result === 'faded') {
     Sound.build();

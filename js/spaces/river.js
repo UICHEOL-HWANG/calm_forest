@@ -354,7 +354,7 @@ export function clearRiverObjects() {
 export function startBoatRun() {
   const st = boatDaily();
   if (st.count >= BOAT_RUNS_PER_DAY) {
-    ui.showHintModal?.({ ico: '🛶', title: '오늘은 여기까지', body: `나룻배는 하루 ${BOAT_RUNS_PER_DAY}번까지 탈 수 있어요. 내일 새로운 물길(코스)이 열려요. 또 만나요!` });
+    ui.showHintModal?.({ ico: '🛶', title: `오늘은 ${BOAT_RUNS_PER_DAY}번 다 탔어요`, body: '내일 새 물길이 열려요' });
     return;
   }
   st.count += 1;
