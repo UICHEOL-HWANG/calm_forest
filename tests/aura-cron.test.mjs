@@ -121,6 +121,36 @@ test('설정 없으면 건너뛰고, 실패는 메일', async () => {
   assert.equal(w.calls.notified.length, 1);
 });
 
+test('tick: 실행 지역 차단 403 은 메일 없이 기록만, 주문은 submitted 로 남아 다음 틱이 다시 수집', async () => {
+  const w = world({ submitted: [order('s1', { status: 'submitted', batch_id: 'msgbatch_1' })] });
+  const blocked = async (url, init) => String(url).includes('api.anthropic.com')
+    ? Response.json({ error: { type: 'forbidden', message: 'Request not allowed' } }, { status: 403 })
+    : w.fetch(url, init);
+  const r = await runAuraCron(ENV, { phase: 'tick', fetch: blocked, notify: w.notify, now: 0 });
+  assert.match(r.error, /^region_blocked/);
+  assert.equal(w.calls.notified.length, 0);
+  assert.equal(w.calls.upserts.length, 0);
+  assert.match(w.calls.runs[0].error, /^region_blocked/);
+});
+
+test('tick: 지역 차단이 아닌 403(권한 오류)은 그대로 메일', async () => {
+  const w = world({ submitted: [order('s1', { status: 'submitted', batch_id: 'msgbatch_1' })] });
+  const denied = async (url, init) => String(url).includes('api.anthropic.com')
+    ? Response.json({ type: 'error', error: { type: 'permission_error', message: 'Your API key does not have permission' } }, { status: 403 })
+    : w.fetch(url, init);
+  await runAuraCron(ENV, { phase: 'tick', fetch: denied, notify: w.notify, now: 0 });
+  assert.equal(w.calls.notified.length, 1);
+});
+
+test('final: 대체로 마감한 주문이 있으면 알림 1회, 없으면 조용히', async () => {
+  const w = world({ submitted: [order('s1', { status: 'submitted', batch_id: 'msgbatch_1' })] });
+  await runAuraCron(ENV, { phase: 'final', fetch: w.fetch, notify: w.notify, now: 0 });
+  assert.equal(w.calls.notified.length, 1);
+  const quiet = world();
+  await runAuraCron(ENV, { phase: 'final', fetch: quiet.fetch, notify: quiet.notify, now: 0 });
+  assert.equal(quiet.calls.notified.length, 0);
+});
+
 test('크론 등록: wrangler 와 scheduled 분기', () => {
   const src = rel => readFileSync(new URL('../' + rel, import.meta.url), 'utf8');
   const wr = src('wrangler.jsonc'), wk = src('worker/index.js');
