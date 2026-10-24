@@ -10,6 +10,7 @@ import {
   requestSave, spawnFloatText, spawnSparkle, ui,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
+import { buffTiles } from '../ui-cards.js';
 import { BUFF_META, COOK_MG, COURSE_MULT, COURSE_WEIGHT, RECIPES, UPGRADES, recipeDiff } from '../data/catalog.js';
 import { NPCS } from '../data/npcs.js';
 import { SELL_ICO_G } from '../data/places.js';
@@ -113,7 +114,7 @@ export function eatDish(r, d, fallback = false) {
   const bm = BUFF_META[r.buff];
   // 🔰 이 버프를 처음 받았다면 설명 모달(1회) — 결과 화면이 먼저 뜬 뒤에 얹어 보여줌
   setTimeout(() => firstHint('buff_' + r.buff, bm.ico, `${bm.name} 버프!`,
-    { steps: [{ ico: '✨', label: bm.desc }], note: '남은 시간은 오른쪽 위 칩' }), 800);
+    { tiles: buffTiles(r.buff, bm, Math.round(dur)) }), 800);
   trackEvent('cook_eat', { recipe: r.id, quality: tier.id, dur, taste: r.free?.taste ?? null });   // [GA4] · 🍲 자유 요리 맛 ★
   return { ok: true, how: 'eat', fallback, ico: r.ico, name: r.name, buff: { ...bm, dur } };
 }
