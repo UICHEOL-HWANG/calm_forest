@@ -17,7 +17,7 @@ await b.viewport(D.w, D.h, D);
 await b.send('Emulation.setFocusEmulationEnabled', { enabled: true });
 setInterval(() => { b.send('Page.bringToFront').catch(() => {}); }, 700);
 const ev = async (e) => { try { return await Promise.race([b.evaluate(e), new Promise(r => setTimeout(() => r('TIMEOUT'), 8000))]); } catch (x) { return 'ERR ' + x.message; } };
-const DISMISS = ['intro-skip', 'coach-skip', 'tut-skip', 'seed-ok', 'hint-ok', 'notice-ok'];
+const DISMISS = ['intro-skip', 'coach-skip', 'tut-skip', 'seed-ok', 'hint-ok', 'daily-ok', 'notice-ok'];
 await b.goto(`http://127.0.0.1:8033/?dbg=1&weather=clear&time=0.42`, 9000);
 for (let i = 0; i < 30; i++) { if (await ev(`(() => { const g=document.getElementById('guest-btn'); if (g && g.offsetParent) { g.click(); return true; } return false; })()`) === true) break; await b.sleep(1000); }
 await b.sleep(3500);

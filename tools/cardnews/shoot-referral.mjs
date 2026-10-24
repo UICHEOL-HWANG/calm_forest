@@ -53,7 +53,7 @@ async function setup(page, s) {
     const gs = g.gameState;
     gs.cosmetics = { owned: [...new Set([...gs.cosmetics.owned, ...Object.values(cos)])], equipped: { ...gs.cosmetics.equipped, ...cos } };
     g.applyCosmetics(gs.cosmetics);
-    document.querySelector('#hint-modal.show') && document.querySelector('#hint-ok')?.click();
+    (document.querySelector('#daily-modal.show') && document.querySelector('#daily-ok')?.click(), document.querySelector('#hint-modal.show') && document.querySelector('#hint-ok')?.click());
     window.__tp(s.spot[0], s.spot[1]);
   }, { s, cos: s.cos });
   if (s.tool) { await page.keyboard.press(s.tool); await page.waitForTimeout(300); }
@@ -146,7 +146,7 @@ if (process.argv.includes('--menu')) {
     const gs = g.gameState;
     gs.cosmetics = { owned: [...new Set([...gs.cosmetics.owned, ...Object.values(cos)])], equipped: { ...gs.cosmetics.equipped, ...cos } };
     g.applyCosmetics(gs.cosmetics);
-    document.querySelector('#hint-modal.show') && document.querySelector('#hint-ok')?.click();
+    (document.querySelector('#daily-modal.show') && document.querySelector('#daily-ok')?.click(), document.querySelector('#hint-modal.show') && document.querySelector('#hint-ok')?.click());
     window.__tp(L.spot[0], L.spot[1]);
   }, { L: LIVE, cos: FULL });
   const shown = await page.evaluate(() => getComputedStyle(document.getElementById('invite-btn')).display !== 'none');
@@ -167,7 +167,7 @@ if (process.argv.includes('--live')) {
     const gs = g.gameState;
     gs.cosmetics = { owned: [...new Set([...gs.cosmetics.owned, ...Object.values(cos)])], equipped: { ...gs.cosmetics.equipped, ...cos } };
     g.applyCosmetics(gs.cosmetics);
-    document.querySelector('#hint-modal.show') && document.querySelector('#hint-ok')?.click();
+    (document.querySelector('#daily-modal.show') && document.querySelector('#daily-ok')?.click(), document.querySelector('#hint-modal.show') && document.querySelector('#hint-ok')?.click());
     window.__tp(L.spot[0], L.spot[1]);
     gs.inventory.leaf = 99999;   // 아치 비용 검사 통과용(촬영 세션 전용)
     window.__place('friendarch', L.spot[0] + L.arch[0], L.spot[1] + L.arch[1], 0);

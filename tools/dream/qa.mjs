@@ -35,7 +35,7 @@ const key = async (code, type) => { const [k, vk] = KEYS[code]; await b.send('In
 const press = async (code) => { await key(code, 'keyDown'); await b.sleep(80); await key(code, 'keyUp'); };
 const hold = async (code, ms) => { await key(code, 'keyDown'); await b.sleep(ms); await key(code, 'keyUp'); };
 const waitCut = async () => { for (let i = 0; i < 60; i++) { const s = await ev('__dream.state()'); if (s && s.cut === false && s.sleeping === false) return s; await b.sleep(300); } return await ev('__dream.state()'); };
-const DISMISS = ['intro-skip', 'coach-skip', 'tut-skip', 'seed-ok', 'hint-ok', 'notice-ok'];
+const DISMISS = ['intro-skip', 'coach-skip', 'tut-skip', 'seed-ok', 'hint-ok', 'daily-ok', 'notice-ok'];
 await b.goto(`http://127.0.0.1:8032/?dbg=1&weather=clear&time=0.80&house=6&give=shard:30${lang ? '&lang=' + lang : ''}`, 9000);
 for (let i = 0; i < 30; i++) { if (await ev(`(() => { const g=document.getElementById('guest-btn'); if (g && g.offsetParent) { g.click(); return true; } return false; })()`) === true) break; await b.sleep(1000); }
 await b.sleep(3500);

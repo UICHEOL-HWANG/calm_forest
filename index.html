@@ -427,8 +427,38 @@
   .boat-up button:disabled { opacity: .45; cursor: default; }
   .boat-up.maxed { opacity: .7; }
   /* 튜토리얼 / 씨앗 안내 모달 (공통 카드 스타일) */
-  #tutorial-modal, #seed-modal, #hint-modal, #photo-modal, #char-modal, #merchant-modal, #notice-modal, #settings-modal, #invite-modal { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
-  #tutorial-modal.show, #seed-modal.show, #hint-modal.show, #photo-modal.show, #char-modal.show, #merchant-modal.show, #notice-modal.show, #settings-modal.show, #invite-modal.show { display: grid; }
+  #tutorial-modal, #seed-modal, #hint-modal, #photo-modal, #char-modal, #merchant-modal, #notice-modal, #settings-modal, #invite-modal, #daily-modal { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
+  #tutorial-modal.show, #seed-modal.show, #hint-modal.show, #photo-modal.show, #char-modal.show, #merchant-modal.show, #notice-modal.show, #settings-modal.show, #invite-modal.show, #daily-modal.show { display: grid; }
+  #daily-modal { z-index: 44; }
+  #daily-modal .daily-card { width: min(380px, 94vw); background: #f6f0e4; border-radius: 28px; padding: 14px; text-align: left; }
+  .dc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .dc-t { background: #fff; border-radius: 18px; padding: 12px; min-width: 0; }
+  .dc-t small { display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .08em; opacity: .5; margin-bottom: 4px; }
+  .dc-t b { display: block; font-size: 15px; color: #24382d; }
+  .dc-t span { display: block; font-size: 11.5px; opacity: .7; font-weight: 600; margin-top: 2px; }
+  .dc-hero { grid-column: span 2; background: #24382d; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .dc-hero small { color: #fff; opacity: .6; }
+  .dc-hero b { color: #fff; font-size: 24px; letter-spacing: -.03em; }
+  .dc-dots { display: flex; gap: 5px; flex: none; }
+  .dc-dots i { width: 12px; height: 12px; border-radius: 50%; background: rgba(255,255,255,.18); }
+  .dc-dots i.on { background: var(--mint); }
+  .dc-dots i.now { background: #ffd66b; box-shadow: 0 0 0 3px rgba(255,214,107,.3); }
+  .dc-rew { background: #ffe9a8; }
+  .dc-rew b { font-size: 24px; font-weight: 900; color: #6b4a10; }
+  .dc-rew span { color: #8a6a24; opacity: 1; font-weight: 700; }
+  .dc-wide { grid-column: span 2; }
+  .dc-warn { background: #ffe1dc; }
+  .dc-new { display: inline-block; font-style: normal; font-size: 9.5px; font-weight: 900; background: #b9a6ff; color: #fff; padding: 1px 5px; border-radius: 5px; margin-left: 5px; vertical-align: 2px; }
+  .dc-season { grid-column: span 2; background: #fde3d3; font-size: 12.5px; font-weight: 700; color: #8a4a2a; padding: 9px 12px; }
+  #daily-ok { width: 100%; border: none; border-radius: 16px; padding: 14px; background: var(--mint); color: #24382d; font-weight: 800; font-size: 15px; cursor: pointer; font-family: inherit; box-shadow: var(--shadow); }
+  @media (max-width: 380px) {
+    #daily-modal .daily-card { padding: 10px; }
+    .dc-t { padding: 9px 10px; }
+    .dc-hero b { font-size: 19px; }
+    .dc-dots i { width: 9px; height: 9px; }
+    .dc-rew b { font-size: 20px; }
+    .dc-season { font-size: 11.5px; }
+  }
   /* 📮 소식함 — 공지·개발자 답장 목록(최신이 위). 답장은 내 문의 원문을 한 줄 인용 */
   #notice-list { text-align: left; margin: 0 0 16px; }
   .nt-item { padding: 12px 0; border-bottom: 1px solid #f0f4f0; }
@@ -3137,6 +3167,12 @@
   </div>
 
   <!-- 시설 첫 접근 안내 모달 (작업대·상점·텃밭) -->
+  <div id="daily-modal">
+    <div class="tut-card daily-card">
+      <div id="daily-body" class="dc-grid"></div>
+      <button id="daily-ok">좋아요 🌱</button>
+    </div>
+  </div>
   <div id="hint-modal">
     <div class="tut-card">
       <div class="tut-emoji" id="hint-emoji">🌿</div>
@@ -3296,6 +3332,7 @@
 
   <script type="module">
     import { initAuth, signInWithGoogle, signInWithApple, requestEmailCode, verifyEmailCode, holdGuestForLogin, signInWithToss, signInWithPlayGames, signInWithGameCenter, deleteMyAccount, signInAsGuest, startLocalGuest, loadGame, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow, fetchNotices, insertInstallAttribution, insertInstallSurvey } from './js/supabase-client.js';
+    import { renderDailyCard } from './js/daily-card.js';
     import { mountEmailLogin } from './js/auth/email-login.js';   // ✉️ 이메일 코드 로그인(웹·itch)
     import { mountInAppLogin, INAPP_COPY, trackHandoffArrival } from './js/auth/in-app-login.js';
     import { savePhotoNative, sharePhotoNative, shareUrlNative } from './js/photo-native.js';   // 📱 앱: WebView 는 download·share 를 못 한다
@@ -4181,6 +4218,12 @@
         const b = $('photo-btn'); if (!b) return;
         b.classList.add('pulse'); clearTimeout(photoPulseT);
         photoPulseT = setTimeout(() => b.classList.remove('pulse'), 2200);
+      },
+      showDailyCard(view, onOk) {
+        renderDailyCard($('daily-body'), view);
+        $('daily-ok').onclick = () => { $('daily-modal').classList.remove('show'); onOk?.(); };
+        Input.setAnalog(0, 0);
+        $('daily-modal').classList.add('show');
       },
       // 시설 첫 접근 안내 카드 모달
       showHintModal({ ico, title, body, ok, alt, preview }) {
@@ -6594,7 +6637,7 @@
     $('hint-ok').addEventListener('click', () => $('hint-modal').classList.remove('show'));
     window.addEventListener('keydown', e => {                // 데스크톱: 안내 모달이 떠 있으면 Space = 알겠어요 — 게임 조작으로 안 새게 capture
       if (e.code !== 'Space' || e.repeat) return;
-      const OK_BTN = { 'hint-modal': 'hint-ok', 'seed-modal': 'seed-ok', 'notice-modal': 'notice-ok', 'dream-arrive-modal': 'dream-arrive-ok', 'mirror-arrive-modal': 'mirror-arrive-ok' };
+      const OK_BTN = { 'hint-modal': 'hint-ok', 'seed-modal': 'seed-ok', 'notice-modal': 'notice-ok', 'dream-arrive-modal': 'dream-arrive-ok', 'mirror-arrive-modal': 'mirror-arrive-ok', 'daily-modal': 'daily-ok' };
       const open = Object.keys(OK_BTN).find(id => $(id).classList.contains('show'));
       if (!open) return;
       e.preventDefault(); e.stopPropagation();

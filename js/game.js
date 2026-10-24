@@ -46,7 +46,8 @@ import { BUILD_STAGES, buildInfo, STAGE_NAMES, EXPANSIONS, MAX_HOUSE_STAGE } fro
 import { VISITORS, ENV_TAG, TAG_LABEL, envAt, matchVisitors, nearMiss, spotInfo, visitorOf } from './habitat.js';   // 🦋 텃밭 방문객 서식 규칙(판정의 단일 출처)
 import { createVisitors } from './farm-visitors.js';                                                      // 🦋 스폰·근접 등록
 import { DEX_GATES, gateOf, gateOpen, weatherOpen, rollKind } from './dex-gates.js';                      // 📖 희귀종 해금 게이트(판정의 단일 출처)
-import { SEASON_IDS, applySeasonPalette, seasonById, seasonInfo, seasonNotice, seasonOf, seasonStatusLine, weatherFromRoll } from './season.js';   // 🍂 4계절 순환(날짜 → 계절)
+import { SEASON_IDS, applySeasonPalette, seasonById, seasonInfo, seasonOf, seasonStatusLine, weatherFromRoll } from './season.js';   // 🍂 4계절 순환(날짜 → 계절)
+import { dailyCardView } from './daily-card.js';
 import { createSeasonDrift } from './season-fx.js';                                                        // 🌸🍂 꽃잎·낙엽 흩날림(InstancedMesh 1개)
 import { makeVisitor } from './visitor-art.js';                                                           // 🦋 방문객 조형 4종
 import { truceUntil } from './duel/truce.js';                                                        // 🤝 발길 끊기 만료일
@@ -1436,19 +1437,15 @@ function checkDailyBonus() {
   if (d.streak > 0 && d.streak % 7 === 0) reward.gem = 1;        // 7일 연속마다 💎
   giveReward(reward, 'daily_bonus', 'day' + d.streak);           // [원장] 출석 코인
   trackEvent('daily_bonus', { streak: d.streak, coins });         // [GA4] 리텐션 KPI
-  // 한 줄에 하나씩(#hint-body 는 pre-line) — 베타 피드백 "한 문단으로 붙어 있어 안 읽힌다"
-  let body = `연속 ${d.streak}일째 방문! ${rewardText(reward)} 받았어요.` +
-    (reward.gem ? '\n7일 연속 보너스 💎!' : '\n내일 또 오면 보상이 더 커져요!');
   const sFish = seasonFish(SEASON_INFO.season.id);
-  const sLine = seasonNotice(SEASON_INFO, sFish, seasonOwned(sFish), seasonNew);
-  if (sLine) body += '\n' + sLine;                              // 🍂 새 계절 · 끝나기 직전 안내
   if (seasonNew) trackEvent('season_start_seen', { season: d.season });   // [GA4] 계절 넘어가고 첫 접속
-  if (WEATHER !== 'clear') body += '\n' + WEATHER_MSG[WEATHER]; // 모달이 토스트를 가리므로 날씨 안내를 합쳐서 표시
-  body += '\n🔮 ' + forecastLine() + forecastDexNudge(); // 내일 예보 — 재방문 유도(+날씨 도감 훅)
   if (gameState.character && gameState.tutorialSeen) {
-    // [알겠어요] 를 누르면 그 자리에서 📮 새 소식(안 읽은 공지·답장)을 이어서 띄운다 — 출석은 하루 한 번이라 "그날 첫 접속" 조건과 같다
-    ui.showHintModal?.({ ico: '🎁', title: `출석 ${d.streak}일차`, body,
-                         ok: { onClick: () => { if (pendingNotices.length) ui.showNotices?.(pendingNotices, 'new'); } } });
+    const view = dailyCardView({
+      streak: d.streak, reward, coinsTable: DAILY_COINS,
+      weather: WEATHER, forecast: FORECAST, severe: SEVERE_TOMORROW, forecastInDex: !!gameState.dex.weather?.[FORECAST],
+      season: SEASON_INFO.season, seasonLeft: SEASON_INFO.left, fish: sFish, fishOwned: seasonOwned(sFish), seasonNew,
+    });
+    ui.showDailyCard?.(view, () => { if (pendingNotices.length) ui.showNotices?.(pendingNotices, 'new'); });
     return true;
   }
   ui.toast?.(`🎁 출석 보상 +${coins}🪙`, 1600, { afterDialog: true });                         // 신규 유저: 캐릭터 선택/튜토리얼과 안 겹치게 토스트만
