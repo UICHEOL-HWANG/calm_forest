@@ -97,6 +97,10 @@ for (const item of INCLUDE) {
   await copyInto(src, path.join(DIST, to));
 }
 
+const { bundleBoot } = await import('./lib/bundle-boot.mjs');
+const boot = await bundleBoot(DIST);
+console.log(`📦 첫 화면 JS ${boot.bootFiles.length}개로 묶음 → ${Object.values(boot.entries).join(', ')}`);
+
 // 💳 Paddle 도메인 심사 필수 — 약관·환불·가격이 사이트 안에서 닿아야 한다(빼면 심사 반려).
 //    단 팔 현금 상품이 없는 동안(storeOpen=false)은 통째로 뺀다 — 약관 초안([법적 이름])이 공개되지 않게.
 const { CONFIG } = await import('../js/config.js');
