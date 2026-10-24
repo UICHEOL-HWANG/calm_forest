@@ -315,7 +315,7 @@ export function neighborMinimapMarks(marks) {
 /** 이웃 공간에서 저장되면 팻말 앞으로 적는다 — 새로고침하면 마을에서 시작한다 */
 export function neighborReturnPos() { return { x: NEIGHBOR_GATE.x, z: NEIGHBOR_GATE.z + 3.6 }; }
 
-// ── 🎈 마을 입구 열기구 — buildEnvironment 가 한 번 부른다 ──
+//    팻말(1.5m)이 안 보여 4일 방문 1/118 → 열기구(~5.5m, 2026-10-11) · 2026-10-25 조각보 풍선(시안 D)으로 교체, 글씨 없음
 //    팻말(1.5m)이 안 보여 4일 방문 1/118 → 열기구(~5.5m) + 풍선 허리 띠 "이웃 마을"(2026-10-11 시안 B 확정)
 let gateGroup = null;
 let gateArt = null;   // 열기구 흔들림·등불 — updateNeighbor 가 돌린다

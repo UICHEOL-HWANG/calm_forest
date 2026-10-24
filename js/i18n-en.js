@@ -1813,7 +1813,6 @@ export const EN = {
   '고마워요 🌱': 'Thank you 🌱',
   '외 {0#}명': 'and {0} more',
   '🏡 이웃 마을 가는 길': '🏡 Road to the Neighbors',
-  '이웃 마을': 'Neighbors',   // 🎈 열기구 풍선 글씨(2026-10-11)
   '오늘의 이웃이 기다려요': 'Your neighbors are waiting',
   '눌러서 이웃 마을 구경 가기': 'Tap to visit a neighbor village',
   '이웃 마을 가는 길': 'Road to the Neighbors',
