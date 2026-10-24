@@ -79,3 +79,11 @@ test('a signed-in non-admin still gets the login gate', () => {
     assert.match(src, /showNotAdmin\(/, f);
   }
 });
+
+test('login gate covers the dashboard and sits centered', () => {
+  const js = readFileSync(new URL('../dashboards/js/admin-login.js', import.meta.url), 'utf8');
+  const css = readFileSync(new URL('../dashboards/_dash.css', import.meta.url), 'utf8');
+  assert.match(js, /classList\.add\('admin-gated'\)/);
+  assert.match(css, /body\.admin-gated::before\s*\{[^}]*position: fixed/);
+  assert.match(css, /body\.admin-gated #msg\s*\{[^}]*position: fixed/);
+});

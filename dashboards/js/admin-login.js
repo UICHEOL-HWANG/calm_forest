@@ -63,6 +63,7 @@ export const LOGIN_GATE_HTML = `
 export function mountLoginGate(sb, { onSignedIn = () => location.reload() } = {}) {
   const q = (id) => document.getElementById(id);
   const flow = createLoginFlow(sb);
+  document.body.classList.add('admin-gated');
   const note = (t, bad = false) => { q('lgNote').textContent = t; q('lgNote').classList.toggle('bad', bad); };
   const busy = (form, on) => form.querySelectorAll('button, input').forEach((x) => { x.disabled = on; });
 
