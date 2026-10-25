@@ -68,3 +68,9 @@ Last Updated: 2026-10-25 (KST)
 - 12b(`miner_lamp`·`mine_cart` 조형, `crystal` 도감·박물관 특별전·위키)는 구현·승인 완료. 배포 순서 제약은 위 동시 배포뿐.
 - 배포 다음 날 BigQuery 확인: `delve_enter`·`delve_floor`·`pest_counter`·`delve_step`·`delve_chest` 일별 건수.
 - 공지 초안은 토스 출시 후 작성(notices_admin.html).
+
+## 2026-10-26 광부 대화창 연결 · 다음 단계 ⛏️ 광산의 가지(결정)
+- 배포분(00df5db9): 광부 의뢰는 첫 대화가 끝날 때 시작, 1단계 = 🛗 승강기 고치기, 받기 → 다음 의뢰 대사 이어짐(js/delve/miner-talk.js, talk-box 재사용), 지하 채굴 효과음.
+- 사용자 결정: 세계수 5번째 가지 "⛏️ 광산의 가지"(A안) · **숲 가지 다음 맨 뒤** · 동굴 배포 먼저, 가지는 시안 보고 다음 배포.
+- 조사 결과(파일 15~18개): tree-board BRANCHES·bloom decor / tree-bloom STAGES·CARE_NEEDS·GUESTS(없으면 import 때 throw) / tree-art LIMBS + 드로우콜 12 테스트 / unlocks 에 'miner' npc(⚠️ place id 'mine' 과 이름 겹침 주의) / delve.js 광부 숨김 게이트(마을 NPC 아님 → announceUnlock 모달 없음, 자체 귀환 연출) / index.html #tb-tabs repeat(4→5) / guide 표·스크린샷 / 테스트 5개.
+- 할 일: 기존 진행 유저 보호(delve.stage ≥ 1 이면 광부 유지) · 생명력 % 4→5 분모 변화 고지 · 시안 3안(판 5탭 PC·모바일, 나무 5번째 가지, 개화 장식·방문객 5).
