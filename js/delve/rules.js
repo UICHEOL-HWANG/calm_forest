@@ -105,7 +105,7 @@ export function sanitizeDelve(raw) {
   d.stage = int(raw.stage, 0, MINER_STEPS.length);
   for (const k of COUNT_KEYS) d.counts[k] = typeof raw.counts?.[k] === 'number' ? int(raw.counts[k], 0, 9999) : 0;
   for (const f of [10, 20]) if (raw.chests?.[f] === true) d.chests[f] = true;
-  if (typeof raw.visited?.date === 'string') d.visited = { date: raw.visited.date, floors: (raw.visited.floors || []).filter(f => Number.isInteger(f) && f >= 1 && f <= DELVE_FLOORS) };
+  if (typeof raw.visited?.date === 'string') d.visited = { date: raw.visited.date, floors: Array.isArray(raw.visited.floors) ? raw.visited.floors.filter(f => Number.isInteger(f) && f >= 1 && f <= DELVE_FLOORS) : [] };
   d.jobDate = typeof raw.jobDate === 'string' ? raw.jobDate : null;
   d.started = !!raw.started;
   return d;

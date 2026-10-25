@@ -237,3 +237,11 @@ test('완주 후 일감: 날짜로 정해지고 같은 날은 같다', () => {
   assert.ok(['ore', 'reclaim'].includes(j.kind));
   assert.ok(j.n >= 1 && j.n <= 6);
 });
+
+test('잘못된 저장값이어도 정리 중에 던지지 않는다', () => {
+  const d = sanitizeDelve({ visited: { date: '2026-10-25', floors: 'abc' }, counts: 'x', chests: 5, stops: 'q' });
+  assert.deepEqual(d.visited, { date: '2026-10-25', floors: [] });
+  assert.deepEqual(d.counts, { tap: 0, bait: 0, grab: 0, reclaim: 0 });
+  assert.deepEqual(d.chests, {});
+  assert.deepEqual(d.stops, []);
+});
