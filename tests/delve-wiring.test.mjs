@@ -160,3 +160,9 @@ test('배너 줄은 낱말 단위로 줄바꿈, 캡처 스크립트에 개인 �
   assert.doesNotMatch(delveSrc().split('\n').slice(0, 5).join('\n'), /\bclock\b/);
   assert.match(src, /\} from '\.\/spaces\/mine\.js';   \/\/ 📦 ⛏️ 채굴 동굴/);
 });
+
+test('광부 아저씨는 충돌체가 있어 통과할 수 없다', () => {
+  const src = readFileSync(new URL('../js/spaces/delve.js', import.meta.url), 'utf8');
+  const body = src.slice(src.indexOf('function placeMiner()'), src.indexOf('export function settleMinerRewards'));
+  assert.match(body, /solidCircle\(minerMesh\.position\.x, minerMesh\.position\.z, MINER_R\)/);
+});

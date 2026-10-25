@@ -1,6 +1,6 @@
 import {
   $w, atMine, dexDiscover, dist2D, doPlayerAction, gameState, player, questEvent, refreshInventoryUI, requestSave, scene,
-  setSpaceVisible, situation, snapCamera, spawnDust, spawnFloatText, spawnSparkle, ui, todayStr,
+  setSpaceVisible, situation, snapCamera, solidCircle, spawnDust, spawnFloatText, spawnSparkle, ui, todayStr,
 } from '../game.js';
 import { trackEvent } from '../analytics.js';
 import { DELVE, MINE, MINE_HALF } from '../data/places.js';
@@ -39,6 +39,7 @@ export function delveMinimapMarks() {
 const W = (lx, lz) => new THREE.Vector3(DELVE.x + lx, 0, DELVE.z + lz);
 const L = (pos) => ({ x: pos.x - DELVE.x, z: pos.z - DELVE.z });
 const FLOOR_Y = 0.15;
+const MINER_R = 0.5;
 
 export function placeLift() {
   if (liftMesh) return;
@@ -54,6 +55,7 @@ function placeMiner() {
   minerMesh.position.set(MINE.x + 1.6, FLOOR_Y, MINE.z - MINE_HALF + 4.2);
   minerMesh.rotation.y = 0.4;
   scene.add(minerMesh);
+  solidCircle(minerMesh.position.x, minerMesh.position.z, MINER_R);
 }
 
 export function settleMinerRewards() {
