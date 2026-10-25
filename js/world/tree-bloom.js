@@ -28,6 +28,11 @@ export const STAGES = {
     { need: { forage: 15, wood: 40 }, reward: { bait: 10 } },
     { need: { forage: 25, gem: 1 }, reward: { fert: 5 } },
   ],
+  mine: [
+    { need: { coal: 20, stone: 30 }, reward: { bait: 5 } },
+    { need: { gem: 2, coal: 20 }, reward: { fert: 3 } },
+    { need: { brick: 5, stone: 40 }, reward: { seed: 15 } },
+  ],
 };
 
 export const CARE_NEEDS = {
@@ -35,6 +40,7 @@ export const CARE_NEEDS = {
   farm: [{ crop: 5 }, { seed: 4 }],
   kitchen: [{ coal: 4 }, { crop: 4, fish: 1 }],
   forest: [{ wood: 10 }, { forage: 3 }],
+  mine: [{ coal: 4 }, { stone: 8 }],
 };
 
 export const GUESTS = {
@@ -65,6 +71,13 @@ export const GUESTS = {
     { id: 'lizard', ico: '🦎', name: '도마뱀', need: { light: 2, shade: 2 }, when: 'day' },
     { id: 'fox', ico: '🦊', name: '여우', need: { shelter: 3, shade: 2 }, when: 'night' },
     { id: 'beaver', ico: '🦫', name: '비버', need: { shade: 2, damp: 3 }, when: 'night' },
+  ],
+  mine: [
+    { id: 'hedgehog', ico: '🦔', name: '고슴도치', need: { shelter: 3 }, when: 'day' },
+    { id: 'ant', ico: '🐜', name: '개미', need: { food: 2, shelter: 3 }, when: 'day' },
+    { id: 'beetle', ico: '🪲', name: '딱정벌레', need: { light: 2, shade: 2 }, when: 'day' },
+    { id: 'scops', ico: '🦉', name: '소쩍새', need: { light: 3, shade: 2 }, when: 'night' },
+    { id: 'earthworm', ico: '🪱', name: '지렁이', need: { damp: 3, shade: 2 }, when: 'night' },
   ],
 };
 

@@ -186,3 +186,10 @@ test('지하에서도 위층처럼 곡괭이질·줍기 효과음이 난다', ()
   const pick = d.slice(d.indexOf('function pickUp(c)'), d.indexOf('function pickUp(c)') + 600);
   assert.match(pick, /Sound\.harvest\(\)/);
 });
+
+test('광부는 해금(miner) 전엔 동굴에 없고, 승강기는 세계수 광산 가지로 안내한다', () => {
+  const d = readFileSync(new URL('../js/spaces/delve.js', import.meta.url), 'utf8');
+  assert.match(d, /function syncMinerPresence\(\)/);
+  assert.match(d, /isOpen\('miner'\)/);
+  assert.match(d, /광산의 가지를 채우면 광부 아저씨가 돌아와요/);
+});

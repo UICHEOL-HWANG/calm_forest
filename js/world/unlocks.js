@@ -65,6 +65,7 @@ export const UNLOCKS = [
   { id: 'mist',       kind: 'place', when: s => branch(s, 'forest', 'habitat') },
   { id: 'glade',      kind: 'place', when: s => branch(s, 'forest', 'habitat') },
   { id: 'lightWorkshop', kind: 'place', when: s => branch(s, 'forest', 'habitat') },
+  { id: 'miner',      kind: 'npc',   when: s => branch(s, 'mine', 'habitat') || !!s?.delve?.started },
   // ── ⑨ 나루터 꾸러미 ──
   { id: 'ferryman',   kind: 'npc',   when: s => branch(s, 'water', 'bundles') },
   { id: 'sea',        kind: 'place', when: s => branch(s, 'water', 'bundles') },
