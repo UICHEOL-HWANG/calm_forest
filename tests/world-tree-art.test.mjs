@@ -12,13 +12,13 @@ test('조형 모듈은 three 를 직접 import 하지 않는다(테스트·순�
   assert.doesNotMatch(readFileSync(new URL('../js/world/tree-art.js', import.meta.url), 'utf8'), /from 'three'/);
 });
 
-test('드로우콜 ≤ 12 · 라이트 0 · 가지 잎 메시는 판 가지 4개와 1:1', () => {
+test('드로우콜 ≤ 13 · 라이트 0 · 가지 잎 메시는 판 가지 5개와 1:1', () => {
   const art = buildTreeArt(THREE);
   const d = drawables(art.group);
-  assert.ok(d.length <= 12, `draw calls ${d.length}`);
+  assert.ok(d.length <= 13, `draw calls ${d.length}`);
   let lights = 0; art.group.traverse(o => { if (o.isLight) lights++; });
   assert.equal(lights, 0);
-  assert.deepEqual(Object.keys(art.clusters).sort(), ['farm', 'forest', 'kitchen', 'water']);
+  assert.deepEqual(Object.keys(art.clusters).sort(), ['farm', 'forest', 'kitchen', 'mine', 'water']);
 });
 
 test('시든 나무: 잎·우듬지·빛 알갱이 숨김, 마지막 잎만 / 다 살면 반대', () => {
