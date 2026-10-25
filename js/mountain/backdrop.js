@@ -76,7 +76,7 @@ export function landmarkMountain(THREE, { radius: R, height: H, spur: k, groundC
       const t = Math.hypot(x, z) / (R * edge(a, k));
       const f = Math.min(1, Math.max(0, (t - 0.86) / 0.14));
       c.setHex(colorAt(Math.max(y, 0.001), a, H)).lerp(ground, f * f);
-      pos.push(x, Math.max(y, 0) - 0.02 * (1 - Math.min(1, t)), z);
+      pos.push(x, Math.max(y, 0) - 0.06 * f, z);
       col.push(c.r, c.g, c.b);
     }
   }
