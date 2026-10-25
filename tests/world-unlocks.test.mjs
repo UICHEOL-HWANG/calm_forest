@@ -161,3 +161,17 @@ test('getGameState 가 unlocksForSave 로 저장값을 만든다', () => {
   const fn = src.slice(src.indexOf('export function getGameState'), src.indexOf('export function getGameState') + 2000);
   assert.match(fn, /unlocks: unlocksForSave\(gameState\.unlocks, unlocksOn\(\)\)/);
 });
+
+test('⛏️ 광부 아저씨는 광산의 가지 빈터가 완성되면 돌아온다 · 이미 승강기를 고친 세이브는 그대로', () => {
+  const u = UNLOCKS.find(x => x.id === 'miner');
+  assert.equal(u.kind, 'npc');
+  assert.equal(u.when(fresh()), false);
+  assert.equal(u.when({ ...fresh(), tree: { branches: { mine: { habitat: true } } } }), true);
+  assert.equal(u.when({ ...fresh(), delve: { started: true, stage: 0 } }), true);
+  assert.ok(!UNLOCKS.some(x => x.id === 'mine' && x.kind === 'npc'));
+});
+
+test('광부 귀환은 GA4 unlock 에서 npc 로 남는다', () => {
+  const g = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  assert.match(g, /kind: def \|\| id === 'miner' \? 'npc' : 'place'/);
+});

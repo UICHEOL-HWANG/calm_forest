@@ -1351,7 +1351,7 @@ function announceUnlock(id) {
   const def = NPCS.find(n => n.id === id);
   if (!unlockTracked.has(id)) {
     unlockTracked.add(id);
-    trackEvent('unlock', { id, kind: def ? 'npc' : 'place', minutes_since_start: unlockMinutes() });   // [GA4] 처음 10분 해금 간격(스펙 §7)
+    trackEvent('unlock', { id, kind: def || id === 'miner' ? 'npc' : 'place', minutes_since_start: unlockMinutes() });   // [GA4] 처음 10분 해금 간격(스펙 §7)
   }
   if (id === 'bridgeRepair') maybeOwlBridgeHint(1200);   // 🏠 집 완성 → 🦉 다리 이야기(집 완성 축하가 먼저 지나가게)
   if (id === 'shop' || id === 'market') {

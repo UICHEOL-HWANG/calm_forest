@@ -1,5 +1,5 @@
 import {
-  $w, atMine, dexDiscover, dist2D, doPlayerAction, gameState, player, questEvent, refreshInventoryUI, requestSave, scene,
+  $w, atMine, dexDiscover, dist2D, isOpen, doPlayerAction, gameState, player, questEvent, refreshInventoryUI, requestSave, scene,
   setSpaceVisible, situation, snapCamera, solidCircle, spawnDust, spawnFloatText, spawnSparkle, ui, todayStr,
 } from '../game.js';
 import { trackEvent } from '../analytics.js';
@@ -24,6 +24,7 @@ let group = null;
 let visitN = 0;
 let liftMesh = null;
 let minerMesh = null;
+let minerSolid = null;
 const bumpTodayJob = () => { gameState.delve = bumpJob(gameState.delve, todayStr()); };
 export function delveJobProgress() { return jobProgress(gameState.delve, todayStr()); }
 const lineSec = () => (gameState.delve.startedAt ? Math.max(0, Math.round((Date.now() - gameState.delve.startedAt) / 1000)) : 0);
@@ -57,7 +58,15 @@ function placeMiner() {
   minerMesh.position.set(MINE.x + 1.6, FLOOR_Y, MINE.z - MINE_HALF + 4.2);
   minerMesh.rotation.y = 0.4;
   scene.add(minerMesh);
-  solidCircle(minerMesh.position.x, minerMesh.position.z, MINER_R);
+  minerSolid = solidCircle(minerMesh.position.x, minerMesh.position.z, MINER_R);
+  syncMinerPresence();
+}
+
+function syncMinerPresence() {
+  if (!minerMesh) return;
+  const here = isOpen('miner');
+  minerMesh.visible = here;
+  if (minerSolid) minerSolid.off = !here;
 }
 
 export function settleMinerRewards() {
@@ -230,13 +239,14 @@ function syncMinerBubble() {
 
 export function delvePrompt() {
   if (!run) {
-    if (minerMesh) {
+    syncMinerPresence();
+    if (minerMesh?.visible) {
       syncMinerBubble();
       const d = dist2D(minerMesh.position, player.position);
       if (minerTalkOpen() && d > TALK_CLOSE_R) closeMinerTalk();
       if (minerTalkOpen()) return { nd: 'delve_talk_next', prompt: '▶' };
     }
-    if (minerMesh && dist2D(minerMesh.position, player.position) < 1.8) {
+    if (minerMesh?.visible && dist2D(minerMesh.position, player.position) < 1.8) {
       if (jobCard(gameState.delve, gameState.inventory, true, todayStr(), delveJobProgress())?.ready) return { nd: 'delve_job_claim', prompt: '⛏️ 광부 아저씨 · 받기' };
       const k = minerTalk(gameState.delve, gameState.inventory)?.kind;
       if (k === 'claim') return { nd: 'delve_miner_claim', prompt: '⛏️ 광부 아저씨 · 받기' };
@@ -314,7 +324,7 @@ export function handleDelveDoor(nd) {
     playMinerLines(minerTalk.next(c.delve.stage));
     return true;
   }
-  if (nd === 'delve_lift_locked') { ui.toast?.('🛗 승강기가 고장 났어요. 광부 아저씨에게 가 봐요'); return true; }
+  if (nd === 'delve_lift_locked') { ui.toast?.(isOpen('miner') ? '🛗 승강기가 고장 났어요. 광부 아저씨에게 가 봐요' : '🛗 승강기가 고장 났어요. 세계수 ⛏️ 광산의 가지를 채우면 광부 아저씨가 돌아와요', 3600); return true; }
   if (nd === 'delve_lift') {
     const targets = liftTargets(gameState.delve);
     const go = (floor) => { trackEvent('delve_enter', { floor, stops: targets.length - 1 }); enterFloor(floor, 'lift'); };

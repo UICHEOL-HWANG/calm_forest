@@ -25,6 +25,7 @@ export const TREE_DECOR = [
   { id: 'sunflower', ico: '🌻', name: '해바라기', tags: { food: 3, nectar: 1 },  cost: { wood: 2 },           bloom: 'farm' },
   { id: 'hearth',    ico: '🔥', name: '화롯불',   tags: { light: 3, shelter: 1 }, cost: { wood: 3, coal: 1 }, bloom: 'kitchen' },
   { id: 'oldtree',   ico: '🍄', name: '버섯 고목', tags: { shade: 3, shelter: 2 }, cost: { wood: 5 },          bloom: 'forest' },
+  { id: 'crystallamp', ico: '🔮', name: '수정 등불', tags: { light: 3, shelter: 1 }, cost: { stone: 4, coal: 1 }, bloom: 'mine' },
 ];
 
 /**
@@ -57,6 +58,12 @@ export const BRANCHES = [
     bundles: [
       { id: 'woods',     name: '숲의 꾸러미',    need: { wood: 30, stone: 10 }, reward: { coins: 50 } },
       { id: 'firefly',   name: '반딧불 꾸러미',  need: { coal: 5, gem: 1 },    reward: { coins: 80 } },
+    ] },
+  { id: 'mine',    ico: '⛏️', name: '광산의 가지', short: '광산', npc: 'miner',   npcIco: '👷', npcName: '광부 아저씨',
+    habitat: { light: 4, shelter: 3, shade: 2 },
+    bundles: [
+      { id: 'shaft',     name: '갱도 꾸러미',    need: { coal: 15, stone: 20 }, reward: { coins: 60 } },
+      { id: 'vein',      name: '광맥 꾸러미',    need: { gem: 2, coal: 10 },   reward: { coins: 80 } },
     ] },
 ];
 

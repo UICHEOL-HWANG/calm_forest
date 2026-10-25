@@ -35,7 +35,7 @@ test('이미 놓인 장식은 빼고 남은 만큼만 추천한다', () => {
 });
 
 test('꽃 장식(꽃피우기 보상)은 추천하지 않고, 이미 완성이면 빈 배열', () => {
-  for (const id of BRANCH_IDS) for (const r of recommendDecor(defaultTree(), id)) assert.ok(!['lotus', 'sunflower', 'hearth', 'oldtree'].includes(r.id));
+  for (const id of BRANCH_IDS) for (const r of recommendDecor(defaultTree(), id)) assert.ok(!['lotus', 'sunflower', 'hearth', 'oldtree', 'crystallamp'].includes(r.id));
   const done = apply(defaultTree(), 'water', recommendDecor(defaultTree(), 'water'));
   assert.deepEqual(recommendDecor(done, 'water'), []);
 });
