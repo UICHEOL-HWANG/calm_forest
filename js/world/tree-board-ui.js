@@ -108,6 +108,7 @@ export function renderTreeBoard(view) {
   for (const d of c.decor) {
     const b = el('button', 'tb-deco');
     b.type = 'button';
+    b.dataset.deco = d.id;
     b.disabled = !d.can;
     const txt = el('span', 'tb-deco-txt');
     txt.append(el('b', null, d.name), el('small', null, `${d.tagsText} · ${d.costText}`));
@@ -121,12 +122,13 @@ export function renderTreeBoard(view) {
   // ── 🎁 꾸러미 바치기 ──
   const bun = el('section', 'tb-sec');
   const h2 = el('h3', 'tb-h');
-  h2.append(el('span', null, '🎁 꾸러미 바치기'));
-  if (c.bundlesDone) h2.append(el('span', 'tb-stamp pink', '🌸 다 바쳤어요'));
+  h2.append(el('span', null, '🎁 꾸러미 채우기'));
+  if (c.bundlesDone) h2.append(el('span', 'tb-stamp pink', '🌸 다 채웠어요'));
   bun.appendChild(h2);
   if (!c.habitatDone) bun.appendChild(el('p', 'tb-hint', '🔒 빈터를 먼저 완성해요'));
   for (const bd of c.bundles) {
     const box = el('div', bd.done ? 'tb-bundle done' : 'tb-bundle');
+    box.dataset.bundle = bd.id;
     const head = el('div', 'tb-bhead');
     head.append(el('b', null, bd.name));
     const rw = el('span', 'tb-reward'); rw.append(el('span', null, '보상'), el('span', null, bd.rewardText));
@@ -145,7 +147,7 @@ export function renderTreeBoard(view) {
     row.appendChild(slots);
     if (bd.done) row.appendChild(el('span', 'tb-stamp', '✅ 완성'));
     else {
-      const go = el('button', 'tb-offer', '바치기');
+      const go = el('button', 'tb-offer', '채우기');
       go.type = 'button';
       go.disabled = !bd.canOffer;
       go.addEventListener('click', () => actions?.offer?.(bd.id));
@@ -241,10 +243,10 @@ function bloomSection(v) {
     const rw = el('span', 'tb-reward'); rw.append(el('span', null, '보상'), el('span', null, v.stage.rewardText));
     sh.append(rw);
     st.appendChild(sh);
-    if (v.stage.locked) st.appendChild(el('p', 'tb-hint', '🔒 위 꾸러미를 먼저 다 바쳐요'));
+    if (v.stage.locked) st.appendChild(el('p', 'tb-hint', '🔒 위 꾸러미를 먼저 다 채워요'));
     else {
       const srow = el('div', 'tb-brow');
-      srow.append(slotRow(v.stage.slots), actButton('바치기', !v.stage.canOffer, () => actions?.stage?.()));
+      srow.append(slotRow(v.stage.slots), actButton('채우기', !v.stage.canOffer, () => actions?.stage?.()));
       st.appendChild(srow);
     }
     sec.appendChild(st);

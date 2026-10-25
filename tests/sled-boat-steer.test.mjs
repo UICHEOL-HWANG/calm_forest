@@ -9,8 +9,8 @@ const readSrc = p => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 const at60 = () => ({ ...createSled(0), z: 60, x: centerX(60) });
 const hold = (s, steer, ms) => Array.from({ length: ms / 16 }).reduce(a => stepSled(a, 16, steer, COURSE), s);
 
-test('physics version moves to 3 for the inertia model', () => {
-  assert.equal(PHYS_V, 3);
+test('physics version is 4 (inertia model plus v2 moves)', () => {
+  assert.equal(PHYS_V, 4);
 });
 
 test('a fresh sled starts with no sideways speed', () => {
@@ -27,8 +27,8 @@ test('steering ramps up over a few frames instead of jumping to full speed', () 
 test('sideways speed never exceeds the sled steer rate', () => {
   const held = hold(at60(), 1, 480);
   assert.ok(held.vx <= PHYS.steerRate + 1e-9);
-  const skiff = hold({ ...at60(), phys: { ...PHYS, steerRate: 8.2 } }, -1, 480);
-  assert.ok(skiff.vx >= -8.2 - 1e-9 && skiff.vx < -PHYS.steerRate);
+  const skiff = hold({ ...at60(), phys: { ...PHYS, steerRate: 12.3 } }, -1, 320);
+  assert.ok(skiff.vx >= -12.3 - 1e-9 && skiff.vx < -PHYS.steerRate);
 });
 
 test('letting go keeps sliding briefly, then settles', () => {
@@ -40,7 +40,7 @@ test('letting go keeps sliding briefly, then settles', () => {
 });
 
 test('a half tilt gives a gentler line than a full tilt', () => {
-  const half = hold(at60(), 0.4, 800), full = hold(at60(), 1, 800);
+  const half = hold(at60(), 0.4, 320), full = hold(at60(), 1, 320);
   assert.ok(half.vx > 0 && half.vx < full.vx * 0.75);
 });
 

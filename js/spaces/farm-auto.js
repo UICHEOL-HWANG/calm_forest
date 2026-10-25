@@ -77,7 +77,7 @@ export function farmAutoAction() {
     Input.selectTool(TOOLS.findIndex(t => t.id === want));
     if (!gameState.hintsSeen.farmAuto) {   // 첫 자동 전환 때 한 번만 — 이후엔 조용히 바뀐다
       gameState.hintsSeen.farmAuto = true;
-      ui.toast?.('🔄 밭에 맞는 도구로 바꿨어요. 농사 도구 아무거나 들고 액션만 누르면 돼요', 3200);
+      ui.toast?.('🔄 밭 도구로 바꿨어요 · 액션만 누르세요', 3200);
     }
   }
   return FARM_ACTIONS[want](plot);

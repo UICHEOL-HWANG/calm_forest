@@ -4,8 +4,7 @@ import { readFileSync } from 'node:fs';
 import * as THREE from '../vendor/three/three.module.js';
 import {
   buildMountainSpace, paintInterior, followCamera, gateSpots, pineSpots, groundClass, G,
-  GROUND, PLAIN, PINE_MAX, RANGE, SNOWFALL, INTERIOR_DRAW_BUDGET,
-} from '../js/mountain/interior-art.js';
+  GROUND, PLAIN, PINE_MAX, RANGE, SNOWFALL, INTERIOR_DRAW_BUDGET, GATE_POLE } from '../js/mountain/interior-art.js';
 import { applyLook } from '../js/mountain/interior-look.js';
 import { MOUNTAIN_THEMES } from '../js/mountain/theme.js';
 import { COURSE } from '../js/mountain/course.js';
@@ -88,7 +87,7 @@ test('gates are two poles and two flags per course flag at the flag positions, r
   COURSE.flags.forEach((f, i) => {
     for (const side of [-1, 1]) {
       const s = spots.find(g => g.flag === i && g.side === side);
-      const p = slopePoint(f.z, f.x + side * f.half);
+      const p = slopePoint(f.z, f.x + side * (f.half + GATE_POLE.gap));
       assert.ok(Math.hypot(s.x - p.x, s.y - p.y, s.z - p.z) < 1e-9, `gate ${i} ${side}`);
       assert.equal(s.color, i % 2 ? 0x2f6fd6 : 0xe0443a);
     }

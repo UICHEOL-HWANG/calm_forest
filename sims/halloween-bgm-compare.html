@@ -1,0 +1,196 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>할로윈 정원 배경음 시안 · calm forest</title>
+<style>
+  :root{--bg:#1c1432;--ink:#f1eafc;--sub:#b9add3;--card:#2a2048;--line:#41355f;--accent:#e8822e;--glow:#7dff9a}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif}
+  header{padding:18px 22px 6px}
+  h1{font-size:19px;margin:0 0 6px}
+  .note{font-size:12.5px;color:var(--sub);line-height:1.6;margin:0;max-width:980px}
+  .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;padding:14px 22px 26px}
+  .col{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+  .col.on{border-color:var(--accent);box-shadow:0 0 0 2px rgba(232,130,46,.25)}
+  .col h2{font-size:16px;margin:0}
+  .ref{font-size:12px;color:var(--glow);margin:0}
+  .how{font-size:12.5px;line-height:1.55;margin:0}
+  .tags{display:flex;flex-wrap:wrap;gap:4px}
+  .tags span{font-size:11px;background:#3a2d5c;border-radius:999px;padding:3px 8px;color:#dcd2f0}
+  .btns button{width:100%;font:inherit;font-size:14px;padding:10px 8px;border-radius:10px;border:1px solid var(--line);background:#352a55;color:var(--ink);cursor:pointer}
+  .btns button.play{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .meter{height:6px;border-radius:3px;background:#3a2d5c;overflow:hidden}
+  .meter i{display:block;height:100%;width:0;background:var(--accent);transition:width .08s linear}
+  .stop{margin:0 22px 26px;font:inherit;font-size:13px;padding:7px 14px;border-radius:9px;border:1px solid var(--line);background:#352a55;color:var(--ink);cursor:pointer}
+  @media (max-width:900px){.grid{grid-template-columns:1fr;padding:12px 16px 20px}header{padding:16px 16px 4px}.stop{margin:0 16px 20px}}
+</style>
+<header>
+  <h1>🎃 달빛 유령 정원 배경음 시안</h1>
+  <p class="note">지금 정원 안에서는 마을 노래(밝은 C장조)가 그대로 나옵니다. 아래 세 시안은 게임 안 음악과 같은 방식(WebAudio로 코드에서 바로 합성, 음원 파일 0개)으로 만들었고, 무섭기보다는 귀엽게 으스스한 쪽으로 잡았습니다. 버튼을 누르면 소리가 나요.</p>
+</header>
+<div class="grid" id="grid"></div>
+<button class="stop" id="stop">■ 정지</button>
+<script>
+const VARS = [
+  { id: 'A', name: 'A · 꼬마 유령 왈츠', ref: '느낌: 동물의 숲 할로윈 밤 · 오르골 왈츠',
+    how: '쿵짝짝 3박자에 오르골(첼레스타) 멜로디가 단조로 빙글빙글 돌아요. 피치카토 베이스가 발끝으로 걷듯 받쳐 주고, 네 마디마다 작은 유령 “우~” 소리가 스르륵 떨어져요.',
+    tags: ['3박자 왈츠', '단조 오르골', '피치카토', '유령 우~'] },
+  { id: 'B', name: 'B · 해골 실로폰 행진', ref: '느낌: 루이지 맨션 · 클래식 할로윈 행진곡',
+    how: '통통 튀는 2박 행진에 나무 실로폰(해골 뼈 두드리는 소리) 멜로디, 바순 같은 뚱땅 베이스가 한 칸씩 걸어 내려가요. 가장 “할로윈이다!”가 바로 들리는 안이에요.',
+    tags: ['2박 행진', '나무 실로폰', '걸어 내려가는 베이스', '스네어 톡톡'] },
+  { id: 'C', name: 'C · 안개 속 테레민', ref: '느낌: 옛날 유령 영화 · 꿈의 숲보다 어두운 오르골',
+    how: '느리게 깔리는 단조 화음 위로 테레민(우우웅 떨리는 소리)이 길게 노래하고, 오르골 낱음이 드문드문 반짝여요. 바람이 숨 쉬듯 불어요. 가장 조용하고 신비로운 안이에요.',
+    tags: ['느린 패드', '테레민 비브라토', '오르골 낱음', '바람'] },
+];
+
+let ctx, master, echoIn, noiseBuf, playing = null, timer = null, nextAt = 0, bar = 0;
+const meters = {};
+
+function ensure() {
+  if (ctx) return;
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  master = ctx.createGain(); master.gain.value = 0.55; master.connect(ctx.destination);
+  const d = ctx.createDelay(1); d.delayTime.value = 0.34;
+  const fb = ctx.createGain(); fb.gain.value = 0.4;
+  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2400;
+  echoIn = ctx.createGain(); echoIn.connect(d); d.connect(lp).connect(fb).connect(d); lp.connect(master);
+  noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+  const ch = noiseBuf.getChannelData(0);
+  for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1;
+}
+
+const MINOR = [0, 2, 3, 5, 7, 8, 11];
+const deg = (d, oct = 4) => 220 * Math.pow(2, (MINOR[((d % 7) + 7) % 7] + 12 * (Math.floor(d / 7) + oct - 4)) / 12);
+
+function env(g, t, vol, atk, dur) {
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + atk);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+}
+function tone(freq, dur, vol, t, { type = 'sine', atk = 0.008, wet = 0, detune = 0, lp = 0, glide = 0, vib = 0 } = {}) {
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t); o.detune.value = detune;
+  if (glide) o.frequency.exponentialRampToValueAtTime(glide, t + dur);
+  if (vib) { const l = ctx.createOscillator(), lg = ctx.createGain(); l.frequency.value = 5.5; lg.gain.value = freq * vib; l.connect(lg).connect(o.frequency); l.start(t); l.stop(t + dur + 0.05); }
+  env(g, t, vol, atk, dur);
+  let node = o.connect(g);
+  if (lp) { const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = lp; node = g.connect(f); }
+  node.connect(master);
+  if (wet) { const w = ctx.createGain(); w.gain.value = wet; node.connect(w).connect(echoIn); }
+  o.start(t); o.stop(t + dur + 0.05);
+}
+const pad = (f, dur, vol, t, type = 'triangle') => tone(f, dur, vol, t, { type, atk: Math.min(0.9, dur * 0.3) });
+const celesta = (f, dur, vol, t, wet = 0.35) => { tone(f, dur, vol, t, { wet }); tone(f * 3, dur * 0.35, vol * 0.16, t); };
+const xylo = (f, vol, t) => { tone(f, 0.22, vol, t, { type: 'triangle', atk: 0.003, wet: 0.15 }); tone(f * 4, 0.05, vol * 0.3, t, { atk: 0.002 }); };
+const pizz = (f, vol, t) => tone(f, 0.28, vol, t, { type: 'triangle', atk: 0.004 });
+const bassoon = (f, dur, vol, t) => tone(f, dur, vol, t, { type: 'square', atk: 0.02, lp: 700 });
+const boo = (f, t) => tone(f, 1.4, 0.03, t, { atk: 0.25, glide: f * 0.7, vib: 0.02, wet: 0.5 });
+
+function noise(t, dur, vol, { type = 'bandpass', freq = 1000, q = 1, atk = 0.002, sweepTo = 0 } = {}) {
+  const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true;
+  const f = ctx.createBiquadFilter(); f.type = type; f.frequency.setValueAtTime(freq, t); f.Q.value = q;
+  if (sweepTo) f.frequency.exponentialRampToValueAtTime(sweepTo, t + dur);
+  const g = ctx.createGain(); env(g, t, vol, atk, dur);
+  s.connect(f).connect(g).connect(master);
+  s.start(t, Math.random()); s.stop(t + dur + 0.05);
+}
+const snare = (t, vol = 0.04) => noise(t, 0.09, vol, { freq: 2200, q: 0.8 });
+const wind = (t, dur, vol) => noise(t, dur, vol, { type: 'bandpass', freq: 320, q: 0.7, atk: dur * 0.45, sweepTo: 640 });
+function kick(t, vol = 0.16) {
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.frequency.setValueAtTime(130, t); o.frequency.exponentialRampToValueAtTime(46, t + 0.11);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.17);
+  o.connect(g).connect(master); o.start(t); o.stop(t + 0.2);
+}
+
+const A_MEL = [
+  [[4, 1], [7, 1], [6, 1]], [[4, 3]], [[3, 1], [4, 1], [3, 1]], [[2, 2], [0, 1]],
+  [[1, 1], [2, 1], [3, 1]], [[4, 2], [6, 1]], [[5, 1], [4, 1], [3, 1]], [[4, 3]],
+  [[4, 1], [7, 1], [9, 1]], [[8, 2], [7, 1]], [[5, 1], [7, 1], [5, 1]], [[3, 2], [2, 1]],
+  [[1, 1], [3, 1], [6, 1]], [[5, 2], [4, 1]], [[2, 1], [1, 1], [-1, 1]], [[0, 3]],
+];
+const A_ROOT = [0, 0, 3, 3, 4, 4, 5, 4, 0, 5, 3, 0, 1, 4, 4, 0];
+function barA(t) {
+  const i = bar % 16, beat = 60 / 120, r = A_ROOT[i];
+  pizz(deg(r, 2), 0.11, t);
+  [1, 2].forEach(b => [r + 2, r + 4].forEach(d => pizz(deg(d, 3), 0.03, t + b * beat)));
+  let at = t;
+  A_MEL[i].forEach(([d, n]) => { celesta(deg(d, 5), beat * n * 1.8, 0.06, at); at += beat * n; });
+  if (i % 4 === 3) boo(deg(4, 5), t + beat * 1.5);
+  return beat * 3;
+}
+
+const B_MEL = [
+  [[0, 1], [2, 1], [4, 1], [2, 1]], [[3, 1], [2, 1], [1, 2]],
+  [[4, 1], [5, 1], [4, 1], [3, 1]], [[2, 1], [1, 1], [0, 2]],
+  [[7, 1], [6, 1], [5, 1], [4, 1]], [[5, 1], [4, 1], [3, 2]],
+  [[2, 1], [4, 1], [3, 1], [1, 1]], [[0, 2], [-3, 2]],
+];
+const B_BASS = [[0, -1], [-2, -3], [-1, -2], [-3, -3], [0, -1], [-2, -3], [-3, -2], [-3, 0]];
+function barB(t) {
+  const i = bar % 8, e = 60 / 132 / 2;
+  B_BASS[i].forEach((d, k) => { bassoon(deg(d, 2), e * 1.6, 0.05, t + k * e * 2); bassoon(deg(d + 4, 2), e * 0.8, 0.03, t + k * e * 2 + e); });
+  let at = t;
+  B_MEL[i].forEach(([d, n]) => { xylo(deg(d, 5), 0.07, at); if (n > 1) xylo(deg(d, 5), 0.035, at + e); at += e * n; });
+  kick(t, 0.14); kick(t + e * 4, 0.1);
+  snare(t + e * 2); snare(t + e * 6);
+  if (i === 7) snare(t + e * 7, 0.025);
+  return e * 8;
+}
+
+const C_CH = [[0, 2, 4], [5, 0, 2], [3, 5, 0], [4, 6, 1]];
+const C_LINE = [[4, 7], [7, 5], [5, 3], [6, 4]];
+function barC(t) {
+  const i = bar % 4, ch = C_CH[i], len = 4.8;
+  pad(deg(ch[0], 2), len * 1.05, 0.07, t, 'sine');
+  pad(deg(ch[1], 3), len, 0.026, t);
+  pad(deg(ch[2], 3), len, 0.022, t);
+  if (bar % 2 === 0) wind(t, len * 2, 0.03);
+  const [a, b] = C_LINE[i];
+  tone(deg(a, 4), 2.3, 0.045, t + 0.2, { atk: 0.5, vib: 0.012, glide: deg(b, 4), wet: 0.4 });
+  tone(deg(b, 4), 2.2, 0.04, t + 2.5, { atk: 0.5, vib: 0.012, wet: 0.4 });
+  for (let k = 0; k < 3; k++) if (Math.random() < 0.7) celesta(deg(ch[k] + 7, 5), 1.6, 0.03, t + 0.6 + k * 1.4 + Math.random() * 0.3, 0.6);
+  return len;
+}
+
+const BARS = { A: barA, B: barB, C: barC };
+const LOOP = { A: 16, B: 8, C: 4 };
+
+function pump() {
+  while (nextAt < ctx.currentTime + 0.4) {
+    const id = playing, len = BARS[id](nextAt), n = bar % LOOP[id], el = meters[id];
+    setTimeout(() => { if (el && playing === id) el.style.width = `${(n + 1) / LOOP[id] * 100}%`; }, Math.max(0, (nextAt - ctx.currentTime) * 1000));
+    nextAt += len; bar++;
+  }
+}
+
+function play(id) {
+  ensure(); ctx.resume();
+  stop();
+  playing = id; bar = 0; nextAt = ctx.currentTime + 0.35;
+  master.gain.cancelScheduledValues(ctx.currentTime); master.gain.setValueAtTime(0.55, ctx.currentTime + 0.3);
+  timer = setInterval(pump, 90); pump();
+  render();
+}
+function stop() {
+  if (timer) clearInterval(timer);
+  timer = null; playing = null;
+  if (master) { master.gain.cancelScheduledValues(ctx.currentTime); master.gain.setValueAtTime(0.0001, ctx.currentTime); }
+  render();
+}
+
+function render() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  for (const v of VARS) {
+    const col = document.createElement('div');
+    col.className = 'col' + (playing === v.id ? ' on' : '');
+    col.innerHTML = `<h2>${v.name}</h2><p class="ref">${v.ref}</p><p class="how">${v.how}</p><div class="tags">${v.tags.map(x => `<span>${x}</span>`).join('')}</div><div class="btns"><button class="${playing === v.id ? 'play' : ''}">${playing === v.id ? '■ 듣는 중' : '▶ 들어 보기'}</button></div><div class="meter"><i></i></div>`;
+    col.querySelector('button').onclick = () => playing === v.id ? stop() : play(v.id);
+    meters[v.id] = col.querySelector('.meter i');
+    grid.appendChild(col);
+  }
+}
+document.getElementById('stop').onclick = stop;
+render();
+</script>

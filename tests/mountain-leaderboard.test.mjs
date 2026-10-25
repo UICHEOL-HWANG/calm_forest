@@ -11,8 +11,8 @@ test('RPC keeps every existing board and adds sled over today finished runs', ()
   assert.match(sql, /-min\(time_ms\)/);
   assert.match(sql, /outcome = 'finish'/);
   assert.match(sql, /run_date = kst_today/);
-  assert.match(sql, /course_v = 1/);
-  assert.match(sql, /phys_v in \(1, 2\)/);
+  assert.match(sql, /course_v = 2 and phys_v in \(/);
+  assert.match(sql, /phys_v in \(/);
   assert.match(sql, /_nb_nick\(gs\.state/);
   for (const b of ['boat', 'sea', 'rich', 'mine', 'cook', 'quest']) assert.match(sql, new RegExp(`'${b}'`), b);
   assert.doesNotMatch(sql, /--/);

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { sledCamTargets, runoutCamTargets, RUNOUT_CAM } from '../js/mountain/sled-view.js';
+import { sledCamTargets, runoutCamTargets, RUNOUT_CAM, SLED_CAM } from '../js/mountain/sled-view.js';
 import { createSled } from '../js/mountain/sled.js';
 import { COURSE } from '../js/mountain/course.js';
 import { slopePoint, terrainHeight } from '../js/mountain/terrain.js';
@@ -21,7 +21,7 @@ test('runout camera starts on the sled framing and orbits to the front without l
   for (let t = 0; t <= RUNOUT_CAM.orbitS + 0.5; t += 0.05) {
     const c = runoutCamTargets(stop, t).pos;
     const flat = Math.hypot(c.x - stop.x, c.z - stop.z);
-    assert.ok(flat >= 6, `t=${t.toFixed(2)} flat ${flat.toFixed(2)}`);
+    assert.ok(flat >= Math.min(6, SLED_CAM.back) - 1e-9, `t=${t.toFixed(2)} flat ${flat.toFixed(2)}`);
     assert.ok(Math.atan2(c.y - stop.y, flat) < (50 * Math.PI) / 180, `t=${t.toFixed(2)} steep`);
   }
   const f = runoutCamTargets(stop, RUNOUT_CAM.orbitS + 1);

@@ -13,6 +13,7 @@ export const RANGE = Object.freeze({ layers: 3, segments: 90, r0: 140, dr: 20, a
 export const SNOWFALL = Object.freeze({ perBand: 600, bands: 3, count: 1800, span: 60, band: 30, below: 40, fall: 1.6, size: 0.18 });
 export const PLAIN = Object.freeze({ x: 0, z: 20, r: 270, y: -0.6, segments: 48 });
 export const GATE_COLORS = Object.freeze([0xe0443a, 0x2f6fd6]);
+export const GATE_POLE = Object.freeze({ r: 0.07, gap: 0.55, clothOut: 0.45 });
 export const INTERIOR_DRAW_BUDGET = 9;
 
 const PINE = Object.freeze({ trunk: 0, dark: 1, snow: 2, needle: 3 });
@@ -145,13 +146,13 @@ function pinesMesh(THREE) {
 }
 
 export function gateSpots() {
-  return COURSE.flags.flatMap((f, i) => [-1, 1].map(side => ({ ...slopePoint(f.z, f.x + side * f.half), flag: i, side, color: GATE_COLORS[i % 2] })));
+  return COURSE.flags.flatMap((f, i) => [-1, 1].map(side => ({ ...slopePoint(f.z, f.x + side * (f.half + GATE_POLE.gap)), flag: i, side, color: GATE_COLORS[i % 2] })));
 }
 
 function gatesMesh(THREE) {
   const geos = gateSpots().flatMap(s => [
-    colored(THREE, new THREE.CylinderGeometry(0.07, 0.07, 1.9, 6), s.color).translate(s.x, s.y + 0.95, s.z),
-    colored(THREE, new THREE.BoxGeometry(0.9, 0.55, 0.04), s.color).translate(s.x - s.side * 0.45, s.y + 1.6, s.z),
+    colored(THREE, new THREE.CylinderGeometry(GATE_POLE.r, GATE_POLE.r, 1.9, 6), s.color).translate(s.x, s.y + 0.95, s.z),
+    colored(THREE, new THREE.BoxGeometry(0.9, 0.55, 0.04), s.color).translate(s.x + s.side * GATE_POLE.clothOut, s.y + 1.6, s.z),
   ]);
   return new THREE.Mesh(mergeColored(THREE, geos), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
 }

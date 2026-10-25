@@ -17,7 +17,7 @@
 //    망토 천은 인덱스를 지키려고 굽지 않는다 → 깃과 같은 재질이어도 1콜 따로.
 //  ▶ 공통 도구는 skin-kit.js 에서만 가져온다(skin.js 를 import 하면 순환이 된다).
 // =============================================================
-import { cached, headOf, bakeInto, put, onSurface, tubeGeo, grow, silhouette, drape } from './skin-kit.js';
+import { cached, headOf, bakeInto, put, onSurface, tubeGeo, grow, silhouette, drape, sstep } from './skin-kit.js';
 
 const PI = Math.PI;
 
@@ -33,6 +33,7 @@ const CLASSIC = { felt: 0x4a3a82, band: 0xf2a23c, gold: 0xf0be4c, cape: 0x6a4eb0
 const STARRY = { navy: 0x2e3d86, band: 0xe86b8c, trim: 0xf6c84e, star: 0xffd866, starGlow: 0xffc233, starEi: 0.55,
   stick: 0x8a5a30, straw: 0xdcb45e, tie: 0x6a3a28 };
 //  망토 별 자리 — [φ(뒤=π), 깃→밑단 비율]
+const CAPE_HUG = { wrap: 1.6, tuck: 0.12, floor: 1.04, sweep: 0.45 };
 const CAPE_STARS = [[2.5, 0.78], [3.0, 0.45], [3.5, 0.72], [2.15, 0.5], [3.95, 0.5], [2.85, 0.15], [3.3, 0.2], [2.4, 0.12]];
 
 const std = (THREE, color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.92, ...o });
@@ -102,9 +103,21 @@ function bakeHat(THREE, head, place) {
   bakeInto(THREE, head, wrap).forEach(m => { m.userData.part = 'skinhead'; });
 }
 
-/** 등 망토 — 뒤쪽 3.5rad 천(굽지 않음) + 깃 고리(stage). 천은 바로 skinback */
-function backCape(THREE, g, stage, rAt, { yTop, hemY, rows, hemAmp, hemFreq, mat, collarTube }) {
-  const D = drape(THREE, { yTop, hemY, rAt, phi0: PI - 1.75, phi1: PI + 1.75, cols: 56, hemAmp, hemFreq, fold: 0.04, foldFreq: 7, rows });
+function hugPost(k) {
+  const { wrap, tuck, floor, sweep } = CAPE_HUG, { R, bodyY } = k, rMin = silhouette(k, { head: 0, body: floor, flare: 0.02 });
+  const yArm = bodyY + R * 0.54;
+  return (p, y) => {
+    const r0 = Math.hypot(p.x, p.z), phi0 = Math.atan2(p.x, p.z), fromBack = PI - Math.abs(phi0);
+    const phi = phi0 + Math.sign(phi0) * sweep * Math.exp(-(((y - yArm) / (R * 0.55)) ** 2)) * sstep(wrap - 0.7, wrap, fromBack);
+    const s = Math.max(1 - tuck * sstep(wrap - 1.1, wrap, fromBack), Math.min(1, rMin(y) / r0));
+    p.x = r0 * s * Math.sin(phi); p.z = r0 * s * Math.cos(phi);
+  };
+}
+
+/** 등 망토 — 뒤쪽 3.2rad 천(굽지 않음, 앞자락은 몸 쪽으로 여밈) + 깃 고리(stage). 천은 바로 skinback */
+function backCape(THREE, g, stage, rAt, { k, yTop, hemY, rows, hemAmp, hemFreq, mat, collarTube }) {
+  const D = drape(THREE, { yTop, hemY, rAt, phi0: PI - CAPE_HUG.wrap, phi1: PI + CAPE_HUG.wrap, cols: 56, hemAmp, hemFreq,
+    fold: 0.04, foldFreq: 7, rows, post: hugPost(k) });
   addSheet(THREE, g, D.geo, mat).userData.part = 'skinback';
   const col = put(THREE, stage, new THREE.TorusGeometry(rAt(yTop) * 1.02, collarTube, 6, 28), mat, 0, yTop, 0);
   col.rotation.x = PI / 2;
@@ -135,9 +148,9 @@ export function applyWitchClassic(THREE, built) {
   });
 
   //  어깨 망토 — 금 테두리 + 깃 + 별 브로치(브로치는 테두리와 같은 재질로 묶어 1콜 절약)
-  const rAt = silhouette(k, { head: 0, body: 1.16, flare: 0.2 });
+  const rAt = silhouette(k, { head: 0, body: 1.08, flare: 0.12 });
   const yTop = HY - HR * 0.74, stage = new THREE.Group();
-  const D = backCape(THREE, g, stage, rAt, { yTop, hemY: 0.07, rows: 36, hemAmp: 0.06, hemFreq: 6.5, mat: cape, collarTube: 0.045 });
+  const D = backCape(THREE, g, stage, rAt, { k, yTop, hemY: 0.07, rows: 36, hemAmp: 0.06, hemFreq: 6.5, mat: cape, collarTube: 0.045 });
   put(THREE, stage, tubeGeo(THREE, capeEdge(THREE, D), 0.018, false, 240), trim);
   const brooch = onSurface(THREE, stage, V3(THREE, 0, yTop - 0.015, rAt(yTop) * 1.02 + 0.04), V3(THREE, 0, 0, 1));
   put(THREE, brooch, starGeo(THREE, R * 0.12, 0.03), trim);
@@ -168,9 +181,9 @@ export function applyWitchStarry(THREE, built) {
   });
 
   //  짧은 망토 + 초승달 브로치 + 별
-  const rAt = silhouette(k, { head: 0, body: 1.15, flare: 0.1 });
+  const rAt = silhouette(k, { head: 0, body: 1.08, flare: 0.06 });
   const yTop = HY - HR * 0.74, hemY = bodyY - Ry * 0.28, stage = new THREE.Group();
-  const D = backCape(THREE, g, stage, rAt, { yTop, hemY, rows: 28, hemAmp: 0.05, hemFreq: 8, mat: navy, collarTube: 0.042 });
+  const D = backCape(THREE, g, stage, rAt, { k, yTop, hemY, rows: 28, hemAmp: 0.05, hemFreq: 8, mat: navy, collarTube: 0.042 });
   put(THREE, stage, tubeGeo(THREE, capeEdge(THREE, D), 0.016, false, 200), trim);
   const moonAt = onSurface(THREE, stage, V3(THREE, 0, yTop - 0.012, rAt(yTop) * 1.02 + 0.045), V3(THREE, 0, 0, 1));
   put(THREE, moonAt, new THREE.TorusGeometry(R * 0.085, R * 0.025, 6, 16, 4.3), star).rotation.z = 0.9;

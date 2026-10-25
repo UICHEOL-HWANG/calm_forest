@@ -1,4 +1,4 @@
-export const COURSE_V = 1;
+export const COURSE_V = 2;
 
 const LENGTH = 330;
 const AMP = 9;
@@ -27,7 +27,26 @@ export function obstacleRadius(o) {
   return o.r * OBSTACLE_BODY[o.kind];
 }
 
-export const COURSE = Object.freeze({ length: LENGTH, width: 14, flags, obstacles });
+const ramps = [81, 181, 256].map(z => ({ z, x: centerX(z), half: 2.6 }));
+
+const movers = [
+  { kind: 'ball', z0: 120, v: 4, off: -4.2, r: 0.85 },
+  { kind: 'ball', z0: 215, v: 3.5, off: -4.2, r: 0.85 },
+  { kind: 'walker', z: 145, amp: 5, w: 1.1, ph: 0, r: 0.6 },
+  { kind: 'walker', z: 232, amp: 4, w: 1.3, ph: 2, r: 0.6 },
+];
+
+export function moverPos(m, tMs) {
+  const t = tMs / 1000;
+  if (m.kind === 'ball') {
+    const z = Math.min(LENGTH, m.z0 + m.v * t);
+    return { z, x: centerX(z) + m.off, spin: (t * m.v) / m.r };
+  }
+  const a = t * m.w + m.ph;
+  return { z: m.z, x: centerX(m.z) + Math.sin(a) * m.amp, face: Math.cos(a) };
+}
+
+export const COURSE = Object.freeze({ length: LENGTH, width: 14, flags, obstacles, ramps, movers });
 
 export function minTimeMs(course = COURSE, maxSpeed = 16 * 1.5) {
   return Math.floor((course.length / maxSpeed) * 1000);

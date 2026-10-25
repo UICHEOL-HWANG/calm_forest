@@ -2,7 +2,8 @@ import { COURSE, centerX } from './course.js';
 import { slopePoint } from './terrain.js';
 import { SLED_DECK_TOP, deckTopOf } from './sled-art.js';
 
-export const SLED_CAM = Object.freeze({ up: 9, back: 10, lookAhead: 22, lookDrop: 0.5 });
+export const SLED_CAM = Object.freeze({ up: 4.2, back: 4, lookAhead: 9.5, lookDrop: 0 });
+export const SLED_FOV = Object.freeze({ base: 46, max: 56, gain: 18 });
 export const SLED_SHAKE = Object.freeze({ ms: 350, amp: 0.3, freq: 47 });
 export const SLED_LEAN = 0.35;
 export const SLED_LIFT = 0.05;
@@ -29,12 +30,17 @@ export function sledPitch() {
 
 export function sledCamTargets(s) {
   const p = slopePoint(s.z, s.x);
+  const air = s.y || 0;
   const az = s.z + (SLED_CAM.lookAhead * COURSE.length) / RUN;
-  const a = slopePoint(az, (s.x + centerX(az)) / 2);
+  const a = slopePoint(az, s.x * 0.85 + centerX(az) * 0.15);
   return {
-    pos: { x: p.x, y: p.y + SLED_CAM.up, z: p.z - SLED_CAM.back },
-    look: { x: a.x, y: a.y - SLED_CAM.lookDrop, z: a.z },
+    pos: { x: p.x, y: p.y + SLED_CAM.up + air * 0.6, z: p.z - SLED_CAM.back },
+    look: { x: a.x, y: a.y - SLED_CAM.lookDrop + air * 0.4, z: a.z },
   };
+}
+
+export function sledFov(speed, baseSpeed) {
+  return Math.min(SLED_FOV.max, SLED_FOV.base + Math.max(0, speed / baseSpeed - 1) * SLED_FOV.gain);
 }
 
 export const RUNOUT_CAM = Object.freeze({ orbitS: 1.2, endR: 7.4, endUp: 3.6, endAng: Math.PI - Math.atan2(2.5, 7), lookUp: 0.8 });
@@ -53,7 +59,8 @@ export function runoutCamTargets(p, t) {
 
 export function sledPose(s, yaw) {
   const p = slopePoint(s.z, s.x);
-  return { x: p.x, y: p.y + SLED_LIFT, z: p.z, pitch: sledPitch(), yaw };
+  const flip = s.trick ? -Math.min(1, s.spin || 0) * Math.PI * 2 : 0;
+  return { x: p.x, y: p.y + SLED_LIFT + (s.y || 0), z: p.z, pitch: s.air ? sledPitch() * 0.3 : sledPitch(), yaw, flip };
 }
 
 export function decayShake(v, dt) {

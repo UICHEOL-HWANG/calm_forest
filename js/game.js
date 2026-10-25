@@ -48,6 +48,7 @@ import { createVisitors } from './farm-visitors.js';                            
 import { DEX_GATES, gateOf, gateOpen, weatherOpen, rollKind } from './dex-gates.js';                      // 📖 희귀종 해금 게이트(판정의 단일 출처)
 import { SEASON_IDS, applySeasonPalette, seasonById, seasonInfo, seasonOf, seasonStatusLine, weatherFromRoll } from './season.js';   // 🍂 4계절 순환(날짜 → 계절)
 import { dailyCardView } from './daily-card.js';
+import { bridgeTiles } from './ui-cards.js';
 import { createSeasonDrift } from './season-fx.js';                                                        // 🌸🍂 꽃잎·낙엽 흩날림(InstancedMesh 1개)
 import { makeVisitor } from './visitor-art.js';                                                           // 🦋 방문객 조형 4종
 import { truceUntil } from './duel/truce.js';                                                        // 🤝 발길 끊기 만료일
@@ -1334,7 +1335,7 @@ function maybeOwlBridgeHint(delay = 0) {
   if (!unlocksOn() || !isOpen('bridgeRepair') || !bridgeBrokenNow() || gameState.hintsSeen.owlBridge || owlBridgeQueued) return;
   owlBridgeQueued = true;
   setTimeout(() => queueStoryModal({ ico: '🦉', title: '의뢰 올빼미', seenKey: 'owlBridge',
-    body: `"저 나무, 우리가 지켜야 해. 서쪽 박물관 할아버지가 방법을 알 거야."\n\n🌉 다리 고치기: 🪵${BRIDGE_COST.wood} 🪨${BRIDGE_COST.stone}` },
+    body: { tiles: bridgeTiles(BRIDGE_COST) } },
   '🦉 서쪽 개울의 무너진 다리를 고쳐 보자'), delay);
 }
 function announceUnlock(id) {
@@ -4993,7 +4994,7 @@ function coopInteract() {
   const c = gameState.coop;
   if (!c.built) {
     if ((gameState.daily.streak || 0) < COOP_STREAK) {
-      ui.showHintModal?.({ ico: '🐔', title: '닭장 터', body: `🔥 ${COOP_STREAK}일 연속 출석하면 여기에 닭장을 지을 수 있어요. 내일 또 만나요!` });
+      ui.showHintModal?.({ ico: '🐔', title: '닭장 터', body: `🔥 ${COOP_STREAK}일 연속 출석하면 지을 수 있어요!` });
       return;
     }
     const lack = Object.entries(COOP_COST).filter(([k, v]) => (gameState.inventory[k] || 0) < v);
@@ -6936,7 +6937,7 @@ function updateDayNight(dt) {
     sunLight.target.position.set(HALLOWEEN.x, 0, HALLOWEEN.z);
     sunLight.target.updateMatrixWorld();
     if (playerLight) playerLight.intensity = 0.7;
-    scene.fog.color.setHex(0x2a2440); scene.fog.near = 22; scene.fog.far = 70;
+    scene.fog.color.setHex(0x1c1432); scene.fog.near = 22; scene.fog.far = 70;
     scene.background = scene.fog.color;
   }
   // ☕ 카페 홀: 시간대 무관 따뜻하고 밝게(펜던트 등이 켜져 있는 실내)

@@ -431,6 +431,36 @@
   #tutorial-modal.show, #seed-modal.show, #hint-modal.show, #photo-modal.show, #char-modal.show, #merchant-modal.show, #notice-modal.show, #settings-modal.show, #invite-modal.show, #daily-modal.show { display: grid; }
   #daily-modal { z-index: 44; }
   #daily-modal .daily-card { width: min(380px, 94vw); background: #f6f0e4; border-radius: 28px; padding: 14px; text-align: left; }
+  #hint-modal .tut-card.as-card, #nudge-modal .daily-card { width: min(380px, 94vw); background: #f6f0e4; border-radius: 28px; padding: 14px; text-align: left; }
+  #hint-modal .tut-card.as-card #hint-ok { width: 100%; border-radius: 16px; color: #24382d; font-weight: 800; }
+  .dc-t.dc-hero-ic { justify-content: flex-start; gap: 10px; }
+  .dc-t.dc-hero-ic .dc-ic { font-size: 28px; flex: none; opacity: 1; margin: 0; }
+  .dc-t.dc-hero-ic b { font-size: 21px; }
+  .dc-t.dc-gold { background: #ffe9a8; }
+  .dc-t.dc-gold b { font-size: 22px; font-weight: 900; color: #6b4a10; }
+  .dc-t.dc-gold span { color: #8a6a24; opacity: 1; font-weight: 700; }
+  .dc-t.dc-peach { background: #fde3d3; }
+  .dc-t.dc-peach b, .dc-t.dc-peach span { color: #8a4a2a; }
+  .dc-t.dc-lav { background: #ece6ff; }
+  .dc-t.dc-lav b { color: #4b3a8a; }
+  .dc-t.dc-peach b, .dc-t.dc-lav b { font-size: 13.5px; }
+  .dc-t.dc-quote p { margin: 0; font-size: 14.5px; line-height: 1.5; font-weight: 600; color: #24382d; }
+  .dc-cost { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .dc-cost i { font-style: normal; font-weight: 800; background: #f3eee2; border-radius: 99px; padding: 3px 9px; font-size: 13px; color: #24382d; }
+  #nudge-modal .dc-grid { margin-bottom: 10px; }
+  #nudge-modal #nudge-google { width: 100%; }
+  #nudge-modal #nudge-later { display: block; margin: 8px auto 0; }
+  #toast.panel { display: flex; align-items: center; gap: 8px; background: rgba(28,44,35,.92); color: #fff; border-radius: 22px; padding: 8px 16px 8px 12px; box-shadow: 0 10px 24px rgba(0,0,0,.3); width: max-content; max-width: min(560px, 92vw); line-height: 1.35; }
+  #toast .tst-ic { font-size: 1.2em; flex: none; }
+  #toast .tst-tx { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+  #toast .tst-tx b { font-weight: 800; }
+  #toast .tst-sep { width: 1px; height: 1em; background: rgba(255,255,255,.25); flex: none; }
+  #toast .tst-sub { opacity: .75; font-weight: 600; font-size: .92em; }
+  #toast.tst-two .tst-tx { flex-direction: column; align-items: flex-start; gap: 1px; }
+  #toast.tst-two .tst-sep { display: none; }
+  #toast.tst-chips { padding-right: 6px; }
+  #toast .tst-chip { font-size: .86em; font-weight: 800; padding: 5px 10px; border-radius: 99px; background: rgba(255,255,255,.12); }
+  #toast .tst-chip.on { background: #9ff0b8; color: #12261a; }
   .dc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
   .dc-t { background: #fff; border-radius: 18px; padding: 12px; min-width: 0; }
   .dc-t small { display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .08em; opacity: .5; margin-bottom: 4px; }
@@ -1230,7 +1260,7 @@
        641px 부터 키우면 760px 블록(코치·시설 안내 배너를 좌측 슬롯으로 보내는 폰 레이아웃)과 충돌한다.
        .02 는 분수 뷰포트(760.5px)가 어느 블록에도 안 걸리는 틈을 막는다. */
   @media (min-width: 760.02px) {
-    #toast { font-size: 17px; padding: 13px 20px; }
+    #toast.panel { font-size: 17px; padding: 11px 20px 11px 14px; }
     #hint { font-size: 14px; }
     #npc-prompt { font-size: 16px; }
     #door-prompt { font-size: 17px; }
@@ -2820,10 +2850,12 @@
 
   <!-- 🔔 로그인 넛지 모달 (도감 마일스톤 — 게스트 전용) -->
   <div id="nudge-modal">
-    <div class="tut-card">
-      <div style="font-size:44px">📖✨</div>
-      <h2 id="nudge-title">도감이 늘고 있어요!</h2>
-      <p id="nudge-body" style="font-size:14px; opacity:.85; margin-bottom:16px"></p>
+    <div class="tut-card daily-card">
+      <div class="dc-grid">
+        <div class="dc-t dc-hero dc-hero-ic"><span class="dc-ic" id="nudge-ico">📖</span><div><small>GUEST</small><b id="nudge-title">도감이 늘고 있어요!</b></div></div>
+        <div class="dc-t dc-peach dc-wide"><b id="nudge-warn">나가면 도감·코인·마을이 사라져요</b></div>
+        <div class="dc-t dc-wide"><b id="nudge-body"></b></div>
+      </div>
       <button id="nudge-google" class="dex-google-btn" style="width:100%">🔐 구글로 로그인하고 영구 보존</button>
       <button id="nudge-later" class="ghost" style="margin-top:8px; border:none; background:none; cursor:pointer; opacity:.6; font-size:13px">나중에 할게요</button>
     </div>
@@ -3177,6 +3209,7 @@
     <div class="tut-card">
       <div class="tut-emoji" id="hint-emoji">🌿</div>
       <h2 id="hint-title"></h2>
+      <div id="hint-tiles" class="dc-grid" hidden></div>
       <div id="hint-preview" hidden><div class="hp-ic">🌳</div><div><small>calm forest · 20:10</small><b id="hint-preview-title"></b><span id="hint-preview-body"></span></div></div>
       <p id="hint-body" style="font-size:14px; line-height:1.6; opacity:.85; margin:0 0 18px; white-space:pre-line;"></p>
       <div id="hint-steps"></div>
@@ -3333,6 +3366,7 @@
   <script type="module">
     import { initAuth, signInWithGoogle, signInWithApple, requestEmailCode, verifyEmailCode, holdGuestForLogin, signInWithToss, signInWithPlayGames, signInWithGameCenter, deleteMyAccount, signInAsGuest, startLocalGuest, loadGame, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow, fetchNotices, insertInstallAttribution, insertInstallSurvey } from './js/supabase-client.js';
     import { renderDailyCard } from './js/daily-card.js';
+    import { renderToast, renderTiles, buffTiles } from './js/ui-cards.js';
     import { mountEmailLogin } from './js/auth/email-login.js';   // ✉️ 이메일 코드 로그인(웹·itch)
     import { mountInAppLogin, INAPP_COPY, trackHandoffArrival } from './js/auth/in-app-login.js';
     import { savePhotoNative, sharePhotoNative, shareUrlNative } from './js/photo-native.js';   // 📱 앱: WebView 는 download·share 를 못 한다
@@ -3364,7 +3398,7 @@
     import { nicknameChecks } from './js/nickname-filter.js';
     import { createNickStep } from './js/nickname-step.js';
     import { createSpotlight } from './js/hud/spotlight.js';
-    import { pillHintKey, spotSteps } from './js/onboarding/spot-steps.js';
+    import { pillHintKey, spotSteps, treeSteps } from './js/onboarding/spot-steps.js';
     import { Sound, startBGM, toggleBGM, isBGMOn } from './js/sound.js';
     import { initCafeGuests } from './js/cafe-guests.js';   // ☕ 카페 손님 동적 생성(서버 프록시 경유)
     import { initNightVisit } from './js/night-visit.js';   // 🦝 밤손님 판정·주민 쪽지(서버 프록시 경유)
@@ -3463,7 +3497,7 @@
     const pendingToasts = [];
     function flushPendingToasts() {
       let at = 250;
-      pendingToasts.splice(0).forEach(([m, ms]) => { setTimeout(() => ui.toast(m, ms, { afterDialog: true }), at); at += ms + 200; });
+      pendingToasts.splice(0).forEach(([m, ms, o]) => { setTimeout(() => ui.toast(m, ms, { ...o, afterDialog: true }), at); at += ms + 200; });
     }
     let shownAfterDialog = null;
     function parkAfterDialogToast() {
@@ -3839,9 +3873,9 @@
         hud?.onTool(idx, tools, page);
       },
       toast(msg, ms = 1600, opts = {}) {
-        if (opts.afterDialog && ($('npc-modal').classList.contains('show') || $('char-modal').classList.contains('show') || document.body.classList.contains('intro-open'))) { pendingToasts.push([msg, ms]); return; }
-        const el = $('toast'); el.textContent = msg; el.classList.add('show');
-        shownAfterDialog = opts.afterDialog ? [msg, ms] : null;
+        if (opts.afterDialog && ($('npc-modal').classList.contains('show') || $('char-modal').classList.contains('show') || document.body.classList.contains('intro-open'))) { pendingToasts.push([msg, ms, opts]); return; }
+        const el = $('toast'); renderToast(el, t(msg), { chips: !!opts.chips }); el.classList.add('show');
+        shownAfterDialog = opts.afterDialog ? [msg, ms, opts] : null;
         clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.classList.remove('show'); shownAfterDialog = null; }, ms);
       },
       // 🦋 환경 미터 — 라벨·문구는 game.js 가 js/habitat.js 에서 가져와 한 번 넘긴다(여기서 다시 적지 않는다)
@@ -4119,6 +4153,8 @@
       //    src: 'welcome'(온보딩 자동) | 'help'(도움말 버튼) — 닫을 때 이 값으로 이벤트를 가른다
       showTutorial(src = 'welcome') { startOnboarding(src); },
       camTour() { return runCamTour(); },
+      treeTour(plan) { runTreeTour(plan); },
+      treeSpot(sig) { spot?.notify(sig); },
       // 🎬 프롤로그 컷신 DOM — game.js(updateIntro)가 타임라인에 맞춰 호출
       introShow(on) {
         if (on) parkAfterDialogToast();
@@ -4237,6 +4273,10 @@
         const fill = (v) => String(v || '').replace(/\{A\}/g, ak);
         $('hint-body').textContent = card ? '' : (body || '');
         $('hint-body').hidden = !!card;
+        const tiles = card?.tiles || null;
+        $('hint-modal').querySelector('.tut-card').classList.toggle('as-card', !!tiles);
+        $('hint-emoji').hidden = !!tiles; $('hint-title').hidden = !!tiles; $('hint-tiles').hidden = !tiles;
+        if (tiles) renderTiles($('hint-tiles'), tiles); else $('hint-tiles').replaceChildren();
         const box = $('hint-steps'); box.innerHTML = '';
         (card?.steps || []).forEach((st, k) => {
           if (k) { const ar = document.createElement('span'); ar.className = 'hs-ar'; ar.textContent = '→'; box.appendChild(ar); }
@@ -4464,7 +4504,7 @@
       // 놓아 둔 가구를 탭해 들어 올림 → 액션버튼 = 그 가구(다시 놓기)
       onDecorPicked(d) { if (decorGuideStep >= 0) endDecorGuide(); placingDecorItem = d; refreshActionIcon(); ui.toast(`${d.ico} ${d.name} 들었어요. 바닥을 탭해 옮겨 버튼으로 놓기. 🎨 메뉴에서 🧺 보관`); },
       // 🪵 놓아 둔 야외 장식을 들어 올림 → 액션버튼 = 그 장식(다시 놓기) · 🧺 보관 버튼 노출(body.picked-decor)
-      onOutdoorPicked(d) { placingDecorItem = d; refreshActionIcon(); ui.toast(`${d.ico} ${d.name} 들었어요. 원하는 곳에서 ${TOUCH ? '오른쪽 버튼' : 'Space'}으로 놓기 · 🧺 보관 버튼으로 보관`); },
+      onOutdoorPicked(d) { placingDecorItem = d; refreshActionIcon(); ui.toast(`${d.ico} ${d.name} 들었어요 · ${TOUCH ? '⭕' : 'Space'}로 놓기 · 🧺 보관`, 2400, { chips: true }); },
       // 🎨 완성된 집 근처 여부 → 외관 꾸미기 버튼 표시 토글
       setNearHouse(on) { document.body.classList.toggle('near-house', on); },
       // 작업대(제작) 메뉴 열기 — 요리는 🍳 자유주방으로 분리
@@ -4572,7 +4612,7 @@
         $('br-sub').textContent = clear
           ? (d.hits === 0 ? '한 번도 부딪히지 않았어요 — 완벽한 뱃길! 🌊' : `${d.dist_m}m 를 내려왔어요`)
           : wreck
-            ? `${d.dist_m}m 지점에서 가라앉았어요. 주운 건 그대로 가져가요, 배는 내일 멀쩡해요!`
+            ? '🎒 주운 건 그대로 · 🛶 배는 내일 멀쩡해요'
             : `${d.dist_m}m 지점에서 멈췄어요. 여기까지 모은 건 그대로 가져가요`;
         const rows = [
           ['거리', `${d.dist_m}m`], ['시간', `${d.time_sec}초`], ['점수', `${d.score}${d.best ? ' 🏆 최고 기록!' : ''}`],
@@ -5083,6 +5123,11 @@
       if (!spot || Input.hintSeen('spotMenu') || spot.kind() === 'menu') return;
       Input.markHintsSeen(['spotMenu']); requestSave();
       setTimeout(() => spot.run(spotSteps('menu', TOUCH), { kind: 'menu', blocked: () => !$('menu-sheet')?.classList.contains('show') }), 60);
+    }
+    function runTreeTour(plan) {
+      if (!spot || !plan || Input.hintSeen('spotTree') || spot.active()) return;
+      Input.markHintsSeen(['spotTree']); requestSave();
+      setTimeout(() => spot.run(treeSteps(plan), { kind: 'tree', skip: 'all', blocked: () => !$('tree-modal')?.classList.contains('show') }), 60);
     }
     function runCamTour() {
       if (!spot || Input.needsTutorial() || !Input.hintSeen('spotV2')) return false;
@@ -5617,7 +5662,7 @@
           if (!enough) { ui.toast('재료가 부족해요'); return; }
           Input.selectOutdoor(o.id); closeCook();
           placingDecorItem = o; refreshActionIcon();   // 액션버튼 = 설치 버튼
-          ui.toast(`${o.ico} ${o.name} — 원하는 곳에서 ${TOUCH ? '오른쪽 버튼' : 'Space'}으로 설치`);
+          ui.toast(`${o.ico} ${o.name} · ${TOUCH ? '⭕' : 'Space'}로 놓기`, 2400, { chips: true });
         });
         box.appendChild(el);
       });
@@ -5690,13 +5735,13 @@
     //    3D 무대를 쓰지 않는다: 매일 치르는 조작이라 무대 전환이 거추장스럽다.
     const CMG = {
       charcoal: { title: '⚫ 불 조절', tip: '바늘이 초록 구간에 왔을 때 눌러 멈추세요' },
-      flour:    { title: '🌾 맷돌 돌리기', tip: '손잡이를 원을 따라 <b>일정한 속도로</b> 돌리세요<br>빠르기가 아니라 고르기가 점수예요' },
+      flour:    { title: '🌾 맷돌 돌리기', tip: '원을 따라 <b>일정하게</b> 돌려요<br>빠르기보다 고르기' },
       brick:    { title: '🧱 반죽 다지기', tip: '꾹 누르고 있다가 초록 구간에서 떼세요' },
-      juice:    { title: '🍷 포도 밟기', tip: '퍼지는 링에 맞춰 <b>같은 박자로</b> 여섯 번 밟으세요<br>빠르게 연타하면 즙이 뭉개져요' },
+      juice:    { title: '🍷 포도 밟기', tip: '링에 맞춰 <b>같은 박자로</b> 6번<br>연타하면 뭉개져요' },
       // 🍎 과수원 과일 가공 — 조작은 원조 품목 것을 빌린다(js/craft/recipes.js mgBaseOf)
       apple_jam:      { title: '🥫 사과잼 졸이기', tip: '꾹 누르고 있다가 초록 구간에서 떼세요' },
       roast_chestnut: { title: '🌰 밤 굽기', tip: '바늘이 초록 구간에 왔을 때 눌러 멈추세요' },
-      gotgam:         { title: '🍡 곶감 주무르기', tip: '퍼지는 링에 맞춰 <b>같은 박자로</b> 여섯 번 주무르세요<br>빠르게 연타하면 감이 뭉개져요' },
+      gotgam:         { title: '🍡 곶감 주무르기', tip: '링에 맞춰 <b>같은 박자로</b> 6번<br>연타하면 뭉개져요' },
     };
     const GRADE_FACE = ['😅', '🙂', '😋', '💫'];
     let cmgRaf = 0, cmgCleanup = null;
@@ -5951,8 +5996,7 @@
     $('buffs').addEventListener('click', (e) => {
       const chip = e.target.closest('.buff'); if (!chip) return;
       const b = lastBuffs.find(x => x.k === chip.dataset.k); if (!b) return;
-      ui.showHintModal({ ico: b.ico, title: `${b.name} 버프`,
-        body: `${b.desc}\n\n⏱️ 남은 시간 약 ${b.remain}초 — 🍳 자유주방에서 요리하면 다시 받을 수 있고 요리 타이밍(등급)이 좋을수록 더 오래가요.` });
+      ui.showHintModal({ ico: b.ico, title: `${b.name} 버프`, body: { tiles: buffTiles(b.k, b, b.remain) } });
     });
 
     // 버프 HUD 위치 — 우상단에 실제로 떠 있는 요소들(자원+시간바 패널, 문의하기·도감 탭) 아래로 실측 배치.
@@ -6908,16 +6952,13 @@
       if (!isGuestNow()) return;                               // 로그인 유저에겐 표시 안 함
       nudgeFrom = trigger;
       const d = Input.getDex();
-      $('nudge-title').textContent = trigger === 'shop' ? '💎 로그인 후 구매 가능' : `도감 ${d.count}종 수집 중!`;
-      $('nudge-body').textContent = IS_TOSS
-        ? '게스트로 나가면 모은 도감·코인·마을이 사라져요. 토스 계정 연결 한 번이면 영구 보존돼요.'
-        : IS_ANDROID
-        ? '게스트로 나가면 모은 도감·코인·마을이 사라져요. 플레이 게임즈 연결 한 번이면 영구 보존돼요.'
-        : IS_IOS
-        ? '게스트로 나가면 모은 도감·코인·마을이 사라져요. 게임 센터 연결 한 번이면 영구 보존돼요.'
-        : inAppLogin.inApp
-        ? '게스트로 나가면 모은 도감·코인·마을이 사라져요. 이메일로 가입하면 지금 마을 그대로 영구 보존 + 어느 기기서든 이어할 수 있어요.'
-        : '게스트로 나가면 모은 도감·코인·마을이 사라져요. 구글 로그인 한 번이면 영구 보존 + 어느 기기서든 이어할 수 있어요.';
+      $('nudge-ico').textContent = trigger === 'shop' ? '💎' : '📖';
+      $('nudge-title').textContent = trigger === 'shop' ? '로그인 후 구매 가능' : `도감 ${d.count}종 수집 중!`;
+      $('nudge-body').textContent = IS_TOSS ? '🔒 토스 계정 연결하면 영구 보존'
+        : IS_ANDROID ? '🔒 플레이 게임즈 연결하면 기기를 바꿔도 이어서'
+        : IS_IOS ? '🔒 게임 센터 연결하면 기기를 바꿔도 이어서'
+        : inAppLogin.inApp ? '🔒 이메일로 가입하면 지금 마을 그대로'
+        : '🔒 로그인하면 어느 기기서든 이어서';
       $('nudge-modal').classList.add('show');
       Input.setAnalog(0, 0);
       trackEvent('login_nudge', { trigger, target: NUDGE_TARGET });   // [GA4] 넛지 노출
@@ -7033,7 +7074,7 @@
           body: JSON.stringify({ image: jpeg }),
         });
         const d = await res.json().catch(() => ({}));
-        if (res.status === 409) { ui.toast(`📸 사진첩이 가득 찼어요 (${d.count}/100). 오래된 사진을 지우면 더 담을 수 있어요`, 3200); }
+        if (res.status === 409) { ui.toast('📸 사진첩 가득 · 지우면 더 담겨요', 3200); }
         else if (res.status === 503) { ui.toast('☁️ 사진첩 서버 준비 중이에요. 조금만 기다려주세요'); }
         else if (!res.ok || !d.ok) { throw new Error(d.error || 'HTTP ' + res.status); }
         else {
