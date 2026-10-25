@@ -88,7 +88,7 @@ test('landmark base is not a circle: its foot radius varies with angle', () => {
   assert.ok(Math.max(...reach) / Math.min(...reach) >= 1.3, `ratio ${Math.max(...reach) / Math.min(...reach)}`);
 });
 
-test('landmark foot colours blend into the village ground at the outer edge', () => {
+test('landmark foot colours blend into the village ground and the outer edge sinks below it', () => {
   const mtn = meshes(buildLandmark(THREE)).find(m => !m.isInstancedMesh);
   const pos = mtn.geometry.attributes.position, col = mtn.geometry.attributes.color;
   const ground = new THREE.Color(0xd3e2b0);
@@ -99,7 +99,7 @@ test('landmark foot colours blend into the village ground at the outer edge', ()
     if (Math.hypot(pos.getX(i), pos.getZ(i)) < outer * 0.99) continue;
     n++;
     assert.ok(Math.abs(col.getX(i) - ground.r) < 0.01 && Math.abs(col.getY(i) - ground.g) < 0.01 && Math.abs(col.getZ(i) - ground.b) < 0.01, `vertex ${i}`);
-    assert.ok(Math.abs(pos.getY(i)) < 1e-6);
+    assert.ok(pos.getY(i) <= -0.05, `vertex ${i} y ${pos.getY(i)}`);
   }
   assert.ok(n > 0);
 });
