@@ -63,7 +63,8 @@ test('the hud has a chip stack that clears with the run', () => {
 
 test('the runtime wires v2: pet shield, press, props, fov, ghost and chips', () => {
   const m = src('spaces/mountain.js');
-  assert.match(m, /createSled\([^\n]*\{ shield: gameState\.pet \? 1 : 0 \}\)/);
+  assert.match(m, /createSled\([^\n]*\{ shield: SHIELD_PER_RUN \}\)/);
+  assert.doesNotMatch(m, /shield: gameState\.pet/);
   assert.match(m, /pressSled\(run\.sled\)/);
   assert.match(m, /sledProps\(ensureMountainSpace\(\)\)/);
   assert.match(m, /sledFov\(/);

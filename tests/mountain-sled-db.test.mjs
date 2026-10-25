@@ -82,7 +82,7 @@ test('every phys_v list in the sled migrations accepts each physics version up t
 
 test('v2 adds move counters with a non-negative check and keeps the floor in step with the client', async () => {
   const { COURSE, COURSE_V, minTimeMs } = await import('../js/mountain/course.js');
-  for (const col of ['drift_count', 'jump_count', 'trick_ok', 'trick_fail', 'gusts', 'mover_hits', 'pet_shield', 'ghost_delta_ms']) {
+  for (const col of ['drift_count', 'jump_count', 'trick_ok', 'trick_fail', 'gusts', 'mover_hits', 'shield_used', 'ghost_delta_ms']) {
     assert.match(sql, new RegExp(`add column if not exists ${col} (smallint|integer);`), col);
   }
   assert.match(sql, /sled_runs_v2_nonneg check \(/);

@@ -2922,7 +2922,7 @@ export const EN = {
   '🌀 한 바퀴!': '🌀 Full spin!',
   '🌀 도는 중': '🌀 Spinning',
   '🛫 지금 누르면 회전': '🛫 Tap to spin',
-  '🛡️ 펫 방패': '🛡️ Pet shield',
+  '🛡️ 방패': '🛡️ Shield',
   '🏁 완주!': '🏁 Finished!',
   '🏆 새 최고 기록!': '🏆 New best!',
   '오늘 보상 1판 남음': '1 rewarded run left today',

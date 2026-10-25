@@ -70,7 +70,7 @@ test('chips describe ghost gap, drift, combo, air and pet shield', () => {
   assert.deepEqual(chipsFor(S({ air: true }), null, t), [['🛫 지금 누르면 회전', '']]);
   assert.deepEqual(chipsFor(S({ air: true, trick: true, spin: 0.5 }), null, t), [['🌀 도는 중', '']]);
   assert.deepEqual(chipsFor(S({ air: true, trick: true, spin: 1.1 }), null, t), [['🌀 한 바퀴!', '']]);
-  assert.deepEqual(chipsFor(S({ shield: 1 }), null, t), [['🛡️ 펫 방패', '']]);
+  assert.deepEqual(chipsFor(S({ shield: 1 }), null, t), [['🛡️ 방패', '']]);
   assert.deepEqual(chipsFor(S({ shield: 1, shieldUsed: 1 }), null, t), []);
 });
 

@@ -23,6 +23,7 @@ import { findItem } from '../cosmetics/catalog.js';
 import { logEcon } from '../metrics.js';
 import { createSled, stepSled, pressSled } from '../mountain/sled.js';
 import { openRide, rideTick, stopRide, closeRide, sledProps } from '../mountain/sled-ride.js';
+import { SHIELD_PER_RUN } from '../mountain/sled-moves.js';
 import { COURSE } from '../mountain/course.js';
 import { physOf, sledCash } from '../mountain/sled-lineup.js';
 import { cashAvailable } from '../shop/paddle.js';
@@ -447,7 +448,7 @@ function startSled() {
   run.shake = 0;
   showObstacles(run.course);
   run.sledId = sledSkin();
-  run.sled = createSled(run.taken.filter(Boolean).length, physOf(run.sledId), { shield: gameState.pet ? 1 : 0 });
+  run.sled = createSled(run.taken.filter(Boolean).length, physOf(run.sledId), { shield: SHIELD_PER_RUN });
   run.fov0 = camera.fov;
   run.seat = sledSeat(run.sledId);
   run.phase = 'countdown';

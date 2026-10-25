@@ -1,6 +1,7 @@
 import { pathToFileURL } from 'node:url';
 import { centerX, COURSE, moverPos } from '../../js/mountain/course.js';
 import { SLOPE_M_PER_UNIT } from '../../js/mountain/terrain.js';
+import { SHIELD_PER_RUN } from '../../js/mountain/sled-moves.js';
 import { PHYS, createSled, stepSled, tryBoost, finalTimeMs, hitReach } from '../../js/mountain/sled.js';
 
 function rng(seed) {
@@ -104,7 +105,7 @@ export function simulate({ skill, acorns, seed }) {
   const lead = 1.5 + (1 - skill) * 6;
   const margin = 0.75 + (1 - skill) * 1.2;
   const boostZ = Array.from({ length: acorns }, (_, i) => 20 + i * (280 / Math.max(1, acorns)));
-  let s = createSled(acorns);
+  let s = createSled(acorns, PHYS, { shield: SHIELD_PER_RUN });
   let steer = 0;
   let frame = 0;
   let plan = null;

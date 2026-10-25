@@ -63,6 +63,6 @@ export function chipsFor(s, gapMs, t) {
   else if (tier === 1) chips.push([t('🔵 드리프트'), 'blue']);
   if (s.combo > 0) chips.push([`${t('🚩 연속')} ${s.combo}/${COMBO.n}`, '']);
   if (s.air) chips.push([s.trick ? t(s.spin >= 1 ? '🌀 한 바퀴!' : '🌀 도는 중') : t('🛫 지금 누르면 회전'), '']);
-  if (s.shield > s.shieldUsed) chips.push([t('🛡️ 펫 방패'), '']);
+  if (s.shield > s.shieldUsed) chips.push([t('🛡️ 방패'), '']);
   return chips;
 }

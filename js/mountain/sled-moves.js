@@ -5,6 +5,7 @@ export const DRIFT = Object.freeze({ min: 0.7, slip: 0.3, t1: 600, t2: 1400, ms1
 export const JUMP = Object.freeze({ vy: 7.5, g: 20, airSteer: 0.35, spinMs: 550, okMs: 600, failMs: 800 });
 export const COMBO = Object.freeze({ n: 3, ms: 1000 });
 export const KICK_MULT = 1.35;
+export const SHIELD_PER_RUN = 1;
 const MOVER_HALF = Object.freeze({ w: 0.43, l: 0.75 });
 
 export function driftTier(s) {

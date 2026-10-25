@@ -192,7 +192,7 @@ test('a finish row carries the v2 move counters and the gap to the ghost', () =>
   const sled = { ...SLED(24000, 12), t: 24000, driftsAt: [[1, 1], [2, 2]], jumps: 3, tricksOk: 2, tricksFail: 1, gustsAt: [9], moverHitIds: [0, 2], shieldUsed: 1 };
   c.sledSettle(sled, { ...CTX, ghostT: 25000 }, { fpsAvg: 58 });
   const r = rows[0];
-  assert.deepEqual([r.drift_count, r.jump_count, r.trick_ok, r.trick_fail, r.gusts, r.mover_hits, r.pet_shield, r.ghost_delta_ms], [2, 3, 2, 1, 1, 2, 1, -1000]);
+  assert.deepEqual([r.drift_count, r.jump_count, r.trick_ok, r.trick_fail, r.gusts, r.mover_hits, r.shield_used, r.ghost_delta_ms], [2, 3, 2, 1, 1, 2, 1, -1000]);
 });
 
 test('rows without a sled or ghost leave the v2 fields empty', () => {

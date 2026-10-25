@@ -29,9 +29,9 @@
 5. 장애물 그리기: 고정은 병합 메시 유지, 움직이는 것·점프대는 개별 Object3D.
 6. 유령: gameState.mountain.sled.ghost(버전 키·100ms·정수 압축 ~4KB), restoreMountain 복원.
 7. 콤보: 깃발 3연속 → 1초 눈바람(부스터 연출 재사용).
-8. 펫 동승: spawnPet(js/pet/render.js), 판당 방패 1회.
+8. 펫 동승: spawnPet(js/pet/render.js), 외형만(타기만). 방패 1회는 모두에게(2026-10-25 사용자 결정, 유료 펫 공정성).
 9. 밸런스: sled-sim 봇 확장, 5종 공정성·완벽 주행·스킬 분포·최소 시간 재계산, 관련 테스트 갱신.
-10. 기록: sled_runs 새 컬럼(drift_count·jump_count·trick_ok·gusts·ghost_delta_ms·pet_shield), GA4 새 파라미터 ≤5, 리더보드 course_v 2 새 시즌.
+10. 기록: sled_runs 새 컬럼(drift_count·jump_count·trick_ok·trick_fail·gusts·mover_hits·shield_used·ghost_delta_ms), GA4 새 파라미터 ≤5, 리더보드 course_v 2 새 시즌.
 11. 안내서 설산 문단 갱신, 공지는 토스 출시 후.
 
 ## 3단계 · 검증·배포

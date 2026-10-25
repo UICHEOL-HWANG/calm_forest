@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { PHYS, PHYS_V, createSled, stepSled, pressSled } from '../js/mountain/sled.js';
-import { DRIFT, JUMP, COMBO, KICK_MULT } from '../js/mountain/sled-moves.js';
+import { DRIFT, JUMP, COMBO, KICK_MULT, SHIELD_PER_RUN } from '../js/mountain/sled-moves.js';
 import { physOf } from '../js/mountain/sled-lineup.js';
 import { COURSE, COURSE_V, centerX, moverPos } from '../js/mountain/course.js';
 
@@ -193,4 +193,8 @@ test('drift, trick and gust kicks are the same strength on every sled', () => {
   const base = kicked('basic');
   for (const id of ['wind', 'acorn', 'skiff', 'toboggan']) assert.ok(Math.abs(kicked(id) - base) < 0.01, id);
   assert.ok(Math.abs(base - KICK_MULT) < 0.01);
+});
+
+test('every rider gets one shield per run, pet or not', () => {
+  assert.equal(SHIELD_PER_RUN, 1);
 });
