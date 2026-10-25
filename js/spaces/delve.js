@@ -7,7 +7,7 @@ import { DELVE, MINE, MINE_HALF } from '../data/places.js';
 import { DELVE_HALF, DELVE_CHEST_FLOORS, PEST_COPY } from '../data/delve.js';
 import {
   floorSeed, layoutFloor, ladderRevealed, themeOf, oreOdds, rollOre, makeRng, noteReach, oreAllowed, markOreFloor,
-  bumpCount, canDescendFrom0, stopsOpen, stepView, claimStep, noteChest, jobFor, hashSeed, chestSpot,
+  bumpCount, canDescendFrom0, stopsOpen, liftTargets, stepView, claimStep, noteChest, jobFor, hashSeed, chestSpot,
 } from '../delve/rules.js';
 import { rollChest, chestGive } from '../boat-chest.js';
 import { makeChestMesh } from '../boat-chest-art.js';
@@ -253,9 +253,15 @@ export function handleDelveDoor(nd) {
   }
   if (nd === 'delve_lift_locked') { ui.toast?.('⛏️ 광부 아저씨에게 석탄 3개를 가져다줘요'); return true; }
   if (nd === 'delve_lift') {
-    const stops = stopsOpen(gameState.delve);
-    trackEvent('delve_enter', { floor: stops.at(-1) || 0, stops: stops.length });
-    enterFloor(stops.length ? stops.at(-1) : 1, 'lift');
+    const targets = liftTargets(gameState.delve);
+    const go = (floor) => { trackEvent('delve_enter', { floor, stops: targets.length - 1 }); enterFloor(floor, 'lift'); };
+    const deepest = targets.at(-1);
+    if (deepest === 1) { go(1); return true; }
+    ui.showHintModal?.({
+      ico: '🛗', title: '승강기', body: '어디로 갈까요?',
+      ok: { label: `🛗 지하 ${deepest}층`, onClick: () => go(deepest) },
+      alt: { label: '🪜 1층부터', onClick: () => go(1) },
+    });
     return true;
   }
   if (nd === 'delve_up') { leaveToFloor0('ladder'); return true; }

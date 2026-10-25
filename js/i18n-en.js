@@ -29,6 +29,7 @@ export const EN = {
   '🪜 아래로 가는 길이 보여요': '🪜 A way down appeared',
   '가까운 바위가 없어요 ⛏️': 'No rock nearby ⛏️',
   '⛏️ 광부 아저씨에게 석탄 3개를 가져다줘요': '⛏️ Bring 3 coal to the Miner',
+  '승강기': 'Lift', '어디로 갈까요?': 'Where to?', '🪜 1층부터': '🪜 From B1', '🛗 지하 {0#}층': '🛗 B{0}',
   '⛏️ 고맙네! 다음 일을 부탁하지': '⛏️ Thanks! Here is the next job',
   '🪜 여기가 가장 깊은 곳이에요': '🪜 This is the very bottom',
   '⛏️ 오늘의 갱도 일감': "⛏️ Today's mine job",
