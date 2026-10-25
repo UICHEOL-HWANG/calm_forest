@@ -235,8 +235,8 @@ import {
 } from './spaces/visitors.js';   // 📦 🦋 텃밭 방문객 안내 (구역 머리말 — 분리 2단계)
 import {
   buildMine, enterMine, exitMine, spawnMineGate, tryMine, updateOreRocks,
-} from './spaces/mine.js';
-import { delveFloorNow, clampDelve, handleDelveDoor, tryDelveMine, updateDelve } from './spaces/delve.js';   // 📦 ⛏️ 채굴 동굴 (구역 머리말 — 분리 2단계)
+} from './spaces/mine.js';   // 📦 ⛏️ 채굴 동굴 (구역 머리말 — 분리 2단계)
+import { delveFloorNow, clampDelve, handleDelveDoor, tryDelveMine, updateDelve, settleMinerRewards } from './spaces/delve.js';
 import {
   enterHouse, exitHouse, goFloor, inVillage2, updateDoorInteract,
 } from './spaces/doors.js';   // 📦 🚪 침대·문 근접·구역 안내 (구역 머리말 — 분리 2단계)
@@ -2835,6 +2835,7 @@ function applySave(saved) {
   gameState.progress.orchardQuest = restoreStage(saved.progress?.orchardQuest, gameState.progress.advHarvest);
   gameState.progress.orchardRefill = saved.progress?.orchardRefill === true || undefined;
   gameState.delve = sanitizeDelve(saved.delve);
+  settleMinerRewards();
   gameState.progress.cosQuest = restoreCosStage(saved.progress?.cosQuest, gameState.cosmetics.owned.length);
   syncBridge();            // 🌉 복원된 unlocks(legacy·flags.bridge)로 다리를 다시 맞춘다 — 빌더는 로드 전에 돈다
   syncOrchardGateLock();   // 🔒 복원된 진행도로 가로대를 다시 계산 — 입구를 세울 땐 progress 가 아직 기본값 0 이라 항상 잠긴 것으로 보인다

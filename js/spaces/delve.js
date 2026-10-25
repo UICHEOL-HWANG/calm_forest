@@ -11,7 +11,7 @@ import {
 } from '../delve/rules.js';
 import { rollChest, chestGive } from '../boat-chest.js';
 import { makeChestMesh } from '../boat-chest-art.js';
-import { jobCard } from '../delve/miner-card.js';
+import { jobCard, owedMinerRewards } from '../delve/miner-card.js';
 import { createPest, stepPest, tapPest, baitPest, canPick, RING_SEC, TAP_R, BAIT_R } from '../delve/pests.js';
 import { makePest, makeOreChunk, makePuddle, makeBurrow, makeRing, makeBait, makeShaft, makeLadderUp, makeRock, makeLift, emojiBubble, makeTrail } from '../delve/pest-art.js';
 import { makeMiner } from '../delve/miner.js';
@@ -48,9 +48,12 @@ function placeMiner() {
   scene.add(minerMesh);
 }
 
-function grantMinerReward(reward) {
-  if (reward.cosmetic) $w.grantCosmetic?.(reward.cosmetic);
-  if (reward.decor) $w.grantDecor?.(reward.decor);
+export function settleMinerRewards() {
+  const owed = owedMinerRewards(gameState.delve, gameState.cosmetics.owned);
+  for (const id of owed.cosmetic) $w.grantCosmetic?.(id);
+  for (const id of owed.decor) {
+    if ($w.grantDecor?.(id)) gameState.delve = { ...gameState.delve, granted: { ...gameState.delve.granted, [id]: true } };
+  }
 }
 
 function clearRoom() {
@@ -243,7 +246,7 @@ export function handleDelveDoor(nd) {
     if (!c) return true;
     gameState.delve = c.delve;
     Object.assign(gameState.inventory, c.inv);
-    grantMinerReward(c.reward);
+    settleMinerRewards();
     refreshInventoryUI();
     requestSave();
     ui.toast?.('⛏️ 고맙네! 다음 일을 부탁하지');
