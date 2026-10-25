@@ -81,3 +81,73 @@ test('광부 보상 지급 훅: grantCosmetic·grantDecor 가 $w 로 노출되�
   assert.match(src, /function grantCosmetic\(id\)[\s\S]{0,300}findItem\(id\)/);
   assert.match(src, /function grantDecor\(id\)[\s\S]{0,300}DECOR\.some/);
 });
+
+const delveSrc = () => read('js/spaces/delve.js');
+const block = (s, from) => s.match(new RegExp(`${from}[\\s\\S]*?\\n  \\}\\n`))[0];
+
+test('승강기: 정류장이 있으면 두 버튼 안내(가장 깊은 곳 / 1층부터), 없으면 바로 1층', () => {
+  const b = block(delveSrc(), "if \\(nd === 'delve_lift'\\)");
+  assert.match(b, /liftTargets\(gameState\.delve\)/);
+  assert.match(b, /showHintModal\?\.\(\{[\s\S]*ico: '🛗', title: '승강기', body: '어디로 갈까요\?'/);
+  assert.match(b, /alt: \{ label: '🪜 1층부터'/);
+  assert.match(b, /enterFloor\(1, 'lift'\)/);
+  const en = read('js/i18n-en.js');
+  for (const k of ["'승강기'", "'어디로 갈까요?'", "'🪜 1층부터'", "'🛗 지하 {0#}층'"]) assert.ok(en.includes(k), k);
+});
+
+test('광부 보상 재지급: 로드 직후와 받기 직후 같은 함수', () => {
+  assert.match(src, /gameState\.delve = sanitizeDelve\(saved\.delve\);\s*\n\s*settleMinerRewards\(\)/);
+  assert.match(block(delveSrc(), "if \\(nd === 'delve_miner_claim'\\)"), /settleMinerRewards\(\)/);
+  assert.match(delveSrc(), /export function settleMinerRewards[\s\S]*?owedMinerRewards\(gameState\.delve, gameState\.cosmetics\.owned\)[\s\S]*?granted: \{ \.\.\.gameState\.delve\.granted, \[id\]: true \}/);
+});
+
+test('벽은 InstancedMesh 하나, 카메라 쪽 줄은 낮은 턱', () => {
+  const s = delveSrc();
+  assert.match(s, /new THREE\.InstancedMesh\(wallGeo, wallMat/);
+  assert.doesNotMatch(s, /new THREE\.Mesh\(wallGeo, wallMat\)/);
+});
+
+test('빛 자국은 잡은 자리에서 굴까지, 층마다 자원 정리', () => {
+  const s = delveSrc();
+  assert.match(s, /grabAt = \{ x: /);
+  assert.doesNotMatch(s, /pest\.spawn\.x/);
+  assert.match(s.match(/function clearRoom\(\)[\s\S]*?\n}\n/)[0], /dispose\(\)/);
+  assert.match(s, /disposeObj\(p\.bubble\)/);
+});
+
+test('하루 일감 진행은 gameState.delve.job 에 저장', () => {
+  const s = delveSrc();
+  assert.doesNotMatch(s, /jobToday/);
+  assert.match(s, /bumpJob\(gameState\.delve, todayStr\(\)\)/);
+  assert.match(s, /jobProgress\(gameState\.delve, todayStr\(\)\)/);
+});
+
+test('미니맵: 지하에서는 0층 표시 대신 지하 표시', () => {
+  assert.match(src, /place === 'mine' && delveFloorNow\(\) > 0/);
+  assert.match(src, /delveMinimapMarks\(\)/);
+  assert.match(delveSrc(), /export function delveMinimapMarks/);
+});
+
+test('GA4: delve_floor 에 sec·rocks, delve_step 에 sec, 도망 중 도롱뇽은 톡 치기 없음', () => {
+  const s = delveSrc();
+  assert.match(s, /trackEvent\('delve_floor', \{ floor, via, stops: [^}]*sec: [^}]*rocks: [^}]*\}/);
+  for (const m of s.matchAll(/trackEvent\('delve_step', \{([^}]*)\}/g)) assert.match(m[1], /sec: /);
+  assert.match(read('js/spaces/mine.js'), /started: true, startedAt: Date\.now\(\)/);
+  assert.match(s, /p\.sim\.kind === 'axolotl' && !\['gone', 'flee'\]\.includes\(p\.sim\.state\)/);
+});
+
+test('되찾기는 조각마다 제 광석(reclaimGive), 성공 뒤 패널 갱신', () => {
+  const b = block(delveSrc(), "if \\(nd === 'delve_dig'\\)");
+  assert.match(b, /reclaimGive\(run\.stash\)/);
+  assert.match(b, /refreshQuestPanel/);
+  assert.match(block(delveSrc(), "if \\(nd === 'delve_tap'\\)"), /refreshQuestPanel/);
+  assert.match(block(delveSrc(), "if \\(nd === 'delve_bait'\\)"), /refreshQuestPanel/);
+  assert.match(delveSrc().match(/export function enterFloor[\s\S]*?\n}\n/)[0], /refreshQuestPanel/);
+});
+
+test('배너 줄은 낱말 단위로 줄바꿈, 캡처 스크립트에 개인 경로 없음, 안 쓰는 import 없음', () => {
+  assert.match(read('index.html'), /#hint-banner \.hb-line \{ word-break: keep-all; \}/);
+  assert.doesNotMatch(read('dev/active/cave-delve/mockup/impl/capture-impl.mjs'), /\/private\/tmp|\/Users\//);
+  assert.doesNotMatch(delveSrc().split('\n').slice(0, 5).join('\n'), /\bclock\b/);
+  assert.match(src, /\} from '\.\/spaces\/mine\.js';   \/\/ 📦 ⛏️ 채굴 동굴/);
+});

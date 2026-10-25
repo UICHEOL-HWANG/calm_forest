@@ -97,10 +97,11 @@ export function ladderRevealed({ broken, hitLadderRock }) {
 }
 
 const COUNT_KEYS = ['tap', 'bait', 'grab', 'reclaim'];
+const GRANT_KEYS = MINER_STEPS.map(s => s.reward.decor).filter(Boolean);
 const int = (v, lo, hi) => { const n = Math.floor(Number(v)); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : lo; };
 
 export function defaultDelve() {
-  return { maxFloor: 0, stops: [], stage: 0, counts: { tap: 0, bait: 0, grab: 0, reclaim: 0 }, chests: {}, visited: { date: null, floors: [] }, jobDate: null, started: false };
+  return { maxFloor: 0, stops: [], stage: 0, counts: { tap: 0, bait: 0, grab: 0, reclaim: 0 }, chests: {}, visited: { date: null, floors: [] }, jobDate: null, started: false, startedAt: null, job: { date: null, n: 0 }, granted: {} };
 }
 
 export function sanitizeDelve(raw) {
@@ -114,6 +115,9 @@ export function sanitizeDelve(raw) {
   if (typeof raw.visited?.date === 'string') d.visited = { date: raw.visited.date, floors: Array.isArray(raw.visited.floors) ? raw.visited.floors.filter(f => Number.isInteger(f) && f >= 1 && f <= DELVE_FLOORS) : [] };
   d.jobDate = typeof raw.jobDate === 'string' ? raw.jobDate : null;
   d.started = !!raw.started;
+  d.startedAt = Number.isFinite(raw.startedAt) && raw.startedAt > 0 ? raw.startedAt : null;
+  if (typeof raw.job?.date === 'string') d.job = { date: raw.job.date, n: int(raw.job.n, 0, 999) };
+  for (const id of GRANT_KEYS) if (raw.granted?.[id] === true) d.granted = { ...d.granted, [id]: true };
   return d;
 }
 
@@ -171,4 +175,17 @@ export function claimStep(d, inv) {
 export function jobFor(date) {
   const r = makeRng(hashSeed(`delvejob:${date}`));
   return r() < 0.7 ? { kind: 'ore', n: 3 + Math.floor(r() * 4), floorMin: 5 + Math.floor(r() * 3) * 5 } : { kind: 'reclaim', n: 2, floorMin: 11 };
+}
+
+export function liftTargets(d) { return [...new Set([1, ...stopsOpen(d)])]; }
+
+export function jobProgress(d, date) { return d.job.date === date ? d.job.n : 0; }
+
+export function bumpJob(d, date) { return { ...d, job: { date, n: jobProgress(d, date) + 1 } }; }
+
+export function reclaimGive(stash) {
+  const give = {};
+  for (const c of stash) give[c.ore] = (give[c.ore] || 0) + 1;
+  if (stash.length) give[stash[0].ore] += 1;
+  return give;
 }

@@ -153,7 +153,7 @@ test('사다리: 그 바위를 깨면 바로, 아니어도 5번째에는 반드�
 import { defaultDelve, sanitizeDelve, noteReach, stopsOpen, oreAllowed, markOreFloor, bumpCount, noteChest, stepView, claimStep, canDescendFrom0, jobFor } from '../js/delve/rules.js';
 
 test('기본값', () => {
-  assert.deepEqual(defaultDelve(), { maxFloor: 0, stops: [], stage: 0, counts: { tap: 0, bait: 0, grab: 0, reclaim: 0 }, chests: {}, visited: { date: null, floors: [] }, jobDate: null, started: false });
+  assert.deepEqual(defaultDelve(), { maxFloor: 0, stops: [], stage: 0, counts: { tap: 0, bait: 0, grab: 0, reclaim: 0 }, chests: {}, visited: { date: null, floors: [] }, jobDate: null, started: false, startedAt: null, job: { date: null, n: 0 }, granted: {} });
 });
 
 test('저장값 정리: 이상한 값은 걸러내고 정류장은 도달한 층까지만', () => {
@@ -287,4 +287,55 @@ test('상자는 사다리에서 2.0 이상 떨어지고 방 안쪽', () => {
     assert.ok(dist(c, ladderAt) >= 2.0, `${seed}`);
     assert.ok(Math.abs(c.x) <= DELVE_HALF - 1.5 && Math.abs(c.z) <= DELVE_HALF - 1.5, `${seed}`);
   }
+});
+
+import { liftTargets, bumpJob, jobProgress, reclaimGive } from '../js/delve/rules.js';
+
+test('승강기 목적지: 1층이 늘 맨 앞, 가장 깊은 정류장이 맨 끝', () => {
+  assert.deepEqual(liftTargets(defaultDelve()), [1]);
+  assert.deepEqual(liftTargets(noteReach(defaultDelve(), 12)), [1, 5, 10]);
+  const all = liftTargets(noteReach(defaultDelve(), 20));
+  assert.equal(all[0], 1);
+  assert.equal(all.at(-1), 20);
+  assert.equal(new Set(all).size, all.length);
+});
+
+test('하루 일감 진행은 저장값에 남고 날이 바뀌면 0부터', () => {
+  const a = defaultDelve();
+  const b = bumpJob(a, '2026-10-25');
+  const c = bumpJob(b, '2026-10-25');
+  assert.deepEqual(a.job, { date: null, n: 0 });
+  assert.deepEqual(c.job, { date: '2026-10-25', n: 2 });
+  assert.equal(jobProgress(c, '2026-10-25'), 2);
+  assert.equal(jobProgress(c, '2026-10-26'), 0);
+  assert.deepEqual(bumpJob(c, '2026-10-26').job, { date: '2026-10-26', n: 1 });
+  assert.deepEqual(sanitizeDelve(JSON.parse(JSON.stringify(c))).job, { date: '2026-10-25', n: 2 });
+  assert.deepEqual(sanitizeDelve({ job: { date: 5, n: 'x' } }).job, { date: null, n: 0 });
+});
+
+test('라인 시작 시각과 보상 지급 기록은 저장값 정리를 통과한다', () => {
+  assert.equal(defaultDelve().startedAt, null);
+  assert.deepEqual(defaultDelve().granted, {});
+  assert.equal(sanitizeDelve({ startedAt: 1761350400000 }).startedAt, 1761350400000);
+  assert.equal(sanitizeDelve({ startedAt: 'x' }).startedAt, null);
+  assert.equal(sanitizeDelve({ startedAt: -5 }).startedAt, null);
+  assert.deepEqual(sanitizeDelve({ granted: { mine_cart: true, hack: true } }).granted, { mine_cart: true });
+  assert.deepEqual(sanitizeDelve({ granted: { mine_cart: 1 } }).granted, {});
+});
+
+test('굴에서 되찾기: 조각마다 제 광석, 첫 조각 광석 하나 덤', () => {
+  assert.deepEqual(reclaimGive([{ ore: 'gem' }, { ore: 'coal' }, { ore: 'coal' }]), { gem: 2, coal: 2 });
+  assert.deepEqual(reclaimGive([{ ore: 'stone' }]), { stone: 2 });
+  assert.deepEqual(reclaimGive([]), {});
+});
+
+import { owedMinerRewards } from '../js/delve/miner-card.js';
+
+test('받지 못한 광부 보상: 단계가 지났고 아직 없을 때만 다시 준다', () => {
+  const d = { ...defaultDelve(), started: true };
+  assert.deepEqual(owedMinerRewards({ ...d, stage: 4 }, []), { cosmetic: [], decor: [] });
+  assert.deepEqual(owedMinerRewards({ ...d, stage: 5 }, []), { cosmetic: ['miner_lamp'], decor: [] });
+  assert.deepEqual(owedMinerRewards({ ...d, stage: 5 }, ['miner_lamp']), { cosmetic: [], decor: [] });
+  assert.deepEqual(owedMinerRewards({ ...d, stage: 8 }, ['miner_lamp']), { cosmetic: [], decor: ['mine_cart'] });
+  assert.deepEqual(owedMinerRewards({ ...d, stage: 8, granted: { mine_cart: true } }, []), { cosmetic: ['miner_lamp'], decor: [] });
 });
