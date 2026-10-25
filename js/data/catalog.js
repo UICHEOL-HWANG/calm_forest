@@ -240,6 +240,7 @@ export const OUTDOOR = [
   { id: 'harvestscarecrow', name: '수확제 허수아비', ico: '🧑‍🌾', cost: { leaf: 9999 }, desc: '수확제 광장 🥇 보상', hidden: true },
   { id: 'summitflag', name: '정상 깃발', ico: '🚩', cost: { coins: 9999 }, desc: '산장 카페에서 산 정상 깃발', hidden: true },
   ...REWARD_DECOR,   // 🤝 친구 초대 보상 장식(js/data/reward-decor.js) — 원장이 보관함에 넣어 준다 · 서버 가드 대상
+  { id: 'mine_cart', name: '광산 수레', ico: '🛒', cost: { coins: 9999 }, desc: '광부 아저씨가 준 수레 · 지하 20층 도달 보상', hidden: true, quest: 'delve' },
   // 🎃 할로윈 한정 코인 장식 — 직접 구매(작업대 목록, 기간 한정). hidden 과 다르다: hidden 은 영구 비판매, sale 은 기간 판매
   { id: 'ghostlamp',  name: '유령 정원등', ico: '👻', cost: { coins: 200 }, sale: 'halloween', desc: '밤이 되면 으스스하게 빛나는 유령 등' },
   { id: 'gravefence', name: '묘비 울타리', ico: '🪦', cost: { coins: 280 }, sale: 'halloween', desc: '묘비 모양 울타리 · 밤손님은 못 막아요' },

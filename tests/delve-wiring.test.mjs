@@ -99,7 +99,8 @@ test('승강기: 정류장이 있으면 두 버튼 안내(가장 깊은 곳 / 1�
 });
 
 test('광부 보상 재지급: 로드 직후와 받기 직후 같은 함수', () => {
-  assert.match(src, /gameState\.delve = sanitizeDelve\(saved\.delve\);\s*\n\s*settleMinerRewards\(\)/);
+  assert.match(src, /refreshPond\('load'\);\s*\n\s*settleMinerRewards\(\);\s*\n\}/);
+  assert.ok(src.indexOf("refreshPond('load');\n  settleMinerRewards();") > src.indexOf('gameState.outdoorStored[k] = Math.floor(v)'), '보관함 복원 뒤에 지급해야 덮이지 않는다');
   assert.match(block(delveSrc(), "if \\(nd === 'delve_miner_claim'\\)"), /settleMinerRewards\(\)/);
   assert.match(delveSrc(), /export function settleMinerRewards[\s\S]*?owedMinerRewards\(gameState\.delve, gameState\.cosmetics\.owned\)[\s\S]*?granted: \{ \.\.\.gameState\.delve\.granted, \[id\]: true \}/);
 });

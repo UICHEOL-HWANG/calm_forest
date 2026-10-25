@@ -47,6 +47,8 @@ export const EN = {
   '반짝이 사수': 'Guard the shine', '🦇 박쥐 앞에서 조각 바로 줍기 3번': '🦇 Grab bits before a bat 3 times',
   '빛을 따라': 'Follow the light', '🐛 굴에서 조각 되찾기': '🐛 Reclaim bits from a burrow',
   '바닥까지': 'All the way down', '🪜 지하 20층까지 내려가기': '🪜 Reach floor B20',
+  '광부 헬멧': 'Miner helmet', '광산 수레': 'Mine cart',
+  '광부 아저씨가 준 수레 · 지하 20층 도달 보상': 'A cart from the Miner · reward for reaching B20',
 
   // ── 🌙 꿈의 숲(js/spaces/dream.js · 선택 창·도착 카드는 index.html) ─────────────
   '🛏️ 잘 시간이에요': '🛏️ Time for bed',

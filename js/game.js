@@ -291,6 +291,7 @@ import { restoreMountain } from './mountain/save.js';
 import { onMountainside } from './mountain/landmark.js';
 import { souvenirOutdoorMesh } from './mountain/souvenir-art.js';
 import { FRIEND_ARCH_ID, buildFriendArch } from './spaces/friend-arch-art.js';   // 🌈 무지개 우정 아치(🤝 초대 보상)
+import { MINE_CART_ID, MINE_CART_BOX, buildMineCart } from './delve/cart-art.js';
 // 🔁 js/spaces/* 가 game.js 의 let 에 쓸 때 거치는 접근자(읽기는 import 한 live binding) — tools/refactor/extract-module.mjs 가 만든다
 export const $w = {
   get _hintAnyPrev() { return _hintAnyPrev; }, set _hintAnyPrev(v) { _hintAnyPrev = v; },
@@ -2836,7 +2837,6 @@ function applySave(saved) {
   gameState.progress.orchardQuest = restoreStage(saved.progress?.orchardQuest, gameState.progress.advHarvest);
   gameState.progress.orchardRefill = saved.progress?.orchardRefill === true || undefined;
   gameState.delve = sanitizeDelve(saved.delve);
-  settleMinerRewards();
   gameState.progress.cosQuest = restoreCosStage(saved.progress?.cosQuest, gameState.cosmetics.owned.length);
   syncBridge();            // 🌉 복원된 unlocks(legacy·flags.bridge)로 다리를 다시 맞춘다 — 빌더는 로드 전에 돈다
   syncOrchardGateLock();   // 🔒 복원된 진행도로 가로대를 다시 계산 — 입구를 세울 땐 progress 가 아직 기본값 0 이라 항상 잠긴 것으로 보인다
@@ -2972,6 +2972,7 @@ function applySave(saved) {
   }
   refreshPlaza();   // 🌾 initPlaza() 가 세이브 복원보다 먼저 돌아 기본값을 봤으므로 여기서 다시 맞춘다
   refreshPond('load');
+  settleMinerRewards();
 }
 
 function grantCosmetic(id) {
@@ -2984,8 +2985,11 @@ function grantCosmetic(id) {
 }
 
 function grantDecor(id) {
-  if (!DECOR.some(d => d.id === id)) return false;
-  gameState.house.stored[id] = (gameState.house.stored[id] || 0) + 1;
+  if (DECOR.some(d => d.id === id)) {
+    gameState.house.stored[id] = (gameState.house.stored[id] || 0) + 1;
+  } else if (OUTDOOR.some(d => d.id === id && d.quest)) {
+    gameState.outdoorStored = { ...(gameState.outdoorStored || {}), [id]: (gameState.outdoorStored?.[id] || 0) + 1 };
+  } else return false;
   requestSave();
   return true;
 }
@@ -5505,6 +5509,8 @@ function outdoorMesh(id) {
     const ring = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.03, 5, 12), clayMat(0x4a5a58)); ring.position.set(0.16, 1.36, 0); g.add(ring);
   } else if (HALLOWEEN_OUTDOOR_IDS.includes(id)) {   // 🎃 할로윈 코인 장식 3종 — 밤에 켜지는 재질은 houseWindows 에 올린다(postlamp 와 같은 규칙)
     g.add(buildHalloween(THREE, id, HALLOWEEN_STYLE[id], makeCtx(THREE, (m) => houseWindows.push(m))));
+  } else if (id === MINE_CART_ID) {
+    g.add(buildMineCart(THREE));
   } else if (id === FRIEND_ARCH_ID) {   // 🌈 무지개 우정 아치 — 걸어서 통과(충돌체 없음) · 밤 반짝이는 houseWindows
     g.add(buildFriendArch(THREE, (m) => houseWindows.push(m)));
   } else if (id === 'kiln') {
@@ -5632,6 +5638,9 @@ function placeOutdoor(wx, wz, silent = false, id = placingOutdoor, rot = null) {
       const [hw, hd] = (ry % 2) ? [0.58, 1.01] : [1.01, 0.58];
       solid = solidBox(wx - hw, wz - hd, wx + hw, wz + hd);
       obstacles.pop(); ob = { x: wx, z: wz, r: 1.2 }; obstacles.push(ob);   // 밭·나무 금지 반경도 몸집에 맞춘다
+    } else if (id === MINE_CART_ID) {
+      const [hw, hd] = (ry % 2) ? [MINE_CART_BOX.d / 2, MINE_CART_BOX.w / 2] : [MINE_CART_BOX.w / 2, MINE_CART_BOX.d / 2];
+      solid = solidBox(wx - hw, wz - hd, wx + hw, wz + hd);
     } else if (id === 'vat') {
       // 🫙 발효통 — 화덕과 같은 문법. 반치수는 조형 모듈이 준 발자국(VAT_BOX)의 절반
       const [hw, hd] = (ry % 2) ? [VAT_BOX.d / 2, VAT_BOX.w / 2] : [VAT_BOX.w / 2, VAT_BOX.d / 2];
