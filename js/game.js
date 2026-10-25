@@ -6937,7 +6937,7 @@ function updateDayNight(dt) {
     sunLight.target.position.set(HALLOWEEN.x, 0, HALLOWEEN.z);
     sunLight.target.updateMatrixWorld();
     if (playerLight) playerLight.intensity = 0.7;
-    scene.fog.color.setHex(0x2a2440); scene.fog.near = 22; scene.fog.far = 70;
+    scene.fog.color.setHex(0x1c1432); scene.fog.near = 22; scene.fog.far = 70;
     scene.background = scene.fog.color;
   }
   // ☕ 카페 홀: 시간대 무관 따뜻하고 밝게(펜던트 등이 켜져 있는 실내)

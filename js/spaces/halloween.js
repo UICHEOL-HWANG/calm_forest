@@ -2,7 +2,7 @@ import { $w, gameState, giveReward, houseWindows, obstacles, player, refreshInve
 import * as THREE from 'three';
 import { t } from '../i18n.js';
 import { trackEvent } from '../analytics.js';
-import { Sound } from '../sound.js';
+import { Sound, setBGMTheme } from '../sound.js';
 import { HALLOWEEN, HALLOWEEN_GATE } from '../data/places.js';
 import { SALE_WINDOWS, saleOpen } from '../shop/sale-window.js';
 import { ARRIVE, EXIT, EXIT_R, GHOST_FIND_R, GHOST_HINT_R, GHOST_SPOTS, GHOSTS_PER_DAY, STALL, STALL_R, clampToGarden } from '../halloween/layout.js';
@@ -100,6 +100,7 @@ export function enterHalloween(via = 'gate') {
     clearPrompts(); snapCamera(); setSpaceVisible();
     arrivedAt = performance.now();
     Sound.blip();
+    setBGMTheme('halloween');
     trackEvent('hw_enter', { via, visit_n: gameState.halloween.visits, left_today: ghostsLeft(gameState.halloween, todayStr()).length, candy: candy() });
     if (!gameState.halloween.gifted) showArriveCard(() => {
       const r = takeFirstGift(hwState());
@@ -120,6 +121,7 @@ export function exitHalloween(via = 'gate') {
     player.rotation.y = GATE_ROT;
     clearPrompts(); snapCamera(); setSpaceVisible();
     Sound.blip();
+    setBGMTheme('main');
     trackEvent('hw_exit', { found_today: hwState().found.length, elapsed_s: elapsed(), via });
     requestSave();
   });

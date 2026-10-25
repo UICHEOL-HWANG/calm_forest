@@ -392,6 +392,43 @@ function playMirrorBar(at) {
   padNote(MIRROR_ROOTS[bar], MIRROR_E * 8, 0.04, 'sine', at);
   if (Math.random() < 0.4) chime(MEL[(Math.random() * MEL.length) | 0] * 4, MIRROR_E * 0.8, 0.015, { at: at + (1 + Math.random() * 6) * MIRROR_E, wet: 0.8, out: musicGain });
 }
+const HW_BAR = 4800;
+const HW_STEPS = [0, 2, 3, 5, 7, 8, 11];
+const HW_CHORDS = [[0, 2, 4], [5, 0, 2], [3, 5, 0], [4, 6, 1]];
+const HW_LINE = [[4, 7], [7, 5], [5, 3], [6, 4]];
+function hwHz(d, oct) {
+  const s = HW_STEPS[((d % 7) + 7) % 7] + 12 * (Math.floor(d / 7) + oct - 4);
+  return 220 * Math.pow(2, s / 12);
+}
+
+function theremin(freq, dur, vol, at, glide = null) {
+  const c = ensureCtx();
+  const osc = c.createOscillator(), g = c.createGain(), lfo = c.createOscillator(), depth = c.createGain();
+  osc.type = 'sine'; osc.frequency.setValueAtTime(freq, at);
+  if (glide) osc.frequency.exponentialRampToValueAtTime(glide, at + dur);
+  lfo.frequency.value = 5.5; depth.gain.value = freq * 0.012;
+  lfo.connect(depth).connect(osc.frequency);
+  g.gain.setValueAtTime(0.0001, at);
+  g.gain.exponentialRampToValueAtTime(vol, at + 0.5);
+  g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+  osc.connect(g).connect(musicGain);
+  const w = c.createGain(); w.gain.value = 0.4; g.connect(w).connect(ensureEcho());
+  osc.start(at); osc.stop(at + dur + 0.05); lfo.start(at); lfo.stop(at + dur + 0.05);
+}
+
+function playHalloweenBar(at) {
+  const bar = barCount++ % HW_CHORDS.length;
+  const ch = HW_CHORDS[bar], sec = HW_BAR / 1000;
+  padNote(hwHz(ch[0], 2), sec * 1.05, 0.07, 'sine', at);
+  padNote(hwHz(ch[1], 3), sec, 0.026, 'triangle', at);
+  padNote(hwHz(ch[2], 3), sec, 0.022, 'triangle', at);
+  if (bar % 2 === 0) snowWind(at, sec * 2, 0.03);
+  const [a, b] = HW_LINE[bar];
+  theremin(hwHz(a, 4), 2.3, 0.045, at + 0.2, hwHz(b, 4));
+  theremin(hwHz(b, 4), 2.2, 0.04, at + 2.5);
+  ch.forEach((d, k) => { if (Math.random() < 0.7) chime(hwHz(d + 7, 5), 1.6, 0.03, { at: at + 0.6 + k * 1.4 + Math.random() * 0.3, wet: 0.6, out: musicGain }); });
+}
+
 const INTRO_BAR = 1000;
 function playIntroBar() {}
 function snowHz(d, oct) {
@@ -450,8 +487,8 @@ function playSnowSledBar(at) {
   if (bar === 3) chime(snowHz(ch[3], 7), 0.8, 0.014, { at: at + sec - e, wet: 0.7, out: musicGain });
 }
 
-function barFn() { return bgmTheme === 'intro' ? playIntroBar : bgmTheme === 'snow' ? playSnowBar : bgmTheme === 'snowsled' ? playSnowSledBar : bgmTheme === 'mirror' ? playMirrorBar : bgmTheme === 'dream' ? playDreamBar : bgmTheme === 'stars' ? playStarsBar : bgmTheme === 'cave' ? playCaveBar : playMainBar; }
-function barLen() { return bgmTheme === 'intro' ? INTRO_BAR : bgmTheme === 'snow' ? SNOW_BAR : bgmTheme === 'snowsled' ? SNOW_SLED_BAR : bgmTheme === 'mirror' ? MIRROR_BAR : bgmTheme === 'dream' ? DREAM_BAR : bgmTheme === 'stars' ? STARS_BAR : bgmTheme === 'cave' ? CAVE_BAR : MAIN_BAR; }
+function barFn() { return bgmTheme === 'halloween' ? playHalloweenBar : bgmTheme === 'intro' ? playIntroBar : bgmTheme === 'snow' ? playSnowBar : bgmTheme === 'snowsled' ? playSnowSledBar : bgmTheme === 'mirror' ? playMirrorBar : bgmTheme === 'dream' ? playDreamBar : bgmTheme === 'stars' ? playStarsBar : bgmTheme === 'cave' ? playCaveBar : playMainBar; }
+function barLen() { return bgmTheme === 'halloween' ? HW_BAR : bgmTheme === 'intro' ? INTRO_BAR : bgmTheme === 'snow' ? SNOW_BAR : bgmTheme === 'snowsled' ? SNOW_SLED_BAR : bgmTheme === 'mirror' ? MIRROR_BAR : bgmTheme === 'dream' ? DREAM_BAR : bgmTheme === 'stars' ? STARS_BAR : bgmTheme === 'cave' ? CAVE_BAR : MAIN_BAR; }
 
 // ── 룩어헤드 스케줄러 ────────────────────────────────────────
 //   setInterval 로 '소리를 내는' 게 아니라, 자주 깨어나 앞으로 0.45초 구간을
