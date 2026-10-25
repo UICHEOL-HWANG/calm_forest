@@ -16,6 +16,7 @@ import { buildEarmuff, buildSledPack } from './winter-art.js';
 import { buildFriendWing, buildFriendPin } from './art-friend.js';   // 🤝 친구 초대 보상(날개·하트핀)
 import { buildAcornCap, buildBeeBand, buildKittyPack, buildNestPack } from './art-forest-set.js';
 import { buildKinderHat, buildTulipTag, buildKinderBag } from './art-sprout.js';
+import { buildMinerHelmet } from './art-miner.js';
 
 export const PALETTE = Object.freeze({
   straw: 0xd9bd7e, strawDark: 0xb99a5c,
@@ -362,6 +363,7 @@ function makeTables(THREE) {
     earmuff: (g, k) => buildEarmuff(THREE, g, k, h),
     acorn_cap: (g, k) => buildAcornCap(THREE, g, k, h),
     bee_band: (g, k) => buildBeeBand(THREE, g, k, h),
+    miner_lamp: (g, k) => buildMinerHelmet(THREE, g, k, h),
   };
 
   // =============================================================

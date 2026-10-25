@@ -78,6 +78,7 @@ const RAW = [
   { id: 'tools_star',  slot: 'tools', ico: '💎', name: '무지개 크리스탈 세트', reward: 'referral', tier: '친구 초대' },
   { id: 'friend_wing', slot: 'back',  ico: '🦋', name: '별빛 우정 날개', reward: 'referral', tier: '친구 초대', anchor: 'back' },
   { id: 'friend_pin',  slot: 'head',  ico: '💗', name: '우정 하트핀',    reward: 'referral', tier: '친구 초대', earSafe: 'low' },
+  { id: 'miner_lamp',  slot: 'head',  ico: '⛏️', name: '광부 헬멧', quest: 'delve', earSafe: 'dome' },
   // 👣 발자국 — 값이 오를수록 바닥에 있던 게 공중으로 올라온다
   { id: 'paw',     slot: 'trail', ico: '🐾', name: '발바닥', coins: 700,  tier: '기본' },
   { id: 'drop',    slot: 'trail', ico: '💧', name: '물방울', coins: 900,  tier: '기본' },
@@ -92,7 +93,7 @@ const RAW = [
   { id: 'kinder_bag', slot: 'back', ico: '🎒', name: '새싹반 가방', coins: 100, anchor: 'side', group: 'sprout' },
 ];
 
-export const ITEMS = Object.freeze(RAW.map(({ coins = null, won = null, ...it }) => Object.freeze(it.reward
+export const ITEMS = Object.freeze(RAW.map(({ coins = null, won = null, ...it }) => Object.freeze(it.reward || it.quest
   ? { ...it, price: { coins: null, won: null, cash: null } }
   : won != null
   ? { ...it, premium: true, price: { coins: null, won, cash: cashFor(it.id, null, won) } }
