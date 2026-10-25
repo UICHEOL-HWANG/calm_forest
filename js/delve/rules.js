@@ -44,6 +44,12 @@ export function rollOre(rng, odds) {
 
 export function dist(a, b) { return Math.hypot(a.x - b.x, a.z - b.z); }
 
+export function chestSpot(ladderAt, half = DELVE_HALF) {
+  const dx = ladderAt.x > 0 ? -2.2 : 2.2;
+  const lim = half - 1.5;
+  return { x: Math.max(-lim, Math.min(lim, ladderAt.x + dx)), z: Math.max(-lim, Math.min(lim, ladderAt.z)) };
+}
+
 const pick = (rng, lo, hi) => lo + rng() * (hi - lo);
 
 function placeFree(rng, taken, ok, half, gap = 1.4, tries = 400) {

@@ -277,3 +277,14 @@ test('완주 후에만 동굴 안에서 하루 일감 카드', () => {
   assert.equal(c.progress, 1);
   assert.equal(jobCard({ ...done, jobDate: '2026-10-25' }, {}, true, '2026-10-25', 0), null);
 });
+
+import { chestSpot } from '../js/delve/rules.js';
+
+test('상자는 사다리에서 2.0 이상 떨어지고 방 안쪽', () => {
+  for (const seed of SEEDS) for (const floor of [10, 20]) {
+    const { ladderAt } = layoutFloor({ seed, floor });
+    const c = chestSpot(ladderAt, DELVE_HALF);
+    assert.ok(dist(c, ladderAt) >= 2.0, `${seed}`);
+    assert.ok(Math.abs(c.x) <= DELVE_HALF - 1.5 && Math.abs(c.z) <= DELVE_HALF - 1.5, `${seed}`);
+  }
+});

@@ -7,7 +7,7 @@ import { DELVE, MINE, MINE_HALF } from '../data/places.js';
 import { DELVE_HALF, DELVE_CHEST_FLOORS, PEST_COPY } from '../data/delve.js';
 import {
   floorSeed, layoutFloor, ladderRevealed, themeOf, oreOdds, rollOre, makeRng, noteReach, oreAllowed, markOreFloor,
-  bumpCount, canDescendFrom0, stopsOpen, stepView, claimStep, noteChest, jobFor, hashSeed,
+  bumpCount, canDescendFrom0, stopsOpen, stepView, claimStep, noteChest, jobFor, hashSeed, chestSpot,
 } from '../delve/rules.js';
 import { rollChest, chestGive } from '../boat-chest.js';
 import { makeChestMesh } from '../boat-chest-art.js';
@@ -99,7 +99,7 @@ export function enterFloor(floor, via) {
   run.chest = null;
   if (DELVE_CHEST_FLOORS.includes(floor) && !gameState.delve.chests[floor]) {
     const mesh = makeChestMesh({ buoy: false });
-    const at = { x: Math.max(-DELVE_HALF + 1.5, Math.min(DELVE_HALF - 1.5, layout.ladderAt.x - 1.6)), z: layout.ladderAt.z };
+    const at = chestSpot(layout.ladderAt, DELVE_HALF);
     mesh.position.copy(W(at.x, at.z)); mesh.position.y = FLOOR_Y; group.add(mesh);
     run.chest = { at, mesh };
   }
