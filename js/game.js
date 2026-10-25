@@ -292,6 +292,7 @@ import { onMountainside } from './mountain/landmark.js';
 import { souvenirOutdoorMesh } from './mountain/souvenir-art.js';
 import { FRIEND_ARCH_ID, buildFriendArch } from './spaces/friend-arch-art.js';   // 🌈 무지개 우정 아치(🤝 초대 보상)
 import { MINE_CART_ID, MINE_CART_BOX, buildMineCart } from './delve/cart-art.js';
+import { outdoorFootprint, blockedByWorld } from './world/outdoor-overlap.js';
 // 🔁 js/spaces/* 가 game.js 의 let 에 쓸 때 거치는 접근자(읽기는 import 한 live binding) — tools/refactor/extract-module.mjs 가 만든다
 export const $w = {
   get _hintAnyPrev() { return _hintAnyPrev; }, set _hintAnyPrev(v) { _hintAnyPrev = v; },
@@ -5587,6 +5588,12 @@ function outdoorMesh(id) {
 }
 
 // 야외 장식 설치 (플레이어 위치에). silent=true 면 저장 복원 · 들어 올린 걸 다시 놓으면(pickedOutdoor) 값 없음 · 🧺 보관분이 있으면 값 없이 꺼내 놓는다
+const OVERLAP_PLACE_MSG = '🌳 나무나 건물과 겹쳐서 놓을 수 없어요';
+function outdoorBlockedByWorld(id, x, z, ry) {
+  const ignore = new Set(outdoorMeshes.map(m => m.userData.solid).filter(Boolean));
+  const fp = outdoorFootprint(id, x, z, ry, { cartBox: MINE_CART_BOX, vatBox: VAT_BOX, cartId: MINE_CART_ID });
+  return blockedByWorld(fp, colliders, ignore);
+}
 function placeOutdoor(wx, wz, silent = false, id = placingOutdoor, rot = null) {
   const def = OUTDOOR.find(d => d.id === id); if (!def) return false;
   const ry = (((rot == null ? decorRot : rot) % 4) + 4) % 4;   // ↻ 90° 4방향 — 실내 가구와 같은 규칙
@@ -5598,6 +5605,7 @@ function placeOutdoor(wx, wz, silent = false, id = placingOutdoor, rot = null) {
     }
   }
   if (!silent && !def.farm && onMountainside(wx, wz, MOUNTAIN_LANDMARK, MOUNTAIN_LANDMARK_R)) { ui.toast?.(MOUNTAIN_PLACE_MSG, 2400); return false; }
+  if (!silent && !def.farm && outdoorBlockedByWorld(id, wx, wz, ry)) { ui.toast?.(OVERLAP_PLACE_MSG, 2400); return false; }
   // 📐측량소 마당 — 밭 시설이든 장식이든 새로 놓지 못하게 막는다(사용자 지시 2026-09-21).
   //   🔥🫙 가공 시설만 예외: 게임이 기본으로 놓아 주고, 플레이어는 마당 안에서 자리만 고친다.
   if (!silent && !def.farm && !STATION_IDS.includes(id) && atFarm) {
