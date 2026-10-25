@@ -78,6 +78,22 @@ const SCENES = {
     g.$w.refreshQuestPanel?.(); frames(3); const p = showPrompt(); g.snapCamera(); await sleep(500);
     return { floor: dl.delveFloorNow(), prompt: p && p.prompt };
   })()`,
+  's1c-lift-choice': `(async () => { ${PRE}
+    toFloor0(); gs.delve = { ...gs.delve, started: true, stage: 3, maxFloor: 12, stops: [5, 10] };
+    mine.enterMine(); await sleep(300);
+    g.player.position.set(P.MINE.x + 5, 0, P.MINE.z - P.MINE_HALF + 5.4); g.snapCamera();
+    dl.handleDelveDoor('delve_lift'); await sleep(700);
+    const m = document.getElementById('hint-modal');
+    return { modal: m.classList.contains('show'), title: document.getElementById('hint-title').textContent, ok: document.getElementById('hint-ok').textContent, alt: document.getElementById('hint-alt').textContent, altHidden: document.getElementById('hint-alt').hidden };
+  })()`,
+  's1d-lift-from1': `(async () => { ${PRE}
+    document.getElementById('hint-alt').click(); await sleep(400); frames(5);
+    const out = { floor: dl.delveFloorNow(), modal: document.getElementById('hint-modal').classList.contains('show') };
+    toFloor0(); mine.enterMine(); g.player.position.set(P.MINE.x + 5, 0, P.MINE.z - P.MINE_HALF + 5.4);
+    dl.handleDelveDoor('delve_lift'); await sleep(300); document.getElementById('hint-ok').click(); await sleep(400); frames(5);
+    out.okFloor = dl.delveFloorNow(); out.marks = dl.delveMinimapMarks().length;
+    return out;
+  })()`,
   's2-floor1-arrival': `(async () => { ${PRE}
     toFloor0(); gs.delve = { ...gs.delve, started: true, stage: 1 }; delete gs.hintsSeen.delve_common;
     mine.enterMine(); await sleep(200);
@@ -165,6 +181,20 @@ const SCENES = {
     dl.enterFloor(12, 'lift'); frames(20); await sleep(1500); out.floor12 = perf();
     dl.enterFloor(11, 'lift'); frames(20); await sleep(1500); out.floor11 = perf();
     dl.enterFloor(4, 'lift'); frames(20); await sleep(1500); out.floor4 = perf();
+    return out;
+  })()`,
+  'p-ladder-perf': `(async () => { ${PRE}
+    const out = {}; const perf = () => window.__perf().calls;
+    toFloor0(); gs.delve = { ...gs.delve, started: true, stage: 4, maxFloor: 12 };
+    mine.enterMine(); await sleep(200);
+    for (const f of [1, 12]) {
+      dl.enterFloor(f, 'lift'); frames(10);
+      for (let x = -7; x <= 7 && !dl.delveMinimapMarks().some(m => m.c === '#ffe48a'); x += 1.4) for (let z = -7; z <= 7; z += 1.4) { g.player.position.set(P.DELVE.x + x, 0, P.DELVE.z + z); for (let k = 0; k < 3; k++) dl.tryDelveMine(); }
+      const sh = dl.delveMinimapMarks().find(m => m.c === '#ffe48a');
+      if (sh) g.player.position.set(sh.x, 0, sh.z + 1.3);
+      frames(5); g.snapCamera(); await sleep(2200);
+      out['floor' + f] = { calls: perf(), ladder: !!sh };
+    }
     return out;
   })()`,
   's6-floor10-chest': `(async () => { ${PRE}

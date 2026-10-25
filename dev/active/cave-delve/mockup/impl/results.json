@@ -1,8 +1,8 @@
 {
  "pc": {
   "villagePerf": {
-   "calls": 312,
-   "tris": 60765,
+   "calls": 316,
+   "tris": 60773,
    "objs": [
     1580,
     1575
@@ -128,7 +128,7 @@
    "res": {
     "floor": 1,
     "banner": {
-     "waited": 500,
+     "waited": 501,
      "ok": true
     }
    },
@@ -179,19 +179,19 @@
     "vw": 1280,
     "vh": 800
    },
-   "calls": 167
+   "calls": 111
   },
   "s3-floor1-ladder": {
    "res": {
     "floor": 1,
     "ladderNear": true,
-    "prompt": "🪜 내려가기",
+    "prompt": null,
     "found": [
-     4.2,
+     5.6,
      5.6
     ],
     "banner": {
-     "waited": 501,
+     "waited": 502,
      "ok": true
     }
    },
@@ -209,7 +209,7 @@
      "left": 582,
      "w": 116,
      "h": 51,
-     "text": "🪜 내려가기",
+     "text": "🪜 올라가기",
      "lines": 3
     },
     "questPanel": {
@@ -219,7 +219,7 @@
      "h": 150,
      "text": "📜\n⛏️ 웅덩이 속 도둑\n광부 아저씨 · 🦎 웅덩이 아가미 톡 치기\n⛏️ 동굴 0층 승강기 옆 광부 아저씨에게 가요\n0 / 1\n접기"
     },
-    "action": "🪜",
+    "action": "⛏️",
     "overlaps": {
      "#quest-panel": {
       "banner": false,
@@ -242,7 +242,7 @@
     "vw": 1280,
     "vh": 800
    },
-   "calls": 442
+   "calls": 500
   },
   "s4-axolotl-tap": {
    "res": {
@@ -551,15 +551,204 @@
    },
    "calls": 181
   },
-  "errors": []
+  "errors": [],
+  "s1c-lift-choice": {
+   "res": {
+    "modal": true,
+    "title": "승강기",
+    "ok": "🛗 지하 10층",
+    "alt": "🪜 1층부터",
+    "altHidden": false,
+    "banner": {
+     "waited": 4324,
+     "ok": true
+    }
+   },
+   "measure": {
+    "banner": {
+     "top": 96,
+     "left": 502,
+     "w": 277,
+     "h": 67,
+     "text": "보석은 🌫️ 안개 낀 날에만 반짝여요 / 오늘은 맑음 · 다음 안개 10월 29일",
+     "lineLines": 1
+    },
+    "prompt": {
+     "top": 599,
+     "left": 573,
+     "w": 135,
+     "h": 51,
+     "text": "🛗 승강기 타기",
+     "lines": 3
+    },
+    "questPanel": {
+     "top": 16,
+     "left": 16,
+     "w": 262,
+     "h": 150,
+     "text": "📜\n⛏️ 먹보 달래기\n광부 아저씨 · 🍄 수정집게에게 미끼 던지기\n⛏️ 동굴 0층 승강기 옆 광부 아저씨에게 가요\n0 / 1\n접기"
+    },
+    "action": "🛗",
+    "overlaps": {
+     "#quest-panel": {
+      "banner": false,
+      "prompt": false
+     },
+     "#minimap": {
+      "banner": false,
+      "prompt": false
+     },
+     "#hotbar": {
+      "banner": false,
+      "prompt": false
+     },
+     "#topright": {
+      "banner": false,
+      "prompt": false
+     },
+     "#story-chip": {
+      "banner": false,
+      "prompt": false
+     }
+    },
+    "overlapTrue": [],
+    "vw": 1280,
+    "vh": 800
+   },
+   "calls": 219
+  },
+  "s1d-lift-from1": {
+   "res": {
+    "floor": 1,
+    "modal": false,
+    "okFloor": 10,
+    "marks": 2,
+    "banner": {
+     "waited": 2809,
+     "ok": true
+    }
+   },
+   "measure": {
+    "banner": {
+     "top": 96,
+     "left": 524,
+     "w": 232,
+     "h": 62,
+     "text": "조각 도둑 / 가방은 안전해요. 조각만 노려요",
+     "lineLines": 1
+    },
+    "prompt": {
+     "top": 599,
+     "left": 582,
+     "w": 116,
+     "h": 51,
+     "text": "🪜 올라가기",
+     "lines": 3
+    },
+    "questPanel": {
+     "top": 16,
+     "left": 16,
+     "w": 262,
+     "h": 150,
+     "text": "📜\n⛏️ 먹보 달래기\n광부 아저씨 · 🍄 수정집게에게 미끼 던지기\n⛏️ 동굴 0층 승강기 옆 광부 아저씨에게 가요\n0 / 1\n접기"
+    },
+    "action": "🪜",
+    "overlaps": {
+     "#quest-panel": {
+      "banner": false,
+      "prompt": false
+     },
+     "#minimap": {
+      "banner": false,
+      "prompt": false
+     },
+     "#hotbar": {
+      "banner": false,
+      "prompt": false
+     },
+     "#topright": {
+      "banner": false,
+      "prompt": false
+     }
+    },
+    "overlapTrue": [],
+    "vw": 1280,
+    "vh": 800
+   },
+   "calls": 98
+  },
+  "p-ladder-perf": {
+   "res": {
+    "floor1": {
+     "calls": 209,
+     "ladder": true
+    },
+    "floor12": {
+     "calls": 277,
+     "ladder": true
+    },
+    "banner": {
+     "waited": 502,
+     "ok": true
+    }
+   },
+   "measure": {
+    "banner": {
+     "top": 96,
+     "left": 524,
+     "w": 232,
+     "h": 62,
+     "text": "조각 도둑 / 가방은 안전해요. 조각만 노려요",
+     "lineLines": 1
+    },
+    "prompt": {
+     "top": 599,
+     "left": 582,
+     "w": 116,
+     "h": 51,
+     "text": "🪜 내려가기",
+     "lines": 3
+    },
+    "questPanel": {
+     "top": 16,
+     "left": 16,
+     "w": 261,
+     "h": 150,
+     "text": "📜\n⛏️ 10층 보물상자\n광부 아저씨 · 🧰 지하 10층 상자 열기\n⛏️ 동굴 0층 승강기 옆 광부 아저씨에게 가요\n0 / 1\n접기"
+    },
+    "action": "⛏️",
+    "overlaps": {
+     "#quest-panel": {
+      "banner": false,
+      "prompt": false
+     },
+     "#minimap": {
+      "banner": false,
+      "prompt": false
+     },
+     "#hotbar": {
+      "banner": false,
+      "prompt": false
+     },
+     "#topright": {
+      "banner": false,
+      "prompt": false
+     }
+    },
+    "overlapTrue": [],
+    "vw": 1280,
+    "vh": 800
+   },
+   "calls": 229
+  }
  },
  "phone375": {
   "villagePerf": {
-   "calls": 258,
-   "tris": 49657,
+   "calls": 253,
+   "tris": 49489,
    "objs": [
-    1414,
-    1409
+    1416,
+    1411
    ]
   },
   "s1-floor0-miner": {
@@ -698,7 +887,7 @@
    "res": {
     "floor": 1,
     "banner": {
-     "waited": 904,
+     "waited": 702,
      "ok": true
     }
    },
@@ -757,19 +946,19 @@
     "vw": 375,
     "vh": 812
    },
-   "calls": 139
+   "calls": 63
   },
   "s3-floor1-ladder": {
    "res": {
     "floor": 1,
     "ladderNear": true,
-    "prompt": "🪜 내려가기",
+    "prompt": null,
     "found": [
-     4.2,
+     5.6,
      5.6
     ],
     "banner": {
-     "waited": 502,
+     "waited": 1509,
      "ok": true
     }
    },
@@ -787,7 +976,7 @@
      "left": 147,
      "w": 80,
      "h": 31,
-     "text": "🪜 내려가기",
+     "text": "🪜 올라가기",
      "lines": 2
     },
     "questPanel": {
@@ -797,7 +986,7 @@
      "h": 61,
      "text": "📜\n⛏️ 웅덩이 속 도둑\n0/1\n펼치기"
     },
-    "action": "🪜",
+    "action": "⛏️",
     "overlaps": {
      "#joy-base": {
       "banner": false,
@@ -828,7 +1017,7 @@
     "vw": 375,
     "vh": 812
    },
-   "calls": 295
+   "calls": 253
   },
   "s4-axolotl-tap": {
    "res": {
@@ -1177,15 +1366,224 @@
    },
    "calls": 139
   },
-  "errors": []
+  "errors": [],
+  "s1c-lift-choice": {
+   "res": {
+    "modal": true,
+    "title": "승강기",
+    "ok": "🛗 지하 10층",
+    "alt": "🪜 1층부터",
+    "altHidden": false,
+    "banner": {
+     "waited": 5531,
+     "ok": true
+    }
+   },
+   "measure": {
+    "banner": {
+     "top": 169,
+     "left": 12,
+     "w": 228,
+     "h": 48,
+     "text": "보석은 🌫️ 안개 낀 날에만 반짝여요 / 오늘은 맑음 · 다음 안개 10월 29일",
+     "lineLines": 1
+    },
+    "prompt": {
+     "top": 547,
+     "left": 140,
+     "w": 95,
+     "h": 31,
+     "text": "🛗 승강기 타기",
+     "lines": 2
+    },
+    "questPanel": {
+     "top": 10,
+     "left": 16,
+     "w": 147,
+     "h": 61,
+     "text": "📜\n⛏️ 먹보 달래기\n0/1\n펼치기"
+    },
+    "action": "🛗",
+    "overlaps": {
+     "#joy-base": {
+      "banner": false,
+      "prompt": false
+     },
+     "#action-btn": {
+      "banner": false,
+      "prompt": false
+     },
+     "#quest-panel": {
+      "banner": false,
+      "prompt": false
+     },
+     "#minimap": {
+      "banner": false,
+      "prompt": false
+     },
+     "#hotbar": {
+      "banner": false,
+      "prompt": false
+     },
+     "#topright": {
+      "banner": false,
+      "prompt": false
+     }
+    },
+    "overlapTrue": [],
+    "vw": 375,
+    "vh": 812
+   },
+   "calls": 119
+  },
+  "s1d-lift-from1": {
+   "res": {
+    "floor": 1,
+    "modal": false,
+    "okFloor": 10,
+    "marks": 2,
+    "banner": {
+     "waited": 704,
+     "ok": true
+    }
+   },
+   "measure": {
+    "banner": {
+     "top": 79,
+     "left": 146,
+     "w": 218,
+     "h": 64,
+     "text": "🎁 반짝 돌 공방 세트 / 광산에서 일정 확률로 나와요! 세트 보기 ›",
+     "lineLines": 2
+    },
+    "prompt": {
+     "top": 547,
+     "left": 147,
+     "w": 80,
+     "h": 31,
+     "text": "🪜 올라가기",
+     "lines": 2
+    },
+    "questPanel": {
+     "top": 10,
+     "left": 16,
+     "w": 147,
+     "h": 61,
+     "text": "📜\n⛏️ 먹보 달래기\n0/1\n펼치기"
+    },
+    "action": "🪜",
+    "overlaps": {
+     "#joy-base": {
+      "banner": false,
+      "prompt": false
+     },
+     "#action-btn": {
+      "banner": false,
+      "prompt": false
+     },
+     "#quest-panel": {
+      "banner": false,
+      "prompt": false
+     },
+     "#minimap": {
+      "banner": false,
+      "prompt": false
+     },
+     "#hotbar": {
+      "banner": false,
+      "prompt": false
+     },
+     "#topright": {
+      "banner": false,
+      "prompt": false
+     }
+    },
+    "overlapTrue": [],
+    "vw": 375,
+    "vh": 812
+   },
+   "calls": 87
+  },
+  "p-ladder-perf": {
+   "res": {
+    "floor1": {
+     "calls": 105,
+     "ladder": true
+    },
+    "floor12": {
+     "calls": 169,
+     "ladder": true
+    },
+    "banner": {
+     "waited": 501,
+     "ok": true
+    }
+   },
+   "measure": {
+    "banner": {
+     "top": 79,
+     "left": 165,
+     "w": 198,
+     "h": 44,
+     "text": "조각 도둑 / 가방은 안전해요. 조각만 노려요",
+     "lineLines": 1
+    },
+    "prompt": {
+     "top": 547,
+     "left": 147,
+     "w": 80,
+     "h": 31,
+     "text": "🪜 내려가기",
+     "lines": 2
+    },
+    "questPanel": {
+     "top": 10,
+     "left": 16,
+     "w": 162,
+     "h": 61,
+     "text": "📜\n⛏️ 10층 보물상자\n0/1\n펼치기"
+    },
+    "action": "⛏️",
+    "overlaps": {
+     "#joy-base": {
+      "banner": false,
+      "prompt": false
+     },
+     "#action-btn": {
+      "banner": false,
+      "prompt": false
+     },
+     "#quest-panel": {
+      "banner": false,
+      "prompt": false
+     },
+     "#minimap": {
+      "banner": false,
+      "prompt": false
+     },
+     "#hotbar": {
+      "banner": false,
+      "prompt": false
+     },
+     "#topright": {
+      "banner": false,
+      "prompt": false
+     }
+    },
+    "overlapTrue": [],
+    "vw": 375,
+    "vh": 812
+   },
+   "calls": 169
+  }
  },
  "phone320": {
   "villagePerf": {
-   "calls": 268,
-   "tris": 50341,
+   "calls": 260,
+   "tris": 50027,
    "objs": [
-    1417,
-    1412
+    1409,
+    1404
    ]
   },
   "s1-floor0-miner": {
@@ -1324,7 +1722,7 @@
    "res": {
     "floor": 1,
     "banner": {
-     "waited": 1510,
+     "waited": 501,
      "ok": true
     }
    },
@@ -1383,19 +1781,19 @@
     "vw": 320,
     "vh": 640
    },
-   "calls": 139
+   "calls": 65
   },
   "s3-floor1-ladder": {
    "res": {
     "floor": 1,
     "ladderNear": true,
-    "prompt": "🪜 내려가기",
+    "prompt": null,
     "found": [
-     4.2,
+     5.6,
      5.6
     ],
     "banner": {
-     "waited": 502,
+     "waited": 501,
      "ok": true
     }
    },
@@ -1413,7 +1811,7 @@
      "left": 120,
      "w": 80,
      "h": 31,
-     "text": "🪜 내려가기",
+     "text": "🪜 올라가기",
      "lines": 2
     },
     "questPanel": {
@@ -1423,7 +1821,7 @@
      "h": 61,
      "text": "📜\n⛏️ 웅덩이 속 도둑\n0/1\n펼치기"
     },
-    "action": "🪜",
+    "action": "⛏️",
     "overlaps": {
      "#joy-base": {
       "banner": false,
@@ -1454,7 +1852,7 @@
     "vw": 320,
     "vh": 640
    },
-   "calls": 307
+   "calls": 267
   },
   "s4-axolotl-tap": {
    "res": {
@@ -1803,6 +2201,215 @@
    },
    "calls": 141
   },
-  "errors": []
+  "errors": [],
+  "s1c-lift-choice": {
+   "res": {
+    "modal": true,
+    "title": "승강기",
+    "ok": "🛗 지하 10층",
+    "alt": "🪜 1층부터",
+    "altHidden": false,
+    "banner": {
+     "waited": 5532,
+     "ok": true
+    }
+   },
+   "measure": {
+    "banner": {
+     "top": 169,
+     "left": 12,
+     "w": 228,
+     "h": 48,
+     "text": "보석은 🌫️ 안개 낀 날에만 반짝여요 / 오늘은 맑음 · 다음 안개 10월 29일",
+     "lineLines": 1
+    },
+    "prompt": {
+     "top": 375,
+     "left": 113,
+     "w": 95,
+     "h": 31,
+     "text": "🛗 승강기 타기",
+     "lines": 2
+    },
+    "questPanel": {
+     "top": 10,
+     "left": 16,
+     "w": 147,
+     "h": 61,
+     "text": "📜\n⛏️ 먹보 달래기\n0/1\n펼치기"
+    },
+    "action": "🛗",
+    "overlaps": {
+     "#joy-base": {
+      "banner": false,
+      "prompt": false
+     },
+     "#action-btn": {
+      "banner": false,
+      "prompt": false
+     },
+     "#quest-panel": {
+      "banner": false,
+      "prompt": false
+     },
+     "#minimap": {
+      "banner": false,
+      "prompt": false
+     },
+     "#hotbar": {
+      "banner": false,
+      "prompt": false
+     },
+     "#topright": {
+      "banner": false,
+      "prompt": false
+     }
+    },
+    "overlapTrue": [],
+    "vw": 320,
+    "vh": 640
+   },
+   "calls": 111
+  },
+  "s1d-lift-from1": {
+   "res": {
+    "floor": 1,
+    "modal": false,
+    "okFloor": 10,
+    "marks": 2,
+    "banner": {
+     "waited": 3641,
+     "ok": true
+    }
+   },
+   "measure": {
+    "banner": {
+     "top": 79,
+     "left": 122,
+     "w": 186,
+     "h": 60,
+     "text": "조각 도둑 / 가방은 안전해요. 조각만 노려요",
+     "lineLines": 2
+    },
+    "prompt": {
+     "top": 375,
+     "left": 120,
+     "w": 80,
+     "h": 31,
+     "text": "🪜 올라가기",
+     "lines": 2
+    },
+    "questPanel": {
+     "top": 10,
+     "left": 16,
+     "w": 147,
+     "h": 61,
+     "text": "📜\n⛏️ 먹보 달래기\n0/1\n펼치기"
+    },
+    "action": "🪜",
+    "overlaps": {
+     "#joy-base": {
+      "banner": false,
+      "prompt": false
+     },
+     "#action-btn": {
+      "banner": false,
+      "prompt": false
+     },
+     "#quest-panel": {
+      "banner": false,
+      "prompt": false
+     },
+     "#minimap": {
+      "banner": false,
+      "prompt": false
+     },
+     "#hotbar": {
+      "banner": false,
+      "prompt": false
+     },
+     "#topright": {
+      "banner": false,
+      "prompt": false
+     }
+    },
+    "overlapTrue": [],
+    "vw": 320,
+    "vh": 640
+   },
+   "calls": 91
+  },
+  "p-ladder-perf": {
+   "res": {
+    "floor1": {
+     "calls": 107,
+     "ladder": true
+    },
+    "floor12": {
+     "calls": 169,
+     "ladder": true
+    },
+    "banner": {
+     "waited": 538,
+     "ok": true
+    }
+   },
+   "measure": {
+    "banner": {
+     "top": 79,
+     "left": 122,
+     "w": 186,
+     "h": 60,
+     "text": "조각 도둑 / 가방은 안전해요. 조각만 노려요",
+     "lineLines": 2
+    },
+    "prompt": {
+     "top": 375,
+     "left": 120,
+     "w": 80,
+     "h": 31,
+     "text": "🪜 내려가기",
+     "lines": 2
+    },
+    "questPanel": {
+     "top": 10,
+     "left": 16,
+     "w": 162,
+     "h": 61,
+     "text": "📜\n⛏️ 10층 보물상자\n0/1\n펼치기"
+    },
+    "action": "⛏️",
+    "overlaps": {
+     "#joy-base": {
+      "banner": false,
+      "prompt": false
+     },
+     "#action-btn": {
+      "banner": false,
+      "prompt": false
+     },
+     "#quest-panel": {
+      "banner": false,
+      "prompt": false
+     },
+     "#minimap": {
+      "banner": false,
+      "prompt": false
+     },
+     "#hotbar": {
+      "banner": false,
+      "prompt": false
+     },
+     "#topright": {
+      "banner": false,
+      "prompt": false
+     }
+    },
+    "overlapTrue": [],
+    "vw": 320,
+    "vh": 640
+   },
+   "calls": 169
+  }
  }
 }
