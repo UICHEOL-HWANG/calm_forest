@@ -3,10 +3,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SLOTS, ITEMS, itemsOf, findItem } from '../js/cosmetics/catalog.js';
 
-test('슬롯 6개 · 품목 55종(코인 18 + 프리미엄 자국 2 + 스킨 2 + 도구 세트 3 + 🎃 할로윈 10 + 🍁 2차 11 + 🤝 초대 보상 3 + 🌱 새싹반 3)', () => {
+test('슬롯 6개 · 품목 55종(코인 18 + 프리미엄 자국 2 + 스킨 2 + 도구 세트 3 + 🎃 할로윈 10 + 🍁 2차 11 + 🤝 초대 보상 3 + 🌱 새싹반 3 + ⛏️ 광부 보상 1)', () => {
   assert.deepEqual([...SLOTS], ['head', 'neck', 'back', 'trail', 'skin', 'tools']);
-  assert.equal(ITEMS.length, 55);
-  assert.equal(itemsOf('head').length, 12);
+  assert.equal(ITEMS.length, 56);
+  assert.equal(itemsOf('head').length, 13);
   assert.equal(itemsOf('neck').length, 4);
   assert.equal(itemsOf('back').length, 10);
   assert.equal(itemsOf('trail').length, 12);
@@ -34,7 +34,7 @@ test('가격 — coins 와 won 중 정확히 하나. 현금 칸은 null 이거�
     assert.ok(c === null || (typeof c.priceId === 'string' && typeof c.label === 'string'), `${it.id} 의 cash 형태`);
     const hasCoins = Number.isInteger(it.price.coins) && it.price.coins > 0;
     const hasWon = Number.isInteger(it.price.won) && it.price.won > 0;
-    if (it.reward) {   // 🤝 초대 보상 — 비매품: 가격이 전부 없다
+    if (it.reward || it.quest) {
       assert.ok(!hasCoins && !hasWon && c === null && !it.premium, `${it.id}: 보상은 가격 없음`);
       continue;
     }
@@ -44,7 +44,7 @@ test('가격 — coins 와 won 중 정확히 하나. 현금 칸은 null 이거�
 });
 
 test('꾸미기 최저가가 일꾼 초빙료(120🪙)보다 훨씬 비싸다 — 집 증축을 밀어내면 안 된다(§2-2) · 🌱 새싹반은 예외', () => {
-  assert.ok(Math.min(...ITEMS.filter(i => !i.premium && !i.reward && i.group !== 'sprout').map(i => i.price.coins)) >= 600);
+  assert.ok(Math.min(...ITEMS.filter(i => !i.premium && !i.reward && !i.quest && i.group !== 'sprout').map(i => i.price.coins)) >= 600);
 });
 
 test('🌱 새싹반 3종 — 머리·목·가방 하나씩, 50·70·100🪙, 일꾼 초빙료(120🪙) 아래', () => {
@@ -58,7 +58,7 @@ test('🌱 새싹반 3종 — 머리·목·가방 하나씩, 50·70·100🪙, �
 
 test('머리 장식은 earSafe 를 반드시 갖는다 — 귀 처리 규칙(§3-3)', () => {
   for (const it of itemsOf('head')) assert.ok(['low', 'dome'].includes(it.earSafe), it.id);
-  assert.equal(itemsOf('head').filter(i => i.earSafe === 'dome').length, 5);
+  assert.equal(itemsOf('head').filter(i => i.earSafe === 'dome').length, 6);
 });
 
 test('가방류는 side 앵커, 망토만 back — 🦊여우 꼬리 회피(§3-3)', () => {
@@ -85,4 +85,13 @@ test('findItem: 없는 id 는 null', () => {
   assert.equal(findItem('nope'), null);
   assert.equal(findItem('hat_straw'), null, '있지도 않은 옛 id');
   assert.equal(findItem('straw_hat').slot, 'head');
+});
+
+test('⛏️ 광부 헬멧 — 광부 아저씨 보상, 팔지 않고 서버 보안 가드 대상도 아니다', () => {
+  const it = findItem('miner_lamp');
+  assert.equal(it.slot, 'head'); assert.equal(it.ico, '⛏️'); assert.equal(it.name, '광부 헬멧');
+  assert.equal(it.earSafe, 'dome'); assert.equal(it.quest, 'delve');
+  assert.deepEqual(it.price, { coins: null, won: null, cash: null });
+  assert.ok(!it.premium && !it.reward);
+  assert.deepEqual(ITEMS.filter(i => i.quest).map(i => i.id), ['miner_lamp']);
 });

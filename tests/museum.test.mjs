@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed, viewFrame, exhibitCenterY,
+import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, liveOpenFloors, sanitizeMaxFloor, legacyMaxFloor, initialMaxFloor, nextFloorNeed, viewFrame, exhibitCenterY,
   SPECIAL_EXHIBITS, specialFor, noteSpecial, sanitizeSpecial, bestAfterCatch, sanitizeBest } from '../js/museum.js';
 import { VISITORS } from '../js/habitat.js';
 
@@ -42,12 +42,13 @@ function dexWith(cat, n) {
   return out;
 }
 
-test('층 구성 — 1층 13 · 2층 17 · 3층 18 · 특별전', () => {
+test('층 구성 — 1층 10 · 2층 17 · 3층 18 · 특별전(요리+광물)', () => {
   assert.equal(MUSEUM_FLOORS.length, 4);
-  assert.equal(floorEntries(1, DEX).length, 13);
+  assert.equal(floorEntries(1, DEX).length, 10);
   assert.equal(floorEntries(2, DEX).length, 13 + VISITORS.length);   // 🍄🌟🪏🐾 13 + 🦋방문객
   assert.equal(floorEntries(3, DEX).length, 12 + REAL_NPC);   // 🛶강4+🌫️정령4+🌦️날씨4 + 주민·손님
-  assert.ok(floorEntries(4, DEX).length > 0);
+  assert.equal(floorEntries(4, DEX).length, REAL_COOK + 3);
+  assert.deepEqual(MUSEUM_FLOORS.map(f => f.cats.includes('ore')), [false, false, false, true]);
 });
 
 test('층 전시 목록에는 카테고리가 함께 붙는다(명판·도감 조회에 쓴다)', () => {
@@ -95,7 +96,7 @@ test('위층만 채워도 아래층 기준을 못 넘으면 열리지 않는다'
 test('진행도와 다음 목표를 함께 돌려준다(큐레이터 대사·안내에 쓴다)', () => {
   const d = dexWith('crop', 5);
   const p = floorProgress(1, d, DEX);
-  assert.deepEqual(p, { have: 5, total: 13 });
+  assert.deepEqual(p, { have: 5, total: 10 });
   const n = nextFloorNeed(d, DEX);
   assert.equal(n.floor, 2);
   assert.equal(n.need, 9);
@@ -182,6 +183,22 @@ test('잠긴 맵의 종은 집지 않는다', () => {
   const locked = { locked: { river: true, sea: false, mist: false } };
   assert.equal(pickMissingDex(d, DEX, 5, locked), null, '🛶강이 잠겼는데 강 도감을 집었다');
   assert.ok(pickMissingDex(d, DEX, 5, OPEN), '열려 있으면 집어야 한다');
+});
+
+test('🔮 수정은 지하 열한 번째 층에 닿기 전엔 집지 않는다', () => {
+  const D = { ...DEX, ore: [{ id: 'stone' }, { id: 'crystal' }] };
+  const d = {};
+  for (const k of Object.keys(D)) { d[k] = {}; D[k].forEach(e => { d[k][e.id] = 1; }); }
+  delete d.ore.crystal;
+  assert.equal(pickMissingDex(d, D, 5, { locked: { ...OPEN.locked, deep: true } }), null);
+  assert.deepEqual(pickMissingDex(d, D, 5, { locked: { ...OPEN.locked, deep: false } }), { id: 'crystal', cat: 'ore' });
+  assert.deepEqual(pickMissingDex(d, D, 5, OPEN), { id: 'crystal', cat: 'ore' });
+});
+
+test('🔮 의뢰 ctx 가 지하 도달 여부를 넘긴다', () => {
+  const g = gameSource();
+  assert.match(g, /deep: \(gameState\.delve\?\.maxFloor \|\| 0\) < DELVE_THEMES\.find\(t => t\.id === 'crystal'\)\.from/);
+  assert.match(g, /import \{ DELVE_HALF, THEMES as DELVE_THEMES \} from '\.\/data\/delve\.js'/);
 });
 
 // 🌦️ 날씨는 "그 날씨인 날 접속" 이라 하루 안에 못 맞출 수 있다 — 오늘의 의뢰로는 부적절
@@ -518,10 +535,10 @@ test('층 정의: 1·2층은 벽 유리장, 3층·특별전은 회랑 — 그리
   }
 });
 
-test('실제 도감 칸 수 — 1층 17 · 2층 17 · 3층 31 · 특별전 11(바뀌면 배치 한도를 다시 본다)', () => {
+test('실제 도감 칸 수 — 1층 14 · 2층 17 · 3층 31 · 특별전 15(바뀌면 배치 한도를 다시 본다)', () => {
   const real = realDexIds();
   const DEXR = Object.fromEntries(Object.entries(real).map(([k, v]) => [k, v.map(id => ({ id }))]));
-  assert.deepEqual(MUSEUM_FLOORS.map(f => floorEntries(f.id, DEXR).length), [17, 17, 31, 11]);
+  assert.deepEqual(MUSEUM_FLOORS.map(f => floorEntries(f.id, DEXR).length), [14, 17, 31, 15]);
 });
 
 test('전시물 메시: 새 조형 → 폴백 순서, 모든 경로가 바닥 y=0 으로 앉는다', () => {
@@ -531,4 +548,55 @@ test('전시물 메시: 새 조형 → 폴백 순서, 모든 경로가 바닥 y=
   assert.match(fn, /\|\| fallbackExhibit\(item\)/);
   assert.match(fn, /return seatOnBase\(obj\)/);
   assert.match(CAFE_SRC, /updateWorldMatrix\(true, true\);[^\n]*\n\s*const b = new THREE\.Box3/, '재기 전에 월드 행렬을 갱신해야 한다');
+});
+
+test('열린 층은 줄지 않는다 - 저장된 maxFloor 가 바닥이다', () => {
+  const d = dexWith('crop', 7);
+  d.fish = { f1: 1, f2: 1 };
+  assert.equal(liveOpenFloors(d, DEX), 2);
+  assert.equal(openFloors({}, DEX, 2), 2);
+  assert.equal(openFloors({}, DEX, 4), 4);
+  assert.equal(openFloors(d, DEX, 1), 2);
+  const grown = [1, 2, 3, 4].map(m => openFloors({}, DEX, m));
+  assert.deepEqual(grown, [1, 2, 3, 4]);
+});
+
+test('maxFloor 정제 - 깨진 값은 1, 범위는 1..층 수', () => {
+  assert.equal(sanitizeMaxFloor(undefined), 1);
+  assert.equal(sanitizeMaxFloor('x'), 1);
+  assert.equal(sanitizeMaxFloor(-3), 1);
+  assert.equal(sanitizeMaxFloor(99), MUSEUM_FLOORS.length);
+  assert.equal(sanitizeMaxFloor(2.9), 2);
+});
+
+test('옛 규칙 이관 - 작물 5 + 물고기 1 + 광물 3 이면 2층이 열려 있었다', () => {
+  const d = { crop: {}, fish: {}, ore: {} };
+  DEX.crop.slice(0, 5).forEach(e => { d.crop[e.id] = 1; });
+  d.fish[DEX.fish[0].id] = 1;
+  DEX.ore.slice(0, 3).forEach(e => { d.ore[e.id] = 1; });
+  assert.equal(liveOpenFloors(d, DEX), 1);
+  assert.equal(legacyMaxFloor(d, DEX), 2);
+  assert.equal(initialMaxFloor(undefined, d, DEX), 2);
+  assert.equal(initialMaxFloor(null, d, DEX), 2);
+});
+
+test('maxFloor 가 있는 세이브는 이관하지 않고 저장값을 따른다', () => {
+  const d = { crop: {}, fish: {}, ore: {} };
+  DEX.ore.slice(0, 3).forEach(e => { d.ore[e.id] = 1; });
+  assert.equal(initialMaxFloor(1, d, DEX), 1);
+  assert.equal(initialMaxFloor(3, {}, DEX), 3);
+});
+
+test('새 세이브 기본값은 1층', () => {
+  assert.equal(initialMaxFloor(undefined, {}, DEX), 1);
+  assert.equal(openFloors({}, DEX), 1);
+});
+
+test('maxFloor 는 줄어들지 않는다 - 도감이 줄어도 열린 층 유지', () => {
+  const d = dexWith('crop', 7);
+  d.fish = { f1: 1, f2: 1 };
+  const m = initialMaxFloor(undefined, d, DEX);
+  assert.equal(m, 2);
+  assert.equal(initialMaxFloor(m, {}, DEX), 2);
+  assert.equal(openFloors({}, DEX, m), 2);
 });

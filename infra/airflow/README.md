@@ -98,7 +98,7 @@ GA4 export(다음 날 09~19시 도착) + calm_forest_raw.session_logs
 - 첫 플레이 = 웹 `login`·`deferred_guest`. 앱 연결 = user_id 또는 `install_attribution.jid`. 추정 매칭 없음.
 - 품질: GA4 2일 넘게 멈춤·하위 단계 > 상위 단계 → 슬랙 + 시트 갱신 중단 / utm_campaign 누락 20%↑·랜딩 5배 급증·개발 기기 → 슬랙 경고만.
 - 시트에서 DAG 가 쓰는 칸은 H:O·T:W 와 `_auto_*` 탭뿐. 메타·스토어 열·메모는 사람이 쓴다.
-- 메타 비용 열(C:G)은 2단계(Marketing API)에서 자동화 — 그 전엔 광고 관리자 CSV 수동.
+- 메타 열(C:G 비용·노출·도달·링크 클릭·랜딩페이지조회)은 `extract_meta` 가 Marketing API insights(level=ad, 일별)로 채운다. 매 실행 기간 전체를 다시 받아 `ads.meta_insights` 를 통째로 덮어쓰고, 소재별 일별 수치는 `_auto_meta_ad` 탭에 쓴다. 도달은 광고 합산이라 중복이 섞인 근사치. 토큰·계정 Variable 이 없거나 API 가 실패하면 C:G 는 그대로 두고 나머지는 평소대로 돈다(실패는 슬랙 경고).
 
 ```bash
 ssh oracle-calmforest 'mkdir -p /opt/airflow/dags/sql'
@@ -106,4 +106,10 @@ scp sql/analytics/ads_funnel.sql oracle-calmforest:/opt/airflow/dags/sql/
 scp infra/airflow/dags/ads_funnel_daily.py oracle-calmforest:/opt/airflow/dags/
 ```
 
-Variables: `ads_sheet_id`(필수) · `ads_utm_source`(기본 meta) · `ads_slack_channel`(기본 #cf-data).
+Variables: `ads_sheet_id`(필수) · `ads_utm_source`(기본 meta) · `ads_slack_channel`(기본 #cf-data). · `meta_ad_account_id`(숫자만, 없으면 메타 추출 건너뜀) · `meta_api_version`(기본 v24.0)
+
+메타 토큰 = 비즈니스 포트폴리오 시스템 사용자 토큰(`ads_read`, 광고 계정 자산 할당). 키체인에서 파이프로 넣는다:
+
+```bash
+security find-generic-password -s calmforest-meta-ads-token -w | ssh oracle-calmforest 'umask 077; cat > /opt/airflow/secrets/meta_ads_token'
+```

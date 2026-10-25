@@ -10,8 +10,8 @@ const read = (p) => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 const wiki = await loadWiki();
 const index = buildIndex(wiki.entries);
 
-test('loadWiki: 80 문서 · 13 분류 · 영문명 전부', () => {
-  assert.equal(wiki.entries.length, 80);
+test('loadWiki: 81 문서 · 13 분류 · 영문명 전부', () => {
+  assert.equal(wiki.entries.length, 81);
   assert.equal(wiki.cats.length, 13);
   assert.deepEqual(wiki.entries.filter(e => !e.nameEn).map(e => e.id), []);
 });
@@ -66,7 +66,7 @@ test('renderCat·renderHome·searchIndex', () => {
   assert.match(home, /<title>고요위키 · 고요한 숲 공식 위키<\/title>/);
   for (const c of WIKI_CATS) assert.match(home, new RegExp(`href="/wiki/${c.id}/"`));
   const idx = JSON.parse(searchIndex(wiki.entries, wiki.cats));
-  assert.equal(idx.length, 80);
+  assert.equal(idx.length, 81);
   assert.deepEqual(Object.keys(idx[0]).sort(), ['c', 'e', 'i', 'n', 'p']);
   assert.equal(docPath(index.get('fish/sea_buri')), '/wiki/fish/sea_buri');
 });

@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Miner NPC Concepts</title>
+<style>
+  :root { --bg: #f4efe6; --ink: #2b2118; --muted: #6b5b4a; --card: #fffaf2; --line: #e2d6c4; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Pretendard", "Apple SD Gothic Neo", sans-serif; }
+  header { padding: 16px 20px 4px; }
+  h1 { margin: 0 0 4px; font-size: 20px; }
+  header p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; padding: 14px 20px 24px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
+  .card h2 { margin: 0; padding: 10px 12px 2px; font-size: 16px; }
+  .card .how { margin: 0; padding: 0 12px 10px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+  .card .how b { color: var(--ink); }
+  .views { position: relative; margin-top: auto; }
+  .views canvas { display: block; width: 100%; }
+  .views canvas + canvas { border-top: 2px solid var(--line); }
+  .tag { position: absolute; left: 8px; background: rgba(43,33,24,.72); color: #fff; font-size: 11px; padding: 3px 7px; border-radius: 6px; }
+  @media (max-width: 1000px) { .grid { grid-template-columns: 1fr; padding: 12px 16px; } header { padding: 14px 16px 4px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>⛏️ 광부 아저씨 시안 3종</h1>
+  <p>위 = 게임 카메라(0, 14, 16)로 본 동굴 0층 · 아래 = 가까이 · 왼쪽 = 광부 시안 / 오른쪽 = 👷 목수 아저씨(헷갈리면 안 되는 비교 대상)<br>
+  몸통·머리·눈은 기존 주민과 같은 틀, 고유색과 머리 소품으로 구분</p>
+</header>
+<div class="grid" id="grid"></div>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+const Q = new URLSearchParams(location.search);
+const FIXED_T = Q.has('t') ? Number(Q.get('t')) : null;
+const clayMat = (color, flat = true) => new THREE.MeshStandardMaterial({ color, roughness: 0.95, metalness: 0, flatShading: flat });
+const glowMat = (color, k = 1.2) => new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: k, roughness: 0.4 });
+
+function baseNPC(def) {
+  const g = new THREE.Group();
+  const add = (m, x, y, z) => { m.position.set(x, y, z); m.castShadow = true; g.add(m); return m; };
+  const body = add(new THREE.Mesh(new THREE.IcosahedronGeometry(0.5, 1), clayMat(def.color, false)), 0, 0.55, 0); body.scale.set(1, 1.05, 1);
+  add(new THREE.Mesh(new THREE.IcosahedronGeometry(0.38, 1), clayMat(def.skin || 0xffe0c0, false)), 0, 1.15, 0);
+  const eyeMat = new THREE.MeshStandardMaterial({ color: 0x3a2f2a, roughness: 0.6 });
+  [-0.13, 0.13].forEach(ex => add(new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), eyeMat), ex, 1.18, 0.32));
+  return { g, add };
+}
+
+function builder() {
+  const { g, add } = baseNPC({ color: 0xe0663c });
+  const hat = 0xffd23f;
+  add(new THREE.Mesh(new THREE.SphereGeometry(0.42, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), clayMat(hat, false)), 0, 1.32, 0);
+  add(new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.05, 0.22), clayMat(hat, false)), 0, 1.34, 0.34);
+  add(new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.06, 0.5), clayMat(0xd9a520, false)), 0, 1.55, 0);
+  const plank = add(new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.1, 1.5), clayMat(0xc79a63, false)), -0.34, 1.02, -0.05);
+  plank.rotation.set(0, 0.35, 0.22);
+  return g;
+}
+
+function pickaxe(x, y, z, rot) {
+  const grp = new THREE.Group(); grp.position.set(x, y, z); grp.rotation.set(...rot);
+  const h = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 1.1, 6), clayMat(0x7a5232)); h.castShadow = true; grp.add(h);
+  const headG = new THREE.Group(); headG.position.y = 0.52; grp.add(headG);
+  [-1, 1].forEach(s => { const c = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.36, 5), clayMat(0x3e3b3a)); c.rotation.z = -s * (Math.PI / 2 + 0.25); c.position.x = s * 0.17; c.castShadow = true; headG.add(c); });
+  return grp;
+}
+
+function minerA() {
+  const { g, add } = baseNPC({ color: 0x6b7448, skin: 0xf3d5b5 });
+  const helm = 0x41556b;
+  add(new THREE.Mesh(new THREE.SphereGeometry(0.42, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), clayMat(helm, false)), 0, 1.3, 0);
+  add(new THREE.Mesh(new THREE.CylinderGeometry(0.47, 0.47, 0.04, 18), clayMat(helm, false)), 0, 1.31, 0.02);
+  add(new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.075, 0.07, 12), clayMat(0x2a2a2e, false)), 0, 1.6, 0.31).rotation.x = Math.PI / 2 - 0.8;
+  add(new THREE.Mesh(new THREE.CircleGeometry(0.052, 14), glowMat(0xfff2b0, 1.6)), 0, 1.627, 0.338).rotation.x = -0.8;
+  const beam = new THREE.SpotLight(0xffe7a8, 3.5, 7, 0.45, 0.6, 1.2); beam.position.set(0, 1.62, 0.36); beam.target.position.set(0, 0, 3); g.add(beam, beam.target);
+  add(new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), clayMat(0x4a3628, false)), 0, 1.06, 0.33).scale.set(1.5, 0.45, 0.6);
+  [-0.2, 0.2].forEach(x => add(new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), clayMat(0x8a8078, false)), x, 1.08, 0.3).scale.set(1, 0.6, 0.4));
+  add(new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.045, 6, 20), clayMat(0x8a5a2e, false)), 0, 0.62, 0).rotation.set(Math.PI / 2, 0.5, 0);
+  g.add(pickaxe(0.38, 1.0, -0.22, [0.3, 0, -0.6]));
+  return g;
+}
+
+function minerB() {
+  const { g, add } = baseNPC({ color: 0x7a5a3c, skin: 0xf3d5b5 });
+  const knit = 0x2f7f7a;
+  add(new THREE.Mesh(new THREE.SphereGeometry(0.4, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.55), clayMat(knit, false)), 0, 1.24, -0.02).scale.set(1, 1.15, 1);
+  add(new THREE.Mesh(new THREE.TorusGeometry(0.37, 0.07, 8, 18), clayMat(0x256560, false)), 0, 1.28, -0.02).rotation.x = Math.PI / 2;
+  add(new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), clayMat(0xf2ede4, false)), 0.05, 1.75, -0.08);
+  add(new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 10), clayMat(0xc9c2b8, false)), 0, 0.95, 0.24).scale.set(1.05, 1.0, 0.6);
+  add(new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 8), clayMat(0xe8a890, false)), 0, 1.1, 0.37);
+  [-1, 1].forEach(s => add(new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.5, 0.06), clayMat(0x3a2a1e, false)), s * 0.22, 0.75, 0.38).rotation.z = s * 0.15);
+  const lantern = new THREE.Group(); lantern.position.set(0.55, 0.5, 0.18); g.add(lantern);
+  const frame = clayMat(0x2a2a2e, false);
+  [0.17, -0.17].forEach(y => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.04, 8), frame); m.position.y = y; lantern.add(m); });
+  lantern.add(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.3, 8), glowMat(0xffc46a, 1.4)));
+  const handle = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.015, 6, 12, Math.PI), frame); handle.position.y = 0.19; lantern.add(handle);
+  lantern.add(new THREE.PointLight(0xffb866, 2.2, 6, 1.4));
+  return g;
+}
+
+function minerC() {
+  const { g, add } = baseNPC({ color: 0x4a4644, skin: 0xf3d5b5 });
+  add(new THREE.Mesh(new THREE.SphereGeometry(0.4, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.42), clayMat(0xe0742e, false)), 0, 1.2, -0.02).scale.set(1.02, 1, 1.02);
+  add(new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 6), clayMat(0xe0742e, false)), 0.05, 1.32, -0.38);
+  const gog = clayMat(0x3a2f2a, false);
+  add(new THREE.Mesh(new THREE.TorusGeometry(0.39, 0.035, 6, 20), gog), 0, 1.42, 0).rotation.x = Math.PI / 2;
+  [-0.13, 0.13].forEach(x => { add(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.06, 14), gog), x, 1.45, 0.33).rotation.x = Math.PI / 2 - 0.5; add(new THREE.Mesh(new THREE.CircleGeometry(0.075, 14), glowMat(0x9fd8e8, 0.5)), x, 1.47, 0.365).rotation.x = -0.5; });
+  [[-0.22, 1.03], [0.18, 1.08], [0.05, 0.97]].forEach(([x, y]) => add(new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 5), clayMat(0x6b6460, false)), x, y, 0.33).scale.set(1, 0.6, 0.4));
+  const cart = new THREE.Group(); cart.position.set(1.15, 0, 0.3); cart.rotation.y = -0.4; g.add(cart);
+  const wood = clayMat(0x8a5a2e), iron = clayMat(0x3e3b3a);
+  const tub = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.45, 0.62), wood); tub.position.y = 0.42; tub.castShadow = true; cart.add(tub);
+  [0.27, -0.27].forEach(z => { const r = new THREE.Mesh(new THREE.BoxGeometry(0.94, 0.06, 0.04), iron); r.position.set(0, 0.6, z * 1.14); cart.add(r); });
+  [[-0.3, 0.32], [0.3, 0.32], [-0.3, -0.32], [0.3, -0.32]].forEach(([x, z]) => { const w = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.06, 12), iron); w.rotation.x = Math.PI / 2; w.position.set(x, 0.13, z); cart.add(w); });
+  [[0, 0.7, 0, 0x5a5854], [0.2, 0.68, 0.1, 0x2a2a2a], [-0.18, 0.7, -0.08, 0x9a9a92]].forEach(([x, y, z, c]) => { const o = new THREE.Mesh(new THREE.IcosahedronGeometry(0.17, 0), clayMat(c)); o.position.set(x, y, z); cart.add(o); });
+  const gem = new THREE.Mesh(new THREE.IcosahedronGeometry(0.09, 0), glowMat(0x5ad0e0, 0.7)); gem.position.set(0.05, 0.84, 0.05); cart.add(gem);
+  return g;
+}
+
+function caveScene() {
+  const scene = new THREE.Scene(); scene.background = new THREE.Color(0x14161c);
+  scene.add(new THREE.HemisphereLight(0x9ac4ff, 0x2a2420, 0.7));
+  const key = new THREE.DirectionalLight(0xfff1d6, 0.8); key.position.set(4, 10, 6); key.castShadow = true;
+  key.shadow.mapSize.set(1024, 1024); Object.assign(key.shadow.camera, { left: -8, right: 8, top: 8, bottom: -8 }); scene.add(key);
+  const torch = new THREE.PointLight(0xffb866, 2.2, 14, 1.2); torch.position.set(-3, 2.2, -2); scene.add(torch);
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(18, 0.2, 14), clayMat(0x3a3a40)); floor.position.y = -0.1; floor.receiveShadow = true; scene.add(floor);
+  const rockMat = clayMat(0x565b66), rockGeo = new THREE.IcosahedronGeometry(1, 0);
+  for (let x = -8; x <= 8; x += 1.1) { const r = new THREE.Mesh(rockGeo, rockMat); r.position.set(x, 1, -6.5); r.rotation.set(Math.sin(x) * 0.4, x * 2.3, 0); r.scale.set(0.9, 1.6 + (Math.sin(x * 3) + 1) * 0.5, 0.9); scene.add(r); }
+  const lift = new THREE.Group(); lift.position.set(-1.6, 0, -3.2); scene.add(lift);
+  const wood = clayMat(0x7a5232);
+  [-0.9, 0.9].forEach(x => { const p = new THREE.Mesh(new THREE.BoxGeometry(0.18, 3, 0.18), wood); p.position.set(x, 1.5, 0); p.castShadow = true; lift.add(p); });
+  const top = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.2, 0.3), wood); top.position.y = 3.0; lift.add(top);
+  const cage = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.1, 1.2), clayMat(0x3e3b3a)); cage.position.y = 0.05; lift.add(cage);
+  const sign = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.36, 0.06), clayMat(0xc9a46a)); sign.position.set(0, 2.55, 0.12); lift.add(sign);
+  return scene;
+}
+
+const CONCEPTS = [
+  { make: minerA, title: 'A. 헤드램프 광부',
+    how: '<b>남색 둥근 헬멧 + 앞에 켜진 헤드램프</b>, 카키 작업복, 콧수염, 어깨에 곡괭이. 램프 불빛이 어두운 동굴에서 표지가 된다.' },
+  { make: minerB, title: 'B. 털모자 랜턴 할아범',
+    how: '<b>청록 털모자 + 덥수룩한 흰 수염</b>, 갈색 멜빵, 손에 든 <b>등불</b>. 안전모가 아니라 털모자라 목수와 절대 안 겹친다.' },
+  { make: minerC, title: 'C. 수레 끄는 아저씨',
+    how: '<b>주황 두건 + 이마에 올린 고글</b>, 숯빛 작업복, 얼굴 그을음, 옆에 <b>광석 실은 수레</b>. 수레가 실루엣을 크게 만든다.' },
+];
+
+function build(c) {
+  const scene = caveScene();
+  const m = c.make(); m.position.set(-0.6, 0, 0.2); m.rotation.y = 0.15; scene.add(m);
+  const b = builder(); b.position.set(1.6, 0, 0.6); b.rotation.y = -0.35; scene.add(b);
+  return { scene, m,
+    game: { pos: new THREE.Vector3(0.2, 14, 16.4), look: new THREE.Vector3(0.2, 1.2, 0.4), fov: 42 },
+    close: { pos: new THREE.Vector3(0.6, 2.2, 4.4), look: new THREE.Vector3(0.1, 0.95, 0.2), fov: 38 } };
+}
+
+function makeRenderer(parent, aspect) {
+  const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  r.shadowMap.enabled = true; r.setPixelRatio(Math.min(2, devicePixelRatio));
+  parent.appendChild(r.domElement);
+  const cam = new THREE.PerspectiveCamera(40, aspect, 0.1, 200);
+  const resize = () => { const w = parent.clientWidth; r.setSize(w, w / aspect, false); };
+  resize(); addEventListener('resize', resize);
+  return { r, cam };
+}
+const aim = (cam, v) => { cam.fov = v.fov; cam.updateProjectionMatrix(); cam.position.copy(v.pos); cam.lookAt(v.look); };
+
+const grid = document.getElementById('grid');
+const runs = CONCEPTS.map(c => {
+  const card = document.createElement('div'); card.className = 'card';
+  card.innerHTML = `<h2>${c.title}</h2><p class="how">${c.how}</p><div class="views"></div>`;
+  grid.appendChild(card);
+  const views = card.querySelector('.views');
+  const s = build(c);
+  const main = makeRenderer(views, 4 / 3), close = makeRenderer(views, 4 / 3);
+  const t1 = document.createElement('span'); t1.className = 'tag'; t1.style.top = '8px'; t1.textContent = '게임 카메라'; views.appendChild(t1);
+  const t2 = document.createElement('span'); t2.className = 'tag'; t2.textContent = '가까이 · 오른쪽은 👷 목수'; views.appendChild(t2);
+  const place = () => { t2.style.top = (main.r.domElement.offsetHeight + 10) + 'px'; };
+  requestAnimationFrame(place); addEventListener('resize', place);
+  return { s, main, close };
+});
+
+const clock = new THREE.Clock();
+function frame() {
+  const t = FIXED_T ?? clock.getElapsedTime();
+  runs.forEach(({ s, main, close }) => {
+    s.m.position.y = Math.abs(Math.sin(t * 1.6)) * 0.02;
+    aim(main.cam, s.game); main.r.render(s.scene, main.cam);
+    aim(close.cam, s.close); close.r.render(s.scene, close.cam);
+  });
+  requestAnimationFrame(frame);
+}
+frame();
+</script>
+</body>
+</html>
