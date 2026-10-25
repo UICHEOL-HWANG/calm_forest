@@ -1,6 +1,7 @@
 import { COURSE, COURSE_V } from './course.js';
 import { PHYS_V } from './sled.js';
 import { COMBO, driftTier } from './sled-moves.js';
+import { DAILY_REWARD_CAP } from './save.js';
 
 export const GHOST_V = `c${COURSE_V}p${PHYS_V}`;
 export const GHOST_STEP_MS = 100;
@@ -65,4 +66,16 @@ export function chipsFor(s, gapMs, t) {
   if (s.air) chips.push([s.trick ? t(s.spin >= 1 ? '🌀 한 바퀴!' : '🌀 도는 중') : t('🛫 지금 누르면 회전'), '']);
   if (s.shield > s.shieldUsed) chips.push([t('🛡️ 방패'), '']);
   return chips;
+}
+
+const secs = ms => (ms / 1000).toFixed(2);
+
+export function resultBar({ timeMs, best, newBest, coins, leftToday, flags }) {
+  const left = Math.max(0, Math.min(DAILY_REWARD_CAP, leftToday));
+  const chips = [
+    `🚩 ${flags}/${COURSE.flags.length}`,
+    ...(coins > 0 ? [`🪙 +${coins}`] : []),
+    ...(newBest ? [] : [`🏆 ${secs(best)}`]),
+  ];
+  return { icon: newBest ? '🏆' : '🏁', time: secs(timeMs), gold: !!newBest, chips, dots: '●'.repeat(left) + '○'.repeat(DAILY_REWARD_CAP - left), left };
 }

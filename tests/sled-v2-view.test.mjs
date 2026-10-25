@@ -117,3 +117,18 @@ test('rolling snowballs never overlap a ramp deck', () => {
     }
   }
 });
+
+test('the result bar is numbers and emoji only, with reward dots', async () => {
+  const { resultBar } = await import('../js/mountain/sled-extras.js');
+  const best = resultBar({ timeMs: 40160, best: 40160, newBest: true, coins: 31, leftToday: 2, flags: 3 });
+  assert.deepEqual(best, { icon: '🏆', time: '40.16', gold: true, chips: ['🚩 3/12', '🪙 +31'], dots: '●●○', left: 2 });
+  const done = resultBar({ timeMs: 41020, best: 38700, newBest: false, coins: 0, leftToday: 0, flags: 9 });
+  assert.deepEqual(done, { icon: '🏁', time: '41.02', gold: false, chips: ['🚩 9/12', '🏆 38.70'], dots: '○○○', left: 0 });
+  const both = resultBar({ timeMs: 42000, best: 38700, newBest: false, coins: 23, leftToday: 1, flags: 12 });
+  assert.deepEqual(both.chips, ['🚩 12/12', '🪙 +23', '🏆 38.70']);
+  const hud = src('mountain/sled-hud.js');
+  const show = hud.slice(hud.indexOf('export function showResult'), hud.indexOf('export function showResult') + 900);
+  assert.doesNotMatch(show, /완주|새 최고 기록|판 남음'\)|다 받았어요/);
+  assert.match(hud, /\.sled-result\{[^}]*background:rgba\(28,44,35,\.92\)/);
+  assert.match(hud, /\.sled-result\{[^}]*border-radius:22px/);
+});

@@ -1,6 +1,7 @@
 import { t } from '../i18n.js';
 import { COURSE } from './course.js';
 import { stepLines, boostLeft } from './boost-lines.js';
+import { resultBar } from './sled-extras.js';
 
 let root = null;
 let shown = {};
@@ -32,15 +33,20 @@ function ensure() {
     #sled-hud .sled-lines{position:absolute;inset:0;width:100%;height:100%}
     #sled-hud .sled-boost{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 18px);width:84px;height:84px;border-radius:50%;border:0;--boost-left:0;background:radial-gradient(circle closest-side,#9a6a2f calc(100% - 6px),transparent calc(100% - 5px)),conic-gradient(#ffd27a calc(var(--boost-left) * 1turn),#9a6a2f 0);box-shadow:0 0 0 3px rgba(255,210,122,calc(var(--boost-left) * .9));color:#fff;font-size:15px;pointer-events:auto}
     #sled-hud .sled-boost:disabled{opacity:.45}
-    #sled-hud .sled-result{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 24px);transform:translateX(-50%);min-width:240px;padding:18px 20px;border-radius:16px;background:#fffdf7;color:#2a2a28;text-align:center;pointer-events:auto;line-height:1.6}
+    #sled-hud .sled-result{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 24px);transform:translateX(-50%);display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px 10px;padding:7px 7px 7px 14px;border-radius:22px;background:rgba(28,44,35,.92);color:#fff;box-shadow:0 10px 24px rgba(0,0,0,.3);white-space:nowrap;box-sizing:border-box;width:max-content;max-width:calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right));pointer-events:auto;line-height:1.2}
+    #sled-hud .sled-result .sr-t{font-weight:800;font-size:18px;font-variant-numeric:tabular-nums}
+    #sled-hud .sled-result .sr-t.gold{color:#ffd27a}
+    #sled-hud .sled-result .sr-sep{width:1px;height:16px;background:rgba(255,255,255,.25)}
+    #sled-hud .sled-result .sr-s{font-weight:700;font-size:14px;opacity:.9}
+    #sled-hud .sled-result .sr-dots{letter-spacing:2px;font-size:11px;opacity:.85}
     #sled-hud .sled-result[hidden]{display:none}
     #sled-hud .sled-stick{position:absolute;width:92px;height:92px;margin:-46px 0 0 -46px;border-radius:50%;background:rgba(20,28,40,.22);border:2px solid rgba(255,255,255,.85);box-sizing:border-box}
     #sled-hud .sled-stick[hidden]{display:none}
     #sled-hud .sled-knob{position:absolute;left:50%;top:50%;width:42px;height:42px;margin:-21px 0 0 -21px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(20,28,40,.3)}
-    #sled-hud .sled-result button{margin-top:10px;padding:8px 18px;border:0;border-radius:10px;background:#3f6b34;color:#fff;font-size:15px}
+    #sled-hud .sled-result button{margin:0;padding:7px 14px;border:0;border-radius:16px;background:#3f6b34;color:#fff;font-size:14px;font-weight:800;flex:none}
     @media (orientation: portrait){#sled-hud .sled-top{top:calc(var(--top-inset) + 78px)}}
     @media (orientation: portrait){#sled-hud .sled-chips{top:calc(var(--top-inset) + 120px)}}
-    @media (orientation: landscape) and (max-height: 500px){#sled-hud .sled-result{bottom:calc(env(safe-area-inset-bottom) + 10px);display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px 14px;min-width:0;max-width:calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right));box-sizing:border-box;padding:10px 16px;line-height:1.3;font-size:14px}#sled-hud .sled-result div{white-space:nowrap}#sled-hud .sled-result button{margin:0 0 0 4px;flex:none}}`;
+    @media (orientation: landscape) and (max-height: 500px){#sled-hud .sled-result{bottom:calc(env(safe-area-inset-bottom) + 10px);display:flex;flex-wrap:wrap;justify-content:center;max-width:calc(100vw - 24px - env(safe-area-inset-left) - env(safe-area-inset-right))}#sled-hud .sled-result div{white-space:nowrap}#sled-hud .sled-result button{flex:none}}`;
     document.head.appendChild(style);
     document.body.appendChild(root);
   }
@@ -84,19 +90,15 @@ export function showRunHud({ timeMs, acorns }) {
   shown = next;
 }
 
-export function showResult({ timeMs, best, newBest, coins, leftToday, flags }, onClose) {
+export function showResult(res, onClose) {
   const r = ensure();
   r.querySelector('.sled-count').textContent = '';
   r.querySelector('.sled-boost').style.display = 'none';
-  const lines = [
-    `<b>${t('🏁 완주!')}</b>`,
-    `⏱️ ${sec(timeMs)} · 🚩 ${flags}/${COURSE.flags.length}`,
-    newBest ? t('🏆 새 최고 기록!') : `🏆 ${sec(best)}`,
-    coins > 0 ? `🪙 +${coins}` : '',
-    leftToday > 0 ? t(`오늘 보상 ${leftToday}판 남음`) : t('오늘 보상은 다 받았어요. 기록 도전은 계속할 수 있어요'),
-  ].filter(Boolean);
+  const bar = resultBar(res);
   const box = r.querySelector('.sled-result');
-  box.innerHTML = `${lines.map(l => `<div>${l}</div>`).join('')}<button type="button">${t('확인')}</button>`;
+  box.innerHTML = `<span>${bar.icon}</span><span class="sr-t${bar.gold ? ' gold' : ''}">${bar.time}</span><span class="sr-sep"></span>`
+    + bar.chips.map(c => `<span class="sr-s">${c}</span>`).join('')
+    + `<span class="sr-dots">${bar.dots}</span><button type="button">${t('확인')}</button>`;
   box.querySelector('button').onclick = onClose;
   box.hidden = false;
 }
