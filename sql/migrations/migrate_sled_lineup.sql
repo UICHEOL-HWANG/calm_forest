@@ -2,7 +2,7 @@ alter table public.sled_runs add column if not exists sled text;
 alter table public.sled_runs drop constraint if exists sled_runs_sled;
 alter table public.sled_runs add constraint sled_runs_sled check (sled is null or sled in ('basic','sky','forest','starry','toboggan','wind','acorn','skiff'));
 alter table public.sled_runs drop constraint if exists sled_runs_phys_v;
-alter table public.sled_runs add constraint sled_runs_phys_v check (phys_v in (1, 2));
+alter table public.sled_runs add constraint sled_runs_phys_v check (phys_v in (1, 2, 3, 4));
 
 CREATE OR REPLACE FUNCTION public.leaderboard(p_board text, p_uid uuid DEFAULT NULL::uuid)
  RETURNS jsonb
@@ -61,7 +61,7 @@ begin
   elsif p_board = 'sled' then
     select jsonb_agg(jsonb_build_object('u', user_id, 's', s)) into sc
     from (select user_id, -min(time_ms)::bigint as s from sled_runs
-          where run_date = kst_today and outcome = 'finish' and course_v = 1 and phys_v in (1, 2)
+          where run_date = kst_today and outcome = 'finish' and course_v = 2 and phys_v in (1, 2, 3, 4)
             and user_id is not null and time_ms is not null
           group by user_id) x;
   else

@@ -1,71 +1,60 @@
 // =============================================================
-//  🎈 이웃 마을 입구 — 땅에 매인 작은 열기구(높이 ~5.5m) + 풍선 허리 띠 "이웃 마을"
-//  ------------------------------------------------------------
-//  2026-10-11 팻말(1.5m)이 안 보여 4일 방문 1/118 → 시안 A 우체통 · B 열기구 · C 꽃 아치 중 B 확정(사용자).
-//  ⚠️ 카메라는 늘 북쪽을 보고 주변 ~8m 만 비춘다 — 랜드마크는 "가까이 왔을 때 눈에 띄는" 역할,
-//     찾아오게 하는 건 하루 한 번 배너(js/spaces/neighbor.js dailyBanner).
-//  저폴리 원칙(memory visitor-art-lessons): 줄무늬는 쐐기 8조각의 색으로(부속을 꽂지 않는다).
-//  (THREE, label: 번역된 글씨) → { group, update(dt, t) } — 원점이 입구 자리, +z 가 길 쪽
+//  🎈 이웃 마을 입구 — 땅에 매인 작은 열기구(높이 ~5.5m)
+//  2026-10-25 시안 D 확정: 글씨 띠를 없애고 조각보(퀼트) 풍선 + 꼭대기 리본(집 자수 패치는 사용자 요청으로 뺌).
+//  이름 안내는 가까이 갔을 때 프롬프트 줄("🏡 이웃 마을 가는 길")이 맡는다.
+//  (THREE) → { group, update(dt, t) } — 원점이 입구 자리, +z 가 길 쪽
 // =============================================================
 
 const mat = (THREE, color, extra = {}) => new THREE.MeshStandardMaterial({ color, flatShading: true, roughness: 0.85, ...extra });
 const glow = (THREE, color, k = 1.6) => new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: k, flatShading: true });
 function add(g, mesh, x, y, z, shadow = true) { mesh.position.set(x, y, z); if (shadow) mesh.castShadow = true; g.add(mesh); return mesh; }
 
-// 글씨 텍스처 — 이모지 없이 한글만(js/spaces/mist.js gateLabel 과 같은 규칙) · 판 폭에 맞춰 폰트 축소
-//   bg 가 있으면 판을 칠하고, copies>1 이면 가로로 같은 글씨를 여러 번(풍선 띠 둘레용)
-function textTexture(THREE, label, w, h, { bg = null, fg = '#fffaf0', stroke = null, copies = 1, trim = null } = {}) {
-  const PX = 256, cv = document.createElement('canvas'); cv.width = Math.min(4096, Math.round(PX * w / h)); cv.height = PX;
+export const QUILT_COLORS = [0xf6b99a, 0xa9d8c0, 0xfbe3b8, 0xb9cdee, 0xf3c4d6, 0xc8e2a8];
+
+const hex = (n) => '#' + n.toString(16).padStart(6, '0');
+
+function quiltTexture(THREE) {
+  const W = 1024, H = 512, cols = 12, rows = 6, cw = W / cols, rh = H / rows;
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   const c = cv.getContext('2d');
-  if (bg) { c.fillStyle = bg; c.fillRect(0, 0, cv.width, PX); }
-  if (trim) { c.fillStyle = trim; c.fillRect(0, 0, cv.width, PX * 0.1); c.fillRect(0, PX * 0.9, cv.width, PX * 0.1); }
-  const cell = cv.width / copies;
-  c.textAlign = 'center'; c.textBaseline = 'middle';
-  let fs = Math.round(PX * 0.56);
-  const font = (s2) => `bold ${s2}px "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif`;
-  c.font = font(fs); while (fs > 40 && c.measureText(label).width > cell * 0.86) { fs -= 6; c.font = font(fs); }
-  for (let k = 0; k < copies; k++) {
-    const x = cell * (k + 0.5);
-    if (stroke) { c.lineWidth = fs * 0.14; c.strokeStyle = stroke; c.strokeText(label, x, PX / 2 + 4); }
-    c.fillStyle = fg; c.fillText(label, x, PX / 2 + 4);
+  for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+    c.fillStyle = hex(QUILT_COLORS[(x * 7 + y * 3) % QUILT_COLORS.length]);
+    c.fillRect(x * cw, y * rh, cw + 1, rh + 1);
   }
-  const tex = new THREE.CanvasTexture(cv); tex.minFilter = THREE.LinearFilter; tex.anisotropy = 4;
+  c.setLineDash([10, 8]); c.lineWidth = 3; c.strokeStyle = 'rgba(255,255,255,.75)';
+  for (let x = 0; x <= cols; x++) { c.beginPath(); c.moveTo(x * cw, 0); c.lineTo(x * cw, H); c.stroke(); }
+  for (let y = 0; y <= rows; y++) { c.beginPath(); c.moveTo(0, y * rh); c.lineTo(W, y * rh); c.stroke(); }
+  c.setLineDash([]);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
   return tex;
 }
 
-export const BALLOON_STRIPES = [0xf5a35c, 0xfff1d0, 0x7cc4a0, 0xfff1d0, 0xf07f7f, 0xfff1d0, 0x8fb8e8, 0xfff1d0];
-
-export function buildNeighborBalloon(THREE, label) {
+export function buildNeighborBalloon(THREE) {
   const g = new THREE.Group();
   const balloon = new THREE.Group();
-  const rope = mat(THREE, 0x6b5240);
-  for (let i = 0; i < BALLOON_STRIPES.length; i++) {
-    const seg = new THREE.Mesh(new THREE.SphereGeometry(1.25, 4, 10, (i / BALLOON_STRIPES.length) * Math.PI * 2, (Math.PI * 2) / BALLOON_STRIPES.length), mat(THREE, BALLOON_STRIPES[i]));
-    seg.castShadow = true; balloon.add(seg);
+  const shell = new THREE.Mesh(new THREE.SphereGeometry(1.25, 16, 12), new THREE.MeshStandardMaterial({ map: quiltTexture(THREE), roughness: 0.9, flatShading: true }));
+  shell.castShadow = true; balloon.add(shell);
+  balloon.scale.set(1, 1.15, 1);
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 0.45, 10, 1, true), mat(THREE, 0xe9a07a, { side: THREE.DoubleSide }));
+  neck.position.y = -1.38; balloon.add(neck);
+  const bowMat = mat(THREE, 0xe0705a);
+  const bow = new THREE.Group();
+  for (const s of [1, -1]) {
+    const loop = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.3, 4), bowMat);
+    loop.rotation.z = s * Math.PI / 2; loop.position.x = s * 0.15; bow.add(loop);
   }
-  balloon.scale.set(1, 1.18, 1);
-  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.62, 0.5, 8, 1, true), mat(THREE, 0xf5a35c, { side: THREE.DoubleSide }));
-  neck.position.y = -1.42; balloon.add(neck);
+  bow.add(new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 4), bowMat));
+  bow.position.y = 1.45; balloon.add(bow);
   balloon.position.y = 4.1; g.add(balloon);
 
-  for (const [x, z] of [[-0.42, -0.42], [0.42, -0.42], [-0.42, 0.42], [0.42, 0.42]]) {   // 바구니 ↔ 풍선 줄
-    const r = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.7, 4), rope);
-    r.position.set(x * 0.8, 2.25, z * 0.8); g.add(r);
-  }
-  add(g, new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.7, 1.0), mat(THREE, 0xb07a4a)), 0, 1.0, 0);          // 바구니
-  add(g, new THREE.Mesh(new THREE.BoxGeometry(1.08, 0.1, 1.08), mat(THREE, 0x8a5a34)), 0, 1.38, 0, false); // 테두리
-
-  // 🏡 풍선 허리에 두른 크림 천 띠에 "이웃 마을"(2026-10-11 시안 A 확정 — 떠 있는 글씨는 '달린 게 없어' 기각)
-  //    글씨 칸 중심 u=0.25 가 +z(마을 쪽)에 오도록 thetaStart=-π/2, 글씨는 앞·뒤 두 번
-  const tex = textTexture(THREE, label, 8, 0.5, { bg: '#fff3d6', fg: '#7a4a26', copies: 2, trim: '#e07a5f' });
-  const band = new THREE.Mesh(new THREE.CylinderGeometry(1.255, 1.255, 0.42, 32, 1, true, -Math.PI / 2, Math.PI * 2), mat(THREE, 0xffffff, { map: tex, side: THREE.DoubleSide, flatShading: false }));
-  band.position.y = -0.18; balloon.add(band);
-
-  // 땅에 매어 둔 줄 + 말뚝
-  add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.5, 6), mat(THREE, 0x8a6a4a)), 1.3, 0.25, 0.9);
-  const tie = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.4, 4), rope);
-  tie.position.set(0.85, 0.75, 0.6); tie.rotation.set(0.4, 0, -0.75); g.add(tie);
-  const lamp = add(g, new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), glow(THREE, 0xffd27a, 2)), 0.45, 1.55, 0.45, false);
+  const rope = mat(THREE, 0x6b5240);
+  for (const [x, z] of [[-0.34, -0.34], [0.34, -0.34], [-0.34, 0.34], [0.34, 0.34]]) add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.7, 4), rope), x, 2.25, z, false);
+  const weave = [mat(THREE, 0xc79a62), mat(THREE, 0xb5844f)];
+  for (let i = 0; i < 3; i++) add(g, new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.24, 1.0), weave[i % 2]), 0, 0.77 + i * 0.23, 0);
+  add(g, new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.1, 1.1), mat(THREE, 0x8a5a34)), 0, 1.4, 0, false);
+  const lamp = add(g, new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), glow(THREE, 0xffd27a, 2)), 0.45, 1.6, 0.45, false);
 
   return {
     group: g,

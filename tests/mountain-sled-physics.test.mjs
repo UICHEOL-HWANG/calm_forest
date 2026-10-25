@@ -15,7 +15,7 @@ const runToEnd = (s, steerFn = st => Math.sign(centerX(st.z + 6) - st.x), boostA
 };
 
 test('course has 12 flags in order along the S curve', () => {
-  assert.equal(COURSE_V, 1);
+  assert.equal(COURSE_V, 2);
   assert.equal(COURSE.flags.length, 12);
   COURSE.flags.forEach((f, i) => {
     if (i) assert.ok(f.z > COURSE.flags[i - 1].z);
@@ -32,11 +32,11 @@ test('stepSled returns a new object and never mutates input', () => {
   assert.equal(JSON.stringify(s), frozen);
 });
 
-test('a clean run without boost finishes in 35-45 s with all flags', () => {
+test('a clean run without boost finishes in 22-30 s with all flags', () => {
   const end = perfectLine(COURSE, 0).sled;
   assert.equal(end.finished, true);
   assert.equal(end.flagsPassed, 12);
-  assert.ok(end.t >= 35000 && end.t <= 45000, `t=${end.t}`);
+  assert.ok(end.t >= 22000 && end.t <= 30000, `t=${end.t}`);
   assert.equal(end.splits.length, 12);
 });
 
@@ -45,7 +45,7 @@ test('boost consumes one acorn, records time and makes the run faster', () => {
   const boosted = perfectLine(COURSE, 3).sled;
   assert.equal(boosted.acorns, 0);
   assert.equal(boosted.boostsAt.length, 3);
-  assert.ok(boosted.t < plain.t - 2000);
+  assert.ok(boosted.t < plain.t - 1333);
 });
 
 test('boost with zero acorns does nothing', () => {
@@ -86,15 +86,15 @@ test('steer time is accumulated per side', () => {
 test('theoretical minimum time is below any reachable time', () => {
   const best = runToEnd(createSled(6), undefined, [10, 60, 110, 160, 210, 260]);
   assert.ok(minTimeMs() < best.t);
-  assert.equal(PHYS_V, 3);
+  assert.equal(PHYS_V, 4);
 });
 
 test('createSled carries its physics and stepSled uses it', () => {
-  const fast = { ...PHYS, baseSpeed: 9.1 };
+  const fast = { ...PHYS, baseSpeed: PHYS.baseSpeed * 1.06 };
   let a = createSled(0), b = createSled(0, fast);
   for (let i = 0; i < 300; i++) { a = stepSled(a, 16, 0); b = stepSled(b, 16, 0); }
   assert.ok(b.z > a.z);
-  assert.equal(PHYS_V, 3);
+  assert.equal(PHYS_V, 4);
 });
 
 test('hit recovery follows the sled physics', () => {

@@ -127,7 +127,7 @@ export function orchardAction() {
       Input.selectTool(TOOLS.findIndex(t => t.id === want));            // 밭의 farmAutoAction 과 같은 방식
       if (!gameState.hintsSeen.orchardAuto) {                           // 첫 전환 때 한 번만 알린다
         gameState.hintsSeen.orchardAuto = true;
-        ui.toast?.('🔄 나무에 맞는 도구로 바꿨어요. 🌰💧🌾 아무거나 들고 액션만 누르면 돼요 (🪓베기는 따로)', 3400);
+        ui.toast?.('🔄 나무 도구로 바꿨어요 · 🪓 베기만 따로', 3400);
       }
     }
     const use = want || held;

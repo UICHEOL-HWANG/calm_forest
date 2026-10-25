@@ -38,7 +38,8 @@ test('환영 상자 — 게스트 버튼은 눌리고 로그인으로 보낸다'
 });
 
 test('로그인 넛지 — 상점에서 열면 상점 제목', () => {
-  assert.match(html, /trigger === 'shop' \? '💎 로그인 후 구매 가능'/);
+  assert.match(html, /\$\('nudge-ico'\)\.textContent = trigger === 'shop' \? '💎'/);
+  assert.match(html, /trigger === 'shop' \? '로그인 후 구매 가능'/);
 });
 
 test('칩 스타일 — 금빛 외곽선 알약', () => {

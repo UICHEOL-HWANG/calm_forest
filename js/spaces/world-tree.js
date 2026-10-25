@@ -17,7 +17,7 @@ import { Sound } from '../sound.js';
 import { TAG_LABEL } from '../habitat.js';
 import {
   BRANCHES, BRANCH_IDS, TREE_DECOR, branchOf, branchStatus, branchUsable, bundleDone, bundlesDone,
-  canAfford, decorOf, habitatDone, habitatRows, lifePercent, offerBundle, placeDecor, removeDecor,
+  canAfford, decorOf, habitatDone, habitatRows, lifePercent, offerBundle, placeDecor, recommendDecor, removeDecor,
 } from '../world/tree-board.js';
 import {
   GUESTS, STAGES, bloomRows, bloomed, careNeed, careToday, decorLocked, growthOf, guestFor, lifeOf, observeGuest, offerStage,
@@ -193,6 +193,32 @@ export function openWorldTree() {
   Input.setAnalog?.(0, 0);
   openTreeBoard(boardView(), ACTIONS);
   trackEvent('tree_board_open', { life: lifePercent(gameState.tree) });
+  if (branchUsable(gameState.tree, tab)) ui.treeTour?.(tourPlan());
+}
+
+const SOURCE = { wood: '🪓 나무 베기', stone: '⛏️ 동굴', coal: '⛏️ 동굴', fish: '🎣 낚시', crop: '🌾 밭 수확', seed: '🌾 수확할 때', gem: '💎 안개 낀 날 동굴' };
+const itemsOf = (need) => Object.entries(need).filter(([, n]) => n > 0).map(([k, n]) => ({ ico: ICO[k] || k, label: LABEL[k] || k, n, src: SOURCE[k] || '' }));
+
+function tourPlan() {
+  const tree = gameState.tree, inv = gameState.inventory, def = branchOf(tab);
+  const b = tree.branches[def.id];
+  const owed = {};
+  const decor = recommendDecor(tree, def.id).map((r) => {
+    const d = decorOf(r.id);
+    for (const [k, n] of Object.entries(d.cost)) owed[k] = (owed[k] || 0) + n * r.n;
+    const lack = {};
+    for (const k of Object.keys(d.cost)) lack[k] = Math.min(d.cost[k] * r.n, Math.max(0, owed[k] - (inv[k] || 0)));
+    const have = b.tiles.filter((x) => x === r.id).length;
+    return { id: r.id, ico: d.ico, name: d.name, n: r.n, goal: have + r.n, lack: itemsOf(lack) };
+  });
+  const bundles = def.bundles.filter((bd) => !bundleDone(tree, def.id, bd.id)).map((bd) => {
+    const given = b.given[bd.id] || {};
+    const left = Object.fromEntries(Object.entries(bd.need).map(([k, n]) => [k, n - (given[k] || 0)]));
+    const lack = {};
+    for (const [k, n] of Object.entries(left)) { owed[k] = (owed[k] || 0) + n; lack[k] = Math.min(n, Math.max(0, owed[k] - (inv[k] || 0))); }
+    return { id: bd.id, name: bd.name, items: itemsOf(left), lack: itemsOf(lack) };
+  });
+  return { branch: `${def.ico} ${def.name}`, habitatDone: habitatDone(tree, def.id), decor, bundles };
 }
 
 const REASON = {
@@ -200,9 +226,9 @@ const REASON = {
   afford: '재료가 모자라요',
   taken: '빈칸이 없어요',
   tile: '빈칸이 없어요',
-  empty: '가방에 바칠 재료가 없어요',
+  empty: '가방에 넣을 재료가 없어요',
   full: '이미 다 찼어요',
-  bundles: '꾸러미를 먼저 다 바쳐요',
+  bundles: '꾸러미를 먼저 다 채워요',
   habitat: '빈터를 먼저 완성해요',
   done: '오늘은 벌써 돌봤어요',
   complete: '이미 다 채웠어요',
@@ -227,6 +253,8 @@ function placeAction(decoId) {
   spend(r.cost, -1);
   Sound.build?.();
   trackEvent('tree_deco_place', { branch: tab, deco: decoId, tile });
+  const placed = r.tree.branches[tab].tiles.filter((x) => x === decoId).length;
+  for (let k = 1; k <= placed; k++) ui.treeSpot?.(`act:treedeco:${decoId}:${k}`);
   handleEvents(r.events, prev);
   requestSave();
   rerender();
@@ -245,7 +273,7 @@ function removeAction(tile) {
 
 function offerAction(bundleId) {
   const prev = gameState.tree, r = offerBundle(prev, tab, bundleId, gameState.inventory);
-  if (!r.ok) { ui.toast?.(REASON[r.reason] || '지금은 바칠 수 없어요', 1800); return; }
+  if (!r.ok) { ui.toast?.(REASON[r.reason] || '지금은 넣을 수 없어요', 1800); return; }
   gameState.tree = r.tree;
   spend(r.take, -1);
   Sound.harvest?.();
@@ -273,7 +301,7 @@ function careAction() {
 function stageAction() {
   const prev = gameState.treeBloom;
   const r = offerStage(prev, gameState.tree, tab, gameState.inventory);
-  if (!r.ok) { ui.toast?.(REASON[r.reason] || '지금은 바칠 수 없어요', 1800); return; }
+  if (!r.ok) { ui.toast?.(REASON[r.reason] || '지금은 넣을 수 없어요', 1800); return; }
   gameState.treeBloom = r.bloom;
   spend(r.take, -1);
   Sound.harvest?.();

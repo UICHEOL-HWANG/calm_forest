@@ -21,13 +21,15 @@ import { cafeState, buyCafe, pickSled, grantFinishSled, TOBOGGAN_TOAST } from '.
 import { cafeItem } from '../mountain/cafe-catalog.js';
 import { findItem } from '../cosmetics/catalog.js';
 import { logEcon } from '../metrics.js';
-import { createSled, stepSled, tryBoost } from '../mountain/sled.js';
+import { createSled, stepSled, pressSled } from '../mountain/sled.js';
+import { openRide, rideTick, stopRide, closeRide, sledProps } from '../mountain/sled-ride.js';
+import { SHIELD_PER_RUN } from '../mountain/sled-moves.js';
 import { COURSE } from '../mountain/course.js';
 import { physOf, sledCash } from '../mountain/sled-lineup.js';
 import { cashAvailable } from '../shop/paddle.js';
 import { state as authState } from '../supabase-client.js';
 import { cashButton, cashPending } from './cafe.js';
-import { SLED_LIFT, sledSeat, sledYaw, sledCamTargets, runoutCamTargets, sledPose, decayShake, shakeOffset } from '../mountain/sled-view.js';
+import { SLED_LIFT, sledSeat, sledYaw, sledCamTargets, runoutCamTargets, sledPose, sledFov, decayShake, shakeOffset } from '../mountain/sled-view.js';
 import { spawnSnowBurst, spawnBoostTrail } from '../mountain/sled-fx.js';
 import { COLD, COLD_START, stepCold, drinkWarm, coldStage, coldSpeedMult, noticeCold } from '../mountain/cold.js';
 import { showColdHud, hideColdHud } from '../mountain/cold-hud.js';
@@ -108,7 +110,8 @@ export function enterMountain() {
   $w.atMountain = true;
   cold = COLD_START;
   setFogExempt(player, true);
-  ensureMountainSpace().visible = true;
+  sledProps(ensureMountainSpace()).group.visible = true;
+  $w.mountainGroup.visible = true;
   player.position.set(MOUNTAIN.x + PLAZA.x, 0, MOUNTAIN.z + PLAZA.z);
   player.rotation.y = Math.PI;
   $w.nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); $w.lastZoneHint = null;
@@ -334,6 +337,7 @@ function ctxOf() {
     daysSinceUnlock: daysSinceUnlock(gameState.firstDay, todayStr()),
     input: run.input ? run.input.input() : initialInput(isTouchDevice()),
     orientation: innerWidth < innerHeight ? 'portrait' : 'landscape',
+    ghostT: run.ride?.ghost?.t ?? null,
   };
 }
 
@@ -356,6 +360,14 @@ function sledCamera(cam, dt) {
   const off = shakeOffset(run.shake, performance.now() / 1000);
   cam.position.copy(camPos).add(_shake.set(off.x, off.y, 0));
   cam.lookAt(camLook);
+  const fov = sledFov(run.sled.speed, run.sled.phys.baseSpeed);
+  if (Math.abs(cam.fov - fov) > 0.01) { cam.fov += (fov - cam.fov) * Math.min(1, dt * 4); cam.updateProjectionMatrix(); }
+}
+
+function restoreFov() {
+  if (!run?.fov0 || camera.fov === run.fov0) return;
+  camera.fov = run.fov0;
+  camera.updateProjectionMatrix();
 }
 
 function runoutCamera(cam, dt) {
@@ -395,22 +407,24 @@ function placeSled(yaw) {
   if (!sled) return;
   const pose = sledPose(run.sled, yaw);
   sled.position.set(pose.x, pose.y, pose.z);
-  sled.rotation.set(pose.pitch, pose.yaw, 0);
+  sled.rotation.set(pose.pitch + pose.flip, pose.yaw, 0);
 }
 
 function rideSlope(lean, dt) {
   const p = slopePoint(run.sled.z, run.sled.x);
   run.yaw += (sledYaw(lean) - run.yaw) * Math.min(1, dt * LEAN_RATE);
-  player.position.set(MOUNTAIN.x + p.x, MOUNTAIN.y + p.y + run.seat, MOUNTAIN.z + p.z);
+  player.position.set(MOUNTAIN.x + p.x, MOUNTAIN.y + p.y + run.seat + (run.sled.y || 0), MOUNTAIN.z + p.z);
   player.rotation.y = run.yaw;
+  player.rotation.x = sledPose(run.sled, run.yaw).flip;
   placeSled(run.yaw);
 }
 
 function boost() {
   if (run?.phase !== 'sled') return;
-  const acorns = run.sled.acorns;
-  run.sled = tryBoost(run.sled);
-  if (run.sled.acorns >= acorns) return;
+  const before = run.sled;
+  run.sled = pressSled(run.sled);
+  if (run.sled.trick && !before.trick) { Sound.blip(); return; }
+  if (run.sled.acorns >= before.acorns) return;
   Sound.sledBoost();
   spawnSnowBurst(player.position.x, player.position.y + 0.3, player.position.z - 0.4, 16);
 }
@@ -434,7 +448,8 @@ function startSled() {
   run.shake = 0;
   showObstacles(run.course);
   run.sledId = sledSkin();
-  run.sled = createSled(run.taken.filter(Boolean).length, physOf(run.sledId));
+  run.sled = createSled(run.taken.filter(Boolean).length, physOf(run.sledId), { shield: SHIELD_PER_RUN });
+  run.fov0 = camera.fov;
   run.seat = sledSeat(run.sledId);
   run.phase = 'countdown';
   run.count = 3;
@@ -449,6 +464,7 @@ function startSled() {
   run.yaw = sledYaw(0);
   rideSlope(0, 0);
   setSledSkin($w.mountainGroup.userData.sled, THREE, run.sledId);
+  run.ride = openRide({ group: $w.mountainGroup, sledMesh: $w.mountainGroup.userData.sled, pet: gameState.pet, ghost: gameState.mountain?.sled?.ghost ?? null, skin: run.sledId });
   showSled(true);
   setCameraRig(sledCamera);
   showCountdown(3);
@@ -457,6 +473,9 @@ function startSled() {
 
 function closeRun() {
   keeperBubble?.hide();
+  closeRide(run?.ride);
+  restoreFov();
+  player.rotation.x = 0;
   showSled(false);
   showObstacles(COURSE);
   hideSledHud();
@@ -468,7 +487,11 @@ function closeRun() {
 
 function finishSled() {
   const fpsAvg = run.frames ? Math.round(1000 / (run.frameMs / run.frames)) : null;
-  run.result = sledSettle(run.sled, ctxOf(), { fpsAvg });
+  run.sled = { ...run.sled, y: 0, vy: 0, air: false, trick: false, spin: 0 };
+  run.result = sledSettle(run.sled, ctxOf(), { fpsAvg, ghostPts: run.ride?.path });
+  stopRide(run.ride);
+  restoreFov();
+  player.rotation.x = 0;
   const hut = gameState.mountain?.hut || { sleds: ['basic'], sled: 'basic' };
   const granted = grantFinishSled(hut);
   if (granted !== hut) {
@@ -600,12 +623,14 @@ export function updateMountain(dt) {
     run.frames += 1;
     run.frameMs += dt * 1000;
     const steer = worldSteer(run.input.read());
+    const prev = run.sled;
     const hitsBefore = run.sled.hitIds.length;
     run.sled = stepSled(run.sled, Math.min(50, dt * 1000), steer, run.course);
     run.sled.hitIds.slice(hitsBefore).forEach(burstObstacle);
     rideSlope(run.sled.vx / run.sled.phys.steerRate, dt);
+    if (rideTick(run.ride, prev, run.sled, dt, player.position, run.yaw).length) run.shake = 1;
     showStick(run.input.stick());
-    if (run.sled.boostLeftMs > 0) spawnBoostTrail(player.position.x, player.position.y, player.position.z, isTouchDevice() ? 1 : 2);
+    if (run.sled.boostLeftMs > 0 || run.sled.kickLeftMs > 0) spawnBoostTrail(player.position.x, player.position.y, player.position.z, isTouchDevice() ? 1 : 2);
     showBoostFx(run.sled, dt);
     if (run.sled.t >= GO_CLEAR_MS) clearCountdown();
     showRunHud({ timeMs: run.sled.t, acorns: run.sled.acorns });

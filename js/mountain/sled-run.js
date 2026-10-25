@@ -1,4 +1,5 @@
 import { diffParams, gameState, giveReward, requestSave, settleDifficulty, todayStr, trackDiffAbandon } from '../game.js';
+import { GHOST_V } from './sled-extras.js';
 import { trackEvent } from '../analytics.js';
 import { onPlay } from '../decor-drops/index.js';
 import { sendSledRun } from '../supabase-client.js';
@@ -26,7 +27,8 @@ export function sledState() {
 const intOrNull = v => (Number.isFinite(v) ? Math.round(v) : null);
 
 function writeSled(next) {
-  gameState.mountain = { ...(gameState.mountain || {}), sled: next };
+  const ghost = next.ghost ?? gameState.mountain?.sled?.ghost;
+  gameState.mountain = { ...(gameState.mountain || {}), sled: { ...next, ...(ghost ? { ghost } : {}) } };
 }
 
 function rewardedToday(st, today) {
@@ -79,6 +81,19 @@ function sledRow(ctx, outcome, stage, sled, timeMs, pay, bestBefore) {
     arm: dp.arm ?? null,
     dda: dp.dda ?? null,
     probe_v: dp.probe_v ?? null,
+    ...moveCounts(sled),
+    ghost_delta_ms: sled && outcome === 'finish' && Number.isFinite(ctx.ghostT) ? Math.round(sled.t - ctx.ghostT) : null,
+  };
+}
+
+const countOf = v => (Array.isArray(v) ? v.length : Number.isFinite(v) ? v : 0);
+
+function moveCounts(sled) {
+  if (!sled) return { drift_count: null, jump_count: null, trick_ok: null, trick_fail: null, gusts: null, mover_hits: null, shield_used: null };
+  return {
+    drift_count: countOf(sled.driftsAt), jump_count: countOf(sled.jumps), trick_ok: countOf(sled.tricksOk),
+    trick_fail: countOf(sled.tricksFail), gusts: countOf(sled.gustsAt), mover_hits: countOf(sled.moverHitIds),
+    shield_used: Math.min(1, countOf(sled.shieldUsed)),
   };
 }
 
@@ -99,13 +114,18 @@ export function sledSettle(sled, ctx, env = {}) {
     }
   }
   const doneAfter = rewarded ? done + 1 : done;
-  writeSled({ ...st, best: newBest ? timeMs : st.best, daily: { date: today, rewarded: doneAfter }, perfect: st.perfect || sled.flagsPassed === COURSE.flags.length });
+  const ghost = newBest && env.ghostPts?.length ? { v: GHOST_V, t: Math.round(sled.t), pts: env.ghostPts } : undefined;
+  writeSled({ ...st, best: newBest ? timeMs : st.best, daily: { date: today, rewarded: doneAfter }, perfect: st.perfect || sled.flagsPassed === COURSE.flags.length, ...(ghost ? { ghost } : {}) });
   requestSave();
   if (ctx.diff) settleDifficulty('sled', ddaOutcome('sled', { flagsPassed: sled.flagsPassed }));
   trackEvent('sled_result', {
     run_id: ctx.runId, time_ms: timeMs, flags: sled.flagsPassed, boosts: sled.boostsAt.length,
     acorns: ctx.acornsCollected, hits: sled.hits.length, new_best: newBest ? 1 : 0, rewarded: rewarded ? 1 : 0,
     ...(ctx.diff ? diffParams(ctx.diff) : {}),
+  });
+  const moves = moveCounts(sled);
+  trackEvent('sled_detail', {
+    run_id: ctx.runId, drifts: moves.drift_count, jumps: moves.jump_count, tricks: moves.trick_ok, gusts: moves.gusts, shield: moves.shield_used,
   });
   onPlay('sled');
   sendSledRun(sledRow(ctx, 'finish', null, sled, timeMs, { rewarded, coins, fpsAvg: env.fpsAvg }, st.best));

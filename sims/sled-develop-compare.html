@@ -1,0 +1,417 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>썰매 디벨롭 시안 · calm forest</title>
+<style>
+  :root{--bg:#eef3f7;--ink:#24343f;--sub:#61727e;--card:#fbfdff;--line:#d9e3ea;--accent:#9a6a2f}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif}
+  header{padding:16px 22px 6px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+  h1{font-size:19px;margin:0}
+  .ctl{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:13px}
+  .ctl button,.ctl select{font:inherit;font-size:13px;padding:7px 12px;border-radius:9px;border:1px solid var(--line);background:#fff;cursor:pointer}
+  .ctl button.main{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:700}
+  .note{font-size:12.5px;color:var(--sub);line-height:1.6;margin:0;padding:0 22px 10px;max-width:1100px}
+  .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;padding:4px 22px 26px}
+  .col{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px;min-width:0}
+  .col h2{font-size:16px;margin:0}
+  .ref{font-size:12px;color:#3a7aa8;margin:0}
+  .how{font-size:12.5px;line-height:1.55;margin:0;color:#34444f}
+  .pc{display:flex;gap:6px;font-size:12px;line-height:1.45}
+  .pc div{flex:1;border-radius:8px;padding:6px 8px}
+  .pro{background:#e9f5e4}.con{background:#fbe9e4}
+  .view{position:relative;width:100%;aspect-ratio:4/3;border-radius:10px;overflow:hidden;background:#cfe3ef}
+  .view canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .pill{position:absolute;left:50%;top:10px;transform:translateX(-50%);display:flex;gap:10px;padding:4px 12px;border-radius:999px;background:rgba(20,28,40,.55);color:#fff;font-size:13px;white-space:nowrap}
+  .chip{position:absolute;left:50%;top:42px;transform:translateX(-50%);padding:3px 10px;border-radius:999px;background:rgba(255,255,255,.9);color:#24343f;font-size:13px;font-weight:700;white-space:nowrap;transition:transform .15s}
+  .chip.pop{transform:translateX(-50%) scale(1.25)}
+  .chip.ahead{color:#2f7a45}.chip.behind{color:#b4453a}
+  .done{position:absolute;inset:auto 10px 10px 10px;padding:8px 10px;border-radius:10px;background:rgba(255,253,247,.94);font-size:13px;text-align:center;display:none}
+  @media (max-width:900px){.grid{grid-template-columns:1fr;padding:4px 16px 22px}header,.note{padding-left:16px;padding-right:16px}.view{aspect-ratio:3/4}}
+</style>
+<header>
+  <h1>🛷 썰매 디벨롭 시안</h1>
+  <div class="ctl">
+    <button class="main" id="boostAll">🌰 세 칸 동시 부스터</button>
+    <button id="restart">↻ 다시 출발</button>
+    <label>펫 <select id="pet"></select></label>
+  </div>
+</header>
+<p class="note">세 칸은 각자 썰매 한 대씩, <b>같은 자동 주행</b>(시뮬레이터의 완벽한 주행선, 도토리 6개)으로 내려갑니다. 코스·물리·카메라·썰매·펫 모델은 실제 게임 모듈 그대로입니다. A는 판이 끝나면 더 빠른 기록이 다음 판 유령이 되어서, 몇 판 돌려 보면 유령을 쫓는 흐름이 보입니다. B의 가속 세기는 확정 전 임시값(1.2초 동안 1.5배)이라 채택하면 공정성·리더보드 시뮬레이션을 다시 돌려야 합니다. C는 펫 방패를 보여 주려고 이 칸만 눈덩이 하나에 일부러 부딪힙니다. 소리는 화면을 한 번 누른 뒤부터 납니다.</p>
+<div class="grid" id="grid"></div>
+<script type="module">
+import * as THREE from '../vendor/three/three.module.js';
+import { COURSE, centerX, obstacleRadius } from '../js/mountain/course.js';
+import { createSled, stepSled, tryBoost, hitReach, PHYS } from '../js/mountain/sled.js';
+import { slopePoint } from '../js/mountain/terrain.js';
+import { sledCamTargets, sledPose, sledYaw } from '../js/mountain/sled-view.js';
+import { buildSledMesh } from '../js/mountain/sled-art.js';
+import { buildPet, updatePetAnim } from '../js/pet/art.js';
+import { PET_KINDS } from '../js/pet/rules.js';
+
+const VARS = [
+  { id: 'A', name: 'A · 내 최고 기록 유령', ref: '레퍼런스: 론리 마운틴 스노 라이더스(지난 판 자국), 레이싱 게임 고스트',
+    how: '반투명 썰매가 내 최고 기록 라인을 그대로 내려가요. 위 칩에 지금 유령보다 몇 초 앞섰는지·뒤졌는지가 떠요. 이기면 다음 판부터 그 기록이 새 유령이 돼요.',
+    pro: '"한 판만 더"가 생김 · 물리·공정성 그대로 · 나중에 이웃 유령으로 확장', con: '첫 판엔 유령이 없음 · 기록 저장(경로 약 6KB) 필요' },
+  { id: 'B', name: 'B · 깃발 연속 콤보 가속', ref: '레퍼런스: 마리오카트 드리프트 가속, 알토의 모험 콤보',
+    how: '깃발을 연속으로 통과하면 위 칩의 콤보가 올라가고, 3개째에 눈바람 가속(속도선+소리)이 터져요. 하나라도 놓치면 0으로 돌아가요.',
+    pro: '잘 탈수록 빨라지는 손맛 · 지금은 없는 "깃발 통과 보상"이 생김', con: '기록이 빨라져 공정성·리더보드 재계산 필요 · 도토리 부스터와 역할 겹침' },
+  { id: 'C', name: 'C · 펫 동승', ref: '레퍼런스: 스키 사파리(동물 타기)',
+    how: '데려온 펫이 썰매 앞에 같이 타요. 부스터에 같이 들썩이고, 판마다 한 번은 부딪혀도 펫이 막아 줘서 느려지지 않아요(🛡️ → 💨).',
+    pro: '귀여움 · 펫 구매 동기와 연결 · 혜택이 작아 공정성 부담 적음', con: '펫 없는 사람은 못 봄 · 방패 1회가 기록에 영향(작음)' },
+];
+const SNOW = { color: 0xf4f8fc, life: 0.7, gravity: -6 };
+const SIDES = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+const AUTO_Z = Array.from({ length: 6 }, (_, i) => 20 + i * (280 / 6));
+const COMBO_N = 3, GUST_MS = 1200, BUMP_OBS = 4;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xcfe3ef);
+scene.fog = new THREE.Fog(0xcfe3ef, 18, 74);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x9ab4c8, 1.5));
+const sun = new THREE.DirectionalLight(0xffffff, 1.3);
+sun.position.set(12, 40, -24);
+scene.add(sun);
+
+function ribbon(width, color, lift) {
+  const rows = 240, cols = 10, pos = [], idx = [];
+  for (let r = 0; r <= rows; r++) {
+    const z = (r / rows) * COURSE.length;
+    for (let c = 0; c <= cols; c++) {
+      const p = slopePoint(z, centerX(z) - width / 2 + (c / cols) * width);
+      pos.push(p.x, p.y + lift, p.z);
+    }
+  }
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const a = r * (cols + 1) + c, b = a + cols + 1;
+    idx.push(a, b, a + 1, a + 1, b, b + 1);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide }));
+}
+scene.add(ribbon(60, 0xe3edf4, -0.05), ribbon(COURSE.width, 0xffffff, 0));
+COURSE.obstacles.forEach(o => {
+  const p = slopePoint(o.z, o.x), r = obstacleRadius(o);
+  const geo = o.kind === 'rock' ? new THREE.DodecahedronGeometry(r, 0) : new THREE.SphereGeometry(r, 14, 10);
+  const m = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color: o.kind === 'rock' ? 0x7d8790 : 0xf7fbfe, flatShading: true }));
+  m.position.set(p.x, p.y + r * 0.6, p.z);
+  scene.add(m);
+});
+COURSE.flags.forEach(f => [[-1, 0xe5484d], [1, 0x3a7aa8]].forEach(([sd, col]) => {
+  const p = slopePoint(f.z, f.x + sd * f.half);
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.6), new THREE.MeshLambertMaterial({ color: 0x555555 }));
+  pole.position.set(p.x, p.y + 0.8, p.z);
+  const flag = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.4), new THREE.MeshLambertMaterial({ color: col, side: THREE.DoubleSide }));
+  flag.position.set(p.x - sd * 0.3, p.y + 1.4, p.z);
+  scene.add(pole, flag);
+}));
+
+function onLayer(obj, layer) { obj.traverse(o => o.layers.set(layer)); return obj; }
+function riderMesh(color, opacity = 1) {
+  const mat = c => new THREE.MeshLambertMaterial({ color: c, transparent: opacity < 1, opacity, depthWrite: opacity >= 1 });
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 0.35, 4, 10), mat(color));
+  body.position.y = 0.55;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 14, 10), mat(0xf0c48a));
+  head.position.y = 1.05;
+  g.add(body, head);
+  return g;
+}
+function ghostify(obj) {
+  obj.traverse(o => { if (o.material) { o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = 0.35; o.material.depthWrite = false; o.material.color?.lerp(new THREE.Color(0xbfe0ff), 0.6); } });
+  return obj;
+}
+
+const puffGeo = new THREE.IcosahedronGeometry(0.09, 0);
+const puffs = [];
+function spawnPuff(p, layer, back = 3, spread = 2.4, up = 1.3) {
+  const m = new THREE.Mesh(puffGeo, new THREE.MeshBasicMaterial({ color: SNOW.color, transparent: true, opacity: 0.85 }));
+  m.layers.set(layer);
+  m.position.set(p.x + (Math.random() - 0.5) * 0.6, p.y + 0.15, p.z - 0.5);
+  m.userData = { vel: new THREE.Vector3((Math.random() - 0.5) * spread, up + Math.random() * up, -back - Math.random() * back), life: SNOW.life, age: 0 };
+  m.scale.setScalar(1.4 + Math.random() * 1.4);
+  scene.add(m);
+  puffs.push(m);
+}
+function stepPuffs(dt) {
+  for (let i = puffs.length - 1; i >= 0; i--) {
+    const m = puffs[i], u = m.userData;
+    u.age += dt; u.vel.y += SNOW.gravity * dt;
+    m.position.addScaledVector(u.vel, dt);
+    m.scale.multiplyScalar(1 + dt * 0.8);
+    m.material.opacity = 0.85 * Math.max(0, 1 - u.age / u.life);
+    if (u.age >= u.life) { scene.remove(m); m.material.dispose(); puffs.splice(i, 1); }
+  }
+}
+
+let actx = null;
+const audio = () => { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); };
+function chime(freqs) {
+  if (!actx || actx.state !== 'running') return;
+  freqs.forEach((f, i) => {
+    const t = actx.currentTime + i * 0.07, o = actx.createOscillator(), g = actx.createGain();
+    o.frequency.value = f; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.12, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+    o.connect(g).connect(actx.destination); o.start(t); o.stop(t + 0.4);
+  });
+}
+function whoosh() {
+  if (!actx || actx.state !== 'running') return;
+  const c = actx, t = c.currentTime, buf = c.createBuffer(1, c.sampleRate * 0.7, c.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  const src = c.createBufferSource(); src.buffer = buf;
+  const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1.2;
+  bp.frequency.setValueAtTime(500, t); bp.frequency.exponentialRampToValueAtTime(2600, t + 0.4);
+  const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.25, t + 0.1); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.65);
+  src.connect(bp).connect(g).connect(c.destination); src.start(t); src.stop(t + 0.7);
+}
+
+function windowOf(c, bump) {
+  if (c.flag) return [c.flag.x - c.flag.half + 0.4, c.flag.x + c.flag.half - 0.4];
+  const o = COURSE.obstacles[c.i], r = hitReach(o), half = COURSE.width / 2, cx = centerX(o.z);
+  if (bump && c.i === BUMP_OBS) return [o.x - 0.1, o.x + 0.1];
+  return SIDES[c.i] > 0 ? [o.x + r.x + 0.45, cx + half - 0.3] : [cx - half + 0.3, o.x - r.x - 0.45];
+}
+function autopilot(s, bump) {
+  const flags = COURSE.flags.slice(s.flagIdx).map(f => ({ z: f.z, flag: f }));
+  const obs = COURSE.obstacles
+    .map((o, i) => ({ z: o.z - hitReach(o).z, end: o.z + hitReach(o).z, i }))
+    .filter(c => !s.hitIds.includes(c.i) && c.end > s.z);
+  const chain = [...flags, ...obs].sort((a, b) => a.z - b.z).slice(0, 2);
+  const aim = chain.reduceRight((next, c) => {
+    const [lo, hi] = windowOf(c, bump);
+    return Math.max(lo, Math.min(hi, next ?? (lo + hi) / 2));
+  }, null) ?? centerX(s.z + 3);
+  return Math.max(-1, Math.min(1, (aim - s.x) * 2.5));
+}
+
+const grid = document.getElementById('grid');
+const panels = VARS.map((v, i) => {
+  const col = document.createElement('div');
+  col.className = 'col';
+  col.innerHTML = `<h2>${v.name}</h2><p class="ref">${v.ref}</p><p class="how">${v.how}</p><div class="pc"><div class="pro">👍 ${v.pro}</div><div class="con">👎 ${v.con}</div></div><div class="view"><canvas class="gl"></canvas><canvas class="fx"></canvas><div class="pill"><span class="t"></span><span class="a"></span><span class="h"></span></div><div class="chip"></div><div class="done"></div></div>`;
+  grid.appendChild(col);
+  const layer = i + 1;
+  const renderer = new THREE.WebGLRenderer({ canvas: col.querySelector('.gl'), antialias: true });
+  renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+  const camera = new THREE.PerspectiveCamera(42, 4 / 3, 0.1, 200);
+  camera.layers.enable(layer);
+  const sledMesh = onLayer(buildSledMesh(THREE, 'basic'), layer);
+  const rider = onLayer(riderMesh(0xe5484d), layer);
+  scene.add(sledMesh, rider);
+  const fx = col.querySelector('.fx');
+  return { v, i, layer, col, view: col.querySelector('.view'), renderer, camera, sledMesh, rider, fx, fctx: fx.getContext('2d'), chip: col.querySelector('.chip'), done: col.querySelector('.done'), pill: col.querySelector('.pill'), lines: [] };
+});
+
+const A = panels[0], B = panels[1], C = panels[2];
+const ghostSled = onLayer(ghostify(buildSledMesh(THREE, 'basic')), A.layer);
+const ghostRider = onLayer(ghostify(riderMesh(0x8fb8e8, 0.35)), A.layer);
+scene.add(ghostSled, ghostRider);
+let best = null;
+const trailGeo = new THREE.BufferGeometry();
+const trail = new THREE.Line(trailGeo, new THREE.LineBasicMaterial({ color: 0x9ec6e8, transparent: true, opacity: 0.8 }));
+trail.layers.set(A.layer);
+scene.add(trail);
+
+let petKind = 'hedgehog', pet = null;
+function mountPet() {
+  if (pet) scene.remove(pet);
+  pet = onLayer(buildPet(THREE, petKind, 2), C.layer);
+  pet.scale.setScalar(1.6);
+  scene.add(pet);
+}
+const petSel = document.getElementById('pet');
+PET_KINDS.forEach(k => { const o = document.createElement('option'); o.value = k.id; o.textContent = `${k.ico} ${k.name}`; petSel.appendChild(o); });
+petSel.value = petKind;
+petSel.onchange = () => { petKind = petSel.value; mountPet(); };
+mountPet();
+
+function resize() {
+  panels.forEach(p => {
+    const w = p.view.clientWidth, h = p.view.clientHeight;
+    p.renderer.setSize(w, h, false);
+    p.camera.aspect = w / h; p.camera.updateProjectionMatrix();
+    const dpr = Math.min(2, devicePixelRatio);
+    p.fx.width = w * dpr; p.fx.height = h * dpr; p.fctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    p.w = w; p.h = h;
+  });
+}
+addEventListener('resize', resize);
+
+let clock = 0;
+function restartPanel(p) {
+  p.sled = createSled(99);
+  p.yaw = sledYaw(0);
+  p.autoIdx = 0; p.boostSeen = 0; p.camPos = null; p.lines = []; p.gustUntil = 0;
+  p.combo = 0; p.flagSeen = 0; p.path = []; p.shield = true; p.hitSeen = 0; p.petHop = 0; p.doneAt = 0;
+  p.jitter = p.i === 0 ? (Math.random() - 0.5) * 16 : 0;
+  p.done.style.display = 'none';
+}
+panels.forEach(restartPanel);
+
+function boostPanel(p) { if (!p.sled.finished) p.sled = tryBoost(p.sled); }
+
+function ghostAt(t) {
+  if (!best) return null;
+  const pts = best.path;
+  if (t > pts[pts.length - 1].t) return null;
+  let lo = 0, hi = pts.length - 1;
+  while (lo < hi) { const m = (lo + hi) >> 1; if (pts[m].t < t) lo = m + 1; else hi = m; }
+  return pts[lo];
+}
+function gapAtZ(p) {
+  if (!best) return null;
+  const k = best.path.findIndex(q => q.z >= p.sled.z);
+  return k < 0 ? null : (p.sled.t - best.path[k].t) / 1000;
+}
+
+function stepPanel(p, dt) {
+  if (p.sled.finished) {
+    if (!p.doneAt) finishPanel(p);
+    if (clock - p.doneAt > 2600) restartPanel(p);
+    return;
+  }
+  const z0 = AUTO_Z[p.autoIdx];
+  if (z0 !== undefined && p.sled.z >= z0 + p.jitter) { p.autoIdx++; boostPanel(p); }
+  const prevSpeed = p.sled.speed;
+  p.sled = stepSled(p.sled, dt * 1000, autopilot(p.sled, p === C));
+  if (p.sled.boostsAt.length > p.boostSeen) { p.boostSeen = p.sled.boostsAt.length; p.petHop = 1; }
+  if (p === A && (!p.path.length || p.sled.t - p.path[p.path.length - 1].t >= 50)) p.path.push({ t: p.sled.t, z: p.sled.z, x: p.sled.x });
+  if (p === B) {
+    while (p.flagSeen < p.sled.splits.length) {
+      const ok = p.sled.splits[p.flagSeen][0];
+      p.combo = ok ? p.combo + 1 : 0;
+      p.flagSeen++;
+      if (p.combo >= COMBO_N) {
+        p.combo = 0;
+        p.sled = { ...p.sled, boostLeftMs: Math.max(p.sled.boostLeftMs, GUST_MS) };
+        p.gustUntil = clock + GUST_MS;
+        whoosh(); chime([784, 988, 1175]);
+        const pose = sledPose(p.sled, p.yaw);
+        for (let i = 0; i < 14; i++) spawnPuff(pose, p.layer, 2, 3, 1.6);
+      } else if (ok) chime([660 + p.combo * 120]);
+      p.chip.classList.add('pop'); setTimeout(() => p.chip.classList.remove('pop'), 160);
+    }
+  }
+  if (p === C && p.sled.hitIds.length > p.hitSeen) {
+    p.hitSeen = p.sled.hitIds.length;
+    if (p.shield) {
+      p.shield = false;
+      p.sled = { ...p.sled, slowLeftMs: 0, speed: prevSpeed };
+      p.petHop = 1.6;
+      chime([523, 784]);
+      const pose = sledPose(p.sled, p.yaw);
+      for (let i = 0; i < 18; i++) spawnPuff(pose, p.layer, -1.5, 4, 2);
+    }
+  }
+}
+
+function finishPanel(p) {
+  p.doneAt = clock;
+  const t = p.sled.t / 1000;
+  let msg = `완주 ${t.toFixed(2)}초 · 깃발 ${p.sled.flagsPassed}/12 · 부딪힘 ${p.sled.hits.length}`;
+  if (p === A) {
+    const prev = best ? best.t / 1000 : null;
+    const beat = !best || p.sled.t < best.t;
+    if (beat) { best = { t: p.sled.t, path: p.path }; trailGeo.setFromPoints(best.path.map(q => { const s = slopePoint(q.z, q.x); return new THREE.Vector3(s.x, s.y + 0.03, s.z); })); }
+    msg = prev === null ? `첫 기록 ${t.toFixed(2)}초 · 다음 판부터 이 기록이 유령이 돼요` : beat ? `👻 유령을 이겼어요 ${prev.toFixed(2)} → ${t.toFixed(2)}초` : `유령 ${prev.toFixed(2)}초 · 이번 ${t.toFixed(2)}초`;
+  }
+  if (p === C) msg += ` · 🛡️ 펫이 ${p.shield ? '0' : '1'}번 막음`;
+  p.done.textContent = msg;
+  p.done.style.display = 'block';
+}
+
+function camFor(p, dt) {
+  const t = sledCamTargets(p.sled);
+  const pos = new THREE.Vector3(t.pos.x, t.pos.y, t.pos.z), look = new THREE.Vector3(t.look.x, t.look.y, t.look.z);
+  if (!p.camPos) { p.camPos = pos.clone(); p.camLook = look.clone(); }
+  const k = 1 - Math.pow(0.02, dt);
+  p.camPos.lerp(pos, k); p.camLook.lerp(look, k);
+  p.camera.position.copy(p.camPos); p.camera.lookAt(p.camLook);
+}
+
+function drawLines(p, dt) {
+  const g = p.fctx, w = p.w, h = p.h;
+  g.clearRect(0, 0, w, h);
+  const active = p.sled.boostLeftMs > 0 && !p.sled.finished;
+  const cx = w / 2, cy = h * 0.42, diag = Math.hypot(w, h) / 2;
+  if (active && p.lines.length < 60) for (let i = 0; i < 3; i++) p.lines.push({ a: Math.random() * Math.PI * 2, r: diag * (0.35 + Math.random() * 0.3), len: 30 + Math.random() * 60, sp: diag * (2.2 + Math.random() * 1.5) });
+  g.lineCap = 'round'; g.lineWidth = 2;
+  p.lines = p.lines.filter(l => {
+    l.r += l.sp * dt;
+    if (l.r > diag * 1.3) return false;
+    g.strokeStyle = `rgba(255,255,255,${0.75 * Math.min(1, (l.r / diag - 0.3) * 2)})`;
+    g.beginPath(); g.moveTo(cx + Math.cos(l.a) * l.r, cy + Math.sin(l.a) * l.r); g.lineTo(cx + Math.cos(l.a) * (l.r + l.len), cy + Math.sin(l.a) * (l.r + l.len)); g.stroke();
+    return true;
+  });
+}
+
+function chipFor(p) {
+  const pop = p.chip.classList.contains('pop');
+  p.chip.className = 'chip' + (pop ? ' pop' : '');
+  if (p === A) {
+    const gap = gapAtZ(p);
+    if (gap === null) { p.chip.textContent = best ? '👻 유령 도착' : '👻 첫 판 · 유령 없음'; return; }
+    p.chip.textContent = `👻 ${gap <= 0 ? '−' : '+'}${Math.abs(gap).toFixed(1)}초`;
+    p.chip.classList.add(gap <= 0 ? 'ahead' : 'behind');
+  } else if (p === B) {
+    p.chip.textContent = clock < p.gustUntil ? '🌬️ 눈바람!' : `🚩 연속 ${p.combo}/${COMBO_N}`;
+  } else {
+    p.chip.textContent = p.shield ? '🛡️ 펫 방패 1' : '💨 펫이 막았어요';
+  }
+}
+
+function update(dt) {
+  clock += dt * 1000;
+  panels.forEach(p => stepPanel(p, dt));
+  panels.forEach(p => {
+    p.yaw += (sledYaw(p.sled.vx / PHYS.steerRate) - p.yaw) * Math.min(1, dt * 8);
+    const pose = sledPose(p.sled, p.yaw);
+    p.sledMesh.position.set(pose.x, pose.y, pose.z);
+    p.sledMesh.rotation.set(pose.pitch, pose.yaw, 0, 'YXZ');
+    p.rider.position.set(pose.x, pose.y + 0.2, pose.z);
+    p.rider.rotation.set(pose.pitch, pose.yaw, 0, 'YXZ');
+    if (p.sled.boostLeftMs > 0 && !p.sled.finished) for (let i = 0; i < 3; i++) spawnPuff(pose, p.layer);
+    if (p === C && pet) {
+      p.petHop = Math.max(0, p.petHop - dt * 2.2);
+      const hop = Math.sin(Math.min(1, p.petHop) * Math.PI) * 0.45;
+      pet.position.set(pose.x + Math.sin(pose.yaw) * 0.55, pose.y + 0.42 + hop + Math.sin(clock / 180) * 0.03, pose.z + Math.cos(pose.yaw) * 0.55);
+      pet.rotation.set(0, pose.yaw + (p.petHop > 1 ? (p.petHop - 1) * 10 : 0), 0);
+      updatePetAnim(pet, clock / 1000, p.petHop > 0);
+    }
+  });
+  const g = ghostAt(A.sled.t);
+  ghostSled.visible = ghostRider.visible = !!g;
+  if (g) {
+    const gp = slopePoint(g.z, g.x);
+    const pose = sledPose({ ...A.sled, z: g.z, x: g.x }, A.yaw);
+    ghostSled.position.set(gp.x, pose.y, gp.z); ghostSled.rotation.set(pose.pitch, pose.yaw, 0, 'YXZ');
+    ghostRider.position.set(gp.x, pose.y + 0.2, gp.z); ghostRider.rotation.copy(ghostSled.rotation);
+  }
+  stepPuffs(dt);
+  panels.forEach(p => {
+    camFor(p, dt);
+    p.renderer.render(scene, p.camera);
+    drawLines(p, dt);
+    p.pill.querySelector('.t').textContent = `⏱️ ${(p.sled.t / 1000).toFixed(2)}`;
+    p.pill.querySelector('.a').textContent = `🌰 ${Math.max(0, 6 - p.autoIdx)}`;
+    p.pill.querySelector('.h').textContent = `💥 ${p.sled.hits.length}`;
+    chipFor(p);
+  });
+}
+
+let last = performance.now();
+function frame(now) {
+  update(Math.max(0, Math.min(0.05, (now - last) / 1000)));
+  last = now;
+  requestAnimationFrame(frame);
+}
+resize();
+requestAnimationFrame(frame);
+document.getElementById('boostAll').onclick = () => { audio(); panels.forEach(boostPanel); whoosh(); };
+document.getElementById('restart').onclick = () => { audio(); panels.forEach(restartPanel); };
+addEventListener('pointerdown', audio, { once: true });
+window.__dev = { tick: ms => { for (let i = 0; i < ms / 16; i++) update(0.016); }, panels, get best() { return best; } };
+</script>
