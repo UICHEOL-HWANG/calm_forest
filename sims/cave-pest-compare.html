@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cave Pest Concepts</title>
+<style>
+  :root { --bg: #f4efe6; --ink: #2b2118; --muted: #6b5b4a; --card: #fffaf2; --line: #e2d6c4; --pick: #c4574a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Pretendard", "Apple SD Gothic Neo", sans-serif; }
+  header { padding: 16px 20px 4px; }
+  h1 { margin: 0 0 4px; font-size: 20px; }
+  header p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; padding: 14px 20px 8px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .card h2 { margin: 0; padding: 10px 12px 2px; font-size: 16px; }
+  .card .how { margin: 0; padding: 0 12px 10px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+  .card .how b { color: var(--ink); }
+  .views { position: relative; }
+  .views canvas { display: block; width: 100%; }
+  .views canvas + canvas { border-top: 2px solid var(--line); }
+  .tag { position: absolute; left: 8px; background: rgba(43,33,24,.72); color: #fff; font-size: 11px; padding: 3px 7px; border-radius: 6px; }
+  h3 { margin: 18px 20px 6px; font-size: 16px; }
+  .rules { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; padding: 0 20px 28px; }
+  .rule { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; font-size: 13px; line-height: 1.55; }
+  .rule h4 { margin: 0 0 6px; font-size: 15px; }
+  .rule.rec { border: 2px solid var(--pick); }
+  .rule .badge { display: inline-block; background: var(--pick); color: #fff; font-size: 11px; padding: 2px 6px; border-radius: 6px; margin-left: 6px; vertical-align: 2px; }
+  @media (max-width: 1100px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 700px) { .grid, .rules { grid-template-columns: 1fr; padding-left: 16px; padding-right: 16px; } h3 { margin-left: 16px; } header { padding: 14px 16px 4px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>⛏️ 동굴 방해꾼 시안 4종</h1>
+  <p>위 = 게임 카메라 거리 그대로(0, 14, 16) · 아래 = 가까이 · 6초 반복: 캐서 바닥에 떨어진 광석 조각을 물고 굴로 가져간다<br>
+  가운데 갈색 = 플레이어 · 오른쪽 검은 구멍 = 방해꾼 굴 · 캐릭터 얼굴(흰 왕눈) 없이 동물 표지로만 읽히게(방문객 2차 문법)</p>
+</header>
+<div class="grid" id="grid"></div>
+
+<h3>훔치는 걸 막는 규칙 — 3안</h3>
+<div class="rules">
+  <div class="rule rec">
+    <h4>A. 놀래키기 + 굴 되찾기<span class="badge">추천</span></h4>
+    방해꾼은 <b>바닥에 떨어진 광석 조각만</b> 노린다. 가방은 절대 안 털린다.<br>
+    · 물고 가는 중에 가까이 가서 액션 → 깜짝 놀라 떨어뜨리고 도망<br>
+    · 놓쳐도 그 층 어딘가 <b>굴</b>에 쌓인다. 굴을 찾아 괭이로 두드리면 되찾고 덤 1개<br>
+    손해는 "조금 귀찮음"까지만. 쫓아가는 재미와 굴 찾기 보상이 남는다.
+  </div>
+  <div class="rule">
+    <h4>B. 빨리 줍기</h4>
+    캔 광석이 2~3초 바닥에 떨어져 있다가 가방으로 들어간다. 그 사이에만 채 간다.<br>
+    · 캐자마자 그 자리를 밟으면 바로 주움<br>
+    규칙은 가장 단순하지만, 결국 "캐고 바로 밟기"라 할 일이 없고 방해꾼과 엮일 일이 적다.
+  </div>
+  <div class="rule">
+    <h4>C. 미끼 던지기</h4>
+    버섯·열매를 던지면 방해꾼이 그쪽으로 가서 먹는 동안 안 온다.<br>
+    · 미끼는 채집물 소비처가 된다(경제 연결)<br>
+    다만 미끼가 없으면 막을 방법이 없고, 휠·슬롯에 도구가 하나 더 늘어 모바일 조작이 무거워진다.
+  </div>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+const Q = new URLSearchParams(location.search);
+const FIXED_T = Q.has('t') ? Number(Q.get('t')) : null;
+
+const clay = (c, flat = false, extra = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.9, metalness: 0, flatShading: flat, ...extra });
+const M = (geo, mat, parent, p = [0, 0, 0], r = [0, 0, 0], s = [1, 1, 1]) => {
+  const m = new THREE.Mesh(geo, mat); m.position.set(...p); m.rotation.set(...r); m.scale.set(...s); m.castShadow = true; parent.add(m); return m;
+};
+const pair = fn => [-1, 1].forEach(fn);
+
+function teardrop(r, len, tip = 0.3, flatBottom = 0.3) {
+  const g = new THREE.SphereGeometry(r, 18, 14);
+  const p = g.attributes.position, v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i);
+    const zN = v.z / r, back = Math.max(0, -zN);
+    const k = 1 - (1 - tip) * Math.pow(back, 1.4);
+    v.x *= k; v.y *= k;
+    if (v.y < 0) v.y *= 1 - flatBottom;
+    v.z = zN * len / 2;
+    p.setXYZ(i, v.x, v.y, v.z);
+  }
+  g.computeVertexNormals();
+  return g;
+}
+
+const EYE = clay(0x1c1a1a);
+const eyes = (g, x, y, z, r = 0.035) => pair(sd => M(new THREE.SphereGeometry(r, 8, 6), EYE, g, [sd * x, y, z]));
+
+function oreChunk() {
+  const g = new THREE.Group();
+  M(new THREE.IcosahedronGeometry(0.16, 0), clay(0x5a5854, true), g);
+  M(new THREE.IcosahedronGeometry(0.07, 0), new THREE.MeshStandardMaterial({ color: 0x5ad0e0, emissive: 0x5ad0e0, emissiveIntensity: 0.6, roughness: 0.3 }), g, [0.08, 0.08, 0.05]);
+  return g;
+}
+
+function bat() {
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  const fur = clay(0x7a6496);
+  M(teardrop(0.2, 0.42, 0.45, 0.1), fur, body, [0, 0, 0], [Math.PI / 2 - 0.2, 0, 0]);
+  pair(sd => M(new THREE.ConeGeometry(0.09, 0.34, 4), fur, body, [sd * 0.1, 0.3, 0.02], [0, Math.PI / 4, -sd * 0.35], [1, 1, 0.5]));
+  M(new THREE.ConeGeometry(0.05, 0.1, 5), clay(0x8a6e8e), body, [0, 0.1, 0.2], [Math.PI / 2, 0, 0]);
+  eyes(body, 0.06, 0.15, 0.17, 0.025);
+  const wingShape = new THREE.Shape();
+  wingShape.moveTo(0, 0.08); wingShape.lineTo(0.62, 0.22); wingShape.quadraticCurveTo(0.56, 0.02, 0.48, -0.06);
+  wingShape.quadraticCurveTo(0.38, 0.04, 0.3, -0.1); wingShape.quadraticCurveTo(0.2, 0.0, 0.1, -0.14); wingShape.lineTo(0, -0.1);
+  const wingGeo = new THREE.ShapeGeometry(wingShape);
+  const wingMat = clay(0x5e4c78, false, { side: THREE.DoubleSide });
+  const wings = [-1, 1].map(sd => {
+    const pivot = new THREE.Group(); pivot.position.set(sd * 0.1, 0.06, 0); body.add(pivot);
+    const w = M(wingGeo, wingMat, pivot, [0, 0, 0], [0, 0, 0], [sd * 1.5, 1.5, 1]); w.rotation.x = -Math.PI / 2 + 0.15;
+    return { pivot, sd };
+  });
+  return {
+    g, hover: 0.95, carryAt: new THREE.Vector3(0, -0.28, 0.05), speed: 1.25,
+    anim(t, moving) {
+      const f = Math.sin(t * (moving ? 18 : 9));
+      wings.forEach(({ pivot, sd }) => { pivot.rotation.z = sd * f * 0.7; });
+      body.position.y = Math.sin(t * 3) * 0.06;
+    },
+  };
+}
+
+function hermitCrab() {
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  const shellMat = clay(0x6f8f86, true), shellBand = clay(0xc9d8c4, true), skin = clay(0xe0866a);
+  const shell = new THREE.Group(); shell.position.set(0, 0.32, -0.08); shell.rotation.x = -0.5; body.add(shell);
+  [[0.26, 0], [0.2, 0.17], [0.13, 0.31], [0.07, 0.41]].forEach(([r, y], i) => {
+    M(new THREE.SphereGeometry(r, 9, 7), i % 2 ? shellBand : shellMat, shell, [i * 0.03, y, 0], [0, i * 0.6, 0], [1, 0.8, 1]);
+  });
+  M(new THREE.SphereGeometry(0.16, 10, 8), skin, body, [0, 0.16, 0.16], [0, 0, 0], [1.1, 0.7, 1]);
+  pair(sd => {
+    M(new THREE.CylinderGeometry(0.018, 0.018, 0.18, 5), skin, body, [sd * 0.06, 0.32, 0.24]);
+    M(new THREE.SphereGeometry(0.035, 8, 6), EYE, body, [sd * 0.06, 0.42, 0.24]);
+    const claw = new THREE.Group(); claw.position.set(sd * 0.17, 0.14, 0.3); body.add(claw);
+    M(new THREE.SphereGeometry(sd > 0 ? 0.1 : 0.07, 8, 6), skin, claw, [0, 0, 0], [0, 0, 0], [1, 0.75, 1.2]);
+    M(new THREE.ConeGeometry(0.03, 0.1, 5), skin, claw, [0, 0.02, 0.1], [Math.PI / 2, 0, 0]);
+    for (let k = 0; k < 2; k++) M(new THREE.CylinderGeometry(0.018, 0.012, 0.2, 5), skin, body, [sd * 0.18, 0.07, 0.08 - k * 0.12], [0, 0, sd * 0.9]);
+  });
+  return {
+    g, hover: 0, carryAt: new THREE.Vector3(0.02, 0.86, -0.25), speed: 0.7,
+    anim(t, moving) { body.position.y = moving ? Math.abs(Math.sin(t * 14)) * 0.03 : 0; body.rotation.z = moving ? Math.sin(t * 14) * 0.06 : 0; },
+  };
+}
+
+function axolotl() {
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  const skin = clay(0xf0b3bd), gill = clay(0xd9546e);
+  M(teardrop(0.17, 0.62, 0.35, 0.45), skin, body, [0, 0.13, 0]);
+  M(new THREE.SphereGeometry(0.15, 12, 10), skin, body, [0, 0.15, 0.3], [0, 0, 0], [1.25, 0.8, 1]);
+  const tail = new THREE.Group(); tail.position.set(0, 0.13, -0.28); body.add(tail);
+  M(new THREE.ConeGeometry(0.1, 0.5, 4), skin, tail, [0, 0, -0.22], [-Math.PI / 2, 0, 0], [0.35, 1, 1.6]);
+  pair(sd => {
+    [0.5, 0, -0.5].forEach((a, i) => M(new THREE.ConeGeometry(0.05, 0.28, 5), gill, body, [sd * 0.24, 0.24, 0.26 + (1 - i) * 0.05], [a, 0, -sd * (0.75 + i * 0.35)]));
+    [0.18, -0.15].forEach(z => M(new THREE.CylinderGeometry(0.03, 0.025, 0.12, 5), skin, body, [sd * 0.14, 0.05, z], [0, 0, sd * 0.6]));
+  });
+  eyes(body, 0.1, 0.2, 0.4, 0.025);
+  return {
+    g, hover: 0, carryAt: new THREE.Vector3(0, 0.12, 0.5), speed: 1.0, tail,
+    anim(t, moving) { tail.rotation.y = Math.sin(t * (moving ? 10 : 3)) * (moving ? 0.5 : 0.2); body.rotation.y = moving ? Math.sin(t * 10 + 1) * 0.12 : 0; },
+  };
+}
+
+function pillbug() {
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  const plate = clay(0x66708a, true), band = clay(0xa6b0c4, true), leg = clay(0x4a5060);
+  const N = 7;
+  for (let i = 0; i < N; i++) {
+    const u = i / (N - 1), r = 0.2 * (0.7 + 0.3 * Math.sin(u * Math.PI));
+    const s = M(new THREE.CylinderGeometry(r, r, 0.1, 10, 1, false, 0, Math.PI), i % 2 ? band : plate, body, [0, 0.02, 0.3 - u * 0.6]);
+    s.rotation.set(Math.PI / 2, Math.PI / 2, 0);
+  }
+  pair(sd => {
+    M(new THREE.CylinderGeometry(0.01, 0.01, 0.24, 4), leg, body, [sd * 0.08, 0.14, 0.42], [0.9, 0, -sd * 0.5]);
+    for (let k = 0; k < 4; k++) M(new THREE.CylinderGeometry(0.012, 0.012, 0.08, 4), leg, body, [sd * 0.17, 0.02, 0.2 - k * 0.13], [0, 0, sd * 0.8]);
+  });
+  const ball = new THREE.Group(); g.add(ball); ball.visible = false;
+  for (let i = 0; i < 5; i++) M(new THREE.TorusGeometry(0.17, 0.05, 6, 14), i % 2 ? band : plate, ball, [0, 0, 0], [0, (i / 5) * Math.PI, 0]);
+  M(new THREE.SphereGeometry(0.17, 12, 10), plate, ball);
+  ball.position.y = 0.22;
+  return {
+    g, hover: 0, carryAt: new THREE.Vector3(0, 0.33, 0.12), speed: 1.4, rolls: true,
+    anim(t, moving, carrying) {
+      body.visible = !carrying; ball.visible = carrying;
+      if (carrying) ball.rotation.x = t * 9;
+      else body.position.y = moving ? Math.abs(Math.sin(t * 20)) * 0.015 : 0;
+    },
+  };
+}
+
+function playerMesh() {
+  const g = new THREE.Group(), fur = clay(0xb98a5e);
+  M(new THREE.SphereGeometry(0.42, 12, 10), fur, g, [0, 0.5, 0], [0, 0, 0], [1, 1.15, 0.9]);
+  M(new THREE.SphereGeometry(0.36, 12, 10), fur, g, [0, 1.15, 0]);
+  pair(sd => M(new THREE.SphereGeometry(0.11, 8, 6), fur, g, [sd * 0.22, 1.45, 0]));
+  M(new THREE.SphereGeometry(0.13, 8, 6), clay(0xf0dcc0), g, [0, 1.08, 0.3]);
+  return g;
+}
+
+function caveScene() {
+  const scene = new THREE.Scene(); scene.background = new THREE.Color(0x14161c);
+  scene.add(new THREE.HemisphereLight(0x9ac4ff, 0x2a2420, 0.7));
+  const key = new THREE.DirectionalLight(0xfff1d6, 0.9); key.position.set(4, 10, 6); key.castShadow = true;
+  key.shadow.mapSize.set(1024, 1024); Object.assign(key.shadow.camera, { left: -8, right: 8, top: 8, bottom: -8 }); scene.add(key);
+  const torch = new THREE.PointLight(0xffb866, 2.4, 14, 1.2); torch.position.set(-3, 2.2, -2); scene.add(torch);
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(18, 0.2, 14), clay(0x3a3a40)); floor.position.y = -0.1; floor.receiveShadow = true; scene.add(floor);
+  const rockMat = clay(0x565b66, true), rockGeo = new THREE.IcosahedronGeometry(1, 0);
+  for (let x = -8; x <= 8; x += 1.1) M(rockGeo, rockMat, scene, [x, 1, -6.5], [Math.random(), Math.random() * 6, 0], [0.9, 1.6 + Math.random(), 0.9]);
+  const vein = new THREE.Group(); vein.position.set(-1.6, 0, -1.2); scene.add(vein);
+  for (let i = 0; i < 3; i++) { const r = 0.34 + i * 0.07; M(new THREE.IcosahedronGeometry(r, 0), clay(0x5a5854, true), vein, [(i - 1) * 0.3, r * 0.7, (i % 2) * 0.2]); }
+  const hole = new THREE.Mesh(new THREE.CircleGeometry(0.42, 18), new THREE.MeshBasicMaterial({ color: 0x050608 }));
+  hole.rotation.x = -Math.PI / 2; hole.position.set(3.4, 0.01, -0.6); scene.add(hole);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.08, 6, 18), clay(0x4a4440, true)); rim.rotation.x = -Math.PI / 2; rim.position.copy(hole.position); scene.add(rim);
+  const p = playerMesh(); p.position.set(-0.4, 0, 0.6); p.rotation.y = Math.PI * 0.85; scene.add(p);
+  return { scene, burrow: hole.position.clone() };
+}
+
+const CONCEPTS = [
+  { id: 'bat', make: bat, title: '🦇 솜털 박쥐', how: '<b>날개</b>가 실루엣. 반짝이는 조각을 발에 매달고 날아감. 빠르지만 낮게 날아서 놀래키기 쉬움. <b>어두운 층</b>에 어울림.' },
+  { id: 'crab', make: hermitCrab, title: '🐚 돌집게(소라게)', how: '<b>소라 껍데기 위에 광석을 얹고</b> 옆걸음. 느려서 따라잡기 쉬움. "광석을 집으로 쓰는 애" 라는 이야기가 바로 읽힘.' },
+  { id: 'axo', make: axolotl, title: '🦎 동굴 도롱뇽', how: '<b>분홍 아가미 술</b>과 긴 꼬리가 표지. 입에 물고 꼬리 흔들며 도망. 동굴 토박이 느낌, 가장 귀여운 쪽.' },
+  { id: 'bug', make: pillbug, title: '🪲 공벌레', how: '평소엔 <b>마디 껍질</b>로 기어다니다 훔치면 <b>공으로 말려 굴러감</b>. 동작은 재밌지만 공 상태가 광맥 바위처럼 보일 위험.' },
+];
+
+const LOOP = 6;
+function stealPose(t, from, to) {
+  const u = (t % LOOP) / LOOP;
+  const grabAt = 0.4, pickEnd = 0.48, outEnd = 0.92;
+  const ore = new THREE.Vector3(-1.0, 0.12, -0.3);
+  let pos, carrying = false, moving = true, faceTo;
+  if (u < grabAt) { pos = from.clone().lerp(ore, u / grabAt); faceTo = ore; }
+  else if (u < pickEnd) { pos = ore.clone(); moving = false; faceTo = to; carrying = u > (grabAt + pickEnd) / 2; }
+  else if (u < outEnd) { pos = ore.clone().lerp(to, (u - pickEnd) / (outEnd - pickEnd)); faceTo = to; carrying = true; }
+  else { pos = to.clone(); moving = false; carrying = true; faceTo = to.clone().add(new THREE.Vector3(1, 0, 0)); }
+  pos.y = 0;
+  return { pos, carrying, moving, faceTo, ore, gone: u > outEnd };
+}
+
+const UP = new THREE.Vector3(0, 1, 0);
+function build(concept) {
+  const { scene, burrow } = caveScene();
+  const pest = concept.make();
+  pest.g.scale.setScalar(1.6);
+  scene.add(pest.g);
+  const chunk = oreChunk(); scene.add(chunk);
+  const from = new THREE.Vector3(-4.5, 0, 1.2);
+  const tick = t => {
+    const s = stealPose(t, from, burrow);
+    pest.g.position.copy(s.pos); pest.g.position.y = pest.hover;
+    const d = s.faceTo.clone().sub(s.pos); if (d.lengthSq() > 1e-4) pest.g.rotation.y = Math.atan2(d.x, d.z);
+    pest.anim(t, s.moving, s.carrying);
+    pest.g.visible = !s.gone;
+    if (s.carrying) {
+      const w = pest.carryAt.clone().multiplyScalar(1.6).applyAxisAngle(UP, pest.g.rotation.y).add(pest.g.position);
+      chunk.position.copy(w); chunk.visible = !s.gone && !pest.rolls;
+    } else { chunk.position.copy(s.ore); chunk.visible = true; }
+  };
+  return {
+    scene, tick,
+    game: { pos: new THREE.Vector3(-0.4, 14, 16.6), look: new THREE.Vector3(-0.4, 1.2, 0.6), fov: 42 },
+    close: () => { const p = pest.g.position; return { pos: new THREE.Vector3(p.x + 1.6, p.y + 1.5, p.z + 2.2), look: new THREE.Vector3(p.x, p.y + 0.35, p.z), fov: 38 }; },
+  };
+}
+
+function makeRenderer(parent, aspect) {
+  const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  r.shadowMap.enabled = true; r.setPixelRatio(Math.min(2, devicePixelRatio));
+  parent.appendChild(r.domElement);
+  const cam = new THREE.PerspectiveCamera(40, aspect, 0.1, 200);
+  const resize = () => { const w = parent.clientWidth; r.setSize(w, w / aspect, false); };
+  resize(); addEventListener('resize', resize);
+  return { r, cam };
+}
+const aim = (cam, v) => { cam.fov = v.fov; cam.updateProjectionMatrix(); cam.position.copy(v.pos); cam.lookAt(v.look); };
+
+const grid = document.getElementById('grid');
+const runs = CONCEPTS.map(c => {
+  const card = document.createElement('div'); card.className = 'card';
+  card.innerHTML = `<h2>${c.title}</h2><p class="how">${c.how}</p><div class="views"></div>`;
+  grid.appendChild(card);
+  const views = card.querySelector('.views');
+  const s = build(c);
+  const main = makeRenderer(views, 4 / 3), close = makeRenderer(views, 4 / 3);
+  const t1 = document.createElement('span'); t1.className = 'tag'; t1.style.top = '8px'; t1.textContent = '게임 카메라'; views.appendChild(t1);
+  const t2 = document.createElement('span'); t2.className = 'tag'; t2.textContent = '가까이'; views.appendChild(t2);
+  const place = () => { t2.style.top = (main.r.domElement.offsetHeight + 10) + 'px'; };
+  requestAnimationFrame(place); addEventListener('resize', place);
+  return { s, main, close };
+});
+
+const clock = new THREE.Clock();
+function frame() {
+  const t = FIXED_T ?? clock.getElapsedTime();
+  runs.forEach(({ s, main, close }) => {
+    s.tick(t);
+    aim(main.cam, s.game); main.r.render(s.scene, main.cam);
+    aim(close.cam, s.close()); close.r.render(s.scene, close.cam);
+  });
+  requestAnimationFrame(frame);
+}
+frame();
+</script>
+</body>
+</html>

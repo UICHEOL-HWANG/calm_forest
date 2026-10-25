@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cave Pest Guidance</title>
+<style>
+  :root { --bg: #f4efe6; --ink: #2b2118; --muted: #6b5b4a; --card: #fffaf2; --line: #e2d6c4; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Pretendard", "Apple SD Gothic Neo", sans-serif; }
+  header { padding: 16px 20px 6px; }
+  h1 { margin: 0 0 4px; font-size: 20px; }
+  header p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+  .row { display: grid; grid-template-columns: 2.6fr 1fr; gap: 14px; align-items: start; padding: 12px 20px; border-bottom: 1px solid var(--line); }
+  .row h2 { grid-column: 1 / -1; margin: 0; font-size: 16px; }
+  .row h2 small { color: var(--muted); font-weight: 400; font-size: 12px; margin-left: 6px; }
+  img { width: 100%; display: block; border-radius: 10px; border: 1px solid var(--line); }
+  @media (max-width: 760px) { .row { grid-template-columns: 1fr; padding: 12px 16px; } header { padding: 14px 16px 6px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>⛏️ 동굴 방해꾼 안내 · 실제 게임 화면</h1>
+  <p>왼쪽 = PC 1280×800 · 오른쪽 = 폰 375×812 · 안내 3단: ① 처음 만날 때 배너(컨텍스트 슬롯) ② 할 수 있을 때만 프롬프트 줄 + 액션 버튼 ③ 머리 위 이모지<br>
+  측정: 배너·프롬프트가 조이스틱·액션 버튼·미니맵·핫바·우상단 창과 겹치는 곳 0</p>
+</header>
+<div id="rows"></div>
+<script>
+const S = [
+  ['0-common', '⛏️ 공통 · 동굴 첫 방해꾼', '가방은 안전해요. 조각만 노려요'],
+  ['1-bat', '🦇 잎귀박쥐 · B 빨리 줍기', '반짝이면 툭! 조각은 바로 주워요 · 프롬프트 없음(노란 원이 안내)'],
+  ['2-axolotl', '🦎 동굴 도롱뇽 · A-1 놀래키기', '웅덩이 아가미를 톡 치면 뱉어요 · ❗ 톡 치기'],
+  ['3-grub', '🪔 등불벌레 · A-2 굴 되찾기', '놓쳐도 OK. 빛 자국 끝 굴로 · ⛏️ 굴 파기'],
+  ['4-crab', '💎 수정집게 · C 미끼', '먹보예요. 🍄 미끼를 던져요 · 🍄 미끼 던지기'],
+];
+document.getElementById('rows').innerHTML = S.map(([id, t, sub]) =>
+  `<div class="row"><h2>${t}<small>${sub}</small></h2><img src="pc-${id}.png" alt=""><img src="phone-${id}.png" alt=""></div>`).join('');
+</script>
+</body>
+</html>
