@@ -50,7 +50,6 @@ test('DELVE 좌표는 다른 공간과 200 이상 떨어진다', () => {
 
 test('퀘스트 패널에 광부 카드가 합쳐진다(동굴 안에서만)', () => {
   assert.match(src, /minerCard\(gameState\.delve, gameState\.inventory, atMine\)/);
-  assert.match(src, /shouldStartLine\(gameState\.delve/);
 });
 
 test('광부 카드는 맨 위 고정, 입퇴장 때 패널 갱신, 진행은 저장', () => {
@@ -141,7 +140,7 @@ test('GA4: delve_floor 에 sec·rocks, delve_step 에 sec, 도망 중 도롱뇽�
   const s = delveSrc();
   assert.match(s, /trackEvent\('delve_floor', \{ floor, via, stops: [^}]*sec: [^}]*rocks: [^}]*\}/);
   for (const m of s.matchAll(/trackEvent\('delve_step', \{([^}]*)\}/g)) assert.match(m[1], /sec: /);
-  assert.match(read('js/spaces/mine.js'), /started: true, startedAt: Date\.now\(\)/);
+  assert.match(s, /started: true, startedAt: Date\.now\(\)/);
   assert.match(s, /p\.sim\.kind === 'axolotl' && !\['gone', 'flee'\]\.includes\(p\.sim\.state\)/);
 });
 
@@ -167,9 +166,23 @@ test('광부 아저씨는 충돌체가 있어 통과할 수 없다', () => {
   assert.match(body, /solidCircle\(minerMesh\.position\.x, minerMesh\.position\.z, MINER_R\)/);
 });
 
-test('입장 때 안내에 가려 광부 의뢰가 안 열렸어도 광부·승강기 앞에서 다시 연다', () => {
+test('의뢰는 입장이 아니라 광부와 첫 대화가 끝날 때 시작한다', () => {
   const d = readFileSync(new URL('../js/spaces/delve.js', import.meta.url), 'utf8');
-  const body = d.slice(d.indexOf('export function delvePrompt()'), d.indexOf('const lp = L(player.position);'));
-  assert.match(body, /ensureMinerLine\(\)/);
-  assert.match(d, /function ensureMinerLine\(\) \{[^}]*shouldStartLine\(gameState\.delve, !ui\.coachActive\?\.\(\)\)/);
+  const m = readFileSync(new URL('../js/spaces/mine.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(m, /started: true/);
+  assert.match(d, /m\.kind === 'meet'\) \{\s*playMinerLines\(m\.lines, \(\) => \{\s*gameState\.delve = \{ \.\.\.gameState\.delve, started: true/);
+});
+
+test('받기 뒤 고맙네 토스트 대신 다음 의뢰 대화가 이어진다', () => {
+  const d = readFileSync(new URL('../js/spaces/delve.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(d, /고맙네! 다음 일을 부탁하지/);
+  assert.match(d, /playMinerLines\(minerTalk\.next\(c\.delve\.stage\)\)/);
+});
+
+test('지하에서도 위층처럼 곡괭이질·줍기 효과음이 난다', () => {
+  const d = readFileSync(new URL('../js/spaces/delve.js', import.meta.url), 'utf8');
+  const mine = d.slice(d.indexOf('export function tryDelveMine()'), d.indexOf('const batAlive'));
+  assert.match(mine, /Sound\.chop\(\)/);
+  const pick = d.slice(d.indexOf('function pickUp(c)'), d.indexOf('function pickUp(c)') + 600);
+  assert.match(pick, /Sound\.harvest\(\)/);
 });

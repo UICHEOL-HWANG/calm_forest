@@ -13,7 +13,6 @@ import {
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
 import { delveFloorNow, placeLift } from './delve.js';
-import { shouldStartLine } from '../delve/miner-card.js';
 import { onPlay, decorBanner } from '../decor-drops/index.js';
 import { MINE, MINE_GATE, MINE_HALF } from '../data/places.js';
 import { DEX_GATES, gateOf, gateOpen } from '../dex-gates.js';
@@ -146,7 +145,6 @@ export function enterMine() {
   firstHint('mineInside', '⛏️', '채굴 동굴 · 광석 캐기', { steps: [{ ico: '⛏️', label: '괭이로 광맥' }, { ico: '🪨', label: '🪨⚫ 얻기' }, { ico: '💎', label: '🌫️ 안개 날' }], note: '나갈 땐 남쪽 문', chip: '작업대 재료·판매' });
   setBGMTheme('cave');   // 🎵 음산한 동굴 테마
   Sound.blip(); trackEvent('enter_mine'); // [GA4]
-  if (shouldStartLine(gameState.delve, !ui.coachActive?.())) { gameState.delve = { ...gameState.delve, started: true, startedAt: Date.now() }; requestSave(); }
   showGemFogBanner();
   decorBanner('mine');
   $w.refreshQuestPanel?.();
