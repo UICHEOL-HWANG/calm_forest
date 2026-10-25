@@ -30,8 +30,8 @@ export function obstacleRadius(o) {
 const ramps = [81, 181, 256].map(z => ({ z, x: centerX(z), half: 2.6 }));
 
 const movers = [
-  { kind: 'ball', z0: 120, v: 4, off: -1.2, r: 0.85 },
-  { kind: 'ball', z0: 215, v: 3.5, off: 1.4, r: 0.85 },
+  { kind: 'ball', z0: 120, v: 4, off: -4.2, r: 0.85 },
+  { kind: 'ball', z0: 215, v: 3.5, off: -4.2, r: 0.85 },
   { kind: 'walker', z: 145, amp: 5, w: 1.1, ph: 0, r: 0.6 },
   { kind: 'walker', z: 232, amp: 4, w: 1.3, ph: 2, r: 0.6 },
 ];

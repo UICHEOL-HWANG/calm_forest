@@ -6,7 +6,8 @@ import { SLED_CAM, sledCamTargets, sledPose, sledFov } from '../js/mountain/sled
 import { buildSledProps } from '../js/mountain/sled-props.js';
 import { COURSE, centerX, moverPos } from '../js/mountain/course.js';
 import { slopePoint } from '../js/mountain/terrain.js';
-import { PHYS, createSled } from '../js/mountain/sled.js';
+import { PHYS, createSled, SLED_HALF } from '../js/mountain/sled.js';
+import { gateSpots, GATE_POLE } from '../js/mountain/interior-art.js';
 
 const src = f => readFileSync(new URL(`../js/${f}`, import.meta.url), 'utf8');
 const sled = (extra = {}) => ({ ...createSled(0), z: 100, x: centerX(100), ...extra });
@@ -91,4 +92,28 @@ test('the riding pet and the ghost are cached on the mountain group and rebuilt 
   assert.match(m, /skin: run\.sledId \}\)/);
   const fin = m.slice(m.indexOf('function finishSled'), m.indexOf('function finishSled') + 400);
   assert.match(fin, /air: false, trick: false/);
+});
+
+test('gate poles stand clear of a sled passing at the edge of the window, cloth hangs outward', () => {
+  for (const s of gateSpots()) {
+    const f = COURSE.flags[s.flag];
+    const pole = slopePoint(f.z, f.x + s.side * (f.half + GATE_POLE.gap));
+    assert.ok(Math.abs(s.x - pole.x) < 1e-9);
+    assert.ok(GATE_POLE.gap >= SLED_HALF.w + GATE_POLE.r);
+  }
+  assert.ok(GATE_POLE.clothOut > 0);
+});
+
+test('rolling snowballs never overlap a ramp deck', () => {
+  const ramps = COURSE.ramps;
+  for (const m of COURSE.movers.filter(x => x.kind === 'ball')) {
+    for (let tMs = 0; tMs <= 60000; tMs += 50) {
+      const p = moverPos(m, tMs);
+      for (const r of ramps) {
+        const dzM = (p.z - r.z) * (70 / 330);
+        if (dzM < -1.9 - m.r || dzM > 0.3 + m.r) continue;
+        assert.ok(Math.abs(p.x - r.x) >= r.half + m.r, `ball at z ${p.z.toFixed(1)} x ${p.x.toFixed(2)} vs ramp ${r.z}`);
+      }
+    }
+  }
 });
