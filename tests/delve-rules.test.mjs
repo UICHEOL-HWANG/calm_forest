@@ -149,3 +149,91 @@ test('사다리: 그 바위를 깨면 바로, 아니어도 5번째에는 반드�
   assert.equal(ladderRevealed({ broken: LADDER_PITY - 1, hitLadderRock: false }), false);
   assert.equal(ladderRevealed({ broken: LADDER_PITY, hitLadderRock: false }), true);
 });
+
+import { defaultDelve, sanitizeDelve, noteReach, stopsOpen, oreAllowed, markOreFloor, bumpCount, noteChest, stepView, claimStep, canDescendFrom0, jobFor } from '../js/delve/rules.js';
+
+test('기본값', () => {
+  assert.deepEqual(defaultDelve(), { maxFloor: 0, stops: [], stage: 0, counts: { tap: 0, bait: 0, grab: 0, reclaim: 0 }, chests: {}, visited: { date: null, floors: [] }, jobDate: null, started: false });
+});
+
+test('저장값 정리: 이상한 값은 걸러내고 정류장은 도달한 층까지만', () => {
+  const d = sanitizeDelve({ maxFloor: 12.7, stops: [5, 10, 15, 99, 'x'], stage: -3, counts: { tap: -1, bait: '2', grab: 3 }, chests: { 10: true, 7: true }, visited: { date: '2026-10-25', floors: [1, 2, 'z'] }, started: 1 });
+  assert.equal(d.maxFloor, 12);
+  assert.deepEqual(d.stops, [5, 10]);
+  assert.equal(d.stage, 0);
+  assert.deepEqual(d.counts, { tap: 0, bait: 0, grab: 3, reclaim: 0 });
+  assert.deepEqual(d.chests, { 10: true });
+  assert.deepEqual(d.visited, { date: '2026-10-25', floors: [1, 2] });
+  assert.equal(d.started, true);
+  assert.deepEqual(sanitizeDelve(undefined), defaultDelve());
+  assert.equal(sanitizeDelve({ maxFloor: 40 }).maxFloor, 20);
+});
+
+test('도달하면 최고 층과 정류장이 갱신되고 원본은 그대로', () => {
+  const a = defaultDelve(), b = noteReach(a, 6);
+  assert.equal(a.maxFloor, 0);
+  assert.equal(b.maxFloor, 6);
+  assert.deepEqual(stopsOpen(b), [5]);
+  assert.equal(noteReach(b, 3).maxFloor, 6);
+});
+
+test('광석은 그날 처음 간 층에서만', () => {
+  let d = defaultDelve();
+  assert.equal(oreAllowed(d, '2026-10-25', 3), true);
+  d = markOreFloor(d, '2026-10-25', 3);
+  assert.equal(oreAllowed(d, '2026-10-25', 3), false);
+  assert.equal(oreAllowed(d, '2026-10-25', 4), true);
+  assert.equal(oreAllowed(d, '2026-10-26', 3), true);
+  d = markOreFloor(d, '2026-10-26', 5);
+  assert.deepEqual(d.visited, { date: '2026-10-26', floors: [5] });
+});
+
+test('광부 1단계: 석탄 3개가 있으면 준비, 받으면 차감·승강기 개방', () => {
+  const d = { ...defaultDelve(), started: true };
+  assert.equal(canDescendFrom0(d), false);
+  assert.equal(stepView(d, { coal: 2 }).ready, false);
+  assert.equal(stepView(d, { coal: 3 }).ready, true);
+  assert.equal(claimStep(d, { coal: 2 }), null);
+  const c = claimStep(d, { coal: 5, gem: 0 });
+  assert.equal(c.delve.stage, 1);
+  assert.equal(c.inv.coal, 2);
+  assert.equal(canDescendFrom0(c.delve), true);
+});
+
+test('상태형: 의뢰 단계 전에 한 행동도 인정된다', () => {
+  let d = bumpCount({ ...defaultDelve(), started: true }, 'tap');
+  d = claimStep(d, { coal: 3 }).delve;
+  const v = stepView(d, {});
+  assert.equal(v.id, 'tap');
+  assert.equal(v.ready, true);
+});
+
+test('보상 지급: 보석·채집물·수정은 가방에 더한다', () => {
+  const d = bumpCount({ ...defaultDelve(), started: true, stage: 1 }, 'tap');
+  const c = claimStep(d, { gem: 1 });
+  assert.equal(c.inv.gem, 2);
+  assert.deepEqual(c.reward, { gem: 1 });
+});
+
+test('10층 상자·20층 도달 판정, 마지막 뒤에는 null', () => {
+  let d = { ...defaultDelve(), started: true, stage: 4 };
+  assert.equal(stepView(d, {}).ready, false);
+  d = noteChest(d, 10);
+  assert.equal(stepView(d, {}).ready, true);
+  d = { ...d, stage: 7, maxFloor: 20 };
+  assert.equal(stepView(d, {}).ready, true);
+  d = claimStep(d, {}).delve;
+  assert.equal(d.stage, 8);
+  assert.equal(stepView(d, {}), null);
+});
+
+test('아직 시작 안 했으면 카드 없음', () => {
+  assert.equal(stepView(defaultDelve(), { coal: 9 }), null);
+});
+
+test('완주 후 일감: 날짜로 정해지고 같은 날은 같다', () => {
+  assert.deepEqual(jobFor('2026-10-25'), jobFor('2026-10-25'));
+  const j = jobFor('2026-10-26');
+  assert.ok(['ore', 'reclaim'].includes(j.kind));
+  assert.ok(j.n >= 1 && j.n <= 6);
+});

@@ -1,4 +1,4 @@
-import { THEMES, ORE_ODDS, DELVE_HALF, VEINS_PER_FLOOR, PLAIN_ROCKS, LADDER_PITY, LADDER_MIN_FRAC, BURROW_MIN_FROM_ARRIVAL } from '../data/delve.js';
+import { THEMES, ORE_ODDS, DELVE_HALF, VEINS_PER_FLOOR, PLAIN_ROCKS, LADDER_PITY, LADDER_MIN_FRAC, BURROW_MIN_FROM_ARRIVAL, DELVE_FLOORS, DELVE_STOPS, MINER_STEPS } from '../data/delve.js';
 
 export function hashSeed(str) {
   let h = 2166136261 >>> 0;
@@ -88,4 +88,81 @@ export function layoutFloor({ seed, floor, half = DELVE_HALF }) {
 
 export function ladderRevealed({ broken, hitLadderRock }) {
   return hitLadderRock || broken >= LADDER_PITY;
+}
+
+const COUNT_KEYS = ['tap', 'bait', 'grab', 'reclaim'];
+const int = (v, lo, hi) => { const n = Math.floor(Number(v)); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : lo; };
+
+export function defaultDelve() {
+  return { maxFloor: 0, stops: [], stage: 0, counts: { tap: 0, bait: 0, grab: 0, reclaim: 0 }, chests: {}, visited: { date: null, floors: [] }, jobDate: null, started: false };
+}
+
+export function sanitizeDelve(raw) {
+  const d = defaultDelve();
+  if (!raw || typeof raw !== 'object') return d;
+  d.maxFloor = int(raw.maxFloor, 0, DELVE_FLOORS);
+  d.stops = DELVE_STOPS.filter(s => s <= d.maxFloor && Array.isArray(raw.stops) && raw.stops.includes(s));
+  d.stage = int(raw.stage, 0, MINER_STEPS.length);
+  for (const k of COUNT_KEYS) d.counts[k] = typeof raw.counts?.[k] === 'number' ? int(raw.counts[k], 0, 9999) : 0;
+  for (const f of [10, 20]) if (raw.chests?.[f] === true) d.chests[f] = true;
+  if (typeof raw.visited?.date === 'string') d.visited = { date: raw.visited.date, floors: (raw.visited.floors || []).filter(f => Number.isInteger(f) && f >= 1 && f <= DELVE_FLOORS) };
+  d.jobDate = typeof raw.jobDate === 'string' ? raw.jobDate : null;
+  d.started = !!raw.started;
+  return d;
+}
+
+export function noteReach(d, floor) {
+  const maxFloor = Math.max(d.maxFloor, floor);
+  return { ...d, maxFloor, stops: DELVE_STOPS.filter(s => s <= maxFloor) };
+}
+
+export function stopsOpen(d) { return DELVE_STOPS.filter(s => s <= d.maxFloor); }
+
+export function oreAllowed(d, date, floor) {
+  return d.visited.date !== date || !d.visited.floors.includes(floor);
+}
+
+export function markOreFloor(d, date, floor) {
+  const floors = d.visited.date === date ? d.visited.floors : [];
+  return floors.includes(floor) ? d : { ...d, visited: { date, floors: [...floors, floor] } };
+}
+
+export function bumpCount(d, key, n = 1) {
+  return { ...d, counts: { ...d.counts, [key]: d.counts[key] + n } };
+}
+
+export function noteChest(d, floor) { return { ...d, chests: { ...d.chests, [floor]: true } }; }
+
+export function canDescendFrom0(d) { return d.stage >= 1; }
+
+function progressOf(step, d, inv) {
+  const c = step.check;
+  if (c.kind === 'inv') return Math.min(c.n, inv[c.key] || 0);
+  if (c.kind === 'count') return Math.min(c.n, d.counts[c.key]);
+  if (c.kind === 'floor') return Math.min(c.n, d.maxFloor);
+  return d.chests[c.n] ? 1 : 0;
+}
+
+const targetOf = step => (step.check.kind === 'chest' ? 1 : step.check.n);
+
+export function stepView(d, inv) {
+  if (!d.started || d.stage >= MINER_STEPS.length) return null;
+  const step = MINER_STEPS[d.stage];
+  const progress = progressOf(step, d, inv), target = targetOf(step);
+  return { index: d.stage, id: step.id, title: step.title, desc: step.desc, progress, target, ready: progress >= target };
+}
+
+export function claimStep(d, inv) {
+  const v = stepView(d, inv);
+  if (!v || !v.ready) return null;
+  const step = MINER_STEPS[d.stage];
+  const next = { ...inv };
+  if (step.check.kind === 'inv' && step.check.take) next[step.check.key] = (next[step.check.key] || 0) - step.check.n;
+  for (const k of ['gem', 'forage', 'crystal']) if (step.reward[k]) next[k] = (next[k] || 0) + step.reward[k];
+  return { delve: { ...d, stage: d.stage + 1 }, inv: next, reward: step.reward, stepId: step.id };
+}
+
+export function jobFor(date) {
+  const r = makeRng(hashSeed(`delvejob:${date}`));
+  return r() < 0.7 ? { kind: 'ore', n: 3 + Math.floor(r() * 4), floorMin: 5 + Math.floor(r() * 3) * 5 } : { kind: 'reclaim', n: 2, floorMin: 11 };
 }
