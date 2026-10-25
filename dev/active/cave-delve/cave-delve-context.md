@@ -63,8 +63,8 @@ Last Updated: 2026-10-25 (KST)
 
 ## 배포 대기(실행하지 않음)
 
-- 4곳 동시 배포 + iOS 같은 날 심사: 웹 · 토스 · itch · Android(Play) · iOS. 옛 클라가 새 저장 칸·인벤 키를 지우므로 반드시 동시.
-- 저장 칸 `delve`, 인벤 키 `crystal`(25코인).
-- 12b 보류(사용자 승인 필요): `miner_lamp`(꾸미기)·`mine_cart`(장식) 조형, `crystal` 도감·박물관·위키 등록. 승인 전 배포 금지.
+- 4곳 동시 배포 + iOS 같은 날 심사: 웹 · 토스 · itch · Android(Play) · iOS. 옛 클라가 아래 새 id 를 지우거나 무시하므로 반드시 동시.
+- 옛 클라가 버리는 새 id: 저장 칸 `delve` · 인벤 키 `crystal`(25코인) · 꾸미기 `miner_lamp` · 야외 장식 `mine_cart`(옛 클라가 outdoorStored 에서 지우면 `delve.granted.mine_cart` 가 이미 true 라 영구 분실) · 도감 id `ore.crystal` · 세이브 필드 `museum.maxFloor`.
+- 12b(`miner_lamp`·`mine_cart` 조형, `crystal` 도감·박물관 특별전·위키)는 구현·승인 완료. 배포 순서 제약은 위 동시 배포뿐.
 - 배포 다음 날 BigQuery 확인: `delve_enter`·`delve_floor`·`pest_counter`·`delve_step`·`delve_chest` 일별 건수.
 - 공지 초안은 토스 출시 후 작성(notices_admin.html).
