@@ -85,3 +85,67 @@ test('rollOre 는 확률표의 키만 돌려준다', () => {
   for (let i = 0; i < 2000; i++) seen.add(rollOre(rng, odds));
   assert.deepEqual([...seen].sort(), ['coal', 'crystal', 'gem', 'stone']);
 });
+
+import { layoutFloor, ladderRevealed, dist } from '../js/delve/rules.js';
+import { DELVE_HALF, PLAIN_ROCKS, LADDER_MIN_FRAC, BURROW_MIN_FROM_ARRIVAL, LADDER_PITY } from '../js/data/delve.js';
+
+const SEEDS = Array.from({ length: 300 }, (_, i) => 1000 + i * 7919);
+const DIAG = DELVE_HALF * 2 * Math.SQRT2;
+
+test('도착점은 남쪽 가장자리', () => {
+  for (const seed of SEEDS) assert.ok(layoutFloor({ seed, floor: 3 }).arrival.z < -DELVE_HALF + 2.5, `${seed}`);
+});
+
+test('내려가는 곳은 도착점 반대편 절반, 대각선의 60% 이상 떨어진다', () => {
+  for (const seed of SEEDS) for (const floor of [1, 12]) {
+    const L = layoutFloor({ seed, floor });
+    assert.ok(L.ladderAt.z > 0, `${seed} z=${L.ladderAt.z}`);
+    assert.ok(dist(L.arrival, L.ladderAt) >= DIAG * LADDER_MIN_FRAC - 1e-9, `${seed} d=${dist(L.arrival, L.ladderAt)}`);
+  }
+});
+
+test('광맥 2개 + 빈 바위 4~6개, 사다리는 빈 바위 하나 밑', () => {
+  for (const seed of SEEDS) {
+    const L = layoutFloor({ seed, floor: 5 });
+    const veins = L.rocks.filter(r => r.vein).length, plain = L.rocks.length - veins;
+    assert.equal(veins, 2);
+    assert.ok(plain >= PLAIN_ROCKS[0] && plain <= PLAIN_ROCKS[1], `${seed} plain=${plain}`);
+    assert.equal(L.rocks[L.ladderRock].vein, false);
+    assert.deepEqual({ x: L.rocks[L.ladderRock].x, z: L.rocks[L.ladderRock].z }, L.ladderAt);
+  }
+});
+
+test('바위끼리 1.4 이상 떨어지고 방 안에 있다', () => {
+  for (const seed of SEEDS) {
+    const L = layoutFloor({ seed, floor: 8 });
+    for (const r of L.rocks) assert.ok(Math.abs(r.x) <= DELVE_HALF - 1 && Math.abs(r.z) <= DELVE_HALF - 1);
+    for (let i = 0; i < L.rocks.length; i++) for (let j = i + 1; j < L.rocks.length; j++) assert.ok(dist(L.rocks[i], L.rocks[j]) >= 1.4 - 1e-9);
+  }
+});
+
+test('방해꾼 굴은 도착점 근처에 없다', () => {
+  for (const seed of SEEDS) {
+    const L = layoutFloor({ seed, floor: 14 });
+    for (const b of L.burrows) assert.ok(dist(b, L.arrival) >= BURROW_MIN_FROM_ARRIVAL, `${seed}`);
+  }
+});
+
+test('방해꾼은 그 층 테마 소속, 도롱뇽이 있으면 웅덩이가 있다, 방해꾼마다 굴', () => {
+  for (const seed of SEEDS.slice(0, 50)) {
+    const a = layoutFloor({ seed, floor: 4 }), b = layoutFloor({ seed, floor: 16 });
+    for (const p of a.pests) assert.ok(['axolotl', 'crab'].includes(p));
+    for (const p of b.pests) assert.ok(['bat', 'grub'].includes(p));
+    if (a.pests.includes('axolotl')) assert.ok(a.puddles.length >= 1, `${seed}`);
+    assert.equal(a.burrows.length, a.pests.length, `${seed}`);
+  }
+});
+
+test('같은 시드면 같은 배치', () => {
+  assert.deepEqual(layoutFloor({ seed: 99, floor: 7 }), layoutFloor({ seed: 99, floor: 7 }));
+});
+
+test('사다리: 그 바위를 깨면 바로, 아니어도 5번째에는 반드시', () => {
+  assert.equal(ladderRevealed({ broken: 1, hitLadderRock: true }), true);
+  assert.equal(ladderRevealed({ broken: LADDER_PITY - 1, hitLadderRock: false }), false);
+  assert.equal(ladderRevealed({ broken: LADDER_PITY, hitLadderRock: false }), true);
+});
