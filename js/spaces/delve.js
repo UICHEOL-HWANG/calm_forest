@@ -56,8 +56,15 @@ export function settleMinerRewards() {
   }
 }
 
+function disposeObj(root) {
+  root.traverse(o => {
+    o.geometry?.dispose();
+    for (const m of [o.material].flat().filter(Boolean)) { m.map?.dispose(); m.dispose(); }
+  });
+}
+
 function clearRoom() {
-  if (group) scene.remove(group);
+  if (group) { disposeObj(group); scene.remove(group); }
   group = null;
 }
 
@@ -68,12 +75,18 @@ function buildRoom(floor, layout) {
   const floorMesh = new THREE.Mesh(new THREE.BoxGeometry(DELVE_HALF * 2 + 2, 0.2, DELVE_HALF * 2 + 2), new THREE.MeshStandardMaterial({ color: theme.floor, roughness: 1 }));
   floorMesh.position.copy(W(0, 0)); floorMesh.position.y = 0.05; floorMesh.receiveShadow = true; group.add(floorMesh);
   const wallGeo = new THREE.IcosahedronGeometry(1, 0), wallMat = new THREE.MeshStandardMaterial({ color: theme.rock, roughness: 1, flatShading: true });
+  const spots = [];
   for (let t = -DELVE_HALF; t <= DELVE_HALF; t += 1.1) {
-    for (const [x, z] of [[t, DELVE_HALF + 0.3], [t, -DELVE_HALF - 0.3], [DELVE_HALF + 0.3, t], [-DELVE_HALF - 0.3, t]]) {
-      const r = new THREE.Mesh(wallGeo, wallMat);
-      r.position.copy(W(x, z)); r.position.y = 1; r.scale.set(0.9, 1.6 + Math.abs(Math.sin(t * 3 + x)) * 0.8, 0.9); group.add(r);
-    }
+    for (const [x, z] of [[t, DELVE_HALF + 0.3], [t, -DELVE_HALF - 0.3], [DELVE_HALF + 0.3, t], [-DELVE_HALF - 0.3, t]]) spots.push({ x, z, t, lip: z > DELVE_HALF });
   }
+  const walls = new THREE.InstancedMesh(wallGeo, wallMat, spots.length);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), at = new THREE.Vector3();
+  spots.forEach(({ x, z, t, lip }, i) => {
+    at.copy(W(x, z)); at.y = lip ? 0.3 : 1;
+    sc.set(0.9, lip ? 0.4 : 1.6 + Math.abs(Math.sin(t * 3 + x)) * 0.8, 0.9);
+    walls.setMatrixAt(i, m4.compose(at, q, sc));
+  });
+  group.add(walls);
   const up = makeLadderUp(); up.position.copy(W(layout.arrival.x, layout.arrival.z - 1)); up.position.y = FLOOR_Y; group.add(up);
   const light = new THREE.PointLight(0xffb866, 2.0, 18, 1.2); light.position.copy(W(0, 0)); light.position.y = 4; group.add(light);
   run.rockMeshes = layout.rocks.map(r => { const m = makeRock(r.vein, theme); m.position.copy(W(r.x, r.z)); m.position.y = FLOOR_Y; m.userData.hp = 3; group.add(m); return m; });
@@ -170,7 +183,7 @@ const batAlive = () => run.pests.some(p => p.sim.kind === 'bat' && p.sim.state !
 
 function pickUp(c) {
   run.chunks = run.chunks.filter(x => x !== c);
-  group.remove(c.mesh); group.remove(c.ring);
+  for (const o of [c.mesh, c.ring]) { group.remove(o); disposeObj(o); }
   gameState.inventory[c.ore] = (gameState.inventory[c.ore] || 0) + 1;
   run.ore++;
   refreshInventoryUI();
@@ -228,7 +241,7 @@ export function handleDelveDoor(nd) {
     if (!run?.chest) return true;
     const loot = chestGive(rollChest(hashSeed(`delvechest:${todayStr()}:${run.floor}`)), { unlocked: false });
     for (const [k, v] of Object.entries(loot.give)) gameState.inventory[k] = (gameState.inventory[k] || 0) + v;
-    group.remove(run.chest.mesh); run.chest = null;
+    group.remove(run.chest.mesh); disposeObj(run.chest.mesh); run.chest = null;
     gameState.delve = noteChest(gameState.delve, run.floor);
     refreshInventoryUI(); requestSave();
     ui.toast?.(`🧰 ${loot.name}`);
@@ -279,7 +292,7 @@ export function handleDelveDoor(nd) {
       for (const e of r.events) {
         const c = run.carried.get(e.chunkId);
         if (!c) continue;
-        run.carried.delete(e.chunkId); group.remove(c.mesh);
+        run.carried.delete(e.chunkId); group.remove(c.mesh); disposeObj(c.mesh);
         dropChunk(e.x, e.z, c.ore);
       }
       gameState.delve = bumpCount(gameState.delve, 'tap');
@@ -296,7 +309,7 @@ export function handleDelveDoor(nd) {
       p.sim = next;
       gameState.inventory.forage -= 1; refreshInventoryUI();
       const b = makeBait(); b.position.copy(W(p.sim.x, p.sim.z + 0.5)); b.position.y = FLOOR_Y; group.add(b);
-      const g = group; setTimeout(() => g.remove(b), 6000);
+      const g = group; setTimeout(() => { g.remove(b); disposeObj(b); }, 6000);
       gameState.delve = bumpCount(gameState.delve, 'bait');
       trackEvent('pest_counter', { pest: 'crab', method: 'bait', ok: 1 });
       return true;
@@ -341,19 +354,19 @@ export function updateDelve(dt, t) {
     for (const e of events) {
       if (e.type === 'grab') {
         const c = run.chunks.find(x => x.id === e.chunkId);
-        if (c) { run.chunks = run.chunks.filter(x => x !== c); group.remove(c.ring); run.carried.set(c.id, c); }
+        if (c) { run.chunks = run.chunks.filter(x => x !== c); group.remove(c.ring); disposeObj(c.ring); run.carried.set(c.id, c); p.grabAt = { x: c.x, z: c.z }; }
         if (!p.met) { p.met = true; meetBanner(pest.kind); }
       }
       if (e.type === 'stash') {
         const c = run.carried.get(e.chunkId);
         run.carried.delete(e.chunkId);
         if (c) {
-          group.remove(c.mesh);
+          group.remove(c.mesh); disposeObj(c.mesh);
           if (pest.kind === 'grub') {
             run.stash.push(c);
             if (!run.trail) {
-              const pts = [];
-              for (let k = 0; k <= 8; k++) pts.push([DELVE.x + pest.spawn.x + (pest.home.x - pest.spawn.x) * k / 8, DELVE.z + pest.spawn.z + (pest.home.z - pest.spawn.z) * k / 8]);
+              const from = p.grabAt || { x: c.x, z: c.z }, pts = [];
+              for (let k = 0; k <= 8; k++) pts.push([DELVE.x + from.x + (pest.home.x - from.x) * k / 8, DELVE.z + from.z + (pest.home.z - from.z) * k / 8]);
               run.trail = makeTrail(pts); run.trail.position.y = FLOOR_Y; group.add(run.trail);
             }
           }
@@ -364,7 +377,7 @@ export function updateDelve(dt, t) {
     p.art.g.visible = pest.state !== 'gone';
     const want = pest.state === 'carry' ? '💎' : pest.state === 'flee' ? '❗' : pest.state === 'eat' ? '😋' : null;
     if (p.bubbleTxt !== want) {
-      if (p.bubble) group.remove(p.bubble);
+      if (p.bubble) { group.remove(p.bubble); disposeObj(p.bubble); }
       p.bubble = want ? emojiBubble(want, 0.9) : null;
       if (p.bubble) group.add(p.bubble);
       p.bubbleTxt = want;

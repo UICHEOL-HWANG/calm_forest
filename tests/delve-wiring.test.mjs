@@ -90,7 +90,10 @@ test('승강기: 정류장이 있으면 두 버튼 안내(가장 깊은 곳 / 1�
   assert.match(b, /liftTargets\(gameState\.delve\)/);
   assert.match(b, /showHintModal\?\.\(\{[\s\S]*ico: '🛗', title: '승강기', body: '어디로 갈까요\?'/);
   assert.match(b, /alt: \{ label: '🪜 1층부터'/);
-  assert.match(b, /enterFloor\(1, 'lift'\)/);
+  assert.match(b, /onClick: \(\) => go\(deepest\)/);
+  assert.match(b, /onClick: \(\) => go\(1\)/);
+  assert.match(b, /if \(deepest === 1\) \{ go\(1\); return true; \}/);
+  assert.match(b, /trackEvent\('delve_enter', \{ floor, [^}]*\}\); enterFloor\(floor, 'lift'\)/);
   const en = read('js/i18n-en.js');
   for (const k of ["'승강기'", "'어디로 갈까요?'", "'🪜 1층부터'", "'🛗 지하 {0#}층'"]) assert.ok(en.includes(k), k);
 });
@@ -111,7 +114,9 @@ test('빛 자국은 잡은 자리에서 굴까지, 층마다 자원 정리', () 
   const s = delveSrc();
   assert.match(s, /grabAt = \{ x: /);
   assert.doesNotMatch(s, /pest\.spawn\.x/);
-  assert.match(s.match(/function clearRoom\(\)[\s\S]*?\n}\n/)[0], /dispose\(\)/);
+  assert.match(s.match(/function clearRoom\(\)[\s\S]*?\n}\n/)[0], /disposeObj\(group\)/);
+  const dz = s.match(/function disposeObj\(root\)[\s\S]*?\n}\n/)[0];
+  for (const k of [/geometry\?\.dispose\(\)/, /map\?\.dispose\(\)/, /m\.dispose\(\)/]) assert.match(dz, k);
   assert.match(s, /disposeObj\(p\.bubble\)/);
 });
 
