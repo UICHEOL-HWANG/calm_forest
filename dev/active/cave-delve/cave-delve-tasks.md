@@ -15,19 +15,19 @@
 
 - [x] 하루 수입 시뮬 → S3 확정(광맥 2·1개 고정·보석 4→8%/10→18%) `sim/income-sim.mjs`
 - [x] 구현 계획 `cave-delve-plan.md`(Task 0~13)
-- [ ] 실행 방식 선택(서브에이전트 / 인라인)
+- [x] 실행 방식 선택(서브에이전트)
 
 ## 구현(계획 확정 후 세분화)
 
-- [ ] `js/data/delve.js`
-- [ ] `js/delve/rules.js` + 노드 테스트
-- [ ] `js/delve/pests.js` + 노드 테스트
-- [ ] `js/delve/pest-art.js`(굽기·드로우콜)
-- [ ] `js/delve/miner.js`
-- [ ] `js/spaces/delve.js`
-- [ ] 저장 복원·정리 · 퀘스트 패널 카드 · 배너/프롬프트/액션 아이콘
-- [ ] 영어 사전 · i18n 검사
-- [ ] 트래킹 7종
-- [ ] 캡처 검증(PC·폰·320) · 드로우콜 실측
+- [x] `js/data/delve.js`
+- [x] `js/delve/rules.js` + 노드 테스트
+- [x] `js/delve/pests.js` + 노드 테스트
+- [x] `js/delve/pest-art.js`(굽기·드로우콜)
+- [x] `js/delve/miner.js`
+- [x] `js/spaces/delve.js`
+- [x] 저장 복원·정리 · 퀘스트 패널 카드 · 배너/프롬프트/액션 아이콘
+- [x] 영어 사전 · i18n 검사
+- [x] 트래킹 7종
+- [x] 캡처 검증(PC·폰·320) · 드로우콜 실측
 - [ ] 코드 리뷰
 - [ ] 4곳 동시 배포(+iOS) · 다음 날 BigQuery 재검증

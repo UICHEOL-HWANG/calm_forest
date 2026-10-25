@@ -2,13 +2,15 @@
 
 Last Updated: 2026-10-25 (KST)
 
+상태: 구현 완료 · 리뷰 대기 · 배포 전
+
 ## 한 줄
 
 지금 동굴을 0층으로 두고 지하 1~20층 탐험 + 순한 방해꾼 4종 + ⛏️ 광부 아저씨 별도 퀘스트 트랙을 붙인다. 전투 없음.
 
 ## 스펙
 
-- `docs/superpowers/specs/2026-10-25-cave-delve-design.md` (설계 확정, 구현 전)
+- `docs/superpowers/specs/2026-10-25-cave-delve-design.md` (설계 확정, 구현 완료)
 
 ## 확정된 결정
 
@@ -51,3 +53,18 @@ Last Updated: 2026-10-25 (KST)
 
 1. 실행 방식 선택 후 `cave-delve-plan.md` Task 0(워크트리 `feat/cave-delve`)부터
 2. 지하 층 새로고침 → 마을 동굴 입구 앞 복귀(`getGameState` playerPos, Task 8)
+
+## 구현 검증(Task 13, 2026-10-25)
+
+- 캡처: `dev/active/cave-delve/mockup/impl/capture-impl.mjs`(PC 1280x800 · 폰 375x812 · 폰 320x640, 오프라인 게스트). 장면 8종 x 3기기, `results.json` + `index.html`.
+- 겹침 0건(배너·프롬프트 x 조이스틱·액션 버튼·퀘스트 패널·미니맵·핫바·우상단). 프롬프트 모바일은 원형 액션 아이콘으로 표시.
+- 드로우콜(안정 측정): 마을 PC ~300 · 지하 1층 167/139(폰) · 4층 145/108 · 11층 120/69 · 12층 129/74. 0층은 보는 자리에 따라 124~310.
+- 알려진 이슈: 320폭 배너 2줄 줄바꿈 · 320폭 퀘스트 카드가 우상단 🎒 버튼을 가림.
+
+## 배포 대기(실행하지 않음)
+
+- 4곳 동시 배포 + iOS 같은 날 심사: 웹 · 토스 · itch · Android(Play) · iOS. 옛 클라가 새 저장 칸·인벤 키를 지우므로 반드시 동시.
+- 저장 칸 `delve`, 인벤 키 `crystal`(25코인).
+- 12b 보류(사용자 승인 필요): `miner_lamp`(꾸미기)·`mine_cart`(장식) 조형, `crystal` 도감·박물관·위키 등록. 승인 전 배포 금지.
+- 배포 다음 날 BigQuery 확인: `delve_enter`·`delve_floor`·`pest_counter`·`delve_step`·`delve_chest` 일별 건수.
+- 공지 초안은 토스 출시 후 작성(notices_admin.html).
