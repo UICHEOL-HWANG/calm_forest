@@ -246,7 +246,7 @@ test('잘못된 저장값이어도 정리 중에 던지지 않는다', () => {
   assert.deepEqual(d.stops, []);
 });
 
-import { minerCard, shouldStartLine } from '../js/delve/miner-card.js';
+import { minerCard } from '../js/delve/miner-card.js';
 
 test('광부 카드는 동굴 안에서만, 시작 전·완주 후엔 없음', () => {
   const d = { ...defaultDelve(), started: true };
@@ -260,11 +260,6 @@ test('광부 카드는 동굴 안에서만, 시작 전·완주 후엔 없음', (
   assert.equal(minerCard({ ...d, stage: 8 }, {}, true), null);
 });
 
-test('라인은 튜토리얼이 끝난 뒤, 한 번만 시작', () => {
-  assert.equal(shouldStartLine(defaultDelve(), false), false);
-  assert.equal(shouldStartLine(defaultDelve(), true), true);
-  assert.equal(shouldStartLine({ ...defaultDelve(), started: true }, true), false);
-});
 
 import { jobCard } from '../js/delve/miner-card.js';
 
@@ -338,4 +333,39 @@ test('받지 못한 광부 보상: 단계가 지났고 아직 없을 때만 다�
   assert.deepEqual(owedMinerRewards({ ...d, stage: 5 }, ['miner_lamp']), { cosmetic: [], decor: [] });
   assert.deepEqual(owedMinerRewards({ ...d, stage: 8 }, ['miner_lamp']), { cosmetic: [], decor: ['mine_cart'] });
   assert.deepEqual(owedMinerRewards({ ...d, stage: 8, granted: { mine_cart: true } }, []), { cosmetic: ['miner_lamp'], decor: [] });
+});
+
+import { minerTalk } from '../js/delve/miner-card.js';
+import { MINER_DONE_LINES } from '../js/data/delve.js';
+
+test('처음 만나면 승강기 사정과 첫 의뢰(석탄)를 대화로 듣는다', () => {
+  const t = minerTalk(defaultDelve(), {});
+  assert.equal(t.kind, 'meet');
+  assert.deepEqual(t.lines, MINER_STEPS[0].ask);
+  assert.ok(t.lines.some(l => l.includes('승강기')) && t.lines.some(l => l.includes('석탄')));
+});
+
+test('의뢰 중 덜 했으면 진행도를 다시 알려 준다', () => {
+  const t = minerTalk({ ...defaultDelve(), started: true }, { coal: 1 });
+  assert.equal(t.kind, 'nag');
+  assert.equal(t.lines.at(-1), MINER_STEPS[0].desc);
+  assert.equal(t.progress, '(1/3)');
+});
+
+test('다 했으면 받기 대화가 열린다', () => {
+  assert.equal(minerTalk({ ...defaultDelve(), started: true }, { coal: 3 }).kind, 'claim');
+});
+
+test('받은 뒤 대사는 다음 의뢰로 이어지고, 마지막엔 완주 대사', () => {
+  assert.deepEqual(minerTalk.next(1), MINER_STEPS[1].ask);
+  assert.deepEqual(minerTalk.next(MINER_STEPS.length), MINER_DONE_LINES);
+});
+
+test('모든 단계에 의뢰 대사가 있다', () => {
+  for (const s of MINER_STEPS) assert.ok(Array.isArray(s.ask) && s.ask.length >= 2, s.id);
+  assert.equal(MINER_STEPS[0].title, '승강기 고치기');
+});
+
+test('완주 뒤엔 대화 대신 하루 일감 쪽으로 넘긴다', () => {
+  assert.equal(minerTalk({ ...defaultDelve(), started: true, stage: MINER_STEPS.length }, {}), null);
 });

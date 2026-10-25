@@ -11,10 +11,12 @@ import {
 } from '../delve/rules.js';
 import { rollChest, chestGive } from '../boat-chest.js';
 import { makeChestMesh } from '../boat-chest-art.js';
-import { jobCard, owedMinerRewards, shouldStartLine } from '../delve/miner-card.js';
+import { jobCard, owedMinerRewards, minerTalk } from '../delve/miner-card.js';
+import { playMinerLines, advanceMinerTalk, minerTalkOpen, closeMinerTalk } from '../delve/miner-talk.js';
 import { createPest, stepPest, tapPest, baitPest, canPick, RING_SEC, TAP_R, BAIT_R } from '../delve/pests.js';
 import { makePest, makeOreChunk, makePuddle, makeBurrow, makeRing, makeBait, makeShaft, makeLadderUp, makeRock, makeLift, emojiBubble, makeTrail } from '../delve/pest-art.js';
 import { makeMiner } from '../delve/miner.js';
+import { Sound } from '../sound.js';
 import * as THREE from 'three';
 
 let run = null;
@@ -182,7 +184,7 @@ export function tryDelveMine() {
   if (i < 0) { ui.toast?.('가까운 바위가 없어요 ⛏️'); return; }
   const r = run.layout.rocks[i], m = run.rockMeshes[i];
   doPlayerAction(m.position.x, m.position.z);
-  spawnDust(m.position.x, m.position.z, 8);
+  Sound.chop(); spawnDust(m.position.x, m.position.z, 8);
   m.userData.hp -= 1;
   if (m.userData.hp > 0) return;
   m.visible = false;
@@ -199,6 +201,7 @@ function pickUp(c) {
   gameState.inventory[c.ore] = (gameState.inventory[c.ore] || 0) + 1;
   run.ore++;
   refreshInventoryUI();
+  Sound.harvest();
   spawnFloatText(c.mesh.position.x, 1.4, c.mesh.position.z, `+1`, c.ore === 'gem' ? '#5ad0e0' : '#cfc8b8');
   questEvent('mine', 1);
   dexDiscover('ore', c.ore);
@@ -210,21 +213,34 @@ function pickUp(c) {
   if (gameState.delve.stage >= 8 && j.kind === 'ore' && run.floor >= j.floorMin) bumpTodayJob();
 }
 
-function ensureMinerLine() {
-  if (!shouldStartLine(gameState.delve, !ui.coachActive?.())) return;
-  gameState.delve = { ...gameState.delve, started: true, startedAt: Date.now() };
-  requestSave();
-  $w.refreshQuestPanel?.();
+const TALK_CLOSE_R = 4;
+let minerBubble = null;
+
+function syncMinerBubble() {
+  const k = minerTalk(gameState.delve, gameState.inventory)?.kind;
+  const want = k === 'meet' ? '❗' : k === 'claim' ? '✅' : null;
+  if ((minerBubble?.userData.txt || null) === want) return;
+  if (minerBubble) { minerMesh.remove(minerBubble); minerBubble.material.map.dispose(); minerBubble.material.dispose(); minerBubble = null; }
+  if (!want) return;
+  minerBubble = emojiBubble(want, 0.7);
+  minerBubble.userData.txt = want;
+  minerBubble.position.set(0, 1.9, 0);
+  minerMesh.add(minerBubble);
 }
 
 export function delvePrompt() {
   if (!run) {
-    if ((minerMesh && dist2D(minerMesh.position, player.position) < 1.8) || (liftMesh && dist2D(liftMesh.position, player.position) < 2.0)) ensureMinerLine();
+    if (minerMesh) {
+      syncMinerBubble();
+      const d = dist2D(minerMesh.position, player.position);
+      if (minerTalkOpen() && d > TALK_CLOSE_R) closeMinerTalk();
+      if (minerTalkOpen()) return { nd: 'delve_talk_next', prompt: '▶' };
+    }
     if (minerMesh && dist2D(minerMesh.position, player.position) < 1.8) {
       if (jobCard(gameState.delve, gameState.inventory, true, todayStr(), delveJobProgress())?.ready) return { nd: 'delve_job_claim', prompt: '⛏️ 광부 아저씨 · 받기' };
-      const v = stepView(gameState.delve, gameState.inventory);
-      if (v?.ready) return { nd: 'delve_miner_claim', prompt: '⛏️ 광부 아저씨 · 받기' };
-      if (v) return { nd: 'delve_miner_talk', prompt: '⛏️ 광부 아저씨' };
+      const k = minerTalk(gameState.delve, gameState.inventory)?.kind;
+      if (k === 'claim') return { nd: 'delve_miner_claim', prompt: '⛏️ 광부 아저씨 · 받기' };
+      if (k) return { nd: 'delve_miner_talk', prompt: '💬 광부 아저씨와 대화' };
     }
     if (liftMesh && dist2D(liftMesh.position, player.position) < 2.0) {
       return canDescendFrom0(gameState.delve) ? { nd: 'delve_lift', prompt: '🛗 승강기 타기' } : { nd: 'delve_lift_locked', prompt: '🛗 승강기 고장' };
@@ -269,9 +285,20 @@ export function handleDelveDoor(nd) {
     $w.refreshQuestPanel?.();
     return true;
   }
+  if (nd === 'delve_talk_next') { advanceMinerTalk(); return true; }
   if (nd === 'delve_miner_talk') {
-    const v = stepView(gameState.delve, gameState.inventory);
-    if (v) ui.toast?.(`⛏️ ${v.desc} (${v.progress}/${v.target})`);
+    const m = minerTalk(gameState.delve, gameState.inventory);
+    if (!m) return true;
+    if (m.kind === 'meet') {
+      playMinerLines(m.lines, () => {
+        gameState.delve = { ...gameState.delve, started: true, startedAt: Date.now() };
+        requestSave();
+        trackEvent('delve_step', { step: 'meet', stage: gameState.delve.stage, sec: 0 });
+        $w.refreshQuestPanel?.();
+      });
+    } else {
+      playMinerLines(m.lines.map((l, i) => (i === m.lines.length - 1 ? `${l} ${m.progress}` : l)));
+    }
     return true;
   }
   if (nd === 'delve_miner_claim') {
@@ -282,12 +309,12 @@ export function handleDelveDoor(nd) {
     settleMinerRewards();
     refreshInventoryUI();
     requestSave();
-    ui.toast?.('⛏️ 고맙네! 다음 일을 부탁하지');
     trackEvent('delve_step', { step: c.stepId, stage: c.delve.stage, sec: lineSec() });
     $w.refreshQuestPanel?.();
+    playMinerLines(minerTalk.next(c.delve.stage));
     return true;
   }
-  if (nd === 'delve_lift_locked') { ui.toast?.('⛏️ 광부 아저씨에게 석탄 3개를 가져다줘요'); return true; }
+  if (nd === 'delve_lift_locked') { ui.toast?.('🛗 승강기가 고장 났어요. 광부 아저씨에게 가 봐요'); return true; }
   if (nd === 'delve_lift') {
     const targets = liftTargets(gameState.delve);
     const go = (floor) => { trackEvent('delve_enter', { floor, stops: targets.length - 1 }); enterFloor(floor, 'lift'); };

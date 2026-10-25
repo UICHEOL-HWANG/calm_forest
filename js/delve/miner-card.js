@@ -1,15 +1,11 @@
 import { stepView, jobFor } from './rules.js';
-import { MINER_STEPS } from '../data/delve.js';
+import { MINER_STEPS, MINER_DONE_LINES, MINER_NAG } from '../data/delve.js';
 
 export function minerCard(delve, inv, inCave) {
   if (!inCave) return null;
   const v = stepView(delve, inv);
   if (!v) return null;
   return { id: 'delve_miner', name: '광부 아저씨', title: `⛏️ ${v.title}`, desc: v.desc, how: '⛏️ 동굴 0층 승강기 옆 광부 아저씨에게 가요', progress: v.progress, target: v.target, ready: v.ready };
-}
-
-export function shouldStartLine(delve, tutorialDone) {
-  return tutorialDone && !delve.started;
 }
 
 export function jobCard(delve, inv, inCave, date, progress) {
@@ -26,3 +22,14 @@ export function owedMinerRewards(delve, cosmeticsOwned) {
     decor: done.map(r => r.decor).filter(id => id && !delve.granted?.[id]),
   };
 }
+
+const nextLines = (stage) => (stage >= MINER_STEPS.length ? MINER_DONE_LINES : MINER_STEPS[stage].ask);
+
+export function minerTalk(delve, inv) {
+  if (delve.stage >= MINER_STEPS.length) return null;
+  if (!delve.started) return { kind: 'meet', lines: MINER_STEPS[delve.stage].ask };
+  const v = stepView(delve, inv);
+  if (v.ready) return { kind: 'claim', lines: [] };
+  return { kind: 'nag', lines: [MINER_NAG, v.desc], progress: `(${v.progress}/${v.target})` };
+}
+minerTalk.next = nextLines;
