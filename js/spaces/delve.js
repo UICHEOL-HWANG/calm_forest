@@ -1,5 +1,5 @@
 import {
-  $w, atMine, clock, dexDiscover, dist2D, doPlayerAction, gameState, player, questEvent, refreshInventoryUI, requestSave, scene,
+  $w, atMine, dexDiscover, dist2D, doPlayerAction, gameState, player, questEvent, refreshInventoryUI, requestSave, scene,
   setSpaceVisible, situation, snapCamera, spawnDust, spawnFloatText, spawnSparkle, ui, todayStr,
 } from '../game.js';
 import { trackEvent } from '../analytics.js';

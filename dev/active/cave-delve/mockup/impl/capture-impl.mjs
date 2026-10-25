@@ -216,7 +216,7 @@ for (const d of DEVICES.filter(x => !process.env.DEV || x.id === process.env.DEV
   const perf = async () => b.evaluate(`(() => { const p = window.__perf(); return { calls: p.calls, tris: p.tris, objs: p.objs }; })()`);
   try { r.villagePerf = await perf(); } catch (e) { r.villagePerf = String(e); }
   console.log(d.id, 'setup', await b.evaluate(SETUP), 'village', JSON.stringify(r.villagePerf));
-  if (process.env.PROBE) { await b.shot('/private/tmp/claude-501/-Users-uicheol-hwang-calm-forest/0a1ed4c9-eedd-4028-9af6-ba4eee100ae8/scratchpad/probe.png'); console.log(await b.evaluate(`JSON.stringify({coach: document.getElementById('coach').className, body: document.body.className})`)); }
+  if (process.env.PROBE) { await b.shot(process.env.PROBE_OUT || path.join(OUT, 'probe.png')); console.log(await b.evaluate(`JSON.stringify({coach: document.getElementById('coach').className, body: document.body.className})`)); }
   await b.sleep(1500);
   for (const [id, code] of Object.entries(SCENES)) {
     if (ONLY.length && !ONLY.includes(id)) continue;
