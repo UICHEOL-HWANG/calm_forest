@@ -39,7 +39,7 @@ web AS (
     MAX(IF(e.event_name = 'app_banner_holdout', 1, 0)) AS holdout,
     MAX(IF(e.event_name = 'app_banner_click' AND e.b_os = 'android', 1, 0)) AS click_aos,
     MAX(IF(e.event_name = 'app_banner_click' AND e.b_os = 'ios', 1, 0)) AS click_ios,
-    ARRAY_AGG(IF(e.event_name = 'app_banner_click' AND e.jid != '', e.jid, NULL) IGNORE NULLS ORDER BY e.event_timestamp DESC LIMIT 1)[SAFE_OFFSET(0)] AS jid,
+    ARRAY_AGG(IF(e.event_name IN ('app_banner_click', 'login_store_click') AND e.jid != '', e.jid, NULL) IGNORE NULLS ORDER BY e.event_timestamp DESC LIMIT 1)[SAFE_OFFSET(0)] AS jid,
     MAX(IF(REGEXP_CONTAINS(IFNULL(e.loc, ''), r'^https?://(localhost|127\.0\.0\.1)'), 1, 0)) AS dev
   FROM land JOIN ev e USING (user_pseudo_id)
   WHERE e.event_timestamp >= land.l.ts

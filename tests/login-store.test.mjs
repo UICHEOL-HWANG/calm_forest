@@ -144,3 +144,10 @@ test('Apple SVG 배지는 스크립트 없는 순수 SVG 다', () => {
 test('언어를 넘겨 부팅한다', () => {
   assert.match(html, /mountLoginStore\(\{[^}]*lang: LANG/);
 });
+
+test('계획에 스토어 링크와 같은 jid 를 실어 클릭 이벤트가 앱 설치와 이어지게 한다', () => {
+  assert.equal(plan({ ua: UA.android, maxTouchPoints: 5, touch: TOUCH }).jid, 'abc123');
+  assert.equal(plan({ ua: UA.android, maxTouchPoints: 5, touch: null }).jid, '');
+  const ui = read('js/login-store-ui.js');
+  assert.match(ui, /track\('login_store_click', \{ os, device: plan\.device, jid: plan\.jid \}\)/);
+});

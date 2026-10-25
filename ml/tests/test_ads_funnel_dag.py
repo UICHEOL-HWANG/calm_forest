@@ -174,6 +174,11 @@ def test_sql_file_has_all_params_and_marts():
         assert t in sql
 
 
+def test_sql_links_web_users_to_app_through_login_store_jid_too():
+    sql = (REPO_ROOT / "sql" / "analytics" / "ads_funnel.sql").read_text()
+    assert "e.event_name IN ('app_banner_click', 'login_store_click') AND e.jid != ''" in sql
+
+
 def _ins(d, ad, spend="5000", imp="3000", reach="2500", clicks="60", lpv="40", campaign="webapp_202610"):
     acts = [{"action_type": "link_click", "value": clicks}]
     if lpv is not None:
