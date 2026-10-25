@@ -10,7 +10,7 @@ import {
   bumpCount, canDescendFrom0, stopsOpen, stepView, claimStep,
 } from '../delve/rules.js';
 import { createPest, stepPest, tapPest, baitPest, canPick, RING_SEC, TAP_R, BAIT_R } from '../delve/pests.js';
-import { makePest, makeOreChunk, makePuddle, makeBurrow, makeRing, makeBait, makeShaft, makeLadderUp, makeRock, makeLift } from '../delve/pest-art.js';
+import { makePest, makeOreChunk, makePuddle, makeBurrow, makeRing, makeBait, makeShaft, makeLadderUp, makeRock, makeLift, emojiBubble, makeTrail } from '../delve/pest-art.js';
 import { makeMiner } from '../delve/miner.js';
 import * as THREE from 'three';
 
@@ -96,6 +96,7 @@ export function enterFloor(floor, via) {
   player.rotation.y = 0;
   $w.nearDoor = null; ui.setDoorPrompt?.(null); snapCamera(); setSpaceVisible();
   trackEvent('delve_floor', { floor, via, stops: stopsOpen(gameState.delve).length });
+  if (floor === 1) $w.firstHintBanner?.('delve_common', PEST_COPY.common.ico, PEST_COPY.common.title, PEST_COPY.common.line);
 }
 
 export function leaveToFloor0(reason) {
@@ -295,11 +296,29 @@ export function updateDelve(dt, t) {
       if (e.type === 'stash') {
         const c = run.carried.get(e.chunkId);
         run.carried.delete(e.chunkId);
-        if (c) { group.remove(c.mesh); if (pest.kind === 'grub') run.stash.push(c); }
+        if (c) {
+          group.remove(c.mesh);
+          if (pest.kind === 'grub') {
+            run.stash.push(c);
+            if (!run.trail) {
+              const pts = [];
+              for (let k = 0; k <= 8; k++) pts.push([DELVE.x + pest.spawn.x + (pest.home.x - pest.spawn.x) * k / 8, DELVE.z + pest.spawn.z + (pest.home.z - pest.spawn.z) * k / 8]);
+              run.trail = makeTrail(pts); run.trail.position.y = FLOOR_Y; group.add(run.trail);
+            }
+          }
+        }
       }
     }
     p.art.g.position.copy(W(pest.x, pest.z)); p.art.g.position.y = FLOOR_Y + (p.art.hover || 0);
     p.art.g.visible = pest.state !== 'gone';
+    const want = pest.state === 'carry' ? '💎' : pest.state === 'flee' ? '❗' : pest.state === 'eat' ? '😋' : null;
+    if (p.bubbleTxt !== want) {
+      if (p.bubble) group.remove(p.bubble);
+      p.bubble = want ? emojiBubble(want, 0.9) : null;
+      if (p.bubble) group.add(p.bubble);
+      p.bubbleTxt = want;
+    }
+    if (p.bubble) p.bubble.position.set(p.art.g.position.x, p.art.g.position.y + 1.6, p.art.g.position.z);
     if (pest.carryId) { const c = run.carried.get(pest.carryId); if (c) c.mesh.position.copy(p.art.g.position).add(new THREE.Vector3(0, 0.5, 0)); }
   }
 }

@@ -57,3 +57,14 @@ test('광부 카드는 맨 위 고정, 입퇴장 때 패널 갱신, 진행은 �
   assert.match(mine.match(/export function exitMine[\s\S]*?\n}\n/)[0], /refreshQuestPanel/);
   assert.match(read('js/spaces/delve.js').match(/nd === 'delve_miner_claim'[\s\S]*?trackEvent/)[0], /requestSave\(\)/);
 });
+
+test('액션 아이콘: 동굴 프롬프트의 첫 이모지가 버튼 아이콘(❗⛏️🍄🛗🪜🧰)', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const line = html.split('\n').find(l => l.includes('doorIcon = /^('));
+  for (const e of ['❗', '⛏️', '🍄', '🛗', '🪜', '🧰']) assert.ok(line.split(e).length >= 3, e);
+});
+
+test('공통 배너는 1층 첫 진입, 빛 자국은 등불벌레가 굴에 넣을 때', () => {
+  assert.match(src, /delve_common/);
+  assert.match(src, /makeTrail\(/);
+});
