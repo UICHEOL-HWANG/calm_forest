@@ -135,7 +135,7 @@ function hutAframe(S, F, t) {
     glass.push([h, half]);
   }
   S.add(G.tri, t.wallD, F.at(0, w / 2 - 0.05, base + rise / 3), [(d + 0.3) / 0.866, 0.2, rise / 0.75], F.rot(-Math.PI / 2, -Math.PI / 2));
-  S.add(G.tri, LAMP, F.at(0, w / 2 + 0.02, base + rise / 3 - 0.1), [(d - 0.5) / 0.866, 0.06, (rise - 0.6) / 0.75], F.rot(-Math.PI / 2, -Math.PI / 2), true);
+  S.add(G.tri, LAMP, F.at(0, w / 2 + 0.05, base + rise / 3 - 0.1), [(d - 0.5) / 0.866, 0.06, (rise - 0.6) / 0.75], F.rot(-Math.PI / 2, -Math.PI / 2), true);
   glass.forEach(([h, half]) => S.add(G.box, t.wallD, F.at(0, w / 2 + 0.08, h), [half * 2, 0.08, 0.1], F.rot(0, 0, Math.PI / 2)));
   [-1, 0, 1].forEach(k => S.add(G.box, t.wallD, F.at(k * 0.8, w / 2 + 0.08, base + rise * 0.3), [0.1, rise * 0.6 * (1 - Math.abs(k) * 0.35), 0.08], F.rot(0, 0, Math.PI / 2)));
   const pf = 0, pr = w / 2 + 1.3;
