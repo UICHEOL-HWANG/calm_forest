@@ -23,6 +23,7 @@ body.tool-fan-open #tool-fan { z-index: 49; }
 @keyframes spdrag { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(22px, -18px); } 50% { transform: translate(0, -30px); } 75% { transform: translate(-22px, -18px); } }
 #spot-layer .sp-bub { position: absolute; max-width: min(300px, calc(100vw - 24px)); background: #ffe68a; color: #5b4300; font-weight: 800; font-size: 15px;
   line-height: 1.4; border-radius: 14px; padding: 10px 14px; box-shadow: 0 6px 18px rgba(0,0,0,.3); pointer-events: none; }
+#spot-layer .sp-txt { white-space: pre-line; word-break: keep-all; }
 #spot-layer .sp-skip { display: none; pointer-events: auto; margin-left: 8px; padding: 2px 0; border: none; background: none; color: #8a6a10; font: 700 12.5px/1.4 inherit;
   text-decoration: underline; cursor: pointer; white-space: nowrap; }
 #spot-layer .sp-skip.show { display: inline-block; }
@@ -85,7 +86,7 @@ export function createSpotlight({ t, trackEvent, blocked = () => false }) {
   function paint() {
     if (!run) return;
     const s = run.steps[run.i];
-    $('.sp-txt').textContent = t(s.text);
+    $('.sp-txt').textContent = s.text.split('\n').map((l) => t(l)).join('\n');
     $('.sp-keys').innerHTML = '';
     (s.keys || []).forEach((k) => { const kb = document.createElement('kbd'); kb.textContent = k; $('.sp-keys').appendChild(kb); });
     const hand = $('.sp-hand');
@@ -96,6 +97,7 @@ export function createSpotlight({ t, trackEvent, blocked = () => false }) {
     const sk = $('.sp-skip'); sk.textContent = t('건너뛰기 ›'); sk.classList.toggle('show', canSkip);
     const nx = $('.sp-next'); nx.textContent = t('다음 ›'); nx.classList.remove('show');
     $('.sp-catch').style.display = s.done === 'tap' ? 'block' : 'none';
+    if (s.scroll) document.querySelector(s.target)?.scrollIntoView({ block: 'nearest' });
     if (!raf) raf = requestAnimationFrame(loop);
   }
 

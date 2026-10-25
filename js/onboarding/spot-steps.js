@@ -71,3 +71,25 @@ export function spotSteps(kind, touch, info = null) {
   if (kind === 'cam') return [touch ? CAM_TOUCH : CAM_PC];
   return [];
 }
+
+const itemText = (items) => items.map((m) => `${m.ico} ${m.label} ${m.n} (${m.src})`).join('\n');
+
+export function treeSteps(plan) {
+  const steps = [{ key: 'tree_intro', target: '#tb-tabs', hand: 'tap', text: `📋 ${plan.branch} 채우는 방법 (클릭)`, done: 'tap' }];
+  if (!plan.habitatDone) {
+    steps.push({ key: 'tree_meter', target: '#tb-body .tb-meters', scroll: true, hand: 'tap', text: '📊 막대를 다 채우면 빈터 완성! 잎이 돋아요', done: 'tap' });
+  }
+  for (const b of plan.bundles) {
+    steps.push({ key: `tree_bundle_${b.id}`, target: `#tb-body .tb-bundle[data-bundle="${b.id}"]`, scroll: true, hand: 'tap', text: b.lack.length ? `🎒 ${b.name} 재료가 부족해요\n${itemText(b.lack)}` : `🎁 ${b.name}에 재료를 채워 주세요\n${itemText(b.items)}`, done: 'tap' });
+  }
+  for (const d of plan.decor) {
+    const target = `#tb-body .tb-deco[data-deco="${d.id}"]`;
+    if (d.lack.length) {
+      steps.push({ key: `tree_deco_${d.id}`, target, scroll: true, hand: 'tap', text: `🎒 재료가 부족해요\n${itemText(d.lack)}`, done: 'tap' });
+    } else {
+      const text = d.n > 1 ? `🏡 ${d.ico} ${d.name} 버튼을 ${d.n}번 눌러요` : `🏡 ${d.ico} ${d.name} 버튼을 눌러요`;
+      steps.push({ key: `tree_deco_${d.id}`, target, scroll: true, hand: 'tap', text, done: `act:treedeco:${d.id}:${d.goal}` });
+    }
+  }
+  return steps;
+}
