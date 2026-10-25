@@ -25,7 +25,9 @@ export function hideTalk() {
 }
 export const talkShown = () => !!el?.classList.contains('show');
 /** 박스를 눌러 닫기 — 한 번만 건다 */
+let tapFn = null;
 export function onTalkTap(fn) {
+  tapFn = fn;
   const box = $('mirror-talk');
-  if (box && !box.dataset.bound) { box.dataset.bound = '1'; box.addEventListener('click', fn); }
+  if (box && !box.dataset.bound) { box.dataset.bound = '1'; box.addEventListener('click', () => tapFn?.()); }
 }
