@@ -54,7 +54,7 @@ import { makeVisitor } from './visitor-art.js';                                 
 import { truceUntil } from './duel/truce.js';                                                        // 🤝 발길 끊기 만료일
 import { makeRaidScar } from './duel/raid-art.js';                                                   // 🐾 털린 밭 조형(흔적·대결 무대 공용)
 import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed, pickMissingDex, viewFrame, exhibitCenterY,
-  SPECIAL_EXHIBITS, specialFor, noteSpecial, sanitizeSpecial, bestAfterCatch, sanitizeBest } from './museum.js';
+  SPECIAL_EXHIBITS, specialFor, noteSpecial, sanitizeSpecial, initialMaxFloor, bestAfterCatch, sanitizeBest } from './museum.js';
 import { buildMuseumExtras } from './museum/extras.js';   // 🏛️ 1층 ✨조건부 전시(조형)   // 🏛️ 증축은 수집률로 열린다   // 🪓 도구 등급(0 기본 / 1 업그레이드 / 2 히든) — 색·판정은 이 모듈이 단일 출처
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
@@ -1083,7 +1083,7 @@ const gameState = {
   beta: { tries: {} },   // 🧪 미니게임별 시도 횟수 — 관대 판정은 js/difficulty.js 로 옮겼다(이 카운터는 옛 세이브 호환용)
   difficulty: defaultDifficulty(),   // 🎚️ 미니게임별 난이도 상태 { dda: 유저 보정, n: probe 순회용 누적 시도 }
   sea: { tunaDay: null, caught: 0, best: {} },   // 🌊 바다터 { 오늘의 대어(참치) 잡은 날짜, 누적 어획, 어종별 최고 무게(kg) — 경신 토스트 }
-  museum: { special: {} },             // 🏛️ ✨조건부 전시 { rain_fish: { id, at } } — 규칙은 js/museum.js SPECIAL_EXHIBITS
+  museum: { special: {}, maxFloor: 1 },             // 🏛️ ✨조건부 전시 { rain_fish: { id, at } } — 규칙은 js/museum.js SPECIAL_EXHIBITS
   orchard: { trees: [], sapSel: 'apple', settleDate: null },   // 🍎 과수원(js/orchard.js)
   delve: defaultDelve(),
   progress: { advHarvest: 0 },   // 🔒 진행도 해금 카운터 — 고급 작물 수확 횟수(js/tuning.js PROGRESS_GATE)
@@ -2884,7 +2884,8 @@ function applySave(saved) {
   if (saved.sea) gameState.sea = { ...gameState.sea, ...saved.sea };      // 🌊 바다터(오늘의 대어) 복원
   //   🏛️ 최고 무게·조건부 전시는 세이브를 믿지 않고 정제한다(모르는 어종·깨진 값은 버린다). 필드가 없는 옛 세이브는 빈 값.
   gameState.sea.best = sanitizeBest(saved.sea?.best, SEA_SPECIES.map(sp => sp.id));
-  gameState.museum = { special: sanitizeSpecial(saved.museum?.special) };
+  gameState.museum = { special: sanitizeSpecial(saved.museum?.special), maxFloor: initialMaxFloor(saved.museum?.maxFloor, gameState.dex, DEX) };
+  refreshMuseumGate();
   if (saved.kitchen) gameState.kitchen = { cooked: saved.kitchen.cooked || 0, best: { ...(saved.kitchen.best || {}) }, tiers: { ...(saved.kitchen.tiers || {}) } }; // 🍳 자유주방 기록 복원
   // 🍱 찬장 복원 — 세이브가 손상되거나 레시피/등급이 개편으로 사라졌으면 그 칸만 버린다(전체를 날리지 않게)
   //   등급은 저장하지 않고 score 로 다시 계산한다 — 두 벌로 들고 있으면 등급 컷을 손볼 때 어긋난다

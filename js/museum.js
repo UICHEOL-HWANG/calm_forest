@@ -44,19 +44,41 @@ export function floorProgress(floor, dex = {}, DEX) {
  * 지금 열려 있는 층 수. 아래층 기준을 넘겨야 다음이 열린다 —
  * ⚠️ 위층만 잔뜩 채웠다고 아래를 건너뛸 수는 없다(순서가 무너지면 증축 서사가 사라진다).
  */
-export function openFloors(dex = {}, DEX) {
+export function liveOpenFloors(dex = {}, DEX, floors = MUSEUM_FLOORS) {
   let open = 1;
-  for (let i = 1; i < MUSEUM_FLOORS.length; i++) {
-    const below = MUSEUM_FLOORS[i - 1].id;
-    if (floorProgress(below, dex, DEX).have < MUSEUM_FLOORS[i].need) break;
-    open = MUSEUM_FLOORS[i].id;
+  for (let i = 1; i < floors.length; i++) {
+    const below = floors[i - 1];
+    const have = below.cats.flatMap(cat => (DEX[cat] || []).map(e => dex[cat]?.[e.id])).filter(Boolean).length;
+    if (have < floors[i].need) break;
+    open = floors[i].id;
   }
   return open;
 }
 
+export function sanitizeMaxFloor(raw) {
+  const n = Math.trunc(Number(raw));
+  return Number.isFinite(n) ? Math.min(MUSEUM_FLOORS.length, Math.max(1, n)) : 1;
+}
+
+const LEGACY_FLOOR1_CATS = ['crop', 'fish', 'ore'];
+
+export function legacyMaxFloor(dex = {}, DEX) {
+  const floors = MUSEUM_FLOORS.map(f => f.id === 1 ? { ...f, cats: LEGACY_FLOOR1_CATS } : f);
+  return liveOpenFloors(dex, DEX, floors);
+}
+
+export function initialMaxFloor(raw, dex = {}, DEX) {
+  if (raw === undefined || raw === null) return Math.max(liveOpenFloors(dex, DEX), legacyMaxFloor(dex, DEX));
+  return Math.max(sanitizeMaxFloor(raw), liveOpenFloors(dex, DEX));
+}
+
+export function openFloors(dex = {}, DEX, maxFloor = 1) {
+  return Math.max(liveOpenFloors(dex, DEX), sanitizeMaxFloor(maxFloor));
+}
+
 /** 다음 층까지 얼마나 남았나 — 큐레이터 대사·안내에 쓴다. 다 열렸으면 null. */
-export function nextFloorNeed(dex = {}, DEX) {
-  const open = openFloors(dex, DEX);
+export function nextFloorNeed(dex = {}, DEX, maxFloor = 1) {
+  const open = openFloors(dex, DEX, maxFloor);
   const next = MUSEUM_FLOORS.find(f => f.id === open + 1);
   if (!next) return null;
   const { have } = floorProgress(open, dex, DEX);

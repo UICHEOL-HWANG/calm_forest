@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed, viewFrame, exhibitCenterY,
+import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, liveOpenFloors, sanitizeMaxFloor, legacyMaxFloor, initialMaxFloor, nextFloorNeed, viewFrame, exhibitCenterY,
   SPECIAL_EXHIBITS, specialFor, noteSpecial, sanitizeSpecial, bestAfterCatch, sanitizeBest } from '../js/museum.js';
 import { VISITORS } from '../js/habitat.js';
 
@@ -548,4 +548,55 @@ test('전시물 메시: 새 조형 → 폴백 순서, 모든 경로가 바닥 y=
   assert.match(fn, /\|\| fallbackExhibit\(item\)/);
   assert.match(fn, /return seatOnBase\(obj\)/);
   assert.match(CAFE_SRC, /updateWorldMatrix\(true, true\);[^\n]*\n\s*const b = new THREE\.Box3/, '재기 전에 월드 행렬을 갱신해야 한다');
+});
+
+test('열린 층은 줄지 않는다 - 저장된 maxFloor 가 바닥이다', () => {
+  const d = dexWith('crop', 7);
+  d.fish = { f1: 1, f2: 1 };
+  assert.equal(liveOpenFloors(d, DEX), 2);
+  assert.equal(openFloors({}, DEX, 2), 2);
+  assert.equal(openFloors({}, DEX, 4), 4);
+  assert.equal(openFloors(d, DEX, 1), 2);
+  const grown = [1, 2, 3, 4].map(m => openFloors({}, DEX, m));
+  assert.deepEqual(grown, [1, 2, 3, 4]);
+});
+
+test('maxFloor 정제 - 깨진 값은 1, 범위는 1..층 수', () => {
+  assert.equal(sanitizeMaxFloor(undefined), 1);
+  assert.equal(sanitizeMaxFloor('x'), 1);
+  assert.equal(sanitizeMaxFloor(-3), 1);
+  assert.equal(sanitizeMaxFloor(99), MUSEUM_FLOORS.length);
+  assert.equal(sanitizeMaxFloor(2.9), 2);
+});
+
+test('옛 규칙 이관 - 작물 5 + 물고기 1 + 광물 3 이면 2층이 열려 있었다', () => {
+  const d = { crop: {}, fish: {}, ore: {} };
+  DEX.crop.slice(0, 5).forEach(e => { d.crop[e.id] = 1; });
+  d.fish[DEX.fish[0].id] = 1;
+  DEX.ore.slice(0, 3).forEach(e => { d.ore[e.id] = 1; });
+  assert.equal(liveOpenFloors(d, DEX), 1);
+  assert.equal(legacyMaxFloor(d, DEX), 2);
+  assert.equal(initialMaxFloor(undefined, d, DEX), 2);
+  assert.equal(initialMaxFloor(null, d, DEX), 2);
+});
+
+test('maxFloor 가 있는 세이브는 이관하지 않고 저장값을 따른다', () => {
+  const d = { crop: {}, fish: {}, ore: {} };
+  DEX.ore.slice(0, 3).forEach(e => { d.ore[e.id] = 1; });
+  assert.equal(initialMaxFloor(1, d, DEX), 1);
+  assert.equal(initialMaxFloor(3, {}, DEX), 3);
+});
+
+test('새 세이브 기본값은 1층', () => {
+  assert.equal(initialMaxFloor(undefined, {}, DEX), 1);
+  assert.equal(openFloors({}, DEX), 1);
+});
+
+test('maxFloor 는 줄어들지 않는다 - 도감이 줄어도 열린 층 유지', () => {
+  const d = dexWith('crop', 7);
+  d.fish = { f1: 1, f2: 1 };
+  const m = initialMaxFloor(undefined, d, DEX);
+  assert.equal(m, 2);
+  assert.equal(initialMaxFloor(m, {}, DEX), 2);
+  assert.equal(openFloors({}, DEX, m), 2);
 });
