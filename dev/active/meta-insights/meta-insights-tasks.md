@@ -1,0 +1,7 @@
+- [ ] 순수 함수 테스트(RED) → 구현(GREEN)
+- [ ] fetch·extract·BQ 적재
+- [ ] publish C:G·_auto_meta_ad
+- [ ] 코드 리뷰
+- [ ] 사용자: 시스템 사용자 토큰 발급(ads_read, 광고 계정 자산 할당)
+- [ ] VM 비밀 파일·scp·수동 트리거 검증
+- [ ] 광고 관리자 숫자와 대조

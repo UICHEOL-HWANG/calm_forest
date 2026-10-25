@@ -172,3 +172,125 @@ def test_sql_file_has_all_params_and_marts():
         assert p in sql
     for t in ("ads.funnel_user", "ads.funnel_daily", "ads.creative_daily"):
         assert t in sql
+
+
+def _ins(d, ad, spend="5000", imp="3000", reach="2500", clicks="60", lpv="40", campaign="webapp_202610"):
+    acts = [{"action_type": "link_click", "value": clicks}]
+    if lpv is not None:
+        acts.append({"action_type": "landing_page_view", "value": lpv})
+    return {"date_start": d, "date_stop": d, "campaign_name": campaign, "adset_name": ad.rsplit("_", 1)[0],
+            "ad_name": ad, "ad_id": f"id_{ad}", "spend": spend, "impressions": imp, "reach": reach,
+            "inline_link_clicks": clicks, "actions": acts}
+
+
+def test_parse_insights_reads_numbers_and_landing_page_views(m):
+    rows = m.parse_insights([_ins("2026-10-24", "w1_general_v1", spend="5012.40", lpv=None)])
+    assert rows == [{"d": D(2026, 10, 24), "campaign": "webapp_202610", "adset": "w1_general",
+                     "ad": "w1_general_v1", "ad_id": "id_w1_general_v1", "spend": 5012.4,
+                     "impressions": 3000, "reach": 2500, "clicks": 60, "lpv": 0}]
+
+
+def test_daily_totals_sums_ads_per_day_and_campaign(m):
+    rows = m.parse_insights([_ins("2026-10-24", "w1_general_v1"), _ins("2026-10-24", "w1_halloween_v1", spend="7000"),
+                             _ins("2026-10-25", "w1_general_v1", lpv="10")])
+    t = m.daily_totals(rows)
+    assert t[(D(2026, 10, 24), "webapp_202610")] == {"spend": 12000, "impressions": 6000, "reach": 5000,
+                                                     "clicks": 120, "lpv": 80}
+    assert t[(D(2026, 10, 25), "webapp_202610")]["lpv"] == 10
+
+
+def test_meta_updates_fill_c_to_g_and_zero_days_without_delivery(m):
+    t = m.daily_totals(m.parse_insights([_ins("2026-10-24", "w1_general_v1")]))
+    grid = [[SERIAL_1015 + 9, "webapp_202610"], [SERIAL_1015 + 10, "webapp_202610"],
+            [SERIAL_1015 + 11, "webapp_202610"], ["", ""]]
+    ups = m.meta_updates(grid, t, D(2026, 10, 25))
+    assert ups == [{"range": "C3:G3", "values": [[5000, 3000, 2500, 60, 40]]},
+                   {"range": "C4:G4", "values": [[0, 0, 0, 0, 0]]}]
+
+
+def test_meta_updates_sum_all_campaigns_when_campaign_cell_is_blank(m):
+    t = m.daily_totals(m.parse_insights([_ins("2026-10-24", "a_v1"), _ins("2026-10-24", "b_v1", campaign="other")]))
+    ups = m.meta_updates([[SERIAL_1015 + 9, ""]], t, D(2026, 10, 24))
+    assert ups[0]["values"] == [[10000, 6000, 5000, 120, 80]]
+
+
+class _Resp:
+    def __init__(self, body):
+        self.body = body
+
+    def read(self):
+        import json
+        return json.dumps(self.body).encode()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+def test_fetch_insights_follows_paging_and_asks_daily_ad_level(m):
+    seen = []
+    pages = {"first": {"data": [_ins("2026-10-24", "a_v1")], "paging": {"next": "https://graph.facebook.com/next"}},
+             "next": {"data": [_ins("2026-10-24", "b_v1")], "paging": {}}}
+
+    def opener(url, timeout):
+        seen.append(url)
+        return _Resp(pages["next" if url.endswith("/next") else "first"])
+
+    rows = m.fetch_insights("tok", "123", D(2026, 10, 24), D(2026, 10, 25), "v24.0", opener=opener)
+    assert [r["ad_name"] for r in rows] == ["a_v1", "b_v1"]
+    first = seen[0]
+    assert first.startswith("https://graph.facebook.com/v24.0/act_123/insights?")
+    for part in ("level=ad", "time_increment=1", "access_token=tok", "2026-10-24", "2026-10-25",
+                 "inline_link_clicks", "actions"):
+        assert part in first
+
+
+def test_fetch_insights_raises_graph_error_without_leaking_token(m):
+    import io
+    import urllib.error
+    body = b'{"error": {"message": "Invalid OAuth access token", "code": 190}}'
+
+    def opener(url, timeout):
+        raise urllib.error.HTTPError(url, 400, "Bad Request", {}, io.BytesIO(body))
+
+    with pytest.raises(RuntimeError) as e:
+        m.fetch_insights("secret-tok", "123", D(2026, 10, 24), D(2026, 10, 24), "v24.0", opener=opener)
+    assert "190" in str(e.value) and "Invalid OAuth" in str(e.value)
+    assert "secret-tok" not in str(e.value)
+
+
+def test_read_token_returns_none_when_secret_file_missing(m, tmp_path):
+    assert m.read_token(tmp_path / "nope") is None
+    p = tmp_path / "tok"
+    p.write_text("  abc\n")
+    assert m.read_token(p) == "abc"
+
+
+def test_dag_extracts_meta_before_building_mart(m):
+    src = DAG_PATH.read_text(encoding="utf-8")
+    assert 'task_id="extract_meta"' in src
+    assert "resolve >> extract >> build" in src
+
+
+def test_meta_updates_round_spend_only_at_the_sheet(m):
+    t = m.daily_totals(m.parse_insights([_ins("2026-10-24", "a_v1", spend="0.4"), _ins("2026-10-24", "b_v1", spend="0.4")]))
+    assert m.meta_updates([[SERIAL_1015 + 9, "webapp_202610"]], t, D(2026, 10, 24))[0]["values"][0][0] == 1
+
+
+def test_fetch_insights_accepts_act_prefixed_account(m):
+    seen = []
+
+    def opener(url, timeout):
+        seen.append(url)
+        return _Resp({"data": [], "paging": {}})
+
+    m.fetch_insights("tok", "act_123", D(2026, 10, 24), D(2026, 10, 24), "v24.0", opener=opener)
+    assert "/act_123/insights?" in seen[0]
+
+
+def test_unmatched_campaigns_lists_sheet_names_missing_from_meta(m):
+    t = m.daily_totals(m.parse_insights([_ins("2026-10-24", "a_v1", campaign="webapp_202610")]))
+    grid = [[SERIAL_1015 + 9, "webapp_202610"], [SERIAL_1015 + 10, "webapp-202610 "], [SERIAL_1015 + 11, ""]]
+    assert m.unmatched_campaigns(grid, t) == ["webapp-202610"]
