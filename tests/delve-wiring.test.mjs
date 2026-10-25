@@ -166,3 +166,10 @@ test('광부 아저씨는 충돌체가 있어 통과할 수 없다', () => {
   const body = src.slice(src.indexOf('function placeMiner()'), src.indexOf('export function settleMinerRewards'));
   assert.match(body, /solidCircle\(minerMesh\.position\.x, minerMesh\.position\.z, MINER_R\)/);
 });
+
+test('입장 때 안내에 가려 광부 의뢰가 안 열렸어도 광부·승강기 앞에서 다시 연다', () => {
+  const d = readFileSync(new URL('../js/spaces/delve.js', import.meta.url), 'utf8');
+  const body = d.slice(d.indexOf('export function delvePrompt()'), d.indexOf('const lp = L(player.position);'));
+  assert.match(body, /ensureMinerLine\(\)/);
+  assert.match(d, /function ensureMinerLine\(\) \{[^}]*shouldStartLine\(gameState\.delve, !ui\.coachActive\?\.\(\)\)/);
+});
