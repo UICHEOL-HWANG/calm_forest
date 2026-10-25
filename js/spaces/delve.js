@@ -7,8 +7,11 @@ import { DELVE, MINE, MINE_HALF } from '../data/places.js';
 import { DELVE_HALF, DELVE_CHEST_FLOORS, PEST_COPY } from '../data/delve.js';
 import {
   floorSeed, layoutFloor, ladderRevealed, themeOf, oreOdds, rollOre, makeRng, noteReach, oreAllowed, markOreFloor,
-  bumpCount, canDescendFrom0, stopsOpen, stepView, claimStep,
+  bumpCount, canDescendFrom0, stopsOpen, stepView, claimStep, noteChest, jobFor, hashSeed,
 } from '../delve/rules.js';
+import { rollChest, chestGive } from '../boat-chest.js';
+import { makeChestMesh } from '../boat-chest-art.js';
+import { jobCard } from '../delve/miner-card.js';
 import { createPest, stepPest, tapPest, baitPest, canPick, RING_SEC, TAP_R, BAIT_R } from '../delve/pests.js';
 import { makePest, makeOreChunk, makePuddle, makeBurrow, makeRing, makeBait, makeShaft, makeLadderUp, makeRock, makeLift, emojiBubble, makeTrail } from '../delve/pest-art.js';
 import { makeMiner } from '../delve/miner.js';
@@ -19,6 +22,9 @@ let group = null;
 let visitN = 0;
 let liftMesh = null;
 let minerMesh = null;
+let jobToday = { date: null, n: 0 };
+const bumpJob = () => { const d = todayStr(); jobToday = jobToday.date === d ? { date: d, n: jobToday.n + 1 } : { date: d, n: 1 }; };
+export function delveJobProgress() { return jobToday.date === todayStr() ? jobToday.n : 0; }
 
 export function delveFloorNow() { return run ? run.floor : 0; }
 
@@ -90,6 +96,13 @@ export function enterFloor(floor, via) {
   run = { floor, layout, oreOk, broken: 0, ladderShown: false, chunks: [], carried: new Map(), stash: [], ore: 0, chunkN: 0, trail: null };
   buildRoom(floor, layout);
   spawnPests(layout);
+  run.chest = null;
+  if (DELVE_CHEST_FLOORS.includes(floor) && !gameState.delve.chests[floor]) {
+    const mesh = makeChestMesh({ buoy: false });
+    const at = { x: Math.max(-DELVE_HALF + 1.5, Math.min(DELVE_HALF - 1.5, layout.ladderAt.x - 1.6)), z: layout.ladderAt.z };
+    mesh.position.copy(W(at.x, at.z)); mesh.position.y = FLOOR_Y; group.add(mesh);
+    run.chest = { at, mesh };
+  }
   gameState.delve = noteReach(gameState.delve, floor);
   if (oreOk) gameState.delve = markOreFloor(gameState.delve, date, floor);
   player.position.copy(W(layout.arrival.x, layout.arrival.z));
@@ -165,11 +178,14 @@ function pickUp(c) {
     gameState.delve = bumpCount(gameState.delve, 'grab');
     trackEvent('pest_counter', { pest: 'bat', method: 'grab', ok: 1 });
   }
+  const j = jobFor(todayStr());
+  if (gameState.delve.stage >= 8 && j.kind === 'ore' && run.floor >= j.floorMin) bumpJob();
 }
 
 export function delvePrompt() {
   if (!run) {
     if (minerMesh && dist2D(minerMesh.position, player.position) < 1.8) {
+      if (jobCard(gameState.delve, gameState.inventory, true, todayStr(), delveJobProgress())?.ready) return { nd: 'delve_job_claim', prompt: '⛏️ 광부 아저씨 · 받기' };
       const v = stepView(gameState.delve, gameState.inventory);
       if (v?.ready) return { nd: 'delve_miner_claim', prompt: '⛏️ 광부 아저씨 · 받기' };
       if (v) return { nd: 'delve_miner_talk', prompt: '⛏️ 광부 아저씨' };
@@ -183,6 +199,7 @@ export function delvePrompt() {
   const near = (p, r) => Math.hypot(lp.x - p.x, lp.z - p.z) < r;
   if (near({ x: run.layout.arrival.x, z: run.layout.arrival.z - 1 }, 1.6)) return { nd: 'delve_up', prompt: '🪜 올라가기' };
   if (run.ladderShown && near(run.layout.ladderAt, 1.6)) return run.floor >= 20 ? { nd: 'delve_bottom', prompt: '🪜 가장 깊은 곳' } : { nd: 'delve_down', prompt: '🪜 내려가기' };
+  if (run.chest && near(run.chest.at, 1.6)) return { nd: 'delve_chest', prompt: '🧰 상자 열기' };
   for (const p of run.pests) {
     if (p.sim.kind === 'axolotl' && p.sim.state !== 'gone' && near(p.sim, TAP_R)) return { nd: 'delve_tap', prompt: PEST_COPY.axolotl.prompt };
     if (p.sim.kind === 'crab' && ['idle', 'approach'].includes(p.sim.state) && near(p.sim, BAIT_R) && (gameState.inventory.forage || 0) > 0) return { nd: 'delve_bait', prompt: PEST_COPY.crab.prompt };
@@ -192,6 +209,30 @@ export function delvePrompt() {
 }
 
 export function handleDelveDoor(nd) {
+  if (nd === 'delve_job_claim') {
+    const jc = jobCard(gameState.delve, gameState.inventory, true, todayStr(), delveJobProgress());
+    if (jc?.ready) {
+      gameState.delve = { ...gameState.delve, jobDate: todayStr() };
+      gameState.inventory.gem = (gameState.inventory.gem || 0) + 1;
+      gameState.inventory.crystal = (gameState.inventory.crystal || 0) + 1;
+      refreshInventoryUI(); requestSave(); ui.toast?.('⛏️ 오늘 일감 끝! 💎 +1 · 🔮 +1');
+      trackEvent('delve_step', { step: 'job', stage: 8 });
+      $w.refreshQuestPanel?.();
+    }
+    return true;
+  }
+  if (nd === 'delve_chest') {
+    if (!run?.chest) return true;
+    const loot = chestGive(rollChest(hashSeed(`delvechest:${todayStr()}:${run.floor}`)), { unlocked: false });
+    for (const [k, v] of Object.entries(loot.give)) gameState.inventory[k] = (gameState.inventory[k] || 0) + v;
+    group.remove(run.chest.mesh); run.chest = null;
+    gameState.delve = noteChest(gameState.delve, run.floor);
+    refreshInventoryUI(); requestSave();
+    ui.toast?.(`🧰 ${loot.name}`);
+    trackEvent('delve_chest', { floor: run.floor, loot: loot.id });
+    $w.refreshQuestPanel?.();
+    return true;
+  }
   if (nd === 'delve_miner_talk') {
     const v = stepView(gameState.delve, gameState.inventory);
     if (v) ui.toast?.(`⛏️ ${v.desc} (${v.progress}/${v.target})`);
@@ -262,6 +303,7 @@ export function handleDelveDoor(nd) {
     spawnFloatText(player.position.x, 1.6, player.position.z, `+${got}`, '#ffe48a');
     gameState.delve = bumpCount(gameState.delve, 'reclaim');
     trackEvent('pest_counter', { pest: 'grub', method: 'reclaim', ok: 1 });
+    if (gameState.delve.stage >= 8 && jobFor(todayStr()).kind === 'reclaim') bumpJob();
     return true;
   }
   return false;

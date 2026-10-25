@@ -51,7 +51,7 @@ test('퀘스트 패널에 광부 카드가 합쳐진다(동굴 안에서만)', (
 });
 
 test('광부 카드는 맨 위 고정, 입퇴장 때 패널 갱신, 진행은 저장', () => {
-  assert.match(read('js/spaces/npc.js'), /pinId: views\.some\(v => v\.id === 'delve_miner'\) \? 'delve_miner'/);
+  assert.match(read('js/spaces/npc.js'), /pinId: views\.find\(v => v\.id === 'delve_miner' \|\| v\.id === 'delve_job'\)/);
   const mine = read('js/spaces/mine.js');
   assert.match(mine.match(/export function enterMine[\s\S]*?\n}\n/)[0], /refreshQuestPanel/);
   assert.match(mine.match(/export function exitMine[\s\S]*?\n}\n/)[0], /refreshQuestPanel/);
@@ -67,4 +67,10 @@ test('액션 아이콘: 동굴 프롬프트의 첫 이모지가 버튼 아이콘
 test('공통 배너는 1층 첫 진입, 빛 자국은 등불벌레가 굴에 넣을 때', () => {
   assert.match(src, /delve_common/);
   assert.match(src, /makeTrail\(/);
+});
+
+test('상자는 보물상자 규칙(rollChest·chestGive) 재사용, 열면 noteChest', () => {
+  assert.match(src, /rollChest\(/);
+  assert.match(src, /chestGive\(/);
+  assert.match(src, /noteChest\(gameState\.delve, run\.floor\)/);
 });

@@ -265,3 +265,15 @@ test('라인은 튜토리얼이 끝난 뒤, 한 번만 시작', () => {
   assert.equal(shouldStartLine(defaultDelve(), true), true);
   assert.equal(shouldStartLine({ ...defaultDelve(), started: true }, true), false);
 });
+
+import { jobCard } from '../js/delve/miner-card.js';
+
+test('완주 후에만 동굴 안에서 하루 일감 카드', () => {
+  const done = { ...defaultDelve(), started: true, stage: 8 };
+  assert.equal(jobCard({ ...done, stage: 7 }, {}, true, '2026-10-25', 0), null);
+  assert.equal(jobCard(done, {}, false, '2026-10-25', 0), null);
+  const c = jobCard(done, {}, true, '2026-10-25', 1);
+  assert.equal(c.id, 'delve_job');
+  assert.equal(c.progress, 1);
+  assert.equal(jobCard({ ...done, jobDate: '2026-10-25' }, {}, true, '2026-10-25', 0), null);
+});
