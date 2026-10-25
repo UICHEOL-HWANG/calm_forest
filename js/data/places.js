@@ -44,6 +44,7 @@ export const MINE = new THREE.Vector3(0, 0, 250);      // 채굴 동굴(다른 �
 export const MINE_HALF = 12;                           // 넓은 동굴
 
 export const MINE_GATE = new THREE.Vector3(-14, 0, 3); // 마을 서쪽 동굴 입구
+export const DELVE = new THREE.Vector3(-400, 0, 400);
 
 // 🌉 낚시 부두 — 호수 서쪽 물가에서 안쪽으로 뻗음. 물은 못 들어가고 부두 위만 걸을 수 있음
 export const PIER = { x1: 9.6, x2: 13.4, z1: 8.25, z2: 9.75 };

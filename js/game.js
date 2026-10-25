@@ -235,7 +235,8 @@ import {
 } from './spaces/visitors.js';   // 📦 🦋 텃밭 방문객 안내 (구역 머리말 — 분리 2단계)
 import {
   buildMine, enterMine, exitMine, spawnMineGate, tryMine, updateOreRocks,
-} from './spaces/mine.js';   // 📦 ⛏️ 채굴 동굴 (구역 머리말 — 분리 2단계)
+} from './spaces/mine.js';
+import { delveFloorNow, clampDelve, handleDelveDoor, tryDelveMine, updateDelve } from './spaces/delve.js';   // 📦 ⛏️ 채굴 동굴 (구역 머리말 — 분리 2단계)
 import {
   enterHouse, exitHouse, goFloor, inVillage2, updateDoorInteract,
 } from './spaces/doors.js';   // 📦 🚪 침대·문 근접·구역 안내 (구역 머리말 — 분리 2단계)
@@ -297,6 +298,7 @@ export const $w = {
   get atCafe() { return atCafe; }, set atCafe(v) { atCafe = v; },
   get atFarm() { return atFarm; }, set atFarm(v) { atFarm = v; },
   get atMine() { return atMine; }, set atMine(v) { atMine = v; },
+  get firstHintBanner() { return firstHintBanner; },
   get atMist() { return atMist; }, set atMist(v) { atMist = v; },
   get atMuseum() { return atMuseum; }, set atMuseum(v) { atMuseum = v; },
   get atNeighbor() { return atNeighbor; }, set atNeighbor(v) { atNeighbor = v; },
@@ -587,7 +589,7 @@ function setSpaceVisible() {
   if (farmSoilMesh) farmSoilMesh.visible = farmVisible;
   if (farmCropMeshes) for (const k of ['sprout', 'stem', 'leaf', 'bush', 'fruit']) farmCropMeshes[k].visible = farmVisible;
   if (farmHintMeshes) for (const k of ['warn', 'harvest', 'seedHint', 'weed', 'pest']) farmHintMeshes[k].visible = farmVisible;
-  if (mineGroup) mineGroup.visible = atMine;
+  if (mineGroup) mineGroup.visible = atMine && delveFloorNow() === 0;
   if (cafeInGroup) cafeInGroup.visible = atCafe;
   if (museumGroup) museumGroup.visible = atMuseum;
   if (observatoryGroup) observatoryGroup.visible = atObservatory;
@@ -2969,7 +2971,7 @@ function applySave(saved) {
 }
 
 export function getGameState() {
-  gameState.playerPos = atNeighbor ? neighborReturnPos() : (atMirror || mirrorRideActive()) ? mirrorReturnPos() : atDream ? dreamReturnPos() : atMountain ? mountainReturnPos() : { x: player.position.x, z: player.position.z };
+  gameState.playerPos = atNeighbor ? neighborReturnPos() : (atMirror || mirrorRideActive()) ? mirrorReturnPos() : atDream ? dreamReturnPos() : atMountain ? mountainReturnPos() : delveFloorNow() > 0 ? { x: MINE_GATE.x, z: MINE_GATE.z + 2 } : { x: player.position.x, z: player.position.z };
   if (atHalloween) gameState.playerPos = halloweenReturnPos();
   gameState.plots = plots.map(p => ({ x: p.x, z: p.z, state: p.state, growth: p.growth, crop: p.cropType?.id,   // crop: 밤손님 판정·복원용 작물 종류
     ...(p.fert ? { fert: 1 } : {}), ...(p.weed ? { weed: 1 } : {}), ...(p.pest ? { pest: 1 } : {}) }));   // 🌾 고급 작물 공정 — 켜진 것만 기록(옛 스키마와 호환), claimedBy 는 런타임 전용
@@ -6073,6 +6075,7 @@ function animate() {
   updateGateCues(t, dt);
   updateTrees(dt);
   updateOreRocks();
+  updateDelve(dt, t);
   updateChickens(dt);   // 🐔 닭 배회(닭장 건설 후)
   updateFireflyBugs(dt, t); // 🌟 반딧불이(밤에만 계곡에 출현)
   updateMist(dt, t);        // 🌫️ 안개 숲(정령 웨이브·수호목 빛)
@@ -6246,8 +6249,11 @@ function updatePlayer(dt, t) {
     const c = clampFarmPos(player.position.x - FARM.x, player.position.z - FARM.z, farmHalf(), playerInYard);
     player.position.x = FARM.x + c.x; player.position.z = FARM.z + c.z; playerInYard = c.inYard;
   } else if (atMine) { // 동굴: 벽 안쪽으로 제한
-    player.position.x = Math.max(MINE.x - MINE_HALF + 0.7, Math.min(MINE.x + MINE_HALF - 0.7, player.position.x));
-    player.position.z = Math.max(MINE.z - MINE_HALF + 0.6, Math.min(MINE.z + MINE_HALF - 0.7, player.position.z));
+    if (delveFloorNow() > 0) clampDelve(player.position);
+    else {
+      player.position.x = Math.max(MINE.x - MINE_HALF + 0.7, Math.min(MINE.x + MINE_HALF - 0.7, player.position.x));
+      player.position.z = Math.max(MINE.z - MINE_HALF + 0.6, Math.min(MINE.z + MINE_HALF - 0.7, player.position.z));
+    }
   } else if (atCafe) { // ☕ 카페 홀: 벽 안쪽으로 제한
     player.position.x = Math.max(CAFE.x - CAFE_HALF + 0.8, Math.min(CAFE.x + CAFE_HALF - 0.8, player.position.x));
     player.position.z = Math.max(CAFE.z - CAFE_HALF + 0.8, Math.min(CAFE.z + CAFE_HALF - 0.7, player.position.z));
@@ -7146,6 +7152,7 @@ function handleAction() {
   if (nearDoor === 'trace') { const tr = traceTarget(); if (tr) return investigateTrace(tr); }
   if (nearDoor === 'pet') return commandPet();   // 🐾 밭 근처에서 액션 = 맡기기(물·잡초·해충 최대 5칸)
   if (nearDoor === 'mine') return enterMine();
+  if (typeof nearDoor === 'string' && nearDoor.startsWith('delve_') && handleDelveDoor(nearDoor)) return;
   if (nearDoor === 'mineexit') return exitMine();
   if (nearDoor === 'orchard') return enterOrchard();
   if (nearDoor === 'orchardexit') return exitOrchard();
@@ -7185,7 +7192,7 @@ function handleAction() {
     // 입장 시 자동 선택(ZONE_TOOL)을 덮어쓰고 도구를 바꾼 경우의 안전망(밭 자동 전환과 같은 문법).
     if (toolPage !== 'none') {
       if (TOOLS[currentTool].grp === 'farm' && TOOLS[currentTool].id !== 'hoe') selectToolAuto('hoe');
-      if (TOOLS[currentTool].id === 'hoe') return tryMine();
+      if (TOOLS[currentTool].id === 'hoe') return delveFloorNow() > 0 ? tryDelveMine() : tryMine();
     }
     ui.toast?.('⛏️ 🌾농사 세트의 괭이(2)로 캐야 해요');
     return;

@@ -62,7 +62,7 @@ test('saving inside the mountain records the spot just south of the gate', () =>
   const space = read('js/spaces/mountain.js');
   assert.match(space, /export function mountainReturnPos\(\) \{\n\s*return \{ x: MOUNTAIN_GATE\.x, z: MOUNTAIN_GATE\.z \+ 4 \};\n\}/);
   assert.match(space, /const back = mountainReturnPos\(\);\n\s*player\.position\.set\(back\.x, 0, back\.z\);/);
-  assert.match(src, /atDream \? dreamReturnPos\(\) : atMountain \? mountainReturnPos\(\) : \{ x: player\.position\.x, z: player\.position\.z \}/);
+  assert.match(src, /atDream \? dreamReturnPos\(\) : atMountain \? mountainReturnPos\(\) : (?:delveFloorNow\(\) > 0 \? \{ x: MINE_GATE\.x, z: MINE_GATE\.z \+ 2 \} : )?\{ x: player\.position\.x, z: player\.position\.z \}/);
 });
 
 test('the summit no longer starts the sled by itself: hut arrival, then the start deck button', () => {

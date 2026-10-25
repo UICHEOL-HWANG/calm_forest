@@ -15,6 +15,7 @@ import {
   setSpaceVisible, snapCamera, stopOutdoorPlacing, toolPage, ui, updateToolPageAuto, workerCap,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { plazaSpot } from '../plaza/index.js';
+import { delvePrompt, delveFloorNow } from './delve.js';
 import { trackEvent } from '../analytics.js';
 import { decorBanner } from '../decor-drops/index.js';
 import { DECOR, DECOR_SCALE, OUTDOOR, STATION_IDS, stationLabel } from '../data/catalog.js';
@@ -278,7 +279,9 @@ export function updateDoorInteract() {
       firstHintBanner('farmBench', '🔧', '자재 작업대', '🧺창고·💧우물·🐝벌통 같은 밭 시설을 여기서 만들어 울타리 안에 놓아요');
     }
   } else if (atMine) {
-    if (dist2D({ x: MINE.x, z: MINE.z - MINE_HALF }, player.position) < 1.7) { nd = 'mineexit'; prompt = '🚪 나가기'; }
+    const dp = delvePrompt();
+    if (dp) { nd = dp.nd; prompt = dp.prompt; }
+    else if (delveFloorNow() === 0 && dist2D({ x: MINE.x, z: MINE.z - MINE_HALF }, player.position) < 1.7) { nd = 'mineexit'; prompt = '🚪 나가기'; }
   } else if (atOrchard) {   // 🍎 과수원 언덕: 들어온 남쪽 경계로 나가기
     if (dist2D({ x: ORCHARD.x, z: ORCHARD.z + ORCHARD_HALF }, player.position) < 1.9) { nd = 'orchardexit'; prompt = '🚪 나가기'; }
   } else if (atCafe) {   // ☕ 홀: 남쪽 문으로 나가기 / 손님·주문판 근접 안내

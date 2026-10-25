@@ -19,3 +19,28 @@ test('수정: 인벤 기본값·라벨·판매가·도감', () => {
   assert.equal(SELL_PRICE.crystal, CRYSTAL_PRICE);
   assert.match(read('js/data/places.js'), /SELL_ICO_G = \{[^}]*crystal: '🔮'/);
 });
+
+test('지하 층 연결: 공간 표시·갱신·이동 제한·문·괭이·0층 광맥', () => {
+  assert.match(src, /mineGroup\.visible = atMine && delveFloorNow\(\) === 0/);
+  assert.match(src, /updateDelve\(dt, t\)/);
+  assert.match(src, /if \(delveFloorNow\(\) > 0\) clampDelve\(player\.position\)/);
+  assert.match(src, /handleDelveDoor\(nearDoor\)/);
+  assert.match(src, /delveFloorNow\(\) > 0 \? tryDelveMine\(\) : tryMine\(\)/);
+  assert.match(read('js/spaces/mine.js'), /rock\.visible = atMine && delveFloorNow\(\) === 0 && !ud\.depleted/);
+  assert.match(src, /delveFloorNow\(\) > 0 \? \{ x: MINE_GATE\.x, z: MINE_GATE\.z \+ 2 \}/);
+});
+
+test('DELVE 좌표는 다른 공간과 200 이상 떨어진다', () => {
+  const text = read('js/data/places.js');
+  const vec = (k) => {
+    const m = text.match(new RegExp(`export const ${k} = new THREE\\.Vector3\\(([^)]*)\\)`));
+    assert.ok(m, k);
+    const [x, y, z] = m[1].split(',').map(Number);
+    return { x, y, z };
+  };
+  const d = vec('DELVE');
+  for (const k of ['MINE', 'MUSEUM', 'CAFE', 'OBSERVATORY', 'NEIGHBOR', 'NEIGHBOR_INT', 'DREAM', 'MIRROR', 'HALLOWEEN', 'MOUNTAIN', 'RIVER', 'MIST', 'SEA', 'ORCHARD', 'FARM', 'INT']) {
+    const o = vec(k);
+    assert.ok(Math.hypot(d.x - o.x, d.z - o.z) >= 200, k);
+  }
+});
