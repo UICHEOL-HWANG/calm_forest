@@ -74,3 +74,10 @@ test('상자는 보물상자 규칙(rollChest·chestGive) 재사용, 열면 note
   assert.match(src, /chestGive\(/);
   assert.match(src, /noteChest\(gameState\.delve, run\.floor\)/);
 });
+
+test('광부 보상 지급 훅: grantCosmetic·grantDecor 가 $w 로 노출되고 모르는 id 는 무시', () => {
+  assert.match(src, /get grantCosmetic\(\)/);
+  assert.match(src, /get grantDecor\(\)/);
+  assert.match(src, /function grantCosmetic\(id\)[\s\S]{0,300}findItem\(id\)/);
+  assert.match(src, /function grantDecor\(id\)[\s\S]{0,300}DECOR\.some/);
+});

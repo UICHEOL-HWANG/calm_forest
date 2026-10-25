@@ -102,7 +102,7 @@ import { SLOTS_PER_STATION, MAX_UNITS, capacityOf, isReady, setSlot, claimAll, w
 import { build as buildVatModel, VAT_SCALE, VAT_BOX } from './craft/vat-model.js';   // 🫙 발효통 조형(sims/vat-sim.html B안)
 import { headAnchor, neckAnchor, neckR, sideAnchor, backAnchor } from './cosmetics/anchors.js';
 import { buildCosmetic } from './cosmetics/art.js';
-import { itemsOf } from './cosmetics/catalog.js';
+import { itemsOf, findItem } from './cosmetics/catalog.js';
 import { equippedItems, hidesTail, sanitize as sanitizeCosmetics, buy as buyCos, equip as equipCos, unequip as unequipCos } from './cosmetics/equip.js';
 import { buildTrailMark, tintTrailMark, TRAIL_CAP, TRAIL_STEP, TRAIL_FADE, TRAIL_SIDE } from './cosmetics/trail.js';   // 👣 발자국 자취(월드 이펙트)
 import { applySkin, disposeSkin, showSkinParts } from './cosmetics/skin.js';   // 🧥 전신 스킨 — 캐릭터에 덧입힌다
@@ -299,6 +299,7 @@ export const $w = {
   get atFarm() { return atFarm; }, set atFarm(v) { atFarm = v; },
   get atMine() { return atMine; }, set atMine(v) { atMine = v; },
   get refreshQuestPanel() { return refreshQuestPanel; },
+  get grantCosmetic() { return grantCosmetic; }, get grantDecor() { return grantDecor; },
   get firstHintBanner() { return firstHintBanner; },
   get atMist() { return atMist; }, set atMist(v) { atMist = v; },
   get atMuseum() { return atMuseum; }, set atMuseum(v) { atMuseum = v; },
@@ -2969,6 +2970,22 @@ function applySave(saved) {
   }
   refreshPlaza();   // 🌾 initPlaza() 가 세이브 복원보다 먼저 돌아 기본값을 봤으므로 여기서 다시 맞춘다
   refreshPond('load');
+}
+
+function grantCosmetic(id) {
+  if (!findItem(id)) return false;
+  const owned = gameState.cosmetics.owned;
+  if (owned.includes(id)) return false;
+  gameState.cosmetics = { ...gameState.cosmetics, owned: [...owned, id] };
+  requestSave();
+  return true;
+}
+
+function grantDecor(id) {
+  if (!DECOR.some(d => d.id === id)) return false;
+  gameState.house.stored[id] = (gameState.house.stored[id] || 0) + 1;
+  requestSave();
+  return true;
 }
 
 export function getGameState() {
