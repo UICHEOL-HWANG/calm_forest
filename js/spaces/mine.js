@@ -146,7 +146,7 @@ export function enterMine() {
   firstHint('mineInside', '⛏️', '채굴 동굴 · 광석 캐기', { steps: [{ ico: '⛏️', label: '괭이로 광맥' }, { ico: '🪨', label: '🪨⚫ 얻기' }, { ico: '💎', label: '🌫️ 안개 날' }], note: '나갈 땐 남쪽 문', chip: '작업대 재료·판매' });
   setBGMTheme('cave');   // 🎵 음산한 동굴 테마
   Sound.blip(); trackEvent('enter_mine'); // [GA4]
-  if (shouldStartLine(gameState.delve, !ui.coachActive?.())) { gameState.delve = { ...gameState.delve, started: true }; requestSave(); }
+  if (shouldStartLine(gameState.delve, !ui.coachActive?.())) { gameState.delve = { ...gameState.delve, started: true, startedAt: Date.now() }; requestSave(); }
   showGemFogBanner();
   decorBanner('mine');
   $w.refreshQuestPanel?.();

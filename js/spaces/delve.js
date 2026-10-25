@@ -7,7 +7,7 @@ import { DELVE, MINE, MINE_HALF } from '../data/places.js';
 import { DELVE_HALF, DELVE_CHEST_FLOORS, PEST_COPY } from '../data/delve.js';
 import {
   floorSeed, layoutFloor, ladderRevealed, themeOf, oreOdds, rollOre, makeRng, noteReach, oreAllowed, markOreFloor,
-  bumpCount, canDescendFrom0, stopsOpen, liftTargets, stepView, claimStep, noteChest, jobFor, hashSeed, chestSpot,
+  bumpCount, canDescendFrom0, stopsOpen, liftTargets, bumpJob, jobProgress, reclaimGive, stepView, claimStep, noteChest, jobFor, hashSeed, chestSpot,
 } from '../delve/rules.js';
 import { rollChest, chestGive } from '../boat-chest.js';
 import { makeChestMesh } from '../boat-chest-art.js';
@@ -22,11 +22,19 @@ let group = null;
 let visitN = 0;
 let liftMesh = null;
 let minerMesh = null;
-let jobToday = { date: null, n: 0 };
-const bumpJob = () => { const d = todayStr(); jobToday = jobToday.date === d ? { date: d, n: jobToday.n + 1 } : { date: d, n: 1 }; };
-export function delveJobProgress() { return jobToday.date === todayStr() ? jobToday.n : 0; }
+const bumpTodayJob = () => { gameState.delve = bumpJob(gameState.delve, todayStr()); };
+export function delveJobProgress() { return jobProgress(gameState.delve, todayStr()); }
+const lineSec = () => (gameState.delve.startedAt ? Math.max(0, Math.round((Date.now() - gameState.delve.startedAt) / 1000)) : 0);
 
 export function delveFloorNow() { return run ? run.floor : 0; }
+
+export function delveMinimapMarks() {
+  if (!run) return [];
+  const a = run.layout.arrival, marks = [{ x: DELVE.x + a.x, z: DELVE.z + a.z - 1, c: '#c8905a', kind: 'exit' }];
+  if (run.ladderShown) marks.push({ x: DELVE.x + run.layout.ladderAt.x, z: DELVE.z + run.layout.ladderAt.z, c: '#ffe48a', r: 3.2 });
+  if (run.chest) marks.push({ x: DELVE.x + run.chest.at.x, z: DELVE.z + run.chest.at.z, c: '#f0c04a', r: 2.8 });
+  return marks;
+}
 
 const W = (lx, lz) => new THREE.Vector3(DELVE.x + lx, 0, DELVE.z + lz);
 const L = (pos) => ({ x: pos.x - DELVE.x, z: pos.z - DELVE.z });
@@ -109,7 +117,8 @@ export function enterFloor(floor, via) {
   const date = todayStr();
   const layout = layoutFloor({ seed: floorSeed(date, floor, visitN++), floor });
   const oreOk = oreAllowed(gameState.delve, date, floor);
-  run = { floor, layout, oreOk, broken: 0, ladderShown: false, chunks: [], carried: new Map(), stash: [], ore: 0, chunkN: 0, trail: null };
+  const prevSec = run ? Math.round((performance.now() - run.enteredAt) / 1000) : 0, prevRocks = run ? run.broken : 0;
+  run = { enteredAt: performance.now(), floor, layout, oreOk, broken: 0, ladderShown: false, chunks: [], carried: new Map(), stash: [], ore: 0, chunkN: 0, trail: null };
   buildRoom(floor, layout);
   spawnPests(layout);
   run.chest = null;
@@ -124,8 +133,9 @@ export function enterFloor(floor, via) {
   player.position.copy(W(layout.arrival.x, layout.arrival.z));
   player.rotation.y = 0;
   $w.nearDoor = null; ui.setDoorPrompt?.(null); snapCamera(); setSpaceVisible();
-  trackEvent('delve_floor', { floor, via, stops: stopsOpen(gameState.delve).length });
+  trackEvent('delve_floor', { floor, via, stops: stopsOpen(gameState.delve).length, sec: prevSec, rocks: prevRocks });
   if (floor === 1) $w.firstHintBanner?.('delve_common', PEST_COPY.common.ico, PEST_COPY.common.title, PEST_COPY.common.line);
+  $w.refreshQuestPanel?.();
 }
 
 export function leaveToFloor0(reason) {
@@ -195,7 +205,7 @@ function pickUp(c) {
     trackEvent('pest_counter', { pest: 'bat', method: 'grab', ok: 1 });
   }
   const j = jobFor(todayStr());
-  if (gameState.delve.stage >= 8 && j.kind === 'ore' && run.floor >= j.floorMin) bumpJob();
+  if (gameState.delve.stage >= 8 && j.kind === 'ore' && run.floor >= j.floorMin) bumpTodayJob();
 }
 
 export function delvePrompt() {
@@ -217,7 +227,7 @@ export function delvePrompt() {
   if (run.ladderShown && near(run.layout.ladderAt, 1.6)) return run.floor >= 20 ? { nd: 'delve_bottom', prompt: '🪜 가장 깊은 곳' } : { nd: 'delve_down', prompt: '🪜 내려가기' };
   if (run.chest && near(run.chest.at, 1.6)) return { nd: 'delve_chest', prompt: '🧰 상자 열기' };
   for (const p of run.pests) {
-    if (p.sim.kind === 'axolotl' && p.sim.state !== 'gone' && near(p.sim, TAP_R)) return { nd: 'delve_tap', prompt: PEST_COPY.axolotl.prompt };
+    if (p.sim.kind === 'axolotl' && !['gone', 'flee'].includes(p.sim.state) && near(p.sim, TAP_R)) return { nd: 'delve_tap', prompt: PEST_COPY.axolotl.prompt };
     if (p.sim.kind === 'crab' && ['idle', 'approach'].includes(p.sim.state) && near(p.sim, BAIT_R) && (gameState.inventory.forage || 0) > 0) return { nd: 'delve_bait', prompt: PEST_COPY.crab.prompt };
   }
   if (run.stash.length && run.layout.burrows.some(b => near(b, 1.4))) return { nd: 'delve_dig', prompt: PEST_COPY.grub.prompt };
@@ -232,7 +242,7 @@ export function handleDelveDoor(nd) {
       gameState.inventory.gem = (gameState.inventory.gem || 0) + 1;
       gameState.inventory.crystal = (gameState.inventory.crystal || 0) + 1;
       refreshInventoryUI(); requestSave(); ui.toast?.('⛏️ 오늘 일감 끝! 💎 +1 · 🔮 +1');
-      trackEvent('delve_step', { step: 'job', stage: 8 });
+      trackEvent('delve_step', { step: 'job', stage: 8, sec: lineSec() });
       $w.refreshQuestPanel?.();
     }
     return true;
@@ -263,7 +273,7 @@ export function handleDelveDoor(nd) {
     refreshInventoryUI();
     requestSave();
     ui.toast?.('⛏️ 고맙네! 다음 일을 부탁하지');
-    trackEvent('delve_step', { step: c.stepId, stage: c.delve.stage });
+    trackEvent('delve_step', { step: c.stepId, stage: c.delve.stage, sec: lineSec() });
     $w.refreshQuestPanel?.();
     return true;
   }
@@ -297,6 +307,7 @@ export function handleDelveDoor(nd) {
       }
       gameState.delve = bumpCount(gameState.delve, 'tap');
       trackEvent('pest_counter', { pest: 'axolotl', method: 'tap', ok: r.events.length ? 1 : 0 });
+      $w.refreshQuestPanel?.();
       return true;
     }
     return true;
@@ -312,20 +323,22 @@ export function handleDelveDoor(nd) {
       const g = group; setTimeout(() => { g.remove(b); disposeObj(b); }, 6000);
       gameState.delve = bumpCount(gameState.delve, 'bait');
       trackEvent('pest_counter', { pest: 'crab', method: 'bait', ok: 1 });
+      $w.refreshQuestPanel?.();
       return true;
     }
     return true;
   }
   if (nd === 'delve_dig') {
-    const got = run.stash.length + 1;
-    const ore = run.stash[0].ore;
-    gameState.inventory[ore] = (gameState.inventory[ore] || 0) + got;
+    const give = reclaimGive(run.stash);
+    const got = Object.values(give).reduce((a, b) => a + b, 0);
+    for (const [ore, n] of Object.entries(give)) gameState.inventory[ore] = (gameState.inventory[ore] || 0) + n;
     run.stash = [];
     refreshInventoryUI();
     spawnFloatText(player.position.x, 1.6, player.position.z, `+${got}`, '#ffe48a');
     gameState.delve = bumpCount(gameState.delve, 'reclaim');
     trackEvent('pest_counter', { pest: 'grub', method: 'reclaim', ok: 1 });
-    if (gameState.delve.stage >= 8 && jobFor(todayStr()).kind === 'reclaim') bumpJob();
+    if (gameState.delve.stage >= 8 && jobFor(todayStr()).kind === 'reclaim') bumpTodayJob();
+    $w.refreshQuestPanel?.();
     return true;
   }
   return false;

@@ -137,8 +137,9 @@ import {
   BOAT_UPGRADES, SHOP_POS, SHOP_DOOR, MIST_GATE, MIST, MIST_HALF, MIST_WAVES, TREE_LIGHT_MAX, MIST_DRAIN, SOOTHE_GLOW,
   PURIFY_GLOW, SPIRITS, MIST_LANTERN_POS, LANTERN_CALM_R, MIST_PRACTICE_STEPS, SEA_GATE, SEA_COVE, SEA, ORCHARD_GATE,
   ORCHARD_PROMPT_R, ORCHARD, ORCHARD_HALF, SEA_DECK_W, SEA_DECK_Z0, SEA_DECK_Z1, SEA_EDGE, SEA_SPECIES, ROOF_COLORS,
-  WALL_COLORS, DOOR_COLORS, PART_NAME, HOUSE_POS, NEIGHBOR, NEIGHBOR_R, NEIGHBOR_GATE,
+  WALL_COLORS, DOOR_COLORS, PART_NAME, HOUSE_POS, NEIGHBOR, NEIGHBOR_R, NEIGHBOR_GATE, DELVE,
 } from './data/places.js';
+import { DELVE_HALF } from './data/delve.js';
 import {
   GIFTS, QUEST_HOW, TALK_PER_DAY, NPCS, DAILY_COUNT, QUEST_COINS, QUEST_LUCKY, DAILY_POOL, validDailyQuests, validQuest,
   AI_QUEST_TIMEOUT,
@@ -236,7 +237,7 @@ import {
 import {
   buildMine, enterMine, exitMine, spawnMineGate, tryMine, updateOreRocks,
 } from './spaces/mine.js';   // 📦 ⛏️ 채굴 동굴 (구역 머리말 — 분리 2단계)
-import { delveFloorNow, clampDelve, handleDelveDoor, tryDelveMine, updateDelve, settleMinerRewards } from './spaces/delve.js';
+import { delveFloorNow, clampDelve, handleDelveDoor, tryDelveMine, updateDelve, settleMinerRewards, delveMinimapMarks } from './spaces/delve.js';
 import {
   enterHouse, exitHouse, goFloor, inVillage2, updateDoorInteract,
 } from './spaces/doors.js';   // 📦 🚪 침대·문 근접·구역 안내 (구역 머리말 — 분리 2단계)
@@ -6065,6 +6066,8 @@ function animate() {
         md.cx = HALLOWEEN.x; md.cz = HALLOWEEN.z; md.half = 15; md.marks = []; halloweenMinimapMarks(md.marks);
       } else if (place === 'mirror') {   // 🪞 거울 마을 — 원 하나를 한 화면에
         md.cx = MIRROR_MAP.cx; md.cz = MIRROR_MAP.cz; md.half = MIRROR_MAP.half; md.marks = []; mirrorMinimapMarks(md.marks);
+      } else if (place === 'mine' && delveFloorNow() > 0) {
+        md.cx = DELVE.x; md.cz = DELVE.z; md.half = DELVE_HALF; md.marks = delveMinimapMarks();
       } else if (place !== 'village') {   // 서브 공간: 중심·반경·랜드마크를 함께 전달
         const C = place === 'house' ? INT : place === 'farm' ? { x: FARM.x - YARD_D / 2, z: FARM.z } : place === 'cafe' ? CAFE : place === 'observatory' ? OBSERVATORY : place === 'mountain' ? MOUNTAIN : place === 'neighbor' ? (neighborIndoorFrame()?.c ?? NEIGHBOR) : place === 'river' ? RIVER : place === 'mist' ? MIST : place === 'sea' ? SEA : place === 'museum' ? MUSEUM : place === 'orchard' ? ORCHARD : MINE;
         md.cx = C.x; md.cz = C.z;
