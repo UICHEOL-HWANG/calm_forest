@@ -52,6 +52,13 @@ export async function enterGame(page, opts = {}) {
     if (!ok) throw new Error(`캐릭터 '${opts.char}' 를 못 찾았다`);
     await page.waitForTimeout(400);
   }
+  //  ✏️ 이름 칸이 생긴 뒤로는 비어 있으면 '시작' 버튼이 잠긴다 — 새 세이브에서만 보인다
+  await page.evaluate((nick) => {
+    const el = document.querySelector('#nick-input');
+    if (!el || el.offsetParent === null || el.value) return;
+    el.value = nick;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  }, opts.nick || '숲지기');
   if (!await step(page, '#char-confirm', 30000)) throw new Error('캐릭터 선택 실패');
   // 예산 6초. 예전 4초는 DSF 2 에서 모자랐다 — 헤드리스가 2배 해상도로 그리면 프레임이
   // 1/2~1/4 로 떨어지고, 집 리디자인·야외 장식·배칭이 들어가며 기동이 더 느려져
