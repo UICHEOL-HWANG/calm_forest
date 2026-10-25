@@ -49,3 +49,11 @@ test('퀘스트 패널에 광부 카드가 합쳐진다(동굴 안에서만)', (
   assert.match(src, /minerCard\(gameState\.delve, gameState\.inventory, atMine\)/);
   assert.match(src, /shouldStartLine\(gameState\.delve/);
 });
+
+test('광부 카드는 맨 위 고정, 입퇴장 때 패널 갱신, 진행은 저장', () => {
+  assert.match(read('js/spaces/npc.js'), /pinId: views\.some\(v => v\.id === 'delve_miner'\) \? 'delve_miner'/);
+  const mine = read('js/spaces/mine.js');
+  assert.match(mine.match(/export function enterMine[\s\S]*?\n}\n/)[0], /refreshQuestPanel/);
+  assert.match(mine.match(/export function exitMine[\s\S]*?\n}\n/)[0], /refreshQuestPanel/);
+  assert.match(read('js/spaces/delve.js').match(/nd === 'delve_miner_claim'[\s\S]*?trackEvent/)[0], /requestSave\(\)/);
+});

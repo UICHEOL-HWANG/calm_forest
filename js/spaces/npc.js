@@ -816,7 +816,7 @@ export function questPanelTop() {
 //    pin(nearNPC)은 "지금 눈앞에 있는 사람을 맨 위로" 라는 힌트일 뿐 — 멀어지면 저절로 풀린다.
 export function refreshQuestPanel() {
   const views = [...npcObjs.filter(o => !o.hidden).map(o => questView(o)), onboardView(gameState.progress?.orchardQuest, orchardWheat()), cosOnboardView(gameState.progress?.cosQuest), minerCard(gameState.delve, gameState.inventory, atMine)].filter(Boolean);   // 🌾→🍎 과수원 가는 길(주민에게 말 안 걸어도 뜬다)
-  ui.setQuest?.(activeQuestList(views, { top: questPanelTop(), pinId: nearNPC?.def.id || null }));
+  ui.setQuest?.(activeQuestList(views, { top: questPanelTop(), pinId: views.some(v => v.id === 'delve_miner') ? 'delve_miner' : (nearNPC?.def.id || null) }));
 }
 
 // ── 🔓 마을 해금 — 숨김·귀환(규칙은 js/world/unlocks.js, 판정·호출은 game.js syncUnlocks) ──────────

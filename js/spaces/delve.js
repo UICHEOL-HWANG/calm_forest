@@ -1,5 +1,5 @@
 import {
-  $w, atMine, clock, dexDiscover, dist2D, doPlayerAction, gameState, player, questEvent, refreshInventoryUI, scene,
+  $w, atMine, clock, dexDiscover, dist2D, doPlayerAction, gameState, player, questEvent, refreshInventoryUI, requestSave, scene,
   setSpaceVisible, situation, snapCamera, spawnDust, spawnFloatText, spawnSparkle, ui, todayStr,
 } from '../game.js';
 import { trackEvent } from '../analytics.js';
@@ -37,7 +37,7 @@ export function placeLift() {
 function placeMiner() {
   if (minerMesh) return;
   minerMesh = makeMiner();
-  minerMesh.position.set(MINE.x + 3.2, FLOOR_Y, MINE.z - MINE_HALF + 4.2);
+  minerMesh.position.set(MINE.x + 1.6, FLOOR_Y, MINE.z - MINE_HALF + 4.2);
   minerMesh.rotation.y = 0.4;
   scene.add(minerMesh);
 }
@@ -203,6 +203,7 @@ export function handleDelveDoor(nd) {
     Object.assign(gameState.inventory, c.inv);
     grantMinerReward(c.reward);
     refreshInventoryUI();
+    requestSave();
     ui.toast?.('⛏️ 고맙네! 다음 일을 부탁하지');
     trackEvent('delve_step', { step: c.stepId, stage: c.delve.stage });
     $w.refreshQuestPanel?.();
