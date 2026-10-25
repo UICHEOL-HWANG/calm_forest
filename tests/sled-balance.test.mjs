@@ -13,8 +13,8 @@ test('every sled has the same ideal time with the reachable acorn max', () => {
 });
 
 test('trade-offs show at low acorn counts', () => {
-  assert.ok(idealTimeMs(physOf('wind'), 0) < idealTimeMs(physOf('basic'), 0) - 1500);
-  assert.ok(idealTimeMs(physOf('acorn'), 0) > idealTimeMs(physOf('basic'), 0) + 500);
+  assert.ok(idealTimeMs(physOf('wind'), 0) < idealTimeMs(physOf('basic'), 0) - 1000);
+  assert.ok(idealTimeMs(physOf('acorn'), 0) > idealTimeMs(physOf('basic'), 0) + 333);
 });
 
 test('lineup order, cash sleds and fallbacks', () => {
@@ -35,10 +35,10 @@ test('phys overrides are pinned per sled', () => {
   assert.deepEqual({ ...SLED_LINEUP.sky.phys }, {});
   assert.deepEqual({ ...SLED_LINEUP.forest.phys }, {});
   assert.deepEqual({ ...SLED_LINEUP.starry.phys }, {});
-  assert.deepEqual({ ...SLED_LINEUP.toboggan.phys }, { steerRate: 5.2, hitSlowMult: 0.65, hitRecoverMs: 1100 });
-  assert.deepEqual({ ...SLED_LINEUP.wind.phys }, { baseSpeed: 9.1, boostMult: 1.31 });
-  assert.deepEqual({ ...SLED_LINEUP.acorn.phys }, { baseSpeed: 8.4, accel: 5.0, boostMult: 1.60 });
-  assert.deepEqual({ ...SLED_LINEUP.skiff.phys }, { steerRate: 8.2, hitRecoverMs: 1900 });
+  assert.deepEqual({ ...SLED_LINEUP.toboggan.phys }, { steerRate: 7.8, hitSlowMult: 0.65, hitRecoverMs: 1100 });
+  assert.deepEqual({ ...SLED_LINEUP.wind.phys }, { baseSpeed: 13.65, boostMult: 1.31 });
+  assert.deepEqual({ ...SLED_LINEUP.acorn.phys }, { baseSpeed: 12.6, accel: 11.25, boostMult: 1.60 });
+  assert.deepEqual({ ...SLED_LINEUP.skiff.phys }, { steerRate: 12.3, hitRecoverMs: 1900 });
 });
 
 test('stats are pinned per sled', () => {

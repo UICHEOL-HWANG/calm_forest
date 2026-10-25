@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import { ddaOutcome } from '../js/difficulty.js';
 import { PHYS, PHYS_V, finalTimeMs } from '../js/mountain/sled.js';
 import { COURSE, COURSE_V } from '../js/mountain/course.js';
+import { GHOST_V } from '../js/mountain/sled-extras.js';
 
 function run(day = '2026-10-20', mountain = undefined) {
   const paid = [], saves = [], events = [], settled = [], rows = [], abandons = [], plays = [];
@@ -19,7 +20,7 @@ function run(day = '2026-10-20', mountain = undefined) {
     trackDiffAbandon: (...a) => abandons.push(a),
     onPlay: src => plays.push(src),
     diffParams: r => ({ ease: r.ease, dda: r.dda, arm: r.arm, probe_v: 2 }),
-    ddaOutcome, finalTimeMs, PHYS, PHYS_V, COURSE, COURSE_V,
+    ddaOutcome, finalTimeMs, PHYS, PHYS_V, COURSE, COURSE_V, GHOST_V,
   };
   const c = vm.createContext({ ...ctx, todayStr: () => c.today });
   vm.runInContext(readFileSync(new URL('../js/mountain/sled-run.js', import.meta.url), 'utf8')
@@ -45,8 +46,8 @@ test('coins are base + perFlag×flags, new best adds bonus', () => {
   const r = c.sledSettle(SLED(40000, 10), CTX, { fpsAvg: 58 });
   assert.equal(r.timeMs, 40000 + 2 * PHYS.flagPenaltyMs);
   assert.equal(r.newBest, true);
-  assert.deepEqual(plain(paid[0]), [{ coins: 15 + 2 * 10 }, 'sled_run', 'v1']);
-  assert.deepEqual(plain(paid[1]), [{ coins: 10 }, 'sled_best', 'v1']);
+  assert.deepEqual(plain(paid[0]), [{ coins: 15 + 2 * 10 }, 'sled_run', 'v2']);
+  assert.deepEqual(plain(paid[1]), [{ coins: 10 }, 'sled_best', 'v2']);
 });
 
 test('a new day resets the reward counter', () => {
@@ -65,7 +66,7 @@ test('settle saves, settles difficulty with flag share and sends one full row', 
     assert.ok(k in row, `missing ${k}`);
   }
   assert.equal(row.outcome, 'finish');
-  assert.equal(row.course_v, 1);
+  assert.equal(row.course_v, 2);
 });
 
 test('steer ms report the screen side pressed: world -x (steerLeftMs) is screen-right, world +x (steerRightMs) is screen-left', () => {
@@ -94,7 +95,7 @@ test('every GA4 payload stays within 25 params and carries no arrays', () => {
     assert.ok(sent.length <= 25, `${name} has ${sent.length}`);
     assert.ok(!sent.some(Array.isArray), `${name} has an array`);
   }
-  assert.deepEqual(events.map(e => e[0]), ['sled_start', 'sled_result']);
+  assert.deepEqual(events.map(e => e[0]), ['sled_start', 'sled_result', 'sled_detail']);
 });
 
 test('fractional times are rounded to integers everywhere', () => {
@@ -163,7 +164,7 @@ test('row records the sled id and the current physics version', () => {
   c.sledAbandon('climb', CTX, null);
   assert.equal(rows[0].sled, 'acorn');
   assert.equal(rows[0].phys_v, PHYS_V);
-  assert.equal(rows[0].phys_v, 3);
+  assert.equal(rows[0].phys_v, 4);
   assert.equal(rows[1].sled, 'basic');
 });
 
@@ -173,4 +174,46 @@ test('every finished run rolls one decor drop, abandons do not', () => {
   c.sledSettle(SLED(41000, 12), CTX, { fpsAvg: 58 });
   c.sledAbandon('sled', CTX, SLED(12000, 3));
   assert.deepEqual(plays, ['sled', 'sled']);
+});
+
+test('a new best saves the run path as the ghost, later plays keep it', () => {
+  const { c } = run();
+  const pts = [[0, 0, 0], [13, 100, 0]];
+  c.sledSettle({ ...SLED(24000, 12), t: 24000 }, CTX, { fpsAvg: 58, ghostPts: pts });
+  assert.deepEqual(plain(c.gameState.mountain.sled.ghost), { v: GHOST_V, t: 24000, pts });
+  c.sledSettle({ ...SLED(30000, 12), t: 30000 }, CTX, { fpsAvg: 58, ghostPts: [[0, 0, 0]] });
+  assert.deepEqual(plain(c.gameState.mountain.sled.ghost.pts), pts);
+  c.sledBegin(CTX);
+  assert.deepEqual(plain(c.gameState.mountain.sled.ghost.pts), pts);
+});
+
+test('a finish row carries the v2 move counters and the gap to the ghost', () => {
+  const { c, rows } = run();
+  const sled = { ...SLED(24000, 12), t: 24000, driftsAt: [[1, 1], [2, 2]], jumps: 3, tricksOk: 2, tricksFail: 1, gustsAt: [9], moverHitIds: [0, 2], shieldUsed: 1 };
+  c.sledSettle(sled, { ...CTX, ghostT: 25000 }, { fpsAvg: 58 });
+  const r = rows[0];
+  assert.deepEqual([r.drift_count, r.jump_count, r.trick_ok, r.trick_fail, r.gusts, r.mover_hits, r.shield_used, r.ghost_delta_ms], [2, 3, 2, 1, 1, 2, 1, -1000]);
+});
+
+test('rows without a sled or ghost leave the v2 fields empty', () => {
+  const { c, rows } = run();
+  c.sledAbandon('climb', CTX, null);
+  c.sledSettle(SLED(30000, 12), CTX, { fpsAvg: 58 });
+  assert.equal(rows[0].drift_count, null);
+  assert.equal(rows[0].ghost_delta_ms, null);
+  assert.equal(rows[1].drift_count, 0);
+  assert.equal(rows[1].ghost_delta_ms, null);
+});
+
+test('v2 moves go to GA4 as a separate sled_detail event with at most six keys', () => {
+  const { c, events } = run();
+  const sled = { ...SLED(24000, 12), driftsAt: [[1, 1]], jumps: 2, tricksOk: 1, gustsAt: [], shieldUsed: 0 };
+  c.sledSettle(sled, CTX, { fpsAvg: 58 });
+  const detail = events.find(e => e[0] === 'sled_detail');
+  assert.ok(detail, 'sled_detail sent');
+  const keys = Object.keys(detail[1]).filter(k => !['ts', 'platform', 'exp_arm'].includes(k));
+  assert.deepEqual(keys.sort(), ['drifts', 'gusts', 'jumps', 'run_id', 'shield', 'tricks']);
+  assert.deepEqual([detail[1].drifts, detail[1].jumps, detail[1].tricks, detail[1].gusts, detail[1].shield], [1, 2, 1, 0, 0]);
+  const result = events.find(e => e[0] === 'sled_result');
+  assert.ok(Object.keys(result[1]).length <= 23 + 3);
 });

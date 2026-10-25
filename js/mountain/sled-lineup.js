@@ -23,22 +23,22 @@ export const SLED_LINEUP = Object.freeze({
   toboggan: entry({
     id: 'toboggan', ico: '⛄', name: '눈뭉치 터보건', line: '부딪혀도 덜 느려져요. 커브는 둔해요', stats: [3, 2, 5, 3], model: 'toboggan', needs: 'finish',
     palette: { body: 0xbfe8d8, dark: 0xe5484d, pad: 0xfff0c2, rope: 0xe5484d },
-    phys: { steerRate: 5.2, hitSlowMult: 0.65, hitRecoverMs: 1100 },
+    phys: { steerRate: 7.8, hitSlowMult: 0.65, hitRecoverMs: 1100 },
   }),
   wind: entry({
     id: 'wind', ico: '💨', name: '바람 썰매', line: '기본 속도가 빨라요. 도토리 힘은 약해요', stats: [5, 3, 2, 1], model: 'bobsled', coins: 1500, cashWon: 3900,
     palette: { body: 0xc9dcff, trim: 0xfff6ea, dark: 0x22306a, metal: 0x22306a, accent: 0xe5484d },
-    phys: { baseSpeed: 9.1, boostMult: 1.31 },
+    phys: { baseSpeed: 13.65, boostMult: 1.31 },
   }),
   acorn: entry({
     id: 'acorn', ico: '🌰', name: '도토리 로켓', line: '도토리 부스터가 세요. 출발이 느려요', stats: [2, 3, 3, 5], model: 'acorn', coins: 1500, cashWon: 3900,
     palette: { nut: 0xffe0a3, cap: 0xe5484d, capDark: 0xb83338, metal: 0x22306a, accent: 0xfff6ea, dark: 0x22306a },
-    phys: { baseSpeed: 8.4, accel: 5.0, boostMult: 1.60 },
+    phys: { baseSpeed: 12.6, accel: 11.25, boostMult: 1.60 },
   }),
   skiff: entry({
     id: 'skiff', ico: '⛸️', name: '얼음 스키프', line: '커브가 날렵해요. 부딪히면 오래 느려요', stats: [3, 5, 1, 3], model: 'skiff', coins: 1500, cashWon: 3900,
     palette: { wood: 0xe3d4ff, metal: 0x22306a, accent: 0xe5484d, trim: 0x22306a },
-    phys: { steerRate: 8.2, hitRecoverMs: 1900 },
+    phys: { steerRate: 12.3, hitRecoverMs: 1900 },
   }),
 });
 

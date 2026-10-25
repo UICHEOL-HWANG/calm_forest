@@ -24,7 +24,7 @@ test('runtime settles on finish and abandons on exit mid-run', () => {
 
 test('acorns are collected during the climb and become boosts', () => {
   assert.match(src, /collectAcorns\(/);
-  assert.match(src, /tryBoost\(/);
+  assert.match(src, /pressSled\(/);
 });
 
 test('player movement is blocked while sledding', () => {
@@ -40,7 +40,7 @@ test('the mountain clamp is skipped while sledding', () => {
 test('the avatar rides the slope and faces downhill during countdown and sled', () => {
   const ride = between(src, 'function rideSlope', '\n}');
   assert.match(ride, /slopePoint\(run\.sled\.z, run\.sled\.x\)/);
-  assert.match(ride, /player\.position\.set\(MOUNTAIN\.x \+ p\.x, MOUNTAIN\.y \+ p\.y \+ run\.seat, MOUNTAIN\.z \+ p\.z\)/);
+  assert.match(ride, /player\.position\.set\(MOUNTAIN\.x \+ p\.x, MOUNTAIN\.y \+ p\.y \+ run\.seat \+ \(run\.sled\.y \|\| 0\), MOUNTAIN\.z \+ p\.z\)/);
   assert.match(ride, /player\.rotation\.y = /);
   const upd = between(src, 'export function updateMountain', '\nfunction ');
   assert.ok((upd.match(/rideSlope\(/g) || []).length >= 2);
