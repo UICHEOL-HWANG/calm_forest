@@ -18,6 +18,9 @@ test('수정: 인벤 기본값·라벨·판매가·도감', () => {
   assert.match(src, /crystal: '🔮수정'/);
   assert.equal(SELL_PRICE.crystal, CRYSTAL_PRICE);
   assert.match(read('js/data/places.js'), /SELL_ICO_G = \{[^}]*crystal: '🔮'/);
+  assert.match(read('js/data/dex.js'), /\{ id: 'gem',\s+name: '보석', ico: '💎' \},\n\s*\{ id: 'crystal', name: '수정', ico: '🔮' \}/);
+  assert.match(read('js/spaces/delve.js'), /^\s*dexDiscover\('ore', c\.ore\);$/m);
+  assert.doesNotMatch(read('js/spaces/delve.js'), /!== 'crystal'/);
 });
 
 test('지하 층 연결: 공간 표시·갱신·이동 제한·문·괭이·0층 광맥', () => {

@@ -139,7 +139,7 @@ import {
   ORCHARD_PROMPT_R, ORCHARD, ORCHARD_HALF, SEA_DECK_W, SEA_DECK_Z0, SEA_DECK_Z1, SEA_EDGE, SEA_SPECIES, ROOF_COLORS,
   WALL_COLORS, DOOR_COLORS, PART_NAME, HOUSE_POS, NEIGHBOR, NEIGHBOR_R, NEIGHBOR_GATE, DELVE,
 } from './data/places.js';
-import { DELVE_HALF } from './data/delve.js';
+import { DELVE_HALF, THEMES as DELVE_THEMES } from './data/delve.js';
 import {
   GIFTS, QUEST_HOW, TALK_PER_DAY, NPCS, DAILY_COUNT, QUEST_COINS, QUEST_LUCKY, DAILY_POOL, validDailyQuests, validQuest,
   AI_QUEST_TIMEOUT,
@@ -793,7 +793,7 @@ function questCtx() {
   return {
     coopBuilt: !!gameState.coop.built,
     houseStage: gameState.houseStage,
-    locked: { river: mapLocked('river'), sea: mapLocked('sea'), mist: mapLocked('mist') },
+    locked: { river: mapLocked('river'), sea: mapLocked('sea'), mist: mapLocked('mist'), deep: (gameState.delve?.maxFloor || 0) < DELVE_THEMES.find(t => t.id === 'crystal').from },
     // 📖 오늘 날씨에 닫힌 희귀종은 의뢰로 나오지 않게(js/dex-gates.js).
     //   ⚠️ 밤낮은 안 넘긴다 — 의뢰는 하루치 시드로 고정되는데 밤낮은 하루 안에 바뀐다.
     weather: WEATHER,

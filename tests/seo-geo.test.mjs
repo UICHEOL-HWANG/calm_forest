@@ -82,7 +82,7 @@ test('renderDoc: FAQ 가 없으면 섹션도 LD 도 없다', () => {
 test('llmsTxt: 제목·요약·핵심 페이지·분류별 문서 수·앱·데이터 정책·기준일', () => {
   const txt = llmsTxt({ cats: wiki.cats, entries: wiki.entries, asof: '2026-10-18' });
   assert.match(txt, /^# 고요한 숲 \(calm forest\)\n\n> /);
-  assert.match(txt, /\[고요위키\]\(https:\/\/calmforest\.cloud\/wiki\/\): 공식 도감 80개 문서/);
+  assert.match(txt, /\[고요위키\]\(https:\/\/calmforest\.cloud\/wiki\/\): 공식 도감 81개 문서/);
   const fish = wiki.entries.filter(e => e.cat === 'fish').length;
   assert.ok(txt.includes(`[물고기](https://calmforest.cloud/wiki/fish/): ${fish}개 문서`));
   assert.match(txt, /\[소식\]\(https:\/\/calmforest\.cloud\/news\/\)/);

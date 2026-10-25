@@ -19,10 +19,10 @@ import { gateOf, weatherOpen } from './dex-gates.js';   // 📖 희귀종 게이
 export const MUSEUM_FLOORS = [
   //   layout: 'wall'(벽 유리장 16×14, 최대 17칸) | 'gallery'(회랑 20×14 — 벽 유리장 + 낮은 탁자) → js/museum/layout.js
   //   theme: 층마다 바닥·벽·조명 색(위층 느낌). 2026-10-06 후보 3종 시각 비교에서 사용자가 C(푸른 저녁)을 골랐다 — 위층으로 갈수록 회청색으로 차분해진다.
-  { id: 1, name: '1층',   cats: ['crop', 'fish', 'ore'],                  need: 0,  layout: 'wall',    theme: { floor: 0xd9b98a, wall: 0xf3e2c8, light: 0xfff3dc } },
+  { id: 1, name: '1층',   cats: ['crop', 'fish'],                         need: 0,  layout: 'wall',    theme: { floor: 0xd9b98a, wall: 0xf3e2c8, light: 0xfff3dc } },
   { id: 2, name: '2층',   cats: ['forage', 'bug', 'dig', 'track', 'visitor'], need: 9,  layout: 'wall',    theme: { floor: 0xc9b496, wall: 0xe6e3dc, light: 0xf6f2ea } },
   { id: 3, name: '3층',   cats: ['river', 'spirit', 'weather', 'npc'],    need: 9,  layout: 'gallery', theme: { floor: 0xb0a898, wall: 0xdfe2e8, light: 0xeaf0ff } },
-  { id: 4, name: '특별전', cats: ['cook'],                                 need: 12, layout: 'gallery', theme: { floor: 0x9a99a6, wall: 0xd5d9e6, light: 0xe2e8ff } },
+  { id: 4, name: '특별전', cats: ['cook', 'ore'],                          need: 12, layout: 'gallery', theme: { floor: 0x9a99a6, wall: 0xd5d9e6, light: 0xe2e8ff } },
 ];
 
 const floorDef = (floor) => MUSEUM_FLOORS.find(f => f.id === floor) || null;
@@ -79,13 +79,14 @@ function nextSeed(h) { return (h * 1103515245 + 12345) & 0x7fffffff; }
 //     weather 와 정확히 같은 문제라 같이 막는다.
 const DEX_MAP_LOCK = { river: 'river', spirit: 'mist' };
 const DEX_NEVER = ['weather', 'visitor'];
+const DEX_SPECIES_LOCK = { ore: { crystal: 'deep' } };
 
 /**
  * 아직 도감에 없는 종 하나 — 날짜 시드로 고른다. 남은 게 없으면 null(호출부가 폴백한다).
  * @param {object} dex gameState.dex
  * @param {object} DEX 도감 정의(game.js)
  * @param {number} seed 날짜 시드
- * @param {{locked?:{river:boolean,sea:boolean,mist:boolean}}} ctx
+ * @param {{locked?:{river:boolean,sea:boolean,mist:boolean,deep:boolean}}} ctx
  */
 export function pickMissingDex(dex = {}, DEX = {}, seed = 0, ctx = {}) {
   const locked = ctx.locked || {};
@@ -96,6 +97,8 @@ export function pickMissingDex(dex = {}, DEX = {}, seed = 0, ctx = {}) {
     if (lock && locked[lock]) continue;
     for (const e of DEX[cat]) {
       if (dex[cat]?.[e.id]) continue;
+      const speciesLock = DEX_SPECIES_LOCK[cat]?.[e.id];
+      if (speciesLock && locked[speciesLock]) continue;
       // 📖 오늘 날씨에 닫힌 희귀종은 집지 않는다 — 그날 못 깨는 의뢰가 된다.
       //   ⚠️ night 은 보지 않는다. 의뢰는 하루치 시드로 고정되는데 밤낮은 하루 안에 바뀌므로,
       //      밤 종을 낮에 걸러내면 의뢰가 사라진다. 플레이어가 밤까지 기다리면 된다.

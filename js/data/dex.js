@@ -35,6 +35,7 @@ export const DEX = {
     { id: 'stone', name: '돌',   ico: '🪨' },
     { id: 'coal',  name: '석탄', ico: '⚫' },
     { id: 'gem',   name: '보석', ico: '💎' },
+    { id: 'crystal', name: '수정', ico: '🔮' },
   ],
   // 🍳 요리 — RECIPES 에서 파생. 레시피를 늘릴 때 도감을 따로 고치는 걸 잊어 빈칸이 생기던 걸 막는다
   cook: RECIPES.map(r => ({ id: r.id, name: r.name, ico: r.ico })),

@@ -199,7 +199,7 @@ function pickUp(c) {
   refreshInventoryUI();
   spawnFloatText(c.mesh.position.x, 1.4, c.mesh.position.z, `+1`, c.ore === 'gem' ? '#5ad0e0' : '#cfc8b8');
   questEvent('mine', 1);
-  if (c.ore !== 'crystal') dexDiscover('ore', c.ore);
+  dexDiscover('ore', c.ore);
   if (batAlive() && c.age < RING_SEC) {
     gameState.delve = bumpCount(gameState.delve, 'grab');
     trackEvent('pest_counter', { pest: 'bat', method: 'grab', ok: 1 });
