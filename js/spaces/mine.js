@@ -7,11 +7,13 @@
 // =============================================================
 import {
   $w, ORES, atMine, buffOn, clayMat, clock, dexDiscover, dist2D, doPlayerAction, firstHint, gameState, makeSignBoard,
-  mineGroup, mineTorches, nearDoor, obstacles, oreRocks, player, questEvent, refreshInventoryUI, scene, setSpaceVisible,
+  mineGroup, mineTorches, nearDoor, obstacles, oreRocks, player, questEvent, refreshInventoryUI, requestSave, scene, setSpaceVisible,
   situation, snapCamera, solidBox, solidCircle, spawnDust, spawnFloatText, spawnSparkle, trackGateBlocked,
   todayStr, ui, weatherOf, woodMat,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
+import { delveFloorNow, placeLift } from './delve.js';
+import { shouldStartLine } from '../delve/miner-card.js';
 import { onPlay, decorBanner } from '../decor-drops/index.js';
 import { MINE, MINE_GATE, MINE_HALF } from '../data/places.js';
 import { DEX_GATES, gateOf, gateOpen } from '../dex-gates.js';
@@ -100,6 +102,7 @@ export function buildMine() {
     const a = Math.random() * Math.PI * 2, r = 2 + Math.random() * (H - 2.5);
     spawnOreRock(MINE.x + Math.cos(a) * r, MINE.z + Math.sin(a) * r, weightedOre());
   }
+  placeLift();
 }
 
 export function spawnMineGate() {
@@ -143,8 +146,10 @@ export function enterMine() {
   firstHint('mineInside', '⛏️', '채굴 동굴 · 광석 캐기', { steps: [{ ico: '⛏️', label: '괭이로 광맥' }, { ico: '🪨', label: '🪨⚫ 얻기' }, { ico: '💎', label: '🌫️ 안개 날' }], note: '나갈 땐 남쪽 문', chip: '작업대 재료·판매' });
   setBGMTheme('cave');   // 🎵 음산한 동굴 테마
   Sound.blip(); trackEvent('enter_mine'); // [GA4]
+  if (shouldStartLine(gameState.delve, !ui.coachActive?.())) { gameState.delve = { ...gameState.delve, started: true, startedAt: Date.now() }; requestSave(); }
   showGemFogBanner();
   decorBanner('mine');
+  $w.refreshQuestPanel?.();
 }
 
 let gemFogShownDay = null;
@@ -166,6 +171,7 @@ export function exitMine() {
   $w.nearDoor = null; ui.setDoorPrompt?.(null); snapCamera(); setSpaceVisible();
   setBGMTheme('main');   // 🎵 마을 테마 복귀
   Sound.blip(); trackEvent('exit_mine'); // [GA4]
+  $w.refreshQuestPanel?.();
 }
 
 // 채굴: 가까운 광맥을 괭이로 캐기
@@ -203,7 +209,7 @@ export function updateOreRocks() {
     const ud = rock.userData;
     if (ud.depleted && now > ud.respawnAt) { ud.depleted = false; ud.hp = 3; rock.scale.set(0.01, 0.01, 0.01); ud.growing = true; }
     if (ud.growing) { const s = THREE.MathUtils.lerp(rock.scale.x, 1, 0.12); rock.scale.set(s, s, s); if (s > 0.98) { rock.scale.set(1, 1, 1); ud.growing = false; } }
-    rock.visible = atMine && !ud.depleted;   // 동굴 밖에선 안 보이게
+    rock.visible = atMine && delveFloorNow() === 0 && !ud.depleted;   // 동굴 밖에선 안 보이게
     if (ud.collider) ud.collider.off = ud.depleted;   // 🚧 캔 자리엔 막히지 않게
   }
 }

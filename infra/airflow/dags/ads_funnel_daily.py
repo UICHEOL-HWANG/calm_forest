@@ -51,6 +51,89 @@ DEV_SQL = f"SELECT COUNTIF(dev = 1) AS n FROM `{BQ_PROJECT}.ads.funnel_user`"
 SL_LATEST_SQL = f"SELECT MAX(DATE(started_at, 'Asia/Seoul')) AS latest FROM `{BQ_PROJECT}.calm_forest_raw.session_logs`"
 ZERO_ROW = dict.fromkeys(WEB_COLS + APP_COLS + ("no_campaign",), 0)
 
+META_TOKEN_PATH = os.environ.get("META_ADS_TOKEN_PATH", "/opt/airflow/secrets/meta_ads_token")
+META_GRAPH = "https://graph.facebook.com"
+META_FIELDS = ("campaign_name", "adset_name", "ad_name", "ad_id", "spend", "impressions", "reach",
+               "inline_link_clicks", "actions")
+META_COLS = ("spend", "impressions", "reach", "clicks", "lpv")
+META_TABLE = f"{BQ_PROJECT}.ads.meta_insights"
+META_AD_TAB = "_auto_meta_ad"
+
+
+def read_token(path) -> str | None:
+    try:
+        with open(path, encoding="utf-8") as f:
+            return f.read().strip() or None
+    except FileNotFoundError:
+        return None
+
+
+def fetch_insights(token: str, account_id: str, since: dt.date, until: dt.date, version: str,
+                   opener=urllib.request.urlopen) -> list[dict]:
+    import urllib.error
+    import urllib.parse
+    query = urllib.parse.urlencode({
+        "level": "ad", "time_increment": 1, "limit": 500, "fields": ",".join(META_FIELDS),
+        "time_range": json.dumps({"since": since.isoformat(), "until": until.isoformat()}),
+        "access_token": token,
+    })
+    url = f"{META_GRAPH}/{version}/act_{account_id.removeprefix('act_')}/insights?{query}"
+    rows = []
+    while url:
+        try:
+            with opener(url, timeout=60) as r:
+                body = json.loads(r.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            err = json.loads(e.read().decode("utf-8") or "{}").get("error", {})
+            raise RuntimeError(f"meta insights {e.code}: code={err.get('code')} {err.get('message')}") from None
+        rows.extend(body.get("data", []))
+        url = body.get("paging", {}).get("next")
+    return rows
+
+
+def parse_insights(raw: list[dict]) -> list[dict]:
+    out = []
+    for r in raw:
+        acts = {a["action_type"]: a["value"] for a in r.get("actions") or []}
+        out.append({
+            "d": dt.date.fromisoformat(r["date_start"]),
+            "campaign": r.get("campaign_name", ""), "adset": r.get("adset_name", ""),
+            "ad": r.get("ad_name", ""), "ad_id": r.get("ad_id", ""),
+            "spend": float(r.get("spend") or 0),
+            "impressions": int(r.get("impressions") or 0), "reach": int(r.get("reach") or 0),
+            "clicks": int(r.get("inline_link_clicks") or 0), "lpv": int(acts.get("landing_page_view") or 0),
+        })
+    return out
+
+
+def daily_totals(rows: list[dict]) -> dict:
+    tot = {}
+    for r in rows:
+        acc = tot.setdefault((r["d"], r["campaign"]), dict.fromkeys(META_COLS, 0))
+        for c in META_COLS:
+            acc[c] += r[c]
+    return tot
+
+
+def meta_updates(grid: list, totals: dict, end: dt.date) -> list[dict]:
+    ups = []
+    for i, row in enumerate(grid):
+        d = _safe_date(row[0] if row else None)
+        if d is None or d > end:
+            continue
+        campaign = str(row[1]).strip() if len(row) > 1 else ""
+        hits = [v for (day, c), v in totals.items() if day == d and (not campaign or c == campaign)]
+        vals = [round(sum(h[c] for h in hits)) for c in META_COLS]
+        r = FIRST_ROW + i
+        ups.append({"range": f"C{r}:G{r}", "values": [vals]})
+    return ups
+
+
+def unmatched_campaigns(grid: list, totals: dict) -> list[str]:
+    known = {c for _, c in totals}
+    names = {str(row[1]).strip() for row in grid if len(row) > 1 and str(row[1]).strip()}
+    return sorted(names - known)
+
 
 def to_date(cell) -> dt.date | None:
     if cell is None or cell == "":
@@ -182,6 +265,37 @@ def _resolve(**_) -> dict | None:
     return None if w is None else {k: (v.isoformat() if isinstance(v, dt.date) else v) for k, v in w.items()}
 
 
+def _extract(ti, **_) -> list[dict] | None:
+    from airflow.models import Variable
+    from google.cloud import bigquery
+    w = ti.xcom_pull(task_ids="resolve_window")
+    token = read_token(META_TOKEN_PATH)
+    account = Variable.get("meta_ad_account_id", default_var=None)
+    if not w or not token or not account:
+        print(json.dumps({"meta_extract": "skipped", "window": bool(w), "token": bool(token), "account": bool(account)}))
+        return None
+    try:
+        raw = fetch_insights(token, account, dt.date.fromisoformat(w["start"]), dt.date.fromisoformat(w["end"]),
+                             Variable.get("meta_api_version", default_var="v24.0"))
+        rows = [{**r, "d": r["d"].isoformat()} for r in parse_insights(raw)]
+    except Exception as e:
+        _notify(f":warning: *메타 광고 수치 추출 실패 — 시트 메타 칸은 이번에 안 바뀜*\n• {type(e).__name__}: {e}")
+        return None
+    print(json.dumps({"meta_extract": len(rows), "spend": sum(r["spend"] for r in rows)}))
+    if not rows:
+        _notify(":warning: *메타 광고 수치 0행 — 계정·토큰 권한 확인. 시트 메타 칸은 이번에 안 바뀜*")
+        return None
+    try:
+        schema = [bigquery.SchemaField("d", "DATE")] + [
+            bigquery.SchemaField(c, "STRING") for c in ("campaign", "adset", "ad", "ad_id")] + [
+            bigquery.SchemaField(c, "FLOAT64" if c == "spend" else "INT64") for c in META_COLS]
+        cfg = bigquery.LoadJobConfig(schema=schema, write_disposition="WRITE_TRUNCATE")
+        _bq().load_table_from_json(rows, META_TABLE, job_config=cfg, location=BQ_LOCATION).result()
+    except Exception as e:
+        _notify(f":warning: *ads.meta_insights 적재 실패 — 시트는 계속 갱신*\n• {type(e).__name__}: {e}")
+    return rows
+
+
 def _build(ti, **_) -> None:
     from airflow.exceptions import AirflowSkipException
     from airflow.models import Variable
@@ -234,6 +348,16 @@ def _publish(ti, **_) -> None:
         _notify("\n".join([":no_entry: *광고 깔때기 — 이미 게시된 숫자가 줄어 시트 갱신 중단*"] + [f"• {x}" for x in shrunk]))
         raise RuntimeError("; ".join(shrunk))
     ups = sheet_updates(dates, daily, dt.date.fromisoformat(w["end"]))
+    meta = ti.xcom_pull(task_ids="extract_meta")
+    if meta:
+        totals = daily_totals([{**r, "d": dt.date.fromisoformat(r["d"])} for r in meta])
+        missing = unmatched_campaigns(grid, totals)
+        if missing:
+            _notify(f":warning: *시트 B열 캠페인이 메타에 없음 — 메타 칸 갱신 건너뜀*\n• {', '.join(missing)}")
+        else:
+            ups += meta_updates(grid, totals, dt.date.fromisoformat(w["end"]))
+        _replace_tab(sh, META_AD_TAB, [["d", "campaign", "adset", "ad", *META_COLS]] + [
+            [r["d"], r["campaign"], r["adset"], r["ad"], *(r[c] for c in META_COLS)] for r in meta])
     if ups:
         ws.batch_update(ups, value_input_option="RAW")
     _replace_tab(sh, CREATIVE_TAB, [["campaign", "content", "os", "landed", "first_play", "harvest",
@@ -265,7 +389,8 @@ with DAG(
     tags=["ads", "funnel"],
 ) as dag_ads:
     resolve = PythonOperator(task_id="resolve_window", python_callable=_resolve)
+    extract = PythonOperator(task_id="extract_meta", python_callable=_extract, retries=0)
     build = PythonOperator(task_id="build_mart", python_callable=_build)
     check = PythonOperator(task_id="check_quality", python_callable=_check, retries=0)
     publish = PythonOperator(task_id="publish_sheet", python_callable=_publish)
-    resolve >> build >> check >> publish
+    resolve >> extract >> build >> check >> publish

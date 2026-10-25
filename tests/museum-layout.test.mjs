@@ -114,8 +114,7 @@ test('방 크기: 벽 16×14, 회랑 20×14 — 소비처(이동 제한·미니�
 test('1층 특별 진열대가 진열장과 겹치지 않는다', () => {
   const EXTRAS = readFileSync(new URL('../js/museum/extras.js', import.meta.url), 'utf8');
   const specials = JSON.parse(EXTRAS.match(/specials: (\[\[.*?\]\])/)[1]);
-  const L = museumLayout('wall', 17);
-  for (const [sx, sz] of specials) for (const s of L.slots) {
+  for (const n of [14, 17]) for (const [sx, sz] of specials) for (const s of museumLayout('wall', n).slots) {
     assert.ok(Math.hypot(sx - s.x, sz - s.z) > 1.6, `특별 진열대(${sx},${sz}) 가 진열장(${s.x},${s.z})과 겹친다`);
   }
 });
@@ -126,6 +125,7 @@ test('회랑 배치: 탁자 한 줄이 5칸 이하면 16×14, 그보다 길면 2
   assert.deepEqual(museumLayout('gallery', 9).dims, { hw: 8, hd: 7 });
   assert.deepEqual(museumLayout('gallery', 31).dims, { hw: 10, hd: 7 }, '3층 31칸은 넓은 방');
   assert.deepEqual(museumLayout('gallery', 16).dims, { hw: 10, hd: 7 });
+  assert.deepEqual(museumLayout('gallery', 15).dims, { hw: 10, hd: 7 }, '특별전 요리+광물 15칸은 넓은 방');
 });
 
 // ⚠️ 탁자 끝과 벽 유리장 사이가 좁으면 탁자를 돌아 걸을 수 없어 한쪽 칸을 못 본다

@@ -68,7 +68,13 @@ export function initHudShell({ Input, t, trackEvent, menu }) {
     const qp = $('quest-panel'), mm = $('minimap'), chip = $('story-chip');
     if (!qp || !mm) return;
     qp.style.top = '';
-    const q = qp.getBoundingClientRect();
+    qp.style.maxWidth = '';
+    const tr = $('topright')?.getBoundingClientRect();
+    let q = qp.getBoundingClientRect();
+    if (tr && tr.width && q.height && q.top < tr.bottom && q.bottom > tr.top && q.right > tr.left - 8) {
+      qp.style.maxWidth = Math.max(0, Math.floor(tr.left - q.left - 8)) + 'px';
+      q = qp.getBoundingClientRect();
+    }
     document.documentElement.style.setProperty('--qp-bottom', q.height ? Math.round(q.bottom + 8) + 'px' : '0px');
     mm.style.top = q.height ? Math.round(q.bottom + 8) + 'px' : '';
     const m = mm.getBoundingClientRect();
@@ -81,7 +87,7 @@ export function initHudShell({ Input, t, trackEvent, menu }) {
   const schedule = () => { if (!pending) pending = requestAnimationFrame(() => { pending = 0; layoutLeft(); }); };
   if (window.ResizeObserver) {
     const ro = new ResizeObserver(schedule);
-    ['quest-panel', 'minimap'].forEach(id => $(id) && ro.observe($(id)));
+    ['quest-panel', 'minimap', 'topright'].forEach(id => $(id) && ro.observe($(id)));
   }
   addEventListener('resize', schedule);
   new MutationObserver(schedule).observe(document.body, { attributes: true, attributeFilter: ['class'] });

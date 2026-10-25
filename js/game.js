@@ -54,7 +54,7 @@ import { makeVisitor } from './visitor-art.js';                                 
 import { truceUntil } from './duel/truce.js';                                                        // 🤝 발길 끊기 만료일
 import { makeRaidScar } from './duel/raid-art.js';                                                   // 🐾 털린 밭 조형(흔적·대결 무대 공용)
 import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed, pickMissingDex, viewFrame, exhibitCenterY,
-  SPECIAL_EXHIBITS, specialFor, noteSpecial, sanitizeSpecial, bestAfterCatch, sanitizeBest } from './museum.js';
+  SPECIAL_EXHIBITS, specialFor, noteSpecial, sanitizeSpecial, initialMaxFloor, bestAfterCatch, sanitizeBest } from './museum.js';
 import { buildMuseumExtras } from './museum/extras.js';   // 🏛️ 1층 ✨조건부 전시(조형)   // 🏛️ 증축은 수집률로 열린다   // 🪓 도구 등급(0 기본 / 1 업그레이드 / 2 히든) — 색·판정은 이 모듈이 단일 출처
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
@@ -81,6 +81,7 @@ import { checkNickname, NICK_FAIL_MSG } from './nickname-filter.js';
 import { makeChickenState, stepChickens } from './coop-chickens.js';   // 🐔 닭 배회·오두막 출입(벽 통과 금지)
 import { ORCHARD_AUTO_TOOLS, orchardToolFor, FRUITS, TREE_SLOTS, YIELD_PER_DAY, ORCHARD_STREAM_LOCAL, ORCHARD_SLOTS_LOCAL, fruitOf, fruitKeyOf, sapKeyOf, nearStream, harvestable, settleTrees, chopHit, freeSlots, daysBetween } from './orchard.js';   // 🍎 과수원 규칙(과일 표·물·수확·베기·빈 자리·정산)
 import { restoreStage } from './orchard-onboard.js';
+import { defaultDelve, sanitizeDelve } from './delve/rules.js';
 import { restoreStage as restoreCosStage } from './cos-onboard.js';
 import { cosQuestActive, maybeOfferCosQuest, noteCosQuestVisit, updateCosQuestBubble } from './spaces/cos-quest.js';
 import { ORCHARD_TREE, GATE_PATCH, buildOrchardDecor, fruitSpots, buildTreeSoil, disposeOwned } from './orchard-art.js';   // 🍎 과수원 외관(나무 모양·안쪽 소품·입구 잔디 판)
@@ -101,7 +102,7 @@ import { SLOTS_PER_STATION, MAX_UNITS, capacityOf, isReady, setSlot, claimAll, w
 import { build as buildVatModel, VAT_SCALE, VAT_BOX } from './craft/vat-model.js';   // 🫙 발효통 조형(sims/vat-sim.html B안)
 import { headAnchor, neckAnchor, neckR, sideAnchor, backAnchor } from './cosmetics/anchors.js';
 import { buildCosmetic } from './cosmetics/art.js';
-import { itemsOf } from './cosmetics/catalog.js';
+import { itemsOf, findItem } from './cosmetics/catalog.js';
 import { equippedItems, hidesTail, sanitize as sanitizeCosmetics, buy as buyCos, equip as equipCos, unequip as unequipCos } from './cosmetics/equip.js';
 import { buildTrailMark, tintTrailMark, TRAIL_CAP, TRAIL_STEP, TRAIL_FADE, TRAIL_SIDE } from './cosmetics/trail.js';   // 👣 발자국 자취(월드 이펙트)
 import { applySkin, disposeSkin, showSkinParts } from './cosmetics/skin.js';   // 🧥 전신 스킨 — 캐릭터에 덧입힌다
@@ -136,8 +137,9 @@ import {
   BOAT_UPGRADES, SHOP_POS, SHOP_DOOR, MIST_GATE, MIST, MIST_HALF, MIST_WAVES, TREE_LIGHT_MAX, MIST_DRAIN, SOOTHE_GLOW,
   PURIFY_GLOW, SPIRITS, MIST_LANTERN_POS, LANTERN_CALM_R, MIST_PRACTICE_STEPS, SEA_GATE, SEA_COVE, SEA, ORCHARD_GATE,
   ORCHARD_PROMPT_R, ORCHARD, ORCHARD_HALF, SEA_DECK_W, SEA_DECK_Z0, SEA_DECK_Z1, SEA_EDGE, SEA_SPECIES, ROOF_COLORS,
-  WALL_COLORS, DOOR_COLORS, PART_NAME, HOUSE_POS, NEIGHBOR, NEIGHBOR_R, NEIGHBOR_GATE,
+  WALL_COLORS, DOOR_COLORS, PART_NAME, HOUSE_POS, NEIGHBOR, NEIGHBOR_R, NEIGHBOR_GATE, DELVE,
 } from './data/places.js';
+import { DELVE_HALF, THEMES as DELVE_THEMES } from './data/delve.js';
 import {
   GIFTS, QUEST_HOW, TALK_PER_DAY, NPCS, DAILY_COUNT, QUEST_COINS, QUEST_LUCKY, DAILY_POOL, validDailyQuests, validQuest,
   AI_QUEST_TIMEOUT,
@@ -235,6 +237,7 @@ import {
 import {
   buildMine, enterMine, exitMine, spawnMineGate, tryMine, updateOreRocks,
 } from './spaces/mine.js';   // 📦 ⛏️ 채굴 동굴 (구역 머리말 — 분리 2단계)
+import { delveFloorNow, clampDelve, handleDelveDoor, tryDelveMine, updateDelve, settleMinerRewards, delveMinimapMarks } from './spaces/delve.js';
 import {
   enterHouse, exitHouse, goFloor, inVillage2, updateDoorInteract,
 } from './spaces/doors.js';   // 📦 🚪 침대·문 근접·구역 안내 (구역 머리말 — 분리 2단계)
@@ -288,6 +291,8 @@ import { restoreMountain } from './mountain/save.js';
 import { onMountainside } from './mountain/landmark.js';
 import { souvenirOutdoorMesh } from './mountain/souvenir-art.js';
 import { FRIEND_ARCH_ID, buildFriendArch } from './spaces/friend-arch-art.js';   // 🌈 무지개 우정 아치(🤝 초대 보상)
+import { MINE_CART_ID, MINE_CART_BOX, buildMineCart } from './delve/cart-art.js';
+import { outdoorFootprint, blockedByWorld } from './world/outdoor-overlap.js';
 // 🔁 js/spaces/* 가 game.js 의 let 에 쓸 때 거치는 접근자(읽기는 import 한 live binding) — tools/refactor/extract-module.mjs 가 만든다
 export const $w = {
   get _hintAnyPrev() { return _hintAnyPrev; }, set _hintAnyPrev(v) { _hintAnyPrev = v; },
@@ -296,6 +301,9 @@ export const $w = {
   get atCafe() { return atCafe; }, set atCafe(v) { atCafe = v; },
   get atFarm() { return atFarm; }, set atFarm(v) { atFarm = v; },
   get atMine() { return atMine; }, set atMine(v) { atMine = v; },
+  get refreshQuestPanel() { return refreshQuestPanel; },
+  get grantCosmetic() { return grantCosmetic; }, get grantDecor() { return grantDecor; },
+  get firstHintBanner() { return firstHintBanner; },
   get atMist() { return atMist; }, set atMist(v) { atMist = v; },
   get atMuseum() { return atMuseum; }, set atMuseum(v) { atMuseum = v; },
   get atNeighbor() { return atNeighbor; }, set atNeighbor(v) { atNeighbor = v; },
@@ -586,7 +594,7 @@ function setSpaceVisible() {
   if (farmSoilMesh) farmSoilMesh.visible = farmVisible;
   if (farmCropMeshes) for (const k of ['sprout', 'stem', 'leaf', 'bush', 'fruit']) farmCropMeshes[k].visible = farmVisible;
   if (farmHintMeshes) for (const k of ['warn', 'harvest', 'seedHint', 'weed', 'pest']) farmHintMeshes[k].visible = farmVisible;
-  if (mineGroup) mineGroup.visible = atMine;
+  if (mineGroup) mineGroup.visible = atMine && delveFloorNow() === 0;
   if (cafeInGroup) cafeInGroup.visible = atCafe;
   if (museumGroup) museumGroup.visible = atMuseum;
   if (observatoryGroup) observatoryGroup.visible = atObservatory;
@@ -786,7 +794,7 @@ function questCtx() {
   return {
     coopBuilt: !!gameState.coop.built,
     houseStage: gameState.houseStage,
-    locked: { river: mapLocked('river'), sea: mapLocked('sea'), mist: mapLocked('mist') },
+    locked: { river: mapLocked('river'), sea: mapLocked('sea'), mist: mapLocked('mist'), deep: (gameState.delve?.maxFloor || 0) < DELVE_THEMES.find(t => t.id === 'crystal').from },
     // 📖 오늘 날씨에 닫힌 희귀종은 의뢰로 나오지 않게(js/dex-gates.js).
     //   ⚠️ 밤낮은 안 넘긴다 — 의뢰는 하루치 시드로 고정되는데 밤낮은 하루 안에 바뀐다.
     weather: WEATHER,
@@ -1014,7 +1022,7 @@ const gameState = {
     wheat: 0, corn: 0, grape: 0, seed_wheat: 0, seed_corn: 0, seed_grape: 0, honey: 0,
     apple: 0, pear: 0, peach: 0, persimmon: 0, chestnut: 0,
     sap_apple: 0, sap_pear: 0, sap_peach: 0, sap_persimmon: 0, sap_chestnut: 0,
-    charcoal: 0, flour: 0, brick: 0, bread: 0, juice: 0, apple_jam: 0, roast_chestnut: 0, gotgam: 0 },   // 🔥 화덕 가공물 + 🫙 발효통 🍷포도즙 + 🥐 밀가루로 굽는 빵 // 🍎 과수원(js/orchard.js) + 석탄/돌/보석(채굴) + 달걀(닭장) + 반딧불이(밤) + 채집물(숲) + ⭐별조각(강) + ✨정령빛(안개 숲, 장식 교환 화폐) + 🌾고급 작물·씨앗(js/farm-crops.js) + 🍯꿀(벌통)
+    charcoal: 0, flour: 0, brick: 0, bread: 0, juice: 0, apple_jam: 0, roast_chestnut: 0, gotgam: 0, crystal: 0 },   // 🔥 화덕 가공물 + 🫙 발효통 🍷포도즙 + 🥐 밀가루로 굽는 빵 // 🍎 과수원(js/orchard.js) + 석탄/돌/보석(채굴) + 달걀(닭장) + 반딧불이(밤) + 채집물(숲) + ⭐별조각(강) + ✨정령빛(안개 숲, 장식 교환 화폐) + 🌾고급 작물·씨앗(js/farm-crops.js) + 🍯꿀(벌통)
   playerPos: { x: 0, z: 0 },
   houseStage: 0,                            // 0=없음 1=기초 2=벽 3=완성
   plots: [],                                // [{x,z,state,growth}] 저장용 스냅샷
@@ -1076,8 +1084,9 @@ const gameState = {
   beta: { tries: {} },   // 🧪 미니게임별 시도 횟수 — 관대 판정은 js/difficulty.js 로 옮겼다(이 카운터는 옛 세이브 호환용)
   difficulty: defaultDifficulty(),   // 🎚️ 미니게임별 난이도 상태 { dda: 유저 보정, n: probe 순회용 누적 시도 }
   sea: { tunaDay: null, caught: 0, best: {} },   // 🌊 바다터 { 오늘의 대어(참치) 잡은 날짜, 누적 어획, 어종별 최고 무게(kg) — 경신 토스트 }
-  museum: { special: {} },             // 🏛️ ✨조건부 전시 { rain_fish: { id, at } } — 규칙은 js/museum.js SPECIAL_EXHIBITS
+  museum: { special: {}, maxFloor: 1 },             // 🏛️ ✨조건부 전시 { rain_fish: { id, at } } — 규칙은 js/museum.js SPECIAL_EXHIBITS
   orchard: { trees: [], sapSel: 'apple', settleDate: null },   // 🍎 과수원(js/orchard.js)
+  delve: defaultDelve(),
   progress: { advHarvest: 0 },   // 🔒 진행도 해금 카운터 — 고급 작물 수확 횟수(js/tuning.js PROGRESS_GATE)
   kitchen: { cooked: 0, best: {}, tiers: {} }, // 🍳 자유주방 { 누적 요리 수, 레시피별 최고 점수(0~100), 등급별 획득 수 }
   pantry: [],   // 🍱 찬장 — 보관한 음식 [{ id: 레시피id, score }]. 등급은 score 에서 파생. 최대 PANTRY_MAX 칸
@@ -2828,6 +2837,7 @@ function applySave(saved) {
   // 🌾→🍎 과수원 가는 길 의뢰(js/orchard-onboard.js) — 모르는 값은 버린다
   gameState.progress.orchardQuest = restoreStage(saved.progress?.orchardQuest, gameState.progress.advHarvest);
   gameState.progress.orchardRefill = saved.progress?.orchardRefill === true || undefined;
+  gameState.delve = sanitizeDelve(saved.delve);
   gameState.progress.cosQuest = restoreCosStage(saved.progress?.cosQuest, gameState.cosmetics.owned.length);
   syncBridge();            // 🌉 복원된 unlocks(legacy·flags.bridge)로 다리를 다시 맞춘다 — 빌더는 로드 전에 돈다
   syncOrchardGateLock();   // 🔒 복원된 진행도로 가로대를 다시 계산 — 입구를 세울 땐 progress 가 아직 기본값 0 이라 항상 잠긴 것으로 보인다
@@ -2875,7 +2885,8 @@ function applySave(saved) {
   if (saved.sea) gameState.sea = { ...gameState.sea, ...saved.sea };      // 🌊 바다터(오늘의 대어) 복원
   //   🏛️ 최고 무게·조건부 전시는 세이브를 믿지 않고 정제한다(모르는 어종·깨진 값은 버린다). 필드가 없는 옛 세이브는 빈 값.
   gameState.sea.best = sanitizeBest(saved.sea?.best, SEA_SPECIES.map(sp => sp.id));
-  gameState.museum = { special: sanitizeSpecial(saved.museum?.special) };
+  gameState.museum = { special: sanitizeSpecial(saved.museum?.special), maxFloor: initialMaxFloor(saved.museum?.maxFloor, gameState.dex, DEX) };
+  refreshMuseumGate();
   if (saved.kitchen) gameState.kitchen = { cooked: saved.kitchen.cooked || 0, best: { ...(saved.kitchen.best || {}) }, tiers: { ...(saved.kitchen.tiers || {}) } }; // 🍳 자유주방 기록 복원
   // 🍱 찬장 복원 — 세이브가 손상되거나 레시피/등급이 개편으로 사라졌으면 그 칸만 버린다(전체를 날리지 않게)
   //   등급은 저장하지 않고 score 로 다시 계산한다 — 두 벌로 들고 있으면 등급 컷을 손볼 때 어긋난다
@@ -2963,10 +2974,30 @@ function applySave(saved) {
   }
   refreshPlaza();   // 🌾 initPlaza() 가 세이브 복원보다 먼저 돌아 기본값을 봤으므로 여기서 다시 맞춘다
   refreshPond('load');
+  settleMinerRewards();
+}
+
+function grantCosmetic(id) {
+  if (!findItem(id)) return false;
+  const owned = gameState.cosmetics.owned;
+  if (owned.includes(id)) return false;
+  gameState.cosmetics = { ...gameState.cosmetics, owned: [...owned, id] };
+  requestSave();
+  return true;
+}
+
+function grantDecor(id) {
+  if (DECOR.some(d => d.id === id)) {
+    gameState.house.stored[id] = (gameState.house.stored[id] || 0) + 1;
+  } else if (OUTDOOR.some(d => d.id === id && d.quest)) {
+    gameState.outdoorStored = { ...(gameState.outdoorStored || {}), [id]: (gameState.outdoorStored?.[id] || 0) + 1 };
+  } else return false;
+  requestSave();
+  return true;
 }
 
 export function getGameState() {
-  gameState.playerPos = atNeighbor ? neighborReturnPos() : (atMirror || mirrorRideActive()) ? mirrorReturnPos() : atDream ? dreamReturnPos() : atMountain ? mountainReturnPos() : { x: player.position.x, z: player.position.z };
+  gameState.playerPos = atNeighbor ? neighborReturnPos() : (atMirror || mirrorRideActive()) ? mirrorReturnPos() : atDream ? dreamReturnPos() : atMountain ? mountainReturnPos() : delveFloorNow() > 0 ? { x: MINE_GATE.x, z: MINE_GATE.z + 2 } : { x: player.position.x, z: player.position.z };
   if (atHalloween) gameState.playerPos = halloweenReturnPos();
   gameState.plots = plots.map(p => ({ x: p.x, z: p.z, state: p.state, growth: p.growth, crop: p.cropType?.id,   // crop: 밤손님 판정·복원용 작물 종류
     ...(p.fert ? { fert: 1 } : {}), ...(p.weed ? { weed: 1 } : {}), ...(p.pest ? { pest: 1 } : {}) }));   // 🌾 고급 작물 공정 — 켜진 것만 기록(옛 스키마와 호환), claimedBy 는 런타임 전용
@@ -5480,6 +5511,8 @@ function outdoorMesh(id) {
     const ring = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.03, 5, 12), clayMat(0x4a5a58)); ring.position.set(0.16, 1.36, 0); g.add(ring);
   } else if (HALLOWEEN_OUTDOOR_IDS.includes(id)) {   // 🎃 할로윈 코인 장식 3종 — 밤에 켜지는 재질은 houseWindows 에 올린다(postlamp 와 같은 규칙)
     g.add(buildHalloween(THREE, id, HALLOWEEN_STYLE[id], makeCtx(THREE, (m) => houseWindows.push(m))));
+  } else if (id === MINE_CART_ID) {
+    g.add(buildMineCart(THREE));
   } else if (id === FRIEND_ARCH_ID) {   // 🌈 무지개 우정 아치 — 걸어서 통과(충돌체 없음) · 밤 반짝이는 houseWindows
     g.add(buildFriendArch(THREE, (m) => houseWindows.push(m)));
   } else if (id === 'kiln') {
@@ -5555,6 +5588,12 @@ function outdoorMesh(id) {
 }
 
 // 야외 장식 설치 (플레이어 위치에). silent=true 면 저장 복원 · 들어 올린 걸 다시 놓으면(pickedOutdoor) 값 없음 · 🧺 보관분이 있으면 값 없이 꺼내 놓는다
+const OVERLAP_PLACE_MSG = '🌳 나무나 건물과 겹쳐서 놓을 수 없어요';
+function outdoorBlockedByWorld(id, x, z, ry) {
+  const ignore = new Set(outdoorMeshes.map(m => m.userData.solid).filter(Boolean));
+  const fp = outdoorFootprint(id, x, z, ry, { cartBox: MINE_CART_BOX, vatBox: VAT_BOX, cartId: MINE_CART_ID });
+  return blockedByWorld(fp, colliders, ignore);
+}
 function placeOutdoor(wx, wz, silent = false, id = placingOutdoor, rot = null) {
   const def = OUTDOOR.find(d => d.id === id); if (!def) return false;
   const ry = (((rot == null ? decorRot : rot) % 4) + 4) % 4;   // ↻ 90° 4방향 — 실내 가구와 같은 규칙
@@ -5566,6 +5605,7 @@ function placeOutdoor(wx, wz, silent = false, id = placingOutdoor, rot = null) {
     }
   }
   if (!silent && !def.farm && onMountainside(wx, wz, MOUNTAIN_LANDMARK, MOUNTAIN_LANDMARK_R)) { ui.toast?.(MOUNTAIN_PLACE_MSG, 2400); return false; }
+  if (!silent && !def.farm && outdoorBlockedByWorld(id, wx, wz, ry)) { ui.toast?.(OVERLAP_PLACE_MSG, 2400); return false; }
   // 📐측량소 마당 — 밭 시설이든 장식이든 새로 놓지 못하게 막는다(사용자 지시 2026-09-21).
   //   🔥🫙 가공 시설만 예외: 게임이 기본으로 놓아 주고, 플레이어는 마당 안에서 자리만 고친다.
   if (!silent && !def.farm && !STATION_IDS.includes(id) && atFarm) {
@@ -5607,6 +5647,9 @@ function placeOutdoor(wx, wz, silent = false, id = placingOutdoor, rot = null) {
       const [hw, hd] = (ry % 2) ? [0.58, 1.01] : [1.01, 0.58];
       solid = solidBox(wx - hw, wz - hd, wx + hw, wz + hd);
       obstacles.pop(); ob = { x: wx, z: wz, r: 1.2 }; obstacles.push(ob);   // 밭·나무 금지 반경도 몸집에 맞춘다
+    } else if (id === MINE_CART_ID) {
+      const [hw, hd] = (ry % 2) ? [MINE_CART_BOX.d / 2, MINE_CART_BOX.w / 2] : [MINE_CART_BOX.w / 2, MINE_CART_BOX.d / 2];
+      solid = solidBox(wx - hw, wz - hd, wx + hw, wz + hd);
     } else if (id === 'vat') {
       // 🫙 발효통 — 화덕과 같은 문법. 반치수는 조형 모듈이 준 발자국(VAT_BOX)의 절반
       const [hw, hd] = (ry % 2) ? [VAT_BOX.d / 2, VAT_BOX.w / 2] : [VAT_BOX.w / 2, VAT_BOX.d / 2];
@@ -6041,6 +6084,8 @@ function animate() {
         md.cx = HALLOWEEN.x; md.cz = HALLOWEEN.z; md.half = 15; md.marks = []; halloweenMinimapMarks(md.marks);
       } else if (place === 'mirror') {   // 🪞 거울 마을 — 원 하나를 한 화면에
         md.cx = MIRROR_MAP.cx; md.cz = MIRROR_MAP.cz; md.half = MIRROR_MAP.half; md.marks = []; mirrorMinimapMarks(md.marks);
+      } else if (place === 'mine' && delveFloorNow() > 0) {
+        md.cx = DELVE.x; md.cz = DELVE.z; md.half = DELVE_HALF; md.marks = delveMinimapMarks();
       } else if (place !== 'village') {   // 서브 공간: 중심·반경·랜드마크를 함께 전달
         const C = place === 'house' ? INT : place === 'farm' ? { x: FARM.x - YARD_D / 2, z: FARM.z } : place === 'cafe' ? CAFE : place === 'observatory' ? OBSERVATORY : place === 'mountain' ? MOUNTAIN : place === 'neighbor' ? (neighborIndoorFrame()?.c ?? NEIGHBOR) : place === 'river' ? RIVER : place === 'mist' ? MIST : place === 'sea' ? SEA : place === 'museum' ? MUSEUM : place === 'orchard' ? ORCHARD : MINE;
         md.cx = C.x; md.cz = C.z;
@@ -6070,6 +6115,7 @@ function animate() {
   updateGateCues(t, dt);
   updateTrees(dt);
   updateOreRocks();
+  updateDelve(dt, t);
   updateChickens(dt);   // 🐔 닭 배회(닭장 건설 후)
   updateFireflyBugs(dt, t); // 🌟 반딧불이(밤에만 계곡에 출현)
   updateMist(dt, t);        // 🌫️ 안개 숲(정령 웨이브·수호목 빛)
@@ -6243,8 +6289,11 @@ function updatePlayer(dt, t) {
     const c = clampFarmPos(player.position.x - FARM.x, player.position.z - FARM.z, farmHalf(), playerInYard);
     player.position.x = FARM.x + c.x; player.position.z = FARM.z + c.z; playerInYard = c.inYard;
   } else if (atMine) { // 동굴: 벽 안쪽으로 제한
-    player.position.x = Math.max(MINE.x - MINE_HALF + 0.7, Math.min(MINE.x + MINE_HALF - 0.7, player.position.x));
-    player.position.z = Math.max(MINE.z - MINE_HALF + 0.6, Math.min(MINE.z + MINE_HALF - 0.7, player.position.z));
+    if (delveFloorNow() > 0) clampDelve(player.position);
+    else {
+      player.position.x = Math.max(MINE.x - MINE_HALF + 0.7, Math.min(MINE.x + MINE_HALF - 0.7, player.position.x));
+      player.position.z = Math.max(MINE.z - MINE_HALF + 0.6, Math.min(MINE.z + MINE_HALF - 0.7, player.position.z));
+    }
   } else if (atCafe) { // ☕ 카페 홀: 벽 안쪽으로 제한
     player.position.x = Math.max(CAFE.x - CAFE_HALF + 0.8, Math.min(CAFE.x + CAFE_HALF - 0.8, player.position.x));
     player.position.z = Math.max(CAFE.z - CAFE_HALF + 0.8, Math.min(CAFE.z + CAFE_HALF - 0.7, player.position.z));
@@ -7143,6 +7192,7 @@ function handleAction() {
   if (nearDoor === 'trace') { const tr = traceTarget(); if (tr) return investigateTrace(tr); }
   if (nearDoor === 'pet') return commandPet();   // 🐾 밭 근처에서 액션 = 맡기기(물·잡초·해충 최대 5칸)
   if (nearDoor === 'mine') return enterMine();
+  if (typeof nearDoor === 'string' && nearDoor.startsWith('delve_') && handleDelveDoor(nearDoor)) return;
   if (nearDoor === 'mineexit') return exitMine();
   if (nearDoor === 'orchard') return enterOrchard();
   if (nearDoor === 'orchardexit') return exitOrchard();
@@ -7182,7 +7232,7 @@ function handleAction() {
     // 입장 시 자동 선택(ZONE_TOOL)을 덮어쓰고 도구를 바꾼 경우의 안전망(밭 자동 전환과 같은 문법).
     if (toolPage !== 'none') {
       if (TOOLS[currentTool].grp === 'farm' && TOOLS[currentTool].id !== 'hoe') selectToolAuto('hoe');
-      if (TOOLS[currentTool].id === 'hoe') return tryMine();
+      if (TOOLS[currentTool].id === 'hoe') return delveFloorNow() > 0 ? tryDelveMine() : tryMine();
     }
     ui.toast?.('⛏️ 🌾농사 세트의 괭이(2)로 캐야 해요');
     return;
@@ -7764,7 +7814,7 @@ function spawnConfetti(x, y, z) {
 // =============================================================
 // 🪧 간판·좁은 자리용 아이콘만(라벨 없이). RES_LABEL 은 이모지가 붙은 것과 안 붙은 것이 섞여 있어 따로 둔다.
 const RES_ICON = { wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', coins: '🪙' };
-const RES_LABEL = { charcoal: '⚫숯', flour: '🌾밀가루', brick: '🧱벽돌', bread: '🥐빵', juice: '🍷포도즙', apple_jam: '🥫사과잼', roast_chestnut: '🌰군밤', gotgam: '🍡곶감', wood: '목재', seed: '씨앗', crop: '작물', fish: '물고기', coins: '🪙코인', stone: '돌', coal: '석탄', gem: '보석', egg: '달걀', bug: '반딧불이', forage: '채집물', star: '⭐별조각', glow: '✨정령빛', fert: '🌱비료', bait: '🪱미끼', candy: '🍬사탕',
+const RES_LABEL = { charcoal: '⚫숯', flour: '🌾밀가루', brick: '🧱벽돌', bread: '🥐빵', juice: '🍷포도즙', apple_jam: '🥫사과잼', roast_chestnut: '🌰군밤', gotgam: '🍡곶감', wood: '목재', seed: '씨앗', crop: '작물', fish: '물고기', coins: '🪙코인', stone: '돌', coal: '석탄', gem: '보석', crystal: '🔮수정', egg: '달걀', bug: '반딧불이', forage: '채집물', star: '⭐별조각', glow: '✨정령빛', fert: '🌱비료', bait: '🪱미끼', candy: '🍬사탕',
   wheat: '🌾밀', corn: '🌽옥수수', grape: '🍇포도', seed_wheat: '🌾밀 씨앗', seed_corn: '🌽옥수수 씨앗', seed_grape: '🍇포도 씨앗', honey: '🍯꿀',
   apple: '🍎사과', pear: '🍐배', peach: '🍑복숭아', persimmon: '🍊감', chestnut: '🌰밤',
   sap_apple: '🍎사과나무 묘목', sap_pear: '🍐배나무 묘목', sap_peach: '🍑복숭아나무 묘목',

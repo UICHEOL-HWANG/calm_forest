@@ -1,0 +1,7 @@
+- [x] 순수 함수 테스트(RED) → 구현(GREEN)
+- [x] fetch·extract·BQ 적재
+- [x] publish C:G·_auto_meta_ad
+- [x] 코드 리뷰(5건 반영)
+- [x] 시스템 사용자 airflow-insights·앱 calmforest-insights·광고 계정 성과 보기 할당·토큰(키체인 calmforest-meta-ads-token)
+- [x] VM 비밀 파일·scp·Variable meta_ad_account_id·수동 트리거 manual_meta_1025 전 태스크 success
+- [ ] 광고 관리자 숫자와 대조

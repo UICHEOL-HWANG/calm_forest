@@ -6,7 +6,7 @@
 //     game.js 에 남은 let 에 쓸 때는 `$w.x = …` (읽기는 그냥 x). 도구·증명: tools/refactor/
 // =============================================================
 import {
-  $w, IS_MOBILE, RAIN_DAY, churnTrigger, clayMat, clock, currentQuest, dateHash, dexDiscover, dist2D, farmActionFirst,
+  $w, IS_MOBILE, atMine, RAIN_DAY, churnTrigger, clayMat, clock, currentQuest, dateHash, dexDiscover, dist2D, farmActionFirst,
   gameState, lerpAngle, makeNameTag, mode, nearNPC, npcDialogState, npcObjs, obstacles, onPlotArea, player, plots,
   questCtx, questEvent, refreshInventoryUI, roundRect, scene, solidCircle, spawnFloatText, spawnSparkle, syncBadges, syncUnlocks, todayStr, unlocksOn,
   ui,
@@ -23,6 +23,8 @@ import { activeQuestList, pickGated, questIdFor } from '../quests.js';
 import { quizOffer } from './ferry-quiz-run.js';   // 🦆 사공 퀴즈
 import { onboardView, wheatStatus } from '../orchard-onboard.js';
 import { cosOnboardView } from '../cos-onboard.js';
+import { minerCard, jobCard } from '../delve/miner-card.js';
+import { delveJobProgress } from './delve.js';
 import { Sound } from '../sound.js';
 import { inVillage2 } from '../spaces/doors.js';
 import * as THREE from 'three';
@@ -814,8 +816,8 @@ export function questPanelTop() {
 //    살아 있는 의뢰가 화면에서 사라진다(규칙·회귀 테스트는 js/quests.js activeQuestList).
 //    pin(nearNPC)은 "지금 눈앞에 있는 사람을 맨 위로" 라는 힌트일 뿐 — 멀어지면 저절로 풀린다.
 export function refreshQuestPanel() {
-  const views = [...npcObjs.filter(o => !o.hidden).map(o => questView(o)), onboardView(gameState.progress?.orchardQuest, orchardWheat()), cosOnboardView(gameState.progress?.cosQuest)].filter(Boolean);   // 🌾→🍎 과수원 가는 길(주민에게 말 안 걸어도 뜬다)
-  ui.setQuest?.(activeQuestList(views, { top: questPanelTop(), pinId: nearNPC?.def.id || null }));
+  const views = [...npcObjs.filter(o => !o.hidden).map(o => questView(o)), onboardView(gameState.progress?.orchardQuest, orchardWheat()), cosOnboardView(gameState.progress?.cosQuest), minerCard(gameState.delve, gameState.inventory, atMine), jobCard(gameState.delve, gameState.inventory, atMine, todayStr(), delveJobProgress())].filter(Boolean);   // 🌾→🍎 과수원 가는 길(주민에게 말 안 걸어도 뜬다)
+  ui.setQuest?.(activeQuestList(views, { top: questPanelTop(), pinId: views.find(v => v.id === 'delve_miner' || v.id === 'delve_job')?.id || nearNPC?.def.id || null }));
 }
 
 // ── 🔓 마을 해금 — 숨김·귀환(규칙은 js/world/unlocks.js, 판정·호출은 game.js syncUnlocks) ──────────

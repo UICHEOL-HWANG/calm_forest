@@ -32,3 +32,11 @@ test('enterPlay 가 플랫폼과 무관하게 셸을 켜고, 공용 훅은 셸�
   assert.match(HTML, /if \(shell\) \{ shell\.layoutLeft\(\); return; \}/);
   assert.match(HTML, /if \(shell\) \{\s*const keys = /);
 });
+
+test('퀘스트 카드는 오른쪽 🎒📖☰ 와 겹치면 그 간격까지만 폭을 줄인다', () => {
+  assert.match(SHELL, /qp\.style\.maxWidth = '';/);
+  assert.match(SHELL, /const tr = \$\('topright'\)\?\.getBoundingClientRect\(\);/);
+  assert.match(SHELL, /q\.right > tr\.left - 8/);
+  assert.match(SHELL, /qp\.style\.maxWidth = Math\.max\(0, Math\.floor\(tr\.left - q\.left - 8\)\) \+ 'px';/);
+  assert.match(SHELL, /\['quest-panel', 'minimap', 'topright'\]\.forEach/);
+});

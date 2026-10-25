@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cave Pest Concepts v2</title>
+<style>
+  :root { --bg: #f4efe6; --ink: #2b2118; --muted: #6b5b4a; --card: #fffaf2; --line: #e2d6c4; --pick: #c4574a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Pretendard", "Apple SD Gothic Neo", sans-serif; }
+  header { padding: 16px 20px 4px; }
+  h1 { margin: 0 0 4px; font-size: 20px; }
+  header p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; padding: 14px 20px 24px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
+  .card h2 { margin: 0; padding: 10px 12px 2px; font-size: 16px; }
+  .card .how { margin: 0; padding: 0 12px 6px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+  .card .how b { color: var(--ink); }
+  .card .hook { margin: 0 12px 10px; padding: 6px 8px; background: #f3e7d6; border-radius: 8px; font-size: 12px; line-height: 1.45; }
+  .views { position: relative; margin-top: auto; }
+  .views canvas { display: block; width: 100%; }
+  .views canvas + canvas { border-top: 2px solid var(--line); }
+  .tag { position: absolute; left: 8px; background: rgba(43,33,24,.72); color: #fff; font-size: 11px; padding: 3px 7px; border-radius: 6px; }
+  .phase { position: absolute; right: 8px; top: 8px; background: rgba(255,250,242,.9); color: var(--ink); font-size: 11px; padding: 3px 7px; border-radius: 6px; }
+  h3 { margin: 6px 20px 2px; font-size: 18px; }
+  .sub { margin: 0 20px 10px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+  .rgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; padding: 0 20px 28px; }
+  .rcard { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .rcard.rec { border: 2px solid var(--pick); }
+  .rcard h4 { margin: 0; padding: 10px 12px 4px; font-size: 15px; }
+  .rcard .badge { display: inline-block; background: var(--pick); color: #fff; font-size: 11px; padding: 2px 6px; border-radius: 6px; margin-left: 6px; vertical-align: 2px; }
+  .stage { position: relative; }
+  .stage canvas { display: block; width: 100%; }
+  .toast { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); background: rgba(255,250,242,.95); color: var(--ink); font-size: 12px; padding: 5px 10px; border-radius: 999px; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,.3); transition: opacity .2s; }
+  .steps { margin: 0; padding: 8px 12px 4px 30px; font-size: 12px; line-height: 1.6; color: var(--muted); }
+  .steps li.on { color: var(--ink); font-weight: 700; }
+  .verdict { margin: 0 12px 12px; padding: 6px 8px; background: #f3e7d6; border-radius: 8px; font-size: 12px; line-height: 1.45; }
+  @media (max-width: 1100px) { .rgrid { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 700px) { .rgrid { grid-template-columns: 1fr; padding-left: 16px; padding-right: 16px; } h3, .sub { margin-left: 16px; margin-right: 16px; } }
+  @media (max-width: 1100px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 700px) { .grid { grid-template-columns: 1fr; padding-left: 16px; padding-right: 16px; } header { padding: 14px 16px 4px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>⛏️ 동굴 방해꾼 시안 v2 · 생김새 = 훔치는 방식</h1>
+  <p>위 = 게임 카메라(0, 14, 16) · 아래 = 가까이 · 8초 반복 · 오른쪽 위 = 지금 하는 행동<br>
+  공통 규칙: 바닥에 떨어진 광석 조각만 노린다(가방은 안 털림) · 물고 가는 중 놀래키면 떨어뜨린다 · 놓치면 굴에서 되찾고 덤 1개</p>
+</header>
+<div class="grid" id="grid"></div>
+<h3>🛡️ 훔치기 막는 규칙 시안 3종</h3>
+<p class="sub">게임 각도 그대로, 거리만 조금 당김 · 10초 반복 · 방해꾼은 🪔등불벌레로 통일 · 머리 위 말풍선은 이모지만, 글자 안내는 아래 알림줄(HUD)<br>
+세 안 모두 <b>가방은 절대 안 털린다</b> · 노리는 건 캐서 바닥에 떨어진 조각뿐</p>
+<div class="rgrid" id="rgrid"></div>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+const Q = new URLSearchParams(location.search);
+const FIXED_T = Q.has('t') ? Number(Q.get('t')) : null;
+const LOOP = 8;
+const UP = new THREE.Vector3(0, 1, 0);
+
+const mat = (c, extra = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, metalness: 0, ...extra });
+const glow = (c, k = 0.9) => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: k, roughness: 0.35 });
+const M = (geo, m, parent, p = [0, 0, 0], r = [0, 0, 0], s = [1, 1, 1], shadow = true) => {
+  const o = new THREE.Mesh(geo, m); o.position.set(...p); o.rotation.set(...r); o.scale.set(...s); o.castShadow = shadow; parent.add(o); return o;
+};
+const pair = fn => [-1, 1].map(fn);
+const smooth = x => x * x * (3 - 2 * x);
+
+function teardrop(r, len, tip = 0.3, flatBottom = 0.3) {
+  const g = new THREE.SphereGeometry(r, 18, 14);
+  const p = g.attributes.position, v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i);
+    const zN = v.z / r, back = Math.max(0, -zN);
+    const k = 1 - (1 - tip) * Math.pow(back, 1.4);
+    v.x *= k; v.y *= k;
+    if (v.y < 0) v.y *= 1 - flatBottom;
+    v.z = zN * len / 2;
+    p.setXYZ(i, v.x, v.y, v.z);
+  }
+  g.computeVertexNormals();
+  return g;
+}
+
+function crystal(r, h) {
+  const prism = new THREE.CylinderGeometry(r, r * 1.08, h, 6); prism.translate(0, h / 2, 0);
+  const tip = new THREE.ConeGeometry(r, r * 1.7, 6); tip.translate(0, h + r * 0.85, 0);
+  return [prism, tip];
+}
+
+function oreChunk() {
+  const g = new THREE.Group();
+  M(new THREE.IcosahedronGeometry(0.15, 0), mat(0x5a5854, { flatShading: true }), g);
+  M(new THREE.IcosahedronGeometry(0.075, 0), glow(0x5ad0e0, 0.7), g, [0.07, 0.08, 0.05]);
+  return g;
+}
+
+function crystalCrab() {
+  const K = { SKIN: 0xe0795a, SKIN2: 0xf2b08f, ROCK: 0x6b6e78, XA: 0x9be3ee, XB: 0xc7a6f0, DARK: 0x1c1816 };
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  M(new THREE.IcosahedronGeometry(0.3, 0), mat(K.ROCK, { flatShading: true }), body, [0, 0.3, -0.06], [0.3, 0.4, 0], [1.05, 0.72, 0.95]);
+  const cluster = new THREE.Group(); cluster.position.set(0, 0.45, -0.08); body.add(cluster);
+  const crystalMats = [];
+  [
+    [0.00, 0.00, 0.00, 0.07, 0.30, 0.00, 0.0, K.XA],
+    [0.11, -0.02, 0.05, 0.05, 0.20, -0.5, 0.2, K.XB],
+    [-0.12, -0.03, -0.02, 0.055, 0.22, 0.55, -0.1, K.XA],
+    [0.03, -0.04, -0.14, 0.045, 0.16, 0.2, -0.6, K.XB],
+  ].forEach(([x, y, z, r, h, rz, rx, c]) => {
+    const part = new THREE.Group(); part.position.set(x, y, z); part.rotation.set(rx, 0, rz); cluster.add(part);
+    const m = glow(c, 0.35); crystalMats.push(m);
+    crystal(r, h).forEach(geo => M(geo, m, part));
+  });
+  const stolen = new THREE.Group(); stolen.position.set(-0.04, 0.0, 0.13); stolen.rotation.set(0.7, 0, 0.5); cluster.add(stolen);
+  crystal(0.06, 0.16).forEach(geo => M(geo, glow(0x5ad0e0, 0.9), stolen));
+  stolen.visible = false;
+  M(teardrop(0.17, 0.34, 0.5, 0.4), mat(K.SKIN), body, [0, 0.16, 0.16], [0.15, 0, 0], [1.25, 0.8, 1]);
+  const legs = [], jaws = [];
+  pair(sd => {
+    M(new THREE.CylinderGeometry(0.016, 0.02, 0.2, 6), mat(K.SKIN), body, [sd * 0.07, 0.32, 0.26], [0.25, 0, -sd * 0.15]);
+    M(new THREE.SphereGeometry(0.038, 10, 8), mat(K.DARK), body, [sd * 0.085, 0.42, 0.29]);
+    const arm = new THREE.Group(); arm.position.set(sd * 0.18, 0.15, 0.3); arm.rotation.y = -sd * 0.35; body.add(arm);
+    const big = sd > 0 ? 1.25 : 0.85;
+    M(teardrop(0.08 * big, 0.22 * big, 0.5, 0.2), mat(K.SKIN), arm, [0, 0, 0.06 * big]);
+    M(new THREE.ConeGeometry(0.04 * big, 0.14 * big, 6), mat(K.SKIN2), arm, [0, 0.045, 0.2 * big], [Math.PI / 2, 0, 0], [1, 1, 0.6]);
+    jaws.push(M(new THREE.ConeGeometry(0.03 * big, 0.11 * big, 6), mat(K.SKIN2), arm, [0, -0.005, 0.19 * big], [Math.PI / 2, 0, 0], [1, 1, 0.6]));
+    for (let k = 0; k < 3; k++) {
+      const leg = new THREE.Group(); leg.position.set(sd * 0.14, 0.14, 0.12 - k * 0.11); body.add(leg);
+      M(new THREE.CylinderGeometry(0.02, 0.017, 0.17, 5), mat(K.SKIN), leg, [sd * 0.07, 0.03, 0], [0, 0, sd * 1.15]);
+      M(new THREE.CylinderGeometry(0.017, 0.008, 0.17, 5), mat(K.SKIN2), leg, [sd * 0.16, -0.06, 0], [0, 0, sd * 0.35]);
+      legs.push({ leg, k });
+    }
+  });
+  return {
+    g, sideways: true,
+    phases: ['옆걸음으로 다가가기', '집게로 집기', '등 수정에 꽂고 옆걸음', '굴로 쏙'],
+    pose(t, s) {
+      stolen.visible = !!s.carrying;
+      legs.forEach(({ leg, k }) => { leg.rotation.z = s.moving ? Math.sin(t * 16 + k * 2) * 0.25 : 0; });
+      jaws.forEach(j => { j.rotation.x = Math.PI / 2 + (s.grabbing ? Math.sin(t * 20) * 0.4 : 0.15); });
+      body.rotation.z = s.moving ? Math.sin(t * 16) * 0.05 : 0;
+      crystalMats.forEach((m, i) => { m.emissiveIntensity = 0.3 + 0.15 * Math.sin(t * 2 + i); });
+    },
+  };
+}
+
+function leafBat() {
+  const K = { FUR: 0x8a6fa8, BELLY: 0xd8c4e0, EARIN: 0xf0a8b8, WING: 0x5c4878, BONE: 0x463660, DARK: 0x1c1818 };
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  M(teardrop(0.17, 0.4, 0.5, 0.1), mat(K.FUR), body, [0, 0, 0], [Math.PI / 2, 0, 0]);
+  M(teardrop(0.12, 0.3, 0.5, 0.1), mat(K.BELLY), body, [0, -0.02, 0.07], [Math.PI / 2, 0, 0], [0.9, 1, 0.8], false);
+  const head = new THREE.Group(); head.position.set(0, 0.2, 0.04); body.add(head);
+  M(new THREE.SphereGeometry(0.12, 14, 10), mat(K.FUR), head, [0, 0, 0], [0, 0, 0], [1, 0.9, 0.95]);
+  M(new THREE.ConeGeometry(0.045, 0.09, 8), mat(K.BELLY), head, [0, -0.03, 0.11], [Math.PI / 2, 0, 0], [1.3, 1, 0.8]);
+  pair(sd => M(new THREE.SphereGeometry(0.022, 8, 6), mat(K.DARK), head, [sd * 0.055, 0.02, 0.1]));
+  pair(sd => {
+    const ear = new THREE.Group(); ear.position.set(sd * 0.08, 0.05, 0); ear.rotation.set(-0.15, 0, -sd * 1.0); head.add(ear);
+    M(teardrop(0.15, 0.3, 0.15, 0), mat(K.FUR), ear, [0, 0.13, 0], [-Math.PI / 2, 0, 0], [1.25, 0.22, 1]);
+    M(teardrop(0.11, 0.23, 0.15, 0), mat(K.EARIN), ear, [0, 0.12, 0.02], [-Math.PI / 2, 0, 0], [1.25, 0.15, 1], false);
+  });
+  const wingShape = new THREE.Shape();
+  wingShape.moveTo(0, 0.1); wingShape.bezierCurveTo(0.2, 0.22, 0.45, 0.3, 0.7, 0.26);
+  wingShape.quadraticCurveTo(0.6, 0.1, 0.62, -0.08); wingShape.quadraticCurveTo(0.5, 0.0, 0.42, -0.14);
+  wingShape.quadraticCurveTo(0.3, -0.04, 0.22, -0.18); wingShape.quadraticCurveTo(0.12, -0.08, 0, -0.16);
+  const wingGeo = new THREE.ShapeGeometry(wingShape, 12);
+  const wings = pair(sd => {
+    const pivot = new THREE.Group(); pivot.position.set(sd * 0.1, 0.05, -0.02); body.add(pivot);
+    M(wingGeo, mat(K.WING, { side: THREE.DoubleSide }), pivot, [0, 0, 0], [0, 0, 0], [sd, 1, 1]);
+    [[0.7, 0.26], [0.62, -0.08], [0.42, -0.14]].forEach(([x, y]) => {
+      M(new THREE.CylinderGeometry(0.01, 0.012, Math.hypot(x, y), 4), mat(K.BONE), pivot, [sd * x / 2, y / 2, 0.006], [0, 0, -Math.atan2(sd * x, y)]);
+    });
+    return { pivot, sd };
+  });
+  pair(sd => M(new THREE.ConeGeometry(0.025, 0.08, 5), mat(K.BONE), body, [sd * 0.05, -0.22, 0], [Math.PI, 0, 0]));
+  return {
+    g, hangs: true, holdAt: new THREE.Vector3(0, -0.28, 0.06),
+    phases: ['바위에 매달린 열매인 척', '툭 떨어져 낚아채기', '발에 매달고 날기', '굴로 쏙'],
+    pose(t, s) {
+      if (s.hanging) {
+        body.rotation.set(Math.PI, 0, Math.sin(t * 1.5) * 0.08);
+        wings.forEach(({ pivot, sd }) => { pivot.rotation.set(0, sd * 1.25, 0); });
+      } else {
+        body.rotation.set(-0.35, 0, Math.sin(t * 4) * 0.08);
+        const f = Math.sin(t * 16);
+        wings.forEach(({ pivot, sd }) => { pivot.rotation.set(0, 0, sd * f * 0.65); });
+      }
+    },
+  };
+}
+
+function capNewt() {
+  const K = { SKIN: 0x88a85a, SKIN2: 0x5e7a3c, BELLY: 0xe9e2b0, CAP: 0xc4553c, SPOT: 0xf5ead2, STEM: 0xeee3c8, DARK: 0x1c1816 };
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  const trunk = new THREE.Group(); body.add(trunk);
+  M(teardrop(0.15, 0.56, 0.35, 0.5), mat(K.SKIN), trunk, [0, 0.12, 0]);
+  M(teardrop(0.13, 0.46, 0.4, 0.5), mat(K.BELLY), trunk, [0, 0.085, 0.03], [0, 0, 0], [0.95, 0.6, 1], false);
+  const tail = new THREE.Group(); tail.position.set(0, 0.11, -0.26); trunk.add(tail);
+  M(teardrop(0.08, 0.5, 0.05, 0.2), mat(K.SKIN), tail, [0, 0, -0.22], [0, 0, 0], [0.8, 0.9, 1]);
+  const head = new THREE.Group(); head.position.set(0, 0.13, 0.3); trunk.add(head);
+  M(new THREE.SphereGeometry(0.12, 14, 10), mat(K.SKIN), head, [0, 0, 0.03], [0, 0, 0], [1.15, 0.65, 1.1]);
+  pair(sd => M(new THREE.SphereGeometry(0.03, 8, 6), mat(K.DARK), head, [sd * 0.08, 0.05, 0.08]));
+  [[-0.08, 0.06], [0.06, -0.1], [-0.02, -0.22]].forEach(([x, z]) => M(new THREE.SphereGeometry(0.035, 8, 6), mat(K.SKIN2), trunk, [x, 0.22, z], [0, 0, 0], [1, 0.3, 1], false));
+  const legs = [];
+  [[0.15, 1], [-0.17, -1]].forEach(([z, ph]) => pair(sd => {
+    const leg = new THREE.Group(); leg.position.set(sd * 0.12, 0.08, z); trunk.add(leg);
+    M(teardrop(0.04, 0.14, 0.6, 0), mat(K.SKIN), leg, [sd * 0.05, -0.02, 0.02], [0, sd * 1.0, 0]);
+    pair(f => M(new THREE.SphereGeometry(0.018, 6, 5), mat(K.SKIN2), leg, [sd * 0.1, -0.06, 0.04 + f * 0.025]));
+    legs.push({ leg, phase: ph * sd > 0 ? 0 : Math.PI });
+  }));
+  const cap = new THREE.Group(); cap.position.set(0, 0.2, -0.06); body.add(cap);
+  M(new THREE.CylinderGeometry(0.045, 0.065, 0.24, 10), mat(K.STEM), cap, [0, 0.1, 0]);
+  M(new THREE.SphereGeometry(0.21, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), mat(K.CAP), cap, [0, 0.2, 0], [0, 0, 0], [1, 0.75, 1]);
+  M(new THREE.CircleGeometry(0.2, 18), mat(K.STEM, { side: THREE.DoubleSide }), cap, [0, 0.2, 0], [Math.PI / 2, 0, 0], [1, 1, 1], false);
+  [[0, 0.355, 0, 0.055], [0.11, 0.3, 0.06, 0.04], [-0.09, 0.3, 0.09, 0.035], [-0.04, 0.29, -0.13, 0.04]].forEach(([x, y, z, r]) =>
+    M(new THREE.SphereGeometry(r, 10, 6), mat(K.SPOT), cap, [x, y, z], [0, 0, 0], [1, 0.35, 1], false));
+  return {
+    g, holdAt: new THREE.Vector3(0, 0.1, 0.48), camo: true,
+    phases: ['버섯인 척', '살금살금 다가가 물기', '들킬 것 같으면 다시 버섯', '굴로 쏙'],
+    pose(t, s) {
+      const hide = !!s.hidden;
+      trunk.position.y = hide ? -0.1 : 0;
+      trunk.scale.set(1, hide ? 0.5 : 1, hide ? 0.6 : 1);
+      cap.position.y = hide ? -0.02 : 0.2;
+      cap.scale.setScalar(hide ? 1.1 : 1);
+      head.visible = !hide; tail.visible = !hide;
+      legs.forEach(({ leg, phase }) => { leg.visible = !hide; leg.rotation.y = s.moving ? Math.sin(t * 11 + phase) * 0.5 : 0; });
+      tail.rotation.y = s.moving ? Math.sin(t * 11) * 0.45 : 0;
+      trunk.rotation.y = s.moving ? Math.sin(t * 11 + 1) * 0.12 : 0;
+    },
+  };
+}
+
+function lampGrub() {
+  const K = { BODY: 0xe4dbef, BAND: 0x9a86b8, LAMP: 0xd9f27a, DARK: 0x1c1816, FEEL: 0x6e5c88 };
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  const N = 6, segs = [];
+  for (let i = 0; i < N; i++) {
+    const u = i / (N - 1), r = 0.11 + 0.06 * Math.sin(Math.min(1, u * 1.3) * Math.PI);
+    const sg = new THREE.Group(); sg.position.set(0, r, 0.36 - i * 0.15); body.add(sg);
+    const isLamp = i === N - 1;
+    M(new THREE.SphereGeometry(r, 16, 12), isLamp ? glow(K.LAMP, 1.1) : mat(K.BODY), sg, [0, 0, 0], [0, 0, 0], [1.05, 0.92, 0.9]);
+    if (!isLamp && i > 0) M(new THREE.SphereGeometry(r * 1.01, 16, 6, 0, Math.PI * 2, 0, Math.PI * 0.32), mat(K.BAND), sg, [0, 0, 0], [0, 0, 0], [1.05, 0.92, 0.9], false);
+    segs.push({ sg, baseY: r, i });
+  }
+  const headG = segs[0].sg;
+  pair(sd => M(new THREE.SphereGeometry(0.022, 8, 6), mat(K.DARK), headG, [sd * 0.06, 0.04, 0.1]));
+  pair(sd => {
+    M(new THREE.CylinderGeometry(0.009, 0.009, 0.16, 4), mat(K.FEEL), headG, [sd * 0.05, 0.14, 0.08], [0.5, 0, -sd * 0.35]);
+    M(new THREE.SphereGeometry(0.022, 8, 6), mat(K.FEEL), headG, [sd * 0.08, 0.21, 0.12]);
+  });
+  const light = new THREE.PointLight(0xd9f27a, 1.4, 3.2, 1.6); light.position.set(0, 0.2, -0.4); body.add(light);
+  const trail = Array.from({ length: 16 }, () => new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), new THREE.MeshBasicMaterial({ color: 0xd9f27a, transparent: true, opacity: 0 })));
+  return {
+    g, holdAt: new THREE.Vector3(0, 0.36, 0.06), trail,
+    phases: ['꼬리 등불 흔들며 다가가기', '등에 얹기', '빛 방울 흘리며 도망', '굴로 쏙 · 빛 자국이 남는다'],
+    pose(t, s) {
+      segs.forEach(({ sg, baseY, i }) => { sg.position.y = baseY + (s.moving ? Math.max(0, Math.sin(t * 7 - i * 0.9)) * 0.06 : 0); });
+      light.intensity = 1.1 + Math.sin(t * 3) * 0.3;
+    },
+  };
+}
+
+function playerMesh() {
+  const g = new THREE.Group(), fur = mat(0xb98a5e);
+  M(new THREE.SphereGeometry(0.42, 12, 10), fur, g, [0, 0.5, 0], [0, 0, 0], [1, 1.15, 0.9]);
+  M(new THREE.SphereGeometry(0.36, 12, 10), fur, g, [0, 1.15, 0]);
+  pair(sd => M(new THREE.SphereGeometry(0.11, 8, 6), fur, g, [sd * 0.22, 1.45, 0]));
+  M(new THREE.SphereGeometry(0.13, 8, 6), mat(0xf0dcc0), g, [0, 1.08, 0.3]);
+  return g;
+}
+
+function caveScene() {
+  const scene = new THREE.Scene(); scene.background = new THREE.Color(0x14161c);
+  scene.add(new THREE.HemisphereLight(0x9ac4ff, 0x2a2420, 0.75));
+  const key = new THREE.DirectionalLight(0xfff1d6, 0.9); key.position.set(4, 10, 6); key.castShadow = true;
+  key.shadow.mapSize.set(1024, 1024); Object.assign(key.shadow.camera, { left: -8, right: 8, top: 8, bottom: -8 }); scene.add(key);
+  const torch = new THREE.PointLight(0xffb866, 2.4, 14, 1.2); torch.position.set(-3, 2.2, -2); scene.add(torch);
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(18, 0.2, 14), mat(0x3a3a40)); floor.position.y = -0.1; floor.receiveShadow = true; scene.add(floor);
+  const rockMat = mat(0x565b66, { flatShading: true }), rockGeo = new THREE.IcosahedronGeometry(1, 0);
+  for (let x = -8; x <= 8; x += 1.1) M(rockGeo, rockMat, scene, [x, 1, -6.5], [Math.sin(x) * 0.4, x * 2.3, 0], [0.9, 1.6 + (Math.sin(x * 3) + 1) * 0.5, 0.9]);
+  const vein = new THREE.Group(); vein.position.set(-1.6, 0, -1.2); scene.add(vein);
+  for (let i = 0; i < 3; i++) { const r = 0.34 + i * 0.07; M(new THREE.IcosahedronGeometry(r, 0), mat(0x5a5854, { flatShading: true }), vein, [(i - 1) * 0.3, r * 0.7, (i % 2) * 0.2]); }
+  const pillar = new THREE.Group(); pillar.position.set(-4.2, 0, 0.6); scene.add(pillar);
+  M(rockGeo, rockMat, pillar, [0, 1.0, -0.2], [0.2, 0.5, 0], [0.6, 1.25, 0.55]);
+  M(rockGeo, rockMat, pillar, [0.3, 2.35, 0.05], [0.3, 1.1, 0.4], [1.0, 0.45, 0.7]);
+  const hole = new THREE.Mesh(new THREE.CircleGeometry(0.42, 18), new THREE.MeshBasicMaterial({ color: 0x050608 }));
+  hole.rotation.x = -Math.PI / 2; hole.position.set(3.4, 0.01, -0.6); scene.add(hole);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.08, 6, 18), mat(0x4a4440, { flatShading: true })); rim.rotation.x = -Math.PI / 2; rim.position.copy(hole.position); scene.add(rim);
+  const p = playerMesh(); p.position.set(-0.4, 0, 0.6); p.rotation.y = Math.PI * 0.85; scene.add(p);
+  return { scene, player: p, burrow: hole.position.clone(), perch: new THREE.Vector3(-3.7, 1.55, 0.95) };
+}
+
+const ORE = new THREE.Vector3(-1.0, 0.12, -0.3);
+const START = new THREE.Vector3(-4.6, 0, 1.4);
+
+function track(u, from, to) {
+  const grab0 = 0.38, grab1 = 0.47, out = 0.9;
+  if (u < grab0) return { pos: from.clone().lerp(ORE, smooth(u / grab0)), phase: 0, moving: true, face: ORE };
+  if (u < grab1) return { pos: ORE.clone(), phase: 1, grabbing: true, carrying: u > (grab0 + grab1) / 2, face: to };
+  if (u < out) return { pos: ORE.clone().lerp(to, smooth((u - grab1) / (out - grab1))), phase: 2, moving: true, carrying: true, face: to };
+  return { pos: to.clone(), phase: 3, carrying: true, gone: true, face: to };
+}
+
+function batState(u, perch, burrow) {
+  if (u < 0.25) return { pos: perch.clone(), phase: 0, hanging: true, face: ORE };
+  const s = track((u - 0.25) / 0.75, perch, burrow);
+  if (s.phase === 0) s.phase = 1;
+  s.pos.y = s.gone ? 0 : s.phase === 1 && !s.carrying ? THREE.MathUtils.lerp(perch.y, 0.55, smooth(Math.min(1, (u - 0.25) / 0.2))) : 0.8;
+  return s;
+}
+
+function newtState(u, burrow) {
+  if (u < 0.14) return { pos: START.clone(), phase: 0, hidden: true, face: ORE };
+  const v = (u - 0.14) / 0.86;
+  const freeze0 = 0.62, freeze1 = 0.76;
+  if (v >= freeze0 && v < freeze1) {
+    const s = track(freeze0, START, burrow);
+    return { ...s, phase: 2, hidden: true, moving: false };
+  }
+  const shifted = v < freeze0 ? v : freeze0 + (v - freeze1) * (1 - freeze0) / (1 - freeze1);
+  const s = track(shifted, START, burrow);
+  if (s.phase === 0) s.phase = 1;
+  if (s.phase === 1 && s.carrying) s.phase = 1;
+  return s;
+}
+
+function build(concept) {
+  const { scene, player, burrow, perch } = caveScene();
+  const pest = concept.make();
+  const S = 1.6;
+  pest.g.scale.setScalar(S);
+  scene.add(pest.g);
+  const chunk = oreChunk(); scene.add(chunk);
+  pest.trail?.forEach(m => scene.add(m));
+  const tick = t => {
+    const u = (t % LOOP) / LOOP;
+    const s = pest.hangs ? batState(u, perch, burrow) : pest.camo ? newtState(u, burrow) : track(u, START, burrow);
+    pest.g.position.copy(s.pos);
+    const d = s.face.clone().sub(pest.g.position); d.y = 0;
+    if (d.lengthSq() > 1e-4) pest.g.rotation.y = Math.atan2(d.x, d.z) + (pest.sideways && s.moving ? Math.PI / 2 : 0);
+    pest.pose(t, s);
+    pest.g.visible = !s.gone;
+    if (s.carrying && !s.gone && !pest.sideways) {
+      const w = pest.holdAt.clone().multiplyScalar(S).applyAxisAngle(UP, pest.g.rotation.y).add(pest.g.position);
+      chunk.position.copy(w); chunk.visible = !s.hidden;
+    } else { chunk.position.copy(ORE); chunk.visible = !s.carrying; }
+    if (pest.trail) {
+      const N = pest.trail.length;
+      pest.trail.forEach((m, i) => {
+        const tu = 0.47 + (0.9 - 0.47) * (i / (N - 1));
+        const p = track(tu, START, burrow).pos;
+        m.position.set(p.x, 0.05, p.z);
+        const age = u - tu;
+        m.material.opacity = age < 0 ? 0 : 0.9 * Math.max(0, 1 - age / 0.6);
+      });
+    }
+    return pest.phases[s.phase];
+  };
+  return {
+    scene, tick, player,
+    game: { pos: new THREE.Vector3(-0.4, 14, 16.6), look: new THREE.Vector3(-0.4, 1.2, 0.6), fov: 42 },
+    close: () => {
+      const p = pest.g.position, yaw = pest.g.rotation.y - (pest.sideways ? Math.PI / 2 : 0);
+      const off = new THREE.Vector3(0.9, 1.1, 2.0).applyAxisAngle(UP, yaw);
+      return { pos: p.clone().add(off), look: new THREE.Vector3(p.x, p.y + 0.3, p.z), fov: 36 };
+    },
+  };
+}
+
+const CONCEPTS = [
+  { make: crystalCrab, title: '💎 수정집게',
+    how: '등껍질이 바위 + <b>수정 다발</b>. 훔친 조각을 다발에 <b>꽂아 넣어</b> 등이 더 반짝인다. 옆걸음이라 느리다.',
+    hook: '🎯 많이 훔칠수록 등이 화려해져 눈에 띈다. 놀래키면 수정째 떨어뜨림' },
+  { make: leafBat, title: '🦇 잎귀박쥐',
+    how: '평소엔 바위에 <b>거꾸로 매달려 날개로 몸을 감싼 열매</b>. 몸보다 큰 <b>잎 모양 귀</b>가 위에서도 읽힌다.',
+    hook: '🎯 "열매"가 보이면 근처 조각은 빨리 줍기. 매달린 걸 먼저 톡 치면 날아가 버림' },
+  { make: capNewt, title: '🍄 갓도롱뇽',
+    how: '등에 <b>버섯 갓</b>을 이고 다니다 들킬 것 같으면 <b>납작 엎드려 버섯이 된다</b>. 광석은 갓 밑에 숨김.',
+    hook: '🎯 동굴 버섯 중 하나가 가짜. 괭이로 두드리면 깜짝 놀라 광석을 뱉고 도망' },
+  { make: lampGrub, title: '🪔 등불벌레',
+    how: '통통한 마디 애벌레, <b>꼬리 마디가 등불</b>. 도망가는 길에 <b>빛 방울</b>을 흘린다.',
+    hook: '🎯 놓쳐도 빛 자국을 따라가면 굴이 나온다. 어두운 층에선 길잡이 역할도' },
+];
+
+function makeRenderer(parent, aspect) {
+  const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  r.shadowMap.enabled = true; r.setPixelRatio(Math.min(2, devicePixelRatio));
+  parent.appendChild(r.domElement);
+  const cam = new THREE.PerspectiveCamera(40, aspect, 0.1, 200);
+  const resize = () => { const w = parent.clientWidth; r.setSize(w, w / aspect, false); };
+  resize(); addEventListener('resize', resize);
+  return { r, cam };
+}
+const aim = (cam, v) => { cam.fov = v.fov; cam.updateProjectionMatrix(); cam.position.copy(v.pos); cam.lookAt(v.look); };
+
+const grid = document.getElementById('grid');
+const runs = CONCEPTS.map(c => {
+  const card = document.createElement('div'); card.className = 'card';
+  card.innerHTML = `<h2>${c.title}</h2><p class="how">${c.how}</p><p class="hook">${c.hook}</p><div class="views"></div>`;
+  grid.appendChild(card);
+  const views = card.querySelector('.views');
+  const s = build(c);
+  const main = makeRenderer(views, 4 / 3), close = makeRenderer(views, 4 / 3);
+  const t1 = document.createElement('span'); t1.className = 'tag'; t1.style.top = '8px'; t1.textContent = '게임 카메라'; views.appendChild(t1);
+  const t2 = document.createElement('span'); t2.className = 'tag'; t2.textContent = '가까이'; views.appendChild(t2);
+  const ph = document.createElement('span'); ph.className = 'phase'; views.appendChild(ph);
+  const place = () => { t2.style.top = (main.r.domElement.offsetHeight + 10) + 'px'; };
+  requestAnimationFrame(place); addEventListener('resize', place);
+  return { s, main, close, ph };
+});
+
+
+function emojiSprite(txt, size = 0.85) {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const x = c.getContext('2d');
+  x.fillStyle = 'rgba(255,250,242,.95)'; x.beginPath(); x.arc(64, 58, 50, 0, Math.PI * 2); x.fill();
+  x.beginPath(); x.moveTo(52, 100); x.lineTo(64, 122); x.lineTo(76, 100); x.fill();
+  x.font = '62px "Apple Color Emoji","Segoe UI Emoji",sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(txt, 64, 62);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false, transparent: true }));
+  sp.scale.setScalar(size); sp.renderOrder = 10; sp.visible = false; return sp;
+}
+function floatText(txt, color = '#ffe48a') {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 96;
+  const x = c.getContext('2d'); x.font = 'bold 54px "Pretendard","Apple SD Gothic Neo",sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.lineWidth = 8; x.strokeStyle = 'rgba(30,20,10,.85)'; x.strokeText(txt, 128, 48); x.fillStyle = color; x.fillText(txt, 128, 48);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false, transparent: true }));
+  sp.scale.set(1.8, 0.68, 1); sp.renderOrder = 11; sp.visible = false; return sp;
+}
+const V = (x, z) => new THREE.Vector3(x, 0, z);
+const lerpV = (a, b, k) => a.clone().lerp(b, smooth(Math.min(1, Math.max(0, k))));
+const within = (u, a, b) => u >= a && u < b;
+const kk = (u, a, b) => Math.min(1, Math.max(0, (u - a) / (b - a)));
+const faceTo = (obj, target) => { const d = target.clone().sub(obj.position); d.y = 0; if (d.lengthSq() > 1e-4) obj.rotation.y = Math.atan2(d.x, d.z); };
+
+const PL0 = V(-0.4, 0.6), VEIN_SIDE = V(-1.0, -0.3), BURROW = V(3.4, -0.6);
+
+function ruleA(u) {
+  const o = { steps: 0 };
+  if (u < 0.12) { o.pest = lerpV(V(-4.2, 1.2), VEIN_SIDE, u / 0.12); o.pestMove = true; o.ore = VEIN_SIDE; o.player = PL0; o.toast = '캔 조각이 바닥에 떨어져 있어요'; }
+  else if (u < 0.17) { o.pest = VEIN_SIDE; o.carry = u > 0.145; o.ore = o.carry ? null : VEIN_SIDE; o.player = PL0; o.bubble = ['pest', '💎']; o.steps = 0; }
+  else if (u < 0.33) { const k = kk(u, 0.17, 0.33); o.pest = lerpV(VEIN_SIDE, V(1.3, -0.4), k); o.pestMove = true; o.carry = true; o.player = lerpV(PL0, V(0.6, 0.2), k); o.playerMove = true; o.toast = '물고 도망쳐요! 쫓아가서 액션'; o.steps = 1; }
+  else if (u < 0.42) { o.pest = V(1.3, -0.4); o.player = V(0.6, 0.2); o.bubble = ['pest', '❗']; o.ore = V(1.1, -0.1); o.toast = '깜짝! 조각을 떨어뜨렸어요'; o.steps = 1; o.jump = kk(u, 0.33, 0.42); }
+  else if (u < 0.52) { const k = kk(u, 0.42, 0.52); o.pest = lerpV(V(1.3, -0.4), BURROW, k); o.pestMove = true; o.player = lerpV(V(0.6, 0.2), V(1.0, 0.0), k); o.playerMove = true; o.ore = k < 0.8 ? V(1.1, -0.1) : null; if (k >= 0.8) o.float = ['player', '+1 🪨']; o.steps = 1; o.toast = '되찾았어요'; }
+  else if (u < 0.6) { o.player = V(1.0, 0.0); o.pestGone = true; o.toast = '놓쳤다면? 그 층 굴에 쌓여 있어요'; o.steps = 2; o.pile = true; }
+  else if (u < 0.78) { const k = kk(u, 0.6, 0.78); o.player = lerpV(V(1.0, 0.0), V(2.6, 0.2), k); o.playerMove = true; o.pestGone = true; o.pile = true; o.steps = 2; o.toast = '굴 찾아가기'; }
+  else if (u < 0.86) { o.player = V(2.6, 0.2); o.pestGone = true; o.pile = true; o.bubble = ['burrow', '⛏️']; o.steps = 2; o.toast = '괭이로 톡톡'; o.tap = true; }
+  else { o.player = V(2.6, 0.2); o.pestGone = true; o.pile = kk(u, 0.86, 0.9) < 1; o.float = ['burrow', '+2 🪨']; o.steps = 3; o.toast = '되찾고 덤 1개 더!'; o.pop = kk(u, 0.86, 0.95); }
+  return o;
+}
+
+function ruleB(u) {
+  const o = { steps: 0 }, DROP = V(-1.0, -0.2);
+  if (u < 0.08) { o.player = V(-0.6, 0.4); o.swing = true; o.pestGone = true; o.toast = '광맥 캐는 중'; }
+  else if (u < 0.3) { const k = kk(u, 0.08, 0.3); o.player = V(-0.6, 0.4); o.ore = DROP; o.ring = 1 - k * 0.7; o.pest = lerpV(V(-4.4, 1.3), V(-2.8, 0.6), k); o.pestMove = true; o.toast = '조각이 떨어졌어요 · 원이 줄기 전에 밟기'; o.steps = 0; }
+  else if (u < 0.38) { const k = kk(u, 0.3, 0.38); o.player = lerpV(V(-0.6, 0.4), DROP, k); o.playerMove = true; o.ore = k < 0.85 ? DROP : null; o.ring = k < 0.85 ? 0.3 : null; o.pest = V(-2.8, 0.6); if (k >= 0.85) o.float = ['player', '+1 🪨']; o.steps = 1; o.toast = '쏙 주웠어요'; }
+  else if (u < 0.48) { const k = kk(u, 0.38, 0.48); o.player = DROP; o.pest = lerpV(V(-2.8, 0.6), V(-4.4, 1.3), k); o.pestMove = true; o.bubble = ['pest', '💧']; o.steps = 1; }
+  else if (u < 0.56) { o.player = V(-0.6, 0.4); o.swing = true; o.pestGone = true; o.steps = 2; o.toast = '다시 캐는 중'; }
+  else if (u < 0.76) { const k = kk(u, 0.56, 0.76); o.player = V(-0.6, 0.4); o.ore = DROP; o.ring = 1 - k; o.pest = lerpV(V(-4.4, 1.3), DROP, k); o.pestMove = true; o.steps = 2; o.toast = '딴짓하면…'; }
+  else if (u < 0.8) { o.player = V(-0.6, 0.4); o.pest = DROP; o.carry = true; o.bubble = ['pest', '💎']; o.steps = 2; o.toast = '원이 다 줄면 방해꾼 차지'; }
+  else { const k = kk(u, 0.8, 1); o.player = V(-0.6, 0.4); o.pest = lerpV(DROP, BURROW, k); o.pestMove = true; o.carry = true; o.steps = 3; o.toast = '놓친 건 그냥 사라져요'; }
+  return o;
+}
+
+function ruleC(u) {
+  const o = { steps: 0 }, BAIT = V(-2.6, 1.8);
+  if (u < 0.12) { o.player = PL0; o.ore = VEIN_SIDE; o.pest = lerpV(V(-4.4, 0.0), V(-3.0, -0.2), u / 0.12); o.pestMove = true; o.toast = '방해꾼이 다가와요'; o.slot = 3; }
+  else if (u < 0.26) { const k = kk(u, 0.12, 0.26); o.player = PL0; o.ore = VEIN_SIDE; o.pest = V(-3.0, -0.2); o.bait = lerpV(PL0, BAIT, k); o.bait.y = 0.6 + Math.sin(k * Math.PI) * 1.6; o.steps = 1; o.toast = '🍄 미끼 던지기'; o.slot = 2; o.throwing = true; }
+  else if (u < 0.4) { const k = kk(u, 0.26, 0.4); o.player = PL0; o.ore = VEIN_SIDE; o.bait = BAIT; o.pest = lerpV(V(-3.0, -0.2), BAIT.clone().add(V(0, -0.5)), k); o.pestMove = true; o.steps = 1; o.slot = 2; }
+  else if (u < 0.75) { const k = kk(u, 0.4, 0.75); o.bait = k < 0.9 ? BAIT : null; o.pest = BAIT.clone().add(V(0, -0.5)); o.bubble = ['pest', k < 0.6 ? '😋' : '💤']; o.player = lerpV(PL0, VEIN_SIDE.clone().add(V(0.3, 0.3)), kk(u, 0.4, 0.55)); o.playerMove = u < 0.55; o.ore = u < 0.55 ? VEIN_SIDE : null; if (u >= 0.55 && u < 0.68) o.float = ['player', '+1 🪨']; o.steps = 2; o.toast = '먹는 동안 마음 놓고 캐기'; o.slot = 2; }
+  else { o.player = VEIN_SIDE.clone().add(V(0.3, 0.3)); o.pest = BAIT.clone().add(V(0, -0.5)); o.bubble = ['pest', '💤']; o.steps = 3; o.toast = '미끼가 없으면 막을 방법이 없어요'; o.slot = 2; o.slotWarn = true; }
+  return o;
+}
+
+const RULES = [
+  { title: 'A. 놀래키기 + 굴 되찾기', rec: true, fn: ruleA,
+    steps: ['방해꾼이 떨어진 조각을 문다', '쫓아가서 액션 → ❗ 깜짝, 떨어뜨림', '놓치면 그 층 굴에 쌓인다', '굴을 톡톡 → 되찾고 덤 1개'],
+    verdict: '손해는 "잠깐 귀찮음"까지. 쫓기·굴 찾기가 탐험거리가 된다. 버튼은 기존 액션 하나로 끝.' },
+  { title: 'B. 빨리 줍기', fn: ruleB,
+    steps: ['캐면 조각 둘레에 원이 생긴다', '원이 줄기 전에 밟으면 줍는다', '딴짓하면 원이 다 줄어든다', '방해꾼이 가져가고 끝(되찾기 없음)'],
+    verdict: '규칙은 제일 단순. 대신 "캐고 바로 밟기" 반복이라 방해꾼과 엮일 일이 거의 없다.' },
+  { title: 'C. 미끼 던지기', fn: ruleC,
+    steps: ['방해꾼이 다가온다', '🍄 미끼를 던진다(채집물 소비)', '먹는 동안 마음 놓고 캐기', '미끼가 떨어지면 막을 수단 없음'],
+    verdict: '채집물 쓸 곳이 생긴다. 하지만 도구가 하나 더 늘어 폰 조작이 무거워지고, 없으면 무력.' },
+];
+
+function buildRule(rule) {
+  const { scene, player, burrow } = caveScene();
+  const pest = lampGrub(); pest.g.scale.setScalar(1.6); scene.add(pest.g);
+  const chunk = oreChunk(); scene.add(chunk);
+  const pile = new THREE.Group(); scene.add(pile);
+  [[0, 0], [0.18, 0.1], [-0.15, 0.12]].forEach(([x, z]) => { const c = oreChunk(); c.position.set(BURROW.x + x, 0.1, BURROW.z + z); pile.add(c); });
+  const popA = oreChunk(), popB = oreChunk(); scene.add(popA, popB);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.5, 32), new THREE.MeshBasicMaterial({ color: 0xffe48a, transparent: true, opacity: 0.9, side: THREE.DoubleSide }));
+  ring.rotation.x = -Math.PI / 2; scene.add(ring);
+  const bait = new THREE.Group(); scene.add(bait);
+  M(new THREE.CylinderGeometry(0.06, 0.08, 0.16, 8), mat(0xeee3c8), bait, [0, 0.08, 0]);
+  M(new THREE.SphereGeometry(0.17, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), mat(0xc4553c), bait, [0, 0.15, 0], [0, 0, 0], [1, 0.7, 1]);
+  const bub = emojiSprite('❗'); scene.add(bub);
+  const bubs = {}; const getBub = txt => (bubs[txt] ??= (() => { const b = emojiSprite(txt); scene.add(b); return b; })());
+  const fts = {}; const getFt = txt => (fts[txt] ??= (() => { const b = floatText(txt); scene.add(b); return b; })());
+  const trail = pest.trail; trail.forEach(m => { m.visible = false; });
+  let last = 0;
+  const tick = (t) => {
+    const u = (t % 10) / 10;
+    const o = rule.fn(u);
+    player.position.copy(o.player);
+    player.position.y = o.playerMove ? Math.abs(Math.sin(t * 12)) * 0.06 : 0;
+    player.rotation.x = o.swing ? Math.sin(t * 10) * 0.15 : 0;
+    if (o.throwing) player.rotation.x = -0.2;
+    const pestPos = o.pest || V(99, 99);
+    pest.g.visible = !!o.pest && !o.pestGone;
+    if (pest.g.visible) {
+      const prev = pest.g.position.clone();
+      pest.g.position.copy(pestPos);
+      if (o.jump !== undefined) pest.g.position.y = Math.sin(Math.min(1, o.jump * 2) * Math.PI) * 0.4;
+      const target = o.pestMove ? pestPos.clone().add(pestPos.clone().sub(prev).multiplyScalar(10)) : o.player;
+      if (o.pestMove && prev.distanceTo(pestPos) > 1e-4) faceTo(pest.g, target);
+      pest.pose(t, { moving: !!o.pestMove });
+    }
+    faceTo(player, o.tap ? BURROW : (pest.g.visible ? pest.g.position : o.player.clone().add(V(0, -1))));
+    if (o.carry && pest.g.visible) {
+      chunk.position.copy(pest.holdAt.clone().multiplyScalar(1.6).applyAxisAngle(UP, pest.g.rotation.y).add(pest.g.position)); chunk.visible = true;
+    } else if (o.ore) { chunk.position.copy(o.ore); chunk.position.y = 0.12; chunk.visible = true; }
+    else chunk.visible = false;
+    ring.visible = o.ring != null && !!o.ore;
+    if (ring.visible) { ring.position.set(o.ore.x, 0.03, o.ore.z); ring.scale.setScalar(0.4 + o.ring * 0.9); ring.material.color.set(o.ring < 0.35 ? 0xff8a6a : 0xffe48a); }
+    pile.visible = !!o.pile;
+    [popA, popB].forEach((c, i) => {
+      c.visible = o.pop !== undefined && o.pop < 1;
+      if (c.visible) { const k = o.pop; c.position.set(BURROW.x + (i ? 0.5 : -0.3) * k, 0.1 + Math.sin(k * Math.PI) * 0.9, BURROW.z + 0.5 * k); }
+    });
+    bait.visible = !!o.bait; if (o.bait) bait.position.copy(o.bait);
+    Object.values(bubs).forEach(b => { b.visible = false; }); bub.visible = false;
+    if (o.bubble) {
+      const b = getBub(o.bubble[1]);
+      const at = o.bubble[0] === 'pest' ? pest.g.position : o.bubble[0] === 'burrow' ? BURROW : player.position;
+      b.position.set(at.x, (o.bubble[0] === 'pest' ? 1.1 : 0.9) + Math.sin(t * 6) * 0.04, at.z); b.visible = true;
+    }
+    Object.values(fts).forEach(f => { f.visible = false; });
+    if (o.float) {
+      const f = getFt(o.float[1]);
+      const at = o.float[0] === 'burrow' ? BURROW : player.position;
+      f.position.set(at.x, 2.0 + (u * 20 % 1) * 0.3, at.z); f.visible = true;
+    }
+    return o;
+  };
+  return { scene, tick, cam: { pos: new THREE.Vector3(0.9, 6.4, 7.6), look: new THREE.Vector3(0.7, 0.4, 0.2), fov: 42 } };
+}
+
+const rgrid = document.getElementById('rgrid');
+const ruleRuns = RULES.map(rule => {
+  const card = document.createElement('div'); card.className = 'rcard' + (rule.rec ? ' rec' : '');
+  card.innerHTML = `<h4>${rule.title}${rule.rec ? '<span class="badge">추천</span>' : ''}</h4><div class="stage"><span class="toast"></span></div><ol class="steps">${rule.steps.map(x => `<li>${x}</li>`).join('')}</ol><p class="verdict">${rule.verdict}</p>`;
+  rgrid.appendChild(card);
+  const stage = card.querySelector('.stage');
+  const r = makeRenderer(stage, 16 / 10);
+  stage.appendChild(card.querySelector('.toast'));
+  const slot = document.createElement('span'); slot.className = 'tag'; slot.style.top = '8px'; stage.appendChild(slot);
+  return { s: buildRule(rule), r, toast: card.querySelector('.toast'), lis: [...card.querySelectorAll('.steps li')], slot, rule };
+});
+
+function renderRules(t) {
+  ruleRuns.forEach(({ s, r, toast, lis, slot, rule }) => {
+    const o = s.tick(t);
+    toast.textContent = o.toast || ''; toast.style.display = o.toast ? '' : 'none';
+    lis.forEach((li, i) => li.classList.toggle('on', i === o.steps));
+    slot.textContent = o.slot != null ? `🍄 미끼 ×${o.slot}${o.slotWarn ? ' · 다 쓰면 끝' : ''}` : '게임 각도';
+    aim(r.cam, s.cam); r.r.render(s.scene, r.cam);
+  });
+}
+
+const clock = new THREE.Clock();
+function frame() {
+  const t = FIXED_T ?? clock.getElapsedTime();
+  runs.forEach(({ s, main, close, ph }) => {
+    ph.textContent = s.tick(t);
+    aim(main.cam, s.game); main.r.render(s.scene, main.cam);
+    s.player.visible = false; aim(close.cam, s.close()); close.r.render(s.scene, close.cam); s.player.visible = true;
+  });
+  renderRules(t);
+  requestAnimationFrame(frame);
+}
+frame();
+</script>
+</body>
+</html>

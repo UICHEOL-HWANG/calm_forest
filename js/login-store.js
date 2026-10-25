@@ -12,5 +12,5 @@ export function loginStorePlan({ platform, ua, maxTouchPoints, cfg, touch }) {
     .map(os => ({ os, url: storeUrl(os, full, touch, 'login_card') }))
     .filter(l => l.url);
   if (!links.length) return null;
-  return { device: device || 'pc', links, qr: !device };
+  return { device: device || 'pc', links, qr: !device, jid: touch?.jid || '' };
 }

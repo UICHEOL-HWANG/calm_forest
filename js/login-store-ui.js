@@ -24,7 +24,7 @@ export function mountLoginStore({ config, platform, track, lang = 'ko', doc = do
   const card = doc.getElementById('login-store');
   const row = card?.querySelector('.ls-row');
   if (!row) return null;
-  const onClick = (os) => track('login_store_click', { os, device: plan.device });
+  const onClick = (os) => track('login_store_click', { os, device: plan.device, jid: plan.jid });
   const arts = doc.getElementById('store-badges')?.content;
   const artFor = (os) => arts?.querySelector(`img[data-os="${os}"][data-lang="${lang === 'en' ? 'en' : 'ko'}"]`);
   const links = plan.links.filter(l => artFor(l.os));

@@ -528,7 +528,7 @@ export function buildMuseumHall() {
   });
 
   // 🪜 계단 — 열린 층이 둘 이상일 때만 놓는다. ⚠️ 재질 병합 루프보다 **앞**에서 add 해야 그려진다(뒤에 두면 충돌체·안내만 있고 발판이 안 보였다). 위층은 북동, 아래층은 북서 구석
-  const opened = openFloors(gameState.dex, DEX);
+  const opened = museumOpened();
   museumStairs = [];
   const stair = (sx, up) => {
     for (let i = 0; i < 5; i++) add('stone', box(0.5, 0.22, 1.5, sx * (HW - 2.9 + i * 0.5), 0.11 + i * 0.22, -HD + 1.0));
@@ -574,12 +574,12 @@ export function enterMuseum() {
   firstHint('museum', '🏛️', `박물관 · 도감 전시 (1층 ${have}/${total})`,
     { steps: [{ ico: '📖', label: '도감에 등록' }, { ico: '🏛️', label: '여기 전시' }], note: '🎀 천 덮인 자리 = 아직 못 찾은 것' });
   Sound.blip();
-  trackEvent('museum_enter', { floor: museumFloor, have, total, floors: openFloors(gameState.dex, DEX) });   // [GA4] 방문 빈도·수집률·열린 층
+  trackEvent('museum_enter', { floor: museumFloor, have, total, floors: museumOpened() });   // [GA4] 방문 빈도·수집률·열린 층
 }
 
 // 🪜 층을 옮긴다 — 방을 다시 짓고 반대편 계단 앞에 세운다
 export function museumGoFloor(up) {
-  const opened = openFloors(gameState.dex, DEX);
+  const opened = museumOpened();
   const next = museumFloor + (up ? 1 : -1);
   if (next < 1 || next > opened) return;
   museumFloor = next;
@@ -608,8 +608,14 @@ export let museumGateGroup = null, museumGateColliders = [], museumBuiltFloors =
 
 // 🏗️ 층이 열리면 건물을 다시 세운다 — 밖에서 보고 "늘었다" 를 알 수 있어야 증축이 보상이 된다.
 //   ⚠️ 충돌체도 같이 걷어내야 한다(colliders 는 전역이라 안 지우면 유령 벽이 쌓인다).
+const museumOpened = () => openFloors(gameState.dex, DEX, gameState.museum?.maxFloor);
+
 export function refreshMuseumGate(announce = false) {
-  const opened = openFloors(gameState.dex, DEX);
+  const opened = museumOpened();
+  if (gameState.museum && opened > (gameState.museum.maxFloor ?? 1)) {
+    gameState.museum = { ...gameState.museum, maxFloor: opened };
+    requestSave();
+  }
   const f = Math.min(3, opened);   // 외관은 3층까지만 쌓는다(특별전은 별관 몫)
   // ⚠️ 알림·트래킹은 **원본 층수**로 본다 — min(3) 으로 보면 특별전이 열려도 조용히 지나간다
   if (opened > museumAnnounced) {
@@ -663,7 +669,7 @@ export function spawnMuseumGate() {
     return out;
   };  const W = 7.2, D = 5.4, FH = 3.0;            // 마을 건물 크기에 맞춘 한 층(☕카페 5.2 와 나란히)
   //   🏗️ 밖에서 보고 "늘었다" 를 알 수 있어야 증축이 보상이 된다 — 열린 층만큼 쌓는다(특별전 별관 제외)
-  const floors = Math.min(3, openFloors(gameState.dex, DEX));
+  const floors = Math.min(3, museumOpened());
 
   // 기단 + 정면 계단
   add('stone', box(W + 1.2, 0.4, D + 1.2, 0, 0.2, 0));
