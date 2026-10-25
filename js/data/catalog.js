@@ -171,7 +171,7 @@ export const stationLabel = (rec) => { const d = OUTDOOR.find(o => o.id === rec.
 // 🔥 가공물(charcoal·flour·brick·bread) — **파는 건 출구 중 가장 나쁜 선택**이 되게 잡았다.
 //   밀 4개(60)로 밀가루 평균 3.5개(63)라 팔면 본전이고, 빵으로 구우면 카페에서 56을 받는다.
 //   ⚠️ 이 표는 한 줄로 유지한다 — tests/orchard.test.mjs 가 한 줄 정규식으로 파싱한다.
-export const SELL_PRICE = { charcoal: 9, flour: 18, brick: 12, bread: 26, juice: 40, apple_jam: 12, roast_chestnut: 30, gotgam: 24, crop: 5, fish: 8, wood: 2, stone: 3, coal: 6, gem: 40, egg: 6, bug: 14, forage: 7, wheat: 15, corn: 20, grape: 30, honey: 12, apple: 8, pear: 10, peach: 13, persimmon: 16, chestnut: 20 };   // 기본 판매 단가(코인) — 고급 작물은 js/farm-crops.js price 와 같은 값(3·4·6배), 🍯꿀은 벌통 · 🍎 과수원 과일은 js/orchard.js FRUITS[].price 와 같은 값
+export const SELL_PRICE = { charcoal: 9, flour: 18, brick: 12, bread: 26, juice: 40, apple_jam: 12, roast_chestnut: 30, gotgam: 24, crop: 5, fish: 8, wood: 2, stone: 3, coal: 6, gem: 40, crystal: 25, egg: 6, bug: 14, forage: 7, wheat: 15, corn: 20, grape: 30, honey: 12, apple: 8, pear: 10, peach: 13, persimmon: 16, chestnut: 20 };   // 기본 판매 단가(코인) — 고급 작물은 js/farm-crops.js price 와 같은 값(3·4·6배), 🍯꿀은 벌통 · 🍎 과수원 과일은 js/orchard.js FRUITS[].price 와 같은 값
 
 export const SHOP_BUY = [
   // 🪙 코인 전용 소모품 — 재료로는 못 얻는 "시간·운"을 판다(첫 구매처, 20~25🪙)
