@@ -25,11 +25,12 @@ const RECIPE = {
   farm: ['plot', 'plot', 'plot', 'pond'],
   kitchen: ['plot', 'plot', 'lantern', 'lantern', 'flowers'],
   forest: ['bigtree', 'bigtree', 'flowers', 'hut'],
+  mine: ['lantern', 'lantern', 'hut', 'bigtree'],
 };
 
-test('가지 순서: 💧 물이 첫 번째(E3 첫 물고기) → 밭 → 부엌 → 숲', () => {
-  assert.deepEqual(BRANCH_IDS, ['water', 'farm', 'kitchen', 'forest']);
-  assert.deepEqual(BRANCHES.map(b => b.npc), ['angler', 'farmer', 'chef', 'forager']);
+test('가지 순서: 💧 물이 첫 번째(E3 첫 물고기) → 밭 → 부엌 → 숲 → ⛏️ 광산', () => {
+  assert.deepEqual(BRANCH_IDS, ['water', 'farm', 'kitchen', 'forest', 'mine']);
+  assert.deepEqual(BRANCHES.map(b => b.npc), ['angler', 'farmer', 'chef', 'forager', 'miner']);
 });
 
 test('태그는 js/habitat.js 이름만 · 재료는 실제 가방 키만 · 장식 비용은 🪵🪨⚫ 만', () => {
@@ -152,7 +153,7 @@ test('branchRatio · lifePercent · branchGrowth', () => {
   assert.deepEqual(branchRatio(t, 'water'), { habitat: 1, bundles: 0 });
   t = offerBundle(t, 'water', 'river', { fish: 5 }).tree;     // 5/10 → 0.5 · ferry 0 → 평균 0.25
   assert.deepEqual(branchRatio(t, 'water'), { habitat: 1, bundles: 0.25 });
-  assert.equal(lifePercent(t), Math.round(((1 + 0.25) / 2 / 4) * 100));
+  assert.equal(lifePercent(t), Math.round(((1 + 0.25) / 2 / 5) * 100));
   assert.deepEqual(branchGrowth(t, 'water'), { leaves: 0.55, bloom: false });
   // 전부 채우면 100
   let full = defaultTree();

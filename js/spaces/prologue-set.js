@@ -446,7 +446,7 @@ const SKY = {   // 황금빛(살아 있음) → 잿빛 푸른 해질녘(시듦)
   a: { top: 0x6fa6d8, mid: 0xffd9a0, bot: 0xf0c890, sun: 0xffc070 },
   b: { top: 0x34445c, mid: 0x8e9aab, bot: 0x7c8899, sun: 0x9fb2c8 },
 };
-const BR_ORDER = { forest: 0, kitchen: 0.25, farm: 0.5, water: 0.8 };   // 💧 가지가 마지막(마지막 잎이 거기 남는다)
+const BR_ORDER = { forest: 0, kitchen: 0.25, farm: 0.5, water: 0.8, mine: 0.12 };   // 💧 가지가 마지막(마지막 잎이 거기 남는다)
 
 /** 시듦 정도 w(0~1) — 컷2(5.4~10.2s) 동안 */
 export function witherAt(T) { return smooth((T - 5.6) / 4.4); }

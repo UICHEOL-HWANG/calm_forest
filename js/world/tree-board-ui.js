@@ -51,8 +51,9 @@ export function renderTreeBoard(view) {
   for (const b of view.branches) {
     const t = el('button', `tb-tab tb-${b.status}${b.id === view.cur.id ? ' active' : ''}`);
     t.type = 'button';
-    t.append(el('i', 'tb-dot'), el('span', null, b.ico), el('span', 'tb-tab-name', b.short || b.name));   // 짧은 이름 — 폰에서 '부엌의 가 / 지' 로 꺾였다
+    t.append(el('i', 'tb-dot'), el('span', 'tb-ico', b.ico));
     t.title = b.name;
+    t.setAttribute('aria-label', b.name);
     t.addEventListener('click', () => actions?.tab?.(b.id));
     tabs.appendChild(t);
   }
