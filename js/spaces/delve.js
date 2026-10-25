@@ -11,7 +11,7 @@ import {
 } from '../delve/rules.js';
 import { rollChest, chestGive } from '../boat-chest.js';
 import { makeChestMesh } from '../boat-chest-art.js';
-import { jobCard, owedMinerRewards } from '../delve/miner-card.js';
+import { jobCard, owedMinerRewards, shouldStartLine } from '../delve/miner-card.js';
 import { createPest, stepPest, tapPest, baitPest, canPick, RING_SEC, TAP_R, BAIT_R } from '../delve/pests.js';
 import { makePest, makeOreChunk, makePuddle, makeBurrow, makeRing, makeBait, makeShaft, makeLadderUp, makeRock, makeLift, emojiBubble, makeTrail } from '../delve/pest-art.js';
 import { makeMiner } from '../delve/miner.js';
@@ -210,8 +210,16 @@ function pickUp(c) {
   if (gameState.delve.stage >= 8 && j.kind === 'ore' && run.floor >= j.floorMin) bumpTodayJob();
 }
 
+function ensureMinerLine() {
+  if (!shouldStartLine(gameState.delve, !ui.coachActive?.())) return;
+  gameState.delve = { ...gameState.delve, started: true, startedAt: Date.now() };
+  requestSave();
+  $w.refreshQuestPanel?.();
+}
+
 export function delvePrompt() {
   if (!run) {
+    if ((minerMesh && dist2D(minerMesh.position, player.position) < 1.8) || (liftMesh && dist2D(liftMesh.position, player.position) < 2.0)) ensureMinerLine();
     if (minerMesh && dist2D(minerMesh.position, player.position) < 1.8) {
       if (jobCard(gameState.delve, gameState.inventory, true, todayStr(), delveJobProgress())?.ready) return { nd: 'delve_job_claim', prompt: '⛏️ 광부 아저씨 · 받기' };
       const v = stepView(gameState.delve, gameState.inventory);
