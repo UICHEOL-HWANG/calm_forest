@@ -51,7 +51,7 @@
 - [ ] **Step 1: main 최신화 후 워크트리 생성**
 
 ```bash
-cd /Users/uicheol_hwang/calm_forest
+cd "$REPO_ROOT"
 git fetch origin
 git worktree add -b feat/cave-delve .claude/worktrees/cave-delve origin/main
 cd .claude/worktrees/cave-delve && npm ci
@@ -60,7 +60,7 @@ cd .claude/worktrees/cave-delve && npm ci
 - [ ] **Step 2: 설계 산출물 복사(루트 체크아웃에만 있는 미추적 파일)**
 
 ```bash
-SRC=/Users/uicheol_hwang/calm_forest
+SRC="$REPO_ROOT"
 mkdir -p dev/active/cave-delve docs/superpowers/specs
 cp -R $SRC/dev/active/cave-delve/. dev/active/cave-delve/
 cp $SRC/docs/superpowers/specs/2026-10-25-cave-delve-design.md docs/superpowers/specs/
