@@ -7,16 +7,18 @@ import { DELVE, MINE, MINE_HALF } from '../data/places.js';
 import { DELVE_HALF, DELVE_CHEST_FLOORS, PEST_COPY } from '../data/delve.js';
 import {
   floorSeed, layoutFloor, ladderRevealed, themeOf, oreOdds, rollOre, makeRng, noteReach, oreAllowed, markOreFloor,
-  bumpCount, canDescendFrom0, stopsOpen,
+  bumpCount, canDescendFrom0, stopsOpen, stepView, claimStep,
 } from '../delve/rules.js';
 import { createPest, stepPest, tapPest, baitPest, canPick, RING_SEC, TAP_R, BAIT_R } from '../delve/pests.js';
 import { makePest, makeOreChunk, makePuddle, makeBurrow, makeRing, makeBait, makeShaft, makeLadderUp, makeRock, makeLift } from '../delve/pest-art.js';
+import { makeMiner } from '../delve/miner.js';
 import * as THREE from 'three';
 
 let run = null;
 let group = null;
 let visitN = 0;
 let liftMesh = null;
+let minerMesh = null;
 
 export function delveFloorNow() { return run ? run.floor : 0; }
 
@@ -29,6 +31,20 @@ export function placeLift() {
   liftMesh = makeLift();
   liftMesh.position.set(MINE.x + 5, FLOOR_Y, MINE.z - MINE_HALF + 4);
   scene.add(liftMesh);
+  placeMiner();
+}
+
+function placeMiner() {
+  if (minerMesh) return;
+  minerMesh = makeMiner();
+  minerMesh.position.set(MINE.x + 3.2, FLOOR_Y, MINE.z - MINE_HALF + 4.2);
+  minerMesh.rotation.y = 0.4;
+  scene.add(minerMesh);
+}
+
+function grantMinerReward(reward) {
+  if (reward.cosmetic) $w.grantCosmetic?.(reward.cosmetic);
+  if (reward.decor) $w.grantDecor?.(reward.decor);
 }
 
 function clearRoom() {
@@ -152,6 +168,11 @@ function pickUp(c) {
 
 export function delvePrompt() {
   if (!run) {
+    if (minerMesh && dist2D(minerMesh.position, player.position) < 1.8) {
+      const v = stepView(gameState.delve, gameState.inventory);
+      if (v?.ready) return { nd: 'delve_miner_claim', prompt: '⛏️ 광부 아저씨 · 받기' };
+      if (v) return { nd: 'delve_miner_talk', prompt: '⛏️ 광부 아저씨' };
+    }
     if (liftMesh && dist2D(liftMesh.position, player.position) < 2.0) {
       return canDescendFrom0(gameState.delve) ? { nd: 'delve_lift', prompt: '🛗 승강기 타기' } : { nd: 'delve_lift_locked', prompt: '🛗 승강기 고장' };
     }
@@ -170,6 +191,23 @@ export function delvePrompt() {
 }
 
 export function handleDelveDoor(nd) {
+  if (nd === 'delve_miner_talk') {
+    const v = stepView(gameState.delve, gameState.inventory);
+    if (v) ui.toast?.(`⛏️ ${v.desc} (${v.progress}/${v.target})`);
+    return true;
+  }
+  if (nd === 'delve_miner_claim') {
+    const c = claimStep(gameState.delve, gameState.inventory);
+    if (!c) return true;
+    gameState.delve = c.delve;
+    Object.assign(gameState.inventory, c.inv);
+    grantMinerReward(c.reward);
+    refreshInventoryUI();
+    ui.toast?.('⛏️ 고맙네! 다음 일을 부탁하지');
+    trackEvent('delve_step', { step: c.stepId, stage: c.delve.stage });
+    $w.refreshQuestPanel?.();
+    return true;
+  }
   if (nd === 'delve_lift_locked') { ui.toast?.('⛏️ 광부 아저씨에게 석탄 3개를 가져다줘요'); return true; }
   if (nd === 'delve_lift') {
     const stops = stopsOpen(gameState.delve);

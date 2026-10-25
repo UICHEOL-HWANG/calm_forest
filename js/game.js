@@ -298,6 +298,7 @@ export const $w = {
   get atCafe() { return atCafe; }, set atCafe(v) { atCafe = v; },
   get atFarm() { return atFarm; }, set atFarm(v) { atFarm = v; },
   get atMine() { return atMine; }, set atMine(v) { atMine = v; },
+  get refreshQuestPanel() { return refreshQuestPanel; },
   get firstHintBanner() { return firstHintBanner; },
   get atMist() { return atMist; }, set atMist(v) { atMist = v; },
   get atMuseum() { return atMuseum; }, set atMuseum(v) { atMuseum = v; },

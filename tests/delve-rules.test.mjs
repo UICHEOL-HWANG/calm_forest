@@ -245,3 +245,23 @@ test('잘못된 저장값이어도 정리 중에 던지지 않는다', () => {
   assert.deepEqual(d.chests, {});
   assert.deepEqual(d.stops, []);
 });
+
+import { minerCard, shouldStartLine } from '../js/delve/miner-card.js';
+
+test('광부 카드는 동굴 안에서만, 시작 전·완주 후엔 없음', () => {
+  const d = { ...defaultDelve(), started: true };
+  assert.equal(minerCard(d, { coal: 1 }, false), null);
+  const c = minerCard(d, { coal: 1 }, true);
+  assert.equal(c.id, 'delve_miner');
+  assert.equal(c.name, '광부 아저씨');
+  assert.equal(c.progress, 1);
+  assert.equal(c.target, 3);
+  assert.equal(minerCard(defaultDelve(), {}, true), null);
+  assert.equal(minerCard({ ...d, stage: 8 }, {}, true), null);
+});
+
+test('라인은 튜토리얼이 끝난 뒤, 한 번만 시작', () => {
+  assert.equal(shouldStartLine(defaultDelve(), false), false);
+  assert.equal(shouldStartLine(defaultDelve(), true), true);
+  assert.equal(shouldStartLine({ ...defaultDelve(), started: true }, true), false);
+});

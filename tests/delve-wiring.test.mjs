@@ -44,3 +44,8 @@ test('DELVE 좌표는 다른 공간과 200 이상 떨어진다', () => {
     assert.ok(Math.hypot(d.x - o.x, d.z - o.z) >= 200, k);
   }
 });
+
+test('퀘스트 패널에 광부 카드가 합쳐진다(동굴 안에서만)', () => {
+  assert.match(src, /minerCard\(gameState\.delve, gameState\.inventory, atMine\)/);
+  assert.match(src, /shouldStartLine\(gameState\.delve/);
+});
