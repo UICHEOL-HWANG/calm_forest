@@ -14,10 +14,10 @@ const gs = () => ({ inventory: { coins: 2000 }, cosmetics: { owned: [], equipped
 
 test('copy matches the spec table', () => {
   assert.deepEqual({ ...CAFE_COPY }, {
-    title: '☕ 산장 카페', drink: '☕ 몸이 따뜻해졌어요', sled: '🛷 다음 판부터 이 썰매를 타요',
+    title: '☕ 산장 카페', drink: '☕ 몸이 녹았어요~', sled: '🛷 다음 판부터 이 썰매를 타요',
     gift: '🧺 보관함에 넣어 뒀어요', poor: '코인이 모자라요', close: '닫기',
   });
-  for (const ko of ['☕ 산장 카페', '☕ 몸이 따뜻해졌어요', '🛷 다음 판부터 이 썰매를 타요', '🧺 보관함에 넣어 뒀어요', '🏁 깃발 12개 모두 지나 완주하면 열려요', '타기', '타는 중', '☕ 음료', '🧣 꾸미기', '🏔️ 기념품', '코코아', '유자차', '기본 썰매', '하늘 썰매', '숲 썰매', '별밤 썰매', '털 귀마개', '눈송이 발자국', '등에 멘 작은 썰매']) assert.ok(EN[ko], ko);
+  for (const ko of ['☕ 산장 카페', '☕ 몸이 녹았어요~', '🛷 다음 판부터 이 썰매를 타요', '🧺 보관함에 넣어 뒀어요', '🏁 깃발 12개 모두 지나 완주하면 열려요', '타기', '타는 중', '☕ 음료', '🧣 꾸미기', '🏔️ 기념품', '코코아', '유자차', '기본 썰매', '하늘 썰매', '숲 썰매', '별밤 썰매', '털 귀마개', '눈송이 발자국', '등에 멘 작은 썰매']) assert.ok(EN[ko], ko);
 });
 
 test('a souvenir lands in the right storage and coins drop', () => {
@@ -60,7 +60,7 @@ test('the shop is a -modal so the game pauses behind it, and purchases hit the l
 test('while seated the clamp pins the player to the seat', () => {
   const src = readFileSync(new URL('../js/mountain/cafe-room.js', import.meta.url), 'utf8');
   assert.match(src, /if \(seated\) \{ p\.x = seated\.x; p\.z = seated\.z; p\.y = 0; return; \}/);
-  assert.match(src, /seated = \{ mug, steam, t: 4, x: origin\.x \+ seat\.x, z: origin\.z \+ seat\.z \}/);
+  assert.match(src, /seated = \{ mug, steam, t: DRINK\.s, table, mouth, back, rise: 0, x: origin\.x \+ seat\.x, z: origin\.z \+ seat\.z \}/);
 });
 
 test('sled rows keep each stat on one line and show a lock as a note, not a wide button', () => {

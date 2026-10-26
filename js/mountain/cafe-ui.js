@@ -10,7 +10,7 @@ export function statSegments(n) {
 }
 
 export const CAFE_COPY = Object.freeze({
-  title: '☕ 산장 카페', drink: '☕ 몸이 따뜻해졌어요', sled: '🛷 다음 판부터 이 썰매를 타요',
+  title: '☕ 산장 카페', drink: '☕ 몸이 녹았어요~', sled: '🛷 다음 판부터 이 썰매를 타요',
   gift: '🧺 보관함에 넣어 뒀어요', poor: '코인이 모자라요', close: '닫기',
 });
 

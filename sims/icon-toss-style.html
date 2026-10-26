@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>토스풍 아이콘 시안</title>
+<style>
+  :root { --cream:#fff7ec; --mint:#bfe8c9; --ink:#4a5a4f; --panel:rgba(255,255,255,.78); }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#f3f1ea; color:var(--ink); font-family:'Segoe UI',system-ui,sans-serif; }
+  header { padding:28px 24px 8px; max-width:1240px; margin:0 auto; }
+  h1 { margin:0 0 6px; font-size:24px; }
+  header p { margin:0; font-size:14px; opacity:.8; line-height:1.6; }
+  main { max-width:1240px; margin:0 auto; padding:8px 24px 60px; }
+  h2 { font-size:17px; margin:30px 0 12px; }
+  .hero { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px; }
+  .hcard { background:#fffdf8; border-radius:22px; padding:18px 16px 14px; box-shadow:0 8px 24px rgba(120,100,70,.10); }
+  .hcard h3 { margin:0 0 2px; font-size:15px; display:flex; gap:8px; align-items:center; }
+  .hcard .tag { font-size:11px; background:var(--mint); padding:2px 8px; border-radius:99px; }
+  .hcard p { margin:0 0 12px; font-size:12.5px; opacity:.75; line-height:1.5; }
+  .hrow { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; justify-items:center; }
+  .hero { grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); }
+  .hrow .i { font-size:clamp(28px, 3vw, 40px); }
+  .grid2 { display:grid; grid-template-columns:repeat(auto-fill,minmax(560px,1fr)); gap:18px; }
+  .card { background:#fffdf8; border-radius:18px; padding:14px; box-shadow:0 6px 18px rgba(120,100,70,.10); }
+  .card h3 { margin:0 0 8px; font-size:15px; display:flex; gap:8px; align-items:center; }
+  .card h3 .tag { font-size:11px; background:var(--mint); padding:2px 8px; border-radius:99px; }
+  .scene { position:relative; aspect-ratio:16/9; border-radius:12px; overflow:hidden; background:url('../assets/store/screenshots/06-마을전경.png') center/cover; }
+  .hud { position:absolute; background:var(--panel); backdrop-filter:blur(8px); border-radius:12px; box-shadow:0 6px 18px rgba(90,120,100,.18); display:flex; align-items:center; gap:6px; padding:5px 8px; font-size:12px; font-weight:600; }
+  .tl { top:8px; left:8px; }
+  .tr { top:8px; right:8px; }
+  .menu { top:46px; left:8px; flex-direction:column; align-items:stretch; gap:2px; padding:6px; font-size:11.5px; font-weight:500; }
+  .menu .row { display:flex; align-items:center; gap:7px; padding:3px 6px; border-radius:8px; }
+  .menu .row:first-child { background:rgba(191,232,201,.6); }
+  .chip { display:flex; align-items:center; gap:2px; }
+  .chip b { font-size:11px; }
+  .dot { width:7px; height:7px; border-radius:50%; background:#5cc77a; }
+  .btn { display:flex; align-items:center; gap:3px; background:rgba(255,255,255,.6); border-radius:8px; padding:3px 6px; }
+  .bar { bottom:8px; left:50%; transform:translateX(-50%); gap:6px; padding:6px 8px; border-radius:16px; }
+  .slot { width:38px; height:38px; border-radius:11px; background:rgba(255,255,255,.55); display:flex; align-items:center; justify-content:center; }
+  .slot.on { background:var(--mint); transform:translateY(-5px) scale(1.06); }
+  .slot.page { background:#fff7ec; }
+  .act { position:absolute; right:12px; bottom:12px; width:54px; height:54px; border-radius:50%; background:rgba(255,255,255,.85); display:flex; align-items:center; justify-content:center; box-shadow:0 6px 18px rgba(90,120,100,.25); }
+  .toast { position:absolute; top:46px; left:50%; transform:translateX(-50%); }
+  .i { display:inline-flex; width:1.25em; height:1.25em; line-height:1; align-items:center; justify-content:center; }
+  .i svg { width:100%; height:100%; display:block; overflow:visible; }
+  .tl .i, .tr .i, .toast .i, .menu .i { font-size:16px; }
+  .slot .i { font-size:22px; }
+  .act .i { font-size:30px; }
+  .sheet { display:grid; grid-template-columns:repeat(auto-fill,minmax(84px,1fr)); gap:6px; }
+  .cell { display:flex; flex-direction:column; align-items:center; gap:4px; padding:12px 4px 8px; border-radius:14px; background:#f7f4ec; }
+  .cell .i { font-size:36px; }
+  .cell small { font-size:11px; opacity:.75; text-align:center; }
+  .sizes { display:flex; gap:14px; align-items:flex-end; flex-wrap:wrap; padding:6px 0 10px; }
+  .sizes div { display:flex; gap:6px; align-items:center; }
+  .tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
+  .tabs button { border:none; background:#fffdf8; border-radius:99px; padding:8px 14px; font:inherit; font-size:13px; color:var(--ink); cursor:pointer; box-shadow:0 2px 6px rgba(120,100,70,.12); }
+  .tabs button.on { background:var(--mint); font-weight:700; }
+  .dark { background:#2f3a35; border-radius:18px; padding:16px; margin-top:12px; display:flex; gap:12px; flex-wrap:wrap; justify-content:center; }
+  .dark .i { font-size:34px; }
+  @media (max-width:640px) {
+    header, main { padding-left:16px; padding-right:16px; }
+    .grid2 { grid-template-columns:1fr; }
+    .hrow .i { font-size:38px; }
+    .hud { font-size:9px; padding:3px 5px; gap:3px; border-radius:9px; }
+    .tl .i, .tr .i, .toast .i { font-size:11px; }
+    .chip b { font-size:8.5px; }
+    .tl, .tr { top:5px; }
+    .tl { left:5px; } .tr { right:5px; }
+    .menu { display:none; }
+    .slot { width:27px; height:27px; border-radius:8px; }
+    .slot .i { font-size:16px; }
+    .bar { bottom:5px; padding:4px 5px; gap:4px; }
+    .act { width:36px; height:36px; right:7px; bottom:7px; }
+    .act .i { font-size:20px; }
+    .t { display:none; }
+    .toast { top:auto; bottom:44px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>토스페이스풍 아이콘 · 새로 그린 49개</h1>
+  <p>토스페이스의 그리는 방식을 따랐어요. 테두리·그라데이션 없이 꽉 찬 단색 면, 면을 반으로 갈라 넣는 두 톤 명암, 회색 쇠붙이와 진한 자루. 모양은 처음부터 다시 그렸고, 같은 모양에 팔레트만 세 가지로 바꿔 봤어요.</p>
+</header>
+<main>
+  <h2>1. 크게 보기</h2>
+  <div class="hero" id="hero"></div>
+
+  <h2>2. 게임 화면에 얹어 보기</h2>
+  <div class="grid2" id="scenes"></div>
+
+  <h2>3. 전체 시트</h2>
+  <div class="tabs" id="tabs"></div>
+  <div class="card">
+    <div class="sizes" id="sizes"></div>
+    <div class="sheet" id="sheet"></div>
+    <div class="dark" id="dark"></div>
+  </div>
+<p class="credit" style="margin:24px 0 0;font-size:11px;opacity:.6">이 페이지에는 토스팀에서 제공한 토스페이스가 적용되어 있습니다. (손 모양 아이콘 10개 · <a href="../js/icons/tossface/LICENSE.txt">라이선스</a>)</p>
+</main>
+<script src="icon-set/icons-toss.js"></script>
+<script>
+const VARIANTS = [
+  { id:'toss', name:'토스 원색', tag:'확정', desc:'토스페이스와 같은 또렷한 원색. 가장 선명하고 깔끔해서 작은 크기에서도 한눈에 읽혀요.' },
+  { id:'forest', name:'숲 웜톤', tag:'비교', desc:'같은 모양, 색만 게임의 크림·민트·흙색 쪽으로 누른 버전.' },
+  { id:'pastel', name:'파스텔 캔디', tag:'비교', desc:'같은 모양을 한 톤 밝게. 귀엽지만 작은 크기에선 대비가 약해요.' },
+];
+const byId = Object.fromEntries(TOSS_ICONS.map(i => [i.id, i]));
+const ic = (id, v) => renderToss(byId[id], v);
+
+document.getElementById('hero').innerHTML = VARIANTS.map(v => `<div class="hcard"><h3>${v.name}<span class="tag">${v.tag}</span></h3><p>${v.desc}</p>
+  <div class="hrow">${['coin','gem','carrot','book','gift'].map(k => ic(k, v.id)).join('')}</div>
+  <div class="hrow" style="margin-top:8px">${['camera','can','moon','heart','house'].map(k => ic(k, v.id)).join('')}</div>
+  <div class="hrow" style="margin-top:8px">${['axe','pick','hammer','bag','trophy'].map(k => ic(k, v.id)).join('')}</div></div>`).join('');
+
+function scene(v) {
+  const I = id => ic(id, v.id);
+  const chips = [['wood',24],['acorn',12],['carrot',8],['stone',31],['coal',5],['gem',2],['coin',340]].map(([k,n]) => `<span class="chip">${I(k)}<b>${n}</b></span>`).join('');
+  const menu = [['paw','캐릭터·꾸미기'],['map','마을 지도'],['album','사진첩'],['mail','소식함'],['trophy','리더보드'],['stats','활동 기록'],['book','초보자 안내서'],['gear','설정']].map(([k,t]) => `<div class="row">${I(k)}<span>${t}</span></div>`).join('');
+  const slots = [['wheat','page'],['pick',''],['seedbag',''],['can','on'],['sickle',''],['shovel','']].map(([k,c]) => `<div class="slot ${c}">${I(k)}</div>`).join('');
+  return `<div class="card"><h3>${v.name}<span class="tag">${v.tag}</span></h3>
+  <div class="scene">
+    <div class="hud tl"><span class="dot"></span><span class="btn">${I('camera')}<span class="t">사진</span></span><span class="btn">${I('emote')}<span class="t">이모트</span></span><span class="btn">${I('menu')}</span></div>
+    <div class="hud menu">${menu}</div>
+    <div class="hud tr">${chips}<span class="btn">${I('bag')}</span><span class="chip">${I('maple')}${I('suncloud')}</span></div>
+    <div class="hud toast">${I('check')}<span>당근을 수확했어요</span>${I('sparkle')}</div>
+    <div class="hud bar">${slots}</div>
+    <div class="act">${I('hand')}</div>
+  </div></div>`;
+}
+document.getElementById('scenes').innerHTML = VARIANTS.map(scene).join('');
+
+let cur = 'toss';
+function drawSheet() {
+  document.getElementById('tabs').innerHTML = VARIANTS.map(v => `<button class="${v.id === cur ? 'on' : ''}" data-k="${v.id}">${v.name}</button>`).join('');
+  const groups = [...new Set(TOSS_ICONS.map(i => i.g))];
+  document.getElementById('sheet').innerHTML = groups.map(g => `<div style="grid-column:1/-1;font-size:12px;font-weight:700;margin:8px 2px 0">${g}</div>` + TOSS_ICONS.filter(i => i.g === g).map(i => `<div class="cell">${ic(i.id, cur)}<small>${i.n}</small></div>`).join('')).join('');
+  document.getElementById('sizes').innerHTML = [14,16,20,28,44].map(px => `<div style="font-size:${px}px">${['coin','wood','gem','can','book'].map(k => ic(k, cur)).join('')}<small style="font-size:11px;opacity:.6">${px}px</small></div>`).join('');
+  document.getElementById('dark').innerHTML = ['coin','gem','moon','sparkle','heart','camera','gear','fish','peach','check'].map(k => ic(k, cur)).join('');
+}
+document.getElementById('tabs').addEventListener('click', e => { const k = e.target.dataset.k; if (k) { cur = k; drawSheet(); } });
+drawSheet();
+</script>
+</body>
+</html>

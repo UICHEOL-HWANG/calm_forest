@@ -25,3 +25,14 @@
 - 힌트 배너는 사전등록 그대로(randomization 10k · 주민 클러스터 부트스트랩) · 10/14 이후, complete=true 일 때만 판정
 - 리뷰 반영: numpy.bool_ 주민 키 버그(잠정값 −1.2 → −10.5%p, p=0.33) · NULL 플래그 · P1 KST · 입질 뒤 포기=실패 · intraday 제외
 - 릴스 숫자는 수동 입력(페이지에 실행 가능한 SQL 안내)
+
+## 실험 페이지 v2 (2026-10-26, feat/admin-experiments-v2)
+- [x] 힌트 배너 화면 집계 버그 2건 — 세션 기록 없는 14세션 누락(NaN 이 참이라 기기 키 대체 실패 → first_text) · itch 2세션 혼입(origin 으로도 제외) → 59/68, 56% vs 56% 로 G2 문서 판정과 일치
+- [x] 요약 추가: e1(5분 안 첫 획득) · e2(첫 세션 플레이, 종료) · e3(T+1~7 재방문, 플랫폼 층화) · banner(90:10 D1, 방향만) — GA4 기기 단위
+- [x] 판정: official.rule='ci'(사전등록 CI 규칙) · result.ratio 로 SRM · 기대 빈도 5 미만이면 SRM 생략 · 목표 표본 못 채우고 종료 = "표본 미달로 종료"
+- [x] 레지스트리 sql/migrations/migrate_experiments_2026_10_26.sql 운영 적용 — e1·e2·e3·e4(설계)·ads_w1(수동)·banner 추가, hint 결론·need 600 제거(사전등록은 기간 고정), meta 계획 변경 종료, reel 관측 대기
+- [x] 결과 표에 오늘 계산값 1회 upsert(다음부터 03:00 워크플로 — main 병합 필요)
+- [ ] main 병합 → 웹 배포(dashboards 만, 게임 코드 변화 없음)
+- [ ] 10/31 ads_w1 숫자 수동 입력(A = 할로윈 · B = 일반, CTR = 링크 클릭 ÷ 노출)
+- [ ] 릴스 훅 숫자 수동 입력(10/15 이후 미입력)
+- 열린 질문: ads_w1 주 지표 — 계획서 CTR vs 사전등록 초안 CPC(레지스트리는 CTR 로 둠)

@@ -186,7 +186,7 @@ import {
   buildSea, enterSea, exitSea, seaAction, seaCamera, seaPrompt, spawnSeaGate, updateSea, updateSeaVisuals,
 } from './spaces/sea.js';   // 📦 🌊 바다터 — 대형 낚시 (docs/design/SEA_FISHING_PLAN.md · 프로토타입 sims/sea-sim.html)
 import { keepOnGateWalks, updateGateCues, updateGateWalks } from './spaces/gate-cue.js';
-import { clampToLandmark, clampToMountain, maybeRevealMountain, mountainAction, mountainLookFrame, mountainMinimapMarks, mountainReturnPos, sledActive, spawnMountainGate, updateMountain, mountainSpeedMult } from './spaces/mountain.js';
+import { clampToLandmark, clampToMountain, maybeRevealMountain, mountainAction, mountainLookFrame, mountainMinimapMarks, mountainReturnPos, sledActive, cafeDrinking, spawnMountainGate, updateMountain, mountainSpeedMult } from './spaces/mountain.js';
 import { applyObservatoryLight, clampToObservatory, observatoryAction, observatoryCamFocus, observatoryLensOpen, observatoryMinimapMarks, spawnObservatoryGate, updateObservatory, updateObservatoryStairs } from './spaces/observatory.js';   // 📦 🔭 천문대 — 별자리 리듬 실내 공간
 import { clampToNeighbor, initNeighbors, neighborAction, neighborIndoorElevated, neighborIndoorFrame, neighborMinimapMarks, neighborReturnPos, spawnNeighborGate, updateNeighbor } from './spaces/neighbor.js';   // 📦 🏡 이웃 마을 — 남의 앞마당 구경(js/neighbors/*)
 import { neighborsDefault, restoreNeighbors } from './neighbors/rules.js';
@@ -6239,7 +6239,7 @@ function updatePlayer(dt, t) {
   // 모달(캐릭터 선택·튜토리얼·상인 등)·메뉴가 떠 있으면 키보드 이동 0 — 선택창 뒤에서 캐릭터가 걷던 버그
   // 🎉 캐치 세리머니(첫 낚시·수확·반딧불이·바다 대어)·📸 액션샷 밀착 중엔 이동 입력을 무시 —
   //    카메라가 정면 고정인데 걸으면 폴짝 모션이 끊기고 구도가 깨진다(2026-09-11 요청)
-  const closeUp = momentT >= 0 || photoT >= 0 || !!museumView || sledActive() || (atSea && seaMG.st !== 'idle');
+  const closeUp = momentT >= 0 || photoT >= 0 || !!museumView || sledActive() || cafeDrinking() || (atSea && seaMG.st !== 'idle');
   let { mx, mz } = keys.moveAxes(!!ui.anyModalOpen?.() || closeUp);
   // 모바일 조이스틱 아날로그 합산
   if (!closeUp) { mx += analog.x; mz += analog.z; }

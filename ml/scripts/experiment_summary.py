@@ -34,7 +34,7 @@ if os.environ.get("GCP_SA_KEY"):   # GitHub Actions — export_to_bq.py 와 같�
 
 from calm_ml import bq  # noqa: E402
 from calm_ml.experiments import (  # noqa: E402
-    cluster_bootstrap_ci, daily_cumulative, mean_arms, prop_arms, randomization_pvalue, resident_key, revisit_within,
+    cluster_bootstrap_ci, daily_cumulative, first_text, mean_arms, prop_arms, randomization_pvalue, resident_key, revisit_within,
 )
 
 KST = "Asia/Seoul"
@@ -67,6 +67,7 @@ select session_id,
        array_agg(distinct arm ignore nulls) as arms,
        coalesce(logical_or(origin is null or origin = '' or regexp_contains(origin, r'localhost|127\\.0\\.0\\.1')), true) as bad_origin,
        coalesce(logical_or(variant in ('beta_A', 'beta_B')), false) as beta,   -- NULL 이면 NA 마스크로 세션이 조용히 빠진다
+       coalesce(logical_or(origin like '%itch.%'), false) as itch,
        any_value(nullif(client_id, '')) as ce_client
 from {RAW}.churn_events
 group by session_id
@@ -87,14 +88,14 @@ def run_hint(sessions: pd.DataFrame) -> dict:
 
     st = _starts(sessions)
     ev = ev.merge(st[["session_id", "user_id", "is_guest", "client_id", "platform", "updated_at"]], on="session_id", how="left")
-    ev = ev[ev.platform.fillna("") != "itch"]
+    ev = ev[(ev.platform.fillna("") != "itch") & ~ev.itch]
     # 페르소나 P1(사전등록 그대로): 기기 4대+ 이고 첫 등장이 9/28 이후인 user_id
     per_user = st.dropna(subset=["user_id"]).groupby("user_id").agg(devices=("client_id", "nunique"), first=("start", "min"))
     p1 = set(per_user[(per_user.devices >= 4) & (pd.to_datetime(per_user["first"], utc=True) >= P1_SINCE)].index)
     ev = ev[~ev.user_id.isin(p1)]
     data_max = pd.to_datetime(st.updated_at, utc=True).max()
     ev = ev[ev.t0 <= data_max - pd.Timedelta(days=7)].copy()     # 7일 관측이 끝난 세션만
-    ev["resident"] = [resident_key(u, g, c if c else cc) for u, g, c, cc in zip(ev.user_id, ev.is_guest, ev.client_id, ev.ce_client)]
+    ev["resident"] = [resident_key(u, g, first_text(c, cc)) for u, g, c, cc in zip(ev.user_id, ev.is_guest, ev.client_id, ev.ce_client)]
     ev = ev.dropna(subset=["resident"]).reset_index(drop=True)
 
     st2 = st[["resident", "session_id", "start"]].copy()
@@ -230,6 +231,208 @@ def run_beta(sessions: pd.DataFrame) -> dict:
     }
 
 
+ACQ_EVENTS = ["harvest_crop", "coop_collect", "honey_collect", "fishing_catch", "sea_catch", "firefly_catch", "forage_pick",
+              "mine_ore", "craft_item", "craft_claim", "cooking_result", "cafe_serve", "carve_result", "quest_complete",
+              "star_result", "duel_result"]
+PLAY_E2 = sorted({"plant_seed", "water_crop", "fishing_cast", "sea_cast", "chop_tree", "first_chop", "dig_plot",
+                  "cooking_start", "shop_sell", *ACQ_EVENTS})
+
+GA4_EV = f"""
+ev as (
+  select user_pseudo_id as d, user_id, event_name, event_timestamp as us,
+         date(timestamp_micros(event_timestamp), '{KST}') as day, geo.country as country,
+         net.host((select value.string_value from unnest(event_params) where key = 'page_location')) as host,
+         (select value.string_value from unnest(event_params) where key = 'platform') as platform,
+         (select value.int_value from unnest(event_params) where key = 'ga_session_id') as sid,
+         (select value.string_value from unnest(event_params) where key = 'exp') as exp,
+         (select value.string_value from unnest(event_params) where key = 'exp_arm') as arm_p,
+         (select up.value.string_value from unnest(user_properties) up where up.key = @prop) as prop
+  from {GA4}
+  where regexp_contains(_TABLE_SUFFIX, r'^[0-9]{{8}}$') and _TABLE_SUFFIX between @since and @until
+),
+dev as (
+  select d,
+         coalesce(logical_or(host in ('localhost', '127.0.0.1')), false) as local,
+         coalesce(logical_or(user_id in unnest(@persona_ids)), false) as persona,
+         array_agg(country ignore nulls order by us limit 1)[safe_offset(0)] as country,
+         array_agg(platform ignore nulls order by us limit 1)[safe_offset(0)] as platform
+  from ev group by d
+),
+lim as (select max(day) as data_max from ev)
+"""
+
+E1_SQL = f"""
+with {GA4_EV},
+enr as (
+  select d, min(us) as t0, array_agg(distinct arm_p ignore nulls) as arms
+  from ev where event_name = 'exp_exposure' and exp = 'e1' group by d
+)
+select enr.d, enr.arms, enr.t0, dev.local, dev.persona, dev.platform, any_value(lim.data_max) as data_max,
+       date(timestamp_micros(enr.t0), '{KST}') as day,
+       coalesce(logical_or(ev.event_name in unnest(@acq) and ev.us between enr.t0 and enr.t0 + 300000000), false) as y5,
+       coalesce(logical_or(ev.event_name in unnest(@acq) and ev.us between enr.t0 and enr.t0 + 7 * 86400000000), false) as y7
+from enr join dev using (d) cross join lim left join ev on ev.d = enr.d
+group by 1, 2, 3, 4, 5, 6, 8
+"""
+
+E2_SQL = f"""
+with {GA4_EV},
+asg as (
+  select d, array_agg(distinct prop ignore nulls) as arms, min(us) as t0,
+         array_agg(sid ignore nulls order by us limit 1)[safe_offset(0)] as sid0
+  from ev group by d having count(prop) > 0
+)
+select asg.d, asg.arms, asg.t0, dev.local, dev.persona, dev.country, dev.platform,
+       date(timestamp_micros(asg.t0), '{KST}') as day,
+       coalesce(logical_or(ev.event_name in unnest(@play) and ev.sid = asg.sid0), false) as y
+from asg join dev using (d) left join ev on ev.d = asg.d
+group by 1, 2, 3, 4, 5, 6, 7
+"""
+
+E3_SQL = f"""
+with {GA4_EV},
+asg as (
+  select d, array_agg(distinct prop ignore nulls) as arms, min(us) as ta
+  from ev group by d having count(prop) > 0
+),
+trig as (
+  select ev.d, min(ev.day) as t from ev join asg using (d)
+  where ev.event_name in ('fishing_catch', 'sea_catch') and ev.us >= asg.ta group by 1
+),
+days as (select distinct d, day from ev)
+select asg.d, asg.arms, dev.local, dev.persona, dev.country, dev.platform, any_value(lim.data_max) as data_max,
+       date(timestamp_micros(asg.ta), '{KST}') as day_a, trig.t,
+       coalesce(logical_or(days.day between date_add(trig.t, interval 1 day) and date_add(trig.t, interval 7 day)), false) as y,
+       coalesce(logical_or(days.day between date_add(date(timestamp_micros(asg.ta), '{KST}'), interval 1 day)
+                                         and date_add(date(timestamp_micros(asg.ta), '{KST}'), interval 7 day)), false) as ya
+from asg join dev using (d) cross join lim left join trig using (d) left join days on days.d = asg.d
+group by 1, 2, 3, 4, 5, 6, 8, 9
+"""
+
+BANNER_SQL = f"""
+with {GA4_EV},
+b as (
+  select d, min(day) as day0, array_agg(distinct event_name) as arms
+  from ev where event_name in ('app_banner_shown', 'app_banner_holdout') group by d
+),
+days as (select distinct d, day from ev)
+select b.d, b.arms, b.day0 as day, dev.local, dev.persona, any_value(lim.data_max) as data_max,
+       coalesce(logical_or(days.day = date_add(b.day0, interval 1 day)), false) as y
+from b join dev using (d) cross join lim left join days on days.d = b.d
+group by 1, 2, 3, 4, 5
+"""
+
+
+def _one_arm(df: pd.DataFrame, rename: dict | None = None) -> tuple[pd.DataFrame, int]:
+    one = df.arms.map(len) == 1
+    out = df[one].copy()
+    out["arm"] = out.arms.map(lambda a: a[0])
+    if rename:
+        out["arm"] = out.arm.map(lambda a: rename.get(a, a))
+    return out, int((~one).sum())
+
+
+def _ci_official(df: pd.DataFrame, y: str, t: str, strata: str | None = None, method: str = "") -> dict | None:
+    if df.arm.nunique() < 2 or df.groupby("arm").size().min() < 2:
+        return None
+    arm01 = (df.arm == t).astype(int).values
+    yy = df[y].astype(int).values
+    lo, hi = cluster_bootstrap_ci(yy, arm01, df.d.values, n_boot=2000, seed=7,
+                                  strata=df[strata].fillna("?").values if strata else None)
+    return {"d": round(float(yy[arm01 == 1].mean() - yy[arm01 == 0].mean()) * 100, 2), "lo": lo, "hi": hi,
+            "p": round(randomization_pvalue(yy, arm01, n_perm=10_000, seed=7), 4), "rule": "ci",
+            "method": method or "기기 부트스트랩 2,000회 95% CI(사전등록 판정) · randomization p 는 참고"}
+
+
+def run_e1(persona_ids: list[str]) -> dict:
+    df = bq.read_sql(E1_SQL, prop="exp_arm", since="20261012", until="99999999", persona_ids=persona_ids, acq=ACQ_EVENTS)
+    n_all = len(df)
+    df, mixed = _one_arm(df)
+    df = df[~df.local & ~df.persona].copy()
+    df["day"] = df.day.astype(str)
+    data_max = pd.Timestamp(df.data_max.max()) if len(df) else None
+    m7 = df[pd.to_datetime(df.day) <= data_max - pd.Timedelta(days=7)] if data_max is not None else df.iloc[:0]
+    order = [("harvest_start", "밭 앞 시작(처치)"), ("control", "지금 그대로")]
+    return {
+        "type": "prop", "compare": ["harvest_start", "control"],
+        "arms": prop_arms(df, "arm", "y5", order),
+        "secondary": [{"label": "7일 안 획득(7일 지난 기기만)", "type": "prop", "arms": prop_arms(m7, "arm", "y7", order)}],
+        "daily": daily_cumulative(df, "day", "arm", "y5", "harvest_start", "control"),
+        "official": _ci_official(df, "y5", "harvest_start"),
+        "window": {"from": "2026-10-12", "to": None, "data_max": str(data_max.date()) if data_max is not None else None},
+        "notes": [f"배정 기기 {n_all}대 · 무리가 섞인 기기 {mixed}대 제외 · localhost·페르소나 제외",
+                  "단위 = 기기(GA4 user_pseudo_id) · 진입 = 첫 exp_exposure · 5분 안 획득 16종",
+                  "처치 = 밭 앞 시작 + 안내 카드 3장 묶음(개정 1) · 앱 배너 노출 차이는 개정 2 보고 층에서 본다"],
+    }
+
+
+def run_e2(persona_ids: list[str]) -> dict:
+    df = bq.read_sql(E2_SQL, prop="exp_entry", since="20261012", until="20261018", persona_ids=persona_ids, play=PLAY_E2)
+    n_all = len(df)
+    df, mixed = _one_arm(df)
+    df = df[~df.local & ~df.persona & df.country.eq("South Korea")].copy()
+    df["day"] = df.day.astype(str)
+    order = [("skip_login", "로그인 건너뛰기(처치)"), ("control", "로그인 화면 먼저")]
+    return {
+        "type": "prop", "compare": ["skip_login", "control"],
+        "arms": prop_arms(df, "arm", "y", order),
+        "secondary": [],
+        "daily": daily_cumulative(df, "day", "arm", "y", "skip_login", "control"),
+        "official": _ci_official(df, "y", "skip_login"),
+        "window": {"from": "2026-10-12", "to": "2026-10-17"},
+        "notes": [f"배정 기기 {n_all}대 · 무리가 섞인 기기 {mixed}대 제외 · localhost·한국 밖·페르소나 제외",
+                  "주 지표 = 첫 세션(첫 ga_session_id)에 플레이 행동 1회 이상",
+                  "목표 표본 전에 종료 — 판정하지 않는다(종료 기록 참고)"],
+    }
+
+
+def run_e3(persona_ids: list[str]) -> dict:
+    df = bq.read_sql(E3_SQL, prop="exp_space", since="20261016", until="99999999", persona_ids=persona_ids)
+    n_all = len(df)
+    df, mixed = _one_arm(df)
+    df = df[~df.local & ~df.persona & df.country.eq("South Korea")].copy()
+    data_max = pd.Timestamp(df.data_max.max()) if len(df) else None
+    trig = df[df.t.notna()].copy()
+    trig["t"] = pd.to_datetime(trig.t)
+    mat = trig[trig.t + pd.Timedelta(days=7) <= data_max].copy() if data_max is not None else trig.iloc[:0]
+    mat["day"] = mat.t.dt.strftime("%Y-%m-%d")
+    da = df.copy()
+    da["day_a"] = pd.to_datetime(da.day_a)
+    da = da[da.day_a + pd.Timedelta(days=7) <= data_max] if data_max is not None else da.iloc[:0]
+    order = [("on", "연못 있음(처치)"), ("off", "연못 없음")]
+    return {
+        "type": "prop", "compare": ["on", "off"],
+        "arms": prop_arms(mat, "arm", "y", order),
+        "secondary": [{"label": "배정 기기 전체 1~7일차 재방문(희석)", "type": "prop", "arms": prop_arms(da, "arm", "ya", order)}],
+        "daily": daily_cumulative(mat, "day", "arm", "y", "on", "off"),
+        "official": _ci_official(mat, "y", "on", strata="platform", method="기기 부트스트랩 2,000회 · 플랫폼 층화 95% CI(사전등록 판정)"),
+        "window": {"from": "2026-10-16", "to": None, "data_max": str(data_max.date()) if data_max is not None else None},
+        "notes": [f"배정 기기 {n_all}대 · 무리가 섞인 기기 {mixed}대 제외 · localhost·한국 밖·페르소나 제외",
+                  f"첫 물고기를 잡은 기기 {len(trig)}대 중 T+7 이 지난 {len(mat)}대만 주 지표에 넣는다",
+                  "처치 = 연못 + 이후 로드맵 기능 묶음 · 이웃 구경으로 대조가 연못을 볼 수 있다"],
+    }
+
+
+def run_banner(persona_ids: list[str]) -> dict:
+    df = bq.read_sql(BANNER_SQL, prop="exp_arm", since="20261013", until="99999999", persona_ids=persona_ids)
+    n_all = len(df)
+    df, mixed = _one_arm(df, rename={"app_banner_shown": "shown", "app_banner_holdout": "holdout"})
+    df = df[~df.local & ~df.persona].copy()
+    data_max = pd.Timestamp(df.data_max.max()) if len(df) else None
+    df["day"] = df.day.astype(str)
+    df = df[pd.to_datetime(df.day) + pd.Timedelta(days=1) <= data_max].copy() if data_max is not None else df
+    order = [("shown", "배너 노출"), ("holdout", "홀드아웃 10%")]
+    return {
+        "type": "prop", "compare": ["shown", "holdout"], "ratio": [0.9, 0.1], "descriptive": True,
+        "arms": prop_arms(df, "arm", "y", order),
+        "secondary": [], "daily": [], "official": None,
+        "window": {"from": "2026-10-13", "to": None, "data_max": str(data_max.date()) if data_max is not None else None},
+        "notes": [f"배너 대상 기기 {n_all}대 · 둘 다 찍힌 기기 {mixed}대 제외 · localhost·페르소나 제외",
+                  "D1 = 첫 노출(또는 홀드아웃) 다음 날 웹 접속 — 앱으로 넘어간 사람은 빠져 노출군이 과소 집계된다",
+                  "사전등록 없음 · 방향만 본다"],
+    }
+
+
 # ── Supabase 쓰기 ────────────────────────────────────────────────
 def _headers() -> dict:
     key = os.environ["SUPABASE_SERVICE_ROLE"]
@@ -252,12 +455,17 @@ def upsert(exp_id: str, result: dict) -> None:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--only", nargs="*", help="이 실험만 계산(예: --only hint e1)")
     a = ap.parse_args()
 
     pids = persona_ids()
     sessions = bq.read_sql(SESSIONS_SQL)
     jobs = {"hint": lambda: run_hint(sessions), "probe": lambda: run_probe(pids),
-            "guide": lambda: run_guide(sessions, pids), "beta": lambda: run_beta(sessions)}
+            "guide": lambda: run_guide(sessions, pids), "beta": lambda: run_beta(sessions),
+            "e1": lambda: run_e1(pids), "e2": lambda: run_e2(pids), "e3": lambda: run_e3(pids),
+            "banner": lambda: run_banner(pids)}
+    if a.only:
+        jobs = {k: v for k, v in jobs.items() if k in a.only}
     failed = []
     for exp_id, job in jobs.items():
         try:

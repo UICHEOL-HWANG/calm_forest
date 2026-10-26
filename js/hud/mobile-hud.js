@@ -19,7 +19,7 @@ body.menu-open #tool-btn, body.menu-open #tool-name, body.museum-view #tool-btn,
 #tool-btn[data-page="out"] { border-color: #6fb3dc; background: #eaf5fc; }
 #tool-btn[data-page="none"] { border-color: #b8c6bd; background: #fff; }
 #tool-btn .tb-ico { font-size: 27px; line-height: 1; display: grid; place-items: center; }
-#tool-btn .tb-ico svg { width: 27px !important; height: 27px !important; }
+#tool-btn .tb-ico .ti { width: 27px !important; height: 27px !important; }
 #tool-btn .tb-arr { position: absolute; top: 50%; transform: translateY(-50%); font-size: 9px; font-weight: 900; color: #3f7a3d; opacity: .75; }
 #tool-btn .tb-arr.l { left: -12px; } #tool-btn .tb-arr.r { right: -12px; }
 #tool-btn .tb-tip { display: none; position: absolute; bottom: calc(100% + 8px); right: -6px; white-space: nowrap; font-size: 11px; font-weight: 800; color: #5b4300;
@@ -39,7 +39,7 @@ body.tool-fan-open #tool-btn .tb-tip { display: none; }
 .tf-slot.on { border: 3px solid #3f9a4a; }
 .tf-slot.hover { transform: scale(1.22); border-color: #ff8a3d; z-index: 2; }
 .tf-ico { font-size: 25px; line-height: 1; display: grid; place-items: center; }
-.tf-ico svg { width: 25px !important; height: 25px !important; }
+.tf-ico .ti { width: 25px !important; height: 25px !important; }
 .tf-name { position: absolute; top: calc(100% + 1px); left: 50%; transform: translateX(-50%); font-size: 10.5px; font-weight: 800; color: #fff; white-space: nowrap;
   text-shadow: 0 1px 3px rgba(0,0,0,.7); pointer-events: none; }
 @keyframes tfpop { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }

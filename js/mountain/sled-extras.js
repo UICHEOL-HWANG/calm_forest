@@ -9,9 +9,9 @@ const GHOST_MAX_PTS = 1200;
 const GHOST_X_MAX = 3000;
 const GHOST_Y_MAX = 2000;
 
-export function recordGhost(path, s) {
+export function recordGhost(path, s, lift = s.y || 0) {
   if (path.length * GHOST_STEP_MS > s.t) return path;
-  return [...path, [Math.round(s.z * 10), Math.round(s.x * 100), Math.round((s.y || 0) * 100)]];
+  return [...path, [Math.round(s.z * 10), Math.round(s.x * 100), Math.round(Math.max(0, lift) * 100)]];
 }
 
 const lerp = (a, b, k) => a + (b - a) * k;

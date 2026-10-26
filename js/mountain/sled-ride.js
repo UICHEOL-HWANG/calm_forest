@@ -6,7 +6,7 @@ import { COURSE } from './course.js';
 import { buildSledProps } from './sled-props.js';
 import { spawnSnowBurst, spawnBoostTrail } from './sled-fx.js';
 import { showChips } from './sled-hud.js';
-import { sledPose } from './sled-view.js';
+import { sledPose, sledLift } from './sled-view.js';
 import { driftTier } from './sled-moves.js';
 import { recordGhost, ghostAt, ghostGapMs, sledEvents, chipsFor } from './sled-extras.js';
 import { spawnPet } from '../pet/render.js';
@@ -112,7 +112,7 @@ function placeGhost(ride, s, yaw) {
   if (!ride.ghostObj) return;
   ride.ghostObj.visible = !!g;
   if (!g) return;
-  const pose = sledPose({ ...s, z: g.z, x: g.x, y: g.y, air: g.y > 0, trick: false }, yaw);
+  const pose = sledPose({ ...s, z: g.z, x: g.x, y: g.y, air: false, trick: false }, yaw, g.y);
   ride.ghostObj.position.set(pose.x, pose.y, pose.z);
   ride.ghostObj.rotation.set(pose.pitch, pose.yaw, 0);
 }
@@ -129,7 +129,7 @@ function bouncePet(ride, dt) {
 export function rideTick(ride, prev, next, dt, at, yaw) {
   if (!ride) return [];
   ride.frame += 1;
-  ride.path = recordGhost(ride.path, next);
+  ride.path = recordGhost(ride.path, next, sledLift(next));
   ride.props.update(next.t);
   const events = sledEvents(prev, next);
   events.forEach(e => react(ride, e, next, at));

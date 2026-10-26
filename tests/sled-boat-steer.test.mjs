@@ -10,7 +10,7 @@ const at60 = () => ({ ...createSled(0), z: 60, x: centerX(60) });
 const hold = (s, steer, ms) => Array.from({ length: ms / 16 }).reduce(a => stepSled(a, 16, steer, COURSE), s);
 
 test('physics version is 4 (inertia model plus v2 moves)', () => {
-  assert.equal(PHYS_V, 4);
+  assert.equal(PHYS_V, 5);
 });
 
 test('a fresh sled starts with no sideways speed', () => {

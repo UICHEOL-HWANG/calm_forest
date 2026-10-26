@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { PHYS, PHYS_V, createSled, stepSled, pressSled } from '../js/mountain/sled.js';
+import { readFileSync } from 'node:fs';
+import { PHYS, PHYS_V, createSled, stepSled, pressSled, tryBoost } from '../js/mountain/sled.js';
 import { DRIFT, JUMP, COMBO, KICK_MULT, SHIELD_PER_RUN } from '../js/mountain/sled-moves.js';
 import { physOf } from '../js/mountain/sled-lineup.js';
 import { COURSE, COURSE_V, centerX, moverPos } from '../js/mountain/course.js';
@@ -10,7 +11,7 @@ const run = (s, steer, ms, course = COURSE) => Array.from({ length: Math.round(m
 const empty = { ...COURSE, flags: [], obstacles: [], ramps: [], movers: [] };
 
 test('versions and speed move to v4 / course v2 at 1.5x', () => {
-  assert.equal(PHYS_V, 4);
+  assert.equal(PHYS_V, 5);
   assert.equal(COURSE_V, 2);
   assert.equal(PHYS.baseSpeed, 12.9);
   assert.equal(PHYS.steerRate, 9.75);
@@ -197,4 +198,40 @@ test('drift, trick and gust kicks are the same strength on every sled', () => {
 
 test('every rider gets one shield per run, pet or not', () => {
   assert.equal(SHIELD_PER_RUN, 1);
+});
+
+test('the boost button fires on finger down, not on release', () => {
+  const m = readFileSync(new URL('../js/spaces/mountain.js', import.meta.url), 'utf8');
+  assert.match(m, /boostButton\(\)\.onpointerdown = e => \{ e\.preventDefault\(\); boost\(\); \};/);
+  assert.doesNotMatch(m, /boostButton\(\)\.onclick/);
+  const hud = readFileSync(new URL('../js/mountain/sled-hud.js', import.meta.url), 'utf8');
+  assert.match(hud, /\.sled-boost\{[^}]*touch-action:none/);
+});
+
+test('a boost jumps most of the way to boost speed at once instead of ramping for half a second', () => {
+  let s = { ...createSled(3), speed: PHYS.baseSpeed };
+  s = tryBoost(s);
+  const goal = PHYS.baseSpeed * PHYS.boostMult;
+  assert.ok(Math.abs(s.speed - (PHYS.baseSpeed + (goal - PHYS.baseSpeed) * PHYS.boostJolt)) < 1e-9);
+  assert.equal(PHYS.boostJolt, 0.7);
+  const none = tryBoost({ ...createSled(0), speed: PHYS.baseSpeed });
+  assert.equal(none.speed, PHYS.baseSpeed);
+  const fast = tryBoost({ ...createSled(1), speed: goal + 2 });
+  assert.equal(fast.speed, goal + 2);
+});
+
+test('all five sled types stay within 50ms of each other with every acorn, whether boosts are chained or spread out', () => {
+  const flat = { ...COURSE, obstacles: [], ramps: [], movers: [] };
+  const run = (id, mode) => {
+    let s = createSled(6, physOf(id)), next = mode === 'chain' ? 0 : 1500;
+    while (!s.finished) {
+      if (s.acorns > 0 && s.t >= next && s.boostLeftMs <= 0) { s = tryBoost(s); next = mode === 'chain' ? s.t : s.t + 3500; }
+      s = stepSled(s, 1000 / 60, 0, flat);
+    }
+    return s.t;
+  };
+  for (const mode of ['chain', 'spaced']) {
+    const times = ['basic', 'toboggan', 'wind', 'acorn', 'skiff'].map(id => run(id, mode));
+    assert.ok(Math.max(...times) - Math.min(...times) <= 51, `${mode}: ${times.join(', ')}`);
+  }
 });

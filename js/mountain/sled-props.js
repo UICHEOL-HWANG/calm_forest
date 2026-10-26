@@ -1,16 +1,17 @@
 import { colored, mergeColored } from './merge-colored.js';
 import { moverPos } from './course.js';
 import { slopePoint } from './terrain.js';
+import { RAMP_SHAPE } from './ramp-lift.js';
 
-const RAMP = Object.freeze({ deck: 0x9fd0f0, stripe: 0xe5484d, tilt: -0.32, len: 2.2 });
+const RAMP = Object.freeze({ deck: 0x9fd0f0, stripe: 0xe5484d, tilt: RAMP_SHAPE.tilt, len: RAMP_SHAPE.len });
 const PENGUIN = Object.freeze({ body: 0x24303e, belly: 0xfafafa, beak: 0xf2a33a });
 const BALL = 0xf4f8fc;
 
 function rampGeos(THREE, r) {
   const p = slopePoint(r.z, r.x);
-  const deck = new THREE.BoxGeometry(r.half * 2, 0.12, RAMP.len);
+  const deck = new THREE.BoxGeometry(r.half * 2, RAMP_SHAPE.thick, RAMP.len);
   deck.rotateX(RAMP.tilt);
-  deck.translate(p.x, p.y + 0.35, p.z - 0.8);
+  deck.translate(p.x, p.y + RAMP_SHAPE.cy, p.z + RAMP_SHAPE.cz);
   const stripe = new THREE.BoxGeometry(r.half * 2, 0.13, 0.25);
   stripe.rotateX(RAMP.tilt);
   stripe.translate(p.x, p.y + 0.7, p.z + 0.2);

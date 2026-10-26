@@ -36,8 +36,8 @@ test('phys overrides are pinned per sled', () => {
   assert.deepEqual({ ...SLED_LINEUP.forest.phys }, {});
   assert.deepEqual({ ...SLED_LINEUP.starry.phys }, {});
   assert.deepEqual({ ...SLED_LINEUP.toboggan.phys }, { steerRate: 7.8, hitSlowMult: 0.65, hitRecoverMs: 1100 });
-  assert.deepEqual({ ...SLED_LINEUP.wind.phys }, { baseSpeed: 13.65, boostMult: 1.31 });
-  assert.deepEqual({ ...SLED_LINEUP.acorn.phys }, { baseSpeed: 12.6, accel: 11.25, boostMult: 1.60 });
+  assert.deepEqual({ ...SLED_LINEUP.wind.phys }, { baseSpeed: 13.65, boostMult: 1.33 });
+  assert.deepEqual({ ...SLED_LINEUP.acorn.phys }, { baseSpeed: 12.6, accel: 11.25, boostMult: 1.575 });
   assert.deepEqual({ ...SLED_LINEUP.skiff.phys }, { steerRate: 12.3, hitRecoverMs: 1900 });
 });
 
