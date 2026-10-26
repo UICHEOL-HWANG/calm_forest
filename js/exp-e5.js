@@ -4,7 +4,7 @@ export const E5_START_MS = Date.parse('2026-10-31T00:00:00+09:00');
 
 export const E5_COPY = {
   guest: '🌱 바로 시작하기',
-  sub: '가입 없이 바로 놀 수 있어요',
+  sub: '가입 없이 바로 플레이할 수 있어요',
   note: '이메일로 시작하면 어느 기기에서든 저장이 이어져요.',
 };
 
