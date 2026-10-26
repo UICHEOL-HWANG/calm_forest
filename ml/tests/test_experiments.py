@@ -7,6 +7,7 @@ import pytest
 
 from calm_ml.experiments import (
     cluster_bootstrap_ci,
+    first_text,
     daily_cumulative,
     mean_arms,
     prop_arms,
@@ -30,6 +31,14 @@ def test_resident_key_handles_numpy_and_missing_booleans_from_bigquery():
     assert resident_key("u1", pd.NA, "c1") == "u:u1"
     s = pd.Series([False, True, None], dtype="boolean")
     assert [resident_key("u1", g, "c1") for g in s] == ["u:u1", "c:c1", "u:u1"]
+
+
+def test_first_text_skips_nan_and_empty_from_left_joins():
+    assert first_text(np.nan, "c-ce") == "c-ce"
+    assert first_text(None, "", "c-ce") == "c-ce"
+    assert first_text(pd.NA, "c-ce") == "c-ce"
+    assert first_text("c-sl", "c-ce") == "c-sl"
+    assert first_text(np.nan, None) is None
 
 
 def test_revisit_counts_only_other_sessions_strictly_after_t0_within_window():
@@ -81,3 +90,13 @@ def test_cluster_bootstrap_ci_brackets_the_point_estimate_in_pp():
     lo, hi = cluster_bootstrap_ci(y, arm, cluster, n_boot=500, seed=2)
     d = (y[arm == 1].mean() - y[arm == 0].mean()) * 100
     assert lo < d < hi and hi - lo < 40
+
+
+def test_cluster_bootstrap_with_strata_resamples_inside_each_stratum():
+    strata = np.array(["toss"] + ["web"] * 60)
+    arm = np.array([1] + [1] * 30 + [0] * 30)
+    y = np.array([1] + [0] * 60)
+    cl = np.arange(strata.size)
+    lo_s, _ = cluster_bootstrap_ci(y, arm, cl, n_boot=400, seed=1, strata=strata)
+    lo, _ = cluster_bootstrap_ci(y, arm, cl, n_boot=400, seed=1)
+    assert lo_s > 0 and lo == 0

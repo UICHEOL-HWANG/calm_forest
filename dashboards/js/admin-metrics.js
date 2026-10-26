@@ -286,7 +286,10 @@ export function analyzeExperiment(e, today) {
   }
   if (r.official) est = { ...est, d: r.official.d, lo: r.official.lo, hi: r.official.hi, p: r.official.p };
   const equal = e.kind === 'ab' || e.kind === 'multi';
-  const s = equal ? srm(r.arms.map((a) => a.n), r.arms.map(() => 1 / r.arms.length)) : null;
+  const ratio = Array.isArray(r.ratio) && r.ratio.length === r.arms.length ? r.ratio : r.arms.map(() => 1 / r.arms.length);
+  const expectedMin = Math.min(...ratio) * n;
+  const s = equal && expectedMin >= 5 ? srm(r.arms.map((a) => a.n), ratio) : null;
+  const ciRule = r.official?.rule === 'ci';
 
   let verdict;
   if (e.kind === 'policy') verdict = ['obs', '인과 판정 안 함'];
@@ -295,6 +298,9 @@ export function analyzeExperiment(e, today) {
   else if (e.decide_after && String(today) < String(e.decide_after)) verdict = ['obs', `관측 대기 · ${mmdd(e.decide_after)}`];
   else if (r.official && r.official.complete === false) verdict = ['obs', '관측 대기 · 데이터 도착 전'];
   else if (e.need && n < e.need && e.status === 'run') verdict = ['small', '표본 모으는 중'];
+  else if (e.need && n < e.need && e.status === 'done') verdict = ['st', '표본 미달로 종료'];
+  else if (r.descriptive) verdict = ['obs', '방향만 · 판정 안 함'];
+  else if (ciRule) verdict = est.lo > 0 ? ['win', '효과 있음 ▲'] : est.hi < 0 ? ['lose', '효과 있음 ▼'] : ['na', '판정 불가'];
   else if (est.p != null && est.p < 0.05) verdict = est.d > 0 ? ['win', '효과 있음 ▲'] : ['lose', '효과 있음 ▼'];
   else verdict = ['na', '판정 불가'];
   return { ...est, type: r.type || 'prop', n, srm: s, verdict, t, c, official: r.official || null };

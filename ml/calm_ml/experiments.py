@@ -22,6 +22,13 @@ def _is_true(v) -> bool:
         return False
 
 
+def first_text(*vals) -> str | None:
+    for v in vals:
+        if isinstance(v, str) and v:
+            return v
+    return None
+
+
 def resident_key(user_id, is_guest, client_id) -> str | None:
     """주민 키 — 로그인 계정이면 u:<user_id>, 아니면 기기 c:<client_id> (힌트 배너 사전등록 정의)."""
     if isinstance(user_id, str) and user_id and not _is_true(is_guest):
@@ -85,15 +92,23 @@ def randomization_pvalue(y, arm, n_perm: int = 10_000, seed: int = 0) -> float:
     return (hits + 1) / (n_perm + 1)
 
 
-def cluster_bootstrap_ci(y, arm, cluster, n_boot: int = 2000, seed: int = 0, alpha: float = 0.05) -> tuple[float, float]:
+def cluster_bootstrap_ci(y, arm, cluster, n_boot: int = 2000, seed: int = 0, alpha: float = 0.05,
+                         strata=None) -> tuple[float, float]:
     """주민 단위로 통째로 다시 뽑은 차이(처치 − 대조)의 95% 구간, %p. 한 주민의 여러 세션이 독립이 아니라서."""
     y, arm, cluster = np.asarray(y, float), np.asarray(arm, int), np.asarray(cluster)
     ids = np.unique(cluster)
     idx_by = {k: np.flatnonzero(cluster == k) for k in ids}
+    if strata is None:
+        groups = [ids]
+    else:
+        strata = np.asarray(strata)
+        first = {k: strata[v[0]] for k, v in idx_by.items()}
+        groups = [np.array([k for k in ids if first[k] == s]) for s in np.unique(strata)]
     rng = np.random.default_rng(seed)
     stats = []
     for _ in range(n_boot):
-        pick = np.concatenate([idx_by[k] for k in rng.choice(ids, size=ids.size, replace=True)])
+        drawn = np.concatenate([rng.choice(g, size=g.size, replace=True) for g in groups])
+        pick = np.concatenate([idx_by[k] for k in drawn])
         a = arm[pick]
         if a.min() == a.max():
             continue                                      # 한쪽 군만 뽑힌 표본은 차이를 못 잰다
