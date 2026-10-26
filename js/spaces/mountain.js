@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { $w, WEATHER, player, scene, camera, ui, snapCamera, setSpaceVisible, setFogExempt, firstHint, todayStr, gameState, obstacles, setCameraRig, requestSave, mgView, rollDifficulty, spawnFloatText, spawnSparkle, spawnConfetti, triggerMoment, makeNameTag, applyCosmetics, refreshInventoryUI } from '../game.js';
+import { $w, WEATHER, player, playerAnchor, scene, camera, ui, snapCamera, setSpaceVisible, setFogExempt, firstHint, todayStr, gameState, obstacles, setCameraRig, requestSave, mgView, rollDifficulty, spawnFloatText, spawnSparkle, spawnConfetti, triggerMoment, makeNameTag, applyCosmetics, refreshInventoryUI } from '../game.js';
 import { trackEvent } from '../analytics.js';
 import { decorBanner } from '../decor-drops/index.js';
 import { Sound, setBGMTheme } from '../sound.js';
@@ -15,7 +15,8 @@ import { buildCamp } from '../mountain/camp-art.js';
 import { CAMP, START_SPOT, atHut, inYard, pushOutProps, YARD, DOOR_SPOT, DOOR_R, CAFE_EXIT_SPOT, clampSummit, summitHeight } from '../mountain/camp-layout.js';
 import { createRunout, stepRunout, stopTurn } from '../mountain/runout.js';
 import { createKeeperBubble } from '../mountain/keeper-bubble.js';
-import { createCafe } from '../mountain/cafe-room.js';
+import { createGateBend } from '../mountain/gate-bend.js';
+import { createCafe, DRINK } from '../mountain/cafe-room.js';
 import { openCafeModal, refreshCafeModal, closeCafeModal, applyCafeResult, CAFE_COPY } from '../mountain/cafe-ui.js';
 import { cafeState, buyCafe, pickSled, grantFinishSled, TOBOGGAN_TOAST } from '../mountain/cafe-shop.js';
 import { cafeItem } from '../mountain/cafe-catalog.js';
@@ -29,7 +30,7 @@ import { physOf, sledCash } from '../mountain/sled-lineup.js';
 import { cashAvailable } from '../shop/paddle.js';
 import { state as authState } from '../supabase-client.js';
 import { cashButton, cashPending } from './cafe.js';
-import { SLED_LIFT, sledSeat, sledYaw, sledCamTargets, runoutCamTargets, sledPose, sledFov, decayShake, shakeOffset } from '../mountain/sled-view.js';
+import { SLED_LIFT, sledSeat, sledYaw, sledCamTargets, runoutCamTargets, sledPose, sledLift, sledFov, decayShake, shakeOffset } from '../mountain/sled-view.js';
 import { spawnSnowBurst, spawnBoostTrail } from '../mountain/sled-fx.js';
 import { COLD, COLD_START, stepCold, drinkWarm, coldStage, coldSpeedMult, noticeCold } from '../mountain/cold.js';
 import { showColdHud, hideColdHud } from '../mountain/cold-hud.js';
@@ -46,6 +47,7 @@ export const MOUNTAIN_EXIT_LOCAL = { x: 0, z: 83 };
 let run = null;
 let keeperBubble = null;
 const START_R = 1.6;
+const FAR = Object.freeze({ x: 1e9, z: 1e9 });
 const CHEER_S = 1.3;
 const CHEER_FRONT = 1.0;
 const SPRAY_S = 0.07;
@@ -132,6 +134,7 @@ export function mountainReturnPos() {
 export function exitMountain() {
   abandonRun();
   closeCafeModal();
+  standUp();
   if (cafe?.active()) cafe.exit(player, { x: player.position.x, y: 0, z: player.position.z });
   $w.atMountain = false;
   look = null;
@@ -223,6 +226,7 @@ function enterCafe() {
 
 function exitCafe() {
   closeCafeModal();
+  standUp();
   cafe.exit(player, { x: MOUNTAIN.x + CAFE_EXIT_SPOT.x, y: MOUNTAIN.y + CAMP.deck.y, z: MOUNTAIN.z + CAFE_EXIT_SPOT.z });
   $w.nearDoor = null; ui.setDoorPrompt?.(null);
   snapCamera();
@@ -230,6 +234,27 @@ function exitCafe() {
 }
 
 function onDrink() { cold = drinkWarm(cold); }
+
+export function cafeDrinking() {
+  return !!cafe?.active() && cafe.drinking();
+}
+
+function standUp() {
+  if (!cafeDrinking()) return;
+  playerAnchor.rotation.x = 0;
+  $w.sitting = false;
+}
+
+function finishDrink(st) {
+  if (!st) return;
+  if (cafe.drinking()) { $w.sitting = true; playerAnchor.rotation.x = -DRINK.lean * st.sip; return; }
+  if (!st.done) return;
+  playerAnchor.rotation.x = 0;
+  $w.sitting = false;
+  player.position.set(st.done.x, 0, st.done.z);
+  player.rotation.y = st.done.ry;
+  ui.toast?.(CAFE_COPY.drink, 2200);
+}
 
 function buyFromCafe(id, tab) {
   if (cashPending(id)) { refreshCafeModal(); return; }
@@ -245,7 +270,7 @@ function buyFromCafe(id, tab) {
     refreshInventoryUI();
     requestSave();
   }
-  if (out.toast) ui.toast?.(out.toast, 2200);
+  if (out.toast && !out.drink) ui.toast?.(out.toast, 2200);
   if (out.drink) {
     closeCafeModal();
     cafe.sit(player, out.drink.cup);
@@ -286,7 +311,7 @@ export function mountainAction(nearDoor) {
   if (nearDoor === 'sledstart' && run?.phase === 'hut') return startSled();
   if (nearDoor === 'hutcafe') return enterCafe();
   if (nearDoor === 'hutcafeexit') return exitCafe();
-  if (nearDoor === 'hutcafeorder') return openCafeShop();
+  if (nearDoor === 'hutcafeorder') return cafeDrinking() ? null : openCafeShop();
 }
 
 export function mountainMinimapMarks(marks) {
@@ -413,7 +438,7 @@ function placeSled(yaw) {
 function rideSlope(lean, dt) {
   const p = slopePoint(run.sled.z, run.sled.x);
   run.yaw += (sledYaw(lean) - run.yaw) * Math.min(1, dt * LEAN_RATE);
-  player.position.set(MOUNTAIN.x + p.x, MOUNTAIN.y + p.y + run.seat + (run.sled.y || 0), MOUNTAIN.z + p.z);
+  player.position.set(MOUNTAIN.x + p.x, MOUNTAIN.y + p.y + run.seat + sledLift(run.sled), MOUNTAIN.z + p.z);
   player.rotation.y = run.yaw;
   player.rotation.x = sledPose(run.sled, run.yaw).flip;
   placeSled(run.yaw);
@@ -465,6 +490,7 @@ function startSled() {
   rideSlope(0, 0);
   setSledSkin($w.mountainGroup.userData.sled, THREE, run.sledId);
   run.ride = openRide({ group: $w.mountainGroup, sledMesh: $w.mountainGroup.userData.sled, pet: gameState.pet, ghost: gameState.mountain?.sled?.ghost ?? null, skin: run.sledId });
+  run.gates = createGateBend($w.mountainGroup.userData.gates);
   showSled(true);
   setCameraRig(sledCamera);
   showCountdown(3);
@@ -474,6 +500,7 @@ function startSled() {
 function closeRun() {
   keeperBubble?.hide();
   closeRide(run?.ride);
+  run?.gates?.reset();
   restoreFov();
   player.rotation.x = 0;
   showSled(false);
@@ -593,7 +620,7 @@ function updateCold(dt, local) {
 export function updateMountain(dt) {
   if (!$w.atMountain) return;
   updateCold(dt, { x: player.position.x - MOUNTAIN.x, z: player.position.z - MOUNTAIN.z });
-  if (cafe?.active()) { cafe.update(dt, performance.now() / 1000, player.position); return; }
+  if (cafe?.active()) { finishDrink(cafe.update(dt, performance.now() / 1000, player.position)); return; }
   const local = { x: player.position.x - MOUNTAIN.x, z: player.position.z - MOUNTAIN.z };
   if (!run && Math.hypot(local.x - CLIMB_START.x, local.z - CLIMB_START.z) < 2) startClimb();
   if (!run) return;
@@ -606,6 +633,7 @@ export function updateMountain(dt) {
     keeperBubble?.update(dt, performance.now() / 1000, Math.hypot(local.x - CAMP.keeper.x, local.z - CAMP.keeper.z), CAMP.deck.y);
   } else if (run.phase === 'runout') {
     rideRunout(dt);
+    run.gates?.update(FAR, 0, dt);
   } else if (run.phase === 'cheer') {
     run.cheerT -= dt;
     if (run.cheerT <= 0) showFinish();
@@ -629,6 +657,7 @@ export function updateMountain(dt) {
     run.sled.hitIds.slice(hitsBefore).forEach(burstObstacle);
     rideSlope(run.sled.vx / run.sled.phys.steerRate, dt);
     if (rideTick(run.ride, prev, run.sled, dt, player.position, run.yaw).length) run.shake = 1;
+    run.gates?.update(slopePoint(run.sled.z, run.sled.x), sledLift(run.sled), dt);
     showStick(run.input.stick());
     if (run.sled.boostLeftMs > 0 || run.sled.kickLeftMs > 0) spawnBoostTrail(player.position.x, player.position.y, player.position.z, isTouchDevice() ? 1 : 2);
     showBoostFx(run.sled, dt);

@@ -87,3 +87,27 @@ test('cafe clearSeated releases the mug and steam through disposeTree', () => {
   assert.match(room, /const release = o => \{ group\.remove\(o\); disposeTree\(o\); \};/);
   assert.match(room, /\[seated\.mug, \.\.\.seated\.steam\]\.forEach\(release\)/);
 });
+
+test('drinking lifts the mug to the mouth, sips twice, and puts it back on the table', async () => {
+  const { drinkPose, DRINK } = await import('../js/mountain/cafe-layout.js');
+  const table = { x: 0, y: 0.89, z: 0 }, mouth = { x: 0.2, y: 0.98, z: 0 };
+  assert.deepEqual(drinkPose(0, table, mouth).at, table);
+  assert.deepEqual(drinkPose(DRINK.up, table, mouth).at, mouth);
+  const tilts = Array.from({ length: 200 }, (_, i) => drinkPose(DRINK.up + ((DRINK.down - DRINK.up) * i) / 199, table, mouth).tilt);
+  const peaks = tilts.filter((v, i) => i > 0 && i < tilts.length - 1 && v > tilts[i - 1] && v >= tilts[i + 1] && v > DRINK.tilt * 0.9);
+  assert.equal(peaks.length, DRINK.sips);
+  const end = drinkPose(1, table, mouth);
+  assert.ok(Math.abs(end.at.x - table.x) < 1e-9 && Math.abs(end.at.y - table.y) < 1e-9 && end.tilt === 0);
+});
+
+test('after the drink the player stands back where they ordered, not inside the stool', () => {
+  const src = readFileSync(new URL('../js/mountain/cafe-room.js', import.meta.url), 'utf8');
+  assert.match(src, /const back = \{ x: player\.position\.x, z: player\.position\.z, ry: player\.rotation\.y \}/);
+  assert.match(src, /if \(seated\.t <= 0\) \{ done = \{ \.\.\.seated\.back \}; clearSeated\(\); \}/);
+  const m = readFileSync(new URL('../js/spaces/mountain.js', import.meta.url), 'utf8');
+  assert.match(m, /player\.position\.set\(st\.done\.x, 0, st\.done\.z\)/);
+  assert.match(m, /ui\.toast\?\.\(CAFE_COPY\.drink, 2200\)/);
+  assert.match(m, /if \(out\.toast && !out\.drink\)/);
+  const g = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  assert.match(g, /sledActive\(\) \|\| cafeDrinking\(\)/);
+});

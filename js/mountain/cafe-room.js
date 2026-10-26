@@ -1,5 +1,6 @@
 import { buildCafeRoom } from './cafe-art.js';
-import { CAFE_OFFSET, ENTRY, EXIT_SPOT, ORDER_SPOT, SPOT_R, BARISTA, TABLES, clampCafe, nearestSeat } from './cafe-layout.js';
+import { CAFE_OFFSET, ENTRY, EXIT_SPOT, ORDER_SPOT, SPOT_R, BARISTA, TABLES, clampCafe, nearestSeat, DRINK, drinkPose } from './cafe-layout.js';
+export { DRINK, drinkPose };
 import { disposeTree } from './dispose.js';
 import { applyLook } from './interior-look.js';
 import { animateBubble, makeRing, onTop } from '../bubble-fx.js';
@@ -9,20 +10,6 @@ export const CAFE_LOOK = Object.freeze({
   fog: 0x2a2320, fogNear: 30, fogFar: 90, grade: 0, torch: 0.6,
 });
 const BUBBLE = Object.freeze({ w: 0.8, h: 0.8, y: 3.0 });
-
-function emojiTexture(THREE, emoji) {
-  const cv = document.createElement('canvas');
-  cv.width = cv.height = 128;
-  const c = cv.getContext('2d');
-  c.fillStyle = '#ffffff';
-  c.beginPath(); c.arc(64, 60, 54, 0, Math.PI * 2); c.fill();
-  c.font = '64px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText(emoji, 64, 64);
-  const tex = new THREE.CanvasTexture(cv);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
-}
-
 export function createCafe({ THREE, scene, mountain, makeNameTag, fadeNameTag, getMountainGroup }) {
   const origin = { x: mountain.x + CAFE_OFFSET.x, z: mountain.z + CAFE_OFFSET.z };
   const sunAt = new THREE.Vector3(origin.x, 0, origin.z);
@@ -76,36 +63,52 @@ export function createCafe({ THREE, scene, mountain, makeNameTag, fadeNameTag, g
       applyLook({ ...env, target: sunAt }, CAFE_LOOK, null);
     },
     sit(player, cup) {
+      const back = { x: player.position.x, z: player.position.z, ry: player.rotation.y };
       const seat = nearestSeat(local(player.position));
       player.position.set(origin.x + seat.x, 0, origin.z + seat.z);
       player.rotation.y = seat.ry;
       const tb = TABLES[seat.table];
       const mug = new THREE.Group();
+      mug.rotation.order = 'YXZ';
+      mug.rotation.y = seat.ry;
       mug.add(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.09, 0.2, 12), new THREE.MeshLambertMaterial({ color: 0xf3e6cf })));
       const top = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.085, 0.02, 12), new THREE.MeshLambertMaterial({ color: cup }));
       top.position.y = 0.1;
       mug.add(top);
-      mug.position.set(tb.x + (seat.x - tb.x) * 0.35, 0.89, tb.z);
+      const table = { x: tb.x + (seat.x - tb.x) * 0.35, y: 0.89, z: tb.z };
+      const mouth = { x: seat.x + Math.sin(seat.ry) * DRINK.mouth.fwd, y: DRINK.mouth.y, z: seat.z + Math.cos(seat.ry) * DRINK.mouth.fwd };
+      mug.position.set(table.x, table.y, table.z);
       group.add(mug);
       const steam = [0, 1, 2].map(i => {
         const s = new THREE.Mesh(new THREE.SphereGeometry(0.05 + i * 0.015, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7, depthWrite: false }));
-        s.position.set(mug.position.x, 1.05 + i * 0.12, mug.position.z);
+        s.position.set(table.x, table.y + 0.16 + i * 0.12, table.z);
         group.add(s);
         return s;
       });
       clearSeated();
-      seated = { mug, steam, t: 4, x: origin.x + seat.x, z: origin.z + seat.z };
+      seated = { mug, steam, t: DRINK.s, table, mouth, back, rise: 0, x: origin.x + seat.x, z: origin.z + seat.z };
     },
+    drinking: () => !!seated,
     update(dt, time, p) {
+      let done = null, sip = 0;
       if (seated) {
         seated.t -= dt;
-        seated.steam.forEach((s, i) => { s.position.y += dt * 0.25; s.material.opacity = Math.max(0, 0.7 * (seated.t / 4) - i * 0.05); });
-        if (seated.t <= 0) clearSeated();
+        seated.rise = (seated.rise + dt * 0.25) % 0.36;
+        const pose = drinkPose(1 - Math.max(0, seated.t) / DRINK.s, seated.table, seated.mouth);
+        seated.mug.position.set(pose.at.x, pose.at.y, pose.at.z);
+        seated.mug.rotation.x = -pose.tilt;
+        sip = pose.sip;
+        seated.steam.forEach((s, i) => {
+          s.position.set(pose.at.x, pose.at.y + 0.16 + i * 0.12 + seated.rise, pose.at.z);
+          s.material.opacity = Math.max(0, 0.6 - i * 0.12 - seated.rise);
+        });
+        if (seated.t <= 0) { done = { ...seated.back }; clearSeated(); }
       }
       const l = local(p);
       const d = Math.hypot(l.x - BARISTA.x, l.z - BARISTA.z);
       fadeNameTag(tag, d);
       animateBubble({ bubble, ring, base: BUBBLE, dist: d, alertR: 3, time, dt });
+      return { done, sip };
     },
   };
 }

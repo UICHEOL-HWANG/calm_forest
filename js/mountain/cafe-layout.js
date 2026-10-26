@@ -48,3 +48,31 @@ export function nearestSeat(p, taken = []) {
   const open = SEATS.filter(s => !taken.some(t => t.x === s.x && t.z === s.z));
   return open.reduce((a, s) => (Math.hypot(s.x - p.x, s.z - p.z) < Math.hypot(a.x - p.x, a.z - p.z) ? s : a), open[0]);
 }
+
+export const DRINK = Object.freeze({ s: 3.4, up: 0.2, down: 0.82, sips: 2, tilt: 0.95, lean: 0.22, mouth: Object.freeze({ fwd: 0.52, y: 0.98 }) });
+
+const ease = k => k * k * (3 - 2 * k);
+const lerp3 = (a, b, k) => ({ x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k, z: a.z + (b.z - a.z) * k });
+
+export function drinkPose(p, table, mouth) {
+  if (p < DRINK.up) return { at: lerp3(table, mouth, ease(p / DRINK.up)), tilt: 0, sip: 0 };
+  if (p < DRINK.down) {
+    const k = (p - DRINK.up) / (DRINK.down - DRINK.up);
+    const sip = 0.5 - 0.5 * Math.cos(k * Math.PI * 2 * DRINK.sips);
+    return { at: mouth, tilt: DRINK.tilt * sip, sip };
+  }
+  return { at: lerp3(mouth, table, ease(Math.min(1, (p - DRINK.down) / (1 - DRINK.down)))), tilt: 0, sip: 0 };
+}
+
+function emojiTexture(THREE, emoji) {
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = 128;
+  const c = cv.getContext('2d');
+  c.fillStyle = '#ffffff';
+  c.beginPath(); c.arc(64, 60, 54, 0, Math.PI * 2); c.fill();
+  c.font = '64px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText(emoji, 64, 64);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}

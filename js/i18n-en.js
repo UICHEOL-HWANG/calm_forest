@@ -3012,7 +3012,7 @@ export const EN = {
   '정상 깃발': 'Summit flag',
   '산장 카페에서 산 정상 깃발': 'A summit flag from the hut cafe',
   '☕ 산장 카페': '☕ Hut cafe',
-  '☕ 몸이 따뜻해졌어요': '☕ You feel warm now',
+  '☕ 몸이 녹았어요~': '☕ All warmed up!',
   '🛷 다음 판부터 이 썰매를 타요': '🛷 You will ride this sled from the next run',
   '🧺 보관함에 넣어 뒀어요': '🧺 Put it in your storage',
   '🏁 깃발 12개 모두 지나 완주하면 열려요': '🏁 Opens after a finish through all 12 flags',
