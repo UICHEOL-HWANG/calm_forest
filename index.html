@@ -490,38 +490,59 @@
     .dc-rew b { font-size: 20px; }
     .dc-season { font-size: 11.5px; }
   }
-  /* 📮 소식함 — 공지·개발자 답장 목록(최신이 위). 답장은 내 문의 원문을 한 줄 인용 */
-  #notice-list { text-align: left; margin: 0 0 16px; }
-  .nt-item { padding: 12px 0; border-bottom: 1px solid #f0f4f0; }
-  .nt-item:last-child { border-bottom: none; }
-  .nt-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px; opacity: .65; margin-bottom: 4px; }
-  .nt-kind { color: #b0563a; font-weight: 700; }
-  .nt-item h3 { margin: 0 0 6px; font-size: 15px; }
-  .nt-quote { margin: 0 0 8px; padding: 6px 10px; background: #f3f6f2; border-left: 3px solid var(--mint); border-radius: 6px; font-size: 12.5px; opacity: .8; }
-  .nt-body { margin: 0; font-size: 14px; line-height: 1.6; opacity: .9; white-space: pre-line; overflow-wrap: anywhere; }
-  /* 한 페이지에 공지 하나 — 아래 1·2·3 버튼으로 넘긴다(다 펼쳐 잇던 방식은 폰에서 스크롤 벽) */
-  .nt-page .nt-head { justify-content: flex-start; }
-  .nt-page h3 { margin: 0 0 10px; font-size: 16px; }
-  .nt-lead, .nt-tail { margin: 0 0 7px; font-size: 13.5px; line-height: 1.55; opacity: .85; overflow-wrap: anywhere; }   /* 줄마다 문단 — 빈 줄 없이도 숨이 트인다 */
-  .nt-tail { margin: 8px 0 0; }
-  /* 본문 '|' 줄 → 2열 표. 첫 열은 굵게·연녹 배경(폰에서 열 구분) · 셀이 길면 줄바꿈(가로 넘침 금지) */
-  table.nt-tbl { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 13px; line-height: 1.45; margin: 0 0 6px; }   /* fixed: 긴 영문·URL 이 와도 첫 열이 찌그러지지 않는다(폰 실측) */
-  table.nt-tbl th { text-align: left; font-size: 11.5px; color: #7d8d84; font-weight: 700; padding: 4px 8px; border-bottom: 1.5px solid #e3ebe4; }
-  table.nt-tbl td { padding: 7px 8px; border-bottom: 1px solid #eef3ee; vertical-align: top; overflow-wrap: anywhere; }
-  table.nt-tbl tr:last-child td { border-bottom: none; }
-  table.nt-tbl th:first-child, table.nt-tbl td:first-child { width: 32%; }
-  table.nt-tbl td:first-child { font-weight: 700; color: #2d4a3a; background: #f4faf5; border-radius: 6px; }
-  .nt-foot { font-size: 11.5px; opacity: .55; text-align: right; margin-top: 4px; }
-  .nt-pager { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; margin: 4px 0 14px; }
-  .nt-pager button { min-width: 30px; height: 30px; border: 1.5px solid #dfe8df; background: #fbfdfa; border-radius: 10px; font: inherit; font-weight: 700; font-size: 13px; color: #4e5f56; cursor: pointer; }
-  .nt-pager button.on { background: var(--mint); border-color: var(--mint); color: var(--ink); }
-  .nt-pager button.unread::after { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #e07b3c; margin-left: 3px; vertical-align: top; }
-  .nt-pager button.arrow { color: #9aa7a0; border-color: transparent; background: transparent; }
-  .nt-pager button:disabled { opacity: .3; cursor: default; }
-  /* 토스는 상단 52px 을 토스 헤더가 덮는다 — 카드가 그 밑에 깔리지 않게 오버레이 자체를 인셋만큼 내린다 */
   #notice-modal { padding-top: var(--top-inset); box-sizing: border-box; }
-  #notice-modal .tut-card { max-height: calc(100dvh - 24px - var(--top-inset)); }
-  .nt-empty { text-align: center; opacity: .7; font-size: 14px; margin: 8px 0 20px; }
+  .nb { position: relative; width: min(420px, 94vw); height: min(640px, calc(100dvh - 24px - var(--top-inset))); display: flex; background: #fffaf1; color: #2f3a33; border-radius: 26px; overflow: hidden; box-shadow: 0 24px 60px rgba(20,40,30,.4); text-align: left; animation: floatUp .45s ease both; }
+  .nb-list { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .nb-head { display: flex; align-items: center; gap: 8px; padding: 18px 16px 10px 18px; }
+  .nb-head h2 { margin: 0; font-size: 21px; font-weight: 900; letter-spacing: -.03em; }
+  .nb-count { min-width: 22px; height: 22px; padding: 0 7px; border-radius: 999px; background: #e86f3c; color: #fff; font-size: 12px; font-weight: 800; display: inline-grid; place-items: center; }
+  .nb-count:empty { display: none; }
+  .nb-x { margin-left: auto; width: 34px; height: 34px; border: none; border-radius: 50%; background: transparent; color: #9a8b75; font-size: 17px; cursor: pointer; }
+  .nb-items { flex: 1; overflow-y: auto; padding: 4px 14px 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+  .nb-it { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px; border: 1.5px solid #f0e6d4; border-radius: 18px; background: #fff; font: inherit; color: inherit; text-align: left; cursor: pointer; transition: transform .12s, box-shadow .12s; }
+  .nb-it:hover { transform: translateY(-1px); }
+  .nb-it.sel { border-color: #2f3a33; box-shadow: 3px 3px 0 #2f3a33; }
+  .nb-stamp { flex: 0 0 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; font-size: 24px; background: var(--nb-bg); }
+  .nb-t { flex: 1; min-width: 0; }
+  .nb-t b { display: block; font-size: 14px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nb-t small { font-size: 11.5px; color: #9a8b75; }
+  .nb-it.unread::after { content: ''; position: absolute; top: 8px; right: 10px; width: 8px; height: 8px; border-radius: 50%; background: #e86f3c; box-shadow: 0 0 0 3px #fff; }
+  #notice-ok { margin: 0 16px 16px; border: none; border-radius: 14px; padding: 13px; background: #2f3a33; color: #fffaf1; font-weight: 800; font-size: 15px; cursor: pointer; }
+  .nb-det { position: absolute; inset: 0; display: flex; flex-direction: column; background: #fffaf1; transform: translateX(102%); transition: transform .28s cubic-bezier(.2,.8,.2,1); }
+  .nb.open .nb-det { transform: none; }
+  .nb-cover { position: relative; flex: 0 0 116px; display: flex; align-items: flex-end; gap: 6px; padding: 14px 18px; background: var(--nb-bg); overflow: hidden; }
+  .nb-big { position: absolute; right: 14px; top: 6px; font-size: 70px; line-height: 1; transform: rotate(-8deg); filter: drop-shadow(0 6px 10px rgba(0,0,0,.15)); }
+  .nb-back { position: absolute; left: 12px; top: 12px; width: 34px; height: 34px; border: none; border-radius: 50%; background: rgba(255,255,255,.85); font-size: 18px; font-weight: 900; color: #2f3a33; cursor: pointer; }
+  .nb-pill { position: relative; font-size: 11.5px; font-weight: 800; background: #2f3a33; color: #fffaf1; border-radius: 6px; padding: 3px 8px; }
+  .nb-pill.kind { background: #fff; color: #b0563a; }
+  .nb-body { flex: 1; overflow-y: auto; padding: 14px 18px 18px; }
+  .nb-det-ok { flex: 0 0 auto; margin: 0 16px 16px; border: none; border-radius: 14px; padding: 13px; background: #2f3a33; color: #fffaf1; font-weight: 800; font-size: 15px; cursor: pointer; }
+  .nb-body h3 { margin: 0 0 8px; font-size: 20px; font-weight: 900; letter-spacing: -.03em; line-height: 1.3; overflow-wrap: anywhere; }
+  .nt-quote { margin: 0 0 12px; padding: 9px 12px; background: #f3ece0; border-radius: 12px; font-size: 12.5px; color: #5a5246; }
+  .nt-lead, .nt-tail { margin: 0 0 8px; font-size: 13.5px; line-height: 1.55; color: #5a5246; overflow-wrap: anywhere; }
+  .nt-tail { margin: 10px 0 0; }
+  table.nt-tbl { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 13px; line-height: 1.45; margin: 6px 0 0; border-top: 2px solid #2f3a33; }
+  table.nt-tbl th { text-align: left; font-size: 11px; color: #9a8b75; font-weight: 800; padding: 6px 8px 4px 0; border-bottom: 1px dashed #e4d8c3; }
+  table.nt-tbl td { padding: 9px 8px 9px 0; border-bottom: 1px dashed #e4d8c3; vertical-align: top; overflow-wrap: anywhere; }
+  table.nt-tbl th:first-child, table.nt-tbl td:first-child { width: 32%; }
+  table.nt-tbl td:first-child { font-weight: 900; }
+  .nt-empty { text-align: center; color: #9a8b75; font-size: 14px; margin: 40px 0; }
+  .nb-tone-0 { --nb-bg: linear-gradient(150deg, #cfeed7, #8fd0a6); }
+  .nb-tone-1 { --nb-bg: linear-gradient(150deg, #d4e9fb, #8fbfe8); }
+  .nb-tone-2 { --nb-bg: linear-gradient(150deg, #ffe2c2, #f4a873); }
+  .nb-tone-3 { --nb-bg: linear-gradient(150deg, #e3dcfb, #a99ae6); }
+  .nb-tone-4 { --nb-bg: linear-gradient(150deg, #fff1b8, #f2cb5c); }
+  .nb-tone-5 { --nb-bg: linear-gradient(150deg, #d9f3ef, #7fcbbf); }
+  .nb-tone-reply { --nb-bg: linear-gradient(150deg, #ffd9d0, #ef9fa6); }
+  @media (min-width: 720px) {
+    .nb { width: min(720px, 94vw); height: min(520px, calc(100dvh - 24px - var(--top-inset))); }
+    .nb-list { flex: 0 0 290px; border-right: 1.5px dashed #eadfcb; }
+    .nb-det { position: relative; inset: auto; flex: 1; min-width: 0; transform: none; transition: none; }
+    .nb-back, .nb-det-ok { display: none; }
+    .nb.empty .nb-det { display: none; }
+    .nb.empty .nb-list { flex: 1; border-right: none; }
+    .nb.empty { width: min(420px, 94vw); }
+  }
   #char-layout { display: flex; gap: 16px; align-items: stretch; text-align: left; }
   #char-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; flex: 1 1 auto; align-content: start; }
   .char-card { padding: 10px 6px; border-radius: 14px; background: #f4faf5; box-shadow: var(--shadow); cursor: pointer; transition: transform .1s, outline-color .12s; outline: 3px solid transparent; text-align: center; }
@@ -619,7 +640,7 @@
   .photo-actions button { border: none; border-radius: 12px; padding: 11px 18px; font-weight: 700; font-size: 14px; cursor: pointer; background: #eef2ee; color: var(--ink); }
   .photo-actions .primary { background: var(--mint); }
   #hint-alt { margin-left: 8px; border: none; border-radius: 14px; padding: 13px 22px; background: #eef2ee; color: var(--ink); font-weight: 700; font-size: 15px; cursor: pointer; }
-  #seed-ok, #hint-ok, #notice-ok { border: none; border-radius: 14px; padding: 13px 30px; background: var(--mint); color: var(--ink); font-weight: 700; font-size: 15px; cursor: pointer; box-shadow: var(--shadow); }
+  #seed-ok, #hint-ok { border: none; border-radius: 14px; padding: 13px 30px; background: var(--mint); color: var(--ink); font-weight: 700; font-size: 15px; cursor: pointer; box-shadow: var(--shadow); }
   #seed-ok:active { transform: scale(0.96); }
   .tut-card { width: min(440px, 92vw); max-height: calc(100dvh - 24px); overflow-y: auto; background: #fff; border-radius: 24px; box-shadow: 0 20px 60px rgba(30,50,40,0.4); padding: 28px 26px 22px; color: var(--ink); text-align: center; animation: floatUp .5s ease both; }
   .tut-emoji { font-size: 40px; }
@@ -3228,11 +3249,13 @@
 
   <!-- 📮 소식함 — 출석 모달 [알겠어요] 다음에 안 읽은 소식이 있으면 이어서 뜨고, ☰ 메뉴 📮 에서 다시 읽는다 -->
   <div id="notice-modal">
-    <div class="tut-card">
-      <div class="tut-emoji">📮</div>
-      <h2 id="notice-title">📮 새 소식</h2>
-      <div id="notice-list"></div>
-      <button id="notice-ok">알겠어요 🌱</button>
+    <div id="notice-box" class="nb">
+      <div class="nb-list">
+        <div class="nb-head"><h2 id="notice-title">📮 새 소식</h2><span id="notice-count" class="nb-count"></span><button id="notice-x" class="nb-x" type="button" aria-label="닫기">✕</button></div>
+        <div id="notice-list" class="nb-items"></div>
+        <button id="notice-ok">알겠어요 🌱</button>
+      </div>
+      <div id="notice-detail" class="nb-det"></div>
     </div>
   </div>
 
@@ -3383,7 +3406,7 @@
     import { capPlugin } from './js/cap-bridge.js';
     import { SELL_ICO_G } from './js/data/places.js';
     import { consumeExit, markExit } from './js/exit-flag.js';   // 🚪 나가기 직후엔 토스·플레이 앱 자동 연결을 건너뛴다 · 🗑️ 계정 삭제 뒤에도
-    import { pickText, quoteLine, parseBody } from './js/notices.js';   // 📮 소식함 — 언어별 본문·답장 원문 인용·'|' 표 파서
+    import { pickText, quoteLine, parseBody, leadEmoji, noticeTone } from './js/notices.js';   // 📮 소식함 — 언어별 본문·답장 원문 인용·'|' 표 파서
     import { isTouchDevice } from './js/touch-sim.js';
     import { PLATFORM, IS_TOSS, IS_ITCH, IS_ANDROID, IS_IOS, IS_NATIVE } from './js/platform.js';   // 🔵 앱인토스 웹뷰 여부(로그인 버튼 전환) · 🎮 itch iframe 여부 · 📱 구글 플레이 앱
     import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input, markNoticesSeen, resyncPurchases } from './js/game.js';
@@ -4316,21 +4339,47 @@
       //    유저·관리자 문자열은 전부 textContent 로만 넣는다(innerHTML 금지). 영어 모드 본문은 pickText 가 *_en 우선
       showNotices(list, kind = 'inbox', seenId = 0) {
         $('notice-title').textContent = kind === 'new' ? '📮 새 소식' : '📮 소식함';
-        const wrap = $('notice-list'); wrap.innerHTML = '';
-        const rows = [...(list || [])].sort((a, b) => b.id - a.id);   // 최신이 1페이지
-        if (!rows.length) { const p = document.createElement('p'); p.className = 'nt-empty'; p.textContent = '아직 온 소식이 없어요 🌱'; wrap.appendChild(p); }
-        // 한 페이지에 공지 하나 + 1·2·3 페이저. 안 읽은 페이지(id > seenId)는 번호에 점 — 한 번 들르면 점이 꺼진다
+        const box = $('notice-box'), wrap = $('notice-list'), det = $('notice-detail');
+        wrap.innerHTML = ''; det.innerHTML = '';
+        box.classList.remove('open');
+        const rows = [...(list || [])].sort((a, b) => b.id - a.id);
         const since = Number(seenId) || 0;
         const visited = new Set();
+        const isUnread = (r) => Number(r.id) > since && !visited.has(Number(r.id));
         const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
-        const renderPage = (i) => {
-          const n = rows[i]; visited.add(Number(n.id)); wrap.innerHTML = '';
-          const { title, body } = pickText(n, LANG);
-          const page = el('div', 'nt-item nt-page');
-          const head = el('div', 'nt-head');
-          if (n.reply_to) head.appendChild(el('span', 'nt-kind', '💌 개발자의 답장'));
-          head.appendChild(el('span', 'nt-date', String(n.created_at || '').slice(0, 10)));
-          page.append(head, el('h3', null, title));
+        const day = (n) => String(n.created_at || '').slice(0, 10).replace(/-/g, '.');
+        const stampOf = (n) => leadEmoji(pickText(n, LANG).title, n.reply_to ? '💌' : '📮');
+        const tone = (n) => `nb-tone-${noticeTone(n)}`;
+        const mq = matchMedia('(min-width: 720px)');
+        const wide = () => mq.matches;
+        const count = () => { const c = rows.filter(isUnread).length; $('notice-count').textContent = c ? String(c) : ''; };
+        box.classList.toggle('empty', !rows.length);
+        if (!rows.length) wrap.appendChild(el('p', 'nt-empty', '아직 온 소식이 없어요 🌱'));
+        const items = rows.map((n, j) => {
+          const { emoji, text } = stampOf(n);
+          const it = el('button', `nb-it ${tone(n)}`); it.type = 'button';
+          const t = el('span', 'nb-t'); t.append(el('b', null, text), el('small', null, day(n)));
+          it.append(el('span', 'nb-stamp', emoji), t);
+          it.classList.toggle('unread', isUnread(n));
+          it.addEventListener('click', () => { openDetail(j); trackEvent('notice_page', { id: Number(n.id), index: j, kind }); });
+          wrap.appendChild(it);
+          return it;
+        });
+        const openDetail = (i) => {
+          const n = rows[i]; visited.add(Number(n.id));
+          items.forEach((it, k) => { it.classList.toggle('sel', k === i); it.classList.toggle('unread', isUnread(rows[k])); });
+          count();
+          const { body } = pickText(n, LANG);
+          const { emoji, text } = stampOf(n);
+          det.innerHTML = '';
+          const cover = el('div', `nb-cover ${tone(n)}`);
+          const back = el('button', 'nb-back', '‹'); back.type = 'button'; back.setAttribute('aria-label', '뒤로');
+          back.addEventListener('click', () => box.classList.remove('open'));
+          cover.append(back, el('span', 'nb-big', emoji));
+          if (n.reply_to) cover.appendChild(el('span', 'nb-pill kind', '💌 개발자의 답장'));
+          cover.appendChild(el('span', 'nb-pill', day(n)));
+          const page = el('div', 'nb-body');
+          page.appendChild(el('h3', null, text));
           const q = quoteLine(n);
           if (q) page.appendChild(el('p', 'nt-quote', `내 문의: ${q}`));
           const b = parseBody(body);
@@ -4338,28 +4387,23 @@
           if (b.rows.length || b.header) {
             const t = el('table', 'nt-tbl');
             if (b.header) { const tr = t.createTHead().insertRow(); b.header.forEach(c => tr.appendChild(el('th', null, c))); }
-            const cols = b.header ? b.header.length : Math.max(...b.rows.map(r => r.length));   // 셀 수가 줄마다 달라도 열이 비뚤어지지 않게
+            const cols = b.header ? b.header.length : Math.max(...b.rows.map(r => r.length));
             const tb = t.createTBody(); b.rows.forEach(r => { const tr = tb.insertRow(); for (let k = 0; k < cols; k++) tr.insertCell().textContent = r[k] ?? ''; });
             page.appendChild(t);
           }
           b.tail.forEach(l => page.appendChild(el('p', 'nt-tail', l)));
-          if (rows.length > 1) page.appendChild(el('div', 'nt-foot', `${i + 1} / ${rows.length}`));
-          wrap.appendChild(page);
-          if (rows.length > 1) {
-            const pager = el('div', 'nt-pager');
-            const go = (j) => { if (j < 0 || j >= rows.length || j === i) return; renderPage(j); trackEvent('notice_page', { id: Number(rows[j].id), index: j, kind }); };   // [GA4] 지난 소식을 실제로 넘겨보는지
-            const btn = (label, j, cls) => { const x = el('button', cls, label); x.type = 'button'; x.disabled = j < 0 || j >= rows.length; x.addEventListener('click', () => go(j)); return x; };
-            pager.appendChild(btn('‹', i - 1, 'arrow'));
-            rows.forEach((r, j) => {
-              const unread = Number(r.id) > since && !visited.has(Number(r.id));
-              const x = btn(String(j + 1), j, (j === i ? 'on' : '') + (unread ? ' unread' : ''));
-              x.setAttribute('aria-current', j === i ? 'page' : 'false'); pager.appendChild(x);
-            });
-            pager.appendChild(btn('›', i + 1, 'arrow'));
-            wrap.appendChild(pager);
-          }
+          const ok = el('button', 'nb-det-ok', '알겠어요 🌱'); ok.type = 'button';
+          ok.addEventListener('click', () => $('notice-ok').click());
+          det.append(cover, page, ok);
+          box.classList.add('open');
+          items[i].scrollIntoView({ block: 'nearest' });
         };
-        if (rows.length) renderPage(0);
+        mq.onchange = () => { if (mq.matches && rows.length && !det.childElementCount) openDetail(Math.max(0, rows.findIndex(isUnread))); };
+        if (rows.length) {
+          const first = Math.max(0, rows.findIndex(isUnread));
+          if (wide() || kind === 'new') openDetail(first);
+          else count();
+        } else count();
         noticeShown = rows;
         Input.setAnalog(0, 0);   // 모달 뜨는 동안 이동 정지(안내 모달과 동일)
         $('notice-modal').classList.add('show');
@@ -5533,6 +5577,7 @@
       $('notice-modal').classList.remove('show');
       markNoticesSeen(noticeShown); noticeShown = [];
     });
+    $('notice-x').addEventListener('click', () => $('notice-ok').click());
     // 🤝 친구 초대 시트 — 코드는 처음 열 때 발급. 앱은 네이티브 공유 시트, 웹은 navigator.share → 복사
     $('invite-btn').addEventListener('click', () => {
       $('topleft').classList.remove('open');

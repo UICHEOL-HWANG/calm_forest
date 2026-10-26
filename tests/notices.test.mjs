@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { unreadNotices, pickText, maxId, quoteLine, parseBody } from '../js/notices.js';
+import { unreadNotices, pickText, maxId, quoteLine, parseBody, leadEmoji, noticeTone } from '../js/notices.js';
 
 const N = (id, extra = {}) => ({ id, title: `제목${id}`, body: `본문${id}`, title_en: null, body_en: null,
                                  target_user_id: null, reply_to: null, created_at: '2026-09-11T00:00:00Z', feedback: null, ...extra });
@@ -76,4 +76,25 @@ test('parseBody: 셀 수는 줄마다 달라도 그대로(렌더가 맞춤)', ()
   const r = parseBody('h1 | h2\nx | y | z\nq');
   assert.deepEqual(r.rows, [['x', 'y', 'z']]);
   assert.deepEqual(r.tail, ['q']);
+});
+
+test('leadEmoji: 제목 맨 앞 이모지를 떼어 우표로 쓴다', () => {
+  assert.deepEqual(leadEmoji('🔭 천문대가 생겼어요'), { emoji: '🔭', text: '천문대가 생겼어요' });
+  assert.deepEqual(leadEmoji('🏛️ 박물관이 열렸어요'), { emoji: '🏛️', text: '박물관이 열렸어요' });
+  assert.deepEqual(leadEmoji('🍲 냄비 · 🧰 보물상자'), { emoji: '🍲', text: '냄비 · 🧰 보물상자' });
+});
+test('leadEmoji: 이모지가 없으면 기본 우표, 제목은 그대로', () => {
+  assert.deepEqual(leadEmoji('문의 답장 테스트', '💌'), { emoji: '💌', text: '문의 답장 테스트' });
+  assert.deepEqual(leadEmoji('Inbox', undefined), { emoji: '📮', text: 'Inbox' });
+  assert.deepEqual(leadEmoji(null), { emoji: '📮', text: '' });
+});
+test('leadEmoji: 이모지만 있는 제목은 글자를 비우지 않는다', () => {
+  assert.deepEqual(leadEmoji('🎃'), { emoji: '🎃', text: '🎃' });
+});
+
+test('noticeTone: 답장은 reply, 공지는 id 로 0~5 고정', () => {
+  assert.equal(noticeTone(N(3, { reply_to: 9 })), 'reply');
+  assert.equal(noticeTone(N(15)), 3);
+  assert.equal(noticeTone(N(18)), 0);
+  assert.equal(noticeTone(N(15)), noticeTone(N(15)));
 });

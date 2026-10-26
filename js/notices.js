@@ -61,3 +61,19 @@ export function parseBody(text) {
   else out.rows = table;
   return out;
 }
+
+const LEAD_EMOJI = /^(\p{Extended_Pictographic}(?:\u{FE0F}|\u{200D}\p{Extended_Pictographic}\u{FE0F}?|\p{Emoji_Modifier})*)\s*/u;
+const TONES = 6;
+
+export function leadEmoji(title, fallback = '📮') {
+  const s = typeof title === 'string' ? title.trim() : '';
+  const m = s.match(LEAD_EMOJI);
+  if (!m) return { emoji: fallback || '📮', text: s };
+  const rest = s.slice(m[0].length);
+  return { emoji: m[1], text: rest || s };
+}
+
+export function noticeTone(n) {
+  if (n?.reply_to) return 'reply';
+  return (Number(n?.id) || 0) % TONES;
+}
