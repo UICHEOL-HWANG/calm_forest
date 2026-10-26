@@ -3379,6 +3379,7 @@
     import { bootReferral, inviteBanner, referralOnPlay, openInviteSheet, referralEnabled } from './js/referral/index.js';   // 🤝 친구 초대
     import { bootAppBanner, mountAppBanner } from './js/app-banner-ui.js';
     import { mountLoginStore } from './js/login-store-ui.js';
+    import { createLoginDwell } from './js/login-dwell.js';
     import { initPush, offerPush } from './js/push-ui.js';   // 🔔 안드로이드 푸시 알림(안내 카드·설정 토글)   // 📲 웹 → 앱 유도 배너(웹 전용)
     import { playChestReveal, stopChestReveal } from './js/boat-chest-reveal.js';   // 🧰 보물상자 개봉 화면(R3)
     import { questPanelView } from './js/quest-panel-view.js';
@@ -5189,6 +5190,11 @@
     // 로그인 화면 표시/숨김
     // why: 'no_session' | 'toss_fail'(토스 자동 연결 실패) | 'pgs_fail'(플레이 게임즈 자동 연결 실패) | 'pgs_unconfigured'(설정 전) | 'gc_fail'·'gc_unconfigured'(🍎 게임센터) | 'offline' — [GA4] 입구 이탈 분해용
     let loginStore = null;
+    const loginDwell = createLoginDwell({
+      track: trackEvent,
+      isOpen: () => $('login-screen').classList.contains('show'),
+      isHidden: () => document.visibilityState === 'hidden',
+    });
     function showLoginScreen(offline, why = offline ? 'offline' : 'no_session') {
       $('login-screen').classList.add('show');
       $('loading').style.display = 'none';
@@ -5200,6 +5206,7 @@
           : '로그인하면 어느 기기에서든 저장이 이어집니다.';
       trackEvent('login_screen', { reason: why, inapp: inAppLogin.app || undefined });   // [GA4] 토스 유저 중 몇 %가 이 화면을 보는지
       loginStore?.shown();
+      loginDwell.start();
       try { if (sessionStorage.getItem('cf_login_email')) { sessionStorage.removeItem('cf_login_email'); $('email-btn').click(); } } catch { }
       const inv = inviteBanner();                    // 🤝 초대 링크로 왔으면 — 로그인하면 하트핀
       if (inv) { $('login-invite').textContent = inv; $('login-invite').classList.add('show'); }
@@ -5209,6 +5216,7 @@
     async function enterPlay(via) {                  // 로그인 완료 → 실제 플레이 (via: login 이벤트 수단을 직접 줄 때만 — 🧪 E2 'guest_deferred')
       if (started) return; started = true;
       $('login-screen').classList.remove('show');
+      loginDwell.stop();
       if (TOUCH) document.body.classList.add('is-touch');
       document.body.classList.add('playing');        // HUD 표시(로그인 화면에선 숨김)
       if (!shell) shell = initHudShell({ Input, t, trackEvent, menu: menuSheet });
