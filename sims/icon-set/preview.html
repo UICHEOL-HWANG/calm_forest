@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>아이콘 묶음 미리보기</title>
+<style>
+  body { margin:0; background:#f3f1ea; color:#4a5a4f; font-family:'Segoe UI',system-ui,sans-serif; padding:20px; }
+  h1 { font-size:18px; margin:0 0 12px; }
+  h2 { font-size:13px; margin:16px 0 6px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); gap:8px; }
+  .cell { background:#fffdf8; border-radius:14px; padding:10px 4px 8px; display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .cell .i { font-size:48px; }
+  .cell .sm { display:flex; gap:6px; align-items:center; }
+  .cell .sm .i { font-size:16px; }
+  .cell .em { font-size:16px; }
+  .cell small { font-size:11px; opacity:.75; text-align:center; }
+  .ref .i { font-size:40px; }
+  .i { display:inline-flex; width:1.25em; height:1.25em; }
+  .i svg { width:100%; height:100%; display:block; }
+</style>
+</head>
+<body>
+<h1 id="title"></h1>
+<h2>기준(확정 세트 일부)</h2>
+<div class="grid ref" id="ref"></div>
+<div id="out"></div>
+<p class="credit" style="margin:24px 0 0;font-size:11px;opacity:.6">이 페이지에는 토스팀에서 제공한 토스페이스가 적용되어 있습니다. (손 모양 아이콘 10개 · <a href="../../js/icons/tossface/LICENSE.txt">라이선스</a>)</p>
+<script src="icons-toss.js"></script>
+<script>
+const BATCHES = ['food', 'nature', 'animals', 'people', 'places', 'objects', 'symbols'];
+const q = new URLSearchParams(location.search).get('b');
+const want = q ? [q] : BATCHES;
+let pending = want.length;
+const done = () => { if (--pending === 0) draw(); };
+want.forEach(b => { const s = document.createElement('script'); s.src = `toss-${b}.js`; s.onload = done; s.onerror = done; document.body.appendChild(s); });
+function draw() {
+  const pal = new URLSearchParams(location.search).get('p') || 'toss';
+  document.getElementById('title').textContent = `묶음: ${want.join(', ')} · 팔레트 ${pal}`;
+  document.getElementById('ref').innerHTML = ['coin','gem','carrot','camera','axe','fish','house','heart','moon','peach','trophy','can'].map(id => {
+    const ic = TOSS_ICONS.find(i => i.id === id);
+    return `<div class="cell">${renderToss(ic, pal)}<small>${ic.n}</small></div>`;
+  }).join('');
+  const base = q ? '' : `<h2>확정 세트 · ${TOSS_ICONS.length}개</h2><div class="grid">` + TOSS_ICONS.map(ic => `<div class="cell">${renderToss(ic, pal)}<div class="sm">${renderToss(ic, pal)}<span class="em">${ic.e}</span></div><small>${ic.n}</small></div>`).join('') + '</div>';
+  document.getElementById('out').innerHTML = base + want.map(b => {
+    const list = window['TOSS_' + b.toUpperCase()] || [];
+    return `<h2>${b} · ${list.length}개</h2><div class="grid">` + list.map(ic => `<div class="cell">${renderToss(ic, pal)}<div class="sm">${renderToss(ic, pal)}<span class="em">${ic.e}</span></div><small>${ic.n}</small></div>`).join('') + '</div>';
+  }).join('');
+}
+</script>
+</body>
+</html>
