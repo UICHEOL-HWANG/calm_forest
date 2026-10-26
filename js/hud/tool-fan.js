@@ -1,4 +1,5 @@
 import { FAN, fanLayout, clampFan, pickSlot, stepTool, swipeDir } from './fan-layout.js';
+import { iconHtml } from '../icons/index.js';
 
 const SEEN_KEY = 'cf_toolfan_seen';
 const seen = () => { try { return !!localStorage.getItem(SEEN_KEY); } catch (e) { return false; } };
@@ -20,7 +21,7 @@ export function createToolFan({ Input, t, act, trackEvent }) {
   function render() {
     const tool = tools[cur];
     const bare = page === 'none';
-    btn.querySelector('.tb-ico').innerHTML = bare ? '✋' : (tool?.ico || '');
+    btn.querySelector('.tb-ico').innerHTML = bare ? iconHtml('✋') : (tool?.ico || '');
     btn.dataset.page = page;
     name.textContent = bare ? t('맨손') : t(tool?.name || '');
     btn.querySelector('.tb-tip').textContent = t('탭해서 도구 바꾸기');
@@ -74,7 +75,7 @@ export function createToolFan({ Input, t, act, trackEvent }) {
       const tool = it.kind === 'tool' ? tools[it.i] : null;
       const on = it.kind === 'bare' ? page === 'none' : page !== 'none' && it.i === cur;
       const cls = it.kind === 'bare' ? 'bare' : tool.grp === 'farm' ? 'farm' : 'out';
-      return `<div class="tf-slot ${cls}${on ? ' on' : ''}" data-k="${k}" style="left:${pts[k].x}px;top:${pts[k].y}px"><span class="tf-ico">${tool ? tool.ico : '✋'}</span><span class="tf-name"></span></div>`;
+      return `<div class="tf-slot ${cls}${on ? ' on' : ''}" data-k="${k}" style="left:${pts[k].x}px;top:${pts[k].y}px"><span class="tf-ico">${tool ? tool.ico : iconHtml('✋')}</span><span class="tf-name"></span></div>`;
     }).join('');
     fan.querySelectorAll('.tf-slot').forEach(el => {
       const it = items[+el.dataset.k];

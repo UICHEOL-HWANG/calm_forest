@@ -1,3 +1,5 @@
+import { iconHtml, iconText } from '../icons/index.js';
+
 const CSS = `
 .hud-dot { position: absolute; top: -3px; right: -3px; width: 13px; height: 13px; border-radius: 50%; background: #e0533d; border: 2px solid var(--cream); display: none; }
 .has-dot > .hud-dot { display: block; }
@@ -56,7 +58,7 @@ export function createMenuSheet({ Input, t, trackEvent, dotTarget = null, onOpen
     const head = document.createElement('div'); head.className = 'ms-head';
     const ttl = document.createElement('span'); ttl.textContent = t('메뉴');
     const env = document.createElement('span'); env.className = 'ms-env';
-    env.textContent = `${$('season-emoji')?.textContent || ''} ${$('time-emoji')?.textContent || ''}`.trim();
+    env.innerHTML = [iconText($('season-emoji')), iconText($('time-emoji'))].filter(Boolean).map(iconHtml).join(' ');
     const x = document.createElement('button'); x.className = 'ms-x'; x.type = 'button'; x.textContent = '✕';
     x.addEventListener('click', close);
     head.append(ttl, env, x);
@@ -64,12 +66,12 @@ export function createMenuSheet({ Input, t, trackEvent, dotTarget = null, onOpen
     CATS.forEach(([ico, cat, list]) => {
       const cells = list.map(([id, cico]) => [$(id), cico]).filter(([el]) => el && el.style.display !== 'none');
       if (!cells.length) return;
-      const h = document.createElement('div'); h.className = 'ms-cat'; h.textContent = `${ico} ${t(cat)}`;
+      const h = document.createElement('div'); h.className = 'ms-cat'; h.innerHTML = iconHtml(ico); h.append(` ${t(cat)}`);
       const g = document.createElement('div'); g.className = 'ms-grid';
       cells.forEach(([el, cico]) => {
         const c = document.createElement('button'); c.type = 'button'; c.className = 'ms-cell';
         c.dataset.for = el.id;
-        const i = document.createElement('span'); i.className = 'ms-ico'; i.textContent = cico;
+        const i = document.createElement('span'); i.className = 'ms-ico'; i.innerHTML = iconHtml(cico);
         c.append(i, document.createTextNode(labelOf(el)));
         if (el.id === 'inbox-btn') { const d = document.createElement('span'); d.className = 'hud-dot'; c.appendChild(d); c.classList.toggle('has-dot', unread > 0); }
         c.addEventListener('click', () => {

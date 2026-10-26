@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>삽·도끼 시안</title>
+<style>
+  :root { --mint:#bfe8c9; --ink:#4a5a4f; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#f3f1ea; color:var(--ink); font-family:'Segoe UI',system-ui,sans-serif; }
+  main { max-width:1180px; margin:0 auto; padding:26px 24px 50px; }
+  h1 { margin:0 0 6px; font-size:22px; }
+  p.lead { margin:0 0 18px; font-size:14px; opacity:.8; line-height:1.6; }
+  h2 { font-size:16px; margin:24px 0 10px; }
+  .row { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+  .card { background:#fffdf8; border-radius:20px; padding:16px; box-shadow:0 8px 24px rgba(120,100,70,.10); display:flex; flex-direction:column; align-items:center; gap:10px; }
+  .card.old { opacity:.75; }
+  .card h3 { margin:0; font-size:14px; }
+  .card small { font-size:12px; opacity:.7; text-align:center; line-height:1.45; min-height:34px; }
+  .big .i { font-size:96px; }
+  .sizes { display:flex; gap:10px; align-items:flex-end; }
+  .sizes .i:nth-child(1) { font-size:14px; } .sizes .i:nth-child(2) { font-size:18px; } .sizes .i:nth-child(3) { font-size:26px; }
+  .slot { width:40px; height:40px; border-radius:11px; background:var(--mint); display:flex; align-items:center; justify-content:center; }
+  .slot .i { font-size:22px; }
+  .i { display:inline-flex; width:1.25em; height:1.25em; }
+  .i svg { width:100%; height:100%; display:block; }
+  @media (max-width:760px) { .row { grid-template-columns:repeat(2,1fr); } .big .i { font-size:72px; } main { padding:20px 16px 40px; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>삽 · 도끼 · 물고기 다시 그리기</h1>
+  <p class="lead">실제 연장 구조를 따라 똑바로 세워 그린 뒤 비스듬히 눕혔어요. 삽은 손잡이·나무 자루·쇠 목·발판 달린 날, 도끼는 자루·쇠 머리(날·뒷머리)·날 끝 반짝임까지 넣었어요. 맨 왼쪽은 지금 버전이에요.</p>
+  <h2>삽</h2>
+  <div class="row" id="shovels"></div>
+  <h2>도끼</h2>
+  <div class="row" id="axes"></div>
+  <h2>물고기</h2>
+  <div class="row" id="fishes"></div>
+</main>
+<script src="icon-set/icons-toss.js"></script>
+<script>
+const rot = (deg, list, k = .8, dy = 0) => list.map(s => ({ ...s, r: `translate(12 ${12 + dy}) scale(${k}) rotate(${deg}) translate(-12 -12)${s.r ? ' ' + s.r : ''}` }));
+
+const SHOVELS = [
+  { n:'세트 반영됨 (A)', old:true, d:'', s: TOSS_ICONS.find(i => i.id === 'shovel').s },
+  { n:'A · 둥근 삽', d:'D자 손잡이 + 끝이 둥글게 뾰족한 날. 밭 파는 삽의 정석이에요.', s: rot(45, [
+    f('brownD', tr(8.2,-4.4,7.6,4.6,2)+tr(9.7,-3,4.6,1.8,.9), { e:1 }), f('brownD', 'M10.2 .1h3.6l-.7 1.8h-2.2z'),
+    f('brown', tr(10.9,1.4,2.2,13.6,1.1)), f('brownD', tr(12,1.4,1.1,13.6,.55)),
+    f('ink2', 'M10.4 13.6h3.2l.6 3.6h-4.4z'),
+    f('gray', 'M6.4 16.6h11.2v4.6c0 3-2.4 5.4-5.6 7.4-3.2-2-5.6-4.4-5.6-7.4z'),
+    f('grayD', 'M12 16.6h5.6v4.6c0 3-2.4 5.4-5.6 7.4z'),
+    f('ink2', tr(6,16,12,1.6,.8)),
+    f('grayL', 'M8 18.6h1.4v2.6c0 1.6.8 3 2 4.2l-.6.9c-1.8-1.4-2.8-3.2-2.8-5.1z') ]) },
+  { n:'B · 각삽', d:'T자 손잡이 + 네모난 날. 흙을 퍼 담는 넓적한 삽이에요.', s: rot(45, [
+    f('brownD', tr(8,-3.4,8,2.4,1.2)),
+    f('brown', tr(10.9,-1.4,2.2,16.4,1.1)), f('brownD', tr(12,-1.4,1.1,16.4,.55)),
+    f('ink2', 'M10.4 13.6h3.2l.6 3.2h-4.4z'),
+    f('gray', 'M6.2 16.4h11.6v9.6a1.6 1.6 0 0 1-1.6 1.6H7.8A1.6 1.6 0 0 1 6.2 26z'),
+    f('grayD', 'M12 16.4h5.8v9.6a1.6 1.6 0 0 1-1.6 1.6H12z'),
+    f('ink2', tr(5.8,15.8,12.4,1.7,.85)),
+    f('grayL', tr(8,18.6,1.4,7,.7)) ]) },
+  { n:'C · 모종삽', d:'짧고 손에 쥐는 꽃삽. 작은 화면에서 가장 크게 보여요.', s: rot(45, [
+    f('red', tr(9.6,0,4.8,9,2.4)), f('redD', 'M12 0a2.4 2.4 0 0 1 2.4 2.4v4.2A2.4 2.4 0 0 1 12 9z'),
+    f('white', tc(12,2.4,.8)),
+    f('ink2', 'M10.8 8.6h2.4l.4 3.6h-3.2z'),
+    f('gray', 'M6 12.4c2-.8 4-1.2 6-1.2s4 .4 6 1.2v5.4c0 4-2.6 7.4-6 9.4-3.4-2-6-5.4-6-9.4z'),
+    f('grayD', 'M12 11.2c2 0 4 .4 6 1.2v5.4c0 4-2.6 7.4-6 9.4z'),
+    f('grayL', 'M8 14.2c.5-.2 1-.3 1.5-.4v4.4c0 2 .7 3.8 1.9 5.2l-.7.8c-1.7-1.6-2.7-3.6-2.7-6z') ]) },
+];
+
+const AXES = [
+  { n:'세트 반영됨 (A)', old:true, d:'', s: TOSS_ICONS.find(i => i.id === 'axe').s },
+  { n:'A · 장작 도끼', d:'긴 나무 자루 + 외날 쇠 머리 + 뒷머리. 가장 표준적인 도끼예요.', s: rot(38, [
+    f('brown', 'M11 2.4h2.4c.2 7.6-.6 15.4.6 23.8a1.4 1.4 0 0 1-1.4 1.6h-.9a1.4 1.4 0 0 1-1.4-1.4c-.6-9.2.9-16.6.7-24z'),
+    f('brownD', 'M12.2 2.4h1.2c.2 7.6-.6 15.4.6 23.8a1.4 1.4 0 0 1-1.4 1.6h-.4c-1-8.6.2-16.8 0-25.4z'),
+    f('brownD', tr(10.4,22.6,3.6,1.2,.6)),
+    f('gray', 'M10.6 1.2L4.8-.6C2.2 2 1.4 6.4 2.6 10l8-2.2z'),
+    f('grayL', 'M4.8-.6C2.2 2 1.4 6.4 2.6 10l1.8-.5c-.9-3.2-.3-6.6 1.8-8.8z'),
+    f('ink2', tr(10.2,.6,4,7.6,1)),
+    f('ink', tr(13.4,1.6,2.6,5.6,.8)) ]) },
+  { n:'B · 손도끼', d:'짧은 자루 + 큼직한 날. 아이콘 크기에서 날이 가장 잘 보여요.', s: rot(35, [
+    f('brown', 'M10.8 6h2.6c.1 5.4-.3 11 .5 17.4a1.4 1.4 0 0 1-1.4 1.6h-.9a1.4 1.4 0 0 1-1.4-1.4c-.4-6.6.7-12 .6-17.6z'),
+    f('brownD', 'M12.1 6h1.3c.1 5.4-.3 11 .5 17.4a1.4 1.4 0 0 1-1.4 1.6h-.4c-.8-6.4.1-12.6 0-19z'),
+    f('gray', 'M10.6 2.6L3.4.4C.2 3.8-.6 9.4 1 13.8l9.6-3.2z'),
+    f('grayL', 'M3.4.4C.2 3.8-.6 9.4 1 13.8l2-.6c-1.2-3.8-.6-8.2 1.9-11.2z'),
+    f('ink2', tr(10.2,1.6,4.2,9.8,1.2)),
+    f('ink', tr(13.6,3,2.6,7,.9)) ]) },
+  { n:'C · 빨간 벌목 도끼', d:'쇠 머리를 빨갛게 칠하고 날만 은색. 나무꾼 느낌이 확 살아요.', s: rot(38, [
+    f('brown', 'M11 2.4h2.4c.2 7.6-.6 15.4.6 23.8a1.4 1.4 0 0 1-1.4 1.6h-.9a1.4 1.4 0 0 1-1.4-1.4c-.6-9.2.9-16.6.7-24z'),
+    f('brownD', 'M12.2 2.4h1.2c.2 7.6-.6 15.4.6 23.8a1.4 1.4 0 0 1-1.4 1.6h-.4c-1-8.6.2-16.8 0-25.4z'),
+    f('red', 'M10.6 1.2L4.8-.6C2.2 2 1.4 6.4 2.6 10l8-2.2z'),
+    f('grayL', 'M4.8-.6C2.2 2 1.4 6.4 2.6 10l2.4-.7c-1-3.2-.4-6.8 2-9z'),
+    f('redD', tr(10.2,.6,4,7.6,1)),
+    f('redD', tr(13.4,1.6,2.6,5.6,.8)) ]) },
+];
+
+
+const FISHES = [
+  { n:'세트 반영됨 (A)', old:true, d:'', s: TOSS_ICONS.find(i => i.id === 'fish').s },
+  { n:'A · 파란 붕어', d:'등지느러미·가슴지느러미·아가미·갈라진 꼬리. 낚시로 잡는 민물고기 느낌이에요.', s: [
+    f('blueD', 'M17.4 12.4l4.7-4.7c.5-.5 1.3-.1 1.2.6l-.8 4.1.8 4.1c.1.7-.7 1.1-1.2.6z'),
+    f('blueD', 'M6.6 7.4c1.6-2.6 4.6-3.6 7.4-2.8l-1 3c-2-.5-4.2-.5-6.4-.2z'),
+    f('blue', 'M1.4 12.4C3.6 7.2 9.6 5.2 14.4 7.4c1.9.9 3.3 2.6 4.1 5-.8 2.4-2.2 4.1-4.1 5-4.8 2.2-10.8.2-13-5z'),
+    f('blueL', 'M1.4 12.4h17.1c-.8 2.4-2.2 4.1-4.1 5-4.8 2.2-10.8.2-13-5z'),
+    sk('blueD', 'M6.8 9.2c1.1 2 1.1 4.4 0 6.4', 1.1),
+    f('blueD', 'M9.2 13.4c1.4.2 2.7 1.1 3.3 2.4-1.6.5-3.1 0-4-1.2z'),
+    f('white', tc(4.6,10.9,1.5)), f('inkD', tc(4.3,10.9,.85)) ] },
+  { n:'B · 주황 열대어', d:'통통한 몸에 흰 줄무늬. 가장 귀엽고 바다 배경에서 눈에 확 띄어요.', s: [
+    f('orangeD', 'M16.6 12.2l4.8-4.4c.5-.4 1.2-.1 1.2.6v7.6c0 .7-.7 1-1.2.6z'),
+    f('orangeD', 'M7.6 6.2c1.8-2.2 4.8-3 7.4-2l-1 3.2z'),
+    f('orange', 'M2 12.2c1.4-4.8 6.4-7.6 11.2-6.2 2.2.6 3.8 2.6 4.6 6.2-.8 3.6-2.4 5.6-4.6 6.2C8.4 19.8 3.4 17 2 12.2z'),
+    f('white', 'M7.6 6.6c1.4 3.6 1.4 7.6 0 11.2l2.4.6c1.2-3.8 1.2-8.4 0-12.4zM13.4 6.2c1 3.9 1 8 0 12l2.2-.6c.8-3.6.8-7.2 0-10.8z'),
+    f('orangeD', 'M10.4 18.2l1.6 2.4 1.4-2.4z'),
+    f('white', tc(4.8,11.2,1.5)), f('inkD', tc(4.5,11.2,.85)) ] },
+  { n:'C · 고등어', d:'날렵한 몸, 짙은 등에 물결무늬, 은빛 배. 바다 낚시 어종처럼 사실적이에요.', s: [
+    f('ink', 'M17.8 12.4l4.4-3.8c.5-.4 1.2-.1 1.2.6v6.4c0 .7-.7 1-1.2.6z'),
+    f('ink', 'M9.4 8.4l2-2.4 1.6 2.6zM10.6 16.4l1.6 2.2 1.2-2.4z'),
+    f('blue', 'M1 12.4C3.8 8.8 9.6 7.4 14.8 8.6c1.8.4 3.2 1.6 4 3.8-.8 2.2-2.2 3.4-4 3.8C9.6 17.4 3.8 16 1 12.4z'),
+    f('blueD', 'M1 12.4C3.8 8.8 9.6 7.4 14.8 8.6c1.8.4 3.2 1.6 4 3.8z'),
+    f('grayL', 'M1 12.4h17.8c-.8 2.2-2.2 3.4-4 3.8C9.6 17.4 3.8 16 1 12.4z'),
+    sk('inkD', 'M7.4 10.2c.8-.8 1.6-.8 2.4 0s1.6.8 2.4 0 1.6-.8 2.4 0', .9),
+    f('white', tc(4.2,11.6,1.3)), f('inkD', tc(4,11.6,.75)) ] },
+];
+
+const ic = s => renderToss({ s }, 'toss').replace('viewBox="0 0 24 24"', 'viewBox="0 -0.6 24 24.6"');
+function cards(list) {
+  return list.map(v => `<div class="card ${v.old ? 'old' : ''}"><h3>${v.n}</h3><div class="big">${ic(v.s)}</div>
+    <div class="sizes">${ic(v.s)}${ic(v.s)}${ic(v.s)}<div class="slot">${ic(v.s)}</div></div><small>${v.d || '비교용'}</small></div>`).join('');
+}
+document.getElementById('shovels').innerHTML = cards(SHOVELS);
+document.getElementById('axes').innerHTML = cards(AXES);
+document.getElementById('fishes').innerHTML = cards(FISHES);
+</script>
+</body>
+</html>
