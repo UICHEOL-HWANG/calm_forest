@@ -774,6 +774,11 @@
   body.inapp #login-invite { order: 0; }
   body.inapp #email-btn { order: 1; margin-top: 0; border: none; background: #fff; color: #3a4a40; box-shadow: 0 8px 24px rgba(0,0,0,.2); }
   body.inapp #guest-btn { order: 2; }
+  body.inapp.e5-guest-first #guest-btn { order: 1; margin: 0 auto; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; border: none; background: #fff; border-radius: 16px; padding: 13px 26px; font-size: 15px; font-weight: 700; color: #3a4a40; box-shadow: 0 8px 24px rgba(0,0,0,.2); font-family: inherit; transition: transform .12s; }
+  body.inapp.e5-guest-first #guest-btn:active { transform: scale(0.96); }
+  body.inapp.e5-guest-first #e5-sub { order: 1; display: block; margin: 8px 0 0; font-size: 12px; color: rgba(255,255,255,.9); text-shadow: 0 1px 6px rgba(0,0,0,.3); }
+  body.inapp.e5-guest-first #email-btn { order: 2; margin-top: 12px; border: 1px solid rgba(255,255,255,.7); background: rgba(255,255,255,.12); color: #fff; box-shadow: none; }
+  #e5-sub[hidden] { display: none !important; }
   body.platform-toss #email-btn, body.platform-android #email-btn, body.platform-ios #email-btn { display: none; }   /* 토스·스토어 앱은 전용 로그인 */
   #login-main[hidden], .login-step[hidden] { display: none !important; }
   .login-step .step-title { font-size: 19px; font-weight: 800; margin: 4px 0 6px; text-shadow: 0 2px 10px rgba(0,0,0,.25); }
@@ -3054,6 +3059,7 @@
         <button id="apple-btn"><svg viewBox="0 0 384 512" aria-hidden="true"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg> Apple로 계속하기</button>
         <button id="email-btn">✉️ 이메일로 시작하기</button>
         <button id="guest-btn">게스트로 둘러보기</button>
+        <p id="e5-sub" hidden></p>
         <div id="login-store" hidden>
           <p>📱 앱으로도 만나요</p>
           <div class="ls-row"></div>
@@ -3368,6 +3374,8 @@
     import { renderToast, renderTiles, buffTiles } from './js/ui-cards.js';
     import { mountEmailLogin } from './js/auth/email-login.js';   // ✉️ 이메일 코드 로그인(웹·itch)
     import { mountInAppLogin, INAPP_COPY, trackHandoffArrival } from './js/auth/in-app-login.js';
+    import { e5Decision } from './js/exp-e5-boot.js';
+    import { guestFirst, E5_COPY } from './js/exp-e5.js';
     import { savePhotoNative, sharePhotoNative, shareUrlNative } from './js/photo-native.js';   // 📱 앱: WebView 는 download·share 를 못 한다
     import { capPlugin } from './js/cap-bridge.js';
     import { SELL_ICO_G } from './js/data/places.js';
@@ -5203,6 +5211,7 @@
         : (why === 'toss_fail' || why === 'pgs_fail')
           ? '연결이 잠깐 불안정했어요. 바로 플레이하기를 누르면 이어서 할 수 있어요.'
           : IS_IOS ? 'Apple로 로그인하면 마을이 안전하게 저장돼요.'   // 🍎 Apple 계정은 iOS 앱 전용 — '어느 기기에서든'은 거짓 약속
+          : e5GuestFirst ? E5_COPY.note
           : '로그인하면 어느 기기에서든 저장이 이어집니다.';
       trackEvent('login_screen', { reason: why, inapp: inAppLogin.app || undefined });   // [GA4] 토스 유저 중 몇 %가 이 화면을 보는지
       loginStore?.shown();
@@ -5297,6 +5306,14 @@
     if (IS_ANDROID) document.body.classList.add('platform-android');
     if (IS_IOS) document.body.classList.add('platform-ios');
     const inAppLogin = mountInAppLogin({ $, track: trackEvent, platform: PLATFORM });
+    const e5 = e5Decision();
+    const e5GuestFirst = guestFirst(e5) && (inAppLogin.inApp || e5.reason === 'forced');
+    if (e5GuestFirst) {
+      document.body.classList.add('e5-guest-first');
+      $('guest-btn').textContent = E5_COPY.guest;
+      $('e5-sub').textContent = E5_COPY.sub;
+      $('e5-sub').hidden = false;
+    }
     const googleOrBlocked = (from) => {
       if (!inAppLogin.inApp) return signInWithGoogle();
       trackEvent('inapp_google_blocked', { from, app: inAppLogin.app });
