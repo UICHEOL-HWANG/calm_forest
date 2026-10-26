@@ -22,7 +22,7 @@ let rows = [], today = '', sel = (location.hash || '').slice(1) || null, chart =
 const pp = (v, unit = '%p') => (v == null || !Number.isFinite(v) ? '—' : `${v > 0 ? '+' : ''}${v.toFixed(1)}${unit}`);
 const unitOf = (a, e) => (a.type === 'mean' ? (e.result?.unit_label || '') : '%p');
 const chip = ([c, t]) => `<span class="chip ${c}">${esc(t)}</span>`;
-const srmTxt = (s) => (s == null ? '<span class="def">해당 없음</span>'
+const srmTxt = (s, e) => (s == null ? `<span class="def">${e && (e.kind === 'ab' || e.kind === 'multi') ? '기대 빈도 5 미만 · 검사 안 함' : '해당 없음'}</span>`
   : s < 0.01 ? `<span class="bad">어긋남 p=${s.toFixed(3)}</span>` : `<span class="ok">정상 p=${s.toFixed(2)}</span>`);
 // SVG 는 viewBox 째로 줄어든다 — 좁은 화면에선 처음부터 좁게 그려야 글자가 읽힌다
 const narrow = () => matchMedia('(max-width: 860px)').matches;
@@ -139,7 +139,8 @@ function emptyResult(e) {
       인사이트의 조회(n)·링크 클릭(x)을 군별로 0 자리에 넣어 실행하면 계산됩니다(다시 실행하면 갱신) —
       <code>insert into cf_experiment_results (exp_id, source, result) values ('${esc(e.id)}', 'manual', '{"type":"prop","compare":["A","B"],"arms":[{"key":"A","label":"A","n":0,"x":0},{"key":"B","label":"B","n":0,"x":0}]}') on conflict (exp_id) do update set result = excluded.result, source = excluded.source, computed_at = now();</code></div>`;
   }
-  return `<div class="empty-st"><img src="${CHAR('rabbit')}" alt=""><b>${e.status === 'plan' ? '아직 배정 전이에요' : '아직 결과가 없어요'}</b>${esc(e.period)}</div>`;
+  const notes = (e.result?.notes || []).map((n) => `<br><span class="def">· ${esc(n)}</span>`).join('');
+  return `<div class="empty-st"><img src="${CHAR('rabbit')}" alt=""><b>${e.status === 'plan' ? '아직 배정 전이에요' : '아직 결과가 없어요'}</b>${esc(e.period)}${notes}</div>`;
 }
 function renderDetail() {
   const r = rows.find((x) => x.e.id === sel);
@@ -158,15 +159,15 @@ function renderDetail() {
       <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">${chip(a.verdict)}${e.prereg ? `<span class="lock">🔒 사전 기준 · ${esc(e.prereg)}</span>` : ''}</div>
       ${warn}
     </header>
-    ${!res?.arms?.length ? emptyResult(e) : `
+    ${!res?.arms?.some((x) => x.n > 0) ? emptyResult(e) : `
     <div class="checks">
-      <div><span class="eyebrow">배정 비율(SRM)</span><span class="num">${a.srm == null ? '—' : a.srm < 0.01 ? '어긋남' : '정상'}</span>${srmTxt(a.srm)}</div>
+      <div><span class="eyebrow">배정 비율(SRM)${res.ratio ? ` · 설계 ${res.ratio.map((x) => Math.round(x * 100)).join(':')}` : ''}</span><span class="num">${a.srm == null ? '—' : a.srm < 0.01 ? '어긋남' : '정상'}</span>${srmTxt(a.srm, e)}</div>
       <div><span class="eyebrow">표본</span><span class="num">${nf(a.n)}${e.need ? `<span class="def" style="display:inline"> / ${nf(e.need)}</span>` : ''}</span>
         ${prog != null ? `<span class="bar"><i style="width:${prog}%"></i></span>` : ''}
         <span class="def">지금 표본으로 잡을 수 있는 최소 효과 ±${Number.isFinite(a.mde) ? a.mde.toFixed(1) : '—'}${esc(unit)}</span></div>
       <div><span class="eyebrow">${esc(e.metric)}</span><span class="num">${pp(a.d, unit)}</span>
         <span class="def">95% CI [${a.lo.toFixed(1)}, ${a.hi.toFixed(1)}]${a.p != null ? ` · p=${a.p.toFixed(a.p < 0.01 ? 3 : 2)}` : ''}</span>
-        ${off ? `<span class="def">공식 검정: ${esc(off.method || '')}${off.complete ? '' : ' · 관측 진행 중(잠정)'}</span>` : ''}</div>
+        ${off ? `<span class="def">공식 검정: ${esc(off.method || '')}${off.complete === false ? ' · 관측 진행 중(잠정)' : ''}</span>` : ''}</div>
     </div>
     <div class="${res.daily?.length ? 'xtwo' : ''}">
       <section class="panel"><h3>효과 크기 · 95% 신뢰구간</h3>

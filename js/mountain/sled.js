@@ -2,7 +2,7 @@ import { COURSE, centerX, obstacleRadius } from './course.js';
 import { SLOPE_M_PER_UNIT } from './terrain.js';
 import { JUMP, KICK_MULT, driftStep, comboStep, shieldStep, moverStep, launchStep, flyStep, startTrick } from './sled-moves.js';
 
-export const PHYS_V = 4;
+export const PHYS_V = 5;
 
 export const PHYS = Object.freeze({
   baseSpeed: 12.9,
@@ -11,6 +11,7 @@ export const PHYS = Object.freeze({
   steerRate: 9.75,
   boostMult: 1.5,
   boostMs: 1333,
+  boostJolt: 0.7,
   hitSlowMult: 0.5,
   hitRecoverMs: 1500,
   flagPenaltyMs: 1000,
@@ -54,7 +55,9 @@ export function pressSled(s) {
 
 export function tryBoost(s) {
   if (s.finished || s.acorns <= 0) return s;
-  return { ...s, acorns: s.acorns - 1, boostLeftMs: s.phys.boostMs, boostsAt: [...s.boostsAt, s.t] };
+  const boosted = { ...s, acorns: s.acorns - 1, boostLeftMs: s.phys.boostMs, boostsAt: [...s.boostsAt, s.t] };
+  const gap = targetSpeed(boosted) - s.speed;
+  return gap > 0 ? { ...boosted, speed: s.speed + gap * (s.phys.boostJolt ?? 0) } : boosted;
 }
 
 function targetSpeed(s) {

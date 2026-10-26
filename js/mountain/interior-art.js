@@ -150,11 +150,16 @@ export function gateSpots() {
 }
 
 function gatesMesh(THREE) {
-  const geos = gateSpots().flatMap(s => [
+  const spots = gateSpots();
+  const parts = spots.map(s => [
     colored(THREE, new THREE.CylinderGeometry(GATE_POLE.r, GATE_POLE.r, 1.9, 6), s.color).translate(s.x, s.y + 0.95, s.z),
     colored(THREE, new THREE.BoxGeometry(0.9, 0.55, 0.04), s.color).translate(s.x + s.side * GATE_POLE.clothOut, s.y + 1.6, s.z),
   ]);
-  return new THREE.Mesh(mergeColored(THREE, geos), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+  const counts = parts.map(ps => ps.reduce((n, g) => n + g.getAttribute('position').count, 0));
+  const starts = counts.map((_, i) => counts.slice(0, i).reduce((a, b) => a + b, 0));
+  const mesh = new THREE.Mesh(mergeColored(THREE, parts.flat()), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+  mesh.userData.spans = spots.map((s, i) => ({ start: starts[i], count: counts[i], x: s.x, y: s.y, z: s.z }));
+  return mesh;
 }
 
 function obstacleParts(THREE, o) {

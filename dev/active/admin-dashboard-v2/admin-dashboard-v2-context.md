@@ -1,6 +1,6 @@
 # 관리자 대시보드 v2 — 컨텍스트
 
-**Last Updated** 2026-10-10 14:20 KST
+**Last Updated: 2026-10-26 (실험 페이지 v2) · 이전** 2026-10-10 14:20 KST
 
 - 워크트리 `.claude/worktrees/admin-dashboard-v2` · 브랜치 `feat/admin-dashboard-v2` (main 37e7fcc 에서 분기) · `.env` 는 루트 심링크
 - 핵심 파일: `dashboards/admin_analytics.html`, `dashboards/_dash.css`(토큰 유일 소스, s1~s5 검증값 수정 금지),

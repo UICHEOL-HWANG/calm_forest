@@ -43,7 +43,7 @@ create table if not exists public.sled_runs (
     coalesce(octet_length(splits::text), 0) + coalesce(octet_length(boosts_at::text), 0) + coalesce(octet_length(hits::text), 0) <= 8192
   ),
   constraint sled_runs_course_v check (course_v in (1, 2)),
-  constraint sled_runs_phys_v check (phys_v in (1, 2, 3, 4)),
+  constraint sled_runs_phys_v check (phys_v in (1, 2, 3, 4, 5)),
   constraint sled_runs_nonneg check (
     (time_ms is null or time_ms >= 0) and (penalty_ms is null or penalty_ms >= 0) and (coins is null or coins >= 0)
     and (climb_ms is null or climb_ms >= 0) and (steer_left_ms is null or steer_left_ms >= 0) and (steer_right_ms is null or steer_right_ms >= 0)

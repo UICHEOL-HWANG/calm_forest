@@ -2,7 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from '../vendor/three/three.module.js';
-import { SLED_CAM, sledCamTargets, sledPose, sledFov } from '../js/mountain/sled-view.js';
+import { SLED_CAM, sledCamTargets, sledPose, sledFov, sledLift, sledPitch } from '../js/mountain/sled-view.js';
+import { RAMP_SHAPE, RAMP_TOP } from '../js/mountain/ramp-lift.js';
+import { JUMP } from '../js/mountain/sled-moves.js';
 import { buildSledProps } from '../js/mountain/sled-props.js';
 import { COURSE, centerX, moverPos } from '../js/mountain/course.js';
 import { slopePoint } from '../js/mountain/terrain.js';
@@ -22,7 +24,7 @@ test('the camera sits low and close behind the sled', () => {
 
 test('the camera rises with the sled in the air', () => {
   const ground = sledCamTargets(sled());
-  const air = sledCamTargets(sled({ y: 2 }));
+  const air = sledCamTargets(sled({ y: 2, air: true }));
   assert.ok(air.pos.y > ground.pos.y + 1);
   assert.ok(air.look.y > ground.look.y);
 });
@@ -35,8 +37,8 @@ test('field of view widens with speed and is capped', () => {
 
 test('the sled pose lifts in the air and flips during a trick', () => {
   const g = sledPose(sled(), 0);
-  const a = sledPose(sled({ y: 1.5, air: true, trick: true, spin: 0.25 }), 0);
-  assert.ok(Math.abs(a.y - g.y - 1.5) < 1e-9);
+  const a = sledPose(sled({ y: 1.5, vy: 0, air: true, trick: true, spin: 0.25 }), 0);
+  assert.ok(Math.abs(a.y - g.y - 1.5 - RAMP_TOP / 2) < 1e-9);
   assert.ok(Math.abs(a.flip + Math.PI / 2) < 1e-9);
   assert.equal(g.flip, 0);
 });
@@ -131,4 +133,34 @@ test('the result bar is numbers and emoji only, with reward dots', async () => {
   assert.doesNotMatch(show, /완주|새 최고 기록|판 남음'\)|다 받았어요/);
   assert.match(hud, /\.sled-result\{[^}]*background:rgba\(28,44,35,\.92\)/);
   assert.match(hud, /\.sled-result\{[^}]*border-radius:22px/);
+});
+
+test('the sled climbs the ramp deck instead of riding through it, then leaves it at the launch height', () => {
+  const r = COURSE.ramps[0];
+  assert.equal(sledLift(sled({ z: r.z - 30, x: r.x })), 0);
+  const mid = sledLift(sled({ z: r.z - 2, x: r.x })), lip = sledLift(sled({ z: r.z, x: r.x }));
+  assert.ok(mid > 0.2 && mid < lip);
+  assert.ok(Math.abs(lip - RAMP_TOP) < 1e-6);
+  const launched = sledLift(sled({ z: r.z, x: r.x, y: 0.01, vy: JUMP.vy, air: true }));
+  assert.ok(Math.abs(launched - lip) < 0.02);
+  assert.ok(Math.abs(sledLift(sled({ z: r.z + 20, x: r.x, y: 0, vy: -JUMP.vy, air: true }))) < 1e-9);
+});
+
+test('the sled body is lifted on the ramp edge too, and the deck pitches the nose up', () => {
+  const r = COURSE.ramps[1];
+  assert.ok(sledLift(sled({ z: r.z - 2, x: r.x + r.half + 0.3 })) > 0.3);
+  assert.equal(sledLift(sled({ z: r.z - 2, x: r.x + r.half + 1 })), 0);
+  assert.equal(sledPose(sled({ z: r.z - 2, x: r.x }), 0).pitch, RAMP_SHAPE.tilt);
+  assert.equal(sledPose(sled({ z: r.z - 30, x: r.x }), 0).pitch, sledPitch());
+});
+
+test('ramp lift never drops abruptly when riding off the deck edge without launching', () => {
+  const r = COURSE.ramps[2];
+  const x = r.x + r.half + 0.3;
+  let prev = sledLift(sled({ z: r.z - 12, x }));
+  for (let z = r.z - 12; z <= r.z + 8; z += 0.05) {
+    const v = sledLift(sled({ z, x }));
+    assert.ok(Math.abs(v - prev) < 0.06, `jump at z=${z.toFixed(2)}: ${prev.toFixed(3)} -> ${v.toFixed(3)}`);
+    prev = v;
+  }
 });

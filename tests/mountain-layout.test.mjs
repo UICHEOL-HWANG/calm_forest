@@ -49,7 +49,7 @@ function pathHeightNear(p) {
 
 test('course data and physics versions stay at 2 and 4 and the slope mapping is unchanged', () => {
   assert.equal(COURSE_V, 2);
-  assert.equal(PHYS_V, 4);
+  assert.equal(PHYS_V, 5);
   assert.deepEqual(slopePoint(0, centerX(0)), { x: 0, y: SUMMIT_Y, z: -4 });
   assert.deepEqual(slopePoint(COURSE.length, 0), { x: 0, y: 0, z: 66 });
 });

@@ -1,6 +1,8 @@
 import { COURSE, centerX } from './course.js';
 import { slopePoint } from './terrain.js';
 import { SLED_DECK_TOP, deckTopOf } from './sled-art.js';
+import { JUMP } from './sled-moves.js';
+import { RAMP_SHAPE, RAMP_TOP, rampAt } from './ramp-lift.js';
 
 export const SLED_CAM = Object.freeze({ up: 4.2, back: 4, lookAhead: 9.5, lookDrop: 0 });
 export const SLED_FOV = Object.freeze({ base: 46, max: 56, gain: 18 });
@@ -28,9 +30,15 @@ export function sledPitch() {
   return Math.atan2(TOP.y - FOOT.y, RUN);
 }
 
+export function sledLift(s, course = COURSE) {
+  if (!s.air) return rampAt(course, s.z, s.x).lift;
+  const fade = Math.min(1, Math.max(0, ((s.vy || 0) + JUMP.vy) / (2 * JUMP.vy)));
+  return (s.y || 0) + RAMP_TOP * fade;
+}
+
 export function sledCamTargets(s) {
   const p = slopePoint(s.z, s.x);
-  const air = s.y || 0;
+  const air = sledLift(s);
   const az = s.z + (SLED_CAM.lookAhead * COURSE.length) / RUN;
   const a = slopePoint(az, s.x * 0.85 + centerX(az) * 0.15);
   return {
@@ -57,10 +65,12 @@ export function runoutCamTargets(p, t) {
   };
 }
 
-export function sledPose(s, yaw) {
+export function sledPose(s, yaw, lift = sledLift(s)) {
   const p = slopePoint(s.z, s.x);
   const flip = s.trick ? -Math.min(1, s.spin || 0) * Math.PI * 2 : 0;
-  return { x: p.x, y: p.y + SLED_LIFT + (s.y || 0), z: p.z, pitch: s.air ? sledPitch() * 0.3 : sledPitch(), yaw, flip };
+  const onDeck = !s.air && rampAt(COURSE, s.z, s.x).deck;
+  const pitch = s.air ? sledPitch() * 0.3 : onDeck ? RAMP_SHAPE.tilt : sledPitch();
+  return { x: p.x, y: p.y + SLED_LIFT + lift, z: p.z, pitch, yaw, flip };
 }
 
 export function decayShake(v, dt) {

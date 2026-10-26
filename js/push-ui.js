@@ -17,6 +17,7 @@ import { getAccessToken } from './supabase-client.js';
 import { CONFIG } from './config.js';
 import { trackEvent } from './analytics.js';
 import { LANG, t } from './i18n.js';
+import { setIcon } from './icons/index.js';
 
 const PREF_KEY = 'cf_push';
 const TOKEN_KEY = 'cf_push_token';
@@ -54,7 +55,7 @@ function setPref(on, token) {
   store.set(PREF_KEY, on ? 'on' : 'off');
   if (token) store.set(TOKEN_KEY, token);
   const b = $('push-btn');
-  if (b) { b.classList.toggle('off', !on); b.querySelector('.uico').textContent = on ? '🔔' : '🔕'; }
+  if (b) { b.classList.toggle('off', !on); setIcon(b.querySelector('.uico'), on ? '🔔' : '🔕'); }
 }
 
 const report = (r, via) => post({ event: 'result', result: r.result, stage: r.stage || null, reason: r.reason || null, via }).catch(() => false);
