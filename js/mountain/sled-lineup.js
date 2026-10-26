@@ -28,12 +28,12 @@ export const SLED_LINEUP = Object.freeze({
   wind: entry({
     id: 'wind', ico: '💨', name: '바람 썰매', line: '기본 속도가 빨라요. 도토리 힘은 약해요', stats: [5, 3, 2, 1], model: 'bobsled', coins: 1500, cashWon: 3900,
     palette: { body: 0xc9dcff, trim: 0xfff6ea, dark: 0x22306a, metal: 0x22306a, accent: 0xe5484d },
-    phys: { baseSpeed: 13.65, boostMult: 1.31 },
+    phys: { baseSpeed: 13.65, boostMult: 1.33 },
   }),
   acorn: entry({
     id: 'acorn', ico: '🌰', name: '도토리 로켓', line: '도토리 부스터가 세요. 출발이 느려요', stats: [2, 3, 3, 5], model: 'acorn', coins: 1500, cashWon: 3900,
     palette: { nut: 0xffe0a3, cap: 0xe5484d, capDark: 0xb83338, metal: 0x22306a, accent: 0xfff6ea, dark: 0x22306a },
-    phys: { baseSpeed: 12.6, accel: 11.25, boostMult: 1.60 },
+    phys: { baseSpeed: 12.6, accel: 11.25, boostMult: 1.575 },
   }),
   skiff: entry({
     id: 'skiff', ico: '⛸️', name: '얼음 스키프', line: '커브가 날렵해요. 부딪히면 오래 느려요', stats: [3, 5, 1, 3], model: 'skiff', coins: 1500, cashWon: 3900,

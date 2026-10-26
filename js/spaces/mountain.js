@@ -484,7 +484,7 @@ function startSled() {
   run.input = bindSledInput(document.body, boost, { initial: initialInput(isTouchDevice()) });
   document.body.classList.add('sled-run');
   setBGMTheme('snowsled');
-  boostButton().onclick = boost;
+  boostButton().onpointerdown = e => { e.preventDefault(); boost(); };
   sledBegin(ctxOf());
   camPos.copy(camera.position);
   camLook.copy(player.position);
