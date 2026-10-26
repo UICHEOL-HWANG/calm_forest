@@ -182,6 +182,7 @@ kitchen_open,crafting,kitchen,2,N,active,459,39,2026-08-16,2026-10-24,,js/game.j
 lang_toggle,ui,ui,2,N,active,51,20,2026-08-20,2026-10-24,to|from,index.html:3426,언어 전환 버튼을 눌렀을 때 (from/to=ko 또는 en),
 leaderboard_open,social,community,2,N,active,216,50,2026-08-18,2026-10-24,board,index.html:6806,소셜 기능 사용률,
 login,onboarding,login,1,N,active,2740,334,2026-07-27,2026-10-24,method,js/analytics.js:169,로그인 성공 (method=로그인 방식),
+login_dwell,onboarding,login,1,N,not_fired,0,0,,,sec,js/login-dwell.js:15,로그인 화면이 뜬 뒤 3·10·30초 시점에 아직 그 화면에 있을 때 (sec=경과 초 · 탭이 숨겨진 동안은 안 남김),
 login_nudge,onboarding,login,2,N,active,46,27,2026-08-08,2026-10-24,trigger|target,index.html:6963,넛지 노출,
 login_nudge_click,onboarding,login,2,N,active,19,4,2026-09-05,2026-10-13,target|from,index.html:6944,넛지 클릭(→ login 이벤트로 전환 완성),
 login_screen,onboarding,login,1,N,active,1428,283,2026-09-04,2026-10-24,reason|inapp,index.html:5201,토스 유저 중 몇 %가 이 화면을 보는지,
