@@ -22,7 +22,7 @@
 import * as THREE from '../vendor/three/three.module.js';
 import { COURSE } from '../js/mountain/course.js';
 import { slopePoint } from '../js/mountain/terrain.js';
-import { buildMountainSpace } from '../js/mountain/interior-art.js';
+import { buildMountainSpace, poseObstacles, obstacleScales } from '../js/mountain/interior-art.js';
 import { buildSledProps } from '../js/mountain/sled-props.js';
 import { sledPose, sledSeat, sledLift, sledCamTargets, sledYaw } from '../js/mountain/sled-view.js';
 import { createSled, stepSled } from '../js/mountain/sled.js';
@@ -79,7 +79,13 @@ function sledWorld() {
   sled.visible = true;
   const who = rider();
   scene.add(who);
-  return { scene, space, props, sled, who, gates: createGateBend(space.userData.gates) };
+  return { scene, space, props, sled, who, gates: createGateBend(space.userData.gates), shown: -1 };
+}
+
+function syncRocks(w, s) {
+  if (w.shown === s.hitIds.length) return;
+  w.shown = s.hitIds.length;
+  poseObstacles(w.space.userData.obstacles.geometry, obstacleScales(COURSE, s.hitIds));
 }
 
 const seat = sledSeat('basic');
@@ -150,9 +156,35 @@ const WAIT = 1.4, END = 2.2;
 cafeCam.position.set((st.x + stand.x) / 2 + 0.2, 4.4, Math.max(st.z, stand.z) + 3.8);
 cafeCam.lookAt((st.x + stand.x) / 2, 0.8, (st.z + stand.z) / 2);
 let cafeT = 0;
+const sparks = [];
+window.__cafe = () => ({ t: cafeT, sparks: sparks.length });
+const sparkGeo = new THREE.OctahedronGeometry(0.06);
+function sparkle(x, y, z, n) {
+  for (let i = 0; i < n; i++) {
+    const m = new THREE.Mesh(sparkGeo, new THREE.MeshBasicMaterial({ color: 0xfff2a0, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    m.position.set(x + (Math.random() - 0.5) * 0.6, y, z + (Math.random() - 0.5) * 0.6);
+    m.userData = { v: new THREE.Vector3((Math.random() - 0.5) * 2, 1.5 + Math.random() * 2, (Math.random() - 0.5) * 2), life: 1 };
+    cafeScene.add(m);
+    sparks.push(m);
+  }
+}
+function sparkTick(dt) {
+  for (let i = sparks.length - 1; i >= 0; i--) {
+    const m = sparks[i], u = m.userData;
+    u.life -= dt;
+    u.v.y -= 3 * dt;
+    m.position.addScaledVector(u.v, dt);
+    m.rotation.y += dt * 8;
+    m.material.opacity = Math.max(0, u.life) * 0.9;
+    if (u.life <= 0) { cafeScene.remove(m); m.material.dispose(); sparks.splice(i, 1); }
+  }
+}
 
 function cafeTick(dt) {
+  const before = cafeT;
   cafeT = (cafeT + dt) % (WAIT + DRINK.s + END);
+  if (before < WAIT + DRINK.s && cafeT >= WAIT + DRINK.s) sparkle(stand.x, 1.5, stand.z, 22);
+  sparkTick(dt);
   const a = guest.userData.anchor;
   if (cafeT < WAIT) {
     guest.position.set(stand.x, 0, stand.z);
@@ -188,6 +220,7 @@ function frame(now) {
   rs = stepSled(rs, dt * 1000, steerTo(rs, ramp.x + 0.3), COURSE);
   if (rs.z > ramp.z + 28) resetRamp();
   place(rampW, rs, sledYaw(0));
+  syncRocks(rampW, rs);
   const sp = slopePoint(rs.z, rs.x);
   rampCams[0].position.set(sp.x - 6.5, sp.y + 1.6, sp.z - 0.4);
   rampCams[0].lookAt(sp.x, sp.y + 0.6, sp.z);
@@ -199,6 +232,7 @@ function frame(now) {
   gs = stepSled(gs, dt * 1000, steer, COURSE);
   if (gs.z > COURSE.flags[7].z + 4) resetGate();
   place(gateW, gs, sledYaw(gs.vx / gs.phys.steerRate));
+  syncRocks(gateW, gs);
   gateW.gates.update(slopePoint(gs.z, gs.x), sledLift(gs), dt);
   chase(gateCam, gs, dt);
   renderers[2].render(gateW.scene, gateCam);

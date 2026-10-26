@@ -106,7 +106,7 @@ test('after the drink the player stands back where they ordered, not inside the 
   assert.match(src, /if \(seated\.t <= 0\) \{ done = \{ \.\.\.seated\.back \}; clearSeated\(\); \}/);
   const m = readFileSync(new URL('../js/spaces/mountain.js', import.meta.url), 'utf8');
   assert.match(m, /player\.position\.set\(st\.done\.x, 0, st\.done\.z\)/);
-  assert.match(m, /ui\.toast\?\.\(CAFE_COPY\.drink, 2200\)/);
+  assert.match(m, /spawnSparkle\(player\.position\.x, 1\.5, player\.position\.z, 22\);\n  Sound\.harvest\(\);\n  ui\.toast\?\.\(CAFE_COPY\.drink, 2200\)/);
   assert.match(m, /if \(out\.toast && !out\.drink\)/);
   const g = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
   assert.match(g, /sledActive\(\) \|\| cafeDrinking\(\)/);

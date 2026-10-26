@@ -253,6 +253,8 @@ function finishDrink(st) {
   $w.sitting = false;
   player.position.set(st.done.x, 0, st.done.z);
   player.rotation.y = st.done.ry;
+  spawnSparkle(player.position.x, 1.5, player.position.z, 22);
+  Sound.harvest();
   ui.toast?.(CAFE_COPY.drink, 2200);
 }
 
