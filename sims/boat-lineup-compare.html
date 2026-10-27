@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>나룻배 라인업 시안</title>
+<style>
+:root{--bg:#f4efe4;--card:#fffaf0;--ink:#3a3128;--sub:#7b6d5c;--line:#e3d8c4;--teal:#3fb3c2;--chip:#efe5d2;--water:#2f6f86}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Pretendard","Apple SD Gothic Neo",system-ui,sans-serif;line-height:1.55}
+main{max-width:1240px;margin:0 auto;padding:28px 16px 60px}
+h1{font-size:26px;margin:0 0 6px}
+h2{font-size:21px;margin:0 0 4px}
+.lead,.sublead{color:var(--sub);margin:0 0 18px;font-size:15px}
+section{margin-top:38px}
+.flow{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.flow div{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;font-size:14px}
+.flow b{display:block;font-size:16px;margin-bottom:2px}
+.flow small{color:var(--sub)}
+.boats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.boat{background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+.boat canvas{display:block;width:100%;aspect-ratio:16/10;background:var(--water)}
+.bb{padding:12px 14px 16px;display:flex;flex-direction:column;gap:8px}
+.bb h3{margin:0;font-size:18px}
+.play{font-size:14px;margin:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:12px;background:var(--chip);border-radius:999px;padding:2px 9px}
+.unlock{font-size:12.5px;color:var(--sub)}
+.cfg{display:grid;grid-template-columns:1.4fr 1fr;gap:16px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px}
+.cfg canvas{width:100%;aspect-ratio:4/3;border-radius:12px;background:var(--water);display:block}
+.pick h4{margin:10px 0 6px;font-size:14px}
+.opts{display:flex;flex-wrap:wrap;gap:6px}
+.opts button{font:inherit;font-size:13px;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:999px;padding:5px 11px;cursor:pointer}
+.opts button.on{background:var(--teal);border-color:var(--teal);color:#fff}
+.eff{margin-top:12px;font-size:13.5px;background:var(--chip);border-radius:12px;padding:10px 12px;min-height:84px}
+.eff div{margin:2px 0}
+.maps{display:grid;grid-template-columns:auto auto 1fr;gap:18px;align-items:start}
+.map{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:14px}
+.map canvas{width:170px;height:520px;border-radius:12px;background:#21414f}
+.notes{display:flex;flex-direction:column;gap:10px}
+.note{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;font-size:14px}
+.note b{display:block;font-size:15px;margin-bottom:2px}
+.legend{display:flex;flex-wrap:wrap;gap:10px;font-size:12.5px;color:var(--sub)}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.steps div{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;font-size:14px}
+.steps b{display:block;font-size:16px}
+.grind{width:100%;border-collapse:collapse;background:var(--card);border-radius:14px;overflow:hidden;font-size:14px}.grind th,.grind td{border-bottom:1px solid var(--line);padding:9px 12px;text-align:left}.grind th{background:var(--chip);font-size:13px}.grind .sum td{font-weight:700}.notes2{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}@media (max-width:900px){.notes2{grid-template-columns:1fr}.grind{font-size:12.5px}.grind th,.grind td{padding:7px 8px}}
+@media (max-width:960px){.boats{grid-template-columns:repeat(2,1fr)}.cfg{grid-template-columns:1fr}.maps{grid-template-columns:1fr 1fr}.notes{grid-column:1/-1}.flow,.steps{grid-template-columns:1fr 1fr}}
+@media (max-width:600px){.boats{grid-template-columns:1fr}.map canvas{width:140px;height:430px}.flow,.steps{grid-template-columns:1fr}}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1f1b17;--card:#2a251f;--ink:#f1e9dc;--sub:#b3a48f;--line:#40382e;--chip:#3a3128}:root:not([data-theme="light"]) .opts button{background:#332c24}}
+</style>
+</head>
+<body>
+<main>
+<h1>🛶 나룻배 라인업 시안</h1>
+<p class="lead">배 종류 9척, 부품 3칸, 친구 1자리, 그리고 급류 코스까지 묶었어요. 배는 능력치가 아니라 <b>강을 타는 방법</b>이 서로 달라요.</p>
+
+<div class="flow">
+  <div><b>⛵ 배 9척</b>고른 배에 따라 강을 타는 방법이 달라져요<br><small>B안의 성장 순서대로 하나씩 열려요</small></div>
+  <div><b>🔧 부품 3칸</b>뱃머리 · 깃발 · 고물<br><small>A안. 어떤 배에든 달 수 있어요</small></div>
+  <div><b>🦦 친구 1자리</b>수달 · 오리 · 거북<br><small>C안. 뗏목만 2명까지 태워요</small></div>
+  <div><b>🌊 코스 2개</b>잔잔한 물길 · 급류<br><small>급류는 첫 완주 뒤에 열려요</small></div>
+</div>
+
+<section>
+  <h2>⛵ 배 9척</h2>
+  <p class="sublead">강에 이미 있는 바위·통나무·소용돌이·밤을 배마다 다르게 쓰도록 만들었어요.</p>
+  <div class="boats" id="boats"></div>
+</section>
+
+<section>
+  <h2>🔧 직접 꾸며 보기</h2>
+  <p class="sublead">배를 고르고 부품과 친구를 바꿔 보세요. 부품은 작게 돕고, 큰 차이는 배가 만들어요.</p>
+  <div class="cfg">
+    <canvas id="cfgCanvas"></canvas>
+    <div class="pick">
+      <h4>배</h4><div class="opts" data-k="boat"></div>
+      <h4>뱃머리</h4><div class="opts" data-k="bow"></div>
+      <h4>깃발</h4><div class="opts" data-k="flag"></div>
+      <h4>고물</h4><div class="opts" data-k="stern"></div>
+      <h4>친구</h4><div class="opts" data-k="crew"></div>
+      <div class="eff" id="eff"></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>🌊 잔잔한 물길과 급류</h2>
+  <p class="sublead">같은 날 같은 시드로 만든 코스예요. 급류는 촘촘하고, 급류에서만 나오는 지형이 2개 있어요.</p>
+  <div class="maps">
+    <div class="map"><canvas id="mapCalm" width="340" height="1040"></canvas><b>잔잔한 물길</b><span id="calmStat"></span></div>
+    <div class="map"><canvas id="mapRapid" width="340" height="1040"></canvas><b>급류</b><span id="rapidStat"></span></div>
+    <div class="notes">
+      <div class="note"><b>🪨 갈림길</b>가운데 섬이 물길을 둘로 나눠요. 넓은 쪽은 바위가 드문드문 있고, 좁은 쪽은 별이 줄지어 있지만 벽에 닿기 쉬워요. 고르는 순간이 생겨요.</div>
+      <div class="note"><b>💧 작은 폭포</b>코스 중간에 두 번, 낙차에서 배가 살짝 떠올라요. 떠 있는 동안 좌우로만 움직일 수 있고, 내려앉는 자리를 맞추는 재미가 있어요.</div>
+      <div class="note"><b>⚡ 속도 ×1.2 · 장애물 간격 ×0.72</b>1구간부터 통나무가 나와요. 별은 잔잔한 물길과 같은 수만 깔리고, 대신 강 재료가 1.5배 나와요. 하루 3번 안에서 어느 코스를 탈지 골라요.</div>
+      <div class="note"><b>🔓 열리는 조건</b>잔잔한 물길을 한 번 완주하면 열려요. 그날 모두 같은 코스라 기록 비교가 그대로 돼요.</div>
+      <div class="legend"><span>⚪ 바위</span><span>🟫 통나무</span><span>⬛ 기둥</span><span>🔵 소용돌이</span><span>🟡 별</span><span>🟩 섬</span><span>⬜ 폭포</span></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>⛏️ 얻는 데 걸리는 시간</h2>
+  <p class="sublead">실제 기록(완주 1판에 ⭐ 약 70개, 🪷 0.92 · 🪵 0.78 · 🐚 0.84 · 🌕 0.55개)으로 계산했어요. 별 · 강 재료 · 실력 조건을 <b>모두</b> 채워야 열려요. 재료는 다른 배를 모으는 동안에도 쌓이니까 열리는 날은 누적이고, 기간은 사실상 별이 정해요. 급류를 타면 별이 더 많이 나와 조금 당겨져요.</p>
+  <table class="grind">
+    <tr><th>배 (열리는 순서)</th><th>조건</th><th>매일 3판 완주</th><th>매일 1판 완주</th></tr>
+    <tr><td>🍃 연잎배</td><td>⭐500 · 🪷10 · 완주 3번</td><td>4일째</td><td>11일째</td></tr>
+    <tr><td>🪵 뗏목</td><td>⭐1,200 · 🪵25 · 🪙3,000</td><td>11일째</td><td>32일째</td></tr>
+    <tr><td>🐟 비단잉어</td><td>⭐1,500 · 🐚20 · 급류 무피해 완주</td><td>15일째 + 실력</td><td>46일째 + 실력</td></tr>
+    <tr><td>⛵ 쌍둥이 돛단배</td><td>⭐2,500 · 🐚30 · 🪙8,000</td><td>27일째</td><td>81일째</td></tr>
+    <tr><td>📄 종이배</td><td>⭐2,500 · 🪷40 · 별 콤보 30</td><td>39일째 + 실력</td><td>117일째 + 실력</td></tr>
+    <tr><td>🌰 호두 껍질 배</td><td>⭐3,000 · 🪵50 · 뗏목 완주 15번</td><td>53일째</td><td>160일째</td></tr>
+    <tr><td>🪷 연꽃 등 배</td><td>⭐3,500 · 🌕20 · 밤 완주 15번</td><td>70일째</td><td>210일째</td></tr>
+    <tr><td>🎃 조롱박 등 배</td><td>⭐5,000 · 🌕40 · 🪙15,000 · 급류 밤 완주 5번</td><td>94일째</td><td>281일째</td></tr>
+    <tr class="sum"><td>전부</td><td>⭐19,700 · 🪷50 · 🪵75 · 🐚50 · 🌕60</td><td>약 3달</td><td>약 9달</td></tr>
+  </table>
+  <div class="notes2">
+    <div class="note"><b>🔁 다 모은 뒤에도 할 일</b>배마다 숙련도 5단계. 그 배로 완주할수록 올라가고, 단계마다 새 색칠(예: 금빛 비단잉어)이 열려요. 능력은 거의 안 바뀌어서 쉬워지지 않아요.</div>
+    <div class="note"><b>🔧 부품은 3단계 강화</b>단계마다 강 재료가 들고, 효과는 아주 조금씩만 커져요. 지금처럼 사자마자 완주율 100%가 되는 일은 없게 해요.</div>
+    <div class="note"><b>🐚🌕 재료로 바뀌는 것</b>지금은 강 조개·달빛 물고기를 주우면 곧바로 별로 바뀌어요. 개편 뒤에는 재료로 모아 두게 바꿔야 해요.</div>
+  </div>
+</section>
+
+<section>
+  <h2>📦 나눠서 내보내기</h2>
+  <div class="steps">
+    <div><b>1차 · 급류 + 배 4척</b>급류 코스, 앞 구간 완화, 나룻배·연잎배·뗏목·비단잉어(급류 첫 완주 보상). 지금 강화 3종은 부품으로 옮겨 드려요.</div>
+    <div><b>2차 · 부품 3칸 + 돛배 3척</b>쌍둥이 돛단배·종이배·호두 껍질 배, 부품 6종</div>
+    <div><b>3차 · 등불 배 2척 + 친구</b>연꽃 등 배·조롱박 등 배, 수달·오리·거북. 밤 콘텐츠로 묶어요.</div>
+  </div>
+</section>
+</main>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { TRIM, clay, add, ferryBoat, lotusLeaf, raftBoat, sailCatamaran, sailPaper, sailWalnut, lampLotus, lampGourd, carpKoi } from './boat-models.js';
+
+const glow = (c, e, k = 0.8) => new THREE.MeshStandardMaterial({ color: c, emissive: e, emissiveIntensity: k });
+const side2 = c => new THREE.MeshStandardMaterial({ color: c, roughness: 0.9, side: THREE.DoubleSide });
+
+const BOATS = [
+  { id: 'ferry', name: '나룻배', ico: '🛶', unlock: '처음부터', build: ferryBoat,
+    play: '노를 크게 저어 쭉 나가는 스퍼트. 무엇이든 조금씩 다 되는 기본 배예요.',
+    chips: ['💡 램프 3', '🚣 스퍼트'], at: { bow: [-2.45, 0.36], stern: [1.9, 0.5], crew: [-0.8, 0] } },
+  { id: 'lotus', name: '연잎배', ico: '🍃', unlock: '⭐500 · 🪷 연꽃 10 · 완주 3번', build: lotusLeaf,
+    play: '소용돌이를 피하지 않고 올라타요. 한 바퀴 빙글 돌고 나서 튕겨 나가며 빨라져요. 작아서 빈틈도 잘 빠져나가요.',
+    chips: ['💡 램프 2', '🌀 소용돌이 타기', '📏 충돌 크기 작음'], at: { bow: [-1.45, 0.3], stern: [1.1, 0.35], crew: [-0.35, -0.12] } },
+  { id: 'raft', name: '뗏목', ico: '🪵', unlock: '⭐1,200 · 🪵 나무 25 · 🪙3,000', build: raftBoat,
+    play: '통나무에 부딪혀도 램프가 안 깎이고 밀어내요. 대신 좌우로 느리게 움직여요. 친구를 2명까지 태워요.',
+    chips: ['💡 램프 4', '🪵 통나무 밀기', '🐢 조향 느림', '👥 친구 2'], at: { bow: [-1.85, 0.4], stern: [1.5, 0.45], crew: [-0.7, -0.08] } },
+  { id: 'koi', name: '비단잉어', ico: '🐟', unlock: '⭐1,500 · 🐚 조개 20 · 급류 무피해 완주', build: carpKoi, yaw: Math.PI - 1.3,
+    play: '스킬 버튼으로 물속에 쏙 숨어 바위 밑을 지나가요. 숨어 있는 동안엔 별을 못 먹어요.',
+    chips: ['💡 램프 3', '🫧 잠수 1.2초 (대기 12초)'], at: { bow: [-1.85, 0.45], stern: [0.95, 0.72], crew: [0.75, 0.38] } },
+  { id: 'catamaran', name: '쌍둥이 돛단배', ico: '⛵', unlock: '⭐2,500 · 🐚 조개 30 · 🪙8,000', build: sailCatamaran,
+    play: '강 위에 바람 줄기가 보여요. 줄기에 올라타면 돛이 부풀며 그 방향으로 미끄러지듯 빨라져요.',
+    chips: ['💡 램프 3', '🌬️ 바람 줄기 타기', '⚡ 최고 속도 빠름'], at: { bow: [-0.85, 0.45], stern: [0.95, 0.45], crew: [0.35, 0.02] } },
+  { id: 'paper', name: '종이배', ico: '📄', unlock: '⭐2,500 · 🪷 연꽃 40 · 별 콤보 30', build: sailPaper,
+    play: '스킬 버튼을 누르면 종이비행기로 접혀 2초 동안 날아올라 장애물 위를 지나가요. 종이라 약하고, 비 오는 날엔 눅눅해져 느려져요.',
+    chips: ['💡 램프 2', '✈️ 종이비행기 (대기 10초)', '🌧️ 비에 약함'], at: { bow: [-1.85, 0.5], stern: [1.55, 0.5], crew: [1.05, 0.4] } },
+  { id: 'walnut', name: '호두 껍질 배', ico: '🌰', unlock: '⭐3,000 · 🪵 나무 50 · 뗏목으로 완주 15번', build: sailWalnut,
+    play: '부딪혀도 멈추지 않고 통통 튕겨 옆으로 굴러가요. 멈추는 시간이 없는 대신 튕기는 방향은 살짝 제멋대로예요.',
+    chips: ['💡 램프 3', '🏀 통통 튕기기', '🎲 튕기는 방향 무작위'], at: { bow: [-1.55, 0.55], stern: [1.25, 0.6], crew: [-0.65, 0.1] } },
+  { id: 'lotuslamp', name: '연꽃 등 배', ico: '🪷', unlock: '⭐3,500 · 🌕 달빛 물고기 20 · 밤 완주 15번', build: lampLotus,
+    play: '강가 반딧불이를 모으면 연등이 점점 밝아지고 앞이 환해져요. 부딪히면 불빛이 한 칸 줄어요.',
+    chips: ['💡 램프 3', '✨ 반딧불이 모으기', '🌙 밤 보상 +30%'], at: { bow: [-1.5, 0.2], stern: [1.3, 0.25], crew: [-0.8, -0.1] } },
+  { id: 'gourd', name: '조롱박 등 배', ico: '🎃', unlock: '⭐5,000 · 🌕 달빛 물고기 40 · 🪙15,000 · 급류 밤 완주 5번', build: lampGourd,
+    play: '스킬 버튼으로 장대 끝 등불을 휙 던져 앞쪽 수집물 하나를 낚아 와요. 밤엔 달빛 물고기가 등불 쪽으로 모여들어요.',
+    chips: ['💡 램프 3', '🎣 등불 낚시 (대기 8초)', '🌕 달빛 물고기 유인'], at: { bow: [-1.55, 0.75], stern: [1.05, 0.8], crew: [-0.45, 0.3] } },
+];
+
+const PARTS = {
+  bow: [
+    { id: 'none', name: '없음' },
+    { id: 'ram', name: '⚓ 쇄빙 뱃머리', eff: '바위를 스치면 램프 대신 속도만 줄어요 (판마다 1번)',
+      build(g, [z, y]) { add(g, new THREE.ConeGeometry(0.62, 0.95, 6), clay(0x7c8a92, true), [0, y, z], [-Math.PI / 2, 0, 0], [1, 1, 0.55]); for (const s of [-1, 1]) add(g, new THREE.SphereGeometry(0.07, 6, 6), clay(0xe8d9b0), [s * 0.34, y + 0.12, z + 0.25]); } },
+    { id: 'fish', name: '🐟 나무 물고기', eff: '소용돌이가 덜 끌어당겨요',
+      build(g, [z, y]) { const w = clay(0xc98d5a); add(g, new THREE.SphereGeometry(0.28, 10, 8), w, [0, y + 0.35, z + 0.1], [0, 0, 0], [0.6, 0.8, 1.4]); add(g, new THREE.ConeGeometry(0.22, 0.35, 4), w, [0, y + 0.35, z + 0.55], [Math.PI / 2, 0, 0], [1, 0.4, 1]); add(g, new THREE.SphereGeometry(0.05, 6, 6), clay(0x2f2a26), [0.15, y + 0.42, z - 0.15]); } },
+  ],
+  flag: [
+    { id: 'none', name: '없음' },
+    { id: 'wind', name: '🎐 순풍 깃발', eff: '스퍼트 대기 시간이 0.6초 줄어요',
+      build(g, [z, y]) { add(g, new THREE.CylinderGeometry(0.035, 0.035, 1.6, 6), clay(TRIM), [-0.35, y + 0.8, z]); const f = new THREE.Shape(); f.moveTo(0, 0); f.lineTo(0.75, -0.18); f.lineTo(0, -0.42); add(g, new THREE.ShapeGeometry(f), side2(0x8fd3e8), [-0.35, y + 1.58, z], [0, Math.PI / 2, 0]); } },
+    { id: 'star', name: '⭐ 별 깃발', eff: '별을 연달아 먹는 콤보가 1초 더 이어져요',
+      build(g, [z, y]) { add(g, new THREE.CylinderGeometry(0.035, 0.035, 1.6, 6), clay(TRIM), [-0.35, y + 0.8, z]); add(g, new THREE.BoxGeometry(0.03, 0.42, 0.62), side2(0x3b4a8c), [-0.35, y + 1.35, z + 0.32]); add(g, new THREE.OctahedronGeometry(0.11, 0), glow(0xffd34d, 0x6b4d00, 0.6), [-0.32, y + 1.35, z + 0.32]); } },
+  ],
+  stern: [
+    { id: 'none', name: '없음' },
+    { id: 'net', name: '🥅 별 뜰채', eff: '놓친 별 5개 중 1개를 건져 와요',
+      build(g, [z, y]) { add(g, new THREE.CylinderGeometry(0.04, 0.04, 1.5, 6), clay(TRIM), [0.5, y + 0.45, z - 0.2], [0.45, 0, -0.5]); add(g, new THREE.TorusGeometry(0.3, 0.035, 6, 16), clay(TRIM), [0.9, y + 1.1, z - 0.55], [0.3, 0.6, 0]); add(g, new THREE.SphereGeometry(0.28, 10, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xf6efe0, wireframe: true }), [0.9, y + 1.1, z - 0.55], [0.3 + Math.PI / 2, 0.6, 0]).castShadow = false; } },
+    { id: 'bell', name: '🔔 뱃종', eff: '바위가 가까워지면 딸랑 울려요',
+      build(g, [z, y]) { add(g, new THREE.CylinderGeometry(0.035, 0.035, 1.1, 6), clay(TRIM), [0.4, y + 0.55, z]); add(g, new THREE.BoxGeometry(0.4, 0.05, 0.05), clay(TRIM), [0.55, y + 1.08, z]); add(g, new THREE.ConeGeometry(0.15, 0.26, 10, 1, true), new THREE.MeshStandardMaterial({ color: 0xd4a83a, metalness: 0.4, roughness: 0.5, side: THREE.DoubleSide }), [0.7, y + 0.92, z]); } },
+  ],
+  crew: [
+    { id: 'none', name: '없음' },
+    { id: 'otter', name: '🦦 수달', eff: '놓친 수집물을 물속으로 들어가 주워 와요' },
+    { id: 'duck', name: '🦆 오리', eff: '30m 앞 바위 위에 작은 표시를 띄워요' },
+    { id: 'turtle', name: '🐢 거북', eff: '부딪힌 뒤 멈춰 있는 시간이 절반이 돼요' },
+  ],
+};
+
+function crewModel(id) {
+  const g = new THREE.Group(), dark = clay(0x2f2a26);
+  if (id === 'otter') {
+    const fur = clay(0x8a5a3b), belly = clay(0xd8b48c);
+    add(g, new THREE.SphereGeometry(0.34, 12, 10), fur, [0, 0.82, 0.05], [0, 0, 0], [1, 1.25, 0.95]);
+    add(g, new THREE.SphereGeometry(0.22, 10, 8), belly, [0, 0.78, -0.2], [0, 0, 0], [1, 1.3, 0.5]);
+    add(g, new THREE.SphereGeometry(0.27, 12, 10), fur, [0, 1.38, 0]);
+    add(g, new THREE.SphereGeometry(0.15, 10, 8), belly, [0, 1.3, -0.23], [0, 0, 0], [1.2, 0.8, 0.7]);
+    add(g, new THREE.SphereGeometry(0.05, 6, 6), dark, [0, 1.36, -0.33]);
+    for (const s of [-1, 1]) { add(g, new THREE.SphereGeometry(0.07, 6, 6), fur, [s * 0.22, 1.58, 0.02]); add(g, new THREE.SphereGeometry(0.035, 6, 6), dark, [s * 0.1, 1.44, -0.24]); }
+  } else if (id === 'duck') {
+    const yel = clay(0xf4c84a);
+    add(g, new THREE.SphereGeometry(0.36, 12, 10), yel, [0, 0.8, 0], [0, 0, 0], [1, 0.85, 1.15]);
+    add(g, new THREE.SphereGeometry(0.25, 12, 10), yel, [0, 1.3, -0.15]);
+    add(g, new THREE.BoxGeometry(0.2, 0.07, 0.24), clay(0xe58a2e), [0, 1.25, -0.44]);
+    for (const s of [-1, 1]) add(g, new THREE.SphereGeometry(0.035, 6, 6), dark, [s * 0.1, 1.38, -0.35]);
+    add(g, new THREE.ConeGeometry(0.1, 0.22, 6), yel, [0, 0.95, 0.42], [-1.1, 0, 0]);
+  } else if (id === 'turtle') {
+    add(g, new THREE.SphereGeometry(0.42, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2), clay(0x5e8f4e, true), [0, 0.55, 0.05], [0, 0, 0], [1, 0.75, 1.1]);
+    add(g, new THREE.CylinderGeometry(0.43, 0.43, 0.06, 12), clay(0xc9b77a), [0, 0.55, 0.05], [0, 0, 0], [1, 1, 1.1]);
+    add(g, new THREE.SphereGeometry(0.18, 10, 8), clay(0xa6c784), [0, 0.82, -0.45], [0, 0, 0], [1, 0.95, 1.15]);
+    for (const s of [-1, 1]) add(g, new THREE.SphereGeometry(0.03, 6, 6), dark, [s * 0.09, 0.88, -0.6]);
+  }
+  return g;
+}
+
+function assemble(boatId, sel = {}) {
+  const b = BOATS.find(x => x.id === boatId), g = new THREE.Group(), body = b.build();
+  body.rotation.y = b.yaw || 0; g.add(body);
+  for (const k of ['bow', 'flag', 'stern']) {
+    const p = PARTS[k].find(x => x.id === sel[k]);
+    if (p?.build) p.build(body, k === 'bow' ? b.at.bow : b.at.stern);
+  }
+  if (sel.crew && sel.crew !== 'none') {
+    const n = boatId === 'raft' ? 2 : 1;
+    for (let i = 0; i < n; i++) {
+      const c = crewModel(sel.crew);
+      c.position.set(n === 2 ? (i ? 0.5 : -0.5) : 0, b.at.crew[1], b.at.crew[0] + (i ? 0.1 : 0));
+      if (n === 2) c.scale.setScalar(0.85);
+      body.add(c);
+    }
+  }
+  return g;
+}
+
+function stage(canvas, cam) {
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(2, devicePixelRatio)); renderer.shadowMap.enabled = true;
+  renderer.setClearColor(0x2f6f86);
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
+  camera.position.set(...cam.pos); camera.lookAt(...cam.look);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x4f8fa0, 1.15));
+  const sun = new THREE.DirectionalLight(0xfff1d6, 1.7);
+  sun.position.set(4, 9, 5); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
+  Object.assign(sun.shadow.camera, { left: -5, right: 5, top: 5, bottom: -5 }); scene.add(sun);
+  const water = new THREE.Mesh(new THREE.CircleGeometry(30, 40), new THREE.MeshStandardMaterial({ color: 0x2f6f86, roughness: 0.5 }));
+  water.rotation.x = -Math.PI / 2; water.receiveShadow = true; scene.add(water);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(2.6, 2.75, 48), new THREE.MeshBasicMaterial({ color: 0x5aa3b8 }));
+  ring.rotation.x = -Math.PI / 2; ring.position.y = 0.01; scene.add(ring);
+  const holder = new THREE.Group(); scene.add(holder);
+  const resize = () => { const w = canvas.clientWidth, h = canvas.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); };
+  new ResizeObserver(resize).observe(canvas); resize();
+  return {
+    set(obj) { holder.clear(); holder.add(obj); },
+    tick(t, spin) { holder.rotation.y = spin ? t * 0.35 : 0.6 + Math.sin(t * 0.6) * 0.35; holder.position.y = Math.sin(t * 2) * 0.04; renderer.render(scene, camera); },
+  };
+}
+
+const ticks = [];
+const boatsEl = document.getElementById('boats');
+for (const b of BOATS) {
+  const card = document.createElement('article'); card.className = 'boat';
+  card.innerHTML = `<canvas></canvas><div class="bb"><h3>${b.ico} ${b.name}</h3><p class="play">${b.play}</p><div class="chips">${b.chips.map(c => `<span class="chip">${c}</span>`).join('')}</div><div class="unlock">🔓 ${b.unlock}</div></div>`;
+  boatsEl.appendChild(card);
+  const s = stage(card.querySelector('canvas'), { pos: [0, 5.0, 8.6], look: [0, 1.0, 0] });
+  s.set(assemble(b.id)); ticks.push(t => s.tick(t, false));
+}
+
+const sel = { boat: 'ferry', bow: 'ram', flag: 'wind', stern: 'none', crew: 'otter' };
+const cfg = stage(document.getElementById('cfgCanvas'), { pos: [0, 4.8, 8.2], look: [0, 1.0, 0] });
+ticks.push(t => cfg.tick(t, true));
+const optsFor = k => k === 'boat' ? BOATS.map(b => ({ id: b.id, name: `${b.ico} ${b.name}` })) : PARTS[k];
+function refresh() {
+  cfg.set(assemble(sel.boat, sel));
+  document.querySelectorAll('.opts').forEach(el => el.querySelectorAll('button').forEach(btn => btn.classList.toggle('on', btn.dataset.id === sel[el.dataset.k])));
+  const b = BOATS.find(x => x.id === sel.boat);
+  const lines = [`<div><b>${b.ico} ${b.name}</b> ${b.play}</div>`];
+  for (const k of ['bow', 'flag', 'stern', 'crew']) { const p = PARTS[k].find(x => x.id === sel[k]); if (p?.eff) lines.push(`<div>${p.name}: ${p.eff}</div>`); }
+  document.getElementById('eff').innerHTML = lines.join('');
+}
+document.querySelectorAll('.opts').forEach(el => {
+  for (const o of optsFor(el.dataset.k)) {
+    const btn = document.createElement('button'); btn.textContent = o.name; btn.dataset.id = o.id;
+    btn.onclick = () => { sel[el.dataset.k] = o.id; refresh(); };
+    el.appendChild(btn);
+  }
+});
+refresh();
+
+function mulberry32(a) { return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const LEN = 620, W = 6.4, OBS = { rock: 1.15, log: 2.0, pile: 0.75, whirl: 1.7 };
+const clampW = (x, pad = 1.1) => Math.max(-W + pad, Math.min(W - pad, x));
+function course(seed, rapid) {
+  const rnd = mulberry32(seed), out = [];
+  const fork = rapid ? [270, 330] : null, falls = rapid ? [180, 450] : [];
+  let d = rapid ? 40 : 70;
+  while (d < LEN - 24) {
+    const p = d / LEN;
+    const gap = ((p < 0.34 ? 26 : p < 0.67 ? 17 : 12.5) + rnd() * 8) * (rapid ? 0.72 : 1);
+    const kinds = rapid
+      ? (p < 0.34 ? ['rock', 'log', 'rock'] : p < 0.67 ? ['rock', 'log', 'whirl', 'rock', 'pile'] : ['rock', 'log', 'whirl', 'pile', 'pile', 'rock'])
+      : (p < 0.34 ? ['rock', 'rock', 'rock'] : p < 0.67 ? ['rock', 'log', 'whirl', 'rock'] : ['rock', 'log', 'whirl', 'pile', 'rock']);
+    const kind = kinds[Math.floor(rnd() * kinds.length)];
+    const inFork = fork && d > fork[0] && d < fork[1];
+    const nearFall = falls.some(f => Math.abs(d - f) < 10);
+    if (!inFork && !nearFall) {
+      if (kind === 'pile') { const gx = (rnd() * 2 - 1) * (W - 3); out.push({ d, kind, x: gx - 2.4 }, { d, kind, x: gx + 2.4 }); }
+      else out.push({ d, kind, x: clampW((rnd() * 2 - 1) * W, OBS[kind] + 0.3) });
+    } else if (inFork) {
+      out.push({ d, kind: 'rock', x: -W + 2.2 + rnd() * 1.2 });
+    }
+    if (rnd() < (rapid ? 0.4 : 0.78) && !inFork) {
+      const n = 3 + Math.floor(rnd() * 3), sx = (rnd() * 2 - 1) * (W - 1.4), c = (rnd() * 2 - 1) * 0.9;
+      for (let i = 0; i < n; i++) out.push({ d: d + gap * 0.42 + i * 2.7, kind: 'star', x: clampW(sx + c * i) });
+    }
+    d += gap;
+  }
+  if (fork) for (let s = fork[0] + 4; s < fork[1] - 4; s += 3.2) out.push({ d: s, kind: 'star', x: W - 1.5 });
+  return { out, fork, falls };
+}
+function drawMap(canvas, data, statEl, rapid) {
+  const ctx = canvas.getContext('2d'), Wpx = canvas.width, Hpx = canvas.height;
+  const sx = x => (x + W) / (2 * W) * (Wpx - 40) + 20, sy = d => Hpx - 16 - d / LEN * (Hpx - 32), k = (Wpx - 40) / (2 * W);
+  ctx.fillStyle = '#4f7f4a'; ctx.fillRect(0, 0, Wpx, Hpx);
+  ctx.fillStyle = rapid ? '#3e8fb0' : '#4aa3bf'; ctx.fillRect(20, 0, Wpx - 40, Hpx);
+  if (rapid) { ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 2; for (let y = 10; y < Hpx; y += 26) { ctx.beginPath(); ctx.moveTo(30 + (y * 7) % 60, y); ctx.lineTo(50 + (y * 7) % 60, y + 10); ctx.stroke(); ctx.beginPath(); ctx.moveTo(Wpx - 90 + (y * 3) % 50, y + 5); ctx.lineTo(Wpx - 70 + (y * 3) % 50, y + 15); ctx.stroke(); } }
+  if (data.fork) { const y1 = sy(data.fork[1]), y0 = sy(data.fork[0]); ctx.fillStyle = '#5f9a52'; ctx.beginPath(); ctx.ellipse(sx(1.1), (y0 + y1) / 2, 2.1 * k, (y0 - y1) / 2, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#7fb86b'; ctx.beginPath(); ctx.ellipse(sx(1.1), (y0 + y1) / 2, 1.3 * k, (y0 - y1) / 2.4, 0, 0, Math.PI * 2); ctx.fill(); }
+  for (const f of data.falls) { const y = sy(f); ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.fillRect(20, y - 4, Wpx - 40, 8); ctx.fillStyle = 'rgba(255,255,255,.4)'; ctx.fillRect(20, y + 4, Wpx - 40, 10); }
+  const cnt = { rock: 0, log: 0, pile: 0, whirl: 0, star: 0 };
+  for (const o of data.out) {
+    cnt[o.kind]++;
+    const x = sx(o.x), y = sy(o.d);
+    if (o.kind === 'rock') { ctx.fillStyle = '#d6dadc'; ctx.beginPath(); ctx.arc(x, y, OBS.rock * k * 0.8, 0, 7); ctx.fill(); }
+    else if (o.kind === 'log') { ctx.fillStyle = '#9b6a42'; ctx.fillRect(x - OBS.log * k, y - 4, OBS.log * 2 * k, 8); }
+    else if (o.kind === 'pile') { ctx.fillStyle = '#3a3128'; ctx.fillRect(x - 5, y - 5, 10, 10); }
+    else if (o.kind === 'whirl') { ctx.strokeStyle = '#1d5f80'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, OBS.whirl * k * 0.7, 0, 5); ctx.stroke(); }
+    else { ctx.fillStyle = '#ffd34d'; ctx.beginPath(); ctx.arc(x, y, 3, 0, 7); ctx.fill(); }
+  }
+  const hits = cnt.rock + cnt.log + cnt.pile / 2;
+  statEl.textContent = `장애물 ${Math.round(hits)}개 · 별 ${cnt.star}개`;
+}
+const seed = 20261027;
+drawMap(document.getElementById('mapCalm'), course(seed, false), document.getElementById('calmStat'), false);
+drawMap(document.getElementById('mapRapid'), course(seed, true), document.getElementById('rapidStat'), true);
+
+const clock = new THREE.Clock();
+(function loop() { const t = clock.getElapsedTime(); ticks.forEach(f => f(t)); requestAnimationFrame(loop); })();
+</script>
+</body>
+</html>

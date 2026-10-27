@@ -59,6 +59,7 @@ export const CONFIG = {
   BOAT_TABLE: 'boat_runs',       // 런당 1행(코스 시드·충돌 지점·수집물·결과)
   STAR_TABLE: 'star_runs',       // 🔭 천문대 별 잇기 판 1행(성공·실패·포기) — sql/migrations/migrate_star_runs.sql
   SLED_TABLE: 'sled_runs',
+  FORAGE_TABLE: 'forage_runs',
   SEA_TABLE: 'sea_records',      // 🌊 바다터 어획 1행(어종·무게) — '오늘의 대어' 리더보드 원천
 
   // ── 인증 방식: 로그인 화면에서 구글 로그인 / 게스트 선택 ───────

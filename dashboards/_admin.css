@@ -49,6 +49,22 @@ body { max-width: 1320px; margin: 0 auto; }
 .loader .bar { flex: 1; min-width: 60px; height: 4px; background: var(--surface-2); border-radius: 3px; overflow: hidden; }
 .loader .bar i { display: block; height: 100%; width: 0; background: var(--s1); border-radius: 3px; transition: width .35s cubic-bezier(.16, 1, .3, 1); }
 @keyframes ad-bob { 0%, 100% { transform: translateY(0) rotate(-4deg) } 50% { transform: translateY(-4px) rotate(4deg) } }
+.is-first.is-loading .loader {
+  flex-direction: column; gap: 14px; position: static; max-width: 440px; margin: 40px auto;
+  padding: 32px 24px; border-radius: 16px; font-size: 14px;
+}
+.is-first.is-loading .loader .step, .is-first.is-loading .loader .bar { display: none; }
+.is-first.is-loading .loader img { width: 56px; height: 56px; margin: 0; }
+.loader .dots { display: none; }
+.is-first.is-loading .loader .dots { display: block; }
+.loader .dots i {
+  display: inline-block; width: 6px; height: 6px; margin: 0 2px; border-radius: 50%;
+  background: var(--s1); animation: ad-dot 1s ease-in-out infinite;
+}
+.loader .dots i:nth-child(2) { animation-delay: .15s; }
+.loader .dots i:nth-child(3) { animation-delay: .3s; }
+.is-first.is-loading #wrap, .is-first.is-loading #dash { display: none; }
+@keyframes ad-dot { 0%, 100% { opacity: .25; transform: translateY(0) } 50% { opacity: 1; transform: translateY(-3px) } }
 
 .is-loading .dash .chartbox, .is-loading .dash table, .is-loading .dash .hgrid,
 .is-loading .dash .fun, .is-loading .dash .heatwrap { opacity: .35; filter: saturate(.4); transition: opacity .25s; }
@@ -63,7 +79,7 @@ body { max-width: 1320px; margin: 0 auto; }
 .fadein { animation: ad-fin .45s cubic-bezier(.16, 1, .3, 1) both; }
 @keyframes ad-fin { from { opacity: .3; transform: translateY(4px) } to { opacity: 1; transform: none } }
 @media (prefers-reduced-motion: reduce) {
-  .loader img, .is-loading .dash .num, .is-loading .dash .skel, .seg button[aria-busy="true"]::after, .fadein { animation: none; }
+  .loader .dots i, .loader img, .is-loading .dash .num, .is-loading .dash .skel, .seg button[aria-busy="true"]::after, .fadein { animation: none; }
 }
 
 /* ── 공통 글자 ── */

@@ -1,0 +1,488 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>갯벌 캐기 시안 · calm forest</title>
+<script>if(/[?&]clip=1/.test(location.search)){let vt=0,q=[];window.requestAnimationFrame=f=>{q.push(f);return q.length};window.cancelAnimationFrame=()=>{};performance.now=()=>vt;window.__tick=ms=>{vt+=ms;const c=q;q=[];c.forEach(f=>f(vt))};const g=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(t,o){return g.call(this,t,/webgl/.test(t)?{...(o||{}),preserveDrawingBuffer:true}:o)};document.documentElement.classList.add("clip")}</script>
+<style>.clip body>*:not(canvas){display:none!important}</style>
+<style>
+  html,body{margin:0;height:100%;background:#bfe3ef;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;
+    color:#3a2a18;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none}
+  canvas{display:block}
+  #tide{position:fixed;top:14px;left:50%;transform:translateX(-50%);width:min(64vw,360px);pointer-events:none;z-index:2}
+  .lbl{display:flex;justify-content:space-between;font-size:13px;font-weight:800;color:#fff;text-shadow:0 1px 4px rgba(20,60,90,.55);margin-bottom:4px}
+  .bar{height:12px;border-radius:9px;background:rgba(255,255,255,.35);border:2px solid rgba(255,255,255,.75);overflow:hidden}
+  #tideFill{height:100%;width:100%;background:#7ec8e3;transition:background .3s}
+  #tideFill.late{background:#ff9a7a}
+  #basket{position:fixed;top:12px;right:14px;background:rgba(255,250,240,.92);border-radius:14px;padding:6px 12px;font-size:18px;font-weight:800;z-index:2;pointer-events:none}
+  #btn{position:fixed;right:max(18px,5vw);bottom:max(22px,6vh);width:clamp(86px,22vw,112px);height:clamp(86px,22vw,112px);border-radius:50%;
+    border:5px solid rgba(255,255,255,.85);background:rgba(140,100,60,.85);color:#fff;font:inherit;font-size:clamp(16px,4.4vw,20px);font-weight:800;
+    box-shadow:0 6px 18px rgba(60,40,20,.35);cursor:pointer;z-index:3;line-height:1.15}
+  #btn small{display:block;font-size:12px;opacity:.9}
+  #btn.ready{background:rgba(110,170,80,.95);border-color:#e4ffd0;animation:btnpulse .5s infinite alternate}
+  #btn.hot{background:rgba(240,190,40,.97);border-color:#fff6b0}
+  #btn:active{transform:scale(.93)}
+  @keyframes btnpulse{from{box-shadow:0 0 0 0 rgba(170,255,140,.6)}to{box-shadow:0 0 0 14px rgba(170,255,140,0)}}
+  #hint{position:fixed;left:50%;bottom:max(32px,7vh);transform:translateX(-50%);font-weight:800;font-size:clamp(14px,4vw,18px);color:#fff;
+    text-shadow:0 2px 6px rgba(40,30,20,.6);white-space:nowrap;pointer-events:none;z-index:2;transition:opacity .3s}
+  #pops{position:fixed;inset:0;pointer-events:none;z-index:4}
+  .pop{position:absolute;transform:translate(-50%,-100%);font-weight:800;font-size:clamp(16px,4.6vw,22px);white-space:nowrap;color:#fff;
+    text-shadow:0 2px 6px rgba(40,30,20,.6);animation:popup .9s ease-out forwards}
+  .pop.big{font-size:clamp(24px,7vw,36px)}
+  @keyframes popup{from{opacity:1;margin-top:0}to{opacity:0;margin-top:-46px}}
+  #cfg{position:fixed;top:44px;left:10px;background:rgba(255,255,255,.88);border-radius:10px;padding:7px 10px;font-size:12px;line-height:1.7;z-index:6}
+  #cfg a{display:inline-block;font-size:12px;padding:2px 8px;margin:0 3px 4px 0;border-radius:8px;border:1px solid #c8b8a0;background:#fff;color:#3a2a18;text-decoration:none}
+  #cfg a.on{background:#8c643c;color:#fff;border-color:#6c4a2a}
+  #tag{position:fixed;left:8px;bottom:8px;font-size:11px;font-weight:800;color:#fff;background:rgba(60,40,20,.55);padding:3px 8px;border-radius:8px;z-index:6;pointer-events:none}
+  body.embed #cfg{display:none}
+</style>
+<div id="tide"><div class="lbl"><span>🌊 밀물까지</span><span id="tideSec"></span></div><div class="bar"><div id="tideFill"></div></div></div>
+<div id="basket">🧺 <span id="cnt">0</span></div>
+<div id="hint">🫧 뽀글거리는 구멍을 찾아요</div>
+<button id="btn">캐기</button>
+<div id="pops"></div>
+<div id="cfg"></div>
+<div id="tag"></div>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { showResult, CARD_NAMES } from './forage-result.js';
+const Q = new URLSearchParams(location.search);
+const V = ['A', 'B', 'C'].includes((Q.get('v') || '').toUpperCase()) ? Q.get('v').toUpperCase() : 'C';
+const CARD = Math.max(1, Math.min(3, +Q.get('card') || 3));
+const TIDE = Math.max(15, +Q.get('tide') || 60);
+const EMBED = Q.get('embed') === '1';
+const auto = Q.get('auto') === '1';
+let seed = (+Q.get('seed') || (Date.now() % 1e6) + 1) >>> 0;
+const rnd = () => { seed = (seed + 0x6D2B79F5) >>> 0; let r = Math.imul(seed ^ (seed >>> 15), 1 | seed); r ^= r + Math.imul(r ^ (r >>> 7), 61 | r); return ((r ^ (r >>> 14)) >>> 0) / 4294967296; };
+const VNAME = { A: 'A · 한 번에 캐기', B: 'B · 깊이만큼 파기', C: 'C · 숨 쉴 때 캐기' };
+if (EMBED) document.body.classList.add('embed');
+
+const SPECIES = [
+  { id: 'clam', name: '바지락', ico: '🐚', w: 46, depth: 1, coin: 3, kind: 'shell', color: 0xd8c8a8, stripe: 0x8a7a62, s: .15 },
+  { id: 'crab', name: '칠게', ico: '🦀', w: 14, depth: 1, coin: 2, kind: 'crab', color: 0xd9774f, s: .15 },
+  { id: 'cockle', name: '꼬막', ico: '🐚', w: 22, depth: 2, coin: 5, kind: 'shell', color: 0xb89a78, stripe: 0x6e5a44, s: .17 },
+  { id: 'razor', name: '맛조개', ico: '🐚', w: 10, depth: 2, coin: 6, kind: 'razor', color: 0xd6c08e, s: .12 },
+  { id: 'scallop', name: '가리비', ico: '🐚', w: 6, depth: 3, coin: 10, kind: 'shell', color: 0xe79a72, stripe: 0xc0603e, s: .22, flat: true },
+  { id: 'octo', name: '낙지', ico: '🐙', w: 2, depth: 3, coin: 25, kind: 'octo', color: 0xc9675a, s: .2, rare: true },
+];
+const W_SUM = SPECIES.reduce((a, s) => a + s.w, 0);
+const pickSpecies = () => { let r = rnd() * W_SUM; for (const s of SPECIES) { r -= s.w; if (r <= 0) return s; } return SPECIES[0]; };
+
+const clay = (color, flat = true, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: .95, metalness: 0, flatShading: flat, ...extra });
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xbfe3ef);
+scene.fog = new THREE.Fog(0xbfe3ef, 22, 52);
+const camera = new THREE.PerspectiveCamera(42, 1, .1, 200);
+scene.add(new THREE.HemisphereLight(0xffffff, 0xa08060, 1.05));
+const key = new THREE.DirectionalLight(0xfff0d8, 1.25);
+key.position.set(6, 12, 6); key.castShadow = true; key.shadow.mapSize.set(1024, 1024);
+Object.assign(key.shadow.camera, { left: -10, right: 10, top: 10, bottom: -10 });
+scene.add(key); scene.add(key.target);
+
+const MUD_Z0 = -26, MUD_Z1 = 15;
+const mudGeo = new THREE.PlaneGeometry(46, MUD_Z1 - MUD_Z0, 46, 41);
+{ const p = mudGeo.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i); p.setZ(i, .035 * Math.sin(x * 1.3) * Math.cos(y * 1.1) + .02 * rnd()); } mudGeo.computeVertexNormals(); }
+const mud = new THREE.Mesh(mudGeo, new THREE.MeshStandardMaterial({ color: 0x8d6e52, roughness: .55, metalness: .05, flatShading: true }));
+mud.rotation.x = -Math.PI / 2; mud.position.z = (MUD_Z0 + MUD_Z1) / 2; mud.receiveShadow = true; scene.add(mud);
+for (let i = 0; i < 70; i++) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(1.2 + rnd() * 2, .02, .07), clay(0x76593f));
+  m.position.set(-20 + rnd() * 40, .045, MUD_Z0 + 2 + rnd() * (MUD_Z1 - MUD_Z0 - 4)); m.rotation.y = (rnd() - .5) * .4; scene.add(m);
+}
+for (let i = 0; i < 9; i++) {
+  const m = new THREE.Mesh(new THREE.CircleGeometry(.5 + rnd() * .8, 16), new THREE.MeshStandardMaterial({ color: 0x9cc6d4, roughness: .15, metalness: .1, transparent: true, opacity: .7 }));
+  m.rotation.x = -Math.PI / 2; m.scale.set(1, .6 + rnd() * .5, 1); m.position.set(-14 + rnd() * 28, .06, -18 + rnd() * 30); scene.add(m);
+}
+const sand = new THREE.Mesh(new THREE.BoxGeometry(46, 1, 8), clay(0xe8d9a8, false));
+sand.position.set(0, -.45, MUD_Z1 + 4); sand.receiveShadow = true; scene.add(sand);
+const grass = new THREE.Mesh(new THREE.BoxGeometry(46, 1.1, 8), clay(0x9ec98a, false));
+grass.position.set(0, -.38, MUD_Z1 + 12); scene.add(grass);
+for (let i = 0; i < 6; i++) {
+  const r = new THREE.Mesh(new THREE.DodecahedronGeometry(.35 + rnd() * .4), clay(0x8a8f86));
+  r.position.set(-18 + rnd() * 36, .1, MUD_Z1 + 1 + rnd() * 3); r.castShadow = true; scene.add(r);
+}
+
+const water = new THREE.Mesh(new THREE.PlaneGeometry(80, 60), new THREE.MeshStandardMaterial({ color: 0x5aa9cc, roughness: .25, metalness: .1, transparent: true, opacity: .86 }));
+water.rotation.x = -Math.PI / 2; water.position.y = .1; scene.add(water);
+const foam = new THREE.Mesh(new THREE.PlaneGeometry(80, .55), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .75 }));
+foam.rotation.x = -Math.PI / 2; foam.position.y = .115; scene.add(foam);
+const FRONT0 = -15, FRONT1 = MUD_Z1 - 3;
+const frontAt = t => { const p = Math.min(1, t / TIDE), k = .75; const e = p < k ? .35 * (p / k) : .35 + .65 * Math.pow((p - k) / (1 - k), 1.15); return FRONT0 + (FRONT1 - FRONT0) * e; };
+
+const BA = { body: 0x8a6038, belly: 0xc9a878, ear: 0x6a4828, bodyR: .63, bodyScale: [1.08, 1, 1.06], headR: .44, headY: 1.34,
+  snout: { len: .22, r: .2, color: 0xc9a878, nose: 0x2a2320, noseR: .075 } };
+function buildBear() {
+  const g = new THREE.Group();
+  const R = BA.bodyR, HR = BA.headR, HY = BA.headY, bs = BA.bodyScale, bodyY = R * bs[1] + .02;
+  const body = new THREE.Mesh(new THREE.IcosahedronGeometry(R, 1), clay(BA.body, false));
+  body.position.y = bodyY; body.scale.set(...bs); body.castShadow = true; g.add(body);
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(R * .62, 16, 12), clay(BA.belly, false));
+  belly.position.set(0, bodyY - R * .16, R * .55); belly.scale.set(1, 1.1, .6); g.add(belly);
+  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(HR, 1), clay(BA.body, false));
+  head.position.y = HY; head.castShadow = true; g.add(head);
+  [-1, 1].forEach(s => {
+    const e = new THREE.Mesh(new THREE.SphereGeometry(HR * .145, 8, 8), new THREE.MeshStandardMaterial({ color: 0x3a2f2a, roughness: .6 }));
+    e.position.set(s * HR * .36, HY + HR * .1, HR * .86); g.add(e);
+    const ear = new THREE.Mesh(new THREE.SphereGeometry(HR * .3, 8, 8), clay(BA.ear, false));
+    ear.position.set(s * HR * .62, HY + HR * .72, 0); g.add(ear);
+  });
+  const sn = BA.snout;
+  const m = new THREE.Mesh(new THREE.SphereGeometry(sn.r, 12, 10), clay(sn.color, false));
+  m.position.set(0, HY - HR * .16, HR * .6 + sn.len * .35); m.scale.set(1, .82, sn.len / sn.r); g.add(m);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(sn.noseR, 10, 8), clay(sn.nose, false));
+  nose.position.set(0, HY - HR * .08, HR * .62 + sn.len * .8); g.add(nose);
+  const arms = {};
+  [['R', -.55], ['L', .55]].forEach(([k, sx]) => {
+    const pivot = new THREE.Group(); pivot.position.set(sx, .99, .12); g.add(pivot);
+    const up = new THREE.Mesh(new THREE.CapsuleGeometry(.145, .14, 4, 8), clay(BA.body, false));
+    up.position.y = -.16; up.castShadow = true; pivot.add(up);
+    const paw = new THREE.Mesh(new THREE.SphereGeometry(.15, 10, 8), clay(BA.ear, false));
+    paw.position.y = -.27; pivot.add(paw);
+    const hand = new THREE.Group(); hand.position.y = -.27; pivot.add(hand);
+    arms[k] = { pivot, hand };
+  });
+  return { g, arms };
+}
+function buildHoe() {
+  const g = new THREE.Group();
+  const handle = new THREE.Mesh(new THREE.CylinderGeometry(.03, .034, .56, 7), clay(0x8a5a32));
+  handle.position.y = -.24; g.add(handle);
+  const neck = new THREE.Mesh(new THREE.BoxGeometry(.04, .04, .14), clay(0x6d757c));
+  neck.position.set(0, -.52, .06); g.add(neck);
+  const blade = new THREE.Mesh(new THREE.BoxGeometry(.2, .16, .025), clay(0x9aa3ab));
+  blade.position.set(0, -.6, .13); g.add(blade);
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  return g;
+}
+function buildBasket() {
+  const g = new THREE.Group();
+  const b = new THREE.Mesh(new THREE.CylinderGeometry(.26, .2, .3, 10, 1, true), clay(0xa7794a, true, { side: THREE.DoubleSide }));
+  b.castShadow = true; g.add(b);
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(.2, 10), clay(0x7a5530)); floor.rotation.x = -Math.PI / 2; floor.position.y = -.14; g.add(floor);
+  [.08, -.06].forEach(y => { const r = new THREE.Mesh(new THREE.TorusGeometry(.24 - (y < 0 ? .02 : 0), .018, 5, 14), clay(0x8a5a32)); r.rotation.x = Math.PI / 2; r.position.y = y; g.add(r); });
+  const heap = new THREE.Mesh(new THREE.SphereGeometry(.2, 10, 8), clay(0xd8c8a8));
+  heap.scale.set(1, .01, 1); heap.position.y = .02; g.add(heap);
+  g.userData.heap = heap;
+  return g;
+}
+const player = new THREE.Group(); scene.add(player);
+const bear = buildBear(); player.add(bear.g); bear.g.scale.setScalar(.92);
+const hoe = buildHoe(); bear.arms.R.hand.add(hoe);
+const basket = buildBasket(); basket.position.set(0, .98, -.6); basket.rotation.x = -.15; bear.g.add(basket);
+player.position.set(0, 0, 7);
+
+function buildItem(sp) {
+  const g = new THREE.Group();
+  if (sp.kind === 'shell') {
+    const geo = new THREE.SphereGeometry(sp.s, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+    const top = new THREE.Mesh(geo, clay(sp.color)); top.scale.set(1, sp.flat ? .3 : .5, .85); g.add(top);
+    const bot = new THREE.Mesh(geo, clay(sp.stripe)); bot.scale.set(1, sp.flat ? -.18 : -.4, .85); g.add(bot);
+  } else if (sp.kind === 'razor') {
+    const m = new THREE.Mesh(new THREE.CapsuleGeometry(sp.s * .45, sp.s * 3, 4, 8), clay(sp.color)); m.rotation.z = Math.PI / 2; g.add(m);
+  } else if (sp.kind === 'crab') {
+    const b = new THREE.Mesh(new THREE.SphereGeometry(sp.s, 10, 8), clay(sp.color)); b.scale.set(1.3, .55, 1); g.add(b);
+    [-1, 1].forEach(s => {
+      const c = new THREE.Mesh(new THREE.SphereGeometry(sp.s * .45, 8, 6), clay(sp.color)); c.position.set(s * sp.s * 1.2, .02, sp.s * .8); g.add(c);
+      const e = new THREE.Mesh(new THREE.SphereGeometry(sp.s * .14, 6, 6), clay(0x222222)); e.position.set(s * sp.s * .35, sp.s * .5, sp.s * .6); g.add(e);
+      for (let l = 0; l < 3; l++) { const lg = new THREE.Mesh(new THREE.CylinderGeometry(.015, .015, sp.s * 1.2, 4), clay(sp.color)); lg.rotation.z = s * 1.1; lg.position.set(s * sp.s * 1.3, -.03, -sp.s * .3 + l * sp.s * .35); g.add(lg); }
+    });
+  } else {
+    const h = new THREE.Mesh(new THREE.SphereGeometry(sp.s, 12, 10), clay(sp.color, false)); h.scale.set(1, 1.2, 1); h.position.y = sp.s * .6; g.add(h);
+    [-1, 1].forEach(s => { const e = new THREE.Mesh(new THREE.SphereGeometry(sp.s * .16, 8, 6), clay(0x2a2320)); e.position.set(s * sp.s * .4, sp.s * .6, sp.s * .85); g.add(e); });
+    for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; const t = new THREE.Mesh(new THREE.CapsuleGeometry(sp.s * .16, sp.s * 1.1, 3, 6), clay(sp.color, false)); t.position.set(Math.cos(a) * sp.s * .6, -sp.s * .2, Math.sin(a) * sp.s * .6); t.rotation.set(Math.sin(a) * .9, 0, -Math.cos(a) * .9); g.add(t); }
+  }
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  return g;
+}
+
+const pitMat = clay(0x3a2a1c), rimMat = clay(0x6e5440), rimHot = clay(0xa58a62);
+const ringMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .9, side: THREE.DoubleSide });
+const bubbleGeo = new THREE.SphereGeometry(1, 8, 6);
+const holes = [];
+function spawnHole(x, z) {
+  const sp = pickSpecies(), r = .1 + .05 * sp.depth;
+  const g = new THREE.Group(); g.position.set(x, 0, z); scene.add(g);
+  const pit = new THREE.Mesh(new THREE.CircleGeometry(r, 14), pitMat); pit.rotation.x = -Math.PI / 2; pit.position.y = .062; g.add(pit);
+  const rim = new THREE.Mesh(new THREE.RingGeometry(r, r * 1.7, 14), rimMat); rim.rotation.x = -Math.PI / 2; rim.position.y = .058; g.add(rim);
+  if (sp.kind === 'razor') { pit.scale.set(.55, 1.5, 1); rim.scale.set(.6, 1.4, 1); }
+  const ring = new THREE.Mesh(new THREE.RingGeometry(.92, 1, 32), ringMat.clone()); ring.rotation.x = -Math.PI / 2; ring.position.y = .08; ring.visible = false; g.add(ring);
+  const h = { g, pit, rim, ring, sp, r, depth: sp.depth, dug: 0, miss: 0, period: 2.2 + rnd() * 1.2, phase: rnd(), state: 'idle', life: 0, lastBub: 0, bubbles: [] };
+  holes.push(h); return h;
+}
+const breath = h => h.phase % 1;
+const inWindow = h => breath(h) < .3;
+function removeHole(h) { scene.remove(h.g); h.bubbles.forEach(b => scene.remove(b.m)); holes.splice(holes.indexOf(h), 1); }
+
+const parts = [];
+function splash(pos, n, color, up = 3) {
+  for (let i = 0; i < n; i++) {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(.04 + rnd() * .04, 6, 5), clay(color));
+    m.position.copy(pos).add(new THREE.Vector3(0, .1, 0)); scene.add(m);
+    const a = rnd() * Math.PI * 2, s = .8 + rnd() * 1.4;
+    parts.push({ m, v: new THREE.Vector3(Math.cos(a) * s, up * (.6 + rnd() * .6), Math.sin(a) * s), life: .7 });
+  }
+}
+
+const popsEl = document.getElementById('pops');
+const _v = new THREE.Vector3();
+function pop(world, text, big = false) {
+  _v.copy(world).project(camera);
+  const el = document.createElement('div'); el.className = 'pop' + (big ? ' big' : ''); el.textContent = text;
+  el.style.left = ((_v.x + 1) / 2 * innerWidth) + 'px'; el.style.top = ((1 - _v.y) / 2 * innerHeight) + 'px';
+  popsEl.appendChild(el); setTimeout(() => el.remove(), 950);
+}
+
+const flying = [];
+const bag = {}; let count = 0, presses = 0, misses = 0, firstDig = false;
+function popItem(h) {
+  const m = buildItem(h.sp); m.position.set(h.g.position.x, .05, h.g.position.z); scene.add(m);
+  flying.push({ m, sp: h.sp, t: 0, from: m.position.clone() });
+}
+
+const REACH = 1.35;
+let t = 0, over = false, dig = null, moveTarget = null, pendingHole = null;
+function nearestHole(maxD = REACH) {
+  let best = null, bd = maxD;
+  for (const h of holes) { if (h.state !== 'idle') continue; const d = Math.hypot(h.g.position.x - player.position.x, h.g.position.z - player.position.z); if (d < bd) { bd = d; best = h; } }
+  return best;
+}
+function face(h) { player.rotation.y = Math.atan2(h.g.position.x - player.position.x, h.g.position.z - player.position.z); }
+function press() {
+  if (over || dig) return;
+  const h = nearestHole();
+  presses++;
+  if (!h) { pop(player.position.clone().add(new THREE.Vector3(0, 2, 0)), '🤔'); return; }
+  face(h); moveTarget = null;
+  let res = 'hit';
+  if (V === 'B') res = h.dug + 1 >= h.depth ? 'hit' : 'step';
+  if (V === 'C') res = inWindow(h) ? 'hit' : 'miss';
+  dig = { h, res, t: 0, dur: .44, done: false };
+}
+function impact(d) {
+  const h = d.h, p = h.g.position;
+  splash(p, 7, 0x6e5440);
+  if (d.res === 'step') {
+    h.dug++; h.pit.scale.multiplyScalar(1.25); h.rim.scale.multiplyScalar(1.2);
+    pop(p.clone().add(new THREE.Vector3(0, .8, 0)), '💪'); return;
+  }
+  if (d.res === 'miss') {
+    misses++; h.miss++; h.phase = Math.floor(h.phase) + .45;
+    pop(p.clone().add(new THREE.Vector3(0, .8, 0)), '💨');
+    if (h.miss >= 2) { h.state = 'gone'; h.life = 0; }
+    return;
+  }
+  h.state = 'done'; h.life = 0; h.ring.visible = false;
+  popItem(h);
+  if (!firstDig) { firstDig = true; document.getElementById('hint').style.opacity = 0; }
+}
+
+const keys = new Set();
+addEventListener('keydown', e => {
+  if (e.repeat) return;
+  if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); press(); return; }
+  keys.add(e.code);
+});
+addEventListener('keyup', e => keys.delete(e.code));
+const btn = document.getElementById('btn');
+btn.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); press(); });
+const ray = new THREE.Raycaster(), ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), ndc = new THREE.Vector2(), hit = new THREE.Vector3();
+renderer.domElement.addEventListener('pointerdown', e => {
+  if (over) return;
+  ndc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  if (!ray.ray.intersectPlane(ground, hit)) return;
+  moveTarget = hit.clone(); pendingHole = null;
+  let best = null, bd = .9;
+  for (const h of holes) { if (h.state !== 'idle') continue; const d = Math.hypot(h.g.position.x - hit.x, h.g.position.z - hit.z); if (d < bd) { bd = d; best = h; } }
+  if (best && V !== 'C') pendingHole = best;
+});
+
+const tideFill = document.getElementById('tideFill'), tideSec = document.getElementById('tideSec');
+const cntEl = document.getElementById('cnt');
+document.getElementById('tag').textContent = '갯벌 캐기 · ' + VNAME[V];
+{
+  const mk = (q, label, on) => { const u = new URLSearchParams(location.search); Object.entries(q).forEach(([k, v]) => v == null ? u.delete(k) : u.set(k, v)); return `<a href="?${u}" class="${on ? 'on' : ''}">${label}</a>`; };
+  document.getElementById('cfg').innerHTML =
+    '<div>캐기 방식</div>' + ['A', 'B', 'C'].map(k => mk({ v: k }, VNAME[k], k === V)).join('') +
+    '<div>한 판 길이</div>' + [45, 60, 90].map(s => mk({ tide: s }, s + '초', s === TIDE)).join('') +
+    '<div>결과창</div>' + [1, 2, 3].map(c => mk({ card: c }, CARD_NAMES[c], c === CARD)).join('') +
+    '<div>' + mk({ auto: auto ? null : 1 }, '자동 플레이', auto) + '</div>';
+}
+function endRound() {
+  over = true; moveTarget = null;
+  setTimeout(() => showResult({
+    design: CARD, mode: 'mudflat',
+    title: '밀물이 들어왔어요', sub: count ? `바구니에 ${count}개를 담았어요` : '다음엔 꼭 담아 와요',
+    items: SPECIES.filter(s => bag[s.id]).map(s => ({ ico: s.ico, name: s.name, count: bag[s.id], coin: s.coin, rare: !!s.rare })),
+    stats: `${VNAME[V]} · 누른 횟수 ${presses} · 헛손질 ${misses}`,
+    onAgain: () => { const u = new URLSearchParams(location.search); if (!Q.get('seed')) u.delete('seed'); location.search = u.toString(); },
+  }), 900);
+}
+
+function trySpawn(front) {
+  for (let k = 0; k < 12; k++) {
+    const x = -11 + rnd() * 22, z = front + 1.5 + rnd() * (MUD_Z1 - 4 - front - 1.5);
+    if (z > MUD_Z1 - 4) continue;
+    if (holes.some(h => Math.hypot(h.g.position.x - x, h.g.position.z - z) < 1.6)) continue;
+    if (Math.hypot(player.position.x - x, player.position.z - z) < 1.2) continue;
+    return spawnHole(x, z);
+  }
+  return null;
+}
+for (let i = 0; i < 16; i++) trySpawn(FRONT0);
+
+const camOff = new THREE.Vector3(), camLook = new THREE.Vector3(), camPos = new THREE.Vector3(), bpos = new THREE.Vector3();
+let camK = 1, spawnT = 0, walkT = 0, splashT = 0;
+function resize() {
+  renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight;
+  camK = camera.aspect < .8 ? 1.45 : camera.aspect < 1.2 ? 1.2 : 1; camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize();
+
+const ease = k => k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+const lerp = (a, b, k) => a + (b - a) * k;
+const mv = new THREE.Vector3();
+function updateMove(front, dt) {
+  mv.set(0, 0, 0);
+  if (over || dig) return;
+  if (keys.has('KeyW') || keys.has('ArrowUp')) mv.z -= 1;
+  if (keys.has('KeyS') || keys.has('ArrowDown')) mv.z += 1;
+  if (keys.has('KeyA') || keys.has('ArrowLeft')) mv.x -= 1;
+  if (keys.has('KeyD') || keys.has('ArrowRight')) mv.x += 1;
+  if (mv.lengthSq()) { moveTarget = null; pendingHole = null; }
+  if (auto && !moveTarget && !mv.lengthSq()) {
+    const h = nearestHole(99);
+    if (h) {
+      const d = Math.hypot(h.g.position.x - player.position.x, h.g.position.z - player.position.z);
+      if (d < REACH * .8) { face(h); if (V !== 'C' || breath(h) < .12) press(); }
+      else mv.set(h.g.position.x - player.position.x, 0, h.g.position.z - player.position.z);
+    }
+  }
+  if (moveTarget) {
+    mv.set(moveTarget.x - player.position.x, 0, moveTarget.z - player.position.z);
+    const stopD = pendingHole ? REACH * .7 : .15;
+    if (mv.length() < stopD) { mv.set(0, 0, 0); moveTarget = null; if (pendingHole && pendingHole.state === 'idle') press(); pendingHole = null; }
+  }
+}
+function updateBear(dt) {
+  const R = bear.arms.R.pivot, L = bear.arms.L.pivot;
+  bear.g.position.y = walkT ? Math.abs(Math.sin(walkT * 10)) * .05 : 0;
+  L.rotation.x = walkT ? Math.sin(walkT * 10) * .45 : 0;
+  if (dig) {
+    dig.t += dt; const k = Math.min(1, dig.t / dig.dur);
+    if (k < .5) { R.rotation.x = lerp(-.35, -2.6, ease(k / .5)); bear.g.rotation.x = lerp(0, -.08, k / .5); }
+    else if (k < .62) { R.rotation.x = lerp(-2.6, -.25, (k - .5) / .12); bear.g.rotation.x = lerp(-.08, .32, (k - .5) / .12); }
+    else { R.rotation.x = lerp(-.25, -.35, (k - .62) / .38); bear.g.rotation.x = lerp(.32, 0, (k - .62) / .38); }
+    if (!dig.done && k >= .6) { dig.done = true; impact(dig); }
+    if (k >= 1) dig = null;
+  } else { R.rotation.x = walkT ? -.35 - Math.sin(walkT * 10) * .2 : -.35; bear.g.rotation.x = 0; }
+}
+function updateHoles(front, dt, near) {
+  for (const h of [...holes]) {
+    h.phase += dt / h.period;
+    if (h.state === 'idle' && h.g.position.z < front + .2) { h.state = 'gone'; h.life = 0; }
+    if (h.state !== 'idle') {
+      h.life += dt; const k = Math.min(1, h.life / (h.state === 'done' ? 3 : .6));
+      h.g.scale.setScalar(Math.max(.01, 1 - k)); h.ring.visible = false;
+      if (k >= 1) removeHole(h);
+      continue;
+    }
+    const b = breath(h);
+    if (b < .3 && t - h.lastBub > .11) {
+      h.lastBub = t;
+      const m = new THREE.Mesh(bubbleGeo, new THREE.MeshStandardMaterial({ color: 0xf2f8ff, transparent: true, opacity: .85, roughness: .2 }));
+      m.scale.setScalar(.05 + rnd() * .035 + h.depth * .012);
+      m.position.set(h.g.position.x + (rnd() - .5) * h.r, .08, h.g.position.z + (rnd() - .5) * h.r); scene.add(m);
+      h.bubbles.push({ m, life: 0 });
+    }
+    const showRing = V === 'C' && h === near;
+    h.ring.visible = showRing;
+    if (showRing) {
+      const lead = b > .55 ? (1 - b) / .45 : b < .3 ? 0 : 1;
+      h.ring.scale.setScalar(h.r * 1.9 + lead * 1.1);
+      h.ring.material.color.set(b < .3 ? 0xb6ff9e : 0xffffff);
+      h.ring.material.opacity = b >= .3 && b <= .55 ? .25 : .95;
+    }
+    h.rim.material = h === near ? rimHot : rimMat;
+  }
+  for (const h of holes) for (const bb of [...h.bubbles]) {
+    bb.life += dt; bb.m.position.y += dt * .7; bb.m.material.opacity = .85 * (1 - bb.life / .7);
+    if (bb.life > .7) { scene.remove(bb.m); h.bubbles.splice(h.bubbles.indexOf(bb), 1); }
+  }
+}
+function updateFx(dt) {
+  for (const p of [...parts]) {
+    p.life -= dt; p.v.y -= 9 * dt; p.m.position.addScaledVector(p.v, dt);
+    if (p.m.position.y < .05) { p.m.position.y = .05; p.v.set(0, 0, 0); }
+    if (p.life <= 0) { scene.remove(p.m); parts.splice(parts.indexOf(p), 1); }
+  }
+  basket.getWorldPosition(bpos);
+  for (const f of [...flying]) {
+    f.t += dt; const m = f.m;
+    if (f.t < .55) {
+      const k = f.t / .55; m.position.set(f.from.x, .05 + Math.sin(k * Math.PI * .5) * 1.1, f.from.z); m.rotation.y += dt * 9;
+      if (!f.popped && k > .6) { f.popped = true; pop(m.position.clone().add(new THREE.Vector3(0, .35, 0)), f.sp.rare ? `✨${f.sp.ico}+1` : `${f.sp.ico}+1`, !!f.sp.rare); }
+    } else {
+      const k = Math.min(1, (f.t - .55) / .35); m.position.lerpVectors(new THREE.Vector3(f.from.x, 1.15, f.from.z), bpos, ease(k)); m.scale.setScalar(1 - k * .6);
+      if (k >= 1) {
+        scene.remove(m); flying.splice(flying.indexOf(f), 1);
+        bag[f.sp.id] = (bag[f.sp.id] || 0) + 1; count++; cntEl.textContent = count;
+        basket.userData.heap.scale.set(1, Math.min(.75, .1 + count * .05), 1);
+      }
+    }
+  }
+}
+function step(dt) {
+  if (!over) t += dt;
+  const front = frontAt(t);
+  water.position.z = front - 30; foam.position.z = front + Math.sin(t * 2.2) * .12; foam.material.opacity = .55 + .25 * Math.sin(t * 3);
+  if (!over && t >= TIDE) endRound();
+  const left = Math.max(0, TIDE - t);
+  tideFill.style.width = (left / TIDE * 100) + '%'; tideFill.classList.toggle('late', left < 15);
+  tideSec.textContent = Math.ceil(left) + '초';
+
+  updateMove(front, dt);
+  const inWater = player.position.z < front + .6;
+  if (mv.lengthSq()) {
+    mv.normalize();
+    player.position.addScaledVector(mv, (inWater ? 2.2 : 4.2) * dt);
+    player.rotation.y = Math.atan2(mv.x, mv.z);
+    walkT += dt;
+  } else walkT = 0;
+  player.position.x = THREE.MathUtils.clamp(player.position.x, -14, 14);
+  player.position.z = THREE.MathUtils.clamp(player.position.z, front + .45, MUD_Z1 + 3);
+  if (inWater && (splashT += dt) > .35) { splashT = 0; splash(player.position, 3, 0xdff2f8, 2.4); }
+  updateBear(dt);
+
+  const near = over ? null : nearestHole();
+  updateHoles(front, dt, near);
+  btn.classList.toggle('ready', !!near && !(V === 'C' && inWindow(near)));
+  btn.classList.toggle('hot', !!near && V === 'C' && inWindow(near));
+  btn.innerHTML = V === 'B' && near ? `파기<small>${near.dug}/${near.depth}</small>` : '캐기';
+
+  if (!over && (spawnT += dt) > .9) {
+    spawnT = 0;
+    const active = holes.filter(h => h.state === 'idle').length;
+    const target = 6 + Math.round(10 * THREE.MathUtils.clamp((MUD_Z1 - 4 - front) / (MUD_Z1 - 4 - FRONT0), 0, 1));
+    if (active < target) trySpawn(front);
+  }
+  updateFx(dt);
+
+  camOff.set(0, 6.4 * camK, 8.6 * camK);
+  camPos.copy(player.position).add(camOff);
+  camera.position.lerp(camPos, 1 - Math.pow(.001, dt));
+  camLook.copy(player.position).add(new THREE.Vector3(0, .3, -4.2));
+  camera.lookAt(camLook);
+  key.position.copy(player.position).add(new THREE.Vector3(6, 12, 6)); key.target.position.copy(player.position);
+}
+const clock = new THREE.Clock();
+function loop() { step(Math.min(.05, clock.getDelta())); renderer.render(scene, camera); requestAnimationFrame(loop); }
+camera.position.copy(player.position).add(new THREE.Vector3(0, 6.4, 8.6));
+window.__mud = { holes, get t() { return t; }, set t(v) { t = v; }, player, press, bag, step };
+loop();
+</script>

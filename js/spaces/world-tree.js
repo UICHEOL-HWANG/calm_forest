@@ -11,6 +11,7 @@
 import {
   Input, camera, cameraFree, defaultCamPose, setCameraRig, dist2D, gameState, giveReward, isOpen, obstacles, player, refreshInventoryUI, requestSave,
   habitatCtx, rewardText, scene, solidCircle, spawnConfetti, spawnSparkle, syncUnlocks, todayStr, ui, unlocksOn,
+  holdPlaceReveal, keepPlaceReveal, releasePlaceReveal, startReturnWalk,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다
 import { trackEvent } from '../analytics.js';
 import { Sound } from '../sound.js';
@@ -26,7 +27,9 @@ import { closeTreeBoard, openTreeBoard, renderTreeBoard, treeBoardOpen } from '.
 import { CHAPTER_SHOT_HOLD, chapterShotDue, createShotRig, shotFrame } from '../world/tree-shot.js';
 import { STORY_REWORLD } from '../story/chapters.js';
 import { inVillage2 } from './doors.js';
-import { buildTreeArt } from '../world/tree-art.js';
+import { LIMBS, buildTreeArt } from '../world/tree-art.js';
+import { createRegionRig, regionFor } from '../world/region-cine.js';
+import { createRegionFx } from '../world/region-fx.js';
 import { t as tr } from '../i18n.js';
 import * as THREE from 'three';
 
@@ -36,6 +39,7 @@ const TRUNK_R = 2.4;            // 밑동 콜라이더(판뿌리 사이로는 �
 const PROMPT_R = TRUNK_R + 2.3; // 밑동 둘레에 서면 프롬프트
 
 let wt = null;   // { art, cur: { id: { leaves, bloom } }, life, box }
+let regionFx = null;
 let tab = 'water';
 let freshTile = -1;   // 방금 놓은 칸만 톡 떨어지는 연출(다시 그릴 때마다 전부 튀지 않게)
 
@@ -53,6 +57,7 @@ export function buildWorldTree() {
   const cur = {};
   for (const id of BRANCH_IDS) cur[id] = { leaves: 0, bloom: 0 };
   wt = { art, cur, life: 0, box: { cx: c.x, cy: c.y, cz: c.z, hx: h.x, hy: h.y, hz: h.z } };
+  regionFx = createRegionFx(THREE, scene);
 }
 
 /** 나무를 다 살려 보여 줄까 — 해금 꺼짐·레거시 세이브는 이웃이 이미 다 있다 */
@@ -74,6 +79,7 @@ function computeTargets() {
 export function updateWorldTree(dt, t) {
   if (!wt) return;
   updateTreeShot(t);
+  regionFx?.update(Math.min(dt, 0.05));
   if (!targets || t - targetAt > 0.5) { targets = computeTargets(); targetAt = t; }
   const k = Math.min(1, dt * (shot ? 2.4 : 1.6));   // 조망샷 머무는 동안(1.7초) 다 돋게 조금 빠르게
   const kb = Math.min(1, dt * (shot ? 2.0 : 1.2));
@@ -397,7 +403,9 @@ function queueTreeShot(kind, branch, prev, prevBloom = gameState.treeBloom) {
   if (!SHOT_KINDS[kind] || !shotsOn() || !wt) return false;
   const key = shotKey(kind, branch);
   if (gameState.hintsSeen?.[key] || shotQueue.some(q => q.key === key)) return false;
-  shotQueue.push({ kind, branch, key, at: performance.now() });
+  const region = regionFor(branch, kind);
+  if (region?.place) holdPlaceReveal(region.place);
+  shotQueue.push({ kind, branch, key, region, at: performance.now() });
   if (prev && !shownTree) { shownTree = prev; shownBloom = prevBloom; targets = null; }
   return true;
 }
@@ -411,7 +419,9 @@ export function queueChapterShot(after) {
 /** 검수용(로컬 dev 훅 window.__treeShot) — 본 적 있어도 다시 줄 세운다 */
 export function debugTreeShot(kind, branch) {
   if (kind === 'phase') return shot ? shot.rig.phase : shotQueue.length ? 'queued' : 'none';
-  shotQueue.push({ kind, branch, key: shotKey(kind, branch), at: performance.now() });
+  const region = regionFor(branch, kind);
+  if (region?.place) holdPlaceReveal(region.place, { force: true });
+  shotQueue.push({ kind, branch, key: shotKey(kind, branch), region, at: performance.now() });
   return shotQueue.length;
 }
 
@@ -440,7 +450,8 @@ function updateTreeShot(t) {
     else shotQueue.push({ kind: 'intro', branch: 'none', key: 'treeShot_intro', at: performance.now() });
   }
   if (!shotQueue.length) { if (shownTree) { shownTree = null; shownBloom = null; targets = null; } return; }
-  if (!shotsOn()) { shotQueue.forEach(q => q.after?.()); shotQueue = []; return; }
+  for (const q of shotQueue) if (q.region?.place) keepPlaceReveal(q.region.place);
+  if (!shotsOn()) { shotQueue.forEach(q => { settleRegion(q); q.after?.(); }); shotQueue = []; return; }
   if (!shotReady()) {
     idleSince = -1;
     const q = shotQueue[0];
@@ -469,32 +480,73 @@ function startShot(q) {
       else if (q.kind !== 'chapter') Sound.complete?.();
     },
   });
-  shot = { q, rig, skipped: false };
+  shot = { q, rig, skipped: false, stage: 'tree', landed: false };
   Input.setAnalog?.(0, 0);
   setCameraRig((cam, dt) => {
     if (!shot) return;
-    const ph = rig.update(Math.min(dt, 0.05));
-    cam.position.set(rig.cur.pos.x, rig.cur.pos.y, rig.cur.pos.z);
-    cam.lookAt(rig.cur.look.x, rig.cur.look.y, rig.cur.look.z);
-    if (ph === 'done') endShot(false);
+    const ph = shot.rig.update(Math.min(dt, 0.05));
+    if (shot.stage === 'tree' && ph === 'out' && q.region) {
+      if (shot.skipped) settleRegion(q);
+      else startRegion(q);
+    }
+    if (shot.stage === 'fly') regionFx?.setOrb(shot.rig.orb);
+    const c = shot.rig.cur;
+    cam.position.set(c.pos.x, c.pos.y, c.pos.z);
+    cam.lookAt(c.look.x, c.look.y, c.look.z);
+    if (shot.rig.phase === 'done') endShot(false);
   });
-  showOverlay(q.kind === 'chapter');
+  showOverlay(q.kind === 'chapter' ? 'chapter' : q.region ? 'region' : null);
+}
+
+function limbTip(branch) {
+  const L = LIMBS[branch];
+  if (!L) return { x: WORLD_TREE.x, y: 8, z: WORLD_TREE.z };
+  return { x: WORLD_TREE.x + L.dir[0] * (L.len + 0.5), y: L.h + 2.4, z: WORLD_TREE.z + L.dir[1] * (L.len + 0.5) };
+}
+
+function startRegion(q) {
+  const from = { pos: { ...shot.rig.cur.pos }, look: { ...shot.rig.cur.look } };
+  shot.stage = 'fly';
+  shot.rig = createRegionRig({
+    from, tip: limbTip(q.branch), at: q.region.at, aspect: camera.aspect, home: defaultCamPose,
+    onLand: () => { if (shot) { shot.stage = 'land'; shot.landed = true; } landRegion(q); },
+  });
+}
+
+function landRegion(q) {
+  const group = q.region.place ? releasePlaceReveal(q.region.place) : null;
+  regionFx?.land(q.region, group);
+  startReturnWalk(q.region.npc);
+  Sound.complete?.();
+  const title = overlay?.querySelector('#treeshot-region-title');
+  if (title) { title.style.opacity = '1'; title.style.transform = 'translateY(0)'; }
+}
+
+function settleRegion(q) {
+  if (!q?.region || q.settled) return;
+  q.settled = true;
+  if (q.region.place) releasePlaceReveal(q.region.place);
+  startReturnWalk(q.region.npc);
 }
 
 function skipShot() {
   if (!shot || shot.skipped || shot.rig.phase === 'out') return;
   shot.skipped = true;
+  shot.skipStage = shot.stage;
   shot.rig.skip();
 }
 
 function endShot(abort) {
   if (!shot) return;
-  const { q, skipped } = shot;
+  const { q, skipped, skipStage, landed } = shot;
   shot = null;
   setCameraRig(null);
   hideOverlay();
+  regionFx?.finish();
+  if (q.region && !landed) settleRegion(q);
+  else if (q.region) q.settled = true;
   if (!shotQueue.length) { shownTree = null; shownBloom = null; targets = null; }
-  trackEvent('tree_shot', { kind: q.kind, branch: q.branch, skipped: skipped || abort });
+  trackEvent('tree_shot', { kind: q.kind, branch: q.branch, skipped: skipped || abort, region: q.region?.id || 'none', skip_stage: skipped ? skipStage : abort ? 'abort' : 'none' });
   if (q.kind === 'chapter') ui.flashStoryChip?.();
   q.after?.();
 }
@@ -528,7 +580,28 @@ function chapterCine() {
   return el;
 }
 
-function showOverlay(cine = false) {
+const CINE_BAR = 'clamp(48px,9vh,90px)';
+function regionCine(region) {
+  const el = document.createElement('div');
+  el.id = 'treeshot-cine';
+  const bar = `position:absolute;left:0;right:0;height:${CINE_BAR};background:#0d0f0e;transition:transform .5s ease;`;
+  const top = document.createElement('div'); top.style.cssText = bar + 'top:0;transform:translateY(-100%);';
+  const bot = document.createElement('div'); bot.style.cssText = bar + 'bottom:0;transform:translateY(100%);';
+  const title = document.createElement('div');
+  title.id = 'treeshot-region-title';
+  title.style.cssText = `position:absolute;left:0;right:0;bottom:0;height:${CINE_BAR};display:flex;flex-direction:column;align-items:center;justify-content:center;`
+    + 'color:#fff;text-align:center;padding:0 20px;opacity:0;transform:translateY(8px);transition:opacity .6s ease,transform .6s ease;';
+  const sub = document.createElement('div'); sub.textContent = tr(region.sub);
+  sub.style.cssText = 'font-size:clamp(11px,1.5vh,14px);font-weight:700;letter-spacing:.06em;opacity:.8;';
+  const main = document.createElement('div'); main.textContent = tr(region.main);
+  main.style.cssText = 'font-size:clamp(16px,2.8vh,24px);font-weight:800;margin-top:2px;';
+  title.append(sub, main);
+  el.append(top, bot, title);
+  requestAnimationFrame(() => requestAnimationFrame(() => { top.style.transform = bot.style.transform = 'translateY(0)'; }));
+  return el;
+}
+
+function showOverlay(mode = null) {
   if (!overlay) {
     overlay = document.createElement('div');
     overlay.id = 'treeshot-modal';
@@ -544,8 +617,9 @@ function showOverlay(cine = false) {
     document.body.appendChild(overlay);
   }
   overlay.querySelector('#treeshot-cine')?.remove();
-  if (cine) { overlay.prepend(chapterCine()); document.body.classList.add('cine-open'); }
-  overlay.querySelector('#treeshot-hint').style.bottom = cine ? 'calc(clamp(48px,9vh,90px) / 2 - 12px)' : 'calc(104px + env(safe-area-inset-bottom,0px))';
+  if (mode) { overlay.prepend(mode === 'chapter' ? chapterCine() : regionCine(shot.q.region)); document.body.classList.add('cine-open'); }
+  const hint = overlay.querySelector('#treeshot-hint');
+  hint.style.bottom = mode === 'chapter' ? `calc(${CINE_BAR} / 2 - 12px)` : mode ? `calc(100% - ${CINE_BAR} / 2 - 12px)` : 'calc(104px + env(safe-area-inset-bottom,0px))';
   overlay.style.display = 'block';
   overlay.classList.add('show');
   onKey = (e) => { e.preventDefault(); e.stopImmediatePropagation(); if (!e.repeat) skipShot(); };

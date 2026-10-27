@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>뱃길 결과 카드 시안</title>
+<style>
+:root{--bg:#5d7f86;--ink:#3a3128;--sub:#7b6d5c;--teal:#3fb3c2;--green:#3f8f5a;--cream:#fffaf0}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(#7fa3a8,#4f6f76);color:var(--ink);font-family:"Pretendard","Apple SD Gothic Neo",system-ui,sans-serif;min-height:100vh}
+main{max-width:1300px;margin:0 auto;padding:24px 16px 60px}
+h1{color:#fff;font-size:24px;margin:0 0 4px}
+.lead{color:#e8f1ef;margin:0 0 20px;font-size:14px}
+.opt{margin-bottom:34px}
+.opt>h2{color:#fff;font-size:19px;margin:0 0 4px}
+.opt>p{color:#dbe9e6;font-size:13px;margin:0 0 12px}
+.pair{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+.slot{width:360px;max-width:100%}
+.slot>small{display:block;color:#e8f1ef;font-size:12px;margin-bottom:6px}
+button{font:inherit;cursor:pointer;border:none}
+
+.tk{background:var(--cream);border-radius:22px;overflow:hidden;box-shadow:0 18px 40px rgba(0,0,0,.25);position:relative}
+.tk-head{padding:22px 20px 26px;color:#fff;text-align:center;position:relative}
+.tk-head.wreck{background:linear-gradient(160deg,#5a6fb0,#3d4f8a)}
+.tk-head.clear{background:linear-gradient(160deg,#47c0b4,#3f9a6a)}
+.tk-head .ico{font-size:40px;line-height:1}
+.tk-head h3{margin:8px 0 2px;font-size:22px}
+.tk-head p{margin:0;font-size:13px;opacity:.9}
+.tk-head .wave{position:absolute;left:0;right:0;bottom:-1px;height:14px;background:radial-gradient(circle at 10px -4px,transparent 12px,var(--cream) 13px) 0 0/20px 14px repeat-x}
+.tk-route{display:flex;justify-content:space-between;align-items:center;padding:14px 22px 4px;font-size:12px;color:var(--sub)}
+.tk-route b{display:block;font-size:15px;color:var(--ink)}
+.tk-route .line{flex:1;margin:0 10px;border-top:2px dashed #d8cbb3;position:relative}
+.tk-route .line i{position:absolute;top:-11px;font-style:normal;font-size:16px}
+.tk-score{text-align:center;padding:8px 0 4px}
+.tk-score .n{font-size:44px;font-weight:800;letter-spacing:-1px}
+.tk-score .best{display:inline-block;background:#ffe9a8;color:#8a5a00;font-size:12px;font-weight:700;border-radius:999px;padding:2px 10px;margin-left:6px;vertical-align:middle}
+.tk-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:6px 18px 12px}
+.tk-grid div{background:#f3ece0;border-radius:12px;padding:8px 6px;text-align:center;font-size:11px;color:var(--sub)}
+.tk-grid b{display:block;font-size:16px;color:var(--ink)}
+.tk-perf{height:18px;position:relative;margin:2px 0}
+.tk-perf:before{content:"";position:absolute;left:14px;right:14px;top:8px;border-top:2px dashed #ddd0b8}
+.tk-perf:after{content:"";position:absolute;left:-10px;right:-10px;top:-1px;height:20px;background:radial-gradient(circle at 0 10px,#6a8c92 10px,transparent 11px) left/20px 20px no-repeat,radial-gradient(circle at 20px 10px,#6a8c92 10px,transparent 11px) right/20px 20px no-repeat}
+.tk-rew{padding:6px 18px 4px}
+.tk-rew .lb{font-size:12px;color:var(--sub);margin-bottom:6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:#fff;border:1.5px solid #eadfcb;border-radius:999px;padding:4px 10px;font-size:13px;font-weight:700}
+.chip.star{background:#fff6d6;border-color:#f2d27a}
+.chip.mat{background:#eef7ee;border-color:#bfe0c2}
+.tk-foot{display:flex;align-items:center;justify-content:space-between;padding:14px 18px 18px;gap:8px}
+.runs{font-size:12px;color:var(--sub)}
+.runs .dots{display:flex;gap:4px;margin-top:3px}
+.runs .dots i{width:10px;height:10px;border-radius:50%;background:#e2d7c3}
+.runs .dots i.on{background:var(--teal)}
+.btns{display:flex;gap:6px}
+.btn{border-radius:14px;padding:10px 14px;font-weight:800;font-size:14px;background:#efe7d8;color:var(--ink)}
+.btn.pri{background:var(--teal);color:#fff}
+
+.mp{background:#fff;border-radius:24px;padding:18px 18px 16px;box-shadow:0 18px 40px rgba(0,0,0,.25)}
+.mp-top{display:flex;align-items:center;gap:10px}
+.mp-top .badge{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;font-size:26px;flex:none}
+.mp-top .badge.wreck{background:#e4e9f7}.mp-top .badge.clear{background:#dff4ea}
+.mp-top h3{margin:0;font-size:19px}
+.mp-top p{margin:2px 0 0;font-size:12px;color:var(--sub)}
+.river{margin:16px 0 6px;position:relative;height:46px}
+.river svg{width:100%;height:46px;display:block}
+.river .pin{position:absolute;top:-4px;transform:translateX(-50%);font-size:20px}
+.river .hit{position:absolute;top:22px;transform:translateX(-50%);font-size:12px}
+.river .end{position:absolute;right:-2px;top:2px;font-size:18px}
+.rlabels{display:flex;justify-content:space-between;font-size:11px;color:var(--sub)}
+.big{display:flex;gap:8px;margin:14px 0}
+.big div{flex:1;border-radius:16px;background:#f5f8f7;padding:10px;text-align:center}
+.big .k{font-size:11px;color:var(--sub)}
+.big .v{font-size:22px;font-weight:800}
+.big .v small{font-size:11px;font-weight:700;color:#b07a00;display:block}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.tile{border-radius:16px;background:#fbf7ee;padding:10px 4px 8px;text-align:center;position:relative}
+.tile .e{font-size:26px;line-height:1}
+.tile .t{font-size:11px;color:var(--sub);margin-top:4px}
+.tile .p{position:absolute;top:-6px;right:-4px;background:var(--green);color:#fff;font-size:11px;font-weight:800;border-radius:999px;padding:1px 7px}
+.tile.star .p{background:#e0a400}
+.mini{display:flex;justify-content:space-between;font-size:12px;color:var(--sub);margin:12px 2px 0}
+.mp .btns{margin-top:14px}
+.mp .btn{flex:1}
+
+.jr{background:#fbf3e2;border-radius:10px;padding:28px 22px 18px;box-shadow:0 18px 40px rgba(0,0,0,.25);position:relative;background-image:repeating-linear-gradient(transparent 0 27px,#efe2c8 27px 28px)}
+.jr .tape{position:absolute;top:-10px;left:50%;transform:translateX(-50%) rotate(-2deg);width:110px;height:24px;background:rgba(160,205,200,.75)}
+.jr .date{font-size:12px;color:var(--sub)}
+.jr h3{margin:2px 0 12px;font-size:22px;letter-spacing:-.5px}
+.jr .stamp{position:absolute;right:16px;top:8px;width:66px;height:66px;border-radius:50%;display:grid;place-items:center;transform:rotate(-12deg);font-weight:900;font-size:15px;text-align:center;line-height:1.1}
+.jr .stamp.wreck{border:3px solid #5a6fb0;color:#5a6fb0}
+.jr .stamp.clear{border:3px solid #c0452f;color:#c0452f}
+.jr .stamp span{display:block;font-size:22px}
+.lines{margin:6px 0 10px}
+.lines div{display:flex;align-items:baseline;font-size:14px;height:28px}
+.lines div i{flex:1;border-bottom:2px dotted #cdbb99;margin:0 6px;transform:translateY(-4px)}
+.lines b{font-weight:800}
+.stickers{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0 6px}
+.stk{width:62px;height:62px;border-radius:50%;background:#fff;box-shadow:0 2px 0 rgba(0,0,0,.08),0 0 0 3px #fff inset;display:grid;place-items:center;text-align:center;font-size:11px;font-weight:800;line-height:1.1;transform:rotate(var(--r,0deg))}
+.stk .e{font-size:22px}
+.jr .btns{margin-top:12px}
+.jr .btn{flex:1;border-radius:10px}
+.jr .btn.pri{background:#3f8f5a}
+</style>
+</head>
+<body>
+<main>
+<h1>🛶 뱃길 결과 카드 시안</h1>
+<p class="lead">같은 데이터로 3안을 그렸어요. 왼쪽은 난파한 판, 오른쪽은 무피해 완주한 판이에요.</p>
+<section class="opt"><h2>A안 · 승선권</h2><p>위는 결과 색 띠, 가운데 큰 점수, 아래 절취선 밑에 보상과 다음 판. 결과가 한눈에 갈려요.</p><div class="pair" id="A"></div></section>
+<section class="opt"><h2>B안 · 물길 지도</h2><p>강 위 어디까지 갔고 어디서 부딪혔는지 지도로 보여 줘요. 보상은 큰 아이콘 타일.</p><div class="pair" id="B"></div></section>
+<section class="opt"><h2>C안 · 뱃길 일지</h2><p>공책 한 장에 적은 일지. 완주·난파 도장과 보상 스티커로 꾸며요.</p><div class="pair" id="C"></div></section>
+</main>
+<script>
+const RUNS = [
+  { result: 'wreck', title: '배가 가라앉았어요', sub: '🎒 주운 건 그대로 · 🛶 배는 내일 멀쩡해요', dist: 304, total: 620, time: 98.4, score: 352, best: true, hits: 3, hitAt: [118, 233, 304], star: 1, starTotal: 1, picks: [['🪷', '물 위 연꽃', 1]], mats: [['🪷', 1]], chest: null, runsLeft: 2, boat: '🛶 나룻배', course: '잔잔한 물길', combo: 2 },
+  { result: 'clear', title: '무사히 도착!', sub: '한 번도 부딪히지 않았어요. 완벽한 뱃길!', dist: 620, total: 620, time: 52.3, score: 964, best: true, hits: 0, hitAt: [], star: 13, starTotal: 14, picks: [['🪷', '물 위 연꽃', 2], ['🐚', '강 조개', 1]], mats: [['🪷', 3], ['🐚', 2]], chest: ['🍎', '사과 묘목'], runsLeft: 1, boat: '🐟 비단잉어', course: '급류', combo: 12 },
+];
+const dots = n => `<div class="dots">${[0, 1, 2].map(i => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</div>`;
+const again = () => `<button class="btn pri">🛶 한 번 더</button><button class="btn">그만하기</button>`;
+
+function A(d) {
+  const pct = d.dist / d.total * 100;
+  const rew = [`<span class="chip star">⭐ +${d.star}</span>`, ...d.picks.map(p => `<span class="chip">${p[0]} ${p[1]} ×${p[2]}</span>`), ...d.mats.map(m => `<span class="chip mat">${m[0]} 재료 +${m[1]}</span>`), d.chest ? `<span class="chip">🧰 ${d.chest[0]} ${d.chest[1]}</span>` : ''].join('');
+  return `<div class="tk">
+    <div class="tk-head ${d.result}"><div class="ico">${d.result === 'clear' ? '🎉' : '🌊'}</div><h3>${d.title}</h3><p>${d.sub}</p><div class="wave"></div></div>
+    <div class="tk-route"><span><b>나루터</b>${d.boat}</span><span class="line"><i style="left:calc(${Math.min(pct, 96)}% - 8px)">${d.result === 'clear' ? '⛵' : '💥'}</i></span><span style="text-align:right"><b>${d.dist}m</b>${d.course}</span></div>
+    <div class="tk-score"><span class="n">${d.score}</span>${d.best ? '<span class="best">🏆 최고 기록</span>' : ''}</div>
+    <div class="tk-grid"><div><b>${d.time}초</b>시간</div><div><b>${d.hits}회</b>충돌</div><div><b>×${d.combo}</b>최고 콤보</div></div>
+    <div class="tk-perf"></div>
+    <div class="tk-rew"><div class="lb">이번 뱃길에서 얻은 것 · 보유 ⭐ ${d.starTotal}</div><div class="chips">${rew}</div></div>
+    <div class="tk-foot"><div class="runs">오늘 남은 뱃길 ${d.runsLeft}/3${dots(d.runsLeft)}</div><div class="btns">${again()}</div></div>
+  </div>`;
+}
+
+function B(d) {
+  const W = 320, x = v => 6 + v / d.total * (W - 26);
+  const path = `M6 24 C 60 10, 100 38, 160 24 S 260 10, ${W - 20} 24`;
+  const tiles = [`<div class="tile star"><div class="e">⭐</div><div class="t">별조각</div><span class="p">+${d.star}</span></div>`,
+    ...d.mats.map(m => `<div class="tile"><div class="e">${m[0]}</div><div class="t">강 재료</div><span class="p">+${m[1]}</span></div>`),
+    d.chest ? `<div class="tile"><div class="e">${d.chest[0]}</div><div class="t">${d.chest[1]}</div><span class="p">🧰</span></div>` : ''].join('');
+  return `<div class="mp">
+    <div class="mp-top"><div class="badge ${d.result}">${d.result === 'clear' ? '🏁' : '🌊'}</div><div><h3>${d.title}</h3><p>${d.sub}</p></div></div>
+    <div class="river"><svg viewBox="0 0 ${W} 46" preserveAspectRatio="none"><path d="${path}" stroke="#cfe6ec" stroke-width="14" fill="none" stroke-linecap="round"/><path d="${path}" stroke="#7cc3d1" stroke-width="14" fill="none" stroke-linecap="round" stroke-dasharray="${(W - 26) * d.dist / d.total} 999"/></svg>
+      ${d.hitAt.map(h => `<span class="hit" style="left:${x(h) / W * 100}%">💥</span>`).join('')}
+      <span class="pin" style="left:${x(d.dist) / W * 100}%">${d.result === 'clear' ? '⛵' : '🛶'}</span><span class="end">🏁</span></div>
+    <div class="rlabels"><span>나루터</span><span>${d.dist} / ${d.total}m · ${d.course}</span></div>
+    <div class="big"><div><div class="k">점수</div><div class="v">${d.score}${d.best ? '<small>🏆 최고 기록</small>' : ''}</div></div><div><div class="k">충돌</div><div class="v">${d.hits}</div></div><div><div class="k">최고 콤보</div><div class="v">${d.combo}</div></div></div>
+    <div class="tiles">${tiles}</div>
+    <div class="mini"><span>${d.boat} · ${d.time}초</span><span>오늘 남은 뱃길 ${d.runsLeft}/3</span></div>
+    <div class="btns">${again()}</div>
+  </div>`;
+}
+
+function C(d) {
+  const rot = ['-6deg', '5deg', '-3deg', '7deg', '-8deg'];
+  const st = [['⭐', `+${d.star}`], ...d.picks.map(p => [p[0], `×${p[2]}`]), ...d.mats.map(m => [m[0], `재료+${m[1]}`]), ...(d.chest ? [[d.chest[0], '상자']] : [])];
+  return `<div class="jr"><div class="tape"></div>
+    <div class="date">10월 27일 · ${d.boat} · ${d.course}</div>
+    <h3>오늘의 뱃길</h3>
+    <div class="stamp ${d.result}"><div><span>${d.result === 'clear' ? '⛵' : '🌊'}</span>${d.result === 'clear' ? '완주' : '난파'}</div></div>
+    <div class="lines">
+      <div>간 거리<i></i><b>${d.dist}m</b></div><div>걸린 시간<i></i><b>${d.time}초</b></div>
+      <div>점수<i></i><b>${d.score}${d.best ? ' 🏆' : ''}</b></div><div>부딪힌 횟수<i></i><b>${d.hits}회</b></div>
+    </div>
+    <div class="date">${d.sub}</div>
+    <div class="stickers">${st.map((s, i) => `<div class="stk" style="--r:${rot[i % rot.length]}"><div><div class="e">${s[0]}</div>${s[1]}</div></div>`).join('')}</div>
+    <div class="date">오늘 남은 뱃길 ${d.runsLeft}/3 · 보유 ⭐ ${d.starTotal}</div>
+    <div class="btns">${again()}</div>
+  </div>`;
+}
+
+for (const [id, fn] of [['A', A], ['B', B], ['C', C]]) {
+  document.getElementById(id).innerHTML = RUNS.map(d => `<div class="slot"><small>${d.result === 'clear' ? '무피해 완주' : '난파'}</small>${fn(d)}</div>`).join('');
+}
+</script>
+</body>
+</html>

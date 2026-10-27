@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>나룻배 업그레이드 시안</title>
+<style>
+:root{--bg:#f4efe4;--card:#fffaf0;--ink:#3a3128;--sub:#7b6d5c;--line:#e3d8c4;--teal:#3fb3c2;--trim:#d9a066;--red:#b2453e;--ok:#3f8f5a;--warn:#c0652b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Pretendard","Apple SD Gothic Neo",system-ui,sans-serif;line-height:1.55}
+main{max-width:1240px;margin:0 auto;padding:28px 16px 60px}
+h1{font-size:26px;margin:0 0 6px}
+.lead{color:var(--sub);margin:0 0 22px;font-size:15px}
+.facts{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:26px}
+.fact{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.fact b{display:block;font-size:22px}
+.fact span{font-size:13px;color:var(--sub)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.opt{background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden;display:flex;flex-direction:column}
+.opt canvas{display:block;width:100%;aspect-ratio:4/3;background:#2f6f86}
+.body{padding:14px 16px 18px;display:flex;flex-direction:column;gap:10px}
+.tag{display:inline-block;font-size:12px;font-weight:700;color:#fff;background:var(--teal);border-radius:999px;padding:2px 10px;width:max-content}
+h2{font-size:19px;margin:0}
+.desc{font-size:14px;color:var(--sub);margin:0}
+.tree{display:flex;flex-direction:column;gap:6px}
+.row{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px 10px;font-size:13.5px}
+.row .ico{font-size:20px;width:28px;text-align:center}
+.row .t{flex:1}
+.row .t b{display:block;font-size:14px}
+.row .c{font-size:12px;color:var(--sub);white-space:nowrap}
+.pc{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px}
+.pc div{border-radius:10px;padding:8px 10px}
+.pro{background:#e9f4ec;color:#24563a}
+.con{background:#f8e9e0;color:#7a3a17}
+.pc ul{margin:4px 0 0;padding-left:16px}
+section{margin-top:34px}
+h3{font-size:20px;margin:0 0 12px}
+.skills{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.skill{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;font-size:13.5px}
+.skill .big{font-size:28px}
+.skill b{display:block;font-size:15px;margin:2px 0}
+.skill small{color:var(--sub)}
+.diff{width:100%;border-collapse:collapse;background:var(--card);border-radius:14px;overflow:hidden;font-size:14px}
+.diff th,.diff td{border-bottom:1px solid var(--line);padding:10px 12px;text-align:left;vertical-align:top}
+.diff th{background:#efe5d2;font-size:13px}
+@media (max-width:900px){.grid{grid-template-columns:1fr}.skills{grid-template-columns:repeat(2,1fr)}.facts{grid-template-columns:repeat(2,1fr)}}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1f1b17;--card:#2a251f;--ink:#f1e9dc;--sub:#b3a48f;--line:#40382e}:root:not([data-theme="light"]) .row{background:#332c24}:root:not([data-theme="light"]) .diff th{background:#3a3128}}
+</style>
+</head>
+<body>
+<main>
+<h1>🛶 나룻배 업그레이드 시안 3종</h1>
+<p class="lead">지금 업그레이드는 "쉬워지는 것"만 있어요. 업그레이드를 하나라도 산 판은 완주율 100%라 그 뒤로는 도전할 게 없어요. 세 시안 모두 <b>배가 눈에 띄게 바뀌고</b>, <b>스킬이 하나씩 생기는</b> 구조예요.</p>
+
+<div class="facts">
+  <div class="fact"><b>36.9%</b><span>업그레이드 0개 판의 완주율 (111판)</span></div>
+  <div class="fact"><b>100%</b><span>업그레이드 1개 이상 판의 완주율 (32판)</span></div>
+  <div class="fact"><b>40%</b><span>전체 충돌 중 1구간(가장 쉬운 구간)에서 난 비율</span></div>
+  <div class="fact"><b>3.0회</b><span>완주 판 평균 스퍼트 사용 (52초 동안 최대 15회 가능)</span></div>
+</div>
+
+<div class="grid">
+  <article class="opt" id="optA">
+    <canvas id="cA"></canvas>
+    <div class="body">
+      <span class="tag">A안 · 부위 갈아끼우기</span>
+      <h2>뱃머리 · 돛 · 고물 3칸</h2>
+      <p class="desc">세 부위에 부품을 하나씩 달아요. 부품마다 스킬이 붙어서, 어떤 조합으로 내려갈지 고르는 재미가 있어요.</p>
+      <div class="tree">
+        <div class="row"><span class="ico">⚓</span><span class="t"><b>쇄빙 뱃머리</b>판마다 첫 충돌 1번 막기</span><span class="c">⭐12 · 🪙120</span></div>
+        <div class="row"><span class="ico">⛵</span><span class="t"><b>순풍 돛</b>스퍼트가 길어지고 대기 시간이 줄어요</span><span class="c">⭐16 · 🪙160</span></div>
+        <div class="row"><span class="ico">🥅</span><span class="t"><b>별 뜰채</b>가까운 별을 끌어당겨요</span><span class="c">⭐10 · 🪙100</span></div>
+      </div>
+      <div class="pc">
+        <div class="pro">좋은 점<ul><li>조합을 고르는 재미</li><li>부품을 계속 추가할 수 있어요</li></ul></div>
+        <div class="con">아쉬운 점<ul><li>칸마다 부품 2개 이상은 있어야 고르는 맛이 나요</li><li>조형 작업이 가장 많아요</li></ul></div>
+      </div>
+    </div>
+  </article>
+
+  <article class="opt" id="optB">
+    <canvas id="cB"></canvas>
+    <div class="body">
+      <span class="tag">B안 · 배가 자라요</span>
+      <h2>나룻배 → 돛단배 → 등불 유람선</h2>
+      <p class="desc">3단계로 배 자체가 바뀌어요. 단계가 오를 때마다 스킬이 하나씩 열리고, 더 빠른 물살 코스도 함께 열려요.</p>
+      <div class="tree">
+        <div class="row"><span class="ico">🛶</span><span class="t"><b>1단계 나룻배</b>스퍼트</span><span class="c">기본</span></div>
+        <div class="row"><span class="ico">⛵</span><span class="t"><b>2단계 돛단배</b>+ 🫧 물방울 방패 · 급류 코스 열림</span><span class="c">⭐30 · 🪙300</span></div>
+        <div class="row"><span class="ico">🏮</span><span class="t"><b>3단계 등불 유람선</b>+ 🌊 물수제비 점프 · 밤 보상 +20%</span><span class="c">⭐60 · 🪙600</span></div>
+      </div>
+      <div class="pc">
+        <div class="pro">좋은 점<ul><li>성장이 한눈에 보여요</li><li>지금 강화 3종을 그대로 묶을 수 있어요</li></ul></div>
+        <div class="con">아쉬운 점<ul><li>3단계를 찍으면 끝이에요</li><li>고르는 재미는 없어요</li></ul></div>
+      </div>
+    </div>
+  </article>
+
+  <article class="opt" id="optC">
+    <canvas id="cC"></canvas>
+    <div class="body">
+      <span class="tag">C안 · 뱃사공 친구 태우기</span>
+      <h2>수달 · 오리 · 거북</h2>
+      <p class="desc">배는 그대로 두고, 앞자리에 친구 한 명을 태워요. 친구마다 스킬이 달라서 그날 기분대로 골라 태워요.</p>
+      <div class="tree">
+        <div class="row"><span class="ico">🦦</span><span class="t"><b>수달</b>🧲 5초 동안 별이 빨려 와요</span><span class="c">⭐12 · 🪙120</span></div>
+        <div class="row"><span class="ico">🦆</span><span class="t"><b>오리</b>👀 앞길에 바위 위치를 미리 보여줘요</span><span class="c">⭐12 · 🪙120</span></div>
+        <div class="row"><span class="ico">🐢</span><span class="t"><b>거북</b>🫧 판마다 충돌 1번 막기</span><span class="c">⭐16 · 🪙160</span></div>
+      </div>
+      <div class="pc">
+        <div class="pro">좋은 점<ul><li>귀여워서 사고 싶어져요</li><li>친구를 계속 늘릴 수 있어요</li></ul></div>
+        <div class="con">아쉬운 점<ul><li>1인칭 시점에선 친구 뒷모습만 보여요</li><li>배 자체의 성장감은 약해요</li></ul></div>
+      </div>
+    </div>
+  </article>
+</div>
+
+<section>
+  <h3>✨ 스킬 후보 (액션 버튼은 스퍼트 그대로, 스킬 버튼 1개 추가)</h3>
+  <div class="skills">
+    <div class="skill"><div class="big">🫧</div><b>물방울 방패</b>판마다 1번, 충돌을 막아요<br><small>초보를 지켜줘요. 램프 +1 강화를 대신해요</small></div>
+    <div class="skill"><div class="big">🌊</div><b>물수제비 점프</b>통나무·바위를 뛰어넘어요<br><small>대기 8초. 실력을 보여줄 수 있는 스킬</small></div>
+    <div class="skill"><div class="big">🧲</div><b>별 자석</b>5초 동안 별이 빨려 와요<br><small>대기 12초. 보상이 늘어요</small></div>
+    <div class="skill"><div class="big">⏳</div><b>잔잔한 물</b>3초 동안 물살이 느려져요<br><small>판마다 2번. 3구간 기둥 사이용</small></div>
+    <div class="skill"><div class="big">💨</div><b>아슬아슬 보너스</b>스킬은 아니고 규칙이에요<br><small>바위를 아슬아슬하게 피하면 스퍼트 게이지가 차요</small></div>
+  </div>
+</section>
+
+<section>
+  <h3>🎚️ 난이도 조정안</h3>
+  <table class="diff">
+    <tr><th>문제 (데이터)</th><th>조정</th><th>기대 효과</th></tr>
+    <tr><td>첫 판 완주율 36%, 첫 판 난파율 42%. 충돌의 40%가 1구간에, 특히 40~80m 첫 장애물에 몰려 있어요</td><td>첫 장애물을 46m에서 70m로 미루고, 1구간은 바위만 넓게 배치해요(통나무는 2구간부터)</td><td>첫 판에서 조작을 익힌 다음에 위험이 시작돼요</td></tr>
+    <tr><td>업그레이드를 사면 완주율 100%. 그 뒤로 도전할 게 없어요</td><td>🌊 급류 코스 추가: 같은 날 시드에 장애물 밀도·속도만 올리고 보상 ×1.5</td><td>숙련자의 목표가 생기고, 그날 기록 비교도 그대로 유지돼요</td></tr>
+    <tr><td>스퍼트를 52초에 3번만 써요. 버튼을 잊고 있어요</td><td>아슬아슬하게 피하면 스퍼트 게이지가 차고, 스퍼트 중 별은 2배</td><td>위험하게 피하기가 보상이 돼서 실력을 쓸 곳이 생겨요</td></tr>
+    <tr><td>그만두기 21%, 대부분 150m 전에 충돌 없이 나가요</td><td>원인부터 확인해요(조작 미숙인지 단순 이탈인지). 지금은 고치지 않아요</td><td>추측으로 고치지 않아요</td></tr>
+  </table>
+</section>
+</main>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+const TEAL = 0x3fb3c2, TRIM = 0xd9a066, RED = 0xb2453e;
+const clay = (c, flat = false) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.95, metalness: 0, flatShading: flat });
+const add = (g, geo, mat, p = [0, 0, 0], r = [0, 0, 0], s = [1, 1, 1]) => {
+  const m = new THREE.Mesh(geo, mat); m.position.set(...p); m.rotation.set(...r); m.scale.set(...s); m.castShadow = true; g.add(m); return m;
+};
+
+function hull(len = 1) {
+  const g = new THREE.Group();
+  const teal = clay(TEAL), trim = clay(TRIM), red = clay(RED);
+  add(g, new THREE.CylinderGeometry(0.6, 0.6, 3 * len, 12), teal, [0, 0.32, 0], [Math.PI / 2, 0, 0], [1, 1, 0.5]);
+  add(g, new THREE.ConeGeometry(0.6, 1.3, 12), trim, [0, 0.32, -1.5 * len - 0.65], [-Math.PI / 2, 0, 0], [1, 1, 0.5]);
+  add(g, new THREE.ConeGeometry(0.6, 1, 12), trim, [0, 0.32, 1.5 * len + 0.5], [Math.PI / 2, 0, 0], [1, 1, 0.5]);
+  add(g, new THREE.TorusGeometry(0.57, 0.065, 6, 20), trim, [0, 0.6, 0], [-Math.PI / 2, 0, 0], [1, 2.7 * len, 1]);
+  const fl = add(g, new THREE.CircleGeometry(0.48, 14), clay(0x2e93a3), [0, 0.3, 0], [-Math.PI / 2, 0, 0], [1, 2.7 * len, 1]);
+  fl.castShadow = false;
+  add(g, new THREE.BoxGeometry(0.86, 0.2, 0.62), red, [0, 0.42, 0.3]);
+  add(g, new THREE.BoxGeometry(0.86, 0.44, 0.18), red, [0, 0.66, 0.66]);
+  add(g, new THREE.BoxGeometry(0.14, 0.66, 0.16), trim, [0, 0.85, 1.5 * len + 0.22]);
+  add(g, new THREE.BoxGeometry(0.16, 0.2, 0.5), trim, [0, 1.12, 1.5 * len + 0.05]);
+  for (const side of [-1, 1]) {
+    add(g, new THREE.CylinderGeometry(0.06, 0.06, 2.2, 8), trim, [side * 0.95, 0.38, 0.85], [0, 0, side * 1.18]);
+    add(g, new THREE.BoxGeometry(0.4, 0.06, 0.66), trim, [side * 1.92, -0.05, 0.85]);
+  }
+  return g;
+}
+
+function bowRam(g) {
+  const iron = clay(0x7c8a92, true);
+  add(g, new THREE.ConeGeometry(0.66, 1.0, 6), iron, [0, 0.36, -2.45], [-Math.PI / 2, 0, 0], [1, 1, 0.55]);
+  for (const s of [-1, 1]) add(g, new THREE.SphereGeometry(0.07, 6, 6), clay(0xe8d9b0), [s * 0.36, 0.48, -2.2]);
+}
+function sail(g, square = false, h = 2.2) {
+  const trim = clay(TRIM), cloth = new THREE.MeshStandardMaterial({ color: 0xf3e6c8, roughness: 0.9, side: THREE.DoubleSide });
+  add(g, new THREE.CylinderGeometry(0.06, 0.07, h, 8), trim, [0, 0.4 + h / 2, -0.55]);
+  const sh = new THREE.Shape();
+  if (square) { sh.moveTo(-0.85, 0); sh.lineTo(0.85, 0); sh.lineTo(0.75, h * 0.72); sh.lineTo(-0.75, h * 0.72); }
+  else { sh.moveTo(0, 0); sh.lineTo(1.3, 0); sh.lineTo(0, h * 0.82); }
+  const s = add(g, new THREE.ShapeGeometry(sh), cloth, square ? [0, 0.75, -0.45] : [0.04, 0.7, -0.5], [0, square ? 0 : -Math.PI / 2, 0]);
+  s.castShadow = false;
+  const stripe = new THREE.Shape();
+  if (square) { stripe.moveTo(-0.8, h * 0.3); stripe.lineTo(0.8, h * 0.3); stripe.lineTo(0.79, h * 0.38); stripe.lineTo(-0.79, h * 0.38); }
+  else { stripe.moveTo(0, h * 0.25); stripe.lineTo(0.9, h * 0.25); stripe.lineTo(0.8, h * 0.33); stripe.lineTo(0, h * 0.33); }
+  add(g, new THREE.ShapeGeometry(stripe), new THREE.MeshStandardMaterial({ color: RED, side: THREE.DoubleSide }), square ? [0, 0.75, -0.44] : [0.05, 0.7, -0.5], [0, square ? 0 : -Math.PI / 2, 0]);
+  if (square) {
+    const flag = new THREE.Shape(); flag.moveTo(0, 0); flag.lineTo(0.45, -0.12); flag.lineTo(0, -0.24);
+    add(g, new THREE.ShapeGeometry(flag), new THREE.MeshStandardMaterial({ color: 0xf2c14e, side: THREE.DoubleSide }), [0.04, 0.4 + h, -0.55]);
+  }
+}
+function sternNet(g) {
+  const trim = clay(TRIM);
+  add(g, new THREE.CylinderGeometry(0.045, 0.045, 1.7, 6), trim, [0.55, 1.0, 1.2], [0.5, 0, -0.5]);
+  add(g, new THREE.TorusGeometry(0.36, 0.04, 6, 18), trim, [1.0, 1.75, 0.8], [0.3, 0.6, 0]);
+  const net = add(g, new THREE.SphereGeometry(0.33, 10, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2),
+    new THREE.MeshStandardMaterial({ color: 0xf6efe0, roughness: 1, wireframe: true }), [1.0, 1.75, 0.8], [0.3 + Math.PI / 2, 0.6, 0]);
+  net.castShadow = false;
+  add(g, new THREE.OctahedronGeometry(0.16, 0), new THREE.MeshStandardMaterial({ color: 0xffd34d, emissive: 0x6b4d00 }), [1.0, 1.6, 0.8]);
+}
+function canopy(g) {
+  const trim = clay(TRIM), red = clay(RED, true);
+  for (const x of [-0.5, 0.5]) for (const z of [-0.6, 0.9]) add(g, new THREE.CylinderGeometry(0.05, 0.05, 1.5, 6), trim, [x, 1.2, z]);
+  add(g, new THREE.ConeGeometry(1.05, 0.55, 4), red, [0, 2.2, 0.15], [0, Math.PI / 4, 0], [0.85, 1, 1.55]);
+  for (const x of [-0.5, 0.5]) {
+    add(g, new THREE.CylinderGeometry(0.008, 0.008, 0.25, 4), trim, [x, 1.8, -0.6]);
+    add(g, new THREE.SphereGeometry(0.13, 8, 8), new THREE.MeshStandardMaterial({ color: 0xf2d79a, emissive: 0xe8a93c, emissiveIntensity: 0.7 }), [x, 1.6, -0.6], [0, 0, 0], [1, 1.25, 1]);
+  }
+}
+function otter(g) {
+  const fur = clay(0x8a5a3b), belly = clay(0xd8b48c), dark = clay(0x3a2a20);
+  add(g, new THREE.SphereGeometry(0.34, 12, 10), fur, [0, 0.82, -0.75], [0, 0, 0], [1, 1.25, 0.95]);
+  add(g, new THREE.SphereGeometry(0.22, 10, 8), belly, [0, 0.78, -1.0], [0, 0, 0], [1, 1.3, 0.5]);
+  add(g, new THREE.SphereGeometry(0.27, 12, 10), fur, [0, 1.38, -0.8]);
+  add(g, new THREE.SphereGeometry(0.15, 10, 8), belly, [0, 1.3, -1.03], [0, 0, 0], [1.2, 0.8, 0.7]);
+  add(g, new THREE.SphereGeometry(0.05, 6, 6), dark, [0, 1.36, -1.13]);
+  for (const s of [-1, 1]) {
+    add(g, new THREE.SphereGeometry(0.07, 6, 6), fur, [s * 0.22, 1.58, -0.78]);
+    add(g, new THREE.SphereGeometry(0.035, 6, 6), dark, [s * 0.1, 1.44, -1.04]);
+  }
+}
+function duck(g) {
+  const yel = clay(0xf4c84a), org = clay(0xe58a2e), dark = clay(0x2f2a26);
+  add(g, new THREE.SphereGeometry(0.36, 12, 10), yel, [0, 0.8, -0.8], [0, 0, 0], [1, 0.85, 1.15]);
+  add(g, new THREE.SphereGeometry(0.25, 12, 10), yel, [0, 1.3, -0.95]);
+  add(g, new THREE.BoxGeometry(0.2, 0.07, 0.24), org, [0, 1.25, -1.24]);
+  for (const s of [-1, 1]) add(g, new THREE.SphereGeometry(0.035, 6, 6), dark, [s * 0.1, 1.38, -1.15]);
+  add(g, new THREE.ConeGeometry(0.1, 0.22, 6), yel, [0, 0.95, -0.38], [-1.1, 0, 0]);
+}
+function turtle(g) {
+  const shell = clay(0x5e8f4e, true), skin = clay(0xa6c784), dark = clay(0x2f2a26);
+  add(g, new THREE.SphereGeometry(0.42, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2), shell, [0, 0.55, -0.75], [0, 0, 0], [1, 0.75, 1.1]);
+  add(g, new THREE.CylinderGeometry(0.43, 0.43, 0.06, 12), clay(0xc9b77a), [0, 0.55, -0.75], [0, 0, 0], [1, 1, 1.1]);
+  add(g, new THREE.SphereGeometry(0.18, 10, 8), skin, [0, 0.82, -1.25], [0, 0, 0], [1, 0.95, 1.15]);
+  for (const s of [-1, 1]) add(g, new THREE.SphereGeometry(0.03, 6, 6), dark, [s * 0.09, 0.88, -1.4]);
+  const bub = add(g, new THREE.SphereGeometry(0.6, 16, 12), new THREE.MeshStandardMaterial({ color: 0xbfeaff, transparent: true, opacity: 0.28, roughness: 0.1 }), [0, 0.85, -0.85]);
+  bub.castShadow = false;
+}
+
+function label(text) {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 64;
+  const x = c.getContext('2d');
+  x.fillStyle = 'rgba(255,250,240,.92)'; x.beginPath(); x.roundRect(8, 10, 240, 44, 22); x.fill();
+  x.fillStyle = '#3a3128'; x.font = '600 24px "Apple SD Gothic Neo",sans-serif'; x.textAlign = 'center'; x.fillText(text, 128, 41);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false }));
+  sp.scale.set(2.4, 0.6, 1); return sp;
+}
+
+function makeScene(canvas, builders, labels) {
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+  renderer.shadowMap.enabled = true;
+  const scene = new THREE.Scene();
+  const cam = new THREE.PerspectiveCamera(32, 4 / 3, 0.1, 100);
+  cam.position.set(0, 7.8, 12.6); cam.lookAt(0, 0.8, 0.2);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x6aa8b5, 1.1));
+  const sun = new THREE.DirectionalLight(0xfff1d6, 1.6);
+  sun.position.set(5, 9, 6); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
+  Object.assign(sun.shadow.camera, { left: -8, right: 8, top: 8, bottom: -8 });
+  scene.add(sun);
+  const water = new THREE.Mesh(new THREE.PlaneGeometry(40, 30), new THREE.MeshStandardMaterial({ color: 0x2f6f86, roughness: 0.55 }));
+  water.rotation.x = -Math.PI / 2; water.receiveShadow = true; scene.add(water);
+  const boats = builders.map((b, i) => {
+    const g = b(); g.position.x = (i - 1) * 3.3; g.scale.setScalar(0.95); scene.add(g); return g;
+  });
+  labels.forEach((t, i) => { const sp = label(t); sp.position.set((i - 1) * 3.3, 0.05, 2.9); scene.add(sp); });
+  const resize = () => {
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix();
+  };
+  new ResizeObserver(resize).observe(canvas); resize();
+  return t => {
+    boats.forEach((g, i) => { g.rotation.y = 0.5 + Math.sin(t * 0.5 + i) * 0.15; g.position.y = Math.sin(t * 2 + i) * 0.04; });
+    renderer.render(scene, cam);
+  };
+}
+
+const withPart = f => () => { const g = hull(); f(g); return g; };
+const renders = [
+  makeScene(document.getElementById('cA'), [withPart(bowRam), withPart(g => sail(g)), withPart(sternNet)], ['⚓ 뱃머리', '⛵ 돛', '🥅 고물']),
+  makeScene(document.getElementById('cB'), [() => hull(), () => { const g = hull(1.1); sail(g, true, 2.4); return g; }, () => { const g = hull(1.2); canopy(g); return g; }], ['1단계', '2단계', '3단계']),
+  makeScene(document.getElementById('cC'), [withPart(otter), withPart(duck), withPart(turtle)], ['🦦 수달', '🦆 오리', '🐢 거북']),
+];
+const clock = new THREE.Clock();
+(function loop() { const t = clock.getElapsedTime(); renders.forEach(r => r(t)); requestAnimationFrame(loop); })();
+</script>
+</body>
+</html>

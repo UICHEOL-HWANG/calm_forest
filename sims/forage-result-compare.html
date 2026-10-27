@@ -1,0 +1,43 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>결과창 시안 비교 · calm forest</title>
+<style>
+  body{margin:0;padding:24px;background:#e9e4da;font-family:-apple-system,"Apple SD Gothic Neo",sans-serif;color:#3a332a}
+  h1{margin:0 0 4px;font-size:22px}
+  .note{margin:0 0 20px;font-size:14px;opacity:.7}
+  .crow{display:flex;gap:20px;align-items:flex-start;margin-bottom:34px;flex-wrap:wrap}
+  .crow h2{width:100%;margin:0 0 -8px;font-size:18px}
+  .f{position:relative;overflow:hidden;border-radius:18px;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+  .pc{width:760px;height:560px;background:#8d6e52}
+  .ph{width:375px;height:740px;border-radius:34px;background:#2a7aa0}
+  .ls{width:760px;height:360px;border-radius:30px;background:#2a7aa0}
+  .lbl{position:absolute;left:12px;top:10px;z-index:99;font-size:12px;font-weight:800;color:#fff;background:rgba(0,0,0,.45);padding:3px 9px;border-radius:8px}
+</style>
+<h1>갯벌·잠수 결과창 시안</h1>
+<p class="note">왼쪽 PC(갯벌 테마) · 오른쪽 폰(잠수 테마). 같은 모듈 sims/forage-result.js 에서 테마 색만 바뀝니다. [다시 하기]를 누르면 등장 애니메이션을 다시 봅니다.</p>
+<div id="rows"></div>
+<script type="module">
+import { showResult, CARD_NAMES } from './forage-result.js';
+const MUD = [
+  { ico: '🐚', name: '바지락', count: 22, coin: 3 }, { ico: '🐚', name: '꼬막', count: 9, coin: 5 }, { ico: '🦀', name: '칠게', count: 5, coin: 2 },
+  { ico: '🐚', name: '맛조개', count: 6, coin: 6 }, { ico: '🐚', name: '가리비', count: 1, coin: 10 }, { ico: '🐙', name: '낙지', count: 1, coin: 25, rare: true },
+];
+const DIVE = [
+  { ico: '🐚', name: '소라', count: 13, coin: 3 }, { ico: '⭐', name: '불가사리', count: 18, coin: 2 }, { ico: '🦪', name: '전복', count: 9, coin: 8 },
+  { ico: '🐙', name: '문어', count: 1, coin: 14 }, { ico: '💎', name: '진주', count: 1, coin: 30, rare: true },
+];
+const rows = document.getElementById('rows');
+const replay = (d, frames) => {
+  frames.forEach(([f]) => f.querySelectorAll('.fr').forEach(e => e.remove()));
+  frames.forEach(([f, mode]) => showResult(mode === 'dive'
+    ? { design: d, mode, container: f, title: '오늘 잠수 끝', sub: '숨 3번으로 42개를 건졌어요', items: DIVE, onAgain: () => replay(d, frames) }
+    : { design: d, mode, container: f, title: '밀물이 들어왔어요', sub: '바구니에 44개를 담았어요', items: MUD, onAgain: () => replay(d, frames) }));
+};
+for (const d of [1, 2, 3]) {
+  const row = document.createElement('section'); row.className = 'crow';
+  row.innerHTML = `<h2>${d}안 · ${CARD_NAMES[d]}</h2><div class="f pc"><span class="lbl">PC 갯벌</span></div><div class="f ph"><span class="lbl">세로 폰 잠수</span></div><div class="f ls"><span class="lbl">가로 폰 갯벌</span></div>`;
+  rows.appendChild(row);
+  replay(d, [[row.querySelector('.pc'), 'mudflat'], [row.querySelector('.ph'), 'dive'], [row.querySelector('.ls'), 'mudflat']]);
+}
+</script>

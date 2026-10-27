@@ -7,13 +7,14 @@
 // =============================================================
 import {
   RES_LABEL, clayMat, forecastLine, gameState, giveReward, makeSignpost, obstacles, player, priceOf, priceRate,
-  questEvent, refreshHeldTool, refreshInventoryUI, roundRect, scene, solidCircle, spawnFloatText, ui, woodMat,
+  questEvent, refreshHeldTool, refreshInventoryUI, requestSave, roundRect, scene, solidCircle, spawnFloatText, ui, woodMat,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
 import { SELL_PRICE, SHOP_BUY } from '../data/catalog.js';
 import { MARKET, SELL_ICO_G, SHOP } from '../data/places.js';
 import { topPriceLine } from '../first-loop.js';
 import { t } from '../i18n.js';
+import { HOMI_ENGRAVES, HOMI_TIERS, buyEngrave, buyTier, equipEngrave, homiBase, homiState } from '../forage/homi.js';
 import { logEcon } from '../metrics.js';
 import { FRUITS, sapKeyOf } from '../orchard.js';
 import { Sound } from '../sound.js';
@@ -125,8 +126,64 @@ export function sellItem(k, all) {
 }
 
 // 구매: 코인 → 아이템
+function buyHomi(it) {
+  const forage = gameState.sea.forage || {};
+  const r = buyTier(forage.homi, gameState.inventory, it.homi);
+  if (!r.ok) return r;
+  gameState.inventory.coins -= r.spent.coins;
+  Object.entries(r.refund).forEach(([k, n]) => { gameState.inventory[k] = (gameState.inventory[k] || 0) + n; });
+  gameState.sea = { ...gameState.sea, forage: { ...forage, homi: r.state } };
+  spawnFloatText(player.position.x, 1.6, player.position.z, `${r.name}!`, '#2f7a44');
+  Sound.complete();
+  refreshInventoryUI();
+  trackEvent('shop_buy', { item: it.id, cost: it.coin });
+  logEcon('shop_buy', it.id, -it.coin, gameState.inventory.coins);
+  requestSave();
+  return { ok: true, name: it.name };
+}
+
+const setHomi = state => {
+  const forage = gameState.sea.forage || {};
+  gameState.sea = { ...gameState.sea, forage: { ...forage, homi: state } };
+  requestSave();
+};
+
+export function homiInfo() {
+  const s = homiState(gameState.sea.forage?.homi), base = homiBase(s.tier), inv = gameState.inventory;
+  return {
+    tier: s.tier, ico: HOMI_TIERS[s.tier].ico, name: HOMI_TIERS[s.tier].name, slots: s.slots, maxSlots: HOMI_TIERS[HOMI_TIERS.length - 1].slots,
+    base: base.map(id => HOMI_ENGRAVES.find(e => e.id === id)),
+    engraves: HOMI_ENGRAVES.map(e => ({
+      ...e, owned: s.owned.includes(e.id), base: base.includes(e.id), slot: s.slots.indexOf(e.id),
+      afford: Object.entries(e.cost).every(([k, n]) => (inv[k] || 0) >= n),
+    })),
+  };
+}
+
+export function buyHomiEngrave(id) {
+  const s = gameState.sea.forage?.homi;
+  const r = buyEngrave(s, gameState.inventory, id);
+  if (!r.ok) return r;
+  Object.entries(r.spent).forEach(([k, n]) => { gameState.inventory[k] -= n; });
+  setHomi(r.state);
+  Sound.complete();
+  refreshInventoryUI();
+  trackEvent('homi_engrave', { item_id: id, slot: -1, action: 'buy' });
+  return r;
+}
+
+export function equipHomiEngrave(slot, id) {
+  const r = equipEngrave(gameState.sea.forage?.homi, slot, id);
+  if (!r.ok) return r;
+  setHomi(r.state);
+  Sound.harvest();
+  trackEvent('homi_engrave', { item_id: id ?? 'none', slot, action: id ? 'on' : 'off' });
+  return r;
+}
+
 export function buyShop(id) {
   const it = SHOP_BUY.find(x => x.id === id); if (!it) return { ok: false };
+  if (it.homi) return buyHomi(it);
   if (it.upgrade && gameState.upgrades[it.upgrade]) return { ok: false, msg: '이미 보유한 도구예요' };
   if ((gameState.inventory.coins || 0) < it.coin) return { ok: false, msg: '코인이 부족해요' };
   gameState.inventory.coins -= it.coin;

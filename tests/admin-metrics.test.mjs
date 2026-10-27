@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { delta, worstLeak, rate, heatGrid, userStatus, funnelSteps, MAPS, mapHourGrid, heatCellsFor, HEAT_SLOTS, ZONES, zoneFlow, ZONE_CIRCLES, trackSegments } from '../dashboards/js/admin-metrics.js';
+import { delta, worstLeak, rate, heatGrid, userStatus, funnelSteps, MAPS, mapHourGrid, heatCellsFor, HEAT_SLOTS, ZONES, zoneFlow, ZONE_CIRCLES, trackSegments, houseStageLabel } from '../dashboards/js/admin-metrics.js';
 
 const src = (p) => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 
@@ -165,4 +165,14 @@ test('동선 재생: 마을 안 점만 이어 그리고, 마을 밖은 끊고 �
   assert.equal(t.duration, 40);
   assert.equal(t.start, 0);
   assert.deepEqual(trackSegments([]), { segments: [], outsideShare: 0, duration: 0, start: 0 });
+});
+
+test('집 단계 라벨: 게임 단계 이름을 쓰고 7단계는 모던/한옥으로 나눈다', () => {
+  assert.equal(houseStageLabel({ stage: 0 }), '없음');
+  assert.equal(houseStageLabel({ stage: 3 }), '3 지붕');
+  assert.equal(houseStageLabel({ stage: 6 }), '6 루프탑 빌라');
+  assert.equal(houseStageLabel({ stage: 7, style: 'modern' }), '7 테라스 코트');
+  assert.equal(houseStageLabel({ stage: 7, style: 'hanok' }), '7 한옥 마당');
+  assert.equal(houseStageLabel({ stage: 7 }), '7 정원 저택');
+  assert.equal(houseStageLabel({ stage: 9 }), '9단계');
 });

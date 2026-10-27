@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>나루터 안내 카드 시안</title>
+<style>
+:root{--mint:#bfe8c9;--ink:#4a5a4f}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(#7fa3a8,#4f6f76);font-family:'Segoe UI',system-ui,sans-serif;color:#24382d;min-height:100vh}
+main{max-width:1260px;margin:0 auto;padding:24px 16px 60px}
+h1{color:#fff;font-size:24px;margin:0 0 4px}
+.lead{color:#e8f1ef;margin:0 0 20px;font-size:14px}
+.row{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start}
+.col{width:380px;max-width:100%}
+.col h2{color:#fff;font-size:17px;margin:0 0 4px}
+.col p{color:#dbe9e6;font-size:12.5px;margin:0 0 10px;min-height:34px}
+.backdrop{background:rgba(20,40,30,0.55);border-radius:20px;padding:18px 10px;display:grid;place-items:center}
+.as-card{width:min(380px,94vw);background:#f6f0e4;border-radius:28px;padding:14px;text-align:left}
+.ok{display:block;width:100%;border:none;border-radius:16px;padding:12px 16px;background:var(--mint);color:#24382d;font-weight:800;font-size:15px;cursor:pointer}
+.dc-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.dc-t{background:#fff;border-radius:18px;padding:12px;min-width:0}
+.dc-t small{display:block;font-size:10.5px;font-weight:800;letter-spacing:.08em;opacity:.5;margin-bottom:4px}
+.dc-t b{display:block;font-size:15px;color:#24382d}
+.dc-t span{display:block;font-size:11.5px;opacity:.7;font-weight:600;margin-top:2px}
+.dc-hero{grid-column:span 2;background:#24382d;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.dc-hero small{color:#fff;opacity:.6}
+.dc-hero b{color:#fff;font-size:24px;letter-spacing:-.03em}
+.dc-t.dc-hero-ic{justify-content:flex-start;gap:10px}
+.dc-t.dc-hero-ic .dc-ic{font-size:28px;flex:none;opacity:1;margin:0}
+.dc-t.dc-hero-ic b{font-size:21px}
+.dc-t.dc-gold{background:#ffe9a8}
+.dc-t.dc-gold b{font-size:22px;font-weight:900;color:#6b4a10}
+.dc-t.dc-gold span{color:#8a6a24;opacity:1;font-weight:700}
+.dc-t.dc-peach{background:#fde3d3}
+.dc-t.dc-peach b,.dc-t.dc-peach span{color:#8a4a2a}
+.dc-t.dc-lav{background:#ece6ff}
+.dc-t.dc-lav b{color:#4b3a8a}
+.dc-t.dc-peach b,.dc-t.dc-lav b{font-size:13.5px}
+.dc-t.dc-quote p{margin:0;font-size:14.5px;line-height:1.5;font-weight:600;color:#24382d}
+.dc-cost{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.dc-cost i{font-style:normal;font-weight:800;background:#f3eee2;border-radius:99px;padding:3px 9px;font-size:13px;color:#24382d}
+.dc-wide{grid-column:span 2}
+.old{background:#fff;border-radius:22px;padding:22px 18px;text-align:center;width:min(380px,94vw)}
+.old .em{font-size:40px}
+.old h3{margin:6px 0 14px;font-size:20px}
+.steps{display:flex;align-items:center;justify-content:center;gap:6px}
+.steps div{background:#f1f6f2;border-radius:14px;padding:10px 8px;font-size:12px;font-weight:700;flex:1}
+.steps div i{display:block;font-style:normal;font-size:20px}
+.old .note{font-size:12px;opacity:.6;margin:10px 0 6px}
+.old .chip{display:inline-block;background:#fff3cf;border-radius:99px;padding:4px 10px;font-size:12px;font-weight:800;color:#6b4a10;margin-bottom:12px}
+.tag{font-size:12px;color:#e8f1ef;margin:6px 0 0}
+@media (max-width:600px){.col{width:100%}}
+</style>
+</head>
+<body>
+<main>
+<h1>🛶 나루터 안내 카드 시안</h1>
+<p class="lead">10월 25일에 안개숲·버프·부엉이 다리·로그인 권유 카드를 바꾼 "출석 타일 카드" 모양에 맞췄어요. 실제 게임 CSS와 타일 렌더러(js/ui-cards.js)를 그대로 써서 그렸어요.</p>
+<div class="row">
+  <div class="col"><h2>지금</h2><p>단계 3칸 + 칩. 다른 안내 카드와 모양이 달라요.</p>
+    <div class="backdrop"><div class="old"><div class="em">🛶</div><h3>나루터 · 강 내려가기</h3>
+      <div class="steps"><div><i>🛶</i>배 앞 Space</div>→<div><i>⬅️➡️</i>피하기</div>→<div><i>💨</i>Space 스퍼트</div></div>
+      <div class="note">하루 3번</div><div class="chip">⭐ 별조각으로 새 배 만들기</div><button class="ok">알겠어요 🌱</button></div></div></div>
+  <div class="col"><h2>A안 · 조작 타일</h2><p>조작 3가지를 타일로 나누고, 횟수는 금색, 새 배는 보라 띠로.</p><div class="backdrop" id="A"></div></div>
+  <div class="col"><h2>B안 · 목표 먼저</h2><p>"끝까지 내려가기"를 맨 위에, 조작은 칩으로. 모으는 것과 급류를 보여 줘요.</p><div class="backdrop" id="B"></div></div>
+  <div class="col"><h2>C안 · 뱃사공 한마디</h2><p>부엉이 다리처럼 인물 대사로 시작하고, 아래는 꼭 필요한 두 칸만.</p><div class="backdrop" id="C"></div></div>
+</div>
+<p class="tag">PC 기준 Space · F 로 적었어요. 휴대폰에서는 ⭕ · 🫧 버튼으로 바뀌어요.</p>
+</main>
+<script type="module">
+import { renderTiles } from '../js/ui-cards.js';
+const T = {
+  A: [
+    { k: 'hero', ico: '🛶', tag: 'RIVER', title: '나루터 · 강 내려가기' },
+    { k: 'tile', tag: '출발', label: '🛶 배 앞 Space' },
+    { k: 'tile', tag: '피하기', label: '⬅️ ➡️' },
+    { k: 'tile', tag: '스퍼트', label: '💨 Space', desc: '배 스킬은 F' },
+    { k: 'tile', tone: 'gold', tag: '하루', label: '3번', desc: '내일 새 물길' },
+    { k: 'tile', tone: 'lav', wide: true, label: '🧰 ⭐ 별조각 · 🪷 강 재료로 새 배 만들기' },
+  ],
+  B: [
+    { k: 'hero', ico: '🛶', tag: 'RIVER', title: '강 끝까지 내려가기' },
+    { k: 'tile', wide: true, tag: '조작', label: '🛶 배 앞 Space 로 출발', chips: ['⬅️➡️ 피하기', '💨 Space 스퍼트', '🫧 F 배 스킬'] },
+    { k: 'tile', tone: 'gold', tag: '하루', label: '3번', desc: '내일 새 물길' },
+    { k: 'tile', tag: '모으기', label: '⭐ 🪷 🪵 🐚', desc: '별조각 · 강 재료' },
+    { k: 'tile', tone: 'peach', wide: true, label: '🌊 한 번 완주하면 급류가 열려요' },
+  ],
+  C: [
+    { k: 'quote', tag: '🛶 뱃사공', text: '"바위만 잘 피하면 끝까지 갈 수 있어요. 모은 별조각으로 창고에서 새 배도 만들어요."' },
+    { k: 'tile', tag: '조작', label: '⬅️➡️ · Space', desc: '피하기 · 스퍼트' },
+    { k: 'tile', tone: 'gold', tag: '하루', label: '3번', desc: '내일 새 물길' },
+    { k: 'tile', tone: 'lav', wide: true, label: '🧰 창고에서 배·물길 고르기' },
+  ],
+};
+for (const id of ['A', 'B', 'C']) {
+  const card = document.createElement('div'); card.className = 'as-card';
+  const grid = document.createElement('div'); grid.className = 'dc-grid';
+  renderTiles(grid, T[id]);
+  const ok = document.createElement('button'); ok.className = 'ok'; ok.textContent = '알겠어요 🌱';
+  card.append(grid, ok);
+  document.getElementById(id).append(card);
+}
+</script>
+</body>
+</html>

@@ -30,7 +30,7 @@ export function openSurvey({ doc, root, t = s => s }) {
   const card = el('div', 'sv-card');
   card.setAttribute('role', 'dialog');
   card.setAttribute('aria-modal', 'true');
-  card.append(el('h2', null, t('calm forest 를 어디서 알게 되셨어요?')), el('p', 'sv-hint', t('불러오는 동안 하나만 여쭤볼게요 🌿')));
+  card.append(el('h2', null, t('고요한 숲을 어디서 알게 되셨어요?')), el('p', 'sv-hint', t('불러오는 동안 하나만 여쭤볼게요 🌿')));
 
   const grid = el('div', 'sv-grid');
   const code = el('div', 'sv-code');

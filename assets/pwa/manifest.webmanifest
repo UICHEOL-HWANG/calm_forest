@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "calm forest",
-  "short_name": "calm forest",
+  "name": "고요한 숲",
+  "short_name": "고요한 숲",
   "description": "포근한 로우폴리 3D 마을 — 걷기·농사·낚시·집짓기·꾸미기. 브라우저에서 바로 플레이.",
   "lang": "ko",
   "start_url": "/?ref=pwa",
