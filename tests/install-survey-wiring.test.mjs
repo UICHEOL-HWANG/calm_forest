@@ -41,7 +41,7 @@ test('Supabase 는 계정·기기당 1행, 덮어쓰지 않는다 · GA4 사용�
 
 test('보기·문구 영어판이 다 있다', () => {
   const en = read('js/i18n-en.js');
-  const keys = [...SURVEY_OPTIONS.map(o => o.label), 'calm forest 를 어디서 알게 되셨어요?', '불러오는 동안 하나만 여쭤볼게요 🌿',
+  const keys = [...SURVEY_OPTIONS.map(o => o.label), '고요한 숲을 어디서 알게 되셨어요?', '불러오는 동안 하나만 여쭤볼게요 🌿',
     '초대 코드 (선택)', '코드를 다시 확인해 주세요', '건너뛰기', '확인'];
   for (const k of keys) assert.ok(en.includes(`'${k}':`), k);
 });

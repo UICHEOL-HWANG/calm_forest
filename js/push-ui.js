@@ -67,7 +67,7 @@ async function askPush(via) {
   if (r.result === 'granted') { setPref(true, r.token); ui.toast?.('🔔 꼭 필요한 날에만 밭 소식을 보내 드릴게요', 2800); }
   else if (r.result === 'denied') {
     setPref(false);
-    ui.toast?.(via === 'settings' ? '휴대폰 설정에서 calm forest 알림을 허용해 주세요' : '⚙️ 설정에서 언제든 켤 수 있어요', 3200);
+    ui.toast?.(via === 'settings' ? '휴대폰 설정에서 고요한 숲 알림을 허용해 주세요' : '⚙️ 설정에서 언제든 켤 수 있어요', 3200);
   } else if (r.result === 'error') ui.toast?.('알림 등록에 실패했어요. 잠시 후 다시 해 주세요', 2800);
   return r;
 }

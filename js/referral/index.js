@@ -11,6 +11,7 @@ import { getAccessToken } from '../supabase-client.js';
 import { PLATFORM, IS_TOSS, loadTossSDK } from '../platform.js';
 import { captureInvite, runOnPlay, pendingInvite, claimAndApply } from './flow.js';
 import { MSG, tossInvitePath } from './rules.js';
+import { t } from '../i18n.js';
 import { renderInviteSheet } from './ui.js';
 
 const enabled = () => !!CONFIG.REFERRAL_ON && !IS_DEV_SESSION;
@@ -147,7 +148,7 @@ export async function openInviteSheet({ box, auth, toast, track, shareNative, re
       try {
         if (IS_TOSS) await (await loadTossSDK()).share({ message: `${MSG.shareText} ${url}` });
         else if (shareNative) await shareNative(`${MSG.shareText} ${url}`);
-        else if (navigator.share) await navigator.share({ title: '🌿 calm forest', text: MSG.shareText, url });
+        else if (navigator.share) await navigator.share({ title: t('🌿 고요한 숲'), text: MSG.shareText, url });
         else { await navigator.clipboard.writeText(`${MSG.shareText} ${url}`); toast(MSG.copied); }
       } catch (e) { /* 공유 시트 취소는 정상 흐름 */ }
     },
