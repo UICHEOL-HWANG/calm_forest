@@ -3,15 +3,16 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SLOTS, ITEMS, itemsOf, findItem } from '../js/cosmetics/catalog.js';
 
-test('슬롯 6개 · 품목 55종(코인 18 + 프리미엄 자국 2 + 스킨 2 + 도구 세트 3 + 🎃 할로윈 10 + 🍁 2차 11 + 🤝 초대 보상 3 + 🌱 새싹반 3 + ⛏️ 광부 보상 1)', () => {
-  assert.deepEqual([...SLOTS], ['head', 'neck', 'back', 'trail', 'skin', 'tools']);
-  assert.equal(ITEMS.length, 56);
+test('슬롯 7개 · 품목 59종(🪏 호미 3 + 코인 18 + 프리미엄 자국 2 + 스킨 2 + 도구 세트 3 + 🎃 할로윈 10 + 🍁 2차 11 + 🤝 초대 보상 3 + 🌱 새싹반 3 + ⛏️ 광부 보상 1)', () => {
+  assert.deepEqual([...SLOTS], ['head', 'neck', 'back', 'trail', 'skin', 'tools', 'homi']);
+  assert.equal(ITEMS.length, 59);
   assert.equal(itemsOf('head').length, 13);
   assert.equal(itemsOf('neck').length, 4);
   assert.equal(itemsOf('back').length, 10);
   assert.equal(itemsOf('trail').length, 12);
   assert.equal(itemsOf('skin').length, 6);
   assert.equal(itemsOf('tools').length, 11);
+  assert.equal(itemsOf('homi').length, 3);
   assert.equal(ITEMS.filter(i => i.reward).length, 3);
 });
 

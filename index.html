@@ -1962,7 +1962,7 @@
   #craft-menu.show { display: flex; }
   #homi-menu { display: none; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
                 width: min(460px, 92vw); flex-direction: column; gap: 10px;
-                max-height: calc(100dvh - 24px - var(--top-inset)); overflow-y: auto; }
+                max-height: calc(100dvh - 102px - env(safe-area-inset-bottom) - var(--top-inset, 0px)); overflow-y: auto; }
   #homi-menu.show { display: flex; }
   #homi-menu .dm-head .ti { width: 1.3em; height: 1.3em; }
   .hm-base { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #4d7a3a; background: #eef5e6; border-radius: 10px; padding: 6px 9px; }
@@ -1977,11 +1977,18 @@
   .hm-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .hm-tile { display: flex; align-items: center; gap: 8px; min-height: 58px; padding: 8px 10px; border: 2px solid transparent; border-radius: 14px;
              background: rgba(255,255,255,0.7); box-shadow: var(--shadow); font-size: 12px; text-align: left; cursor: pointer; }
-  .hm-tile .ti { width: 30px; height: 30px; flex: none; }
+  .hm-tile > .ti { width: 30px; height: 30px; flex: none; }
+  .hm-tile small { display: flex; align-items: center; gap: 3px; }
+  .hm-tile small .ti { width: 1.15em; height: 1.15em; flex: none; }
+  .hm-emo { width: 30px; height: 30px; flex: none; font-size: 24px; line-height: 30px; text-align: center; }
+  .hm-emo .ti { width: 30px; height: 30px; }
   .hm-tile span { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
   .hm-tile small { font-size: 11px; color: #7a6650; }
   .hm-tile.on { border-color: #b0683a; background: #fbefe2; }
   .hm-tile.off { opacity: .45; }
+  .hm-sect { font-size: 12px; font-weight: 700; color: #6b5640; margin-top: 2px; }
+  #homi-skin-wrap { display: flex; flex-direction: column; gap: 8px; }
+  .hm-go { border: 0; border-radius: 12px; padding: 9px 12px; background: #3d8fb0; color: #fff; font-weight: 700; font-size: 13px; cursor: pointer; }
   #craft-slots { display: flex; gap: 8px; flex-wrap: wrap; }
   /* 96px 이면 320px 에서 3칸이 2+1 로 흘러 빈 칸이 혼자 한 줄을 먹었다(시안 실측).
      88px 면 3칸이 한 줄(88×3+16=280 < 288)이고 6칸은 3×2 로 떨어진다 */
@@ -3009,10 +3016,18 @@
     <div class="dm-actions"><button id="craft-close">닫기</button></div>
   </div>
   <div id="homi-menu" class="panel">
-    <div class="dm-head"><span id="homi-ico"></span> 각인 끼우기</div>
+    <div class="dm-head"><span id="homi-ico"></span> 호미 노점</div>
+    <div class="hm-sect">호미 바꾸기</div>
+    <div class="hm-tiles" id="homi-tiers"></div>
+    <div class="hm-sect">각인 끼우기</div>
     <div class="hm-base" id="homi-base"></div>
     <div class="hm-slots" id="homi-slots"></div>
     <div class="hm-tiles" id="homi-tiles"></div>
+    <div id="homi-skin-wrap">
+      <div class="hm-sect">💎 꾸미기 호미</div>
+      <div class="hm-tiles" id="homi-skins"></div>
+      <button class="hm-go" id="homi-skin-go">꾸미기 가게에서 입어 보기</button>
+    </div>
     <div class="dm-actions"><button id="homi-close">닫기</button></div>
   </div>
 
@@ -4822,6 +4837,7 @@
       // 🏆 랭킹 게시판(마을 소품) → 리더보드 모달
       openLeaderboard() { openLb(); },
       // 상점 메뉴 열기
+      openHomiStall() { Input.setAnalog(0, 0); openHomi(); },
       openShop(tab = 'sell') { showShopTab(tab); Input.setAnalog(0, 0); $('shop-menu').classList.add('show'); document.body.classList.add('menu-open'); },
       // 🎀 꾸미기 상점 — 내용·프리뷰는 게임 쪽이 그린다. 프리뷰는 **패널이 보인 뒤에** 만든다(캔버스 크기 확보)
       openCosShop() {
@@ -6899,7 +6915,7 @@
       } else {
         const box = $('buy-items'); box.innerHTML = '';
         const owned = Input.ownedUpgrades(), homiTier = Input.homiTier();
-        Input.getShopBuy().forEach(it => {
+        Input.getShopBuy().filter(it => !it.homi).forEach(it => {
           const isOwned = it.homi ? homiTier >= it.homi : it.upgrade && owned[it.upgrade];
           const locked = it.homi && homiTier < it.homi - 1;
           const can = !isOwned && !locked && (lastInv.coins || 0) >= it.coin;
@@ -6950,6 +6966,44 @@
         tiles.appendChild(el);
       });
     }
+    function renderHomiTiers() {
+      const box = $('homi-tiers'); box.innerHTML = '';
+      Input.homiStallTiers().forEach(it => {
+        const el = document.createElement('div');
+        const can = !it.owned && !it.locked && it.afford;
+        el.className = 'hm-tile' + (it.owned ? ' on' : can ? '' : ' off');
+        const label = it.owned ? t('보유중') : it.locked ? t('🔒 앞 단계 먼저') : `🪙${it.coin}`;
+        el.innerHTML = `${it.ico}<span><b>${t(it.name)}</b><small>${label}</small></span>`;
+        el.title = t(it.desc || '');
+        el.addEventListener('click', () => {
+          if (it.owned) return;
+          if (it.locked) { ui.toast('앞 단계 호미를 먼저 사 주세요'); return; }
+          const r = Input.buyShop(it.id);
+          if (!r.ok) { ui.toast(r.msg); return; }
+          ui.toast(`🛍️ ${r.name} 구매!`); renderHomiStall();
+        });
+        box.appendChild(el);
+      });
+    }
+    function renderHomiSkins() {
+      const rows = Input.homiStallSkins(), box = $('homi-skins');
+      $('homi-skin-wrap').style.display = rows.length ? 'flex' : 'none';
+      box.innerHTML = '';
+      rows.forEach(r => {
+        const el = document.createElement('div');
+        el.className = 'hm-tile' + (r.mode === 'owned' ? ' on' : '');
+        el.innerHTML = `<i class="hm-emo">${r.ico}</i><span><b>${t(r.name)}</b><small>${r.mode === 'owned' ? t('보유중') : r.label}</small></span>`;
+        el.addEventListener('click', openHomiSkins);
+        box.appendChild(el);
+      });
+    }
+    function openHomiSkins() {
+      $('homi-menu').classList.remove('show');
+      Input.setCosTab?.('homi');
+      ui.openCosShop();
+    }
+    $('homi-skin-go').addEventListener('click', openHomiSkins);
+    function renderHomiStall() { renderHomiTiers(); renderHomi(); renderHomiSkins(); }
     function onHomiTile(e, d) {
       if (e.base) { ui.toast('이 호미에 이미 들어 있는 효과예요'); return; }
       if (!d.slots.length) { ui.toast('길쭉 자루 호미부터 각인 칸이 생겨요'); return; }
@@ -6966,13 +7020,12 @@
       renderHomi();
     }
     function openHomi() {
-      $('shop-menu').classList.remove('show');
       homiSel = 0;
-      renderHomi();
+      renderHomiStall();
       $('homi-menu').classList.add('show');
       document.body.classList.add('menu-open');
     }
-    $('homi-close').addEventListener('click', () => { $('homi-menu').classList.remove('show'); $('shop-menu').classList.add('show'); renderShop(); });
+    $('homi-close').addEventListener('click', () => { $('homi-menu').classList.remove('show'); document.body.classList.remove('menu-open'); });
     function showShopTab(t) {
       shopTab = t;
       [...document.querySelectorAll('#shop-menu .sh-tab')].forEach(b => b.classList.toggle('active', b.dataset.tab === t));   // 좌판 탭만 — .sh-tab 은 꾸미기 가게·캐릭터 창도 쓴다

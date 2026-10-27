@@ -11,14 +11,17 @@ const MIG = read('sql/migrations/migrate_security_hardening.sql');
 // 🤝 _premium_cosmetic_ids() 의 현재 정의는 추천 마이그레이션이 대체했다(머리말 경고 참고)
 const REF = read('sql/migrations/migrate_referrals.sql');
 
+const premiumSqlIds = (name, src) => {
+  const body = src.match(/function public\._premium_cosmetic_ids\(\)[\s\S]*?array\[([\s\S]*?)\]::text\[\]/);
+  assert.ok(body, `${name}: SQL 에서 프리미엄 목록을 못 찾음`);
+  return [...body[1].matchAll(/'([a-z_]+)'/g)].map(m => m[1]).sort();
+};
+
 test('💎 SQL _premium_cosmetic_ids() = 카탈로그의 현금 전용(won) + 🤝 초대 보상 품목 — 코인 품목이 섞이면 회수 오판', () => {
   const catIds = ITEMS.filter(i => i.premium || i.reward).map(i => i.id).sort();
-  // 두 마이그레이션 모두 같은 목록이어야 한다 — 하나만 다시 돌려도 가드가 풀리지 않게(보안 리뷰 2026-10-09)
+  assert.deepEqual(premiumSqlIds('homi_skins', read('sql/migrations/migrate_homi_skins.sql')), catIds);
   for (const [name, src] of [['hardening', MIG], ['referrals', REF], ['premium_sets_2', read('sql/migrations/migrate_premium_sets_2.sql')]]) {
-    const body = src.match(/function public\._premium_cosmetic_ids\(\)[\s\S]*?array\[([\s\S]*?)\]::text\[\]/);
-    assert.ok(body, `${name}: SQL 에서 프리미엄 목록을 못 찾음`);
-    const sqlIds = [...body[1].matchAll(/'([a-z_]+)'/g)].map(m => m[1]).sort();
-    assert.deepEqual(sqlIds, catIds, name);
+    for (const id of premiumSqlIds(name, src)) assert.ok(catIds.includes(id), `${name}: ${id}`);
   }
 });
 

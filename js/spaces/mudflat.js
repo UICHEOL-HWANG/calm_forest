@@ -14,7 +14,8 @@ import { forageRow, resultEventParams, startEventParams } from '../forage/run.js
 import { withTried } from '../forage/pick.js';
 import { showForageResult } from '../forage/result-card.js';
 import { HOE_DEFAULT, HOE_FACE, HOE_VARIANTS, buildHoe } from '../forage/hoe-art.js';
-import { dressHoe, tierLook } from '../forage/hoe-skins.js';
+import { dressHoe, skinOf, tierLook } from '../forage/hoe-skins.js';
+import { homiSkinOf } from '../cosmetics/homi-skin-rules.js';
 import { homiEffects, homiState } from '../forage/homi.js';
 import { buildShore } from '../forage/mudflat-shore.js';
 import { buildSea, updateSea } from '../forage/mudflat-sea.js';
@@ -133,8 +134,8 @@ function holdShovel(on) {
     prevTool = heldToolMesh;
     if (heldToolMesh) handAnchor.remove(heldToolMesh);
     const q = new URLSearchParams(location.search), hoe = q.get('hoe'), face = parseFloat(q.get('hoeface'));
-    const tier = homiState(gameState.sea.forage?.homi).tier, look = tierLook(tier);
-    shovel = dressHoe(THREE, clayMat, buildHoe(THREE, clayMat, HOE_VARIANTS.includes(hoe) ? hoe : HOE_DEFAULT, Number.isFinite(face) ? face : HOE_FACE, look?.pal), null, tier);
+    const tier = homiState(gameState.sea.forage?.homi).tier, skin = homiSkinOf(gameState.cosmetics), look = skinOf(skin) || tierLook(tier);
+    shovel = dressHoe(THREE, clayMat, buildHoe(THREE, clayMat, HOE_VARIANTS.includes(hoe) ? hoe : HOE_DEFAULT, Number.isFinite(face) ? face : HOE_FACE, look?.pal, look?.over), skin, tier);
     measureStowLen(shovel); updateStowPose();
     $w.heldToolMesh = shovel; handAnchor.add(shovel);
   } else {

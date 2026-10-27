@@ -6,7 +6,7 @@
 //     game.js 에 남은 let 에 쓸 때는 `$w.x = …` (읽기는 그냥 x). 도구·증명: tools/refactor/
 // =============================================================
 import {
-  $w, ANIMALS, ORES, RES_LABEL, WEATHER, analog, applyCosmetics, atCafe, atMuseum, buildCharacterMesh, buildToolShowcase, cafeGuestCache, cafeGuestFetcher,
+  $w, ANIMALS, ORES, RES_LABEL, WEATHER, analog, applyCosmetics, atCafe, atMuseum, buildCharacterMesh, buildHoeShowcase, buildToolShowcase, cafeGuestCache, cafeGuestFetcher,
   cafeGuestObjs, cafeInGroup, camera, clayMat, colliders, cookTier, cosmeticShop, cropMini, dateHash, dexDiscover,
   disposeTree, dist2D, doPlayerAction, firstHint, fishMesh, gameState, giveReward, houseWindows, isOpen,
   keys, kitchenFinish, kitchenStart, lastZoneHint, makeCharacterPreview, makeNameTag, makeSignBoard, makeSignpost,
@@ -47,7 +47,8 @@ import { playPurchaseReveal } from '../shop/purchase-reveal.js';
 import { revealModeOf, revealCardOf } from '../shop/reveal-pose.js';
 import { themeOf } from '../cosmetics/tool-skin-rules.js';   // 🪓 💎 도구 세트 → 테마(구매 연출 진열)
 import { awaitGrant, LATER_MSG } from '../shop/purchases.js';
-import { bundleById, bundleCardMode, bundleCash, bundleGrant, BUNDLE_COPY } from '../shop/bundles.js';
+import { BUNDLES, bundleById, bundleCardMode, bundleCash, bundleCopy, bundleGrant } from '../shop/bundles.js';
+import { HOMI_SKIN_OF } from '../cosmetics/homi-skin-rules.js';
 import { drawBundleCard } from '../shop/bundle-card.js';
 import { refreshCafeModal } from '../mountain/cafe-ui.js';
 import { Sound } from '../sound.js';
@@ -848,9 +849,13 @@ export function spawnCosmeticShop() {
 }
 
 // 🎀 꾸미기 상점 — 목록은 카탈로그 순서 그대로(정렬의 단일 출처)
-export const COS_TABS = [['sprout', '🌱 새싹반'], ['head', '🎩 머리'], ['neck', '🧣 목'], ['back', '🎒 가방'], ['trail', '✨ 이펙트'], ['skin', '🧥 스킨'], ['tools', '🪓 도구'], ['pet', '🐾 펫']];
+export const COS_TABS = [['sprout', '🌱 새싹반'], ['head', '🎩 머리'], ['neck', '🧣 목'], ['back', '🎒 가방'], ['trail', '✨ 이펙트'], ['skin', '🧥 스킨'], ['tools', '🪓 도구'], ['homi', '🪏 호미'], ['pet', '🐾 펫']];
 
 export let cosTab = 'head';
+
+export function setCosTab(id) {
+  if (COS_TABS.some(([t]) => t === id)) cosTab = id;
+}
 
 //  🐾 펫 탭에서 **지금 보고 있는 종**. 실제 동행(gameState.pet)과 별개다 — 줄을 누르면 여기만 바뀐다.
 export let petView = PET_KINDS[0].id;
@@ -1024,7 +1029,8 @@ function onGranted(c, t0) {
     cosTryOn = null; cosPreview?.refresh(null);
     boxPicking = false; boxPick = null;
     for (const id of ids) trackEvent('cosmetic_equip', { item_id: id, slot: findItem(id)?.slot, action: 'on', via: 'cash' });
-    ui.toast?.(BUNDLE_COPY.gotTrail, 3000);
+    const bc = bundleCopy(bundleById(c.itemId));
+    ui.toast?.(bc.gotTrail || bc.got, 3000);
   } else if (c.kind === 'cosmetic') {
     gameState.cosmetics = equipCos(gameState.cosmetics, c.itemId);
     applyCosmetics(gameState.cosmetics);
@@ -1041,10 +1047,11 @@ function onGranted(c, t0) {
     try {
       closeCheckout();   // 💳 Paddle 성공 창이 연출을 덮지 않게 먼저 닫는다
       const item = findItem(revealId), mode = revealModeOf(item);
-      const toolTheme = themeOf(revealId);
+      const toolTheme = themeOf(revealId), hoeSkin = HOMI_SKIN_OF[revealId];
       playPurchaseReveal({ itemId: revealId, animalId: gameState.character, mode, card: revealCardOf(item),
         //  🧥 스킨은 "입은 내 캐릭터"를, 🪓 도구 세트는 도구 4종 + 우산을 진열한다
         buildShowcase: toolTheme ? () => buildToolShowcase(toolTheme)
+          : hoeSkin ? () => buildHoeShowcase(hoeSkin)
           : mode === 'boxburst' ? () => buildCharacterMesh(gameState.character, gameState.cosmetics) : null,
         onWalk: (ms) => { trackEvent('premium_reveal_close', { item_id: c.itemId, via: mode === 'boxburst' ? 'wear' : 'walk', ms }); closeCosShopForWalk(); },
         onClose: (ms) => trackEvent('premium_reveal_close', { item_id: c.itemId, via: 'close', ms }) });
@@ -1084,13 +1091,13 @@ let premiumViewed = new Set();   // 가게를 연 동안 premium_row_view 는 �
 const WELCOME = bundleById('welcome_box');
 let boxPicking = false, boxPick = null;
 
-async function openBundleCheckout(choice) {
-  const cash = bundleCash(WELCOME);
-  if (!cash || cashBusy || pendingCash.has(WELCOME.id)) return;
-  trackEvent('cash_checkout_open', { item_id: WELCOME.id, kind: 'bundle', price_id: cash.priceId });
-  cashBusy = WELCOME.id; drawCosMenu();
+async function openBundleCheckout(bundle, choice) {
+  const cash = bundleCash(bundle);
+  if (!cash || cashBusy || pendingCash.has(bundle.id)) return;
+  trackEvent('cash_checkout_open', { item_id: bundle.id, kind: 'bundle', price_id: cash.priceId });
+  cashBusy = bundle.id; drawCosMenu();
   try {
-    const opened = await openCheckout({ priceId: cash.priceId, itemId: WELCOME.id, kind: 'bundle', userId: authState.userId, email: authState.email, choice });
+    const opened = await openCheckout({ priceId: cash.priceId, itemId: bundle.id, kind: 'bundle', userId: authState.userId, email: authState.email, choice });
     if (!opened) { cashBusy = null; drawCosMenu(); }
   } catch (e) {
     console.warn('[paddle] 결제창 열기 실패:', e?.message || e);
@@ -1099,21 +1106,44 @@ async function openBundleCheckout(choice) {
   }
 }
 
+function bundleMode(bundle) {
+  return bundleCardMode(bundle, { owned: gameState.cosmetics.owned, platform: PLATFORM, online: !!authState.online, isGuest: !!authState.isGuest,
+    tokenSet: !!CONFIG.PADDLE.token, storeOpen: storeOpen() });
+}
+
+function noteBundleView(bundle, mode) {
+  if (premiumViewed.has(bundle.id)) return;
+  premiumViewed = new Set([...premiumViewed, bundle.id]);
+  trackEvent('premium_row_view', { item_id: bundle.id, mode, kind: 'bundle' });
+}
+
 function drawWelcomeBox(box) {
   if (!WELCOME) return;
   const owned = gameState.cosmetics.owned;
-  const mode = bundleCardMode(WELCOME, { owned, platform: PLATFORM, online: !!authState.online, isGuest: !!authState.isGuest,
-    tokenSet: !!CONFIG.PADDLE.token, storeOpen: storeOpen() });
+  const mode = bundleMode(WELCOME);
   if (mode === 'hidden') return;
   if (mode !== 'buy') { boxPicking = false; boxPick = null; }
-  if (!premiumViewed.has(WELCOME.id)) { premiumViewed = new Set([...premiumViewed, WELCOME.id]); trackEvent('premium_row_view', { item_id: WELCOME.id, mode, kind: 'bundle' }); }
+  noteBundleView(WELCOME, mode);
   drawBundleCard(box, { bundle: WELCOME, mode, owned, picking: boxPicking, pick: boxPick,
     pending: pendingCash.has(WELCOME.id) || cashBusy === WELCOME.id,
     onLogin: () => loginChipClick(WELCOME.id, 'bundle'),
     onOpen: () => { boxPicking = true; boxPick = null; trackEvent('bundle_open', { item_id: WELCOME.id }); drawCosMenu(); },
     onPick: (id) => { if (id === boxPick) return; boxPick = id; trackEvent('bundle_choice', { item_id: id }); cosTab = 'tools'; tryOnCos(findItem(id)); },
     onBack: () => { boxPicking = false; boxPick = null; drawCosMenu(); },
-    onBuy: (choice) => openBundleCheckout(choice) });
+    onBuy: (choice) => openBundleCheckout(WELCOME, choice) });
+}
+
+function drawTabBundles(box, tab) {
+  for (const bundle of BUNDLES) {
+    if (bundle.tab !== tab || bundle.choose.length) continue;
+    const mode = bundleMode(bundle);
+    if (mode === 'hidden') continue;
+    noteBundleView(bundle, mode);
+    drawBundleCard(box, { bundle, mode, owned: gameState.cosmetics.owned,
+      pending: pendingCash.has(bundle.id) || cashBusy === bundle.id,
+      onLogin: () => loginChipClick(bundle.id, 'bundle'),
+      onOpen: () => { trackEvent('bundle_open', { item_id: bundle.id }); openBundleCheckout(bundle, null); } });
+  }
 }
 
 export function drawCosMenu() {
@@ -1139,6 +1169,7 @@ export function drawCosMenu() {
   const box = document.getElementById('cos-items');
   box.innerHTML = '';
   drawWelcomeBox(box);
+  drawTabBundles(box, cosTab);
   //  🪞 프리뷰도 탭을 따라간다 — 펫 탭이면 펫을, 나머지 탭이면 내 캐릭터를 본다.
   //  ⚠️ 아직 안 샀으면 **다 자란 모습**을 건다(stageOf(Infinity) = 마지막 단계).
   //     1단계는 "씨앗 — 잎 1장" 이라 잎 하나 꽂힌 씨앗으로 읽히는데, 그걸 3,000🪙 짜리
@@ -1152,6 +1183,7 @@ export function drawCosMenu() {
   } else cosPreview?.showPet(null);
   cosPreview?.showTrail(cosTab === 'trail');           // ✨ 이펙트 탭 — 캐릭터 대신 자국이 걸어온다
   cosPreview?.showTools(cosTab === 'tools');           // 🪓 도구 탭 — 캐릭터 대신 입어 본 도구 세트를 진열
+  cosPreview?.showHomi(cosTab === 'homi');
   //  걷는 자국은 돌리지 않는다(방향이 돌면 걸어오는 게 안 읽힌다) → "드래그해서 돌려보기" 도 감춘다.
   //  visibility 로 감춰 자리는 남긴다 — 탭을 오갈 때 미리보기 상자 높이가 튀지 않게.
   const hint = document.getElementById('cos-preview-hint');
