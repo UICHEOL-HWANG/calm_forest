@@ -29,7 +29,7 @@ export function buildMudBoots(THREE, mat, variant, { R, bs }) {
   const look = BOOTS[variant] || BOOTS.A, s = R / .55, g = new THREE.Group();
   [-1, 1].forEach(sd => {
     const b = boot(THREE, mat, look, s);
-    b.position.set(sd * R * bs[0] * .42, -.01, R * bs[2] * .55); b.rotation.y = sd * .12; g.add(b);
+    b.position.set(sd * R * bs[0] * .34, -.01, R * bs[2] * .08); b.rotation.y = sd * .12; g.add(b);
   });
   return g;
 }
