@@ -1276,6 +1276,22 @@ function lockTo() {
 
 /** 숨김·보이기를 지금 집합에 맞춘다(가볍다 — 매초 돈다). 🏛️ 박물관은 도감으로 다시 지어지므로 매번 본다 */
 const returnPending = new Set();   // 🚶 귀환 걷기 대기 중인 이웃 id — 걷기는 조망샷·모달이 다 닫힌 뒤에 시작한다
+const REVEAL_HOLD_MS = 90000;
+const revealHolds = new Map();
+function holdPlaceReveal(id, { force = false } = {}) {
+  if (!lockHolders[id] || (isOpen(id) && !force)) return false;
+  revealHolds.set(id, Date.now() + REVEAL_HOLD_MS);
+  return true;
+}
+function keepPlaceReveal(id) {
+  if (revealHolds.get(id) > Date.now()) revealHolds.set(id, Date.now() + REVEAL_HOLD_MS);
+}
+function releasePlaceReveal(id) {
+  const until = revealHolds.get(id);
+  if (!revealHolds.delete(id)) return null;
+  applyUnlocks();
+  return until > Date.now() ? lockHolders[id]?.group || null : null;
+}
 function applyUnlocks() {
   for (const o of npcObjs) {
     const hide = (!isOpen(o.def.id) && !(o.def.id === 'merchant' && merchantVisit))   // 🧙 방문이 취소돼 좌판으로 돌아가는 중엔 걷게 둔다
@@ -1283,7 +1299,7 @@ function applyUnlocks() {
     if (hide !== !!o.hidden) setNpcHidden(o, hide);
   }
   for (const id in lockHolders) {
-    const h = lockHolders[id], on = isOpen(id);
+    const h = lockHolders[id], on = isOpen(id) && !(revealHolds.get(id) > Date.now());
     h.group.visible = on;
     for (const c of h.colliders) c.lock = !on;
   }
@@ -1347,6 +1363,18 @@ function maybeOwlBridgeHint(delay = 0) {
     body: { tiles: bridgeTiles(BRIDGE_COST) } },
   '🦉 서쪽 개울의 무너진 다리를 고쳐 보자'), delay);
 }
+function startReturnWalk(id) {
+  if (!returnPending.delete(id)) return false;
+  const o = npcObjs.find(x => x.def.id === id);
+  if (!o || !isOpen(id)) return false;
+  setNpcHidden(o, false);
+  // 물(호수·나루터 연못·박물관 개울·포구 후미)을 가로지르지 않는 방향에서 걸어 들어온다
+  startNpcReturn(o, [{ x: LAKE.x, z: LAKE.z, r: LAKE_R }, { x: DOCK_POND.x, z: DOCK_POND.z, r: DOCK_POND_R }, { x: ISLE.x, z: ISLE.z, r: ISLE_R + 0.6 }, { x: SEA_COVE.x, z: SEA_COVE.z, r: SEA_COVE.r }]);
+  if (id === 'curator') {   // 🧑‍🦳 개울 건너 섬 안에 산다 — 가장자리에서 물을 걸어 건너지 않고 박물관 문에서 나온다
+    o.group.position.set(MUSEUM_GATE.x, 0, MUSEUM_GATE.z + 3.4); o.group.rotation.y = Math.atan2(o.home.x - MUSEUM_GATE.x, o.home.z - MUSEUM_GATE.z - 3.4);
+  }
+  return true;
+}
 function announceUnlock(id) {
   const def = NPCS.find(n => n.id === id);
   if (!unlockTracked.has(id)) {
@@ -1364,16 +1392,7 @@ function announceUnlock(id) {
   // 🚶 걷기는 조망샷과 귀환 모달이 다 끝난 뒤에 — 같이 돌면 화면이 가려 걸어오는 모습을 못 본다(2026-10-17 전체 진행 캡처에서 발견)
   if (o) {
     returnPending.add(id); setNpcHidden(o, true);
-    setTimeout(() => afterModals(() => {   // ⏱️ 모달이 먼저 뜨거나 줄 선 뒤에 기다리기 시작한다(바로 부르면 모달 전이라 즉시 걷는다)
-      returnPending.delete(id);
-      if (!isOpen(id)) return;
-      setNpcHidden(o, false);
-      // 물(호수·나루터 연못·박물관 개울·포구 후미)을 가로지르지 않는 방향에서 걸어 들어온다
-      startNpcReturn(o, [{ x: LAKE.x, z: LAKE.z, r: LAKE_R }, { x: DOCK_POND.x, z: DOCK_POND.z, r: DOCK_POND_R }, { x: ISLE.x, z: ISLE.z, r: ISLE_R + 0.6 }, { x: SEA_COVE.x, z: SEA_COVE.z, r: SEA_COVE.r }]);
-      if (id === 'curator') {   // 🧑‍🦳 개울 건너 섬 안에 산다 — 가장자리에서 물을 걸어 건너지 않고 박물관 문에서 나온다
-        o.group.position.set(MUSEUM_GATE.x, 0, MUSEUM_GATE.z + 3.4); o.group.rotation.y = Math.atan2(o.home.x - MUSEUM_GATE.x, o.home.z - MUSEUM_GATE.z - 3.4);
-      }
-    }), 300);
+    setTimeout(() => afterModals(() => startReturnWalk(id)), 300);   // ⏱️ 모달이 먼저 뜨거나 줄 선 뒤에 기다리기 시작한다(바로 부르면 모달 전이라 즉시 걷는다)
   }
   showReturnModal(def);
   if (id === 'curator') setTimeout(() => afterModals(() => syncStory('bridge')), 600);   // 📖 1장 「세계수를 지키는 법」 완료 — 할아버지 이야기를 읽은 다음에
@@ -8136,6 +8155,7 @@ export {
   settleDifficulty, settleOrchard, severeOf, shared, showCatchItem, sitting, situation, snapCamera, solidBox,
   solidCircle, spawnConfetti, spawnDust, spawnFloatText, spawnLeafBurst, spawnSparkle, spawnSplash, spawnTree,
   spawnWater, spawnWoodChips, stopOutdoorPlacing, swayables, syncBadges, syncFarmHints, syncStory, syncUnlocks, isOpen, unlocksOn, todayStr, toolMesh,
+  holdPlaceReveal, keepPlaceReveal, releasePlaceReveal, startReturnWalk,
   toolPage, trackDiffAbandon, trackGateBlocked, trees, triggerFarmReveal, triggerMoment, tryUnlockDrop, ui,
   updateCarveScene, updatePlotVisual, updateStowPose, updateToolPageAuto, usePet, vtxMat, wakeToMorning, wantAction, warnTexture,
   weatherOf, weedTexture, wiltPlot, woodMat, workerCap, worldGround, worldGroundPatches,
