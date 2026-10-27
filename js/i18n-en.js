@@ -1863,7 +1863,7 @@ export const EN = {
   '망치 소리를 듣고 돌아왔대요!': 'Heard the hammering and came back!',
   '"고맙네. 빈터를 꾸며 이웃을 부르고,\n꾸러미로 세계수 가지를 깨우게."': '"Thank you. Decorate clearings to call neighbors back,\nand offer bundles to wake the branches."',
   '호숫가에 다시 낚싯대를 드리웠어요.': 'A fishing rod hangs over the lakeside again.',
-  '밭 냄새를 맡고 돌아왔대요.': 'Smelled the fields and came back.',
+  '세계수를 통해서 밭의 길을 보고 따라 돌아왔대요!': 'Saw the path to the fields through the World Tree and followed it home!',
   '새 닭장을 보고 달려왔어요.': 'Saw the new coop and came running.',
   '부엌에 불이 켜지고 카페가 열렸어요.': 'The kitchen is lit and the café is open.',
   '숲길을 다시 걷기 시작했어요.': 'Back to walking the forest paths.',
