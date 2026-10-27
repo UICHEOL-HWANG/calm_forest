@@ -11,7 +11,7 @@ const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const blockUntil = (t, start, end) => { const i = t.indexOf(start); return t.slice(i, t.indexOf(end, i)); };
 
 export function nodeQuizData() {
-  const EN = read('../../js/i18n-en.js'), CAT = read('../../js/data/catalog.js'), PL = read('../../js/data/places.js');
+  const EN = read('../../js/i18n-en.js'), CAT = read('../../js/data/catalog.js'), PL = read('../../js/boat/consts.js');
   // 값은 작은따옴표 또는 큰따옴표("A Neighbour's Share" 처럼 ' 가 든 것) — 둘 다 읽는다
   const en = (ko) => { const m = EN.match(new RegExp(`'${esc(ko)}':\\s*(?:'((?:[^'\\\\]|\\\\.)+)'|"((?:[^"\\\\]|\\\\.)+)")`)); return m ? (m[1] ?? m[2]).replace(/\\'/g, "'") : ko; };
   const recipes = recipesFromSource(CAT).map(r => ({ ...r, ico: CAT.match(new RegExp(`id: '${r.id}'[^\\n]*ico: '([^']+)'`))[1],
