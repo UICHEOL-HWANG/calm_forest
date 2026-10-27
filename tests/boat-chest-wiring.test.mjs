@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { boatDefaults } from '../js/boat/save.js';
 import { readFileSync } from 'node:fs';
 import { gameSource } from './helpers/game-source.mjs';
 import { CHEST_LOOT } from '../js/boat-chest.js';
@@ -65,7 +66,8 @@ test('정산: 지급은 boat_chest 출처로 따로, boat_end·boat_runs 에 che
 });
 
 test('세이브 기본값에 chestDate', () => {
-  assert.match(src, /boat: \{ date: null, count: 0,[^\n]*chestDate: null/);
+  assert.match(src, /boat: boatDefaults\(\),/);
+  assert.equal(boatDefaults().chestDate, null);
 });
 
 test('개봉 화면은 실제 지급 기준 이름·모형을 보여 준다(색이 다 열렸으면 보석)', () => {

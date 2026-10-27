@@ -30,6 +30,7 @@ import { retryDelay, offerReload } from './save-guard.js';   // 🛡️ 세이�
 import { unreadNotices, maxId } from './notices.js';   // 📮 소식함 순수 로직(안 읽은 것 거르기·읽음 id)
 import { NIGHT_MIN, WAKE_TIME, daylightAt, isNightAt } from './daynight.js';
 import { BOAT_LAMP, BOAT_LAMP_POST } from './boat-lamp.js';   // 🏮 등불이 앞 장애물을 안 가리는 배치(순수 기하 규칙)   // 🌞🌙 햇빛 곡선·밤 판정·기상 시각(순수 규칙)
+import { boatDefaults, restoreBoat } from './boat/save.js';
 import { TUNING, rewardBoostMult, isMapLocked, mapOpenDay, betaDay, lockLine, openLine } from './tuning.js';   // 🧪 [베타 A/B] 보상 부스트 + 2차 맵 계단식 (난이도는 difficulty.js 로 옮겼다)
 import { easeFor, nextDda, ddaOutcome, defaultDifficulty, mergeDifficulty, PROBE_SCHEME } from './difficulty.js';   // 🎚️ 미니게임 난이도 — probe 지터 + 유저별 DDA
 import { spotToolStep, spotWant, spotKeep, SPOT_REASON, IDLE as SPOT_IDLE } from './spot-tool-auto.js';
@@ -1079,7 +1080,7 @@ const gameState = {
   //            🤝 발길 끊기 만료일, 오늘 대결한 동물 }
   night: { lastDate: null, traces: [], truce: { boar: null, raccoon: null }, duelDate: null, duelDone: [] },
   frost: { coveredFor: null, lastDate: null }, // 🌡️ 날씨 이벤트 { 덮개를 설치해 둔 대상 날짜, 마지막 정산일(YYYY-MM-DD) }
-  boat: { date: null, count: 0, clearsToday: 0, best: 0, clears: 0, up: { oar: 0, hull: 0, lamp: 0 }, chestDate: null }, // 🛶 나룻배 { 오늘 날짜, 오늘 탄 횟수, 오늘 완주 수(의뢰 판정용), 최고 점수, 누적 완주, 배 업그레이드, 🧰 보물상자 건진 날 }
+  boat: boatDefaults(),
   mist: { date: null, purified: false, soothedTotal: 0, purifyTotal: 0, practiced: false }, // 🌫️ 안개 숲 { 정화 판정일(YYYY-MM-DD), 오늘 정화 여부, 누적 달래기, 누적 정화, 연습 완료 여부 }
   beta: { tries: {} },   // 🧪 미니게임별 시도 횟수 — 관대 판정은 js/difficulty.js 로 옮겼다(이 카운터는 옛 세이브 호환용)
   difficulty: defaultDifficulty(),   // 🎚️ 미니게임별 난이도 상태 { dda: 유저 보정, n: probe 순회용 누적 시도 }
@@ -2517,7 +2518,8 @@ export async function enterGame() {
     // 🛶 __boat — 나룻배 검수용. up('lamp',1) 로 업그레이드를 채우고 start() 로 즉시 출항(🏮등불·물보라 시야 확인)
     window.__boat = {
       start: startBoatRun, quit: () => endBoatRun('quit'), state: boat,
-      up: (id, lv = 1) => { if (id in gameState.boat.up) gameState.boat.up[id] = lv; return { ...gameState.boat.up }; },
+      own: (id) => { gameState.boat.own = { ...gameState.boat.own, [id]: 1 }; return { ...gameState.boat.own }; },
+      sel: (patch) => { gameState.boat.sel = { ...gameState.boat.sel, ...patch }; return { ...gameState.boat.sel }; },
       course: riverCourse,                                  // 코스 데이터(장애물이 몇 m 앞인지 — 같은 지점 비교 촬영용)
       seek: (d) => { boat.dist = Math.max(0, d); return Math.round(boat.dist); },
       chestReset: () => { gameState.boat.chestDate = null; return 'ok'; },   // 🧰 오늘 건진 기록을 지워 다시 떠내려오게
@@ -2877,7 +2879,11 @@ function applySave(saved) {
   if (saved.beta) gameState.beta = { tries: {}, ...saved.beta };   // 🧪 관대 판정 카운터 복원
   gameState.difficulty = mergeDifficulty(saved.difficulty);   // 🎚️ 난이도 상태 복원 — 필드가 없는 옛 세이브는 기본값으로 뜬다
   if (saved.frost) gameState.frost = { coveredFor: null, lastDate: null, ...saved.frost }; // 🌡️ 날씨 이벤트 상태 복원
-  if (saved.boat) gameState.boat = { ...gameState.boat, ...saved.boat, up: { oar: 0, hull: 0, lamp: 0, ...(saved.boat.up || {}) } }; // 🛶 나룻배 횟수·기록·업그레이드 복원
+  if (saved.boat) {
+    const rb = restoreBoat(saved.boat);
+    gameState.boat = rb.boat;
+    if (rb.refundStar) gameState.inventory.star = (gameState.inventory.star || 0) + rb.refundStar;
+  }
   gameState.dream = normalizeDream(saved.dream, todayStr());   // 🌙 꿈의 숲 — 타입·범위 검증, 날이 바뀌면 got 을 비운다
   gameState.mirror = normalizeMirror(saved.mirror, todayStr());   // 🪞 거울 마을 — 타입·범위 검증, 날이 바뀌면 done·hinted 를 비운다
   gameState.halloween = saved.halloween ?? null; gameState.hwBundles = saved.hwBundles ?? null; settleHalloween();
