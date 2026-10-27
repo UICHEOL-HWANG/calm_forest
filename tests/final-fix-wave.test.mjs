@@ -70,8 +70,8 @@ test('game.js: 배 런 early-return 앞에서 스케일 복구 + skinTick 호출
 test('game.js: 미리보기 rebuild 는 effectiveTrail 을 쓴다', () => {
   const src = gameSource();
   const i = src.indexOf('function rebuild()');
-  assert.match(src.slice(i, i + 900), /effectiveTrail\(cos\)/);
-  assert.doesNotMatch(src.slice(i, i + 900), /const tid = cos\?\.equipped\?\.trail/);
+  assert.match(src.slice(i, i + 1600), /effectiveTrail\(cos\)/);
+  assert.doesNotMatch(src.slice(i, i + 1600), /const tid = cos\?\.equipped\?\.trail/);
 });
 test('game.js: 기본 cosmetics.equipped 에 skin: null', () => {
   assert.match(gameSource(), /equipped: \{ head: null, neck: null, back: null, trail: null, skin: null \}/);

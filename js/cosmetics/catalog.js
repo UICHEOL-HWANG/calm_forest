@@ -19,7 +19,7 @@
 
 import { cashFor } from '../shop/cash.js';
 
-export const SLOTS = Object.freeze(['head', 'neck', 'back', 'trail', 'skin', 'tools']);
+export const SLOTS = Object.freeze(['head', 'neck', 'back', 'trail', 'skin', 'tools', 'homi']);
 
 const RAW = [
   // 🎩 머리 — dome 4 · low 3
@@ -73,6 +73,11 @@ const RAW = [
   { id: 'nest_pack',    slot: 'back',  ico: '🪺', name: '아기새 둥지 배낭',   won: 4500, tier: '프리미엄', anchor: 'back' },
   { id: 'maple_trail',  slot: 'trail', ico: '🍁', name: '단풍잎',             won: 4000, tier: '프리미엄' },
   { id: 'bubble_trail', slot: 'trail', ico: '🫧', name: '비눗방울',           won: 4000, tier: '프리미엄' },
+  { id: 'homi_najeon', slot: 'homi', ico: '🪷', name: '자개 호미', won: 1500, tier: '프리미엄' },
+  { id: 'homi_coral',  slot: 'homi', ico: '🪸', name: '산호 호미', won: 1500, tier: '프리미엄' },
+  { id: 'homi_whale',  slot: 'homi', ico: '🐋', name: '고래 호미', won: 1500, tier: '프리미엄' },
+  { id: 'homi_mudset', slot: 'homi', ico: '🦀', name: '갯벌 호미', set: 'mudflat_set', tier: '갯벌 세트' },
+  { id: 'mud_gear',    slot: 'back', ico: '🧺', name: '갯벌 바구니와 장화', set: 'mudflat_set', tier: '갯벌 세트', anchor: 'root' },
   // 🤝 친구 초대 보상 — 비매품(dev/active/referral-reward). 1명 무지개 크리스탈 세트 · 5명 날개 · 초대받은 친구 하트핀(🌈 3명 아치는 야외 장식)
   //    id tools_star 는 서버 가드·원장에 이미 등록돼 그대로 둔다(이름만 2026-10-08 시안 B 선택에 맞춰 바꿈)
   { id: 'tools_star',  slot: 'tools', ico: '💎', name: '무지개 크리스탈 세트', reward: 'referral', tier: '친구 초대' },
@@ -93,7 +98,7 @@ const RAW = [
   { id: 'kinder_bag', slot: 'back', ico: '🎒', name: '새싹반 가방', coins: 100, anchor: 'side', group: 'sprout' },
 ];
 
-export const ITEMS = Object.freeze(RAW.map(({ coins = null, won = null, ...it }) => Object.freeze(it.reward || it.quest
+export const ITEMS = Object.freeze(RAW.map(({ coins = null, won = null, ...it }) => Object.freeze(it.reward || it.quest || it.set
   ? { ...it, price: { coins: null, won: null, cash: null } }
   : won != null
   ? { ...it, premium: true, price: { coins: null, won, cash: cashFor(it.id, null, won) } }

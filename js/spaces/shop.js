@@ -14,6 +14,14 @@ import { SELL_PRICE, SHOP_BUY } from '../data/catalog.js';
 import { MARKET, SELL_ICO_G, SHOP } from '../data/places.js';
 import { topPriceLine } from '../first-loop.js';
 import { t } from '../i18n.js';
+import { CONFIG } from '../config.js';
+import { PLATFORM } from '../platform.js';
+import { findItem } from '../cosmetics/catalog.js';
+import { HOMI_SKIN_OF } from '../cosmetics/homi-skin-rules.js';
+import { storeOpen } from '../shop/paddle.js';
+import { premiumRowMode } from '../shop/premium-row.js';
+import { BUNDLES, bundleCardMode } from '../shop/bundles.js';
+import { wonLabel } from '../shop/cash.js';
 import { HOMI_ENGRAVES, HOMI_TIERS, buyEngrave, buyTier, equipEngrave, homiBase, homiState } from '../forage/homi.js';
 import { logEcon } from '../metrics.js';
 import { FRUITS, sapKeyOf } from '../orchard.js';
@@ -158,6 +166,27 @@ export function homiInfo() {
       afford: Object.entries(e.cost).every(([k, n]) => (inv[k] || 0) >= n),
     })),
   };
+}
+
+export function homiStallTiers() {
+  const tier = homiState(gameState.sea.forage?.homi).tier, coins = gameState.inventory.coins || 0;
+  return SHOP_BUY.filter(it => it.homi).map(it => ({
+    id: it.id, ico: it.ico, name: it.name, desc: it.desc, coin: it.coin,
+    owned: tier >= it.homi, locked: tier < it.homi - 1, afford: coins >= it.coin,
+  }));
+}
+
+export function homiStallSkins() {
+  const owned = gameState.cosmetics?.owned || [];
+  const ctx = { platform: PLATFORM, online: !!authState.online, isGuest: !!authState.isGuest, tokenSet: !!CONFIG.PADDLE.token, storeOpen: storeOpen() };
+  const skins = Object.keys(HOMI_SKIN_OF).map(findItem).filter(Boolean).map(it => {
+    const mode = premiumRowMode(it, { ...ctx, owned: owned.includes(it.id) });
+    return { id: it.id, ico: it.ico, name: it.name, mode, label: it.price.cash?.label || '' };
+  });
+  const sets = BUNDLES.filter(b => b.tab === 'homi').map(b => ({
+    id: b.id, ico: b.ico, name: b.copy.title, mode: bundleCardMode(b, { ...ctx, owned }), label: wonLabel(b.won),
+  }));
+  return [...skins, ...sets].filter(r => r.mode !== 'hidden');
 }
 
 export function buyHomiEngrave(id) {

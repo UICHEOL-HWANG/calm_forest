@@ -137,7 +137,7 @@ import {
   FOREST_LOGS, FOREST_LOG_R, FOREST_LOG_SPOTS, FORAGE_RESPAWN, FORAGE_KINDS, DOCK_GATE, DOCK_POND, DOCK_POND_R, RIVER,
   RIVER_DOCK_HALF, RIVER_W, RIVER_LEN, BOAT_RUNS_PER_DAY, BOAT_BASE_SPEED, BOAT_BOOST_CD, RIVER_OBS, RIVER_PICKS,
   SHOP_POS, SHOP_DOOR, MIST_GATE, MIST, MIST_HALF, MIST_WAVES, TREE_LIGHT_MAX, MIST_DRAIN, SOOTHE_GLOW,
-  PURIFY_GLOW, SPIRITS, MIST_LANTERN_POS, LANTERN_CALM_R, MIST_PRACTICE_STEPS, SEA_GATE, SEA_COVE, SEA, MUDFLAT, DIVE, ORCHARD_GATE,
+  PURIFY_GLOW, SPIRITS, MIST_LANTERN_POS, LANTERN_CALM_R, MIST_PRACTICE_STEPS, SEA_GATE, SEA_COVE, SEA, MUDFLAT, DIVE, HOMI_STALL, ORCHARD_GATE,
   ORCHARD_PROMPT_R, ORCHARD, ORCHARD_HALF, SEA_DECK_W, SEA_DECK_Z0, SEA_DECK_Z1, SEA_EDGE, SEA_SPECIES, ROOF_COLORS,
   WALL_COLORS, DOOR_COLORS, PART_NAME, HOUSE_POS, NEIGHBOR, NEIGHBOR_R, NEIGHBOR_GATE, DELVE,
 } from './data/places.js';
@@ -167,7 +167,7 @@ import {
 import {
   museumDims, MUSEUM_LIGHT, _museumNear, buildCafeHall, cafeCookDone, cafeView, closeCosPreview,
   closeMuseumView, enterCafe, enterMuseum, exitCafe, exitMuseum, josa, museumFloor, museumFloorItems, museumGoFloor,
-  museumPlateText, museumStairs, museumView, museumViewFrame, openCosPreview, openMuseumView, playerPhase,
+  museumPlateText, museumStairs, museumView, museumViewFrame, openCosPreview, openMuseumView, playerPhase, setCosTab,
   museumGateColliders, museumGateGroup, refreshCafeGuests, refreshMuseumGate, serveCafeGuest, spawnCafeGate, spawnCosmeticShop, updateCafeGuests,
   updateCafeInteract, updateMuseumView,
 } from './spaces/cafe.js';   // 📦 ☕ 카페 — 채굴장처럼 처음부터 있는 장소. 홀에 앉은 손님에게 서빙
@@ -190,7 +190,10 @@ import {
 import { openSeaPick } from './spaces/sea-pick.js';
 import { mudflat, mudflatAction, mudflatSpeedMult, clampMudflat, enterMudflat, mudflatDebug, setMudflatCam } from './spaces/mudflat.js';
 import { dive, diveAction, diveSpeedMult, clampDive, enterDive, diveAtmosphere, diveDebug } from './spaces/dive.js';
-import { HOMI_ANIM_DUR } from './forage/hoe-art.js';
+import { HOE_DEFAULT, HOE_FACE, HOMI_ANIM_DUR, buildHoe } from './forage/hoe-art.js';
+import { dressHoe, skinOf as hoeSkinOf } from './forage/hoe-skins.js';
+import { homiSkinOf } from './cosmetics/homi-skin-rules.js';
+import { MUD_GEAR, buildMudGear, stepBoots } from './forage/mudflat-set-art.js';
 import { homiState } from './forage/homi.js';
 import { applySwimPose, swim } from './forage/swim-pose.js';
 import { keepOnGateWalks, updateGateCues, updateGateWalks } from './spaces/gate-cue.js';
@@ -225,7 +228,7 @@ import {
   intro, introEnd, introLook, introStart, updateIntro,
 } from './spaces/prologue.js';   // 📦 🎬 프롤로그 컷신 (구역 머리말 — 분리 2단계)
 import {
-  buyHomiEngrave, buyShop, equipHomiEngrave, homiInfo, marketData, sellItem, spawnMarketBoard, spawnShop,
+  buyHomiEngrave, buyShop, equipHomiEngrave, homiInfo, homiStallSkins, homiStallTiers, marketData, sellItem, spawnMarketBoard, spawnShop,
 } from './spaces/shop.js';   // 📦 🛒 상점 좌판·시세판·사고팔기 (구역 머리말 — 분리 2단계)
 import {
   COOK_TIERS, PANTRY_MAX, buffDur, cookResolve, courseOf, craftTier2, craftUpgrade, emitBuffs, kitchenView,
@@ -378,6 +381,7 @@ export const $w = {
   get nearCafeGuest() { return nearCafeGuest; }, set nearCafeGuest(v) { nearCafeGuest = v; },
   get nearCoop() { return nearCoop; }, set nearCoop(v) { nearCoop = v; },
   get nearCosShop() { return nearCosShop; }, set nearCosShop(v) { nearCosShop = v; },
+  get nearHomiStall() { return nearHomiStall; }, set nearHomiStall(v) { nearHomiStall = v; },
   get nearLightWorkshop() { return nearLightWorkshop; }, set nearLightWorkshop(v) { nearLightWorkshop = v; },
   get nearDecorMesh() { return nearDecorMesh; }, set nearDecorMesh(v) { nearDecorMesh = v; },
   get nearDoor() { return nearDoor; }, set nearDoor(v) { nearDoor = v; },
@@ -552,6 +556,7 @@ const boat = {
 
 let cosmeticShop = null;          // buildShop 이 돌려준 { group, owner, lamp } — 프레임 루프가 주인을 움직인다
 let nearCosShop = false;
+let nearHomiStall = false;
 let nearLightWorkshop = false;   // 🏮 빛 공방 문 앞
 
 // ── 🌫️ 안개 낀 숲(마을 북서) — 새 동사: 등불 점화 + ♪연주로 달래기(무폭력 웨이브) ──
@@ -2045,6 +2050,8 @@ export const Input = {
   ownedUpgrades() { return { ...gameState.upgrades }; }, // 보유 업그레이드
   homiTier() { return homiState(gameState.sea.forage?.homi).tier; },
   homiInfo() { return homiInfo(); },
+  homiStallTiers() { return homiStallTiers(); },
+  homiStallSkins() { return homiStallSkins(); },
   buyHomiEngrave(id) { return buyHomiEngrave(id); },
   equipHomiEngrave(slot, id) { return equipHomiEngrave(slot, id); },
   craftUpgrade(id) { return craftUpgrade(id); },        // 업그레이드 제작
@@ -2130,6 +2137,7 @@ export const Input = {
   drawPets(box, preview) { drawPets(box, preview); },
   // 🎀 꾸미기 상점 — 패널 내용·프리뷰는 게임 쪽이 그린다(show/hide 만 UI 가 한다)
   openCosMenu(canvas) { openCosPreview(canvas); },
+  setCosTab(id) { setCosTab(id); },
   closeCosMenu() { closeCosPreview(); },
   hasCharacter() { return !!gameState.character; },
   getCharacter() { return gameState.character; },        // 🐾 바꾸기 모달에서 현재 캐릭터 미리 선택용
@@ -3270,6 +3278,7 @@ function buildWorld() {
       || dist2D({ x, z }, DOCK_POND) < DOCK_POND_R + 2 || dist2D({ x, z }, DOCK_GATE) < 4   // 🛶 나루터 연못·데크 위엔 나무 금지
       || dist2D({ x, z }, MIST_GATE) < 5   // 🌫️ 안개 숲 입구 앞은 비워둠(자체 고목 연출이 있음)
       || dist2D({ x, z }, SHOP_POS) < 4   // 🏪 꾸미기 가게 — 반치수 2.56 + 걸어다닐 틈. 없으면 나무가 가게 안에 박힌다
+      || dist2D({ x, z }, HOMI_STALL) < 3.2
       || dist2D({ x, z }, SEA_GATE) < 4.5  // 🌊 바다터 포구(등대·방파제)가 나무에 가리지 않게
       || dist2D({ x, z }, SEA_COVE) < SEA_COVE.r + 1.5   // 🌊 포구 후미(바닷물) 위엔 나무 금지
       || dist2D({ x, z }, MUSEUM_GATE) < 5.5   // 🏛️ 박물관 — 정면 아치 입구가 나무에 가리지 않게
@@ -3316,7 +3325,8 @@ function buildWorld() {
     const r = 4 + Math.random() * 30, a = Math.random() * Math.PI * 2;
     const x = Math.cos(a) * r, z = Math.sin(a) * r;
     if (dist2D({ x, z }, SEA_COVE) < SEA_COVE.r + 0.5) continue;  // 🌊 후미 물 위 제외
-    if (dist2D({ x, z }, SHOP_POS) < 3.2) continue;               // 🏪 가게 바닥은 두께 0.09 라 풀(높이 0.7)이 마루를 뚫고 올라온다
+    if (dist2D({ x, z }, SHOP_POS) < 3.2) continue;
+    if (dist2D({ x, z }, HOMI_STALL) < 2.4) continue;               // 🏪 가게 바닥은 두께 0.09 라 풀(높이 0.7)이 마루를 뚫고 올라온다
     if (dist2D({ x, z }, LIGHT_WORKSHOP) < 3.2) continue;            // 🏮 빛 공방 받침도 같은 이유
     if (plazaScatterBlocks(x, z, 0.5)) continue;
     if (pondScatterBlocks(x, z, 0.5)) continue;
@@ -3816,7 +3826,7 @@ export function buildAnimalMesh(id) {
   const anchors = {};
   for (const [name, p] of Object.entries({
     head: headAnchor(HY), neck: neckAnchor(HR, HY),
-    back: backAnchor(bs, R, bodyY), side: kk.side,
+    back: backAnchor(bs, R, bodyY), side: kk.side, root: { x: 0, y: 0, z: 0 },
   })) {
     const a = new THREE.Group();
     a.position.set(p.x, p.y, p.z);
@@ -3850,16 +3860,19 @@ function applyCharacter(id) {
 // ── 🎀 장착 반영 — 앵커의 **자식만** 교체한다 ──
 //   ⚠️ 공유 재질/지오메트리를 dispose 하지 않는다. 다른 곳에서 쓰던 것까지 검게 만든다(§14).
 //      인스턴스만 버린다.
-let charAnchors = null, charK = null, charSkin = null;
+let charAnchors = null, charK = null, charSkin = null, mudBoots = null;
 function applyCosmetics(cos) {
   if (!charAnchors) return;
   //  🧥 스킨은 몸 재질을 바꾼다 — 앵커 자식만 갈아서는 안 되고 캐릭터를 다시 조립해야 한다
   if ((cos?.equipped?.skin || null) !== charSkin) { applyCharacter(curAnimal?.id || gameState.character); return; }
+  disposeSkin(charAnchors.root);
   for (const a of Object.values(charAnchors)) a.clear();
+  mudBoots = null;
   for (const it of equippedItems(cos)) {
-    if (it.slot === 'trail' || it.slot === 'skin') continue;   // 자국은 월드 이펙트, 스킨은 몸 재질 — 둘 다 앵커가 아니다
-    const m = buildCosmetic(THREE, it.id, charK);
+    if (it.slot === 'trail' || it.slot === 'skin' || it.slot === 'homi') continue;   // 자국은 월드 이펙트, 스킨은 몸 재질 — 둘 다 앵커가 아니다
+    const m = it.id === MUD_GEAR ? buildMudGear(THREE, clayMat, charK) : buildCosmetic(THREE, it.id, charK);
     if (m) charAnchors[it.anchor || it.slot].add(m);   // 아이템이 붙을 면을 고른다
+    if (m?.userData.boots) mudBoots = m.userData.boots;
   }
   showSkinParts(charGroup, cos);   // 🌱 모자·🎒 가방을 입으면 스킨의 머리·등 부위를 숨긴다
   if (tailPivot) tailPivot.visible = !hidesTail(cos);
@@ -4065,8 +4078,8 @@ export function buildCharacterMesh(id, cos = gameState.cosmetics) {
   const built = buildAnimalMesh(id);
   applySkin(THREE, built, cos?.equipped?.skin);   // 🧥 입어보기 포함 — 꾸미기보다 먼저(몸 재질을 바꾼다)
   for (const it of equippedItems(cos)) {
-    if (it.slot === 'trail' || it.slot === 'skin') continue;
-    const m = buildCosmetic(THREE, it.id, built.k);
+    if (it.slot === 'trail' || it.slot === 'skin' || it.slot === 'homi') continue;
+    const m = it.id === MUD_GEAR ? buildMudGear(THREE, clayMat, built.k) : buildCosmetic(THREE, it.id, built.k);
     if (m) built.anchors[it.anchor || it.slot].add(m);
   }
   showSkinParts(built.group, cos);   // 🌱 입어보기 꾸미기도 같은 규칙
@@ -4096,6 +4109,19 @@ export function buildToolShowcase(theme) {
   return g;
 }
 
+export function buildHoeShowcase(skin) {
+  const sk = hoeSkinOf(skin);
+  const hoe = dressHoe(THREE, clayMat, buildHoe(THREE, clayMat, HOE_DEFAULT, HOE_FACE, sk?.pal, sk?.over), skin);
+  const g = new THREE.Group();
+  g.add(hoe);
+  const b = new THREE.Box3().setFromObject(hoe), sz = b.getSize(new THREE.Vector3()), c = b.getCenter(new THREE.Vector3());
+  const k = 1.5 / Math.max(0.05, sz.y);
+  hoe.scale.multiplyScalar(k);
+  hoe.position.set(-c.x * k, 0.95 - c.y * k, -c.z * k);
+  g.userData.ownsGpu = true;
+  return g;
+}
+
 // ── 선택 화면 3D 프리뷰(드래그로 회전 + 살짝 자동 스핀) ──
 function makeCharacterPreview(canvas) {
   const rend = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
@@ -4112,6 +4138,7 @@ function makeCharacterPreview(canvas) {
   let petStage = null, petKind = PET_KIND;           // petStage = 숫자면 캐릭터 대신 🐾 펫을 본다(petKind = 어느 종을)
   let trailView = false, walk = null, lastT = 0;     // trailView = ✨이펙트 탭 — 캐릭터 대신 자국이 걸어온다
   let toolsView = false, shelf = null, shelfTheme;   // toolsView = 🪓 도구 탭 — 캐릭터 대신 입어 본 도구 세트를 진열
+  let homiView = false, hoeShelf = null, hoeShelfSkin;
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   //  카메라 두 벌 — 캐릭터는 몸통 높이, 걷는 자국은 바닥을 비스듬히 내려다본다(trail-walk.js WALK_CAM)
   function aimCamera() {
@@ -4129,6 +4156,15 @@ function makeCharacterPreview(canvas) {
     if (mesh) { pivot.remove(mesh); disposeSkin(mesh); }
     if (marks) { pivot.remove(marks); marks = null; }
     if (walk) { pivot.remove(walk.group); walk.dispose(); walk = null; }
+    const wantHoe = homiView && petStage === null, hoeSkin = homiSkinOf(cos);
+    if (hoeShelf && !(wantHoe && hoeSkin === hoeShelfSkin)) { pivot.remove(hoeShelf); disposeTree(hoeShelf); hoeShelf = null; }
+    if (wantHoe) {
+      mesh = null;
+      if (shelf) { pivot.remove(shelf); disposeTree(shelf); shelf = null; }
+      if (!hoeShelf) { hoeShelf = buildHoeShowcase(hoeSkin); hoeShelfSkin = hoeSkin; pivot.add(hoeShelf); }
+      aimCamera();
+      return;
+    }
     const wantShelf = toolsView && petStage === null, theme = toolSkinOf(cos);
     //  진열은 테마가 같으면 그대로 둔다 — 줄을 누를 때마다 도구 4개 + 우산을 다시 굽지 않게
     if (shelf && !(wantShelf && theme === shelfTheme)) { pivot.remove(shelf); disposeTree(shelf); shelf = null; }   // 진열물은 공유 재질이 없다(buildToolShowcase)
@@ -4194,6 +4230,10 @@ function makeCharacterPreview(canvas) {
     if (!!on === toolsView) return;
     toolsView = !!on; if (animal) rebuild();
   }
+  function showHomi(on) {
+    if (!!on === homiView) return;
+    homiView = !!on; if (animal) rebuild();
+  }
   function stop() { if (raf) { cancelAnimationFrame(raf); raf = 0; } lastT = 0; }   // 패널을 닫으면 두 번째 렌더러를 세운다
   function start() { if (!raf) loop(); }
   function resize() {
@@ -4218,7 +4258,7 @@ function makeCharacterPreview(canvas) {
   const end = () => { dragging = false; };
   canvas.addEventListener('pointerup', end); canvas.addEventListener('pointercancel', end);
   resize(); loop();
-  return { setAnimal, resize, refresh, showPet, showTrail, showTools, stop, start };
+  return { setAnimal, resize, refresh, showPet, showTrail, showTools, showHomi, stop, start };
 }
 
 // 손에 든 도구 메시(도구 전환 시 교체)
@@ -6279,6 +6319,7 @@ function updatePlayer(dt, t) {
   if (boat.active) {                               // 🛶 런 중엔 걷기 대신 배 물리
     charGroup?.scale.setScalar(1);                 // 🧸 말랑 스킨이 걷다 멈춘 채 눌려 있지 않게
     charGroup?.userData.skinTick?.(t);             // 🌿 정령 반딧불은 계속 떠다닌다
+    if (mudBoots) stepBoots(mudBoots, 0, false, playerAnchor.position.y);
     return updateBoatRun(dt, t);
   }
   const speed = 6 * (buffOn('speed') ? 1.4 : 1) * mountainSpeedMult() * mudflatSpeedMult() * diveSpeedMult();   // 🥘 채소죽 버프: 이동속도 +40%
@@ -6305,8 +6346,8 @@ function updatePlayer(dt, t) {
     player.position.z += mz * speed * dt;
     player.rotation.y = lerpAngle(player.rotation.y, Math.atan2(mx, mz), 0.2);
     walkPhase += dt * 12;
-    playerAnchor.position.y = Math.abs(Math.sin(walkPhase)) * 0.18;
-    playerAnchor.rotation.z = Math.sin(walkPhase) * 0.05;
+    playerAnchor.position.y = Math.abs(Math.sin(walkPhase)) * (mudBoots ? 0.07 : 0.18);
+    playerAnchor.rotation.z = Math.sin(walkPhase) * (mudBoots ? 0.09 : 0.05);
   } else if (!updateEmote(dt)) {  // 이모트 모션 중이면 기본 idle 숨쉬기 대신 모션 재생
     playerAnchor.position.y = Math.sin(t * 2) * 0.03;
     playerAnchor.rotation.z *= 0.9;
@@ -6525,6 +6566,7 @@ function updatePlayer(dt, t) {
     }
     poseHeldTool(toolStow);                      // 수납 보간이 끝날 때까지 매 프레임 갱신
   }
+  if (mudBoots) stepBoots(mudBoots, walkPhase, moving, playerAnchor.position.y);
 }
 
 const camOffset = new THREE.Vector3(0, 14, 16);
@@ -7335,6 +7377,7 @@ function handleAction() {
     trackEvent('aura_workshop_open', { night: isNight() ? 1 : 0 });
     return ui.openLightWorkshop?.();
   }
+  if (nearHomiStall) { trackEvent('shop_open', { tab: 'homi' }); return ui.openHomiStall?.(); }
   if (nearCosShop) {                       // 🏪 꾸미기 가게 → 🎀 꾸미기 패널
     trackEvent('shop_enter', { from: 'walk' });
     trackEvent('shop_open', { tab: 'cosmetics' });
@@ -7486,7 +7529,7 @@ function farmActionFirst() {
   if (toolPage === 'none') return false;                    // ✋ 맨손 — 언제든 대화(탈출로)
   // handleAction 에서 이 분기보다 먼저 처리되는 것들 — 여기서 true 를 내면 프롬프트가 거짓말이 된다
   //   (예: 시세판 옆 밭 위 → Space 는 시세판을 연다. 밭일도 대화도 아니다)
-  if (nearDoor || nearKitchen || nearBench || nearShop || nearMarket || nearRank || nearCoop || nearCosShop || nearLightWorkshop || !!plazaSpotNow()) return false;
+  if (nearDoor || nearKitchen || nearBench || nearShop || nearMarket || nearRank || nearCoop || nearCosShop || nearHomiStall || nearLightWorkshop || !!plazaSpotNow()) return false;
   // 🍄채집·🐾흔적 조사도 위에서 먼저 처리된다. 특히 밤손님 흔적은 작물을 빼앗긴 밭 좌표 위에 그대로
   //   생기므로(그 밭은 empty 가 된다) 이걸 빼면 "밭일이 먼저"라고 해놓고 흔적 조사가 나가는 조합이 생긴다.
   if (forageTarget() || traceTarget() || visitorTarget()) return false;   // 🔍 방문객 살펴보기도 먼저 처리된다
@@ -8197,7 +8240,7 @@ export {
   lastNearHouse, lastNearMiss, lastZoneHint, lerpAngle, makeCharacterPreview, makeNameTag, makeSignBoard, makeSignpost,
   mapLocked, markHabitatDirty, measureStowLen, mergeGeos, mgView, mineGroup, mineTorches, mist, mistGroup,
   mistLanterns, mistTree, mode, museumGroup, mountainGroup, observatoryGroup, nearBench, nearBoat, nearBoatShop, nearCafeBoard, nearCafeGuest, nearCoop,
-  nearCosShop, nearLightWorkshop, nearDecorMesh, nearDoor, nearDoorFloor, nearForest, nearGlade, nearKitchen, nearMarket, nearNPC,
+  nearCosShop, nearHomiStall, nearLightWorkshop, nearDecorMesh, nearDoor, nearDoorFloor, nearForest, nearGlade, nearKitchen, nearMarket, nearNPC,
   nearOutdoorMesh, nearRank, nearShop, nearStation, nightFetcher, nightLevel, nightNoteFetcher, noteSpecialExhibit,
   npcObjs, obstacles, onPlotArea, orchardSlotsWorld, orchardStreamWorld, oreRocks, outdoorMesh, outdoorMeshes,
   outdoorTarget, paintGeo, pantryHas, pantryTake, particles, pendingDig, pendingDish, pestTarget, pestTexture, pet3d,

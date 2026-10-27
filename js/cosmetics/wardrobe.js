@@ -20,7 +20,7 @@ export function ownedIn(cos, slot) {
 /** 🧥 옷장 칸 탭을 보일지 — 웹이 아닌 곳(토스·안드로이드·itch)은 외부 결제가 막혀 가게가 스킨·도구 세트를 숨긴다.
  *  거기서 산 게 없으면 '가게에서 살 수 있어요' 빈 안내가 거짓이 되므로 스킨 탭 자체를 감춘다. 순수 함수. */
 export function wardrobeTabVisible(slot, cos, platform) {
-  if ((slot !== 'skin' && slot !== 'tools') || platform === 'web') return true;   // 💎 현금 전용 칸만(스킨·도구 세트)
+  if ((slot !== 'skin' && slot !== 'tools' && slot !== 'homi') || platform === 'web') return true;   // 💎 현금 전용 칸만(스킨·도구 세트)
   return ownedIn(cos, slot).length > 0;
 }
 
