@@ -18,7 +18,7 @@ const BARK_DEAD = [0x77706a, 0x88817a, 0x9a938b];
 const ROOT_LIVE = [0x6c4b33, 0x83603f, 0x987150];
 // 잎 구름: 그늘진 아래(서늘한 청록) → 싱그러운 연두(가운데) → 햇살 받은 윗면(따뜻한 노란 연두)
 const LEAF = { under: 0x3dab84, mid: 0x66c96a, top: 0xb8e985 };
-const SNOW_LEAF = { under: 0xc9d6e2, mid: 0xe8f1f8, top: 0xffffff };
+const SNOW_LEAF = { under: 0xdde6ee, mid: 0xf2f6fa, top: 0xffffff };
 const CROWN = { under: 0x39a780, mid: 0x60c468, top: 0xb0e683 };
 const BLOOM = { petal: 0xffe0ea, inner: 0xf7a6c2, heart: 0xffd76a };
 
@@ -29,7 +29,7 @@ export const LIMBS = {
   kitchen: { dir: [0.951, -0.309],  h: 5.3, len: 5.6 },
   forest:  { dir: [-0.951, -0.309], h: 5.1, len: 5.7 },
   mine:    { dir: [0, -1],          h: 6.0, len: 5.0 },
-  snow:    { dir: [0.588, -0.809],  h: 5.6, len: 4.6, leaf: SNOW_LEAF, seed: 61 },
+  snow:    { dir: [-0.588, -0.809], h: 6.6, len: 5.2, leaf: SNOW_LEAF, seed: 61 },
 };
 
 const smooth = (x) => { const k = Math.min(1, Math.max(0, x)); return k * k * (3 - 2 * k); };
