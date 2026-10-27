@@ -165,3 +165,14 @@ test('rssXml: XML 에 쓸 수 없는 제어문자를 지운다', () => {
 test('index.html: 네이버 서치어드바이저 소유확인 메타', () => {
   assert.match(read('index.html'), /<meta name="naver-site-verification" content="d22420580c91eec56e4d8b429da4d8a7ab64f3d6" \/>/);
 });
+
+test('guidePage: PC·모바일 전환 탭, 기본값은 pointer:coarse', () => {
+  for (const [lang, label] of [['ko', '📱 모바일'], ['en', '📱 Mobile']]) {
+    const html = guidePage('<section class="gd-sec"><h2>x</h2><p data-dev="pc">a</p></section>', { lang, path: '/guide/', title: 't', description: 'd' });
+    assert.match(html, /<main class="gd dev-pc">/);
+    assert.match(html, /class="gd-devtabs"/);
+    assert.match(html, /data-dev-tab="pc"/);
+    assert.ok(html.includes(label), lang);
+    assert.match(html, /matchMedia\('\(pointer: coarse\)'\)/);
+  }
+});

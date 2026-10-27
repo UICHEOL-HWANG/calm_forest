@@ -5674,11 +5674,11 @@
     //  · 열리면 body.guide-open 으로 HUD 숨김 + keydown capture 로 게임 입력 차단(Esc 만 닫기)
     //  · 토스 번들은 CONFIG.GUIDE_BASE 가 웹 오리진 절대 URL 이라 같은 코드로 동작
     const guidePanel = $('guide-panel'), guideBody = $('guide-body'), guideChips = $('guide-chips');
-    let guideLoaded = false, guideOpenedAt = 0, guideCurSec = '', guideScrollY = 0, guideSecTimer = null, guideCssLinked = false;
+    let guideLoaded = false, guideOpenedAt = 0, guideCurSec = '', guideScrollY = 0, guideSecTimer = null, guideCssLinked = false, guideIo = null;
     const guideAbs = (rel) => new URL(rel, new URL(CONFIG.GUIDE_BASE, location.href)).href;
     function buildGuideChips(root) {
       guideChips.innerHTML = '';
-      const secs = [...root.querySelectorAll('section.gd-sec')];
+      const secs = [...root.querySelectorAll('section.gd-sec')].filter(s => !s.dataset.dev || root.classList.contains('dev-' + s.dataset.dev));
       for (const sec of secs) {
         const h2 = sec.querySelector('h2');
         const b = document.createElement('button');
@@ -5687,13 +5687,29 @@
         b.addEventListener('click', () => { sec.scrollIntoView({ block: 'start' }); });   // 즉시 이동 — 웹뷰·reduced-motion 에서도 확실히
         guideChips.appendChild(b);
       }
-      const io = new IntersectionObserver((entries) => {
+      guidePanel.querySelector('.gd-toc')?.remove();
+      const toc = document.createElement('nav'), tocList = document.createElement('ol');
+      toc.className = 'gd-toc'; toc.setAttribute('aria-label', LANG === 'en' ? 'Contents' : '목차');
+      for (const sec of secs) {
+        const part = sec.querySelector('[data-part]')?.dataset.part;
+        if (part) { const li = document.createElement('li'); li.className = 'gd-toc-part'; li.textContent = part; tocList.appendChild(li); }
+        const li = document.createElement('li'), a = document.createElement('a'), label = document.createElement('span');
+        a.href = '#' + sec.id; a.dataset.sec = sec.id;
+        label.textContent = sec.querySelector('h2')?.dataset.chip || sec.id;
+        a.append(label, document.createElement('i'));
+        a.addEventListener('click', (e) => { e.preventDefault(); sec.scrollIntoView({ block: 'start' }); });
+        li.appendChild(a); tocList.appendChild(li);
+      }
+      toc.appendChild(tocList); guidePanel.appendChild(toc);
+      guideIo?.disconnect(); guideCurSec = '';
+      const io = guideIo = new IntersectionObserver((entries) => {
         const hit = entries.filter(e => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
         if (!hit) return;
         const id = hit.target.id;
         if (id === guideCurSec) return;
         guideCurSec = id;
         for (const b of guideChips.children) b.classList.toggle('on', b.dataset.sec === id);
+        for (const a of toc.querySelectorAll('a')) a.classList.toggle('on', a.dataset.sec === id);
         guideChips.querySelector('.on')?.scrollIntoView({ inline: 'center', block: 'nearest' });
         clearTimeout(guideSecTimer);
         guideSecTimer = setTimeout(() => trackEvent('guide_section', { id }), 800);   // 스크롤 훑기 중엔 안 쏨
@@ -5710,7 +5726,7 @@
         // 🌐 영어 모드는 영어판 fragment(guide/guide-en.html) — 본문 문장은 사전(i18n)으로 못 바꾸므로 파일을 따로 둔다
         const res = await fetch(guideAbs(LANG === 'en' ? 'guide-en.html' : 'guide.html'));
         if (!res.ok) throw new Error('HTTP ' + res.status);
-        const wrap = document.createElement('div'); wrap.className = 'gd'; wrap.innerHTML = await res.text();
+        const wrap = document.createElement('div'); wrap.className = document.body.classList.contains('is-touch') ? 'gd dev-touch' : 'gd dev-pc'; wrap.innerHTML = await res.text();
         wrap.querySelectorAll('img[src]').forEach(img => { img.src = guideAbs(img.getAttribute('src')); });
         guideBody.replaceChildren(wrap);
         buildGuideChips(wrap);
