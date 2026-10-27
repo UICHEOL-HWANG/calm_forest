@@ -853,8 +853,9 @@ export const COS_TABS = [['sprout', '🌱 새싹반'], ['head', '🎩 머리'], 
 
 export let cosTab = 'head';
 
+let cosTabAsked = null;
 export function setCosTab(id) {
-  if (COS_TABS.some(([t]) => t === id)) cosTab = id;
+  if (COS_TABS.some(([t]) => t === id)) cosTab = cosTabAsked = id;
 }
 
 //  🐾 펫 탭에서 **지금 보고 있는 종**. 실제 동행(gameState.pet)과 별개다 — 줄을 누르면 여기만 바뀐다.
@@ -884,7 +885,7 @@ export function tryOnCos(it) {
 export function openCosPreview(canvas) {
   cosTryOn = null;
   petView = gameState.pet ? gameState.pet.kind : PET_KINDS[0].id;   // 🐾 열 때마다 데리고 다니는 종부터 보여 준다
-  if (sproutOpen(gameState.cosmetics)) cosTab = 'sprout';
+  if (cosTabAsked) { cosTab = cosTabAsked; cosTabAsked = null; } else if (sproutOpen(gameState.cosmetics)) cosTab = 'sprout';
   try {
     if (!cosPreview) cosPreview = makeCharacterPreview(canvas);
     cosPreview.start();

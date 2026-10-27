@@ -55,3 +55,15 @@ test('the mudflat hoe wears the equipped paid skin', () => {
   assert.match(mud, /skin = homiSkinOf\(gameState\.cosmetics\), look = skinOf\(skin\) \|\| tierLook\(tier\)/);
   assert.match(mud, /look\?\.pal, look\?\.over\), skin, tier\)/);
 });
+
+test('on phones the action button shows the hoe, not a door, at the stall', () => {
+  const html = read('index.html');
+  const re = /doorIcon = \/\^\(([^)]+)\)\/u/.exec(html);
+  assert.ok(re[1].split('|').includes('🪏'));
+  assert.match(read('js/spaces/doors.js'), /prompt = '🪏 호미 노점';/);
+});
+
+test('opening the shop from the stall lands on the hoe tab even while the sprout tab is open', () => {
+  const cafe = read('js/spaces/cafe.js');
+  assert.match(cafe, /if \(cosTabAsked\) \{ cosTab = cosTabAsked; cosTabAsked = null; \} else if \(sproutOpen\(gameState\.cosmetics\)\) cosTab = 'sprout';/);
+});
