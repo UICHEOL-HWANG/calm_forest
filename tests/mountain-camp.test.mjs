@@ -66,7 +66,7 @@ test('atHut triggers near the summit and not at the trail start', () => {
 test('the camp is two drawables, solid and glowing, both merged', () => {
   const g = buildCamp(THREE);
   const ds = [];
-  g.traverse(o => { if (o.isMesh) ds.push(o); });
+  g.traverse(o => { if (o.isMesh && o !== g.userData.hutLight) ds.push(o); });
   assert.equal(ds.length, CAMP_DRAWS);
   assert.equal(CAMP_DRAWS, 2);
   assert.ok(ds[0].geometry.getAttribute('color'));

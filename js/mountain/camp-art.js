@@ -362,5 +362,12 @@ export function buildCamp(three) {
   group.name = 'camp';
   group.add(new THREE.Mesh(mergeAll(S.solid), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true })));
   group.add(new THREE.Mesh(mergeAll(S.glow), new THREE.MeshBasicMaterial({ vertexColors: true })));
+  const W = frame(CAMP.hut.x, CAMP.hut.z, CAMP.hut.ry, CAMP.deck.y - 0.1);
+  const hutLight = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 2.4), new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.55, depthWrite: false }));
+  hutLight.position.set(...W.at(0, 2.32, 1.83));
+  hutLight.rotation.y = CAMP.hut.ry + Math.PI / 2;
+  hutLight.visible = false;
+  group.add(hutLight);
+  group.userData.hutLight = hutLight;
   return group;
 }

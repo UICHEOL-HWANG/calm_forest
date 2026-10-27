@@ -15,10 +15,13 @@ import { buildCamp } from '../mountain/camp-art.js';
 import { CAMP, START_SPOT, atHut, inYard, pushOutProps, YARD, DOOR_SPOT, DOOR_R, CAFE_EXIT_SPOT, clampSummit, summitHeight } from '../mountain/camp-layout.js';
 import { createRunout, stepRunout, stopTurn } from '../mountain/runout.js';
 import { createKeeperBubble } from '../mountain/keeper-bubble.js';
+import { KEEPER_TALK_R, KEEPER_PROMPT, keeperStage, keeperLines, keeperWantsTalk } from '../mountain/keeper-talk.js';
+import { hideTalk, onTalkTap, showTalk, talkShown } from '../mirror/talk-box.js';
+import { t } from '../i18n.js';
 import { createGateBend } from '../mountain/gate-bend.js';
 import { createCafe, DRINK } from '../mountain/cafe-room.js';
 import { openCafeModal, refreshCafeModal, closeCafeModal, applyCafeResult, CAFE_COPY } from '../mountain/cafe-ui.js';
-import { cafeState, buyCafe, pickSled, grantFinishSled, TOBOGGAN_TOAST } from '../mountain/cafe-shop.js';
+import { cafeState, buyCafe, pickSled, grantFinishSled, grantSnowSled, TOBOGGAN_TOAST, SNOW_SLED_TOAST } from '../mountain/cafe-shop.js';
 import { cafeItem } from '../mountain/cafe-catalog.js';
 import { findItem } from '../cosmetics/catalog.js';
 import { logEcon } from '../metrics.js';
@@ -42,6 +45,8 @@ import { showCountdown, clearCountdown, showRunHud, showResult, hideSledHud, hid
 import { duelActive } from './night-visit.js';
 import { inVillage2 } from './doors.js';
 import { fadeNameTag } from './npc.js';
+
+export { KEEPER_PROMPT };
 
 export const MOUNTAIN_EXIT_LOCAL = { x: 0, z: 83 };
 let run = null;
@@ -96,7 +101,9 @@ export function clampToLandmark(p) {
 function ensureMountainSpace() {
   if (!$w.mountainGroup) {
     const g = buildMountainSpace(THREE);
-    g.add(buildCamp(THREE));
+    const camp = buildCamp(THREE);
+    g.add(camp);
+    g.userData.hutLight = camp.userData.hutLight;
     keeperBubble = createKeeperBubble(THREE, g, { ...CAMP.keeper, y: CAMP.deck.y });
     g.position.copy(MOUNTAIN);
     g.visible = false;
@@ -133,6 +140,7 @@ export function mountainReturnPos() {
 
 export function exitMountain() {
   abandonRun();
+  closeKeeperTalk('leave');
   closeCafeModal();
   standUp();
   if (cafe?.active()) cafe.exit(player, { x: player.position.x, y: 0, z: player.position.z });
@@ -307,7 +315,57 @@ export function hutDoorReady() {
   return Math.hypot(player.position.x - MOUNTAIN.x - DOOR_SPOT.x, player.position.z - MOUNTAIN.z - DOOR_SPOT.z) < DOOR_R;
 }
 
+export function keeperReady() {
+  if (!$w.atMountain || sledActive() || inCafe()) return false;
+  return Math.hypot(player.position.x - MOUNTAIN.x - CAMP.keeper.x, player.position.z - MOUNTAIN.z - CAMP.keeper.z) < KEEPER_TALK_R;
+}
+
+let talk = null;
+
+function keeperShow() {
+  const touch = document.body.classList.contains('is-touch');
+  showTalk({ face: '🛷', color: '#e5484d', name: t('썰매지기'), line: t(talk.lines[talk.i]), next: touch ? t('▶ 탭') : t('▶ Space · 클릭') });
+}
+
+function giveSnowSled() {
+  const hut = gameState.mountain?.hut || { sleds: ['basic'], sled: 'basic' };
+  const next = grantSnowSled(hut);
+  if (next === hut) return;
+  gameState.mountain = { ...(gameState.mountain || {}), hut: next };
+  ui.toast?.(SNOW_SLED_TOAST, 2600);
+  trackEvent('keeper_gift', { item_id: 'worldtree' });
+  requestSave();
+}
+
+function closeKeeperTalk(via) {
+  if (!talk) return;
+  const done = talk;
+  talk = null;
+  hideTalk();
+  trackEvent('keeper_talk_close', { stage: done.stage, via, lines_seen: done.i + 1 });
+  if (done.gift && done.i + 1 >= done.lines.length) giveSnowSled();
+}
+
+function talkKeeper() {
+  if (talk) {
+    if (talk.i + 1 < talk.lines.length) { talk = { ...talk, i: talk.i + 1 }; keeperShow(); return; }
+    return closeKeeperTalk('action');
+  }
+  const stage = keeperStage(gameState);
+  const gift = stage === 'thanks' && !(gameState.mountain?.hut?.sleds || []).includes('worldtree');
+  talk = { stage, gift, lines: keeperLines(stage, { gift }), i: 0 };
+  if (stage === 'quest' && !gameState.hintsSeen?.keeperQuest) {
+    gameState.hintsSeen = { ...(gameState.hintsSeen || {}), keeperQuest: true };
+    requestSave();
+    keeperBubble?.arrive('idle');
+  }
+  keeperShow();
+  onTalkTap(() => talkKeeper());
+  trackEvent('keeper_talk_open', { stage });
+}
+
 export function mountainAction(nearDoor) {
+  if (nearDoor === 'keepertalk') return talkKeeper();
   if (nearDoor === 'mountain') return enterMountain();
   if (nearDoor === 'mountainexit') return exitMountain();
   if (nearDoor === 'sledstart' && run?.phase === 'hut') return startSled();
@@ -460,13 +518,14 @@ function arriveHut() {
   run.phase = 'hut';
   run.climbMs = Math.round(performance.now() - run.climbStart);
   run.hutAt = performance.now();
-  keeperBubble?.arrive();
+  keeperBubble?.arrive(keeperWantsTalk(gameState) ? 'quest' : 'idle');
   Sound.blip();
   ui.toast?.('🏠 정상 산장에 도착했어요', 2200);
   trackEvent('mountain_hut', { run_id: run.runId, climb_ms: run.climbMs, acorns: run.taken.filter(Boolean).length, cold: Math.round(cold.v) });
 }
 
 function startSled() {
+  closeKeeperTalk('leave');
   run.idleMs = Math.round(performance.now() - run.hutAt);
   keeperBubble?.hide();
   $w.nearDoor = null; ui.setDoorPrompt?.(null);
@@ -621,6 +680,9 @@ function updateCold(dt, local) {
 
 export function updateMountain(dt) {
   if (!$w.atMountain) return;
+  if (talk && (!keeperReady() || !talkShown())) closeKeeperTalk('leave');
+  const hl = $w.mountainGroup?.userData?.hutLight, lit = !!gameState.tree?.branches?.snow?.habitat;
+  if (hl && hl.visible !== lit) hl.visible = lit;
   updateCold(dt, { x: player.position.x - MOUNTAIN.x, z: player.position.z - MOUNTAIN.z });
   if (cafe?.active()) { finishDrink(cafe.update(dt, performance.now() / 1000, player.position)); return; }
   const local = { x: player.position.x - MOUNTAIN.x, z: player.position.z - MOUNTAIN.z };
