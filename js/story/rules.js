@@ -5,7 +5,7 @@ const count = (o) => Object.keys(o || {}).length;
 const frac = (have, need) => `${Math.min(have, need)}/${need}`;
 const trees = (s) => (s.orchard?.trees || []).length;
 const branchHab = (s, id) => !!s?.tree?.branches?.[id]?.habitat;
-const BRANCH_NAME = { water: '물의 가지', farm: '밭의 가지', kitchen: '부엌의 가지', forest: '숲의 가지' };
+const BRANCH_NAME = { water: '물의 가지', farm: '밭의 가지', kitchen: '부엌의 가지', forest: '숲의 가지', snow: '눈의 가지' };
 const gated = (rule, ids) => ({ done: rule.done, progress: s => { const miss = ids.find(id => !branchHab(s, id)); return miss ? `🌳 ${BRANCH_NAME[miss]} 빈터 0/1` : rule.progress(s); } });
 
 export const STORY_RULES = {

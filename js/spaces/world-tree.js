@@ -120,11 +120,13 @@ function boardView() {
     cur: {
       id: def.id, ico: def.ico, name: def.name, npcIco: def.npcIco, npcName: def.npcName,
       usable: branchUsable(tree, def.id),
-      prevName: i > 0 ? `${BRANCHES[i - 1].ico} ${BRANCHES[i - 1].name}` : '',
+      prevName: i > 0 ? (p => `${p.ico} ${p.name}`)(def.after ? branchOf(def.after) : BRANCHES[i - 1]) : '',
       // 해금 꺼짐·레거시는 이웃이 이미 다 있다
-      lead: habitatDone(tree, def.id) || isOpen(def.npc)
-        ? (jong(def.npcName) ? `${def.npcIco} ${def.npcName}이 돌아와 있어요` : `${def.npcIco} ${def.npcName}가 돌아와 있어요`)
-        : (jong(def.npcName) ? `빈터를 꾸미면 ${def.npcIco} ${def.npcName}이 돌아와요` : `빈터를 꾸미면 ${def.npcIco} ${def.npcName}가 돌아와요`),
+      lead: def.lead
+        ? (habitatDone(tree, def.id) ? def.lead.done : def.lead.todo)
+        : habitatDone(tree, def.id) || isOpen(def.npc)
+          ? (jong(def.npcName) ? `${def.npcIco} ${def.npcName}이 돌아와 있어요` : `${def.npcIco} ${def.npcName}가 돌아와 있어요`)
+          : (jong(def.npcName) ? `빈터를 꾸미면 ${def.npcIco} ${def.npcName}이 돌아와요` : `빈터를 꾸미면 ${def.npcIco} ${def.npcName}가 돌아와요`),
       habitatDone: habitatDone(tree, def.id), bundlesDone: bundlesDone(tree, def.id),
       tiles: b.tiles.map(id => { const d = decorOf(id); return d ? { ico: d.ico, name: d.name } : null; }),
       rows: habitatRows(tree, def.id).map(r => ({ ...r, label: TAG_LABEL[r.tag] || r.tag })),

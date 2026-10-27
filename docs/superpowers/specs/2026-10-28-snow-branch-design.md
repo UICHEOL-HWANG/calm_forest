@@ -20,20 +20,21 @@ Date: 2026-10-28 · Branch: `feat/snow-branch` · Status: 설계 승인(사용�
 
 ## 3. 세계수 판 데이터 (js/world/tree-board.js)
 
-`BRANCHES` 에서 `forest` 와 `mine` 사이에 추가한다. 배열 순서는 판에 보이는 순서다. 세이브는 id 키라 순서를 바꿔도 안전하다.
+`BRANCHES` 에서 `forest` 와 `mine` 사이에 추가한다. 배열 순서는 판에 보이는 순서다. 세이브는 id 키라 순서를 바꿔도 안전하다. 눈과 광산은 둘 다 숲 다음에 열리므로 두 가지에 `after: 'forest'` 를 두고, `branchUsable` 은 `def.after` 가 있으면 그 가지의 빈터를, 없으면 배열의 앞 가지를 본다. `lead` 가 있는 가지는 판 안내 문구를 `lead.todo` / `lead.done` 으로 보여 준다(없으면 이웃 이름으로 만든 기존 문구).
 
 ```js
-{ id: 'snow', ico: '❄️', name: '눈의 가지', short: '눈', npc: 'sledkeeper', npcIco: '🛷', npcName: '썰매지기',
+{ id: 'snow', ico: '❄️', name: '눈의 가지', short: '눈', npc: 'sledkeeper', npcIco: '🛷', npcName: '썰매지기', after: 'forest',
+  lead: { todo: '빈터를 꾸미면 🛷 썰매지기의 산장에 불이 켜져요', done: '🛷 썰매지기의 산장에 불이 켜졌어요' },
   habitat: { shelter: 4, light: 3 },
   bundles: [
     { id: 'firewood', name: '땔감 꾸러미',  need: { wood: 30, coal: 8 },   reward: { coins: 60 } },
-    { id: 'cocoa',    name: '코코아 꾸러미', need: { crop: 15, forage: 5 }, reward: { coins: 70 } },
+    { id: 'cocoa',    name: '코코아 꾸러미', need: { crop: 20, seed: 5 },  reward: { coins: 70 } },
   ] },
 ```
 
-- 빈터 조건: 기존 장식 🛖 오두막(쉼터 3) + 🏮 등불(불빛 2) + 🔥 화롯불(불빛 3·쉼터 1)로 6칸 안에서 채울 수 있다. 테스트로 도달 가능성을 고정한다.
-- 재료 규칙(기존 스펙 §2): 숲 가지 뒤에 이미 얻을 수 있는 것만 쓴다. 🍄 채집물(forage)은 숲 가지에서 열리므로 쓸 수 있다.
-- `TREE_DECOR` 에 꽃 장식 1종을 추가한다. 초안은 `{ id: 'snowman', ico: '☃️', name: '눈사람', tags: { shelter: 2, shade: 2 }, cost: { stone: 3, wood: 1 }, bloom: 'snow' }`. 이름과 아이콘은 검수받는다.
+- 빈터 조건: 기존 장식 🛖 오두막 2 + 🏮 등불 2 (`['hut', 'hut', 'lantern', 'lantern']`)로 6칸 안에서 채울 수 있다. 테스트로 도달 가능성을 고정한다.
+- 재료 규칙(기존 스펙 §2): 숲 가지 뒤에 이미 얻을 수 있는 것만 쓴다. 판 가방에는 채집물(forage) 키가 없으므로 코코아 꾸러미는 🌾 작물과 🌱 씨앗(seed)으로 정했다.
+- `TREE_DECOR` 에 꽃 장식 1종을 추가한다. 초안은 `{ id: 'snowman', ico: '☃️', name: '눈사람', tags: { shelter: 2, shade: 2 }, cost: { stone: 3, wood: 1 }, bloom: 'snow' }`. 이름과 아이콘은 검수를 마쳤다.
 - `js/story/rules.js` `BRANCH_NAME` 에 `snow: '눈의 가지'` 를 추가한다.
 
 ## 4. 꽃피우기·돌봄·손님 (js/world/tree-bloom.js)
@@ -48,12 +49,12 @@ Date: 2026-10-28 · Branch: `feat/snow-branch` · Status: 설계 승인(사용�
 ## 5. 귀환 연출 (js/world/region-cine.js)
 
 ```js
-'snow:habitat': { id: 'snowpeak', npc: 'sledkeeper', place: null, at: { x: -15, z: -29.5 }, fx: 'snow', sub: '❄️ 눈의 가지', main: '정상 산장에 불이 켜졌어요' },
+'snow:habitat': { id: 'snowpeak', npc: null, place: null, at: { x: -15, z: -29.5 }, fx: 'snow', sub: '❄️ 눈의 가지', main: '정상 산장에 불이 켜졌어요' },
 ```
 
 - `at` 은 마을의 설산 입구(`MOUNTAIN_GATE`)다. 연출은 마을에서 일어난다.
 - `fx: 'snow'` 는 js/world/region-fx.js 에 새 이펙트를 추가한다(눈송이 파티클, 기존 fx 구조를 따른다).
-- `npc: 'sledkeeper'` 는 마을 NPC 가 아니다. 연출이 npc 를 마을에서 찾는 코드가 있으면 null 을 허용하도록 고친다(구현 때 확인).
+- 썰매지기는 마을 NPC 가 아니므로 연출 정의의 `npc` 는 `null` 로 둔다. 연출이 npc 를 마을에서 찾는 코드는 null 을 허용하도록 고친다.
 
 ## 6. 세계수 3D (js/world/tree-art.js)
 
@@ -65,7 +66,7 @@ Date: 2026-10-28 · Branch: `feat/snow-branch` · Status: 설계 승인(사용�
 **시안 3개(a, b, b 의 높이 변형)를 렌더해 PC·모바일로 나란히 비교받은 뒤 정한다**(design-compare-before-ship 규칙). 잎·꽃 진행은 다른 가지와 같은 `state.branches.snow` 를 쓴다.
 
 - **눈 가지 잎은 흰색**(사용자 요청 2026-10-28: "다른 가지랑 다르게 흰색으로"). `LIMBS.snow.leaf` 로 가지별 잎 팔레트를 받는다. 시안은 서리 흰색 · 순백 · 높은 자리(서리 흰색) 3개.
-- 눈 가지는 `LIMBS` 맨 끝에 두고 자기 난수(`seed`)를 써서 기존 5가지·우듬지 모양이 바뀌지 않게 한다(체크섬 테스트). 구현 계획: `docs/superpowers/plans/2026-10-28-snow-branch.md` §0.
+- 눈 가지는 `LIMBS` 맨 끝에 두고 자기 난수(`LIMBS.snow.seed`)를 써서 기존 5가지·우듬지 모양이 바뀌지 않게 한다(체크섬 테스트). 구현 계획: `docs/superpowers/plans/2026-10-28-snow-branch.md` §0.
 
 ## 7. 메인 스토리 5장 (js/story/chapters.js · rules.js · game.js)
 
@@ -140,7 +141,7 @@ export function keeperStage(s, storyIds) // → 'guide' | 'quest' | 'thanks'
 ## 9. 보상·연출
 
 - 완성 보상(첫 `thanks` 대화 때 1회): ❄️ 세계수 썰매. `cafe-catalog` 에 코인·현금 가격 없는 전용 스킨으로 추가하고 `gameState.mountain.hut` 의 보유 목록에 넣는다(기존 `grantFinishSled` 경로를 따른다). 이미 있으면 다시 주지 않는다. 조형은 기존 썰매 모델 하나에 색·장식만 바꾼 시안 3개를 비교받는다.
-- 산장 창 불빛: `branchHab(s, 'snow')` 면 산장 유리창(camp-art.js `LAMP` 삼각형)의 밝기를 올리고 굴뚝 연기를 켠다. 병합 메시라 재빌드 대신 glow 메시의 색 하나만 바꾼다(드로우콜 0 추가).
+- 산장 창 불빛: `branchHab(s, 'snow')` 면 산장 유리창(camp-art.js `LAMP` 삼각형)의 밝기를 올리고 굴뚝 연기를 켠다. 창 불빛은 병합 메시 안에 있지 않으므로 산장에 불빛용 메시 하나를 따로 두고, 그 메시의 색과 보임만 바꾼다(재빌드 없음).
 
 ## 10. 트래킹 (feature-tracking-checklist)
 
