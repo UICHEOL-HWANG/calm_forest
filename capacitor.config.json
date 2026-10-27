@@ -1,6 +1,6 @@
 {
   "appId": "com.cheorish.lab.calmforest",
-  "appName": "calm forest",
+  "appName": "고요한 숲",
   "webDir": "dist-cap",
   "server": {
     "hostname": "app.calmforest.cloud",
