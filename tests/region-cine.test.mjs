@@ -9,32 +9,34 @@ const finite = (p) => [p.x, p.y, p.z].every(Number.isFinite);
 const home = (pos, look) => { Object.assign(pos, { x: 1, y: 14, z: 12 }); Object.assign(look, { x: 1, y: 1.2, z: -4 }); };
 const run = (rig, secs, dt = 1 / 60) => { const seen = new Set(); for (let t = 0; t < secs; t += dt) seen.add(rig.update(dt)); return seen; };
 
-test('지역 표: 서식지 5가지 + 물 꾸러미 = 6곳, 그 밖의 완성은 지역 연출이 없다', () => {
-  assert.equal(Object.keys(REGIONS).length, 6);
-  for (const b of ['water', 'farm', 'kitchen', 'forest', 'mine']) assert.ok(regionFor(b, 'habitat'), b);
+test('지역 표: 서식지 6가지 + 물 꾸러미 = 7곳, 그 밖의 완성은 지역 연출이 없다', () => {
+  assert.equal(Object.keys(REGIONS).length, 7);
+  for (const b of ['water', 'farm', 'kitchen', 'forest', 'snow', 'mine']) assert.ok(regionFor(b, 'habitat'), b);
   assert.ok(regionFor('water', 'bundles'));
   assert.equal(regionFor('farm', 'bundles'), null);
   assert.equal(regionFor('water', 'bloom'), null);
   assert.equal(regionFor('water', 'chapter'), null);
 });
 
-test('지역 표: 솟아오르는 건물은 실제 해금 id 이고, 광산만 솟아오름이 없다', () => {
+test('지역 표: 솟아오르는 건물은 실제 해금 id 이고, 광산·눈은 솟아오름이 없다', () => {
   for (const r of Object.values(REGIONS)) {
     if (r.place) assert.ok(UNLOCK_IDS.includes(r.place), r.place);
     assert.ok(Number.isFinite(r.at.x) && Number.isFinite(r.at.z));
-    assert.ok(['water', 'farm', 'kitchen', 'forest', 'mine'].includes(r.fx));
+    assert.ok(['water', 'farm', 'kitchen', 'forest', 'snow', 'mine'].includes(r.fx));
   }
   assert.equal(regionFor('mine', 'habitat').place, null);
+  assert.equal(regionFor('snow', 'habitat').place, null);
+  assert.equal(regionFor('snow', 'habitat').npc, null);
   assert.equal(regionFor('water', 'habitat').place, 'river');
   assert.equal(regionFor('water', 'bundles').place, 'sea');
-  assert.deepEqual(Object.values(REGIONS).map(r => r.npc), ['angler', 'ferryman', 'farmer', 'chef', 'forager', 'miner']);
-  for (const r of Object.values(REGIONS)) assert.ok(UNLOCK_IDS.includes(r.npc), r.npc);
+  assert.deepEqual(Object.values(REGIONS).map(r => r.npc), ['angler', 'ferryman', 'farmer', 'chef', 'forager', null, 'miner']);
+  for (const r of Object.values(REGIONS)) if (r.npc) assert.ok(UNLOCK_IDS.includes(r.npc), r.npc);
 });
 
 test('지역 좌표는 js/data/places.js 의 입구 좌표와 같다', () => {
   const src = read('js/data/places.js');
   const pos = (name) => { const m = src.match(new RegExp(`export const ${name} = new THREE\\.Vector3\\(([-\\d.]+), 0, ([-\\d.]+)\\)`)); return { x: +m[1], z: +m[2] }; };
-  const want = { 'water:habitat': 'DOCK_GATE', 'water:bundles': 'SEA_GATE', 'farm:habitat': 'COOP', 'kitchen:habitat': 'KITCHEN', 'forest:habitat': 'FOREST', 'mine:habitat': 'MINE_GATE' };
+  const want = { 'water:habitat': 'DOCK_GATE', 'water:bundles': 'SEA_GATE', 'farm:habitat': 'COOP', 'kitchen:habitat': 'KITCHEN', 'forest:habitat': 'FOREST', 'snow:habitat': 'MOUNTAIN_GATE', 'mine:habitat': 'MINE_GATE' };
   for (const [k, name] of Object.entries(want)) assert.deepEqual(REGIONS[k].at, pos(name), k);
 });
 
@@ -142,4 +144,10 @@ test('게임: 해금 건물 숨김은 만료가 있어 영원히 숨지 않는�
   assert.match(src, /afterModals\(\(\) => startReturnWalk\(id\)\)/);
   assert.match(src, /return until > Date\.now\(\) \? lockHolders\[id\]\?\.group \|\| null : null;/);
   assert.match(read('js/spaces/world-tree.js'), /for \(const q of shotQueue\) if \(q\.region\?\.place\) keepPlaceReveal\(q\.region\.place\);/);
+});
+
+test('눈송이 이펙트: 팔레트와 떠다니는 설정이 있다', () => {
+  const src = read('js/world/region-fx.js');
+  assert.match(src, /snow:\s+\[0x/);
+  assert.match(src, /snow:\s+\{ rate:/);
 });

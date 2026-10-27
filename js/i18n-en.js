@@ -1911,6 +1911,7 @@ export const EN = {
   '부엌에 불이 켜졌어요': 'The kitchen lights are on',
   '숲길이 다시 열렸어요': 'The forest path is open again',
   '동굴에 빛이 돌아왔어요': 'Light is back in the cave',
+  '❄️ 눈의 가지': '❄️ Snow Branch', '정상 산장에 불이 켜졌어요': 'The summit hut is lit again',
   '과수원': 'Orchard',
   // 🏡 이웃 마을 구경하기(2026-10-07) — 스펙 §8. 미검수 문구는 계획서 Global Constraints 참조
   '오늘의 이웃': "Today's Neighbors",
