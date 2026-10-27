@@ -66,3 +66,18 @@ test('game.js: wantSkill 접근자·Input 훅·스킬 키', () => {
   assert.match(G, /KeyF/);
   assert.ok(!G.includes('boatShopView'));
 });
+
+test('폭포 점프·잠수 높이는 배와 사람·카메라가 같이 움직인다', () => {
+  const u = fn('updateBoatRun');
+  const lift = u.indexOf('boat.group.position.y = diving ? -0.55');
+  assert.ok(lift > 0, '높이를 한 번에 정한다');
+  assert.ok(lift < u.indexOf('playerAnchor.position.y = boat.group.position.y'), '사람 높이를 정하기 전에');
+  assert.doesNotMatch(u, /boat\.group\.position\.y \+= Math\.sin\(\(1 - \(boat\.airUntil/);
+  assert.match(fn('updateBoatCamera'), /boat\.hop/);
+});
+
+test('런 밖에서 누른 스킬은 다음 판으로 넘어가지 않는다', () => {
+  assert.match(fn('startBoatRun'), /\$w\.wantSkill = false/);
+  assert.match(G, /boatSkill\(\) \{ if \(boat\.active\) wantSkill = true; \}/);
+  assert.match(G, /e\.code === 'KeyF' && boat\.active/);
+});

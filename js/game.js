@@ -2045,7 +2045,7 @@ export const Input = {
   selectBoat(id) { return selectBoat(id); },
   selectCourse(c) { return selectCourse(c); },
   unlockBoat(id) { return unlockBoatNow(id); },
-  boatSkill() { wantSkill = true; },
+  boatSkill() { if (boat.active) wantSkill = true; },
   boatRunsLeft() { return boatRunsLeft(); },
   startBoatRun() { startBoatRun(); },
   quitBoatRun() { if (boat.active) endBoatRun('quit'); },

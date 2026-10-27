@@ -347,10 +347,11 @@ export function startBoatRun() {
     invUntil: 0, stunUntil: 0, wreckAt: 0, shake: 0, next: 0, startedAt: performance.now(), t: 0,
     boatId, course, combo: { n: 0, last: -99 }, comboMax: 0, nearMiss: 0,
     ramLeft: ramPerRun(sel.bow === 'ram' ? parts.ram : 0), windLv: sel.flag === 'wind' ? parts.wind || 0 : 0,
-    skillUntil: 0, skillReadyAt: 0, skillUsed: 0, skillSent: 0, rideUntil: 0, rideBoostUntil: 0, airUntil: 0, fallIdx: 0,
+    skillUntil: 0, skillReadyAt: 0, skillUsed: 0, skillSent: 0, rideUntil: 0, rideBoostUntil: 0, airUntil: 0, hop: 0, fallIdx: 0,
     chestOffered: offered, chestTaken: false, chestSeen: false, chestMissed: false, chestDxMin: Infinity, chestPos: null, chest: null,
   });
   clearRiverObjects();
+  $w.wantSkill = false;
   boat.models ??= {};
   if (!boat.models[boatId]) { boat.models[boatId] = makeBoatModel(boatId); scene.add(boat.models[boatId]); }
   for (const id in boat.models) boat.models[id].visible = id === boatId;
@@ -549,6 +550,7 @@ export function updateBoatRun(dt, t) {
     }
   }
   const diving = sk?.id === 'dive' && boat.t < boat.skillUntil;
+  boat.hop = boat.t < boat.airUntil ? Math.sin((1 - (boat.airUntil - boat.t) / 0.8) * Math.PI) * 0.9 : 0;
 
   updateRiverObjects(dt, t, seg);
   if (!boat.active) return;                          // 위에서 난파 처리됐으면 종료
@@ -559,7 +561,7 @@ export function updateBoatRun(dt, t) {
     boat.group.rotation.y = (-boat.vx / maxVx) * 0.16;   // 뱃머리는 모델 로컬 -z = 진행 방향
     if (boat.t < boat.rideUntil) boat.group.rotation.y += (1 - (boat.rideUntil - boat.t) / RIDE.spin) * Math.PI * 2;
     boat.group.rotation.z = (boat.vx / maxVx) * 0.13;
-    boat.group.position.y = Math.sin(boat.t * 3.2) * 0.05;
+    boat.group.position.y = diving ? -0.55 : Math.sin(boat.t * 3.2) * 0.05 + boat.hop;
     if (stunned) {
       // 💥 충돌 연출: 크게 출렁이며 앞뒤로 갸우뚱 — 시간이 지나며 잦아듦. 노는 놀라서 들어올림
       const k = Math.max(0, (boat.stunUntil - boat.t) / 1.15);
@@ -582,8 +584,6 @@ export function updateBoatRun(dt, t) {
       playerAnchor.rotation.x = 0.12 + stroke * (fast ? 0.24 : 0.14);              // 앞으로 숙였다 젖혔다
       playerAnchor.rotation.z = (boat.vx / maxVx) * 0.13;                          // 배 롤을 따라 기울기
     }
-    if (boat.t < boat.airUntil) boat.group.position.y += Math.sin((1 - (boat.airUntil - boat.t) / 0.8) * Math.PI) * 0.9;
-    if (diving) boat.group.position.y = -0.55;
   }
   if (boat.shake > 0) boat.shake = Math.max(0, boat.shake - dt * 2.4);
 
@@ -741,7 +741,7 @@ export function updateBoatCamera(dt) {
   }
   // 노 젓는 자리(뱃전 안쪽)에서 뱃머리 너머를 본다 — 배 안쪽 구조물이 시야를 막지 않는 위치
   const bob = Math.sin(boat.t * 3.2) * 0.045;
-  _camTarget.set(player.position.x + (Math.random() - 0.5) * shake, 1.5 + bob, player.position.z + 0.55);
+  _camTarget.set(player.position.x + (Math.random() - 0.5) * shake, 1.5 + bob + (boat.hop || 0), player.position.z + 0.55);
   camera.position.lerp(_camTarget, 1 - Math.pow(0.0001, dt));   // 배 위치를 거의 즉시 따라감
   _camLook.lerp(_camTarget.set(player.position.x + boat.vx * 0.35, 1.05, player.position.z - 14), 1 - Math.pow(0.02, dt));
   camera.lookAt(_camLook);
