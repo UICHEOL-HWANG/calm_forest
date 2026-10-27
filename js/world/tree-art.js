@@ -18,6 +18,7 @@ const BARK_DEAD = [0x77706a, 0x88817a, 0x9a938b];
 const ROOT_LIVE = [0x6c4b33, 0x83603f, 0x987150];
 // 잎 구름: 그늘진 아래(서늘한 청록) → 싱그러운 연두(가운데) → 햇살 받은 윗면(따뜻한 노란 연두)
 const LEAF = { under: 0x3dab84, mid: 0x66c96a, top: 0xb8e985 };
+const SNOW_LEAF = { under: 0xc9d6e2, mid: 0xe8f1f8, top: 0xffffff };
 const CROWN = { under: 0x39a780, mid: 0x60c468, top: 0xb0e683 };
 const BLOOM = { petal: 0xffe0ea, inner: 0xf7a6c2, heart: 0xffd76a };
 
@@ -28,6 +29,7 @@ export const LIMBS = {
   kitchen: { dir: [0.951, -0.309],  h: 5.3, len: 5.6 },
   forest:  { dir: [-0.951, -0.309], h: 5.1, len: 5.7 },
   mine:    { dir: [0, -1],          h: 6.0, len: 5.0 },
+  snow:    { dir: [0.588, -0.809],  h: 5.6, len: 4.6, leaf: SNOW_LEAF, seed: 61 },
 };
 
 const smooth = (x) => { const k = Math.min(1, Math.max(0, x)); return k * k * (3 - 2 * k); };
@@ -391,9 +393,11 @@ function plaqueFace(label) {
  *   state: { life: 0~1(우듬지·껍질·밑동 풀), branches: { id: { leaves: 0~1, bloom: 0~1 } } }
  *   (부드럽게 따라가는 건 호출부가 — 여기는 받은 값 그대로 그린다). three: Three 모듈(순환 없이 테스트에서도 세운다)
  */
-export function buildTreeArt(three, { label = '세계수' } = {}) {
+export function buildTreeArt(three, { label = '세계수', limbs = LIMBS } = {}) {
   THREE = three;
   let seed = 23; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);   // 고정 시드 — 매번 같은 나무
+  const seeded = (s) => () => ((s = (s * 16807) % 2147483647) / 2147483647);
+  const rngOf = {};
   const V = (x, y, z) => new THREE.Vector3(x, y, z);
   const group = new THREE.Group(); group.name = 'worldTree';
   const vtx = () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0, flatShading: true });
@@ -415,34 +419,35 @@ export function buildTreeArt(three, { label = '세계수' } = {}) {
   // 가지 위계: 굵은 가지 → 곁가지 → 끝가지. 끝마다 잎 덩이 자리
   const anchors = {};   // id → [{ p, r, order }]
   const crownAnchors = [];
-  const limb = (pts, r0, r1, radial, segs) => bark.add(tube(pts, (t) => r0 + (r1 - r0) * t, { radial, segs, rnd }), bt);
+  const limb = (pts, r0, r1, radial, segs, rr = rnd, tone = bt) => bark.add(tube(pts, (t) => r0 + (r1 - r0) * t, { radial, segs, rnd: rr }), tone);
   const hdir = (x, z, rot) => { const c = Math.cos(rot), s = Math.sin(rot); return V(x * c - z * s, 0, x * s + z * c); };
-  for (const [id, L] of Object.entries(LIMBS)) {
+  for (const [id, L] of Object.entries(limbs)) {
+    const r = rngOf[id] = L.seed ? seeded(L.seed) : rnd, tone = L.seed ? barkTone(BARK_LIVE, BARK_DEAD, r) : bt;
     const d = V(L.dir[0], 0, L.dir[1]).normalize(), up = V(0, 1, 0);
     const p0 = V(d.x * 0.35, L.h, d.z * 0.35);
     const p1 = p0.clone().addScaledVector(d, L.len * 0.36).addScaledVector(up, 1.3);
     const p2 = p0.clone().addScaledVector(d, L.len * 0.72).addScaledVector(up, 2.0);
     const p3 = p0.clone().addScaledVector(d, L.len).addScaledVector(up, 2.15);
-    limb([p0, p1, p2, p3], 0.66, 0.2, 7, 7);
+    limb([p0, p1, p2, p3], 0.66, 0.2, 7, 7, r, tone);
     const list = anchors[id] = [];
     list.push({ p: p2.clone().add(V(0, 0.55, 0)), r: 1.75, order: 0 }, { p: p3.clone().add(V(0, 0.45, 0)), r: 1.85, order: 1 });
     // 곁가지 3개(굵은 가지 중간·끝에서 양옆으로)
     [[0.5, -0.95], [0.78, 0.9], [1.0, 0.15]].forEach(([at, rot], k) => {
       const base = new THREE.CatmullRomCurve3([p0, p1, p2, p3]).getPointAt(at);
-      const sd = hdir(d.x, d.z, rot + (rnd() - 0.5) * 0.3);
-      const len = 2.3 + rnd() * 0.8;
+      const sd = hdir(d.x, d.z, rot + (r() - 0.5) * 0.3);
+      const len = 2.3 + r() * 0.8;
       const q1 = base.clone().addScaledVector(sd, len * 0.5).add(V(0, 0.75, 0));
-      const q2 = base.clone().addScaledVector(sd, len).add(V(0, 0.95 + rnd() * 0.4, 0));
-      limb([base, q1, q2], 0.27, 0.09, 5, 4);
-      list.push({ p: q2.clone().add(V(0, 0.35, 0)), r: 1.45 + rnd() * 0.25, order: 2 + k * 0.4 });
+      const q2 = base.clone().addScaledVector(sd, len).add(V(0, 0.95 + r() * 0.4, 0));
+      limb([base, q1, q2], 0.27, 0.09, 5, 4, r, tone);
+      list.push({ p: q2.clone().add(V(0, 0.35, 0)), r: 1.45 + r() * 0.25, order: 2 + k * 0.4 });
       // 끝가지 2개 — 끝이 살짝 처진다(잎이 없을 때 시든 느낌)
       for (let m = 0; m < 2; m++) {
-        const td = hdir(sd.x, sd.z, (m ? 0.75 : -0.75) + (rnd() - 0.5) * 0.4);
-        const tl = 1.3 + rnd() * 0.6;
+        const td = hdir(sd.x, sd.z, (m ? 0.75 : -0.75) + (r() - 0.5) * 0.4);
+        const tl = 1.3 + r() * 0.6;
         const u1 = q2.clone().addScaledVector(td, tl * 0.55).add(V(0, 0.35, 0));
-        const u2 = q2.clone().addScaledVector(td, tl).add(V(0, -0.05 - rnd() * 0.25, 0));
-        limb([q2, u1, u2], 0.09, 0.025, 4, 3);
-        list.push({ p: u2.clone().add(V(0, 0.4, 0)), r: 1.05 + rnd() * 0.3, order: 3.2 + k * 0.4 + m * 0.2, tip: u2, tipDir: new THREE.CatmullRomCurve3([q2, u1, u2]).getTangentAt(1) });
+        const u2 = q2.clone().addScaledVector(td, tl).add(V(0, -0.05 - r() * 0.25, 0));
+        limb([q2, u1, u2], 0.09, 0.025, 4, 3, r, tone);
+        list.push({ p: u2.clone().add(V(0, 0.4, 0)), r: 1.05 + r() * 0.3, order: 3.2 + k * 0.4 + m * 0.2, tip: u2, tipDir: new THREE.CatmullRomCurve3([q2, u1, u2]).getTangentAt(1) });
       }
     });
   }
@@ -463,25 +468,26 @@ export function buildTreeArt(three, { label = '세계수' } = {}) {
   //   잎 자리마다 몽글몽글한 잎 구름(조각 하나 — 예전처럼 안쪽부터 돋는다) + 그 겉면에 박힌 꽃(조각마다)
   const clusters = {};
   const leafMat = () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0 });   // 부드러운 음영(정점 법선을 둥글게 줬다)
-  const flowerTo = (b, sp, R, meta) => {
+  const flowerTo = (b, sp, R, meta, rr = rnd) => {
     const g = blossomGeo(R), cols = g.userData.cols;
-    g.rotateY(rnd() * Math.PI * 2).applyQuaternion(new THREE.Quaternion().setFromUnitVectors(V(0, 1, 0), sp.n)).translate(sp.p.x, sp.p.y, sp.p.z);
+    g.rotateY(rr() * Math.PI * 2).applyQuaternion(new THREE.Quaternion().setFromUnitVectors(V(0, 1, 0), sp.n)).translate(sp.p.x, sp.p.y, sp.p.z);
     let i = 0;
     b.add(g, null, { c: [sp.p.x, sp.p.y, sp.p.z], ...meta }, { round: sp.p.clone().addScaledVector(sp.n, -1e4), roundK: 1, vtone: () => cols[i++] });   // 법선 = 꽃이 보는 쪽
   };
   for (const [id, list] of Object.entries(anchors)) {
+    const rr = rngOf[id] || rnd, pal = limbs[id]?.leaf || LEAF;
     const b = builder(), maxO = Math.max(...list.map(a => a.order));
     for (const a of list) {
       const t0 = a.order / maxO;   // 0 가지 밑 → 1 잔가지 끝(안쪽부터 바깥으로)
-      const spots = leafCloud(b, a, LEAF, rnd, { kind: 'leaf', t0 });
-      spots.forEach((sp, f) => flowerTo(b, sp, 0.3 + rnd() * 0.07, { kind: 'bloom', t0: f / spots.length * 0.5 }));
+      const spots = leafCloud(b, a, pal, rr, { kind: 'leaf', t0 });
+      spots.forEach((sp, f) => flowerTo(b, sp, 0.3 + rr() * 0.07, { kind: 'bloom', t0: f / spots.length * 0.5 }, rr));
     }
     // 흔들림 축: 가지 중간 — 메시 원점을 그리 옮겨 그 둘레로 살짝 돈다
     const piv = list[0].p;
     const built = b.build(leafMat(), { origin: piv });
     built.mesh.castShadow = true;
     built.mesh.position.copy(piv);
-    built.mesh.userData.swayPhase = rnd() * Math.PI * 2;
+    built.mesh.userData.swayPhase = rr() * Math.PI * 2;
     group.add(built.mesh);
     clusters[id] = built;
   }

@@ -12,13 +12,41 @@ test('조형 모듈은 three 를 직접 import 하지 않는다(테스트·순�
   assert.doesNotMatch(readFileSync(new URL('../js/world/tree-art.js', import.meta.url), 'utf8'), /from 'three'/);
 });
 
-test('드로우콜 ≤ 13 · 라이트 0 · 가지 잎 메시는 판 가지 5개와 1:1', () => {
+test('드로우콜 ≤ 14 · 라이트 0 · 가지 잎 메시는 판 가지 6개와 1:1', () => {
   const art = buildTreeArt(THREE);
   const d = drawables(art.group);
-  assert.ok(d.length <= 13, `draw calls ${d.length}`);
+  assert.ok(d.length <= 14, `draw calls ${d.length}`);
   let lights = 0; art.group.traverse(o => { if (o.isLight) lights++; });
   assert.equal(lights, 0);
-  assert.deepEqual(Object.keys(art.clusters).sort(), ['farm', 'forest', 'kitchen', 'mine', 'water']);
+  assert.deepEqual(Object.keys(art.clusters).sort(), ['farm', 'forest', 'kitchen', 'mine', 'snow', 'water']);
+});
+
+const BEFORE = {"water":98952344,"farm":317971611,"kitchen":157350933,"forest":-120680161,"mine":-78976390};
+const BEFORE_REST = {"bark":199563764,"crown":262942241,"ground":-2508500};
+const sum = g => { const p = g.attributes.position.array; let s = 0; for (let i = 0; i < p.length; i++) s += p[i] * ((i % 7) + 1); return Math.round(s * 1000); };
+
+test('눈 가지를 더해도 기존 5가지 잎은 한 정점도 안 바뀐다', () => {
+  const art = buildTreeArt(THREE);
+  for (const id of ['water', 'farm', 'kitchen', 'forest', 'mine']) assert.equal(sum(art.clusters[id].mesh.geometry), BEFORE[id], id);
+});
+
+test('눈 가지를 더해도 우듬지·밑동 둘레는 한 정점도 안 바뀌고, 눈 가지를 빼면 줄기도 예전 그대로다', () => {
+  const art = buildTreeArt(THREE);
+  const meshes = []; art.group.traverse(o => { if (o.isMesh) meshes.push(o); });
+  assert.equal(sum(art.crown.geometry), BEFORE_REST.crown);
+  assert.equal(sum(meshes.find(m => m !== meshes[0] && m !== art.crown && !Object.values(art.clusters).some(c => c.mesh === m)).geometry), BEFORE_REST.ground);
+  const { snow, ...five } = LIMBS;
+  const old = []; buildTreeArt(THREE, { limbs: five }).group.traverse(o => { if (o.isMesh) old.push(o); });
+  assert.equal(sum(old[0].geometry), BEFORE_REST.bark);
+  assert.ok(meshes[0].geometry.attributes.position.count > old[0].geometry.attributes.position.count);
+});
+
+test('눈 가지 잎은 흰색 계열이다', () => {
+  const art = buildTreeArt(THREE);
+  const col = art.clusters.snow.mesh.geometry.attributes.color.array;
+  let r = 0, g = 0, b = 0; for (let i = 0; i < col.length; i += 3) { r += col[i]; g += col[i + 1]; b += col[i + 2]; }
+  const n = col.length / 3;
+  assert.ok(r / n > 0.7 && g / n > 0.7 && b / n > 0.7, `${r / n} ${g / n} ${b / n}`);
 });
 
 test('시든 나무: 잎·우듬지·빛 알갱이 숨김, 마지막 잎만 / 다 살면 반대', () => {

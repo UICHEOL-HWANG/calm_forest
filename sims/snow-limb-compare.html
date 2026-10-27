@@ -1,0 +1,82 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>snow limb compare</title>
+<style>
+  html,body{margin:0;height:100%;background:#dff0f7;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:#2f3f4a;overflow:hidden}
+  canvas{display:block;position:absolute;left:0;top:0}
+  #labels{position:absolute;inset:0;display:flex;pointer-events:none}
+  #labels div{flex:1;display:flex;justify-content:center;align-items:flex-start;padding-top:10px}
+  #labels span{background:rgba(255,255,255,.9);border-radius:9px;padding:5px 10px;font-size:14px;font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+  body.stack #labels{flex-direction:column}
+  body.stack #labels div{padding-top:6px}
+</style>
+<div id="labels"></div>
+<script type="importmap">
+{"imports":{"three":"/vendor/three/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { buildTreeArt, LIMBS } from '/js/world/tree-art.js';
+
+const FROST = { under: 0xc9d6e2, mid: 0xe8f1f8, top: 0xffffff };
+const PURE = { under: 0xe4e8ec, mid: 0xf6f8fa, top: 0xffffff };
+const VARIANTS = [
+  { name: 'A 서리 흰색', snow: { dir: [0.588, -0.809], h: 5.6, len: 4.6, leaf: FROST, seed: 61 } },
+  { name: 'B 순백', snow: { dir: [0.588, -0.809], h: 5.6, len: 4.6, leaf: PURE, seed: 61 } },
+  { name: 'C 높은 자리', snow: { dir: [0.588, -0.809], h: 6.4, len: 4.2, leaf: FROST, seed: 61 } },
+];
+
+const params = new URLSearchParams(location.search);
+const stack = params.get('stack') === '1';
+document.body.classList.toggle('stack', stack);
+document.getElementById('labels').innerHTML = VARIANTS.map(v => `<div><span>${v.name}</span></div>`).join('');
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1);
+renderer.setSize(innerWidth, innerHeight);
+renderer.setScissorTest(true);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+document.body.appendChild(renderer.domElement);
+
+const full = Object.fromEntries(Object.keys(LIMBS).map(id => [id, { leaves: 1, bloom: 0 }]));
+
+const scenes = VARIANTS.map(v => {
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xdff0f7);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x9ab59a, 0.95), new THREE.AmbientLight(0xffffff, 0.25));
+  const sun = new THREE.DirectionalLight(0xfff2d8, 1.1);
+  sun.position.set(8, 16, 10);
+  scene.add(sun);
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(16, 40).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xa9d29a, roughness: 1 }));
+  ground.position.y = -0.4;
+  scene.add(ground);
+  const art = buildTreeArt(THREE, { limbs: { ...LIMBS, snow: v.snow } });
+  art.setState({ life: 1, branches: full }, 1);
+  scene.add(art.group);
+  return scene;
+});
+
+const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 200);
+function draw() {
+  const W = innerWidth, H = innerHeight, n = VARIANTS.length;
+  renderer.setSize(W, H);
+  scenes.forEach((scene, i) => {
+    const x = stack ? 0 : Math.round(i * W / n), y = stack ? Math.round((n - 1 - i) * H / n) : 0;
+    const w = stack ? W : Math.round((i + 1) * W / n) - x, h = stack ? Math.round(H / n) : H;
+    renderer.setViewport(x, y, w, h);
+    renderer.setScissor(x, y, w, h);
+    camera.aspect = w / h;
+    const D = 27, halfW = 11.5, halfH = 7.5;
+    camera.fov = 2 * Math.atan(Math.max(halfH, halfW / camera.aspect) / D) * 180 / Math.PI;
+    camera.position.set(15, 12.5, 14);
+    camera.lookAt(2.4, 6.3, -2);
+    camera.updateProjectionMatrix();
+    renderer.render(scene, camera);
+  });
+  document.title = 'ready';
+}
+draw();
+addEventListener('resize', draw);
+</script>
