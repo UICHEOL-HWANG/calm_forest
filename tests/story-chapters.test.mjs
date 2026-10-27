@@ -73,7 +73,7 @@ test('buildStoryView: 9장이 현재면 칩이 보이고 진행은 방문 n/1', 
   assert.equal(v.chapters[7].state, 'done');
   const v5 = buildStoryView(STORY, ch4Done());
   assert.equal(v5.chapters[4].state, 'now');
-  assert.equal(v5.chapters[4].progress, '❄️ 눈의 가지 빈터 0/1');
+  assert.equal(v5.chapters[4].progress, '🌳 물의 가지 빈터 0/1');
   assert.equal(v5.chapters[5].state, 'lock');
   assert.equal(buildStoryView(STORY, base({ story: { ch: 9, q: 3 } })).allDone, true);
 });

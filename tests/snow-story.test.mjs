@@ -17,7 +17,18 @@ test('5장은 눈의 가지이고 STORY·REWORLD 같은 자리다', () => {
 test('5장 판정: 눈의 가지 빈터 완성', () => {
   assert.equal(chapterDone(STORY, 4, {}), false);
   assert.equal(chapterDone(STORY, 4, snowDone), true);
-  assert.equal(chapterProgress(STORY, 4, {}), '❄️ 눈의 가지 빈터 0/1');
+  assert.equal(chapterProgress(STORY, 4, {}), '🌳 물의 가지 빈터 0/1');
+});
+
+test('5장 칩: 앞 가지를 순서대로 알리고 네 가지가 끝나면 눈의 가지로 넘어간다', () => {
+  const hab = (...ids) => ({ tree: { branches: Object.fromEntries(ids.map(id => [id, { habitat: true }])) } });
+  assert.equal(chapterProgress(STORY, 4, hab('water')), '🌳 밭의 가지 빈터 0/1');
+  assert.equal(chapterProgress(STORY, 4, hab('water', 'farm')), '🌳 부엌의 가지 빈터 0/1');
+  assert.equal(chapterProgress(STORY, 4, hab('water', 'farm', 'kitchen')), '🌳 숲의 가지 빈터 0/1');
+  assert.equal(chapterProgress(STORY, 4, hab('water', 'farm', 'kitchen', 'forest')), '❄️ 눈의 가지 빈터 0/1');
+  assert.equal(chapterProgress(STORY, 4, hab('water', 'farm', 'kitchen', 'forest', 'snow')), '❄️ 눈의 가지 빈터 1/1');
+  assert.equal(chapterDone(STORY, 4, hab('water', 'farm', 'kitchen', 'forest')), false);
+  assert.equal(chapterDone(STORY, 4, hab('snow')), true);
 });
 
 test('migrateStory: 5장 이상 간 옛 세이브만 한 칸 민다, 한 번만, 원본은 그대로', () => {
@@ -33,6 +44,12 @@ test('migrateStory: 5장 이상 간 옛 세이브만 한 칸 민다, 한 번만,
     assert.deepEqual(story.started, { home: 1 });
     assert.equal(migrateStory(story).story.ch, want);
   }
+});
+
+test('migrateStory: 더 높은 저장 버전은 낮추지 않는다', () => {
+  const { story } = migrateStory({ ch: 6, v: 3 });
+  assert.equal(story.v, 3);
+  assert.equal(story.ch, 6);
 });
 
 test('game.js: 새 세이브 story.v · 복원 때 migrateStory · 이전 이벤트 · 토스트 장 번호', () => {
