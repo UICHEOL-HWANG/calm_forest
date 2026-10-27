@@ -46,7 +46,7 @@ export function migrateStory(story, ids) {
 export function remapStory(story, ids) {
   const ch = num(story?.ch);
   const same = { story, from: ch, to: ch };
-  if (num(story?.v) < STORY_V || typeof story?.at !== 'string' || story.at === atOf(ids, ch)) return same;
+  if (num(story?.v) < STORY_V || typeof story?.at !== 'string' || story.at === 'done' || story.at === atOf(ids, ch)) return same;
   const oldId = ids.filter(id => id !== SNOW_ID)[ch];
   const to = oldId ? ids.indexOf(oldId) : ids.length;
   return { story: { ...story, ch: to, at: atOf(ids, to) }, from: ch, to };

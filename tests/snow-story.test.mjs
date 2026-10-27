@@ -103,6 +103,20 @@ test('remapStory: 옛 클라이언트가 8장을 모두 끝냈으면 끝(done)�
   assert.equal(remapStory(out.story, IDS).story.ch, 9);
 });
 
+test('remapStory: 끝난 세이브(done)는 장이 뒤에 붙어도 다시 옮기지 않는다', () => {
+  const appended = [...STORY.map(c => c.id), 'future'];
+  const finished = { ch: STORY.length, v: 2, at: 'done' };
+  const out = remapStory(finished, appended);
+  assert.equal(out.from, STORY.length);
+  assert.equal(out.to, STORY.length);
+  assert.equal(out.story, finished);
+  assert.equal(out.story.ch, STORY.length);
+  assert.equal(out.story.at, 'done');
+  const mid = { ch: 5, v: 2, at: 'snowbranch' };
+  assert.equal(remapStory(mid, IDS).to, IDS.indexOf('memory'));
+  assert.equal(remapStory(mid, IDS).story.at, 'memory');
+});
+
 test('remapStory: at 이 없으면 건드리지 않는다, 낮은 버전도 건드리지 않는다', () => {
   const noAt = { ch: 5, v: 2, started: {} };
   assert.deepEqual(remapStory(noAt, IDS), { story: noAt, from: 5, to: 5 });
