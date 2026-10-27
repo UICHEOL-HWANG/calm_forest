@@ -29,7 +29,7 @@ const narrow = () => matchMedia('(max-width: 860px)').matches;
 const kst = (iso) => new Date(iso).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 (async () => {
-  loader.start('분석 중 · 실험');
+  loader.start('로딩 중입니다');
   const sb = await bootAdmin();
   if (!sb) { loader.done(); $('dash').hidden = true; return; }
   const { data, error } = await sb.rpc('cf_admin_experiments', shareKey ? { token: shareKey } : {});

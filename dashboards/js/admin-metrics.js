@@ -2,6 +2,7 @@
 //  관리자 애널리틱스 — 화면 계산(순수 함수, DOM 없음)
 //  tests/admin-metrics.test.mjs 가 이 파일을 직접 import 한다.
 // =============================================================
+import { STAGE_NAMES, EXPANSIONS } from '../../js/house-cost.js';
 
 // 이동 밀도 맵 — r = 맵 원점 기준 반경(월드 유닛). 롤업 표(cf_heat_day)는 2유닛 격자라 -r..r 이 r+1 칸.
 //   원점·크기 근거: js/data/places.js (마을 0,0 · DREAM 0,-550 · MIRROR 0,-700 r22) · js/dream/layout.js(섬 x -16~22, z -19~6)
@@ -304,4 +305,13 @@ export function analyzeExperiment(e, today) {
   else if (est.p != null && est.p < 0.05) verdict = est.d > 0 ? ['win', '효과 있음 ▲'] : ['lose', '효과 있음 ▼'];
   else verdict = ['na', '판정 불가'];
   return { ...est, type: r.type || 'prop', n, srm: s, verdict, t, c, official: r.official || null };
+}
+
+const HOUSE_STAGE_NAMES = [...STAGE_NAMES, ...EXPANSIONS.map((e) => e.name)];
+const HOUSE7_STYLES = EXPANSIONS.find((e) => e.stage === 7)?.styles || {};
+
+export function houseStageLabel(r) {
+  if (!r.stage) return '없음';
+  const name = (r.stage === 7 && HOUSE7_STYLES[r.style]?.name) || HOUSE_STAGE_NAMES[r.stage];
+  return name ? `${r.stage} ${name}` : `${r.stage}단계`;
 }

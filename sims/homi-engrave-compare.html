@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>호미 각인 창 시안</title>
+<style>
+body{margin:0;background:#7fa36b;font-family:-apple-system,"Apple SD Gothic Neo",sans-serif;color:#3f3122}
+main{padding:16px}h1{margin:0 0 4px;font-size:20px;color:#fff}.lead{color:#eef6e6;font-size:13px;margin:0 0 14px}
+.cols{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.col h2{margin:0 0 4px;font-size:16px;color:#fff}.col p{margin:0 0 8px;font-size:12px;color:#eef6e6}
+.panel{background:rgba(255,250,240,.94);border-radius:20px;box-shadow:0 10px 30px rgba(0,0,0,.25);padding:12px 14px;margin-bottom:12px}
+.phone{width:340px}.pc{width:100%}
+.hd{display:flex;align-items:center;gap:8px;font-weight:800;font-size:15px;margin-bottom:8px}.hd .x{margin-left:auto;font-weight:400;opacity:.5}
+.ti{width:1.25em;height:1.25em;display:inline-block;vertical-align:-.25em}
+.slots{display:flex;gap:8px;margin-bottom:10px}.slot{flex:1;border:2px dashed #d9c7a6;border-radius:14px;padding:8px;text-align:center;font-size:12px;color:#8a7458;min-height:58px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.slot.on{border:2px solid #b0683a;background:#fbefe2;color:#3f3122}.slot.lock{opacity:.45}.slot .ti{width:26px;height:26px}
+.base{font-size:12px;color:#5d7a4a;background:#eef5e6;border-radius:10px;padding:5px 8px;margin-bottom:10px;display:flex;gap:6px;align-items:center}
+.list{display:flex;flex-direction:column;gap:6px}.it{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.75);border-radius:12px;padding:7px 9px;font-size:13px}
+.it .ti{width:30px;height:30px}.it b{display:block;font-size:13px}.it small{color:#7a6650;font-size:11px}
+.btn{margin-left:auto;border:0;border-radius:10px;padding:6px 10px;font:inherit;font-size:12px;font-weight:700;background:#b0683a;color:#fff;white-space:nowrap}
+.btn.ghost{background:#fff;color:#b0683a;box-shadow:inset 0 0 0 1.5px #b0683a}.btn.off{background:#d9cfc0;color:#fff}
+.tiles{display:flex;gap:8px;flex-wrap:wrap}.tile{width:92px;background:rgba(255,255,255,.7);border-radius:12px;padding:8px 4px;text-align:center;font-size:12px}.tile .ti{width:32px;height:32px}.tile.sel{outline:2.5px solid #b0683a}
+.split{display:flex;gap:10px}.hoe{width:110px;flex:none;background:#f3e8d4;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;padding:6px}
+.hoe .ti{width:70px;height:70px}.pick{outline:3px solid #ffe38f;outline-offset:4px;border-radius:20px}
+table{width:100%;border-collapse:collapse;background:#fffaf0;border-radius:14px;overflow:hidden;font-size:13px;margin-top:14px}th,td{padding:7px 10px;border-bottom:1px solid #eadfcb;text-align:left}th{background:#efe3cf}
+</style></head><body><main>
+<h1>호미 각인 창 시안</h1><p class="lead">잡화점 사기 칸에서 호미 줄을 누르면 열립니다. 눈 밝은 호미(칸 2개) 기준. 위는 PC, 아래는 폰 세로(340px).</p>
+<div class="cols" id="cols"></div>
+<table><tr><th>자리</th><th>1안</th><th>2안</th><th>3안</th></tr>
+<tr><td>창 제목</td><td>호미 각인</td><td>각인 끼우기</td><td>호미 손질</td></tr>
+<tr><td>기본 효과 줄</td><td>이 호미에 이미: 긴 자루 · 눈썰미</td><td>기본으로 들어 있어요: 긴 자루 · 눈썰미</td><td>타고난 힘: 긴 자루 · 눈썰미</td></tr>
+<tr><td>빈 칸</td><td>비어 있어요</td><td>각인을 골라 주세요</td><td>빈 칸</td></tr>
+<tr><td>잠긴 칸</td><td>눈 밝은 호미부터</td><td>다음 호미에서 열려요</td><td>🔒</td></tr>
+<tr><td>버튼</td><td>끼우기 · 빼기 · 만들기</td><td>끼우기 · 빼기 · 사기</td><td>넣기 · 꺼내기 · 새기기</td></tr>
+<tr><td>재료 부족</td><td>바지락이 6개 있어야 해요</td><td>재료가 부족해요</td><td>바지락 6개 더 캐 오세요</td></tr>
+</table>
+</main>
+<script type="module">
+import { ICON_BY_ID as I } from '../js/icons/toss-icons.js';
+const E = [['homi_opt_reach','긴 자루','조금 멀리서도 캘 수 있어요','바지락 6'],['homi_opt_eye','눈썰미','낙지 구멍이 반짝여요','꼬막 4 · 맛조개 2'],['homi_opt_spare','헛손질 한 번','구멍이 한 번 더 버텨요','칠게 8']];
+const head = t => `<div class="hd">${I.homi_eye}${t}<span class="x">✕</span></div>`;
+const L = {
+  A: () => `${head('호미 각인')}<div class="slots"><div class="slot on">${I.homi_opt_spare}헛손질 한 번</div><div class="slot">비어 있어요</div></div>
+    <div class="list">${E.map(([i,n,d,c],k)=>`<div class="it">${I[i]}<div><b>${n}</b><small>${k<2?'이 호미에 이미 있어요':d+' · '+c}</small></div><button class="btn ${k<2?'off':'ghost'}">${k<2?'기본':'빼기'}</button></div>`).join('')}</div>`,
+  B: () => `${head('각인 끼우기')}<div class="base">${I.homi_opt_reach}${I.homi_opt_eye}기본으로 들어 있어요: 긴 자루 · 눈썰미</div>
+    <div class="slots"><div class="slot on">${I.homi_opt_spare}헛손질 한 번</div><div class="slot">각인을 골라 주세요</div></div>
+    <div class="tiles">${E.map(([i,n,d,c],k)=>`<div class="tile ${k===2?'sel':''}">${I[i]}<br><b>${n}</b><br><small>${k===2?'끼움':c}</small></div>`).join('')}</div>`,
+  C: () => `${head('호미 손질')}<div class="split"><div class="hoe">${I.homi_eye}<b>눈 밝은 호미</b><small>타고난 힘<br>긴 자루 · 눈썰미</small></div>
+    <div style="flex:1"><div class="slots" style="flex-direction:column"><div class="slot on" style="flex-direction:row">${I.homi_opt_spare}헛손질 한 번</div><div class="slot">빈 칸</div></div>
+    <div class="list">${E.slice(2).map(([i,n,d,c])=>`<div class="it">${I[i]}<div><b>${n}</b><small>${d}</small></div><button class="btn ghost">꺼내기</button></div>`).join('')}</div></div></div>`,
+};
+const NOTE = { A: ['1안 칸 + 목록', '칸 2개 아래로 각인 3종 줄. 기존 상점 줄과 같은 모양이라 익숙합니다.'], B: ['2안 칸 + 타일', '기본 효과는 초록 줄로 따로 빼고, 각인은 상점 타일(92px)처럼 고릅니다. 기존 좌판과 가장 비슷합니다.'], C: ['3안 호미 그림 + 칸', '왼쪽에 호미, 오른쪽에 칸. 호미를 손질하는 느낌이 큽니다. 폰에서 좁습니다.'] };
+document.getElementById('cols').innerHTML = Object.keys(L).map(k => `<div class="col"><h2>${NOTE[k][0]}${k==='B'?' (추천)':''}</h2><p>${NOTE[k][1]}</p><div class="panel pc ${k==='B'?'pick':''}">${L[k]()}</div><div class="panel phone">${L[k]()}</div></div>`).join('');
+</script></body></html>

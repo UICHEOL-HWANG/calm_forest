@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { boatDefaults } from '../js/boat/save.js';
 import { readFileSync } from 'node:fs';
 import { gameSource } from './helpers/game-source.mjs';
 import { CHEST_LOOT } from '../js/boat-chest.js';
@@ -15,17 +16,18 @@ const REVEAL = readFileSync(new URL('../js/boat-chest-reveal.js', import.meta.ur
 const HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const EN = readFileSync(new URL('../js/i18n-en.js', import.meta.url), 'utf8');
 
-test('buildCourse: 오늘 상자가 남았을 때만, 루프가 끝난 뒤 한 개(상자 없는 날 코스 불변)', () => {
-  const b = fn('buildCourse');
-  assert.match(b, /opts\.chest[\s\S]{0,200}placeChest\(rnd/);
-  assert.ok(b.indexOf('placeChest') > b.indexOf('d += gap'), '루프 안에서 난수를 더 쓰면 모든 코스가 바뀐다');
+const C = readFileSync(new URL('../js/boat/course.js', import.meta.url), 'utf8');
+test('buildCourseData: 오늘 상자가 남았을 때만, 루프가 끝난 뒤 한 개(상자 없는 날 코스 불변)', () => {
+  const i = C.indexOf('function buildCourseData('); const b = C.slice(i, C.indexOf('\n}\n', i));
+  assert.match(b, /if \(chest\)[\s\S]{0,200}placeChest\(rnd/);
+  assert.ok(b.indexOf('placeChest') > b.indexOf('d += gap'));
   assert.match(b, /kind: 'chest'/);
 });
 
 test('startBoatRun: 오늘 상자 여부로 코스를 만들고 런 상태를 초기화, boat_start 에 has_chest', () => {
   const s = fn('startBoatRun');
   assert.match(s, /chestToday\(gameState\.boat, todayStr\(\)\)/);
-  assert.match(s, /buildCourse\(boat\.seed, boat\.night, \{ chest: offered \}\)/);
+  assert.match(s, /buildCourse\(boat\.seed, boat\.night, \{ chest: offered, course \}\)/);
   for (const k of ['chestOffered', 'chestTaken', 'chestSeen', 'chestMissed', 'chestDxMin', 'chestPos']) assert.match(s, new RegExp(`${k}:`), k);
   assert.match(call(s, 'boat_start'), /has_chest:/);
 });
@@ -65,7 +67,8 @@ test('정산: 지급은 boat_chest 출처로 따로, boat_end·boat_runs 에 che
 });
 
 test('세이브 기본값에 chestDate', () => {
-  assert.match(src, /boat: \{ date: null, count: 0,[^\n]*chestDate: null/);
+  assert.match(src, /boat: boatDefaults\(\),/);
+  assert.equal(boatDefaults().chestDate, null);
 });
 
 test('개봉 화면은 실제 지급 기준 이름·모형을 보여 준다(색이 다 열렸으면 보석)', () => {
@@ -95,8 +98,9 @@ test('놓침 줄은 상자를 **보고** 지나쳤을 때만(3 거기까지 못 
 });
 
 test('결과 카드: 건졌으면 보물상자 줄, 놓쳤으면 회색 안내 줄', () => {
-  assert.match(HTML, /d\.chestView\?\.paid[\s\S]{0,300}'보물상자'/);
-  assert.match(HTML, /'다음 뱃길에 또 떠내려와요'/);
+  const RC = readFileSync(new URL('../js/boat/result-card.js', import.meta.url), 'utf8');
+  assert.match(RC, /chest\?\.paid/);
+  assert.match(RC, /chip off[^`]*다음 뱃길에 또 떠내려와요/);
 });
 
 test('i18n: 새 문구 영어 사전', () => {

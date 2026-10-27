@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">calm forest</string>
-    <string name="title_activity_main">calm forest</string>
+    <string name="app_name">고요한 숲</string>
+    <string name="title_activity_main">고요한 숲</string>
     <string name="package_name">com.cheorish.lab.calmforest</string>
     <string name="custom_url_scheme">com.cheorish.lab.calmforest</string>
 </resources>

@@ -23,7 +23,7 @@ const manifest = () => JSON.parse(read(PWA_DIR + 'manifest.webmanifest'));
 
 test('manifest 필수 필드 — TWA 생성기가 요구하는 것', () => {
   const m = manifest();
-  assert.equal(m.name, 'calm forest');
+  assert.equal(m.name, '고요한 숲');
   assert.ok(m.short_name && m.short_name.length <= 12, 'short_name 12자 이하');
   assert.equal(m.start_url, '/?ref=pwa');   // js/analytics.js 가 ref= 를 GA4 세션 소스로 주입 → 설치 앱 유입 구분
   assert.equal(m.scope, '/');

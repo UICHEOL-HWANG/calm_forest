@@ -63,7 +63,7 @@ test('hint 모달이 칸 카드(body.tiles)를 받는다', () => {
 });
 
 test('바뀐 문구가 코드에 들어 있고 옛 긴 문구는 없다', () => {
-  const all = src + html + read('js/spaces/mist.js') + read('js/spaces/river.js') + read('js/spaces/farm-auto.js') + read('js/spaces/orchard-actions.js') + read('js/spaces/cooking.js');
+  const all = src + html + read('js/spaces/mist.js') + read('js/spaces/river.js') + read('js/boat/result-card.js') + read('js/spaces/farm-auto.js') + read('js/spaces/orchard-actions.js') + read('js/spaces/cooking.js');
   for (const s of ['들었어요 · ', '· 🧺 보관', '오늘은 ${BOAT_RUNS_PER_DAY}번 다 탔어요', '내일 새 물길이 열려요',
     '🔄 밭 도구로 바꿨어요 · 액션만 누르세요', '🔄 나무 도구로 바꿨어요 · 🪓 베기만 따로',
     '일 연속 출석하면 지을 수 있어요!', '📸 사진첩 가득 · 지우면 더 담겨요', '🎒 주운 건 그대로 · 🛶 배는 내일 멀쩡해요',

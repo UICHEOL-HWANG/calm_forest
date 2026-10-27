@@ -12,7 +12,7 @@
 --    (튜토리얼은 대부분 건너뛰어 완료 이벤트가 거의 없다 — 2026-10-10 집계: skip 530 세션)
 --  · 리텐션 곡선은 첫날(D0) 획득 여부로 나눈다. 첫 주 기준으로 나누면 "D3 에 획득 = D3 에 접속" 이라
 --    획득 그룹 곡선이 저절로 부풀어 오른다(look-ahead).
---  · 열 때마다 cf_rollup(어제, 오늘) 로 오늘치를 새로 만다(멱등).
+--  · 오늘치는 pg_cron 이 10분마다 cf_rollup_recent() 로 채운다(migrate_rollup_cron.sql). 화면은 읽기만 한다.
 -- =============================================================
 
 create or replace function public.cf_admin_dashboard(days int default 30, token text default null)
@@ -48,17 +48,6 @@ begin
   today  := (now() at time zone tz)::date;
   since  := today - (days - 1);
   psince := since - days;
-
-  -- 오늘치 신선도: 관리자가 열 때만, 다른 롤업이 돌고 있으면 건너뛰고, 실패해도 화면은 연다(어제까지는 03:00 롤업이 채움)
-  if is_admin then
-    begin
-      if pg_try_advisory_xact_lock(hashtext('cf_rollup')) then
-        perform public.cf_rollup(today - 1, today);
-      end if;
-    exception when others then
-      raise notice 'cf_rollup skipped: %', sqlerrm;
-    end;
-  end if;
 
   with
   s as (select * from cf_sessions where not persona),
@@ -300,6 +289,7 @@ begin
     'progress', (
       with sv as (
         select case when g.state ->> 'houseStage' ~ '^[0-9]{1,2}$' then (g.state ->> 'houseStage')::int else 0 end as house_stage,
+               case when g.state #>> '{house,style}' in ('modern', 'hanok') then g.state #>> '{house,style}' else 'modern' end as house_style,
                nullif(g.state ->> 'character', '') as character,
                case when jsonb_typeof(g.state -> 'dex') = 'object' then
                  (select coalesce(sum(case when jsonb_typeof(c.value) = 'object'
@@ -310,8 +300,8 @@ begin
         where g.user_id not in (select * from cf_persona_user_ids())
       )
       select jsonb_build_object(
-        'house', (select coalesce(jsonb_agg(jsonb_build_object('stage', house_stage, 'users', n) order by house_stage), '[]'::jsonb)
-                  from (select house_stage, count(*) as n from sv group by 1) h),
+        'house', (select coalesce(jsonb_agg(jsonb_build_object('stage', house_stage, 'style', style, 'users', n) order by house_stage, style), '[]'::jsonb)
+                  from (select house_stage, case when house_stage >= 7 then house_style end as style, count(*) as n from sv group by 1, 2) h),
         'characters', (select coalesce(jsonb_agg(jsonb_build_object('character', character, 'users', n) order by n desc), '[]'::jsonb)
                        from (select character, count(*) as n from sv where character is not null group by 1) c),
         'dex', (select coalesce(jsonb_agg(jsonb_build_object('bucket', b, 'users', n) order by o), '[]'::jsonb)

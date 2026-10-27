@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>유료 호미 시안</title>
+<style>body{margin:0;background:#f4ecdd;color:#3f3122;font-family:-apple-system,"Apple SD Gothic Neo",sans-serif}
+main{padding:14px}h1{font-size:20px;margin:0 0 4px}p{margin:0 0 10px;color:#7a6650;font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}.card{background:#fffaf0;border:1px solid #e3d5bd;border-radius:14px;padding:8px;text-align:center}
+.card img{width:48%;display:inline-block;border-radius:10px;background:#f6efe2;margin-bottom:6px}.card b{font-size:14px}.card small{display:block;color:#7a6650;font-size:12px;margin-top:2px}.won{color:#6b5bd6;font-weight:800}</style>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}</script>
+</head><body><main><h1>유료 호미 시안 (겉모습만)</h1><p>위: 손에 든 각도(앞면) · 아래: 비스듬히. 맨 왼쪽은 비교용 기본 대장간 호미.</p><div class="grid" id="g"></div></main>
+<script type="module">
+import * as THREE from 'three';
+import { buildHoe, HOE_FACE } from '../js/forage/hoe-art.js';
+import { skinOf, dressHoe } from '../js/forage/hoe-skins.js';
+const mat = (color, flat = true) => new THREE.MeshStandardMaterial({ color, roughness: .6, metalness: 0, flatShading: flat });
+const R = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); R.setPixelRatio(2); R.setSize(220, 300);
+const LIST = [['base', '기본 대장간 호미', '비교용', ''], ['najeon', '자개 호미', '검은 옻칠 + 자개 꽃 + 금테', '1,500원'], ['coral', '산호 호미', '조개 날 + 산호 가지 + 진주', '1,500원'], ['whale', '고래 호미', '고래 꼬리 날 + 물보라 + 물방울', '1,500원'], ['mudset', '갯벌 세트 호미', '노란 자루 + 꽃게 장식 (세트 3,900원)', '세트']];
+const shot = (id, face) => {
+  const s = new THREE.Scene(); s.background = new THREE.Color(0xf6efe2);
+  s.add(new THREE.HemisphereLight(0xffffff, 0x8a7458, 1.5));
+  const d = new THREE.DirectionalLight(0xffffff, 2.3); d.position.set(2, 3, 4); s.add(d);
+  const sk = skinOf(id);
+  const h = dressHoe(THREE, mat, buildHoe(THREE, mat, 'A3', face, sk?.pal, sk?.over), id);
+  s.add(h);
+  const b = new THREE.Box3().setFromObject(h), c = b.getCenter(new THREE.Vector3()), z = b.getSize(new THREE.Vector3());
+  const t = Math.tan(14 * Math.PI / 180), dist = Math.max(z.y / (2 * t), z.x / (2 * t) / (220 / 300)) * 1.12;
+  const cam = new THREE.PerspectiveCamera(28, 220 / 300, .01, 50); cam.position.set(c.x, c.y + .02, c.z + dist); cam.lookAt(c);
+  R.render(s, cam); return R.domElement.toDataURL();
+};
+document.getElementById('g').innerHTML = LIST.map(([id, n, d, p]) => `<div class="card"><img src="${shot(id, HOE_FACE)}"><img src="${shot(id, -.95)}"><b style="display:block">${n}</b><small>${d}</small><small class="won">${p}</small></div>`).join('');
+window.__ready = true;
+</script></body></html>

@@ -85,7 +85,7 @@ test('게임 배선 — toolMesh 는 테마 인자를 받고(기본 null: 일꾼
   assert.match(src, /function toolMesh\(id, tier = 0, skin = null\)/);
   assert.match(src, /toolMesh\(id, tierOf\(id, gameState\), toolSkinOf\(gameState\.cosmetics\)\)/);
   assert.match(src, /userData\.skin !== toolSkinOf\(cos\)/);   // refreshHeldTool 이 테마 변경도 본다(applyCosmetics 의 cos 기준)
-  assert.match(src, /atMine \|\| atSea \|\| mgView \|\| duelActive/);   // 바다터(양팔 릴대)·클로즈업에선 우산을 접는다
+  assert.match(src, /atMine \|\| atSea \|\| boat\.active \|\| mgView \|\| duelActive/);   // 바다터(양팔 릴대)·클로즈업에선 우산을 접는다
   assert.match(src, /umbrellaShown\(/);
 });
 
