@@ -191,7 +191,7 @@ export function e1OnHarvest() {   // 환영 모달은 otherModalOpen() 이 빌 �
 }
 
 // 수확 순간엔 '새 집 색'·과수원 의뢰 같은 기존 연출이 같이 뜬다 — 그 카드가 닫힌 뒤에 환영 모달을 연다(겹침 방지)
-function otherModalOpen() { return !!document.querySelector('.show > .tut-card, .show > .npc-card'); }
+function otherModalOpen() { return !!document.querySelector('.show > .tut-card, .show > .tk-box'); }
 function showTutorialWhenClear() {
   if (gameState.tutorialSeen) return;
   if (otherModalOpen()) { setTimeout(showTutorialWhenClear, 400); return; }

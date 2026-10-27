@@ -9,7 +9,7 @@ const nextHint = () => {
 };
 
 function showHead() {
-  showTalk({ face: '👷', color: '#f3d27a', name: t('광부 아저씨'), line: queue[0], next: nextHint() });
+  showTalk({ face: '👷', color: '#d99a2b', name: t('광부 아저씨'), line: queue[0], next: nextHint() });
 }
 
 export function playMinerLines(lines, onDone = null) {
