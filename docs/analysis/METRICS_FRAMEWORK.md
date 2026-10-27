@@ -256,6 +256,10 @@ SL = `calm_forest_raw.session_logs` · EC = `calm_forest_raw.econ_logs` · GA4 =
 | 6 | `referrals` 가 BQ 에 없음 | `export_to_bq.py` 적재 대상에 추가 — 추천 경로 판정·K-팩터의 원천 | 추천 전부 |
 | 7 | 메타 광고비가 BQ 에 없음 | 광고 집행 시 일별 캠페인 비용 적재 (Meta 광고 관리자 내보내기) | 경로별 CAC |
 
+### 이야기 장 퍼널 · 눈의 가지(5장) 배포 후 장 번호
+
+배포일: 배포 때 기록. 배포일부터 `story_chapter_start` · `story_chapter_complete` 의 `n` 은 5 이상 장에서 한 칸씩 밀린다(5 = snowbranch 「얼어붙은 가지」, 옛 5장은 6). 새 5장이 4장 다음에 끼어들기 때문이다. 장을 비교할 때는 `n` 이 아니라 `chapter` id 로 묶는다. 배포 전에 5장 이상을 끝낸 세이브는 배포 때 한 번만 옮겨지며 `story_migrated { from, to }`(옛 장 수 → 새 장 수)가 찍힌다. 설산 썰매지기 대화와 선물은 `keeper_talk_open { stage }` · `keeper_talk_close { stage, via, lines_seen }` · `keeper_gift { item_id }` 로 본다.
+
 ## 5-3. LTV — 참여 LTV (가치 단위 = 획득한 날)
 
 현금이 아니라 **게임이 유저에게서 실제로 얻는 것** — 북극성 단위인 획득한 날 — 으로 생애 가치를 잰다. 현금 결제는 0건(`purchases` 비어 있음, 2026-10-10 확인)이라 금전 LTV 는 결제가 열린 뒤 연결식으로 잇는다.
