@@ -2114,6 +2114,28 @@
   .hs-ar { align-self: center; color: #9aa79e; font-weight: 900; }
   #hint-note { font-size: 12.5px; color: #8a7f6e; margin: -4px 0 14px; }
   #hint-chip { display: table; background: #fff3cf; color: #7a5a00; border-radius: 10px; padding: 3px 10px; font-size: 12.5px; font-weight: 700; margin: -6px auto 14px; }
+  #hint-modal:has(> .tut-card:not(.as-card)) { place-items: end center; padding: 0 12px max(22px, calc(env(safe-area-inset-bottom, 0px) + 12px)); background: linear-gradient(rgba(20,40,30,0.1), rgba(20,40,30,0.55)); }
+  #hint-modal .tut-card:not(.as-card) { position: relative; display: flex; flex-wrap: wrap; align-items: center; width: min(560px, calc(100vw - 140px)); margin-left: 116px; max-height: none; overflow: visible;
+    background: #fffdf6; border-radius: 22px; padding: 16px 18px 14px; text-align: left; box-shadow: 0 14px 40px rgba(0,0,0,0.28); animation: hintBubble .45s .1s cubic-bezier(.2,1.3,.4,1) both; }
+  #hint-modal .tut-card:not(.as-card)::before { content: ""; position: absolute; left: -9px; bottom: 26px; width: 20px; height: 20px; background: #fffdf6; transform: rotate(45deg); border-radius: 4px; }
+  #hint-modal .tut-card:not(.as-card) > * { flex: 1 1 100%; }
+  #hint-modal .tut-card:not(.as-card) #hint-emoji { position: absolute; left: -108px; bottom: 0; width: 92px; height: 92px; border-radius: 26px; display: grid; place-items: center; font-size: 56px; line-height: 1;
+    background: linear-gradient(160deg, #e2f3da, #a9d99a); box-shadow: 0 10px 24px rgba(0,0,0,0.25), inset 0 0 0 3px rgba(255,255,255,0.6); animation: hintFace .45s ease both; }
+  #hint-modal .tut-card:not(.as-card) #hint-title { margin: 0 0 6px; font-size: 18px; color: #24382d; }
+  #hint-modal .tut-card:not(.as-card) #hint-body { margin: 0 0 12px !important; font-size: 14.5px; opacity: 1 !important; color: #44524a; max-height: 40dvh; overflow-y: auto; }
+  #hint-modal .tut-card:not(.as-card) #hint-steps { justify-content: flex-start; }
+  #hint-modal .tut-card:not(.as-card) #hint-chip { margin: -4px 0 12px; flex: 0 0 auto; }
+  #hint-modal .tut-card:not(.as-card) #hint-ok, #hint-modal .tut-card:not(.as-card) #hint-alt { flex: 0 0 auto; padding: 10px 18px; border-radius: 14px; font-size: 14.5px; }
+  #hint-modal .tut-card:not(.as-card) #hint-ok { order: 2; margin-left: auto; background: #8fd081; color: #163220; font-weight: 800; box-shadow: 0 3px 0 #66ad59; }
+  #hint-modal .tut-card:not(.as-card) #hint-alt:not([hidden]) { order: 1; margin-left: auto; }
+  #hint-modal .tut-card:not(.as-card):has(#hint-alt:not([hidden])) #hint-ok { margin-left: 8px; }
+  @keyframes hintBubble { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: none; } }
+  @keyframes hintFace { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+  @media (max-width: 600px) {
+    #hint-modal .tut-card:not(.as-card) { width: calc(100vw - 24px); margin: 80px 0 0; }
+    #hint-modal .tut-card:not(.as-card)::before { left: 30px; top: -8px; bottom: auto; }
+    #hint-modal .tut-card:not(.as-card) #hint-emoji { left: 2px; top: -78px; bottom: auto; width: 66px; height: 66px; border-radius: 20px; font-size: 40px; }
+  }
   #merchant-modal { z-index: 45; }
   #merchant-modal .tut-card { width: min(400px, 92vw); }
   .merchant-actions { display: flex; flex-direction: column; gap: 10px; }
