@@ -14,7 +14,7 @@ import {
   spawnFloatText, spawnSparkle, todayStr, toolMesh, triggerMoment, ui, updateStowPose,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
-import { SEA, SEA_COVE, SEA_DECK_W, SEA_DECK_Z0, SEA_DECK_Z1, SEA_EDGE, SEA_GATE, SEA_SPECIES } from '../data/places.js';
+import { HOMI_STALL, SEA, SEA_COVE, SEA_DECK_W, SEA_DECK_Z0, SEA_DECK_Z1, SEA_EDGE, SEA_GATE, SEA_SPECIES } from '../data/places.js';
 import { bestAfterCatch } from '../museum.js';
 import { pickSeaTarget } from '../sea-aim.js';
 import { mudflat, updateMudflat, mudflatCamera, leaveMudflat } from './mudflat.js';
@@ -28,6 +28,7 @@ import { sendSeaRecord } from '../supabase-client.js';
 import { refreshPond } from '../pond/index.js';
 import { addGateWalk } from './gate-cue.js';
 import { makeWalk } from './gate-walk.js';
+import { buildHomiStall } from '../forage/homi-stall-art.js';
 import * as THREE from 'three';
 
 export const SEA_LINE_N = 18;
@@ -176,7 +177,11 @@ export function spawnSeaGate() {
     const b = new THREE.Mesh(new THREE.SphereGeometry(0.16, 9, 7), clayMat(0xef8a4a));
     b.scale.y = 1.25; b.position.set(bx, 0.28, bz); g.add(b);
   });
-  g.add(makeSignpost('🌊 바다터', -1.6, 1.2));    // 다른 게이트와 같은 문법의 표지판
+  g.add(makeSignpost('🌊 바다터', -1.6, 1.2));
+  const stall = buildHomiStall(THREE, clayMat);
+  stall.position.set(HOMI_STALL.x - SEA_GATE.x, 0, HOMI_STALL.z - SEA_GATE.z); stall.rotation.y = HOMI_STALL.ry; g.add(stall);
+  solidCircle(HOMI_STALL.x, HOMI_STALL.z, HOMI_STALL.r);
+  obstacles.push({ x: HOMI_STALL.x, z: HOMI_STALL.z, r: 2 });    // 다른 게이트와 같은 문법의 표지판
   obstacles.push({ x: SEA_GATE.x, z: SEA_GATE.z, r: 2.2 });                     // 밭 금지(게이트 앞)
   obstacles.push({ x: SEA_COVE.x, z: SEA_COVE.z, r: SEA_COVE.r + 1 });          // 밭 금지(후미)
   const water = solidCircle(SEA_COVE.x, SEA_COVE.z, SEA_COVE.r - 0.35);         // 🚧 물엔 못 들어감(돌다리 위만 예외)

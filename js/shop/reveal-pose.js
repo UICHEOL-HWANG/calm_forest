@@ -34,6 +34,9 @@ export const REVEAL_COPY = Object.freeze({
   nest_pack: Object.freeze({ name: '아기새 둥지 배낭', desc: '등에 멘 둥지에서 아기새가 고개를 내밀어요' }),
   maple_trail: Object.freeze({ name: '단풍잎 자국', desc: '걸음마다 단풍잎이 내려앉아요' }),
   bubble_trail: Object.freeze({ name: '비눗방울 자국', desc: '걸을 때마다 비눗방울이 둥실 떠올라요' }),
+  homi_najeon: Object.freeze({ name: '자개 호미', desc: '검은 옻칠에 자개 꽃과 금테를 두른 호미예요' }),
+  homi_coral: Object.freeze({ name: '산호 호미', desc: '조개 날에 산호 가지와 진주를 단 호미예요' }),
+  homi_whale: Object.freeze({ name: '고래 호미', desc: '고래 꼬리 날에 물보라가 이는 호미예요' }),
 });
 
 const clamp01 = (x) => Math.max(0, Math.min(1, x));
@@ -53,15 +56,17 @@ export const REVEAL_CARD = Object.freeze({
 
 /** 칸이 정한 연출: 전신 스킨·도구 세트·등(망토) = B+C 상자 폭발(캐릭터가 입은 모습), 걷는 자국 = A 스포트라이트
  *  ※ 'spot' 은 buildTrailMark(itemId) 를 띄우는 자국 전용 — 등 꾸미기를 넣으면 빈 화면이다. */
-export function revealModeOf(item) { return item?.slot === 'skin' || item?.slot === 'tools' || item?.slot === 'back' ? 'boxburst' : 'spot'; }
+export function revealModeOf(item) { return ['skin', 'tools', 'back', 'homi'].includes(item?.slot) ? 'boxburst' : 'spot'; }
 
 //  🪓 도구 세트·🦇 망토는 상자 연출을 같이 쓰되 카드 문구는 따로 — "전신 스킨" 이라 쓰면 거짓말이다
 const TOOLS_CARD = Object.freeze({ tag: 'PREMIUM · 도구 세트', cta: '바로 들어보기' });
 const BACK_CARD = Object.freeze({ tag: 'PREMIUM · 등 꾸미기', cta: '바로 입어보기' });
+const HOMI_CARD = Object.freeze({ tag: 'PREMIUM · 호미', cta: '갯벌에서 써 보기' });
 /** 카드 태그·버튼 — 칸이 정한다 */
 export function revealCardOf(item) {
   if (item?.slot === 'tools') return TOOLS_CARD;
   if (item?.slot === 'back') return BACK_CARD;
+  if (item?.slot === 'homi') return HOMI_CARD;
   return REVEAL_CARD[revealModeOf(item)];
 }
 

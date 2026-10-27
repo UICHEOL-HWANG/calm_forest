@@ -8,7 +8,7 @@
 // =============================================================
 
 const CURRENCY = 'KRW';
-const SLOT_DESC = { head: '머리 꾸미기', neck: '목 꾸미기', back: '등 꾸미기', trail: '걷는 자국', skin: '전신 스킨', tools: '도구 테마 세트(도구 9종 외형 + 비 오는 날 우산)' };
+const SLOT_DESC = { head: '머리 꾸미기', neck: '목 꾸미기', back: '등 꾸미기', trail: '걷는 자국', skin: '전신 스킨', tools: '도구 테마 세트(도구 9종 외형 + 비 오는 날 우산)', homi: '호미 스킨(갯벌 캐기 호미 외형)' };
 
 /** '₩1,500' → '1500'. KRW 는 소수 단위가 없어 Paddle 금액이 그대로 원 단위다 */
 export function labelToAmount(label) {
@@ -37,8 +37,8 @@ export function buildPlan(items, sleds = [], bundles = [], pets = []) {
   const bundleRows = bundles.map(b => ({
     itemId: b.id,
     kind: 'bundle',
-    name: '숲 환영 상자',
-    description: 'calm forest 묶음 상품 (도구 세트 1종 + 반딧불 자국, 계정당 1번)',
+    name: b.copy.title,
+    description: b.seedDesc,
     amount: String(b.won),
     currency: CURRENCY,
   }));

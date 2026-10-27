@@ -3,15 +3,16 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SLOTS, ITEMS, itemsOf, findItem } from '../js/cosmetics/catalog.js';
 
-test('슬롯 6개 · 품목 55종(코인 18 + 프리미엄 자국 2 + 스킨 2 + 도구 세트 3 + 🎃 할로윈 10 + 🍁 2차 11 + 🤝 초대 보상 3 + 🌱 새싹반 3 + ⛏️ 광부 보상 1)', () => {
-  assert.deepEqual([...SLOTS], ['head', 'neck', 'back', 'trail', 'skin', 'tools']);
-  assert.equal(ITEMS.length, 56);
+test('슬롯 7개 · 품목 61종(🪏 호미 3 + 🦀 갯벌 세트 구성품 2 + 코인 18 + 프리미엄 자국 2 + 스킨 2 + 도구 세트 3 + 🎃 할로윈 10 + 🍁 2차 11 + 🤝 초대 보상 3 + 🌱 새싹반 3 + ⛏️ 광부 보상 1)', () => {
+  assert.deepEqual([...SLOTS], ['head', 'neck', 'back', 'trail', 'skin', 'tools', 'homi']);
+  assert.equal(ITEMS.length, 61);
   assert.equal(itemsOf('head').length, 13);
   assert.equal(itemsOf('neck').length, 4);
-  assert.equal(itemsOf('back').length, 10);
+  assert.equal(itemsOf('back').length, 11);
   assert.equal(itemsOf('trail').length, 12);
   assert.equal(itemsOf('skin').length, 6);
   assert.equal(itemsOf('tools').length, 11);
+  assert.equal(itemsOf('homi').length, 4);
   assert.equal(ITEMS.filter(i => i.reward).length, 3);
 });
 
@@ -34,7 +35,7 @@ test('가격 — coins 와 won 중 정확히 하나. 현금 칸은 null 이거�
     assert.ok(c === null || (typeof c.priceId === 'string' && typeof c.label === 'string'), `${it.id} 의 cash 형태`);
     const hasCoins = Number.isInteger(it.price.coins) && it.price.coins > 0;
     const hasWon = Number.isInteger(it.price.won) && it.price.won > 0;
-    if (it.reward || it.quest) {
+    if (it.reward || it.quest || it.set) {
       assert.ok(!hasCoins && !hasWon && c === null && !it.premium, `${it.id}: 보상은 가격 없음`);
       continue;
     }
@@ -44,7 +45,7 @@ test('가격 — coins 와 won 중 정확히 하나. 현금 칸은 null 이거�
 });
 
 test('꾸미기 최저가가 일꾼 초빙료(120🪙)보다 훨씬 비싸다 — 집 증축을 밀어내면 안 된다(§2-2) · 🌱 새싹반은 예외', () => {
-  assert.ok(Math.min(...ITEMS.filter(i => !i.premium && !i.reward && !i.quest && i.group !== 'sprout').map(i => i.price.coins)) >= 600);
+  assert.ok(Math.min(...ITEMS.filter(i => !i.premium && !i.reward && !i.quest && !i.set && i.group !== 'sprout').map(i => i.price.coins)) >= 600);
 });
 
 test('🌱 새싹반 3종 — 머리·목·가방 하나씩, 50·70·100🪙, 일꾼 초빙료(120🪙) 아래', () => {
