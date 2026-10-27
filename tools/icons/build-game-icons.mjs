@@ -19,7 +19,7 @@ export const GAME_EMOJI = [
   '❗', '🍄', '🪜', '🧰', '🔙', '🎃', '🍳',
   '📒', '↩', '🔇', '🔕',
 ];
-export const GAME_IDS = ['sickle', 'net'];
+export const GAME_IDS = ['sickle', 'net', 'homi', 'homi_long', 'homi_eye', 'homi_gold', 'homi_opt_reach', 'homi_opt_eye', 'homi_opt_spare', 'homi_opt_feet'];
 
 export const TOSSFACE_FILES = {
   '🪓': 'u1FA93', '⛏': 'u26CF', '🌰': 'u1F330', '💧': 'u1F4A7', '🔨': 'u1F528', '🎣': 'u1F3A3', '🌾': 'u1F33E', '🏕': 'u1F3D5',

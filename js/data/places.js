@@ -6,6 +6,7 @@
 //     옮긴 방법·검증: tools/refactor/ · docs/superpowers/specs/2026-09-24-gamejs-split-phase1-design.md
 // =============================================================
 import * as THREE from 'three';
+import { FORAGE_ICO } from '../forage/logic.js';
 
 export const INT = new THREE.Vector3(0, 0, 52); // 실내 위치(플레이 구역 밖, 지면 위)
 
@@ -31,7 +32,7 @@ export const RANK = new THREE.Vector3(13.5, 0, 1.5);  // 🏆 랭킹 게시판 �
 // 품목 아이콘 — **SELL_PRICE 의 모든 키를 덮어야 한다**(tests/orchard.test.mjs 가 강제).
 //   빠진 키가 있으면 📊시세판 월드 텍스처·상인 말풍선·시세판 모달이 문자 그대로 "undefined" 를 그린다.
 //   🍎 과수원 과일 아이콘은 js/orchard.js FRUITS[].ico 와 같은 값.
-export const SELL_ICO_G = { charcoal: '⚫', flour: '🌾', brick: '🧱', bread: '🥐', juice: '🍷', grape_juice: '🍹', crop: '🥕', fish: '🐟', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', crystal: '🔮', egg: '🥚', bug: '🌟', forage: '🍄', wheat: '🌾', corn: '🌽', grape: '🍇', honey: '🍯',
+export const SELL_ICO_G = { ...FORAGE_ICO, charcoal: '⚫', flour: '🌾', brick: '🧱', bread: '🥐', juice: '🍷', grape_juice: '🍹', crop: '🥕', fish: '🐟', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', crystal: '🔮', egg: '🥚', bug: '🌟', forage: '🍄', wheat: '🌾', corn: '🌽', grape: '🍇', honey: '🍯',
                      apple: '🍎', pear: '🍐', peach: '🍑', persimmon: '🍊', chestnut: '🌰',
                      apple_jam: '🥫', roast_chestnut: '🌰', gotgam: '🍡' };   // 🍎 과일 가공(js/craft/recipes.js)
 
@@ -270,6 +271,7 @@ export const SEA_GATE = new THREE.Vector3(14.5, 0, -12.5);   // 마을 북동(�
 export const SEA_COVE = { x: SEA_GATE.x + 9.5, z: SEA_GATE.z - 9, r: 12 };  // 포구 앞 후미(만) — 게이트 너머로 보이는 진짜 바다
 
 export const SEA = new THREE.Vector3(400, 0, 0);             // 바다 인스턴스 — 다른 공간이 전부 x=0 축이라 동쪽으로 뺌
+export const MUDFLAT = new THREE.Vector3(400, 0, 300);
 
 export const ORCHARD_GATE = new THREE.Vector3(33, 0, 7);   // 🍎 마을 동쪽 — 여덟 방향 중 유일하게 빈 자리(스펙 §1).
 //   (32,2) 였을 때 울타리 왼날개 끝(25.5,−0.9)이 🌾수확제 광장(23,−4·반경 5)·좌판(25.4,−1)에 박혀 남동으로 옮겼다(2026-10-09).

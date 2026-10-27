@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>호미 시안 v2</title>
+<style>body{margin:0;background:#efe6d6;font-family:-apple-system,"Apple SD Gothic Neo",sans-serif}
+.row{display:grid;grid-template-columns:repeat(3,1fr)}canvas{display:block;width:100%;height:auto}h3{margin:0 0 6px;text-align:center;color:#5b4632;font-size:15px}</style>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}</script>
+</head><body><div class="row" id="names"></div><div class="row" id="r0"></div><div class="row" id="r1"></div>
+<script type="module">
+import * as THREE from 'three';
+import { buildHoe, HOE_VARIANTS } from '../js/forage/hoe-art.js';
+const mat = (color, flat = true) => new THREE.MeshStandardMaterial({ color, roughness: .7, metalness: 0, flatShading: flat });
+const NAMES = { A1: 'A1 논호미 (뾰족)', A2: 'A2 밭호미 (둥근 어깨)', A3: 'A3 대장간 호미 (새끼줄)' };
+const shot = (v, yaw, el) => {
+  const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  r.setPixelRatio(2); r.setSize(260, 300);
+  const s = new THREE.Scene(); s.background = new THREE.Color(0xefe6d6);
+  s.add(new THREE.HemisphereLight(0xffffff, 0x8a7458, 1.6));
+  const d = new THREE.DirectionalLight(0xffffff, 2.2); d.position.set(2, 3, 4); s.add(d);
+  const h = buildHoe(THREE, mat, v); h.rotation.y = yaw; s.add(h);
+  const c = new THREE.Box3().setFromObject(h).getCenter(new THREE.Vector3());
+  const cam = new THREE.PerspectiveCamera(30, 260 / 300, .01, 50);
+  cam.position.set(c.x, c.y + .05, c.z + 1.75); cam.lookAt(c);
+  r.render(s, cam); el.appendChild(r.domElement);
+};
+for (const v of HOE_VARIANTS) {
+  const t = document.createElement('h3'); t.textContent = NAMES[v]; document.getElementById('names').appendChild(t);
+  shot(v, 0, document.getElementById('r0'));
+  shot(v, .95, document.getElementById('r1'));
+}
+</script></body></html>

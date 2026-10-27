@@ -25,6 +25,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { sampleFrame, startLogging } from './logger.js';         // [센서] 로깅
 import { saveGame, loadGame, sendBoatRun, sendSeaRecord, fetchNotices, fetchPurchases, upsertRetentionGuidanceScore, state as authState } from './supabase-client.js';  // [Supabase] 저장 + 🛶 런 기록 + 🌊 대어 기록 + 📮 소식 + 💳 구매 원장
 import { syncPurchases } from './shop/purchases.js';   // 💳 원장 → 소유 병합(부팅)
+import { FORAGE_LABEL } from './forage/logic.js';
 import { pickSeaTarget } from './sea-aim.js';   // 🎣 바다터 조준 — 바라보는 쪽의 물고기가 걸린다
 import { retryDelay, offerReload } from './save-guard.js';   // 🛡️ 세이브를 읽을 때까지 기다리는 재시도 간격 + 오래 끌 때 탈출구
 import { unreadNotices, maxId } from './notices.js';   // 📮 소식함 순수 로직(안 읽은 것 거르기·읽음 id)
@@ -135,7 +136,7 @@ import {
   FOREST_LOGS, FOREST_LOG_R, FOREST_LOG_SPOTS, FORAGE_RESPAWN, FORAGE_KINDS, DOCK_GATE, DOCK_POND, DOCK_POND_R, RIVER,
   RIVER_DOCK_HALF, RIVER_W, RIVER_LEN, BOAT_RUNS_PER_DAY, BOAT_LAMPS, BOAT_BASE_SPEED, BOAT_BOOST_CD, RIVER_OBS, RIVER_PICKS,
   BOAT_UPGRADES, SHOP_POS, SHOP_DOOR, MIST_GATE, MIST, MIST_HALF, MIST_WAVES, TREE_LIGHT_MAX, MIST_DRAIN, SOOTHE_GLOW,
-  PURIFY_GLOW, SPIRITS, MIST_LANTERN_POS, LANTERN_CALM_R, MIST_PRACTICE_STEPS, SEA_GATE, SEA_COVE, SEA, ORCHARD_GATE,
+  PURIFY_GLOW, SPIRITS, MIST_LANTERN_POS, LANTERN_CALM_R, MIST_PRACTICE_STEPS, SEA_GATE, SEA_COVE, SEA, MUDFLAT, ORCHARD_GATE,
   ORCHARD_PROMPT_R, ORCHARD, ORCHARD_HALF, SEA_DECK_W, SEA_DECK_Z0, SEA_DECK_Z1, SEA_EDGE, SEA_SPECIES, ROOF_COLORS,
   WALL_COLORS, DOOR_COLORS, PART_NAME, HOUSE_POS, NEIGHBOR, NEIGHBOR_R, NEIGHBOR_GATE, DELVE,
 } from './data/places.js';
@@ -185,6 +186,10 @@ import {
 import {
   buildSea, enterSea, exitSea, seaAction, seaCamera, seaPrompt, spawnSeaGate, updateSea, updateSeaVisuals,
 } from './spaces/sea.js';   // 📦 🌊 바다터 — 대형 낚시 (docs/design/SEA_FISHING_PLAN.md · 프로토타입 sims/sea-sim.html)
+import { openSeaPick } from './spaces/sea-pick.js';
+import { mudflat, mudflatAction, mudflatSpeedMult, clampMudflat, enterMudflat, mudflatDebug, setMudflatCam } from './spaces/mudflat.js';
+import { HOMI_ANIM_DUR } from './forage/hoe-art.js';
+import { homiState } from './forage/homi.js';
 import { keepOnGateWalks, updateGateCues, updateGateWalks } from './spaces/gate-cue.js';
 import { clampToLandmark, clampToMountain, maybeRevealMountain, mountainAction, mountainLookFrame, mountainMinimapMarks, mountainReturnPos, sledActive, cafeDrinking, spawnMountainGate, updateMountain, mountainSpeedMult } from './spaces/mountain.js';
 import { applyObservatoryLight, clampToObservatory, observatoryAction, observatoryCamFocus, observatoryLensOpen, observatoryMinimapMarks, spawnObservatoryGate, updateObservatory, updateObservatoryStairs } from './spaces/observatory.js';   // 📦 🔭 천문대 — 별자리 리듬 실내 공간
@@ -217,7 +222,7 @@ import {
   intro, introEnd, introLook, introStart, updateIntro,
 } from './spaces/prologue.js';   // 📦 🎬 프롤로그 컷신 (구역 머리말 — 분리 2단계)
 import {
-  buyShop, marketData, sellItem, spawnMarketBoard, spawnShop,
+  buyHomiEngrave, buyShop, equipHomiEngrave, homiInfo, marketData, sellItem, spawnMarketBoard, spawnShop,
 } from './spaces/shop.js';   // 📦 🛒 상점 좌판·시세판·사고팔기 (구역 머리말 — 분리 2단계)
 import {
   COOK_TIERS, PANTRY_MAX, buffDur, cookResolve, courseOf, craftTier2, craftUpgrade, emitBuffs, kitchenView,
@@ -2014,6 +2019,10 @@ export const Input = {
   getUpgrades() { return UPGRADES; },                   // 도구 업그레이드 목록
   getSeaSpecies() { return SEA_SPECIES.map(s => ({ id: s.id, name: s.name, ico: s.ico })); },   // 🌊 리더보드 행의 어종 표시(sp → 아이콘·이름)
   ownedUpgrades() { return { ...gameState.upgrades }; }, // 보유 업그레이드
+  homiTier() { return homiState(gameState.sea.forage?.homi).tier; },
+  homiInfo() { return homiInfo(); },
+  buyHomiEngrave(id) { return buyHomiEngrave(id); },
+  equipHomiEngrave(slot, id) { return equipHomiEngrave(slot, id); },
   craftUpgrade(id) { return craftUpgrade(id); },        // 업그레이드 제작
   getTier2() { return tier2List(); },                   // 🔨 금빛 도구(2단계) 목록 — 도면 상태·비용
   craftTier2(tool) { return craftTier2(tool); },        // 🔨 금빛 도구 제작
@@ -2703,7 +2712,9 @@ export async function enterGame() {
   if (_wq.get('river') === '1') setTimeout(() => enterRiver(), 60);
   // 테스트: ?mist=1 — 안개 낀 숲에서 시작. ?weather=fog 와 조합하면 🌟황금 정령 확인
   if (_wq.get('mist') === '1') setTimeout(() => enterMist(), 60);
-  if (_wq.get('sea') === '1') setTimeout(() => enterSea(), 60);   // 테스트: ?sea=1 — 바다터 바로 입장
+  if (_wq.get('sea') === '1') setTimeout(() => enterSea(), 60);
+  if (_wq.get('mudflat') === '1') setTimeout(() => enterMudflat({ entry: 'pick' }), 60);
+  if (_wq.get('mudflatdebug') === '1') { window.__mudflat = mudflatDebug; window.__mudflatCam = setMudflatCam; }   // 테스트: ?sea=1 — 바다터 바로 입장
   if (_wq.get('seadebug') === '1') window.__sea = { mg: seaMG, action: seaAction };   // 테스트: 상태 점검용(연출 검수)
   mode = 'play';
   movedOnce = false;
@@ -4694,7 +4705,7 @@ function refreshHeldTool(cos = gameState.cosmetics) {
 
 function setHeldTool(id) {
   if (!handAnchor) return;
-  if (atSea && seaRodMesh) return;   // 🌊 바다터에선 릴대 고정 — 숫자키 도구 전환을 무시(팔레트도 숨김)
+  if (atSea && (seaRodMesh || mudflat.active)) return;   // 🌊 바다터에선 릴대 고정 — 숫자키 도구 전환을 무시(팔레트도 숨김)
   if (heldToolMesh) { handAnchor.remove(heldToolMesh); disposeTree(heldToolMesh); }   // clayMat 은 캐시가 없다 — 안 버리면 도구를 바꿀 때마다 샌다
   heldToolId = id;
   heldToolMesh = toolMesh(id, tierOf(id, gameState), toolSkinOf(gameState.cosmetics));   // 지금 등급·테마로 — 업그레이드를 샀거나 세트를 입었으면 모습이 다르다
@@ -6087,9 +6098,9 @@ function animate() {
       } else if (place === 'mine' && delveFloorNow() > 0) {
         md.cx = DELVE.x; md.cz = DELVE.z; md.half = DELVE_HALF; md.marks = delveMinimapMarks();
       } else if (place !== 'village') {   // 서브 공간: 중심·반경·랜드마크를 함께 전달
-        const C = place === 'house' ? INT : place === 'farm' ? { x: FARM.x - YARD_D / 2, z: FARM.z } : place === 'cafe' ? CAFE : place === 'observatory' ? OBSERVATORY : place === 'mountain' ? MOUNTAIN : place === 'neighbor' ? (neighborIndoorFrame()?.c ?? NEIGHBOR) : place === 'river' ? RIVER : place === 'mist' ? MIST : place === 'sea' ? SEA : place === 'museum' ? MUSEUM : place === 'orchard' ? ORCHARD : MINE;
+        const C = place === 'house' ? INT : place === 'farm' ? { x: FARM.x - YARD_D / 2, z: FARM.z } : place === 'cafe' ? CAFE : place === 'observatory' ? OBSERVATORY : place === 'mountain' ? MOUNTAIN : place === 'neighbor' ? (neighborIndoorFrame()?.c ?? NEIGHBOR) : place === 'river' ? RIVER : place === 'mist' ? MIST : place === 'sea' ? (mudflat.active ? MUDFLAT : SEA) : place === 'museum' ? MUSEUM : place === 'orchard' ? ORCHARD : MINE;
         md.cx = C.x; md.cz = C.z;
-        md.half = place === 'house' ? curHalf() : place === 'farm' ? farmHalf() + YARD_D / 2 : place === 'cafe' ? CAFE_HALF : place === 'observatory' ? OBSERVATORY_R : place === 'mountain' ? MOUNTAIN_R : place === 'neighbor' ? (neighborIndoorFrame()?.half ?? NEIGHBOR_R) : place === 'river' ? RIVER_DOCK_HALF : place === 'mist' ? MIST_HALF : place === 'sea' ? 14 : place === 'museum' ? Math.max(museumDims().hw, museumDims().hd) : place === 'orchard' ? ORCHARD_HALF : MINE_HALF;
+        md.half = place === 'house' ? curHalf() : place === 'farm' ? farmHalf() + YARD_D / 2 : place === 'cafe' ? CAFE_HALF : place === 'observatory' ? OBSERVATORY_R : place === 'mountain' ? MOUNTAIN_R : place === 'neighbor' ? (neighborIndoorFrame()?.half ?? NEIGHBOR_R) : place === 'river' ? RIVER_DOCK_HALF : place === 'mist' ? MIST_HALF : place === 'sea' ? (mudflat.active ? 16 : 14) : place === 'museum' ? Math.max(museumDims().hw, museumDims().hd) : place === 'orchard' ? ORCHARD_HALF : MINE_HALF;
         // 🛶 런 중엔 배를 중심으로 앞뒤를 보는 레이더(고정 데크 지도 대신)
         if (place === 'river' && boat.active) { md.cx = player.position.x; md.cz = player.position.z - 14; md.half = 22; }
         md.marks = minimapMarks(place);
@@ -6235,7 +6246,7 @@ function updatePlayer(dt, t) {
     charGroup?.userData.skinTick?.(t);             // 🌿 정령 반딧불은 계속 떠다닌다
     return updateBoatRun(dt, t);
   }
-  const speed = 6 * (buffOn('speed') ? 1.4 : 1) * mountainSpeedMult();   // 🥘 채소죽 버프: 이동속도 +40%
+  const speed = 6 * (buffOn('speed') ? 1.4 : 1) * mountainSpeedMult() * mudflatSpeedMult();   // 🥘 채소죽 버프: 이동속도 +40%
   // 모달(캐릭터 선택·튜토리얼·상인 등)·메뉴가 떠 있으면 키보드 이동 0 — 선택창 뒤에서 캐릭터가 걷던 버그
   // 🎉 캐치 세리머니(첫 낚시·수확·반딧불이·바다 대어)·📸 액션샷 밀착 중엔 이동 입력을 무시 —
   //    카메라가 정면 고정인데 걸으면 폴짝 모션이 끊기고 구도가 깨진다(2026-09-11 요청)
@@ -6315,8 +6326,11 @@ function updatePlayer(dt, t) {
     if (dd > R) { player.position.x = MIST.x + dx / dd * R; player.position.z = MIST.z + dz / dd * R; }
   } else if (atSea) {
     // 🌊 부두 위만 걷기 — 좌우는 널판 안, 앞뒤는 뭍끝~부두끝(싸움 중 끌려가는 건 updateSea 의 pz 가 제어)
-    player.position.x = Math.max(SEA.x - SEA_DECK_W / 2 + 0.45, Math.min(SEA.x + SEA_DECK_W / 2 - 0.45, player.position.x));
-    player.position.z = Math.max(SEA.z + SEA_EDGE - 0.1, Math.min(SEA.z + SEA_DECK_Z0 - 0.2, player.position.z));
+    if (mudflat.active) clampMudflat(player.position);
+    else {
+      player.position.x = Math.max(SEA.x - SEA_DECK_W / 2 + 0.45, Math.min(SEA.x + SEA_DECK_W / 2 - 0.45, player.position.x));
+      player.position.z = Math.max(SEA.z + SEA_EDGE - 0.1, Math.min(SEA.z + SEA_DECK_Z0 - 0.2, player.position.z));
+    }
   } else if (atOrchard) {  // 🍎 과수원: 원형 언덕 안쪽으로 제한(안개 숲과 같은 문법)
     //   이 분기가 없으면 아래 else 가 원점 반경 42 로 끌어당겨, 입장하자마자 (0,42) 로 튕겨 나간다.
     const R = ORCHARD_HALF - 0.8, dx = player.position.x - ORCHARD.x, dz = player.position.z - ORCHARD.z, dd = Math.hypot(dx, dz);
@@ -6361,7 +6375,7 @@ function updatePlayer(dt, t) {
 
   // 액션 제스처: 도구질 = 백스윙 → 휙 내려침 → 팔로스루 / 맨손 줍기 = 허리를 접었다 편다
   if (actAnim > 0) {
-    actAnim = Math.max(0, actAnim - dt * (actKind === 'pick' ? 3.0 : actKind === 'dig' ? 1 / DIG_ANIM_DUR : 2.4));  // 도구질 ~0.42초 / 줍기 ~0.33초 / 🪏삽질 0.6초
+    actAnim = Math.max(0, actAnim - dt * (actKind === 'pick' ? 3.0 : actKind === 'dig' ? 1 / DIG_ANIM_DUR : actKind === 'homi' ? 1 / HOMI_ANIM_DUR : 2.4));  // 도구질 ~0.42초 / 줍기 ~0.33초 / 🪏삽질 0.6초
     const p = 1 - actAnim;                       // 진행도 0→1
     const s = Math.sin(p * Math.PI);             // 몸 스쿼시용 0→1→0
     // 등에 멘 상태(맨손)면 무엇을 하든 휘두를 게 없다 → 안개숲 등불처럼 kind 를 안 준 곳도 자연스럽게
@@ -6373,6 +6387,25 @@ function updatePlayer(dt, t) {
       playerAnchor.scale.set(1 + s * 0.04, 1 - s * 0.05, 1 + s * 0.04);
       toolGripFade = 0;
       poseHeldTool(toolStow);                    // 도구는 등에 멘 채 몸을 따라 기울 뿐
+    } else if (playerArms && actKind === 'homi') {
+      const eo = q => 1 - (1 - q) * (1 - q);
+      const es = q => q * q * (3 - 2 * q);
+      const seg = (a, b) => Math.max(0, Math.min(1, (p - a) / (b - a)));
+      const lp = (a, b, q) => a + (b - a) * q;
+      const up = eo(seg(0, .3)), hook = es(seg(.3, .5)), pull = es(seg(.5, .8)), k = 1 - es(seg(.8, 1));
+      const Rp = playerArms.R.pivot, Lp = playerArms.L.pivot;
+      const armX = lp(lp(lp(0, -1.15, up), -.75, hook), -.3, pull);
+      Rp.rotation.set(armX * k, .1 * up * k, .1 * k);
+      Lp.rotation.set(armX * .35 * k, 0, -.18 * up * k);
+      playerAnchor.rotation.x = lp(lp(lp(0, -.06, up), .3, hook), .12, pull) * k;
+      playerAnchor.rotation.y = 0;
+      playerAnchor.position.y -= .05 * hook * (1 - pull) * k;
+      playerAnchor.scale.set(1 + .03 * hook * k, 1 - .04 * hook * k, 1 + .03 * hook * k);
+      toolDigDir.set(0, lp(lp(.35, -.55, hook), -.92, pull), lp(lp(.94, .83, hook), .32, pull)).normalize();
+      toolDigK = up * k; armWristK = 0; toolPourTilt = 0; toolGripFade = 0;
+      const hf = heldToolMesh?.userData.face;
+      if (hf) hf.body.rotation.y = hf.rest * (1 - up * k);
+      poseHeldTool(toolStow);
     } else if (playerArms && actKind === 'dig') {
       // ── 🪏 삽질(sims/shovel-sim.html ① "밟아 꽂고 퍼 던지기" 검수) ──
       //   0~.22 양팔 앞으로 뻗어 자루를 세움 → .22~.32 밟아 꽂기(몸이 툭 내려앉음) → .32~.62 젖혀 퍼 올리기(몸 뒤로)
@@ -7216,9 +7249,9 @@ function handleAction() {
   if (nearDoor === 'riverexit') return exitRiver();
   if (nearDoor === 'mist') return enterMist();
   if (nearDoor === 'mistexit') return exitMist();
-  if (nearDoor === 'sea') return enterSea();
+  if (nearDoor === 'sea') return openSeaPick();
   if (nearDoor === 'seaexit') return exitSea();
-  if (atSea) { seaAction(); return; }   // 🌊 바다터: 액션 = 던지기/버티기/감기
+  if (atSea) { (mudflat.active ? mudflatAction : seaAction)(); return; }   // 🌊 바다터: 액션 = 던지기/버티기/감기
   if (atMist) { mistAction(); return; }
   if (atOrchard) return orchardAction();   // 🍎 과수원: 심기·물주기·수확·베기(js/game.js orchardAction)
   if (atRiver) {                  // 🛶 나루터 데크: 배 타기 / 창고 열기
@@ -7814,7 +7847,7 @@ function spawnConfetti(x, y, z) {
 // =============================================================
 // 🪧 간판·좁은 자리용 아이콘만(라벨 없이). RES_LABEL 은 이모지가 붙은 것과 안 붙은 것이 섞여 있어 따로 둔다.
 const RES_ICON = { wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', coins: '🪙' };
-const RES_LABEL = { charcoal: '⚫숯', flour: '🌾밀가루', brick: '🧱벽돌', bread: '🥐빵', juice: '🍷포도즙', apple_jam: '🥫사과잼', roast_chestnut: '🌰군밤', gotgam: '🍡곶감', wood: '목재', seed: '씨앗', crop: '작물', fish: '물고기', coins: '🪙코인', stone: '돌', coal: '석탄', gem: '보석', crystal: '🔮수정', egg: '달걀', bug: '반딧불이', forage: '채집물', star: '⭐별조각', glow: '✨정령빛', fert: '🌱비료', bait: '🪱미끼', candy: '🍬사탕',
+const RES_LABEL = { ...FORAGE_LABEL, charcoal: '⚫숯', flour: '🌾밀가루', brick: '🧱벽돌', bread: '🥐빵', juice: '🍷포도즙', apple_jam: '🥫사과잼', roast_chestnut: '🌰군밤', gotgam: '🍡곶감', wood: '목재', seed: '씨앗', crop: '작물', fish: '물고기', coins: '🪙코인', stone: '돌', coal: '석탄', gem: '보석', crystal: '🔮수정', egg: '달걀', bug: '반딧불이', forage: '채집물', star: '⭐별조각', glow: '✨정령빛', fert: '🌱비료', bait: '🪱미끼', candy: '🍬사탕',
   wheat: '🌾밀', corn: '🌽옥수수', grape: '🍇포도', seed_wheat: '🌾밀 씨앗', seed_corn: '🌽옥수수 씨앗', seed_grape: '🍇포도 씨앗', honey: '🍯꿀',
   apple: '🍎사과', pear: '🍐배', peach: '🍑복숭아', persimmon: '🍊감', chestnut: '🌰밤',
   sap_apple: '🍎사과나무 묘목', sap_pear: '🍐배나무 묘목', sap_peach: '🍑복숭아나무 묘목',
