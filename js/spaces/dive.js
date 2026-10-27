@@ -120,6 +120,7 @@ function finishRun() {
 }
 
 export function enterDive(o = {}) {
+  if (dive.active) return;
   if (!group) buildDive();
   $w.atSea = true;
   dive.active = true;
