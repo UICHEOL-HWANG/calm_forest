@@ -5,7 +5,7 @@ import {
   snapCamera, spawnFloatText, spawnSparkle, trackDiffAbandon, ui, updateStowPose,
 } from '../game.js';
 import { trackEvent } from '../analytics.js';
-import { Sound } from '../sound.js';
+import { Sound, setBGMTheme } from '../sound.js';
 import { sendForageRun } from '../supabase-client.js';
 import { MUDFLAT } from '../data/places.js';
 import { MUDFLAT as MF, MUD_SPECIES, breathPhase, inBreathWindow, mudWindow, summarizeBag, tideFront } from '../forage/logic.js';
@@ -222,6 +222,7 @@ export function enterMudflat(o = {}) {
   $w.atSea = true;
   mudflat.active = true;
   holdShovel(true);
+  setBGMTheme('mudflat');
   ui.setSeaMode?.(true);
   startRun({ entry: o.entry || 'pick', prevMode: o.prevMode ?? null });
   snapCamera(); setSpaceVisible();
@@ -235,6 +236,7 @@ export function leaveMudflat() {
   run = null; ctx = null;
   holdShovel(false);
   ui.setForageHud?.(null);
+  setBGMTheme('main');
   mudflat.active = false;
 }
 

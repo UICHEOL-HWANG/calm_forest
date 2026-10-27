@@ -5,7 +5,7 @@ import {
   snapCamera, spawnFloatText, spawnSparkle, trackDiffAbandon, ui,
 } from '../game.js';
 import { trackEvent } from '../analytics.js';
-import { Sound } from '../sound.js';
+import { Sound, setBGMTheme } from '../sound.js';
 import { sendForageRun } from '../supabase-client.js';
 import { DIVE } from '../data/places.js';
 import { DIVE as DV, DIVE_SPECIES, airNeeded, diveBreath, summarizeBag } from '../forage/logic.js';
@@ -126,6 +126,7 @@ export function enterDive(o = {}) {
   dive.active = true;
   swim.on = true;
   if (heldToolMesh) { prevToolVis = heldToolMesh.visible; heldToolMesh.visible = false; }
+  setBGMTheme('dive');
   ui.setSeaMode?.(true);
   startRun({ entry: o.entry || 'pick', prevMode: o.prevMode ?? null });
   snapCamera(); setSpaceVisible();
@@ -145,6 +146,7 @@ export function leaveDive() {
   if (heldToolMesh) heldToolMesh.visible = prevToolVis;
   player.position.y = 0;
   ui.setForageHud?.(null);
+  setBGMTheme('main');
   dive.active = false;
 }
 
