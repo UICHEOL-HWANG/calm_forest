@@ -346,10 +346,10 @@ function closeKeeperTalk(via) {
   if (done.gift && done.i + 1 >= done.lines.length) giveSnowSled();
 }
 
-function talkKeeper() {
+function talkKeeper(via = 'action') {
   if (talk) {
     if (talk.i + 1 < talk.lines.length) { talk = { ...talk, i: talk.i + 1 }; keeperShow(); return; }
-    return closeKeeperTalk('action');
+    return closeKeeperTalk(via);
   }
   const stage = keeperStage(gameState);
   const gift = stage === 'thanks' && !(gameState.mountain?.hut?.sleds || []).includes('worldtree');
@@ -360,7 +360,7 @@ function talkKeeper() {
     keeperBubble?.arrive('idle');
   }
   keeperShow();
-  onTalkTap(() => talkKeeper());
+  onTalkTap(() => talkKeeper('tap'));
   trackEvent('keeper_talk_open', { stage });
 }
 

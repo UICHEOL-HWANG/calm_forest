@@ -47,6 +47,7 @@ test('자막: 승인 문구 그대로 · 엠대시 없음 · 영어 사전에 �
     'farm:habitat': ['🌾 밭의 가지', '닭장에 다시 활기가 돌아요'],
     'kitchen:habitat': ['🍳 부엌의 가지', '부엌에 불이 켜졌어요'],
     'forest:habitat': ['🌲 숲의 가지', '숲길이 다시 열렸어요'],
+    'snow:habitat': ['❄️ 눈의 가지', '정상 산장에 불이 켜졌어요'],
     'mine:habitat': ['⛏️ 광산의 가지', '동굴에 빛이 돌아왔어요'],
   };
   const en = read('js/i18n-en.js');

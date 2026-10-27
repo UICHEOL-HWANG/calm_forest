@@ -36,6 +36,9 @@ Last Updated: 2026-10-28 (KST)
 ## 배포 체크리스트 (실행 전)
 1. 배포 직전에 `sql/migrations/migrate_sled_worldtree.sql` 을 pooler 로 직접 실행한다. `sled_runs` 테이블의 `sled_runs_sled` 제약에 `worldtree` 를 넣는 마이그레이션이다. 이 전에 나가면 세계수 썰매 기록이 거절된다.
 2. 웹·토스·Play·iOS·itch 를 **동시에** 배포한다. 이유: 옛 클라이언트의 `restoreTree` 는 모르는 `snow` 가지를 버리고, 설산 `save.js` 는 모르는 `worldtree` 썰매를 세이브에서 지운다. 옛 클라이언트는 `story.v` 를 몰라 장 번호를 옛 표로 읽는다. 한 곳만 먼저 나가면 그 사이 세이브가 깨진다.
+   - 옛 클라이언트가 더 지우는 것: `treeBloom.branches.snow`(개화 단계·돌봄·본 손님), 어느 가지든 판에 놓인 ☃️ 눈사람 타일, 장착한 `worldtree` 썰매(기본 썰매로 돌아간다).
+   - 장 번호 어긋남은 `story.at`(현재 장 id) 가드가 바로잡는다. 옛 클라이언트가 올린 `ch` 가 `at` 과 맞지 않으면 접속 때 옛 8장 표 기준으로 읽어 9장 표 위치로 옮기고 `story_migrated` 를 찍는다.
+   - 출시 순서: 토스·iOS·Play 를 먼저 심사에 제출하고, 웹과 itch 는 셋 다 승인될 때까지 보류한 뒤 한꺼번에 낸다. 업데이트하지 않는 유저는 옛 JS 를 계속 쓴다. 감수하는 위험이며 `story.at` 가드로 완화한다.
 3. 토스 출시 후 `notices_admin.html` 로 공지를 쓴다.
 4. 열린 확인 사항
    - 실기기에서 눈의 가지 잎이 게임 조명 아래 회색이 아니라 흰색으로 보이는지 확인한다.

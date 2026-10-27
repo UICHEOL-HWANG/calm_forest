@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { STORY, storyFor, SNOW_CHAPTER } from '../js/story/chapters.js';
-import { chapterDone, chapterProgress, migrateStory, STORY_V } from '../js/story/rules.js';
+import { chapterDone, chapterProgress, migrateStory, remapStory, STORY_V } from '../js/story/rules.js';
 
 const snowDone = { tree: { branches: { snow: { habitat: true } } } };
 
@@ -55,8 +55,9 @@ test('migrateStory: 더 높은 저장 버전은 낮추지 않는다', () => {
 test('game.js: 새 세이브 story.v · 복원 때 migrateStory · 이전 이벤트 · 토스트 장 번호', () => {
   const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
   assert.match(src, /story: \{ ch: 0, q: 0, started: \{\}, v: STORY_V \}/);
-  assert.match(src, /migrateStory\(\{ ch: 0, q: 0, started: \{\}, \.\.\.saved\.story \}\)/);
-  assert.match(src, /trackEvent\('story_migrated', \{ from: mig\.from, to: mig\.to \}\)/);
+  assert.match(src, /migrateStory\(\{ ch: 0, q: 0, started: \{\}, \.\.\.saved\.story \}, STORY_IDS\)/);
+  assert.match(src, /remapStory\(mig\.story, STORY_IDS\)/);
+  assert.match(src, /trackEvent\('story_migrated', \{ from: mig\.from, to: fix\.to \}\)/);
   assert.match(src, /st\.ch === 4 \|\| st\.ch === 8/);
 });
 
@@ -74,4 +75,76 @@ test('안내서: 9장 목록과 "이야기 N장 뒤" 해금 숫자가 코드와 
   assert.match(en, /Ch\. 9 Neighboring Forests/);
   assert.equal((en.match(/after story chapter 7/gi) || []).length, 2);
   assert.equal((en.match(/after story chapter 8/gi) || []).length, 2);
+});
+
+const IDS = STORY.map(c => c.id);
+
+test('remapStory: 새 클라이언트 세이브(at 일치)는 그대로다', () => {
+  const src = { ch: 4, q: 1, v: 2, at: 'snowbranch', started: {} };
+  const out = remapStory(src, IDS);
+  assert.deepEqual(out, { story: src, from: 4, to: 4 });
+});
+
+test('remapStory: 옛 클라이언트가 8장 표로 ch 를 올렸으면 9장 표 위치로 옮기고 at 을 갱신한다', () => {
+  const out = remapStory({ ch: 5, v: 2, at: 'snowbranch', started: { home: 1 } }, IDS);
+  assert.equal(out.from, 5);
+  assert.equal(out.to, IDS.indexOf('memory'));
+  assert.equal(out.story.ch, 6);
+  assert.equal(out.story.at, 'memory');
+  assert.deepEqual(out.story.started, { home: 1 });
+  assert.equal(remapStory(out.story, IDS).story.ch, 6);
+});
+
+test('remapStory: 옛 클라이언트가 8장을 모두 끝냈으면 끝(done)으로 옮긴다', () => {
+  const out = remapStory({ ch: 8, v: 2, at: 'living' }, IDS);
+  assert.equal(out.to, IDS.length);
+  assert.equal(out.story.ch, 9);
+  assert.equal(out.story.at, 'done');
+  assert.equal(remapStory(out.story, IDS).story.ch, 9);
+});
+
+test('remapStory: at 이 없으면 건드리지 않는다, 낮은 버전도 건드리지 않는다', () => {
+  const noAt = { ch: 5, v: 2, started: {} };
+  assert.deepEqual(remapStory(noAt, IDS), { story: noAt, from: 5, to: 5 });
+  const old = { ch: 5, v: 1, at: 'snowbranch' };
+  assert.deepEqual(remapStory(old, IDS), { story: old, from: 5, to: 5 });
+});
+
+test('migrateStory: ids 를 주면 at 을 채우고, 안 주면 채우지 않는다', () => {
+  assert.equal(migrateStory({ ch: 5 }, IDS).story.at, 'memory');
+  assert.equal(migrateStory({ ch: 4 }, IDS).story.at, 'snowbranch');
+  assert.equal(migrateStory({ ch: 8 }, IDS).story.at, 'done');
+  assert.equal(migrateStory({ ch: 5 }).story.at, undefined);
+  const keep = { ch: 4, v: 2, at: 'snowbranch' };
+  assert.equal(migrateStory(keep, IDS).story.at, 'snowbranch');
+});
+
+test('remapStory·migrateStory: 입력 객체를 바꾸지 않는다', () => {
+  const a = Object.freeze({ ch: 5, v: 2, at: 'snowbranch', started: Object.freeze({}) });
+  remapStory(a, IDS);
+  const b = Object.freeze({ ch: 5, started: Object.freeze({}) });
+  migrateStory(b, IDS);
+  assert.equal(a.ch, 5);
+  assert.equal(b.ch, 5);
+});
+
+test('game.js syncStory: 끝에서 story.at 을 현재 장 id 로 맞춘다', () => {
+  const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  const i = src.indexOf('function syncStory(');
+  const fn = src.slice(i, src.indexOf('\n}', i));
+  assert.match(fn, /st\.at = STORY\[st\.ch\]\?\.id \?\? 'done'/);
+});
+
+test('세계수: 빈터가 완성되면 연출 뒤 syncStory("tree_habitat") 로 5장을 끝낸다', () => {
+  const src = readFileSync(new URL('../js/spaces/world-tree.js', import.meta.url), 'utf8');
+  assert.match(src, /setTimeout\(\(\) => syncStory\('tree_habitat'\), 2200\)/);
+  assert.match(src, /import \{[^}]*\bsyncStory\b[^}]*\} from '\.\.\/game\.js'/);
+});
+
+test('프롤로그 세계수는 눈 가지 없이 예전 모습 그대로다', () => {
+  const src = readFileSync(new URL('../js/spaces/prologue-set.js', import.meta.url), 'utf8');
+  assert.match(src, /const LIMBS_OPENING = Object\.fromEntries\(Object\.entries\(LIMBS\)\.filter\(\(\[id\]\) => id !== 'snow'\)\)/);
+  assert.match(src, /buildTreeArt\(THREE, \{[^}]*limbs: LIMBS_OPENING/);
+  assert.match(src, /Object\.keys\(LIMBS_OPENING\)/);
+  assert.doesNotMatch(src, /Object\.keys\(LIMBS\)/);
 });

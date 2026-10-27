@@ -33,11 +33,23 @@ STORY_RULES.snowbranch = gated(STORY_RULES.snowbranchBase, ['water', 'farm', 'ki
 export const STORY_V = 2;
 const INSERTED_AT = 4;
 
-export function migrateStory(story) {
+const SNOW_ID = 'snowbranch';
+const atOf = (ids, ch) => ids[ch] ?? 'done';
+
+export function migrateStory(story, ids) {
   const from = num(story?.ch);
   if (num(story?.v) >= STORY_V) return { story: { ...story, v: Math.max(num(story.v), STORY_V) }, from, to: from };
   const to = from > INSERTED_AT ? from + 1 : from;
-  return { story: { ...story, ch: to, v: STORY_V }, from, to };
+  return { story: { ...story, ch: to, v: STORY_V, ...(ids ? { at: atOf(ids, to) } : {}) }, from, to };
+}
+
+export function remapStory(story, ids) {
+  const ch = num(story?.ch);
+  const same = { story, from: ch, to: ch };
+  if (num(story?.v) < STORY_V || typeof story?.at !== 'string' || story.at === atOf(ids, ch)) return same;
+  const oldId = ids.filter(id => id !== SNOW_ID)[ch];
+  const to = oldId ? ids.indexOf(oldId) : ids.length;
+  return { story: { ...story, ch: to, at: atOf(ids, to) }, from: ch, to };
 }
 
 /**

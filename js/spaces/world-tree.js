@@ -11,7 +11,7 @@
 import {
   Input, camera, cameraFree, defaultCamPose, setCameraRig, dist2D, gameState, giveReward, isOpen, obstacles, player, refreshInventoryUI, requestSave,
   habitatCtx, rewardText, scene, solidCircle, spawnConfetti, spawnSparkle, syncUnlocks, todayStr, ui, unlocksOn,
-  holdPlaceReveal, keepPlaceReveal, releasePlaceReveal, startReturnWalk,
+  holdPlaceReveal, keepPlaceReveal, releasePlaceReveal, startReturnWalk, syncStory,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다
 import { trackEvent } from '../analytics.js';
 import { Sound } from '../sound.js';
@@ -365,6 +365,7 @@ function handleEvents(events, prev) {
       ui.toast?.(`${def.ico} ${def.name}에 잎이 돋았어요!`, 2600);
       trackEvent('tree_branch_habitat', { branch: e.branch, life: lifePercent(gameState.tree) });
       sparkle();
+      setTimeout(() => syncStory('tree_habitat'), 2200);
       closeLater = queueTreeShot('habitat', e.branch, prev) || closeLater;   // 🎬 귀환 모달보다 먼저 줄 선다(queueStoryModal 이 기다린다)
       const before = isOpen(def.npc);
       syncUnlocks(false);   // 🔓 기존 귀환 연출(걸어 들어오기 + 모달)

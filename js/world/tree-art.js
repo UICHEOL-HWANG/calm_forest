@@ -22,7 +22,7 @@ const SNOW_LEAF = { under: 0xdde6ee, mid: 0xf2f6fa, top: 0xffffff };
 const CROWN = { under: 0x39a780, mid: 0x60c468, top: 0xb0e683 };
 const BLOOM = { petal: 0xffe0ea, inner: 0xf7a6c2, heart: 0xffd76a };
 
-// ── 가지(판 가지 5개 ↔ 나무 굵은 가지 5개, 72° 간격). 카메라가 남쪽(+z)에서 내려다보므로 뒤쪽 가지를 조금 높게 ──
+// ── 가지(판 가지 6개 ↔ 나무 굵은 가지 6개, 5개는 72° 간격 + 눈 가지). 카메라가 남쪽(+z)에서 내려다보므로 뒤쪽 가지를 조금 높게 ──
 export const LIMBS = {
   water:   { dir: [-0.588, 0.809],  h: 4.3, len: 5.6 },
   farm:    { dir: [0.588, 0.809],   h: 4.6, len: 5.8 },

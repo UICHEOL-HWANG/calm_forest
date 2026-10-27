@@ -21,6 +21,9 @@ test('mountain: 대화·선물·트래킹·말풍선 모드가 배선돼 있다'
   assert.match(src, /if \(nearDoor === 'keepertalk'\) return talkKeeper\(\);/);
   assert.match(src, /trackEvent\('keeper_talk_open', \{ stage \}\)/);
   assert.match(src, /trackEvent\('keeper_talk_close', \{ stage: done\.stage, via, lines_seen: done\.i \+ 1 \}\)/);
+  assert.match(src, /function talkKeeper\(via = 'action'\)/);
+  assert.match(src, /return closeKeeperTalk\(via\);/);
+  assert.match(src, /onTalkTap\(\(\) => talkKeeper\('tap'\)\)/);
   assert.match(src, /trackEvent\('keeper_gift', \{ item_id: 'worldtree' \}\)/);
   assert.match(src, /keeperBubble\?\.arrive\(keeperWantsTalk\(gameState\) \? 'quest' : 'idle'\)/);
 });

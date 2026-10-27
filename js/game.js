@@ -149,7 +149,7 @@ import {
 import {
   DEX, DEX_TOTAL, BADGES, STORY, NICK_ADJS, DAILY_COINS,
 } from './data/dex.js';
-import { pendingChapters, buildStoryView, hoursSince, storyReworld, migrateStory, STORY_V } from './story/rules.js';   // 📖 장 판정·뷰(순수, Node 테스트)
+import { pendingChapters, buildStoryView, hoursSince, storyReworld, migrateStory, remapStory, STORY_V } from './story/rules.js';   // 📖 장 판정·뷰(순수, Node 테스트)
 import { storyFor } from './story/chapters.js';   // 📖 해금 켜짐(새 세이브)이면 1·2장 문구·규칙이 바뀐다
 import {
   _dgUp, _dgQ, _dgW, _dgPQ, _dgP, _dgS, _axX, ARM_AIM_R, ARM_AIM_L, SLASH, WRIST_MAX, TOOL_QREST, TOOL_QSWING, TOOL_QREST_WING,
@@ -1104,7 +1104,7 @@ const gameState = {
   plaza: plazaDefault(),               // 🌾 수확제 광장 { lastStage, claimed, invited, converted, seen }
   neighbors: neighborsDefault(),       // 🏡 이웃 마을 { visited: 다녀온 횟수(📖 9장), seenAt: 다녀간 이웃 알림을 마지막으로 확인한 시각(ms) }
   unlocks: defaultUnlocks(),           // 🔓 마을 해금 { v, legacy, flags } — 새 세이브만 legacy:false. 판정은 js/world/unlocks.js(저장 안 하고 계산)
-  tree: defaultTree(),                 // 🌳 세계수 판 { v, branches: { water|farm|kitchen|forest: { tiles, given, habitat, bundles } } } — js/world/tree-board.js
+  tree: defaultTree(),                 // 🌳 세계수 판 { v, branches: { water|farm|kitchen|forest|snow: { tiles, given, habitat, bundles } } } — js/world/tree-board.js
   treeBloom: defaultBloom(),
   nickname: null,                      // 🏷️ 리더보드 표시명(2~16자) — 신규는 캐릭터 선택 때, 기존 유저는 접속 시 자동 부여
 };
@@ -1146,7 +1146,7 @@ function noteSpecialExhibit(cat, id) {
   ui.toast?.(`🏛️ 박물관 특별 전시! ${def.ico} ${def.name}`, 2800);
   trackEvent('museum_special', { exhibit: def.id, cat, entry: id });   // [GA4] 조건부 전시 획득(날씨별 도달)
   requestSave();
-  setTimeout(() => syncStory('special'), 2200);   // 📖 6장 — 잡은 물고기·수확 연출이 먼저 지나가고 나서(4장 정화와 같은 간격)
+  setTimeout(() => syncStory('special'), 2200);   // 📖 7장 — 잡은 물고기·수확 연출이 먼저 지나가고 나서(4장 정화와 같은 간격)
 }
 
 // ── 🏅 업적 배지 — 도감 모달 하단에 전시. 달성 시 1회 기념 보상 ──
@@ -1187,6 +1187,7 @@ function syncBadges() {
 
 // ═══════════════ 📖 메인 퀘스트(이야기) — 기존 콘텐츠를 챕터로 묶는 서사 축 ═══════════════
 
+const STORY_IDS = STORY.map(c => c.id);
 let storyBooted = false;   // 첫 syncStory(세이브 소급)는 조용히, 이후엔 축하 연출
 
 // 장 판정·뷰는 js/story/rules.js(순수) — 여기는 gameState 를 넘기는 얇은 층
@@ -1225,6 +1226,7 @@ function syncStory(trigger = '') {
     st.started[cur.id] = Date.now();   // 시각 — 완료 때 hours_since_start 를 잰다(옛 세이브의 1 도 참이라 판정은 그대로)
     trackEvent('story_chapter_start', { chapter: cur.id, n: st.ch + 1, via: storyBooted ? 'live' : 'boot' });   // [GA4] boot = 접속 소급으로 열림(기존 완료자에게 새 장)
   }
+  st.at = STORY[st.ch]?.id ?? 'done';
   if (retro) ui.toast?.(`📖 지난 이야기 ${st.ch}장까지의 기록이 정리됐어요 (+보상)`, 3000);
   ui.setStory?.(storyView());
   syncUnlocks();   // 🔓 7·8장 완료로 천문대·이웃 마을이 돌아온다
@@ -2945,9 +2947,10 @@ function applySave(saved) {
   }
   if (saved.workshop) gameState.workshop = { carved: saved.workshop.carved || 0, carvedToday: saved.workshop.carvedToday || 0, best: { ...(saved.workshop.best || {}) }, tiers: { ...(saved.workshop.tiers || {}) }, date: saved.workshop.date || null, done: [...(saved.workshop.done || [])] }; // 🗿 조각 공방 기록 복원
   if (saved.story) {   // 📖 메인 퀘스트 진행 복원
-    const mig = migrateStory({ ch: 0, q: 0, started: {}, ...saved.story });
-    gameState.story = mig.story;
-    if (mig.from !== mig.to) trackEvent('story_migrated', { from: mig.from, to: mig.to });
+    const mig = migrateStory({ ch: 0, q: 0, started: {}, ...saved.story }, STORY_IDS);
+    const fix = remapStory(mig.story, STORY_IDS);
+    gameState.story = fix.story;
+    if (mig.from !== fix.to) trackEvent('story_migrated', { from: mig.from, to: fix.to });
   }
   if (saved.nickname) gameState.nickname = saved.nickname;                          // 🏷️ 닉네임 복원
   else if (saved.npcs) gameState.story.q = Object.values(gameState.npcs).reduce((a, n) => a + (n.idx || 0), 0); // 옛 세이브: 의뢰 수 소급 추정
@@ -5063,7 +5066,7 @@ function surveyOfficeInteract() {
   const afterCells = farmCellCount(farmHalf()), afterWorkers = workerCap();
   setTimeout(() => ui.showHintModal?.({ ico: next.ico, title: next.name + ' 완성!', body:
     `🌱 심을 수 있는 칸 ${beforeCells} → ${afterCells}칸\n🧑‍🌾 일꾼 ${beforeWorkers} → ${afterWorkers}명\n심어둔 밭과 시설은 그대로예요`,
-    ok: { onClick: () => syncStory('farm_expand') } }), SURVEY_HOLD * 1000);   // 📖 5장 — 증축 안내를 닫은 뒤(모달은 하나만 뜬다)
+    ok: { onClick: () => syncStory('farm_expand') } }), SURVEY_HOLD * 1000);   // 📖 6장 — 증축 안내를 닫은 뒤(모달은 하나만 뜬다)
   trackEvent('farm_expand', { stage: next.stage, wood: next.cost.wood, stone: next.cost.stone, coins: next.cost.coins });   // [GA4] 증축 퍼널(집 house_expand 와 같은 축: stage)
   nearDoor = null; ui.setDoorPrompt?.(null);               // 측량소가 새 울타리 밖으로 옮겨갔다 — 옛 프롬프트를 지우고 다음 프레임에 다시 판정
   requestSave();
