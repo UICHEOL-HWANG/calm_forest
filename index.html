@@ -4346,6 +4346,7 @@
         $('forage-fill').style.width = `${Math.max(0, Math.min(100, d.left / d.total * 100))}%`;
         $('forage-fill').classList.toggle('late', !!d.late);
         $('forage-count').textContent = d.count;
+        el.querySelector('.fh-lbl').textContent = d.label || '🌊 밀물까지';
       },
       openSeaPick(o) {
         const m = $('sea-pick-modal'), box = $('sea-pick-cards');

@@ -101,7 +101,7 @@ test('notices fire once when crossing 60 for the first time and when crossing 80
 
 test('wiring: walking speed, hut event, drink, HUD and copy', () => {
   const game = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
-  assert.match(game, /const speed = 6 \* \(buffOn\('speed'\) \? 1\.4 : 1\) \* mountainSpeedMult\(\) \* mudflatSpeedMult\(\);/);
+  assert.match(game, /const speed = 6 \* \(buffOn\('speed'\) \? 1\.4 : 1\) \* mountainSpeedMult\(\) \* mudflatSpeedMult\(\) \* diveSpeedMult\(\);/);
   const m = readFileSync(new URL('../js/spaces/mountain.js', import.meta.url), 'utf8');
   assert.match(m, /trackEvent\('mountain_hut', \{ run_id: run\.runId, climb_ms: run\.climbMs, acorns: run\.taken\.filter\(Boolean\)\.length, cold: Math\.round\(cold\.v\) \}\)/);
   assert.match(m, /function onDrink\(\) \{ cold = drinkWarm\(cold\); \}/);

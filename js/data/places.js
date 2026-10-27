@@ -272,6 +272,7 @@ export const SEA_COVE = { x: SEA_GATE.x + 9.5, z: SEA_GATE.z - 9, r: 12 };  // �
 
 export const SEA = new THREE.Vector3(400, 0, 0);             // 바다 인스턴스 — 다른 공간이 전부 x=0 축이라 동쪽으로 뺌
 export const MUDFLAT = new THREE.Vector3(400, 0, 300);
+export const DIVE = new THREE.Vector3(400, 0, -300);
 
 export const ORCHARD_GATE = new THREE.Vector3(33, 0, 7);   // 🍎 마을 동쪽 — 여덟 방향 중 유일하게 빈 자리(스펙 §1).
 //   (32,2) 였을 때 울타리 왼날개 끝(25.5,−0.9)이 🌾수확제 광장(23,−4·반경 5)·좌판(25.4,−1)에 박혀 남동으로 옮겼다(2026-10-09).

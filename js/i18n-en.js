@@ -382,6 +382,8 @@ export const EN = {
   // 가공물
   '숯': 'Charcoal', '밀가루': 'Flour', '벽돌': 'Brick',
   '⚫숯': '⚫Charcoal', '🌾밀가루': '🌾Flour', '🧱벽돌': '🧱Brick',
+  '잠수를 마쳤어요': 'Done diving', '망태기에 {0#}개를 담았어요': 'You filled your net bag with {0}', '다음엔 꼭 주워 와요': 'Better luck next dive',
+  '🤿 잠수': '🤿 Dive', '✋ 줍기': '✋ Grab', '⬆️ 떠오르기': '⬆️ Surface', '🤿 잠수해서 바닥의 보물을 주워요': '🤿 Dive down and grab treasures from the sea floor', '🫧 숨 · {0#}/{1#}': '🫧 Air · {0}/{1}',
   '대장간 호미': 'Smithy Homi', '길쭉 자루 호미': 'Long-Handle Homi', '눈 밝은 호미': 'Keen-Eye Homi', '손 닿는 거리가 늘어나요': 'Reach a little farther', '낙지 구멍이 반짝여요': 'Octopus holes sparkle',
   '긴 자루': 'Long Handle', '눈썰미': 'Keen Eye', '헛손질 한 번': 'One Spare Miss', '가벼운 발': 'Light Feet', '갯벌에서 조금 더 빨리 걸어요': 'Walk a little faster on the mudflat', '조금 멀리서도 캘 수 있어요': 'Dig from a little farther away', '구멍이 한 번 더 버텨요': 'Holes hold on one more miss',
   '각인 끼우기': 'Engrave', '기본으로 들어 있어요: {0}': 'Built in: {0}', '다음 호미에서 열려요': 'Opens with the next homi', '각인을 골라 주세요': 'Pick an engraving',

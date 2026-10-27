@@ -18,6 +18,7 @@ import { SEA, SEA_COVE, SEA_DECK_W, SEA_DECK_Z0, SEA_DECK_Z1, SEA_EDGE, SEA_GATE
 import { bestAfterCatch } from '../museum.js';
 import { pickSeaTarget } from '../sea-aim.js';
 import { mudflat, updateMudflat, mudflatCamera, leaveMudflat } from './mudflat.js';
+import { dive, updateDive, diveCamera, leaveDive } from './dive.js';
 import {
   SEA_PAT, RING_GAIN, RING_GOOD, RING_LEAD, RING_PERFECT, rollPhaseLen, scheduleRings, judgeRing,
   CAST_REL, CAST_END, CAST_FLIGHT, castPose, pumpPose, PUMP_IDLE, buoyFlight, createRope, resetRope, stepRope, rodBendAxis,
@@ -310,6 +311,7 @@ export function enterSea() {
 
 export function exitSea() {
   leaveMudflat();
+  leaveDive();
   seaReset();
   seaHoldRod(false);           // 릴대 반납 — 마을 도구로 복귀
   ui.setSeaMode?.(false);
@@ -514,6 +516,7 @@ export let _seaHudT = 0;
 export function updateSea(dt, t) {
   if (!atSea || !seaGroup) return;
   if (mudflat.active) return updateMudflat(dt, t);
+  if (dive.active) return updateDive(dt, t);
   // 배회 물고기 — 방향을 천천히 트는 유영 + 분리 + 부두 회피 + 소란 회피
   seaFishes.forEach((p, pi) => {
     p.tTurn -= dt;
@@ -766,6 +769,7 @@ const _seaCamPos = new THREE.Vector3(), _seaCamLook = new THREE.Vector3();
 
 export function seaCamera(camera, look, dt) {
   if (mudflat.active) return mudflatCamera(camera, look, dt);
+  if (dive.active) return diveCamera(camera, look, dt);
   const st = seaMG.st, tall = camera.aspect < 1, low = !tall && innerHeight < 500, fov = tall ? 66 : 42, k = tall ? 1.3 : low ? 1.55 : 1, lat = tall ? 0.4 : 1;
   if (camera.fov !== fov) { camera.fov = fov; camera.updateProjectionMatrix(); }
   const px = player.position.x, pz = player.position.z;

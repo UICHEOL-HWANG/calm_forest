@@ -136,7 +136,7 @@ import {
   FOREST_LOGS, FOREST_LOG_R, FOREST_LOG_SPOTS, FORAGE_RESPAWN, FORAGE_KINDS, DOCK_GATE, DOCK_POND, DOCK_POND_R, RIVER,
   RIVER_DOCK_HALF, RIVER_W, RIVER_LEN, BOAT_RUNS_PER_DAY, BOAT_LAMPS, BOAT_BASE_SPEED, BOAT_BOOST_CD, RIVER_OBS, RIVER_PICKS,
   BOAT_UPGRADES, SHOP_POS, SHOP_DOOR, MIST_GATE, MIST, MIST_HALF, MIST_WAVES, TREE_LIGHT_MAX, MIST_DRAIN, SOOTHE_GLOW,
-  PURIFY_GLOW, SPIRITS, MIST_LANTERN_POS, LANTERN_CALM_R, MIST_PRACTICE_STEPS, SEA_GATE, SEA_COVE, SEA, MUDFLAT, ORCHARD_GATE,
+  PURIFY_GLOW, SPIRITS, MIST_LANTERN_POS, LANTERN_CALM_R, MIST_PRACTICE_STEPS, SEA_GATE, SEA_COVE, SEA, MUDFLAT, DIVE, ORCHARD_GATE,
   ORCHARD_PROMPT_R, ORCHARD, ORCHARD_HALF, SEA_DECK_W, SEA_DECK_Z0, SEA_DECK_Z1, SEA_EDGE, SEA_SPECIES, ROOF_COLORS,
   WALL_COLORS, DOOR_COLORS, PART_NAME, HOUSE_POS, NEIGHBOR, NEIGHBOR_R, NEIGHBOR_GATE, DELVE,
 } from './data/places.js';
@@ -188,8 +188,10 @@ import {
 } from './spaces/sea.js';   // 📦 🌊 바다터 — 대형 낚시 (docs/design/SEA_FISHING_PLAN.md · 프로토타입 sims/sea-sim.html)
 import { openSeaPick } from './spaces/sea-pick.js';
 import { mudflat, mudflatAction, mudflatSpeedMult, clampMudflat, enterMudflat, mudflatDebug, setMudflatCam } from './spaces/mudflat.js';
+import { dive, diveAction, diveSpeedMult, clampDive, enterDive, diveAtmosphere, diveDebug } from './spaces/dive.js';
 import { HOMI_ANIM_DUR } from './forage/hoe-art.js';
 import { homiState } from './forage/homi.js';
+import { applySwimPose, swim } from './forage/swim-pose.js';
 import { keepOnGateWalks, updateGateCues, updateGateWalks } from './spaces/gate-cue.js';
 import { clampToLandmark, clampToMountain, maybeRevealMountain, mountainAction, mountainLookFrame, mountainMinimapMarks, mountainReturnPos, sledActive, cafeDrinking, spawnMountainGate, updateMountain, mountainSpeedMult } from './spaces/mountain.js';
 import { applyObservatoryLight, clampToObservatory, observatoryAction, observatoryCamFocus, observatoryLensOpen, observatoryMinimapMarks, spawnObservatoryGate, updateObservatory, updateObservatoryStairs } from './spaces/observatory.js';   // 📦 🔭 천문대 — 별자리 리듬 실내 공간
@@ -2714,6 +2716,8 @@ export async function enterGame() {
   if (_wq.get('mist') === '1') setTimeout(() => enterMist(), 60);
   if (_wq.get('sea') === '1') setTimeout(() => enterSea(), 60);
   if (_wq.get('mudflat') === '1') setTimeout(() => enterMudflat({ entry: 'pick' }), 60);
+  if (_wq.get('dive') === '1') setTimeout(() => enterDive({ entry: 'pick' }), 60);
+  if (_wq.get('divedebug') === '1') window.__dive = diveDebug;
   if (_wq.get('mudflatdebug') === '1') { window.__mudflat = mudflatDebug; window.__mudflatCam = setMudflatCam; }   // 테스트: ?sea=1 — 바다터 바로 입장
   if (_wq.get('seadebug') === '1') window.__sea = { mg: seaMG, action: seaAction };   // 테스트: 상태 점검용(연출 검수)
   mode = 'play';
@@ -4705,7 +4709,7 @@ function refreshHeldTool(cos = gameState.cosmetics) {
 
 function setHeldTool(id) {
   if (!handAnchor) return;
-  if (atSea && (seaRodMesh || mudflat.active)) return;   // 🌊 바다터에선 릴대 고정 — 숫자키 도구 전환을 무시(팔레트도 숨김)
+  if (atSea && (seaRodMesh || mudflat.active || dive.active)) return;   // 🌊 바다터에선 릴대 고정 — 숫자키 도구 전환을 무시(팔레트도 숨김)
   if (heldToolMesh) { handAnchor.remove(heldToolMesh); disposeTree(heldToolMesh); }   // clayMat 은 캐시가 없다 — 안 버리면 도구를 바꿀 때마다 샌다
   heldToolId = id;
   heldToolMesh = toolMesh(id, tierOf(id, gameState), toolSkinOf(gameState.cosmetics));   // 지금 등급·테마로 — 업그레이드를 샀거나 세트를 입었으면 모습이 다르다
@@ -6098,9 +6102,9 @@ function animate() {
       } else if (place === 'mine' && delveFloorNow() > 0) {
         md.cx = DELVE.x; md.cz = DELVE.z; md.half = DELVE_HALF; md.marks = delveMinimapMarks();
       } else if (place !== 'village') {   // 서브 공간: 중심·반경·랜드마크를 함께 전달
-        const C = place === 'house' ? INT : place === 'farm' ? { x: FARM.x - YARD_D / 2, z: FARM.z } : place === 'cafe' ? CAFE : place === 'observatory' ? OBSERVATORY : place === 'mountain' ? MOUNTAIN : place === 'neighbor' ? (neighborIndoorFrame()?.c ?? NEIGHBOR) : place === 'river' ? RIVER : place === 'mist' ? MIST : place === 'sea' ? (mudflat.active ? MUDFLAT : SEA) : place === 'museum' ? MUSEUM : place === 'orchard' ? ORCHARD : MINE;
+        const C = place === 'house' ? INT : place === 'farm' ? { x: FARM.x - YARD_D / 2, z: FARM.z } : place === 'cafe' ? CAFE : place === 'observatory' ? OBSERVATORY : place === 'mountain' ? MOUNTAIN : place === 'neighbor' ? (neighborIndoorFrame()?.c ?? NEIGHBOR) : place === 'river' ? RIVER : place === 'mist' ? MIST : place === 'sea' ? (mudflat.active ? MUDFLAT : dive.active ? DIVE : SEA) : place === 'museum' ? MUSEUM : place === 'orchard' ? ORCHARD : MINE;
         md.cx = C.x; md.cz = C.z;
-        md.half = place === 'house' ? curHalf() : place === 'farm' ? farmHalf() + YARD_D / 2 : place === 'cafe' ? CAFE_HALF : place === 'observatory' ? OBSERVATORY_R : place === 'mountain' ? MOUNTAIN_R : place === 'neighbor' ? (neighborIndoorFrame()?.half ?? NEIGHBOR_R) : place === 'river' ? RIVER_DOCK_HALF : place === 'mist' ? MIST_HALF : place === 'sea' ? (mudflat.active ? 16 : 14) : place === 'museum' ? Math.max(museumDims().hw, museumDims().hd) : place === 'orchard' ? ORCHARD_HALF : MINE_HALF;
+        md.half = place === 'house' ? curHalf() : place === 'farm' ? farmHalf() + YARD_D / 2 : place === 'cafe' ? CAFE_HALF : place === 'observatory' ? OBSERVATORY_R : place === 'mountain' ? MOUNTAIN_R : place === 'neighbor' ? (neighborIndoorFrame()?.half ?? NEIGHBOR_R) : place === 'river' ? RIVER_DOCK_HALF : place === 'mist' ? MIST_HALF : place === 'sea' ? (mudflat.active || dive.active ? 16 : 14) : place === 'museum' ? Math.max(museumDims().hw, museumDims().hd) : place === 'orchard' ? ORCHARD_HALF : MINE_HALF;
         // 🛶 런 중엔 배를 중심으로 앞뒤를 보는 레이더(고정 데크 지도 대신)
         if (place === 'river' && boat.active) { md.cx = player.position.x; md.cz = player.position.z - 14; md.half = 22; }
         md.marks = minimapMarks(place);
@@ -6246,7 +6250,7 @@ function updatePlayer(dt, t) {
     charGroup?.userData.skinTick?.(t);             // 🌿 정령 반딧불은 계속 떠다닌다
     return updateBoatRun(dt, t);
   }
-  const speed = 6 * (buffOn('speed') ? 1.4 : 1) * mountainSpeedMult() * mudflatSpeedMult();   // 🥘 채소죽 버프: 이동속도 +40%
+  const speed = 6 * (buffOn('speed') ? 1.4 : 1) * mountainSpeedMult() * mudflatSpeedMult() * diveSpeedMult();   // 🥘 채소죽 버프: 이동속도 +40%
   // 모달(캐릭터 선택·튜토리얼·상인 등)·메뉴가 떠 있으면 키보드 이동 0 — 선택창 뒤에서 캐릭터가 걷던 버그
   // 🎉 캐치 세리머니(첫 낚시·수확·반딧불이·바다 대어)·📸 액션샷 밀착 중엔 이동 입력을 무시 —
   //    카메라가 정면 고정인데 걸으면 폴짝 모션이 끊기고 구도가 깨진다(2026-09-11 요청)
@@ -6327,6 +6331,7 @@ function updatePlayer(dt, t) {
   } else if (atSea) {
     // 🌊 부두 위만 걷기 — 좌우는 널판 안, 앞뒤는 뭍끝~부두끝(싸움 중 끌려가는 건 updateSea 의 pz 가 제어)
     if (mudflat.active) clampMudflat(player.position);
+    else if (dive.active) clampDive(player.position);
     else {
       player.position.x = Math.max(SEA.x - SEA_DECK_W / 2 + 0.45, Math.min(SEA.x + SEA_DECK_W / 2 - 0.45, player.position.x));
       player.position.z = Math.max(SEA.z + SEA_EDGE - 0.1, Math.min(SEA.z + SEA_DECK_Z0 - 0.2, player.position.z));
@@ -6473,9 +6478,13 @@ function updatePlayer(dt, t) {
       playerAnchor.position.y -= s * 0.1;
       playerAnchor.scale.set(1 + s * 0.1, 1 - s * 0.12, 1 + s * 0.1);
     }
+  } else if (playerArms && swim.on) {
+    applySwimPose(playerArms, playerAnchor, t, swim.moving, swim.surface);
+    armWristK = 0; toolPourTilt = 0; toolDigK = 0; toolGripFade = 0;
+    poseHeldTool(toolStow);
   } else {
-    if (playerAnchor.rotation.x !== 0 || playerAnchor.rotation.y !== 0) {
-      playerAnchor.rotation.x = 0; playerAnchor.rotation.y = 0; playerAnchor.scale.set(1, 1, 1);
+    if (playerAnchor.rotation.x !== 0 || playerAnchor.rotation.y !== 0 || playerAnchor.rotation.z !== 0) {
+      playerAnchor.rotation.set(0, 0, 0); playerAnchor.scale.set(1, 1, 1);
     }
     if (playerArms) {
       playerArms.R.pivot.rotation.set(0, 0, 0);
@@ -6959,6 +6968,7 @@ function updateDayNight(dt) {
   }
   // 🌊 바다터: 먼바다·물고기가 보여야 하는 공간 — 날씨와 무관하게 시야를 멀리(하늘색 톤은 유지)
   if (atSea) { scene.fog.near = 34; scene.fog.far = 130; }
+  diveAtmosphere(scene, camera);
   if (atNeighbor && !neighborIndoorFrame()) { scene.fog.near = 24; scene.fog.far = 66; }   // 🏡 이웃 마당은 구경하는 곳 — 집·장식이 안개에 묻히지 않게(날씨 톤은 유지) · 🏠 실내는 fog 예외라 건너뛴다
   if (mgView?.type === 'carve') { scene.fog.near = 40; scene.fog.far = 140; }   // 🗿 공방 무대는 원거리 카메라(모바일 ~12.5) — 날씨 안개에 잠기지 않게
   // 🔥 화덕은 반대다 — 마을 한복판이라 채굴장·팻말·나무가 다 보여 산만했다.
@@ -7251,7 +7261,7 @@ function handleAction() {
   if (nearDoor === 'mistexit') return exitMist();
   if (nearDoor === 'sea') return openSeaPick();
   if (nearDoor === 'seaexit') return exitSea();
-  if (atSea) { (mudflat.active ? mudflatAction : seaAction)(); return; }   // 🌊 바다터: 액션 = 던지기/버티기/감기
+  if (atSea) { (mudflat.active ? mudflatAction : dive.active ? diveAction : seaAction)(); return; }   // 🌊 바다터: 액션 = 던지기/버티기/감기
   if (atMist) { mistAction(); return; }
   if (atOrchard) return orchardAction();   // 🍎 과수원: 심기·물주기·수확·베기(js/game.js orchardAction)
   if (atRiver) {                  // 🛶 나루터 데크: 배 타기 / 창고 열기

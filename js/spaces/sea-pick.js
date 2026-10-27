@@ -2,12 +2,14 @@ import { WEATHER, gameState, isNight, requestSave, ui } from '../game.js';
 import { trackEvent } from '../analytics.js';
 import { enterSea } from './sea.js';
 import { enterMudflat } from './mudflat.js';
+import { enterDive } from './dive.js';
 import { SEA_MODES, SEA_PICK_TITLE, NEW_BADGE, SOON_LABEL, isNewMode, pickCards, withLast } from '../forage/pick.js';
 import { pickEventParams } from '../forage/run.js';
 
 const ENTRY = {
   fish: () => enterSea(),
   mudflat: (o) => enterMudflat(o),
+  dive: (o) => enterDive(o),
 };
 
 export function openSeaPick() {
