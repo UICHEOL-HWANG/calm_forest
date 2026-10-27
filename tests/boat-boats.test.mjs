@@ -42,6 +42,6 @@ test('1차 4척 능력', () => {
   assert.equal(BOATS.lotus.whirl, 'ride'); assert.equal(BOATS.ferry.whirl, 'pull');
   assert.ok(BOATS.lotus.hitR < 1); assert.ok(BOATS.raft.steer < 1);
   assert.equal(BOATS.raft.logPush, true); assert.equal(BOATS.raft.crewSeats, 2);
-  assert.deepEqual(BOATS.koi.skill, { id: 'dive', dur: 1.2, cd: 9 });
+  assert.deepEqual(BOATS.koi.skill, { id: 'dive', dur: 1.2, cd: 12 });
   for (const id of BOAT_IDS) assert.equal(typeof BOATS[id].name, 'string');
 });

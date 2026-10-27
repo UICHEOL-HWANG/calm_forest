@@ -8,7 +8,7 @@ export const BOATS = {
   ferry: boat('ferry', { name: '나룻배', ico: '🛶' }),
   lotus: boat('lotus', { name: '연잎배', ico: '🍃', lamps: 2, steer: 1.3, hitR: 0.6, whirl: 'ride', unlock: cost(500, 0, { lotus: 10 }, { clears: 3 }) }),
   raft: boat('raft', { name: '뗏목', ico: '🪵', lamps: 4, steer: 0.72, hitR: 1.4, logPush: true, crewSeats: 2, unlock: cost(1200, 3000, { driftwood: 25 }) }),
-  koi: boat('koi', { name: '비단잉어', ico: '🐟', steer: 0.68, hitR: 1.3, skill: { id: 'dive', dur: 1.2, cd: 9 }, unlock: cost(1500, 0, { shell: 20 }, { rapidPerfect: 1 }) }),
+  koi: boat('koi', { name: '비단잉어', ico: '🐟', steer: 0.9, hitR: 1.42, skill: { id: 'dive', dur: 1.2, cd: 12 }, unlock: cost(1500, 0, { shell: 20 }, { rapidPerfect: 1 }) }),
   catamaran: boat('catamaran', { name: '쌍둥이 돛단배', ico: '⛵', phase: 2, unlock: cost(2500, 8000, { shell: 30 }) }),
   paper: boat('paper', { name: '종이배', ico: '📄', phase: 2, lamps: 2, skill: { id: 'fold', dur: 2, cd: 10 }, unlock: cost(2500, 0, { lotus: 40 }, { comboBest: 30 }) }),
   walnut: boat('walnut', { name: '호두 껍질 배', ico: '🌰', phase: 2, unlock: cost(3000, 0, { driftwood: 50 }, { raftClears: 15 }) }),
