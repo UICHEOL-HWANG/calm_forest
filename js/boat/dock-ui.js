@@ -1,5 +1,5 @@
 const MAT = { lotus: '🪷 연꽃', driftwood: '🪵 떠내려온 나무', shell: '🐚 강 조개', moon_fish: '🌕 달빛 물고기' };
-const MAT_ICO = { lotus: '🪷', driftwood: '🪵', shell: '🐚', moon_fish: '🌕' };
+export const MAT_ICO = { lotus: '🪷', driftwood: '🪵', shell: '🐚', moon_fish: '🌕' };
 const NEED = { clears: '완주', rapidPerfect: '급류 무피해 완주', comboBest: '별 콤보', raftClears: '뗏목으로 완주', nightClears: '밤 완주', rapidNightClears: '급류 밤 완주' };
 const UNIT = { comboBest: '' };
 

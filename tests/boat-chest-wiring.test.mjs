@@ -98,8 +98,9 @@ test('놓침 줄은 상자를 **보고** 지나쳤을 때만(3 거기까지 못 
 });
 
 test('결과 카드: 건졌으면 보물상자 줄, 놓쳤으면 회색 안내 줄', () => {
-  assert.match(HTML, /d\.chestView\?\.paid[\s\S]{0,300}'보물상자'/);
-  assert.match(HTML, /'다음 뱃길에 또 떠내려와요'/);
+  const RC = readFileSync(new URL('../js/boat/result-card.js', import.meta.url), 'utf8');
+  assert.match(RC, /chest\?\.paid/);
+  assert.match(RC, /chip off[^`]*다음 뱃길에 또 떠내려와요/);
 });
 
 test('i18n: 새 문구 영어 사전', () => {

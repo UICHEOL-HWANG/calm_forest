@@ -51,8 +51,7 @@ test('result materials row', () => {
   assert.equal(matsRowHtml(undefined), '');
 });
 
-test('index.html uses matsRowHtml and no bare MAT_ICO', () => {
+test('index.html has no bare MAT_ICO', () => {
   const H = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(H, /import \{[^}]*matsRowHtml[^}]*\} from '\.\/js\/boat\/dock-ui\.js'/);
   assert.ok(!H.includes('MAT_ICO['));
 });

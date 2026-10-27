@@ -410,7 +410,6 @@
   #buy-reveal button { border: none; border-radius: 12px; padding: 10px 18px; font-weight: 700; font-size: 14px; cursor: pointer; font-family: inherit; }
   #br-walk { background: #e9a23b; color: #fff; }
   #br-close { background: rgba(255,255,255,.16); color: #fff; }
-  .boat-row.miss { background: #f2f2f0; color: #7b857e; }
   /* 📸 사진첩(그리드) + 크게 보기(그 위에 겹침) */
   #album-modal, #album-view { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
   #album-view { z-index: 34; }
@@ -421,8 +420,63 @@
   .album-cell:active { transform: scale(0.96); }
   .album-date { position: absolute; left: 6px; bottom: 4px; font-size: 10px; font-weight: 700; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.6); pointer-events: none; }
   .album-empty { grid-column: 1 / -1; opacity: .6; padding: 34px 0; text-align: center; font-size: 13px; }
-  .boat-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 12px; border-radius: 12px; background: #f4faf5; font-size: 13px; margin-bottom: 6px; }
-  .boat-row b { font-variant-numeric: tabular-nums; }
+  .brc { --cream: #fffaf0; --ink: #3a3128; --sub: #7b6d5c; --teal: #3fb3c2; width: min(360px, 92vw); max-height: 96dvh; overflow: hidden; background: var(--cream); color: var(--ink); border-radius: 22px; box-shadow: 0 18px 40px rgba(0,0,0,.25); position: relative; }
+  #br-body { display: contents; }
+  .brc-head { padding: 22px 20px 26px; color: #fff; text-align: center; position: relative; }
+  .brc-head.wreck { background: linear-gradient(160deg, #5a6fb0, #3d4f8a); }
+  .brc-head.clear { background: linear-gradient(160deg, #47c0b4, #3f9a6a); }
+  .brc-head.quit { background: linear-gradient(160deg, #c9a46a, #a9824a); }
+  .brc-head .ico { font-size: 40px; line-height: 1; }
+  .brc-head h3 { margin: 8px 0 2px; font-size: 22px; }
+  .brc-head p { margin: 0; font-size: 13px; opacity: .9; }
+  .brc-head .wave { position: absolute; left: 0; right: 0; bottom: -1px; height: 14px; background: radial-gradient(circle at 10px -4px, transparent 12px, var(--cream) 13px) 0 0/20px 14px repeat-x; }
+  .brc-route { display: flex; justify-content: space-between; align-items: center; padding: 14px 22px 4px; font-size: 12px; color: var(--sub); }
+  .brc-route b { display: block; font-size: 15px; color: var(--ink); }
+  .brc-route .r { text-align: right; }
+  .brc-route .line { flex: 1; margin: 0 10px; border-top: 2px dashed #d8cbb3; position: relative; }
+  .brc-route .line i { position: absolute; top: -11px; font-style: normal; font-size: 16px; }
+  .brc-score { text-align: center; padding: 8px 0 4px; }
+  .brc-score .n { font-size: 44px; font-weight: 800; letter-spacing: -1px; }
+  .brc-score .best { display: inline-block; background: #ffe9a8; color: #8a5a00; font-size: 12px; font-weight: 700; border-radius: 999px; padding: 2px 10px; margin-left: 6px; vertical-align: middle; }
+  .brc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 6px 18px 12px; }
+  .brc-grid div { background: #f3ece0; border-radius: 12px; padding: 8px 6px; text-align: center; font-size: 11px; color: var(--sub); }
+  .brc-grid b { display: block; font-size: 16px; color: var(--ink); }
+  .brc-perf { height: 18px; position: relative; margin: 2px 0; }
+  .brc-perf:before { content: ""; position: absolute; left: 14px; right: 14px; top: 8px; border-top: 2px dashed #ddd0b8; }
+  .brc-perf:after { content: ""; position: absolute; left: -10px; right: -10px; top: -1px; height: 20px; background: radial-gradient(circle at 0 10px, rgba(20,40,30,.55) 10px, transparent 11px) left/20px 20px no-repeat, radial-gradient(circle at 20px 10px, rgba(20,40,30,.55) 10px, transparent 11px) right/20px 20px no-repeat; }
+  .brc-rew { padding: 6px 18px 4px; }
+  .brc-rew .lb { font-size: 12px; color: var(--sub); margin-bottom: 6px; }
+  .brc .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .brc .chip { background: #fff; border: 1.5px solid #eadfcb; border-radius: 999px; padding: 4px 10px; font-size: 13px; font-weight: 700; }
+  .brc .chip.star { background: #fff6d6; border-color: #f2d27a; }
+  .brc .chip.mat { background: #eef7ee; border-color: #bfe0c2; }
+  .brc .chip.off { background: #f2f2f0; border-color: #e0e0dc; color: #7b857e; }
+  .brc-foot { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px 18px; gap: 8px; }
+  .brc .runs { font-size: 12px; color: var(--sub); }
+  .brc .runs .dots { display: flex; gap: 4px; margin-top: 3px; }
+  .brc .runs .dots i { width: 10px; height: 10px; border-radius: 50%; background: #e2d7c3; }
+  .brc .runs .dots i.on { background: var(--teal); }
+  .brc .btns { display: flex; gap: 6px; }
+  .brc .btn { border: none; border-radius: 14px; padding: 10px 14px; font-weight: 800; font-size: 14px; background: #efe7d8; color: var(--ink); cursor: pointer; font-family: inherit; }
+  .brc .btn.pri { background: var(--teal); color: #fff; }
+  .brc .btn:disabled { opacity: .55; cursor: default; }
+  @media (max-height: 430px) {
+    .brc { width: min(640px, 94vw); display: grid; grid-template-columns: 1fr 1.1fr; grid-template-rows: 1fr auto; }
+    .brc-left { grid-column: 1; grid-row: 1 / 3; display: flex; flex-direction: column; }
+    .brc-right { grid-column: 2; grid-row: 1; padding-top: 8px; }
+    .brc-foot { grid-column: 2; grid-row: 2; padding: 8px 14px 12px; }
+    .brc-head { padding: 12px 14px 20px; }
+    .brc-head .ico { font-size: 28px; }
+    .brc-head h3 { font-size: 18px; margin: 4px 0 2px; }
+    .brc-head p { font-size: 11px; }
+    .brc-route { padding: 10px 16px 2px; }
+    .brc-score .n { font-size: 34px; }
+    .brc-grid { padding: 4px 14px 8px; }
+    .brc-perf { margin: 0; }
+    .brc-perf:after { display: none; }
+    .brc-rew { padding: 4px 14px 2px; }
+    .brc .chip { font-size: 12px; padding: 3px 8px; }
+  }
   .boat-up { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: #f4faf5; margin-bottom: 8px; text-align: left; }
   .boat-up .bu-ico { font-size: 24px; }
   .boat-up .bu-body { flex: 1 1 auto; }
@@ -3037,14 +3091,14 @@
 
   <!-- 🛶 런 결과 -->
   <div id="boat-result">
-    <div class="tut-card">
-      <div class="tut-emoji" id="br-emoji">🛶</div>
-      <h2 id="br-title">도착!</h2>
-      <p id="br-sub" style="font-size:13px; opacity:.75; margin:-8px 0 14px;"></p>
-      <div id="br-rows" style="text-align:left"></div>
-      <div class="dm-actions" style="justify-content:center; margin-top:14px">
-        <button id="br-again" class="primary">🛶 한 번 더</button>
-        <button id="boat-result-close">그만하기</button>
+    <div class="brc">
+      <div id="br-body"></div>
+      <div class="brc-foot">
+        <div class="runs" id="br-runs"></div>
+        <div class="btns">
+          <button id="br-again" class="btn pri">🛶 한 번 더</button>
+          <button id="boat-result-close" class="btn">그만하기</button>
+        </div>
       </div>
     </div>
   </div>
@@ -3445,7 +3499,10 @@
     import { mountLoginStore } from './js/login-store-ui.js';
     import { createLoginDwell } from './js/login-dwell.js';
     import { initPush, offerPush } from './js/push-ui.js';   // 🔔 안드로이드 푸시 알림(안내 카드·설정 토글)   // 📲 웹 → 앱 유도 배너(웹 전용)
-    import { renderDock, matsRowHtml } from './js/boat/dock-ui.js';
+    import { renderDock } from './js/boat/dock-ui.js';
+    import { resultCardHtml } from './js/boat/result-card.js';
+    import { BOATS } from './js/boat/boats.js';
+    import { RIVER_LEN } from './js/boat/consts.js';
     import { playChestReveal, stopChestReveal } from './js/boat-chest-reveal.js';   // 🧰 보물상자 개봉 화면(R3)
     import { questPanelView } from './js/quest-panel-view.js';
     import { trackLogin, trackEvent, setGaUser, onTrack, setInstallUserProps, setSurveyUserProps } from './js/analytics.js';
@@ -4701,29 +4758,16 @@
           };
           return;
         }
-        const clear = d.result === 'clear', wreck = d.result === 'wreck';
-        $('br-emoji').textContent = clear ? '🎉' : wreck ? '🌊' : '🛶';
-        $('br-title').textContent = clear ? '무사히 도착!' : wreck ? '배가 가라앉았어요' : '뱃길을 멈췄어요';
-        $('br-sub').textContent = clear
-          ? (d.hits === 0 ? '한 번도 부딪히지 않았어요 — 완벽한 뱃길! 🌊' : `${d.dist_m}m 를 내려왔어요`)
-          : wreck
-            ? '🎒 주운 건 그대로 · 🛶 배는 내일 멀쩡해요'
-            : `${d.dist_m}m 지점에서 멈췄어요. 여기까지 모은 건 그대로 가져가요`;
-        const rows = [
-          ['거리', `${d.dist_m}m`], ['시간', `${d.time_sec}초`], ['점수', `${d.score}${d.best ? ' 🏆 최고 기록!' : ''}`],
-          ['충돌', `${d.hits}회`], ['⭐ 별조각', `+${d.stars} (보유 ${d.totalStar})`],
-        ];
-        if (d.picksView.length) rows.push(['수집물', d.picksView.map(p => `${p.ico}${p.name}×${p.n}`).join(' · ')]);
-        const matsRow = matsRowHtml(d.matsView);
-        if (matsRow) rows.push(['강 재료', matsRow]);
-        // 🧰 건졌으면 받은 것, 지나쳤으면 회색 안내(오늘 남은 판에 또 떠내려온다)
-        if (d.chestView?.paid) rows.push(['보물상자', d.chestView.name]);
-        else if (d.chestView?.missed) rows.push(['보물상자', '다음 뱃길에 또 떠내려와요', 'miss']);
-        rows.push(['오늘 남은 횟수', `${d.runsLeft}/${d.runsMax}회`]);
-        $('br-rows').innerHTML = rows.map(([k, v, cls]) => `<div class="boat-row${cls ? ' ' + cls : ''}"><span>${k}</span><b>${v}</b></div>`).join('');
+        const boat = BOATS[d.boat_id] || BOATS.ferry;
+        $('br-body').innerHTML = resultCardHtml({
+          result: d.result, perfect: d.hits === 0, dist: d.dist_m, total: RIVER_LEN, time: d.time_sec, score: d.score, best: d.best,
+          hits: d.hits, comboMax: d.combo_max || 0, stars: d.stars, totalStar: d.totalStar, boatIco: boat.ico, boatName: boat.name,
+          course: d.course, picks: d.picksView, mats: d.matsView, chest: d.chestView, runsLeft: d.runsLeft, runsMax: d.runsMax,
+        });
+        $('br-runs').innerHTML = `오늘 남은 뱃길 ${d.runsLeft}/${d.runsMax}<div class="dots">${Array.from({ length: d.runsMax }, (_, i) => `<i class="${i < d.runsLeft ? 'on' : ''}"></i>`).join('')}</div>`;
         const again = $('br-again');
         again.disabled = d.runsLeft <= 0;
-        again.textContent = d.runsLeft > 0 ? `🛶 한 번 더 (${d.runsLeft}회 남음)` : '🛶 내일 또 만나요';
+        again.textContent = d.runsLeft > 0 ? '🛶 한 번 더' : '🛶 내일 또 만나요';
         Input.setAnalog(0, 0);
         $('boat-result').classList.add('show');
       },
