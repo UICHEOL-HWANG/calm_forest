@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { makeBoatHull, makeOar } from '../spaces/river.js';
+import { makeBoatHull } from '../spaces/river.js';
+import { makeKayakPaddle } from './kayak-paddle.js';
 import { BOAT_LAMP, BOAT_LAMP_POST } from '../boat-lamp.js';
 
 const MAT = {
@@ -83,9 +84,8 @@ const koiNoise = (x, y, z) => Math.sin(x * 4.1 + y * 2.3) + Math.sin(y * 3.7 - z
 function ferryModel() {
   const g = new THREE.Group();
   g.add(makeBoatHull(1.05));
-  const oars = [];
-  for (const side of [-1, 1]) { const o = makeOar(side); g.add(o); oars.push(o); }
-  g.userData.oars = oars;
+  g.userData.paddle = makeKayakPaddle();
+  g.add(g.userData.paddle);
   const lantern = new THREE.Group();
   const P = BOAT_LAMP_POST;
   const post = new THREE.Mesh(new THREE.CylinderGeometry(P.r, P.r * 1.3, P.top - P.bottom, 6), MAT.post);

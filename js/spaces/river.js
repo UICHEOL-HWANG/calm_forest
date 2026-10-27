@@ -8,7 +8,7 @@
 import {
   $w, IS_MOBILE, RAIN_DAY, WEATHER, _camLook, _camTarget, analog, atRiver, awardBadge, boat, boatView, camera,
   clayMat, dateHash, dexDiscover, dockGroup, firstHint, gameState, giveReward, heldGroup, isNight, keys,
-  lastZoneHint, makeSignpost, nearBoat, nearBoatShop, nearDoor, obstacles, player, playerAnchor, refreshCollectQuests,
+  lastZoneHint, makeSignpost, nearBoat, nearBoatShop, nearDoor, obstacles, player, playerAnchor, playerArms, refreshCollectQuests,
   refreshInventoryUI, requestSave, riverActive, riverCourse, riverGroup, riverPool, scene, setSpaceVisible, snapCamera,
   solidCircle, spawnConfetti, spawnDust, spawnFloatText, spawnSparkle, spawnSplash, syncBadges, todayStr,
   tryUnlockDrop, ui, wantAction, wantSkill, woodMat,
@@ -25,6 +25,8 @@ import { COURSES, COURSE_V, FORK_X, buildCourseData, courseSeedKey, clampW, mulb
 import { comboStep, steerParams, boostCd, isHit, isNearMiss, obstacleOutcome, ramPerRun, whirlMode, skillReady, startSkill, NEAR_GAIN, RIDE } from '../boat/abilities.js';
 import { unlockCheck, unlockBoat, addRunMats } from '../boat/economy.js';
 import { makeBoatModel } from '../boat/models.js';
+import { kayakStroke, kayakStun } from '../boat/kayak-pose.js';
+import { placeKayakPaddle } from '../boat/kayak-paddle.js';
 import { PAL } from '../data/world.js';
 import { logEcon } from '../metrics.js';
 import { Sound } from '../sound.js';
@@ -479,6 +481,19 @@ export function endBoatRun(result) {
   });
 }
 
+function poseArms(p) {
+  playerArms.R.pivot.rotation.set(p.R[0], p.R[1], p.R[2]);
+  playerArms.L.pivot.rotation.set(p.L[0], p.L[1], p.L[2]);
+  playerAnchor.rotation.y = p.twist;
+}
+
+function holdPaddle() {
+  const paddle = boat.group?.userData.paddle;
+  if (!paddle || !playerArms) return;
+  player.updateMatrixWorld(true);
+  placeKayakPaddle(paddle, playerArms.R.hand, playerArms.L.hand, boatView === 'first');
+}
+
 export function updateBoatRun(dt, t) {
   boat.t += dt;
   // 🌊 침몰 연출: 마지막 충돌 지점에서 배가 기울며 천천히 가라앉는다 — 다 잠기면 결과 화면
@@ -494,6 +509,7 @@ export function updateBoatRun(dt, t) {
     }
     playerAnchor.position.y = -k * k * 0.75;                         // 캐릭터도 배와 함께 잠긴다(3인칭)
     playerAnchor.rotation.x = k * 0.4;
+    holdPaddle();
     if (Math.random() < (IS_MOBILE ? 0.2 : 0.4))                     // 보글보글 물거품
       spawnSplash(player.position.x + (Math.random() - 0.5) * 1.4, 0.15, player.position.z - 1 + Math.random() * 2, 2);
     return;                                                          // 침몰 중엔 조향·충돌·HUD 갱신 없음
@@ -565,6 +581,7 @@ export function updateBoatRun(dt, t) {
     if (boat.t < boat.rideUntil) boat.group.rotation.y += (1 - (boat.rideUntil - boat.t) / RIDE.spin) * Math.PI * 2;
     boat.group.rotation.z = (boat.vx / maxVx) * 0.13;
     boat.group.position.y = diving ? -0.55 : Math.sin(boat.t * 3.2) * 0.05 + boat.hop;
+    const paddled = !!(boat.group.userData.paddle && playerArms);
     if (stunned) {
       // 💥 충돌 연출: 크게 출렁이며 앞뒤로 갸우뚱 — 시간이 지나며 잦아듦. 노는 놀라서 들어올림
       const k = Math.max(0, (boat.stunUntil - boat.t) / 1.15);
@@ -576,17 +593,26 @@ export function updateBoatRun(dt, t) {
       playerAnchor.position.y = boat.group.position.y;
       playerAnchor.rotation.x = 0.1;
       playerAnchor.rotation.z = Math.sin(boat.t * 16) * 0.18 * k;
+      if (paddled) poseArms(kayakStun(k));
     } else {
       boat.group.rotation.x = 0;
       // 🚣 재출발·스퍼트 중엔 노를 빠르고 깊게 젓는다 — "다시 출발!" 이 눈에 보이게
       const fast = boosting || restarting;
       const stroke = Math.sin(boat.t * (fast ? 11 : 5.5));
       boat.group.userData.oars.forEach(c => { c.rotation.x = stroke * (fast ? 0.55 : 0.32); });
-      // 🚣 캐릭터도 노와 같은 위상으로 상체를 앞뒤로 — 젓는 사람이 보이게(3인칭)
-      playerAnchor.position.y = boat.group.position.y + Math.abs(stroke) * 0.05;   // 배 출렁임 + 젓는 들썩임
-      playerAnchor.rotation.x = 0.12 + stroke * (fast ? 0.24 : 0.14);              // 앞으로 숙였다 젖혔다
       playerAnchor.rotation.z = (boat.vx / maxVx) * 0.13;                          // 배 롤을 따라 기울기
+      if (paddled) {
+        const k = kayakStroke(boat.t, fast);
+        poseArms(k);
+        playerAnchor.position.y = boat.group.position.y + k.bob;
+        playerAnchor.rotation.x = k.lean;
+      } else {
+        // 🚣 캐릭터도 노와 같은 위상으로 상체를 앞뒤로 — 젓는 사람이 보이게(3인칭)
+        playerAnchor.position.y = boat.group.position.y + Math.abs(stroke) * 0.05;   // 배 출렁임 + 젓는 들썩임
+        playerAnchor.rotation.x = 0.12 + stroke * (fast ? 0.24 : 0.14);              // 앞으로 숙였다 젖혔다
+      }
     }
+    holdPaddle();
   }
   if (boat.shake > 0) boat.shake = Math.max(0, boat.shake - dt * 2.4);
 

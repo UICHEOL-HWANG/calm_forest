@@ -3925,7 +3925,7 @@ function umbrellaHeld() { return !!umbrellaMesh && umbrellaMesh.visible && umbre
 function updateUmbrella(dt) {
   const theme = toolSkinOf(gameState.cosmetics);
   //  🌊 바다터는 양팔로 릴대를 잡는다 · 클로즈업(요리·밤손님 대결)은 카메라가 붙어 우산이 화면을 가린다
-  const outdoors = !(indoor || atCafe || atMuseum || atObservatory || atMountain || atDream || atMirror || atHalloween || atMine || atSea || mgView || duelActive);
+  const outdoors = !(indoor || atCafe || atMuseum || atObservatory || atMountain || atDream || atMirror || atHalloween || atMine || atSea || boat.active || mgView || duelActive);
   const show = !!charGroup && !!charK && umbrellaShown(theme, WEATHER, outdoors);
   if (umbrellaMesh && (umbrellaTheme !== theme || umbrellaMesh.parent !== charGroup)) dropUmbrella();   // 세트를 바꿨거나 캐릭터를 다시 지었다
   //  🪓 동작(도구질·줍기·삽질) 중엔 갓을 뒤로 젖힌다 — 머리 위 갓이 숙인 몸과 도구를 가렸다(2026-10-02 실측).

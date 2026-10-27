@@ -10,9 +10,9 @@ test('1차 4척 조형 함수와 진입점', () => {
   for (const k of ['oars', 'fpHide']) assert.match(src, new RegExp(`userData\\.${k}`), k);
 });
 
-test('나룻배는 기존 선체·노·등불을 그대로 쓴다', () => {
+test('나룻배는 기존 선체·등불에 카약 노를 쓴다', () => {
   assert.match(src, /makeBoatHull\(/);
-  assert.match(src, /makeOar\(/);
+  assert.match(src, /makeKayakPaddle\(/);
   assert.match(src, /BOAT_LAMP_POST/);
 });
 
