@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { dockHtml, LACK_LABEL, matsRowHtml } from '../js/boat/dock-ui.js';
+import { dockHtml, LACK_LABEL } from '../js/boat/dock-ui.js';
 
 const view = {
   star: 620, coins: 100, runsLeft: 2, runsMax: 3, best: 812, bestRapid: 0, rapidOpen: false,
@@ -44,11 +44,10 @@ test('no em dash in dock-ui', () => {
   assert.ok(!readFileSync(new URL('../js/boat/dock-ui.js', import.meta.url), 'utf8').includes('—'));
 });
 
-test('result materials row', () => {
-  assert.equal(matsRowHtml({ lotus: 2, shell: 1 }), '🪷 2 · 🐚 1');
-  assert.equal(matsRowHtml({}), '');
-  assert.equal(matsRowHtml({ lotus: 0, shell: 0 }), '');
-  assert.equal(matsRowHtml(undefined), '');
+test('best score line', () => {
+  assert.match(dockHtml(view), /<span>🏆 최고 812<\/span><\/p>/);
+  assert.doesNotMatch(dockHtml(view), /🌊 \d/);
+  assert.match(dockHtml({ ...view, bestRapid: 340 }), /<span>🏆 최고 812<\/span> · <span>🌊 340<\/span>/);
 });
 
 test('index.html has no bare MAT_ICO', () => {

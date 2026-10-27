@@ -55,7 +55,7 @@ export function restoreBoat(saved) {
     boat: own[sel0.boat] && liveBoatIds().includes(sel0.boat) ? sel0.boat : 'ferry',
     course: COURSE_IDS.includes(sel0.course) ? sel0.course : 'calm',
   };
-  if (s.v === BOAT_V) return { boat: { ...base, v: BOAT_V, sel }, refundStar: 0 };
+  if (Number.isFinite(s.v) && s.v >= BOAT_V) return { boat: { ...base, v: s.v, sel }, refundStar: 0 };
   const m = migrateUpgrades(s.up);
   return {
     boat: { ...base, v: BOAT_V, parts: { ...base.parts, ...m.parts }, sel: { ...sel, ...m.equip } },

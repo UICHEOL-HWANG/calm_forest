@@ -21,10 +21,6 @@ function boatCard(b) {
   return `<div class="boat-up bd-boat${b.selected ? ' on' : ''}"><span class="bu-ico">${b.ico}</span><span class="bu-body"><span class="bu-name">${esc(b.name)} <small>💡${b.lamps}</small></span>${lacks}</span>${btn}</div>`;
 }
 
-export function matsRowHtml(matsView) {
-  return Object.entries(matsView || {}).filter(([k, n]) => n > 0 && MAT_ICO[k]).map(([k, n]) => `${MAT_ICO[k]} ${n}`).join(' · ');
-}
-
 export function dockHtml(v) {
   const course = ['calm', 'rapid'].map((c) => {
     const locked = c === 'rapid' && !v.rapidOpen;
@@ -32,7 +28,9 @@ export function dockHtml(v) {
   }).join('');
   const lock = v.rapidOpen ? '' : '<p class="bd-note">잔잔한 물길을 한 번 완주하면 급류가 열려요</p>';
   const mats = Object.entries(v.mat).map(([k, n]) => `${MAT_ICO[k]} ${n}`).join(' · ');
+  const best = `<p class="bd-best"><span>🏆 최고 ${v.best || 0}</span>${v.bestRapid > 0 ? ` · <span>🌊 ${v.bestRapid}</span>` : ''}</p>`;
   return `<p class="bd-sub">⭐별조각 <b>${v.star}</b> · 🪙<b>${v.coins}</b> · 오늘 <b>${v.runsLeft}/${v.runsMax}</b>회 남음</p>`
+    + best
     + `<p class="bd-mats">${mats}</p>`
     + `<div class="bd-course">${course}</div>${lock}`
     + `<div class="bd-boats">${v.boats.map(boatCard).join('')}</div>`;

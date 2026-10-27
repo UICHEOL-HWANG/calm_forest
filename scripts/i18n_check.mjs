@@ -137,6 +137,8 @@ const targets = [
   // 🔭 천문대 렌즈 뷰 — COPY 가 canvas·결과 카드로 그대로 나간다
   ...readdirSync(join(ROOT, 'js/observatory')).filter(f => f.endsWith('.js')).sort()
     .map(f => [`js/observatory/${f}`, s => jsStrings(stripJsComments(s))]),
+  ...readdirSync(join(ROOT, 'js/boat')).filter(f => f.endsWith('.js')).sort()
+    .map(f => [`js/boat/${f}`, s => jsStrings(stripJsComments(s))]),
   // 🌾 수확제 광장 — 기부함·좌판·명판·초대 문구
   ...readdirSync(join(ROOT, 'js/plaza')).filter(f => f.endsWith('.js')).sort()
     .map(f => [`js/plaza/${f}`, s => jsStrings(stripJsComments(s))]),

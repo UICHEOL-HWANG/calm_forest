@@ -71,6 +71,8 @@ export function buildCourseData(seed, { night = false, chest = false, course = '
   if (fork) for (let s = fork.d0 + 4; s < fork.d1 - 4; s += 3.2) items.push({ d: s, kind: 'star', x: RIVER_W - 1.5 });
   if (chest) {
     const c = placeChest(rnd, { len: RIVER_LEN, width: RIVER_W });
+    const fall = cfg.falls.find(f => Math.abs(c.d - f) < 10);
+    if (fall !== undefined) c.d = c.d < fall ? fall - 10 : fall + 10;
     const near = items.filter(o => RIVER_OBS[o.kind] && Math.abs(o.d - c.d) < 4);
     const clash = x => near.some(o => Math.abs(o.x - x) < RIVER_OBS[o.kind].r + 1.6);
     if (clash(c.x)) c.x = clash(-c.x) ? clampW(c.x + (c.x > 0 ? -3.2 : 3.2), 1.3) : -c.x;

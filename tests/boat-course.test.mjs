@@ -81,3 +81,12 @@ test('급류: 별과 수집물이 갈림 섬 위나 폭포 앞뒤 10m 안에 놓
     }
   }
 });
+
+test('급류 보물상자는 낙하 지점 10m 안에 놓이지 않는다', () => {
+  for (let i = 0; i < 200; i++) {
+    const { items, falls } = buildCourseData(5000 + i * 131, { chest: true, course: 'rapid' });
+    const c = items.find(o => o.kind === 'chest');
+    assert.ok(c, `seed ${i}`);
+    for (const f of falls) assert.ok(Math.abs(c.d - f) >= 10, `seed ${i} chest ${c.d}`);
+  }
+});

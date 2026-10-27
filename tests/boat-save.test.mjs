@@ -75,3 +75,10 @@ test('game.js: 기본값·복원·환급 순서', () => {
   assert.ok(inv > 0 && rb > inv, '인벤토리 복원 뒤에 나룻배 복원(환급이 덮이지 않게)');
   assert.match(src, /rb\.refundStar/);
 });
+
+test('미래 버전(v3) 세이브는 이전을 다시 돌리지 않고 v 를 유지', () => {
+  const r = restoreBoat({ v: 3, up: { oar: 0, hull: 0, lamp: 1 }, clears: 4 });
+  assert.equal(r.refundStar, 0);
+  assert.equal(r.boat.v, 3);
+  assert.deepEqual(r.boat.parts, {});
+});

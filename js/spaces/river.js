@@ -9,7 +9,7 @@ import {
   $w, IS_MOBILE, RAIN_DAY, WEATHER, _camLook, _camTarget, analog, atRiver, awardBadge, boat, boatView, camera,
   clayMat, dateHash, dexDiscover, dockGroup, firstHint, gameState, giveReward, heldGroup, isNight, keys,
   lastZoneHint, makeSignpost, nearBoat, nearBoatShop, nearDoor, obstacles, player, playerAnchor, refreshCollectQuests,
-  refreshInventoryUI, riverActive, riverCourse, riverGroup, riverPool, scene, setSpaceVisible, snapCamera,
+  refreshInventoryUI, requestSave, riverActive, riverCourse, riverGroup, riverPool, scene, setSpaceVisible, snapCamera,
   solidCircle, spawnConfetti, spawnDust, spawnFloatText, spawnSparkle, spawnSplash, syncBadges, todayStr,
   tryUnlockDrop, ui, wantAction, wantSkill, woodMat,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
@@ -223,6 +223,7 @@ export function dockView() {
 export function selectBoat(id) {
   if (!gameState.boat.own[id] || !liveBoatIds().includes(id)) return { ok: false, msg: '아직 없는 배예요' };
   gameState.boat.sel = { ...gameState.boat.sel, boat: id };
+  requestSave();
   return { ok: true };
 }
 
@@ -230,6 +231,7 @@ export function selectCourse(course) {
   if (!COURSES[course]) return { ok: false };
   if (course === 'rapid' && (gameState.boat.clears || 0) < 1) return { ok: false, msg: '잔잔한 물길을 한 번 완주하면 급류가 열려요' };
   gameState.boat.sel = { ...gameState.boat.sel, course };
+  requestSave();
   return { ok: true };
 }
 
@@ -242,6 +244,7 @@ export function unlockBoatNow(id) {
   if (r.spentCoins) logEcon('boat_unlock', id, -r.spentCoins, gameState.inventory.coins);
   refreshInventoryUI(); Sound.build(); spawnSparkle(player.position.x, 1.5, player.position.z, 18);
   trackEvent('boat_unlock', { boat_id: id, runs_total: gameState.boat.clears || 0, star_left: gameState.inventory.star || 0 });
+  requestSave();
   return { ok: true, name: BOATS[id].name, ico: BOATS[id].ico };
 }
 
