@@ -1,6 +1,6 @@
 # boat-lineup 컨텍스트
 
-Last Updated: 2026-10-27 (1차 계획 작성)
+Last Updated: 2026-10-27 (1차 구현 완료 be3c21f3, 4271 tests)
 
 ## 핵심 파일
 - 설계: docs/superpowers/specs/2026-10-27-boat-lineup-design.md (plan.md 는 같은 내용 사본)
@@ -33,3 +33,11 @@ boat_runs 143판/50명 · 강화 0개 완주 36.9% vs 1개+ 100% · 충돌 40% 1
 - 스킬 키 F (Q·E 는 카메라 회전)
 - 1차 부품 효과는 쇄빙·순풍만, 뱃종은 2차. 나룻배 등불은 밤에 누구에게나
 - 워크트리는 npm ci 후 기준선 4,127 테스트 통과
+
+## 1차 구현 결과 (2026-10-27, be3c21f3)
+- 공정성 조정값: lotus steer 1.3 hitR 0.6 · raft hitR 1.4 · koi steer 0.68 hitR 1.3 · 봇 LOOK 20. 비단잉어가 가장 둔해짐(잠수가 강해서). 대안: 잠수 대기 9→12초 또는 지속 1.2→0.9초, 뗏목 램프 4→3 (사용자 결정 대기)
+- 급류 starP 0.47 · pickP 0.16 · 섬/폭포 ±10m 별·수집물 제거 · 상자도 폭포에서 10m 밀어냄
+- 코스·능력 규칙을 바꾸면 tests/boat-balance.test.mjs 공정성 수치 재확인 필수(여유 좁음: 뗏목 잔잔 별 +13% / 한도 15%)
+- 리더보드 API BOARDS 에 boat_rapid 추가 → Worker 재배포 필요
+- 세이브 v>=2 는 이전 생략(v3 세이브가 와도 1차 클라가 별 300 재환급 안 함)
+- 헤드리스 검증: tools/store-shots/cdp.mjs 기반 스크립트(배마다 한 판·결과 카드·창고 캡처). 미리보기 창이 뒤에 있으면 rAF 1fps라 헤드리스 필수
