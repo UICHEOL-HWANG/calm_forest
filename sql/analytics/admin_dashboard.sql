@@ -300,6 +300,7 @@ begin
     'progress', (
       with sv as (
         select case when g.state ->> 'houseStage' ~ '^[0-9]{1,2}$' then (g.state ->> 'houseStage')::int else 0 end as house_stage,
+               case when g.state #>> '{house,style}' in ('modern', 'hanok') then g.state #>> '{house,style}' else 'modern' end as house_style,
                nullif(g.state ->> 'character', '') as character,
                case when jsonb_typeof(g.state -> 'dex') = 'object' then
                  (select coalesce(sum(case when jsonb_typeof(c.value) = 'object'
@@ -310,8 +311,8 @@ begin
         where g.user_id not in (select * from cf_persona_user_ids())
       )
       select jsonb_build_object(
-        'house', (select coalesce(jsonb_agg(jsonb_build_object('stage', house_stage, 'users', n) order by house_stage), '[]'::jsonb)
-                  from (select house_stage, count(*) as n from sv group by 1) h),
+        'house', (select coalesce(jsonb_agg(jsonb_build_object('stage', house_stage, 'style', style, 'users', n) order by house_stage, style), '[]'::jsonb)
+                  from (select house_stage, case when house_stage >= 7 then house_style end as style, count(*) as n from sv group by 1, 2) h),
         'characters', (select coalesce(jsonb_agg(jsonb_build_object('character', character, 'users', n) order by n desc), '[]'::jsonb)
                        from (select character, count(*) as n from sv where character is not null group by 1) c),
         'dex', (select coalesce(jsonb_agg(jsonb_build_object('bucket', b, 'users', n) order by o), '[]'::jsonb)

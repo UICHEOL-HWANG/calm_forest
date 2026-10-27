@@ -4,7 +4,7 @@
 //  계산: ./admin-metrics.js(순수 함수, 테스트 있음) · 공통: ./admin-common.js
 // =============================================================
 import { $, V, nf, esc, CHAR, shareKey, bootAdmin, explainRpcError, showRpcError, showMsg, createLoader } from './admin-common.js';
-import { MAPS, delta, worstLeak, rate, heatGrid, userStatus, funnelSteps, mapHourGrid, heatCellsFor, HEAT_SLOTS, zoneFlow, zoneLabel, ZONE_CIRCLES, VILLAGE_R, trackSegments } from './admin-metrics.js';
+import { MAPS, delta, worstLeak, rate, heatGrid, userStatus, funnelSteps, mapHourGrid, heatCellsFor, HEAT_SLOTS, zoneFlow, zoneLabel, ZONE_CIRCLES, VILLAGE_R, trackSegments, houseStageLabel } from './admin-metrics.js';
 
 const page = $('page');
 const loader = createLoader(page, $('loader'));
@@ -463,8 +463,7 @@ function renderSegments(seg, prog) {
     options: { responsive: true, aspectRatio: 1.6, plugins: { legend: { display: false } }, scales: axes() } });
   pie('cPlatform', seg.platform || [], (r) => r.seg, (r) => r.users);
   pie('cGuest', seg.guest || [], (r) => r.seg, (r) => r.users);
-  const HOUSE = { 0: '없음', 1: '기초', 2: '벽', 3: '완성', 4: '넓은 집', 5: '저택', 6: '모던' };
-  bar('cHouse', prog.house || [], (r) => HOUSE[r.stage] ?? `${r.stage}단계`, (r) => r.users);
+  bar('cHouse', prog.house || [], houseStageLabel, (r) => r.users);
   bar('cDex', prog.dex || [], (r) => r.bucket, (r) => r.users);
 }
 
