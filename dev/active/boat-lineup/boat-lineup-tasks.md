@@ -5,7 +5,7 @@
 - [x] 시안(1차 업그레이드안 → 라인업 → 조형 3안 → 9척 확정)
 - [x] 획득 조건·기간 확정
 - [x] 설계 문서
-- [ ] 1차 구현 계획 문서(writing-plans)
+- [x] 1차 구현 계획 문서 docs/superpowers/plans/2026-10-27-boat-lineup-stage1.md (Task 0~12)
 
 ## 1차
 - [ ] 마이그레이션: boat_runs 새 컬럼 · course CHECK · econ_logs.source 추가 · 리더보드 코스 필터 + boat_rapid 보드
