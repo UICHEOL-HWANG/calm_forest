@@ -14,6 +14,7 @@ import {
   tryUnlockDrop, ui, wantAction, wantSkill, woodMat,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
+import { riverHintTiles } from '../ui-cards.js';
 import { addGateWalk } from './gate-cue.js';
 import { makeWalk } from './gate-walk.js';
 import { onPlay, decorBanner } from '../decor-drops/index.js';
@@ -253,8 +254,7 @@ export function enterRiver() {
   player.position.set(RIVER.x, 0, RIVER.z + RIVER_DOCK_HALF - 1.6); player.rotation.y = Math.PI;
   $w.nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); $w.lastZoneHint = null;
   snapCamera(); setSpaceVisible();
-  firstHint('riverDock', '🛶', '나루터 · 강 내려가기',
-    { steps: [{ ico: '🛶', label: '배 앞 {A}' }, { ico: '⬅️➡️', label: '피하기' }, { ico: '💨', label: '{A} 스퍼트' }], note: '하루 3번', chip: '⭐ 별조각으로 새 배 만들기' });
+  firstHint('riverDock', '🛶', '강 끝까지 내려가기', { tiles: riverHintTiles() });
   Sound.blip();
   trackEvent('boat_enter', { runs_left: boatRunsLeft(), night: isNight(), weather: WEATHER });   // [GA4] 유입
   decorBanner('ferry');

@@ -550,6 +550,7 @@
   .dc-t small { display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .08em; opacity: .5; margin-bottom: 4px; }
   .dc-t b { display: block; font-size: 15px; color: #24382d; }
   .dc-t span { display: block; font-size: 11.5px; opacity: .7; font-weight: 600; margin-top: 2px; }
+  .dc-t span.te { display: inline-block; font-size: inherit; opacity: 1; margin-top: 0; }
   .dc-hero { grid-column: span 2; background: #24382d; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .dc-hero small { color: #fff; opacity: .6; }
   .dc-hero b { color: #fff; font-size: 24px; letter-spacing: -.03em; }
@@ -3481,7 +3482,7 @@
     import { initAuth, signInWithGoogle, signInWithApple, requestEmailCode, verifyEmailCode, holdGuestForLogin, signInWithToss, signInWithPlayGames, signInWithGameCenter, deleteMyAccount, signInAsGuest, startLocalGuest, loadGame, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow, fetchNotices, insertInstallAttribution, insertInstallSurvey } from './js/supabase-client.js';
     import { renderDailyCard } from './js/daily-card.js';
     import { hydrateIcons, setIcon, iconText, iconHtml, startEmojiIcons } from './js/icons/index.js';
-    import { renderToast, renderTiles, buffTiles } from './js/ui-cards.js';
+    import { renderToast, renderTiles, buffTiles, fillTiles } from './js/ui-cards.js';
     import { mountEmailLogin } from './js/auth/email-login.js';   // ✉️ 이메일 코드 로그인(웹·itch)
     import { mountInAppLogin, INAPP_COPY, trackHandoffArrival } from './js/auth/in-app-login.js';
     import { e5Decision } from './js/exp-e5-boot.js';
@@ -4396,7 +4397,7 @@
         const fill = (v) => String(v || '').replace(/\{A\}/g, ak);
         $('hint-body').textContent = card ? '' : (body || '');
         $('hint-body').hidden = !!card;
-        const tiles = card?.tiles || null;
+        const tiles = card?.tiles ? fillTiles(card.tiles, { A: ak, S: TOUCH ? '🫧' : 'F' }) : null;
         $('hint-modal').querySelector('.tut-card').classList.toggle('as-card', !!tiles);
         $('hint-emoji').hidden = !!tiles; $('hint-title').hidden = !!tiles; $('hint-tiles').hidden = !tiles;
         if (tiles) renderTiles($('hint-tiles'), tiles); else $('hint-tiles').replaceChildren();
