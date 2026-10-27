@@ -9,9 +9,9 @@ function box(THREE, mat, w, h, d, x, y, z, color) {
   return m;
 }
 
-function hoeOn(THREE, mat, { skin = null, tier = 0, scale = 2.2 }) {
+function hoeOn(THREE, mat, { skin = null, tier = 0, scale = 2.2, face = HOE_FACE }) {
   const look = skin ? skinOf(skin) : tierLook(tier);
-  const hoe = buildHoe(THREE, mat, HOE_DEFAULT, HOE_FACE, look?.pal || null, look?.over || null);
+  const hoe = buildHoe(THREE, mat, HOE_DEFAULT, face, look?.pal || null, look?.over || null);
   dressHoe(THREE, mat, hoe, skin, tier);
   hoe.scale.setScalar(scale);
   return hoe;
@@ -31,10 +31,8 @@ function awning(THREE, mat, g) {
 function sign(THREE, mat, g) {
   g.add(box(THREE, mat, 1.86, .08, .1, 0, 2.7, -.36, WOOD_DARK));
   [-.36, .36].forEach(x => g.add(box(THREE, mat, .03, .1, .03, x, 2.62, -.36, ROPE)));
-  g.add(box(THREE, mat, .94, .46, .04, 0, 2.38, -.37, WOOD_DARK));
-  g.add(box(THREE, mat, .84, .36, .04, 0, 2.38, -.34, FOAM));
-  const badge = hoeOn(THREE, mat, { tier: 2, scale: 1.25 });
-  badge.rotation.set(0, 0, -1.1); badge.position.set(-.16, 2.3, -.3); g.add(badge);
+  const h = hoeOn(THREE, mat, { tier: 2, scale: 1.4, face: 0 });
+  h.rotation.z = -Math.PI / 2; h.position.set(-.21, 2.58, -.36); g.add(h);
 }
 
 function counter(THREE, mat, g) {
@@ -50,8 +48,8 @@ function counter(THREE, mat, g) {
 function rack(THREE, mat, g) {
   g.add(box(THREE, mat, 1.5, .07, .07, 0, 1.55, -.32, WOOD_DARK));
   [0, 1, 2].forEach((tier, i) => {
-    const h = hoeOn(THREE, mat, { tier });
-    h.rotation.set(0, 0, Math.PI); h.position.set(-.5 + i * .5, 1.55, -.26); g.add(h);
+    const h = hoeOn(THREE, mat, { tier, scale: 1.1, face: 0 });
+    h.rotation.z = (i - 1) * .06; h.position.set(-.6 + i * .48, 1.125, -.27); g.add(h);
   });
 }
 
