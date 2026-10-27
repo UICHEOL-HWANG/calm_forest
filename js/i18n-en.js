@@ -171,6 +171,7 @@ export const EN = {
   '📖 {0} {1} 첫 기록!': '📖 New guest: {0} {1}!',
   '🌸 {0}에 꽃이 피었어요! {1} {2} 장식이 열렸어요': '🌸 The {0} bloomed! {1} {2} decor unlocked',
   '개구리': 'Frog', '남생이': 'Pond turtle', '백조': 'Swan', '수달': 'Otter', '달팽이': 'Snail',
+  '펭귄': 'Penguin', '물범': 'Seal', '눈토끼': 'Snow Hare', '늑대': 'Wolf', '반달곰': 'Moon Bear',
   '무당벌레': 'Ladybug', '꿀벌': 'Honeybee', '산토끼': 'Hare', '귀뚜라미': 'Cricket', '들쥐': 'Field mouse',
   '노랑나비': 'Yellow butterfly', '박쥐': 'Bat', '스컹크': 'Skunk',
   '사슴': 'Deer', '애벌레': 'Caterpillar', '도마뱀': 'Lizard', '비버': 'Beaver', '고슴도치': 'Hedgehog', '개미': 'Ant', '딱정벌레': 'Beetle', '소쩍새': 'Scops owl', '지렁이': 'Earthworm',
