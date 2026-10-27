@@ -46,7 +46,7 @@ const fill = (ctx, h) => {
 
 // ── 부팅 ──
 (async () => {
-  loader.start(`분석 중 · 최근 ${days}일`);
+  loader.start('로딩 중입니다');
   sb = await bootAdmin();
   if (!sb) { loader.done(); $('wrap').hidden = true; return; }
   $('range').addEventListener('click', (e) => {
@@ -96,12 +96,13 @@ const fill = (ctx, h) => {
 async function load() {
   const btns = [...$('range').children];
   btns.forEach((b) => { b.disabled = true; b.classList.toggle('on', +b.dataset.d === days); b.setAttribute('aria-busy', String(+b.dataset.d === days)); });
-  loader.start(`분석 중 · 최근 ${days}일`);
+  loader.start(data ? `분석 중 · 최근 ${days}일` : '로딩 중입니다');
   const { data: d, error } = await sb.rpc('cf_admin_dashboard', shareKey ? { days, token: shareKey } : { days });
   btns.forEach((b) => { b.disabled = false; b.setAttribute('aria-busy', 'false'); });
   loader.done();
   if (error) { $('wrap').hidden = true; showRpcError(sb, error, 'cf_admin_dashboard'); return; }
   data = d;
+  page.classList.remove('is-first');
   $('msg').style.display = 'none';
   $('wrap').hidden = false;     // 앞선 요청이 실패해 숨겼더라도 성공하면 다시 연다
   render(d);
