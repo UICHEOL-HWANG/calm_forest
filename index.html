@@ -338,6 +338,10 @@
   #boat-boost { width: min(220px, 52vw); height: 6px; border-radius: 4px; background: rgba(255,255,255,0.5); overflow: hidden; }
   #boat-boost i { display: block; height: 100%; width: 0%; background: #ffd05e; }
   #boat-boost.ready i { background: #7ed957; }
+  #boat-stats small { font-size: 11px; font-weight: 800; color: #d98a00; }
+  #boat-skill { position: fixed; right: 28px; bottom: calc(196px + env(safe-area-inset-bottom)); z-index: 13; display: none; width: 64px; height: 64px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.9); font-size: 28px; cursor: pointer; background: conic-gradient(#7ed957 var(--cd, 0%), rgba(255,255,255,0.55) 0); box-shadow: var(--shadow); touch-action: none; user-select: none; -webkit-user-select: none; }
+  body.boat-run #boat-skill.on { display: block; }
+  #boat-skill:not(.ready) { opacity: .75; }
   #boat-quit { position: fixed; right: 14px; top: calc(14px + var(--top-inset)); z-index: 13; display: none; border: none; border-radius: 12px; padding: 8px 12px; font-size: 12px; font-weight: 700; cursor: pointer; background: rgba(255,255,255,0.8); color: var(--ink); box-shadow: var(--shadow); }
   body.boat-run #boat-quit { display: block; }
   /* 🌊 바다터 — 도구 팔레트 숨김(릴대 하나로 노는 공간) */
@@ -406,7 +410,6 @@
   #buy-reveal button { border: none; border-radius: 12px; padding: 10px 18px; font-weight: 700; font-size: 14px; cursor: pointer; font-family: inherit; }
   #br-walk { background: #e9a23b; color: #fff; }
   #br-close { background: rgba(255,255,255,.16); color: #fff; }
-  .boat-row.miss { background: #f2f2f0; color: #7b857e; }
   /* 📸 사진첩(그리드) + 크게 보기(그 위에 겹침) */
   #album-modal, #album-view { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
   #album-view { z-index: 34; }
@@ -417,8 +420,63 @@
   .album-cell:active { transform: scale(0.96); }
   .album-date { position: absolute; left: 6px; bottom: 4px; font-size: 10px; font-weight: 700; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.6); pointer-events: none; }
   .album-empty { grid-column: 1 / -1; opacity: .6; padding: 34px 0; text-align: center; font-size: 13px; }
-  .boat-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 12px; border-radius: 12px; background: #f4faf5; font-size: 13px; margin-bottom: 6px; }
-  .boat-row b { font-variant-numeric: tabular-nums; }
+  .brc { --cream: #fffaf0; --ink: #3a3128; --sub: #7b6d5c; --teal: #3fb3c2; width: min(360px, 92vw); max-height: 96dvh; overflow: hidden; background: var(--cream); color: var(--ink); border-radius: 22px; box-shadow: 0 18px 40px rgba(0,0,0,.25); position: relative; }
+  #br-body { display: contents; }
+  .brc-head { padding: 22px 20px 26px; color: #fff; text-align: center; position: relative; }
+  .brc-head.wreck { background: linear-gradient(160deg, #5a6fb0, #3d4f8a); }
+  .brc-head.clear { background: linear-gradient(160deg, #47c0b4, #3f9a6a); }
+  .brc-head.quit { background: linear-gradient(160deg, #c9a46a, #a9824a); }
+  .brc-head .ico { font-size: 40px; line-height: 1; }
+  .brc-head h3 { margin: 8px 0 2px; font-size: 22px; }
+  .brc-head p { margin: 0; font-size: 13px; opacity: .9; }
+  .brc-head .wave { position: absolute; left: 0; right: 0; bottom: -1px; height: 14px; background: radial-gradient(circle at 10px -4px, transparent 12px, var(--cream) 13px) 0 0/20px 14px repeat-x; }
+  .brc-route { display: flex; justify-content: space-between; align-items: center; padding: 14px 22px 4px; font-size: 12px; color: var(--sub); }
+  .brc-route b { display: block; font-size: 15px; color: var(--ink); }
+  .brc-route .r { text-align: right; }
+  .brc-route .line { flex: 1; margin: 0 10px; border-top: 2px dashed #d8cbb3; position: relative; }
+  .brc-route .line i { position: absolute; top: -11px; font-style: normal; font-size: 16px; }
+  .brc-score { text-align: center; padding: 8px 0 4px; }
+  .brc-score .n { font-size: 44px; font-weight: 800; letter-spacing: -1px; }
+  .brc-score .best { display: inline-block; background: #ffe9a8; color: #8a5a00; font-size: 12px; font-weight: 700; border-radius: 999px; padding: 2px 10px; margin-left: 6px; vertical-align: middle; }
+  .brc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 6px 18px 12px; }
+  .brc-grid div { background: #f3ece0; border-radius: 12px; padding: 8px 6px; text-align: center; font-size: 11px; color: var(--sub); }
+  .brc-grid b { display: block; font-size: 16px; color: var(--ink); }
+  .brc-perf { height: 18px; position: relative; margin: 2px 0; }
+  .brc-perf:before { content: ""; position: absolute; left: 14px; right: 14px; top: 8px; border-top: 2px dashed #ddd0b8; }
+  .brc-perf:after { content: ""; position: absolute; left: -10px; right: -10px; top: -1px; height: 20px; background: radial-gradient(circle at 0 10px, rgba(20,40,30,.55) 10px, transparent 11px) left/20px 20px no-repeat, radial-gradient(circle at 20px 10px, rgba(20,40,30,.55) 10px, transparent 11px) right/20px 20px no-repeat; }
+  .brc-rew { padding: 6px 18px 4px; }
+  .brc-rew .lb { font-size: 12px; color: var(--sub); margin-bottom: 6px; }
+  .brc .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .brc .chip { background: #fff; border: 1.5px solid #eadfcb; border-radius: 999px; padding: 4px 10px; font-size: 13px; font-weight: 700; }
+  .brc .chip.star { background: #fff6d6; border-color: #f2d27a; }
+  .brc .chip.mat { background: #eef7ee; border-color: #bfe0c2; }
+  .brc .chip.off { background: #f2f2f0; border-color: #e0e0dc; color: #7b857e; }
+  .brc-foot { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px 18px; gap: 8px; }
+  .brc .runs { font-size: 12px; color: var(--sub); }
+  .brc .runs .dots { display: flex; gap: 4px; margin-top: 3px; }
+  .brc .runs .dots i { width: 10px; height: 10px; border-radius: 50%; background: #e2d7c3; }
+  .brc .runs .dots i.on { background: var(--teal); }
+  .brc .btns { display: flex; gap: 6px; }
+  .brc .btn { border: none; border-radius: 14px; padding: 10px 14px; font-weight: 800; font-size: 14px; background: #efe7d8; color: var(--ink); cursor: pointer; font-family: inherit; }
+  .brc .btn.pri { background: var(--teal); color: #fff; }
+  .brc .btn:disabled { opacity: .55; cursor: default; }
+  @media (max-height: 430px) {
+    .brc { width: min(640px, 94vw); display: grid; grid-template-columns: 1fr 1.1fr; grid-template-rows: 1fr auto; }
+    .brc-left { grid-column: 1; grid-row: 1 / 3; display: flex; flex-direction: column; }
+    .brc-right { grid-column: 2; grid-row: 1; padding-top: 8px; }
+    .brc-foot { grid-column: 2; grid-row: 2; padding: 8px 14px 12px; }
+    .brc-head { padding: 12px 14px 20px; }
+    .brc-head .ico { font-size: 28px; }
+    .brc-head h3 { font-size: 18px; margin: 4px 0 2px; }
+    .brc-head p { font-size: 11px; }
+    .brc-route { padding: 10px 16px 2px; }
+    .brc-score .n { font-size: 34px; }
+    .brc-grid { padding: 4px 14px 8px; }
+    .brc-perf { margin: 0; }
+    .brc-perf:after { display: none; }
+    .brc-rew { padding: 4px 14px 2px; }
+    .brc .chip { font-size: 12px; padding: 3px 8px; }
+  }
   .boat-up { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: #f4faf5; margin-bottom: 8px; text-align: left; }
   .boat-up .bu-ico { font-size: 24px; }
   .boat-up .bu-body { flex: 1 1 auto; }
@@ -426,7 +484,32 @@
   .boat-up .bu-desc { display: block; font-size: 12px; opacity: .7; line-height: 1.35; }
   .boat-up button { border: none; border-radius: 10px; padding: 8px 12px; font-weight: 700; font-size: 12px; cursor: pointer; background: #cdeccd; color: var(--ink); white-space: nowrap; }
   .boat-up button:disabled { opacity: .45; cursor: default; }
+  .bd-course { display: flex; gap: 6px; margin: 8px 0; }
+  .bd-course button { flex: 1 1 0; border: none; border-radius: 10px; padding: 8px 10px; font-weight: 700; font-size: 13px; cursor: pointer; background: #e4efe6; color: var(--ink); }
+  .bd-course button:disabled { opacity: .45; cursor: default; }
+  .bd-course button.on { outline: 2px solid #3fb3c2; }
+  .bd-lacks { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .bd-lacks i { font-style: normal; font-size: 11px; background: rgba(0,0,0,.06); border-radius: 999px; padding: 1px 7px; }
+  .bd-boat.on { outline: 2px solid #3fb3c2; }
+  .bd-mats, .bd-note, .bd-sub { font-size: 12px; opacity: .75; margin: 4px 0; }
   .boat-up.maxed { opacity: .7; }
+  @media (max-height: 430px) {
+    #boat-shop .tut-card { padding: 8px 14px; max-height: 100vh; width: min(92vw, 640px); max-width: 92vw; }
+    #boat-shop .tut-emoji { display: inline-block; font-size: 20px; margin: 0 6px 0 0; vertical-align: middle; }
+    #boat-shop h2 { display: inline-block; font-size: 16px; margin: 0; vertical-align: middle; }
+    #boat-shop .bd-sub, #boat-shop .bd-mats, #boat-shop .bd-note { font-size: 11px; margin: 2px 0; }
+    #boat-shop .bd-course { margin: 4px 0; }
+    #boat-shop .bd-course button { padding: 5px 8px; font-size: 12px; }
+    #boat-shop .bd-boats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    #boat-shop .boat-up { padding: 5px 8px; margin-bottom: 0; gap: 6px; }
+    #boat-shop .boat-up .bu-ico { font-size: 18px; }
+    #boat-shop .boat-up .bu-name { font-size: 12px; }
+    #boat-shop .boat-up button { padding: 5px 8px; font-size: 11px; }
+    #boat-shop .bd-lacks { gap: 2px; margin-top: 2px; }
+    #boat-shop .bd-lacks i { font-size: 10px; padding: 0 5px; }
+    #boat-shop .dm-actions { margin-top: 6px !important; }
+    #boat-shop .dm-actions button { padding: 5px 14px; }
+  }
   /* 튜토리얼 / 씨앗 안내 모달 (공통 카드 스타일) */
   #tutorial-modal, #seed-modal, #hint-modal, #photo-modal, #char-modal, #merchant-modal, #notice-modal, #settings-modal, #invite-modal, #daily-modal { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
   #tutorial-modal.show, #seed-modal.show, #hint-modal.show, #photo-modal.show, #char-modal.show, #merchant-modal.show, #notice-modal.show, #settings-modal.show, #invite-modal.show, #daily-modal.show { display: grid; }
@@ -467,6 +550,7 @@
   .dc-t small { display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .08em; opacity: .5; margin-bottom: 4px; }
   .dc-t b { display: block; font-size: 15px; color: #24382d; }
   .dc-t span { display: block; font-size: 11.5px; opacity: .7; font-weight: 600; margin-top: 2px; }
+  .dc-t span.te { display: inline-block; font-size: inherit; opacity: 1; margin-top: 0; }
   .dc-hero { grid-column: span 2; background: #24382d; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .dc-hero small { color: #fff; opacity: .6; }
   .dc-hero b { color: #fff; font-size: 24px; letter-spacing: -.03em; }
@@ -2297,6 +2381,7 @@
     #boat-stats { font-size: 11px; gap: 7px; padding: 5px 9px; max-width: 56vw; flex-wrap: wrap; justify-content: center; }
     #boat-boost { width: 40vw; }
     #boat-quit, #boat-view { padding: 7px 9px; font-size: 11px; }
+    body.is-touch #boat-skill { right: max(20px, calc(env(safe-area-inset-right) + 12px)); bottom: calc(112px + env(safe-area-inset-bottom)); width: 56px; height: 56px; font-size: 24px; }
     #boat-view { top: calc(50px + var(--top-inset)); }
     /* 런 중에는 도구 하트바가 없으므로 조이스틱·액션버튼이 그대로 노출된다(조향+노 젓기) */
     /* 작업대/상점/자유주방 메뉴: 좁은 화면 대응 — 탭 축소, 내용 스크롤 */
@@ -2983,13 +3068,14 @@
     <div id="boat-bar"><div id="boat-fill"></div></div>
     <div id="boat-stats">
       <span id="boat-lamps">💡💡💡</span>
-      <span>⭐<b id="boat-star">0</b></span>
+      <span>⭐<b id="boat-star">0</b><small id="boat-combo"></small></span>
       <span class="bs-dim"><b id="boat-dist">0</b>/620m</span>
       <span class="bs-dim" id="boat-seg">1구간</span>
     </div>
     <div id="boat-boost"><i></i></div>
   </div>
   <button id="boat-quit">✕ 그만두기</button>
+  <button id="boat-skill" aria-label="스킬"></button>
   <div id="sea-vig"></div>
   <div class="sea-ring"></div><div class="sea-ring"></div><div class="sea-ring"></div>
   <div id="sea-hint"></div>
@@ -3028,14 +3114,14 @@
 
   <!-- 🛶 런 결과 -->
   <div id="boat-result">
-    <div class="tut-card">
-      <div class="tut-emoji" id="br-emoji">🛶</div>
-      <h2 id="br-title">도착!</h2>
-      <p id="br-sub" style="font-size:13px; opacity:.75; margin:-8px 0 14px;"></p>
-      <div id="br-rows" style="text-align:left"></div>
-      <div class="dm-actions" style="justify-content:center; margin-top:14px">
-        <button id="br-again" class="primary">🛶 한 번 더</button>
-        <button id="boat-result-close">그만하기</button>
+    <div class="brc">
+      <div id="br-body"></div>
+      <div class="brc-foot">
+        <div class="runs" id="br-runs"></div>
+        <div class="btns">
+          <button id="br-again" class="btn pri">🛶 한 번 더</button>
+          <button id="boat-result-close" class="btn">그만하기</button>
+        </div>
       </div>
     </div>
   </div>
@@ -3066,8 +3152,7 @@
     <div class="tut-card">
       <div class="tut-emoji">🧰</div>
       <h2>뱃사공의 창고</h2>
-      <p id="bs-sub" style="font-size:13px; opacity:.75; margin:-8px 0 14px;"></p>
-      <div id="bs-items"></div>
+      <div id="bs-dock"></div>
       <div class="dm-actions" style="justify-content:center; margin-top:12px"><button id="bs-close">닫기</button></div>
     </div>
   </div>
@@ -3419,7 +3504,7 @@
     import { initAuth, signInWithGoogle, signInWithApple, requestEmailCode, verifyEmailCode, holdGuestForLogin, signInWithToss, signInWithPlayGames, signInWithGameCenter, deleteMyAccount, signInAsGuest, startLocalGuest, loadGame, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow, fetchNotices, insertInstallAttribution, insertInstallSurvey } from './js/supabase-client.js';
     import { renderDailyCard } from './js/daily-card.js';
     import { hydrateIcons, setIcon, iconText, iconHtml, startEmojiIcons } from './js/icons/index.js';
-    import { renderToast, renderTiles, buffTiles } from './js/ui-cards.js';
+    import { renderToast, renderTiles, buffTiles, fillTiles } from './js/ui-cards.js';
     import { mountEmailLogin } from './js/auth/email-login.js';   // ✉️ 이메일 코드 로그인(웹·itch)
     import { mountInAppLogin, INAPP_COPY, trackHandoffArrival } from './js/auth/in-app-login.js';
     import { e5Decision } from './js/exp-e5-boot.js';
@@ -3437,6 +3522,10 @@
     import { mountLoginStore } from './js/login-store-ui.js';
     import { createLoginDwell } from './js/login-dwell.js';
     import { initPush, offerPush } from './js/push-ui.js';   // 🔔 안드로이드 푸시 알림(안내 카드·설정 토글)   // 📲 웹 → 앱 유도 배너(웹 전용)
+    import { renderDock } from './js/boat/dock-ui.js';
+    import { resultCardHtml } from './js/boat/result-card.js';
+    import { BOATS } from './js/boat/boats.js';
+    import { RIVER_LEN } from './js/boat/consts.js';
     import { playChestReveal, stopChestReveal } from './js/boat-chest-reveal.js';   // 🧰 보물상자 개봉 화면(R3)
     import { questPanelView } from './js/quest-panel-view.js';
     import { trackLogin, trackEvent, setGaUser, onTrack, setInstallUserProps, setSurveyUserProps } from './js/analytics.js';
@@ -4330,7 +4419,7 @@
         const fill = (v) => String(v || '').replace(/\{A\}/g, ak);
         $('hint-body').textContent = card ? '' : (body || '');
         $('hint-body').hidden = !!card;
-        const tiles = card?.tiles || null;
+        const tiles = card?.tiles ? fillTiles(card.tiles, { A: ak, S: TOUCH ? '🫧' : 'F' }) : null;
         $('hint-modal').querySelector('.tut-card').classList.toggle('as-card', !!tiles);
         $('hint-emoji').hidden = !!tiles; $('hint-title').hidden = !!tiles; $('hint-tiles').hidden = !tiles;
         if (tiles) renderTiles($('hint-tiles'), tiles); else $('hint-tiles').replaceChildren();
@@ -4619,11 +4708,19 @@
         $('boat-fill').style.width = (d.p * 100).toFixed(1) + '%';
         $('boat-lamps').textContent = '💡'.repeat(Math.max(0, d.lamps)) + '🖤'.repeat(Math.max(0, d.lampMax - d.lamps));
         $('boat-star').textContent = d.stars;
+        $('boat-combo').textContent = d.combo >= 3 ? ` ×${d.combo}` : '';
         $('boat-dist').textContent = d.dist;
         $('boat-seg').textContent = d.seg + '구간';
         const bb = $('boat-boost');
         bb.firstElementChild.style.width = Math.round(d.boost * 100) + '%';
         bb.classList.toggle('ready', d.boost >= 1 && !d.boosting);
+        const sk = $('boat-skill'), has = d.skill != null;
+        sk.classList.toggle('on', has);
+        if (has) {
+          if (sk.textContent !== d.skillIco) sk.textContent = d.skillIco;
+          sk.style.setProperty('--cd', Math.round(d.skill * 100) + '%');
+          sk.classList.toggle('ready', d.skill >= 1);
+        }
       },
       // 🌊 바다터 입장/퇴장 — 도구 팔레트를 걷어냄(액션 버튼 하나로 노는 공간)
       setSeaMode(on) { document.body.classList.toggle('sea-mode', !!on); if (!on) document.body.classList.remove('sea-busy'); },
@@ -4684,27 +4781,16 @@
           };
           return;
         }
-        const clear = d.result === 'clear', wreck = d.result === 'wreck';
-        $('br-emoji').textContent = clear ? '🎉' : wreck ? '🌊' : '🛶';
-        $('br-title').textContent = clear ? '무사히 도착!' : wreck ? '배가 가라앉았어요' : '뱃길을 멈췄어요';
-        $('br-sub').textContent = clear
-          ? (d.hits === 0 ? '한 번도 부딪히지 않았어요 — 완벽한 뱃길! 🌊' : `${d.dist_m}m 를 내려왔어요`)
-          : wreck
-            ? '🎒 주운 건 그대로 · 🛶 배는 내일 멀쩡해요'
-            : `${d.dist_m}m 지점에서 멈췄어요. 여기까지 모은 건 그대로 가져가요`;
-        const rows = [
-          ['거리', `${d.dist_m}m`], ['시간', `${d.time_sec}초`], ['점수', `${d.score}${d.best ? ' 🏆 최고 기록!' : ''}`],
-          ['충돌', `${d.hits}회`], ['⭐ 별조각', `+${d.stars} (보유 ${d.totalStar})`],
-        ];
-        if (d.picksView.length) rows.push(['수집물', d.picksView.map(p => `${p.ico}${p.name}×${p.n}`).join(' · ')]);
-        // 🧰 건졌으면 받은 것, 지나쳤으면 회색 안내(오늘 남은 판에 또 떠내려온다)
-        if (d.chestView?.paid) rows.push(['보물상자', d.chestView.name]);
-        else if (d.chestView?.missed) rows.push(['보물상자', '다음 뱃길에 또 떠내려와요', 'miss']);
-        rows.push(['오늘 남은 횟수', `${d.runsLeft}/${d.runsMax}회`]);
-        $('br-rows').innerHTML = rows.map(([k, v, cls]) => `<div class="boat-row${cls ? ' ' + cls : ''}"><span>${k}</span><b>${v}</b></div>`).join('');
+        const boat = BOATS[d.boat_id] || BOATS.ferry;
+        $('br-body').innerHTML = resultCardHtml({
+          result: d.result, perfect: d.hits === 0, dist: d.dist_m, total: RIVER_LEN, time: d.time_sec, score: d.score, best: d.best,
+          hits: d.hits, comboMax: d.combo_max || 0, stars: d.stars, totalStar: d.totalStar, boatIco: boat.ico, boatName: boat.name,
+          course: d.course, picks: d.picksView, mats: d.matsView, chest: d.chestView, runsLeft: d.runsLeft, runsMax: d.runsMax,
+        });
+        $('br-runs').innerHTML = `오늘 남은 뱃길 ${d.runsLeft}/${d.runsMax}<div class="dots">${Array.from({ length: d.runsMax }, (_, i) => `<i class="${i < d.runsLeft ? 'on' : ''}"></i>`).join('')}</div>`;
         const again = $('br-again');
         again.disabled = d.runsLeft <= 0;
-        again.textContent = d.runsLeft > 0 ? `🛶 한 번 더 (${d.runsLeft}회 남음)` : '🛶 내일 또 만나요';
+        again.textContent = d.runsLeft > 0 ? '🛶 한 번 더' : '🛶 내일 또 만나요';
         Input.setAnalog(0, 0);
         $('boat-result').classList.add('show');
       },
@@ -6732,26 +6818,10 @@
 
     // ── 🛶 나룻배: 결과 모달 · 🧰 창고(배 강화) · 런 조작 버튼 ──
     function renderBoatShop(d) {
-      $('bs-sub').innerHTML = `⭐별조각 <b>${d.star}</b> · 🪙<b>${d.coins}</b> · 🏆최고 <b>${d.best}</b>점 · 오늘 <b>${d.runsLeft}/${d.runsMax}</b>회 남음`;
-      const box = $('bs-items'); box.innerHTML = '';
-      d.items.forEach(it => {
-        const row = document.createElement('div');
-        row.className = 'boat-up' + (it.cost ? '' : ' maxed');
-        const lvTxt = '●'.repeat(it.lv) + '○'.repeat(it.max - it.lv);
-        row.innerHTML =
-          `<span class="bu-ico">${it.ico}</span>` +
-          `<span class="bu-body"><span class="bu-name">${it.name} <span style="opacity:.5;font-size:12px">${lvTxt}</span></span>` +
-          `<span class="bu-desc">${it.desc}</span></span>`;
-        const btn = document.createElement('button');
-        if (!it.cost) { btn.textContent = '완료'; btn.disabled = true; }
-        else { btn.textContent = `⭐${it.cost.star} 🪙${it.cost.coins}`; btn.disabled = !it.affordable; }
-        btn.addEventListener('click', () => {
-          const r = Input.buyBoatUpgrade(it.id);
-          if (!r.ok) { ui.toast(r.msg || '강화할 수 없어요'); return; }
-          ui.toast(`${r.ico} ${r.name} 강화! (${r.lv}단계)`, 2400);
-          renderBoatShop(Input.getBoatShop());
-        });
-        row.appendChild(btn); box.appendChild(row);
+      renderDock($('bs-dock'), d, {
+        select(id) { const r = Input.selectBoat(id); if (!r.ok) ui.toast(r.msg); renderBoatShop(Input.getDock()); },
+        course(c) { const r = Input.selectCourse(c); if (!r.ok && r.msg) ui.toast(r.msg); renderBoatShop(Input.getDock()); },
+        unlock(id) { const r = Input.unlockBoat(id); if (!r.ok) { ui.toast(r.msg); return; } ui.toast(`${r.ico} ${r.name} 완성!`, 2400); renderBoatShop(Input.getDock()); },
       });
     }
     $('bs-close').addEventListener('click', () => $('boat-shop').classList.remove('show'));
@@ -6759,6 +6829,7 @@
     $('boat-result-close').addEventListener('click', () => $('boat-result').classList.remove('show'));
     $('br-again').addEventListener('click', () => { $('boat-result').classList.remove('show'); Input.startBoatRun(); });
     $('boat-quit').addEventListener('click', () => Input.quitBoatRun());
+    $('boat-skill').addEventListener('click', () => Input.boatSkill());
     $('boat-view').addEventListener('click', () => {
       const m = Input.toggleBoatView();
       $('boat-view').textContent = m === 'first' ? '👁️ 1인칭' : '👁️ 3인칭';
@@ -6832,6 +6903,7 @@
     // ═══════════════ 🏆 리더보드 — /api/leaderboard (서버 집계·엣지 캐시) ═══════════════
     const LB_BOARDS = [
       { id: 'boat',  label: '🛶 오늘의 뱃길', unit: '점',  desc: '오늘의 물길 최고 점수 — 코스는 모두에게 같아요', daily: true },
+      { id: 'boat_rapid', label: '🌊 급류', unit: '점', desc: '오늘 급류 최고 점수', daily: true },
       { id: 'sea',   label: '🌊 오늘의 대어', unit: 'kg',  desc: '오늘 낚은 가장 무거운 물고기 — 어종은 가리지 않아요', daily: true, fmt: s => (s / 10).toFixed(1) },
       { id: 'rich',  label: '🪙 주간 부자',   unit: '🪙', desc: '이번 주에 번 코인' },
       { id: 'mine',  label: '⛏️ 광부왕',      unit: '회',  desc: '이번 주 채굴 횟수' },

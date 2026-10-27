@@ -96,3 +96,21 @@ export function bridgeTiles(cost) {
     { k: 'tile', wide: true, tag: '다음 할 일', label: '🌉 다리 고치기', chips: [`🪵 ${cost.wood}`, `🪨 ${cost.stone}`] },
   ];
 }
+
+export function riverHintTiles() {
+  return [
+    { k: 'hero', ico: '🛶', tag: 'RIVER', title: '강 끝까지 내려가기' },
+    { k: 'tile', wide: true, tag: '조작', label: '🛶 배 앞에서 {A}', chips: ['⬅️➡️ 피하기', '💨 {A} 스퍼트', '{S} 배 스킬'] },
+    { k: 'tile', tone: 'gold', tag: '하루', label: '3번', desc: '내일 새 물길' },
+    { k: 'tile', tag: '모으기', label: '⭐ 🪷 🪵 🐚', desc: '별조각 · 강 재료' },
+    { k: 'tile', tone: 'peach', wide: true, label: '🌊 한 번 완주하면 급류가 열려요' },
+  ];
+}
+
+export function fillTiles(tiles, keys) {
+  const fill = v => (typeof v === 'string' ? v.replace(/\{([AS])\}/g, (m, k) => keys[k] ?? m) : v);
+  return tiles.map(x => ({
+    ...Object.fromEntries(Object.entries(x).map(([k, v]) => [k, fill(v)])),
+    ...(x.chips ? { chips: x.chips.map(fill) } : {}),
+  }));
+}

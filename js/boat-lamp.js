@@ -27,7 +27,7 @@ export const BOAT_EYE = { y: 1.5, z: 0.55 };
 export const EYE_Z_RANGE = [0.55, 2.8];        // [정지, 스퍼트] — 이 사이 어디든 카메라가 있을 수 있다
 export const BOAT_LOOK = { y: 1.05, z: -14 };
 
-/** 🏮 등불 머리(구)와 그걸 매단 기둥. makeBoatRideable 이 이 값으로 배치한다. */
+/** 🏮 등불 머리(구)와 그걸 매단 기둥. ferryModel (js/boat/models.js) 이 이 값으로 배치한다. */
 export const BOAT_LAMP = { x: -0.36, y: 2.06, z: -1.7, r: 0.125 };
 /** 뱃전 왼쪽에 세운 가는 기둥 — 등불을 시선 위로 들어 올리는 역할만 한다(얇고 어두울 것). */
 export const BOAT_LAMP_POST = { x: -0.36, z: -1.7, bottom: 0.45, top: 1.98, r: 0.021 };

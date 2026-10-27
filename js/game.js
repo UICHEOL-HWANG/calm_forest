@@ -30,6 +30,7 @@ import { retryDelay, offerReload } from './save-guard.js';   // 🛡️ 세이�
 import { unreadNotices, maxId } from './notices.js';   // 📮 소식함 순수 로직(안 읽은 것 거르기·읽음 id)
 import { NIGHT_MIN, WAKE_TIME, daylightAt, isNightAt } from './daynight.js';
 import { BOAT_LAMP, BOAT_LAMP_POST } from './boat-lamp.js';   // 🏮 등불이 앞 장애물을 안 가리는 배치(순수 기하 규칙)   // 🌞🌙 햇빛 곡선·밤 판정·기상 시각(순수 규칙)
+import { boatDefaults, restoreBoat } from './boat/save.js';
 import { TUNING, rewardBoostMult, isMapLocked, mapOpenDay, betaDay, lockLine, openLine } from './tuning.js';   // 🧪 [베타 A/B] 보상 부스트 + 2차 맵 계단식 (난이도는 difficulty.js 로 옮겼다)
 import { easeFor, nextDda, ddaOutcome, defaultDifficulty, mergeDifficulty, PROBE_SCHEME } from './difficulty.js';   // 🎚️ 미니게임 난이도 — probe 지터 + 유저별 DDA
 import { spotToolStep, spotWant, spotKeep, SPOT_REASON, IDLE as SPOT_IDLE } from './spot-tool-auto.js';
@@ -133,8 +134,8 @@ import {
   PIER, onPier, COOP_STREAK, COOP, PARK_BENCHES, COOP_COST, COOP_FEED, GLADE, GLADE_R, BUG_KINDS, CAFE_GATE, MUSEUM_GATE,
   OBSERVATORY, OBSERVATORY_GATE, OBSERVATORY_R, MOUNTAIN, MOUNTAIN_GATE, MOUNTAIN_LANDMARK, MOUNTAIN_LANDMARK_R, MOUNTAIN_R, LIGHT_WORKSHOP, DREAM, MIRROR, MIRROR_STOP, HALLOWEEN, MUSEUM, CAFE, CAFE_HALF, CAFE_ORDERS, CAFE_BONUS, CAFE_SEATS, CAFE_BOARD, CAFE_GUESTS, cafeGuestDef, FOREST, FOREST_R,
   FOREST_LOGS, FOREST_LOG_R, FOREST_LOG_SPOTS, FORAGE_RESPAWN, FORAGE_KINDS, DOCK_GATE, DOCK_POND, DOCK_POND_R, RIVER,
-  RIVER_DOCK_HALF, RIVER_W, RIVER_LEN, BOAT_RUNS_PER_DAY, BOAT_LAMPS, BOAT_BASE_SPEED, BOAT_BOOST_CD, RIVER_OBS, RIVER_PICKS,
-  BOAT_UPGRADES, SHOP_POS, SHOP_DOOR, MIST_GATE, MIST, MIST_HALF, MIST_WAVES, TREE_LIGHT_MAX, MIST_DRAIN, SOOTHE_GLOW,
+  RIVER_DOCK_HALF, RIVER_W, RIVER_LEN, BOAT_RUNS_PER_DAY, BOAT_BASE_SPEED, BOAT_BOOST_CD, RIVER_OBS, RIVER_PICKS,
+  SHOP_POS, SHOP_DOOR, MIST_GATE, MIST, MIST_HALF, MIST_WAVES, TREE_LIGHT_MAX, MIST_DRAIN, SOOTHE_GLOW,
   PURIFY_GLOW, SPIRITS, MIST_LANTERN_POS, LANTERN_CALM_R, MIST_PRACTICE_STEPS, SEA_GATE, SEA_COVE, SEA, ORCHARD_GATE,
   ORCHARD_PROMPT_R, ORCHARD, ORCHARD_HALF, SEA_DECK_W, SEA_DECK_Z0, SEA_DECK_Z1, SEA_EDGE, SEA_SPECIES, ROOF_COLORS,
   WALL_COLORS, DOOR_COLORS, PART_NAME, HOUSE_POS, NEIGHBOR, NEIGHBOR_R, NEIGHBOR_GATE, DELVE,
@@ -170,7 +171,7 @@ import {
   updateCafeInteract, updateMuseumView,
 } from './spaces/cafe.js';   // 📦 ☕ 카페 — 채굴장처럼 처음부터 있는 장소. 홀에 앉은 손님에게 서빙
 import {
-  boatRunsLeft, boatShopView, buildDockGate, buildRiverSpace, buyBoatUpgrade, endBoatRun, enterRiver, exitRiver,
+  boatRunsLeft, buildDockGate, buildRiverSpace, dockView, endBoatRun, enterRiver, exitRiver, selectBoat, selectCourse, unlockBoatNow,
   startBoatRun, updateBoatCamera, updateBoatRun, updateRiverInteract,
 } from './spaces/river.js';   // 📦 🛶 나루터 & 강 내려가기 — 마을 북쪽(12시) 선착장 → 강 인스턴스 공간
 import {
@@ -400,6 +401,7 @@ export const $w = {
   get seaRodMesh() { return seaRodMesh; }, set seaRodMesh(v) { seaRodMesh = v; },
   get sitting() { return sitting; }, set sitting(v) { sitting = v; },
   get wantAction() { return wantAction; }, set wantAction(v) { wantAction = v; },
+  get wantSkill() { return wantSkill; }, set wantSkill(v) { wantSkill = v; },
 };
 
 // 모바일 여부 — 렌더 품질/디테일을 낮춰 성능 확보
@@ -1079,7 +1081,7 @@ const gameState = {
   //            🤝 발길 끊기 만료일, 오늘 대결한 동물 }
   night: { lastDate: null, traces: [], truce: { boar: null, raccoon: null }, duelDate: null, duelDone: [] },
   frost: { coveredFor: null, lastDate: null }, // 🌡️ 날씨 이벤트 { 덮개를 설치해 둔 대상 날짜, 마지막 정산일(YYYY-MM-DD) }
-  boat: { date: null, count: 0, clearsToday: 0, best: 0, clears: 0, up: { oar: 0, hull: 0, lamp: 0 }, chestDate: null }, // 🛶 나룻배 { 오늘 날짜, 오늘 탄 횟수, 오늘 완주 수(의뢰 판정용), 최고 점수, 누적 완주, 배 업그레이드, 🧰 보물상자 건진 날 }
+  boat: boatDefaults(),
   mist: { date: null, purified: false, soothedTotal: 0, purifyTotal: 0, practiced: false }, // 🌫️ 안개 숲 { 정화 판정일(YYYY-MM-DD), 오늘 정화 여부, 누적 달래기, 누적 정화, 연습 완료 여부 }
   beta: { tries: {} },   // 🧪 미니게임별 시도 횟수 — 관대 판정은 js/difficulty.js 로 옮겼다(이 카운터는 옛 세이브 호환용)
   difficulty: defaultDifficulty(),   // 🎚️ 미니게임별 난이도 상태 { dda: 유저 보정, n: probe 순회용 누적 시도 }
@@ -1723,6 +1725,7 @@ const clock = new THREE.Clock();
 const keys = createKeyState();   // ⌨️ js/keys.js — 입력칸에서 친 키 무시·blur 리셋·모달 중 이동 0
 const analog = { x: 0, z: 0 };    // 모바일 조이스틱 아날로그 이동(-1~1)
 let wantAction = false;
+let wantSkill = false;
 let timeOfDay = 0.30;
 let ui = {};
 
@@ -2057,12 +2060,15 @@ export const Input = {
   },
   getCafe() { return cafeView(); },                     // ☕ 주문판(현황 확인용 — 서빙은 손님에게 직접)
   // 🛶 나룻배 — 창고(업그레이드) / 다시 타기 / 중도 포기 / 시점 토글
-  getBoatShop() { return boatShopView(); },
-  buyBoatUpgrade(id) { return buyBoatUpgrade(id); },
+  getDock() { return dockView(); },
+  selectBoat(id) { return selectBoat(id); },
+  selectCourse(c) { return selectCourse(c); },
+  unlockBoat(id) { return unlockBoatNow(id); },
+  boatSkill() { if (boat.active) wantSkill = true; },
   boatRunsLeft() { return boatRunsLeft(); },
   startBoatRun() { startBoatRun(); },
   quitBoatRun() { if (boat.active) endBoatRun('quit'); },
-  toggleBoatView() { boatView = boatView === 'first' ? 'third' : 'first'; if (boat.active) playerAnchor.visible = (boatView === 'third'); return boatView; },
+  toggleBoatView() { boatView = boatView === 'first' ? 'third' : 'first'; if (boat.active) playerAnchor.visible = (boatView === 'third'); boat.group?.userData.fpHide?.forEach(m => { m.visible = boatView === 'third'; }); return boatView; },
   boatViewMode() { return boatView; },
   getShopBuy() { return SHOP_BUY; },                    // 구매 목록
   sellItem(k, all) { return sellItem(k, all); },        // 자원 판매
@@ -2533,10 +2539,11 @@ export async function enterGame() {
     window.__frostTest = () => { gameState.frost.lastDate = todayStr(-1); return resolveWeatherEvent(); };
     // 🛶 __boatTest() — 오늘 탄 횟수를 초기화(코스 반복 테스트용). 코스 시드는 그대로라 같은 물길이 나온다
     window.__boatTest = () => { gameState.boat.date = null; return boatRunsLeft(); };
-    // 🛶 __boat — 나룻배 검수용. up('lamp',1) 로 업그레이드를 채우고 start() 로 즉시 출항(🏮등불·물보라 시야 확인)
+    // 🛶 __boat — 나룻배 검수용. own('koi') 로 배를 주고 sel({ boat: 'koi', course: 'rapid' }) 로 고른 뒤 start() 로 즉시 출항
     window.__boat = {
       start: startBoatRun, quit: () => endBoatRun('quit'), state: boat,
-      up: (id, lv = 1) => { if (id in gameState.boat.up) gameState.boat.up[id] = lv; return { ...gameState.boat.up }; },
+      own: (id) => { gameState.boat.own = { ...gameState.boat.own, [id]: 1 }; return { ...gameState.boat.own }; },
+      sel: (patch) => { gameState.boat.sel = { ...gameState.boat.sel, ...patch }; return { ...gameState.boat.sel }; },
       course: riverCourse,                                  // 코스 데이터(장애물이 몇 m 앞인지 — 같은 지점 비교 촬영용)
       seek: (d) => { boat.dist = Math.max(0, d); return Math.round(boat.dist); },
       chestReset: () => { gameState.boat.chestDate = null; return 'ok'; },   // 🧰 오늘 건진 기록을 지워 다시 떠내려오게
@@ -2896,7 +2903,11 @@ function applySave(saved) {
   if (saved.beta) gameState.beta = { tries: {}, ...saved.beta };   // 🧪 관대 판정 카운터 복원
   gameState.difficulty = mergeDifficulty(saved.difficulty);   // 🎚️ 난이도 상태 복원 — 필드가 없는 옛 세이브는 기본값으로 뜬다
   if (saved.frost) gameState.frost = { coveredFor: null, lastDate: null, ...saved.frost }; // 🌡️ 날씨 이벤트 상태 복원
-  if (saved.boat) gameState.boat = { ...gameState.boat, ...saved.boat, up: { oar: 0, hull: 0, lamp: 0, ...(saved.boat.up || {}) } }; // 🛶 나룻배 횟수·기록·업그레이드 복원
+  if (saved.boat) {
+    const rb = restoreBoat(saved.boat);
+    gameState.boat = rb.boat;
+    if (rb.refundStar) gameState.inventory.star = (gameState.inventory.star || 0) + rb.refundStar;
+  }
   gameState.dream = normalizeDream(saved.dream, todayStr());   // 🌙 꿈의 숲 — 타입·범위 검증, 날이 바뀌면 got 을 비운다
   gameState.mirror = normalizeMirror(saved.mirror, todayStr());   // 🪞 거울 마을 — 타입·범위 검증, 날이 바뀌면 done·hinted 를 비운다
   gameState.halloween = saved.halloween ?? null; gameState.hwBundles = saved.hwBundles ?? null; settleHalloween();
@@ -3933,7 +3944,7 @@ function umbrellaHeld() { return !!umbrellaMesh && umbrellaMesh.visible && umbre
 function updateUmbrella(dt) {
   const theme = toolSkinOf(gameState.cosmetics);
   //  🌊 바다터는 양팔로 릴대를 잡는다 · 클로즈업(요리·밤손님 대결)은 카메라가 붙어 우산이 화면을 가린다
-  const outdoors = !(indoor || atCafe || atMuseum || atObservatory || atMountain || atDream || atMirror || atHalloween || atMine || atSea || mgView || duelActive);
+  const outdoors = !(indoor || atCafe || atMuseum || atObservatory || atMountain || atDream || atMirror || atHalloween || atMine || atSea || boat.active || mgView || duelActive);
   const show = !!charGroup && !!charK && umbrellaShown(theme, WEATHER, outdoors);
   if (umbrellaMesh && (umbrellaTheme !== theme || umbrellaMesh.parent !== charGroup)) dropUmbrella();   // 세트를 바꿨거나 캐릭터를 다시 지었다
   //  🪓 동작(도구질·줍기·삽질) 중엔 갓을 뒤로 젖힌다 — 머리 위 갓이 숙인 몸과 도구를 가렸다(2026-10-02 실측).
@@ -5844,6 +5855,7 @@ function initInput() {
       if (MOVE_KEYS.includes(e.code)) e.preventDefault(); return;
     }
     if (e.code === 'Space') requestAction();
+    if (e.code === 'KeyF' && boat.active) { wantSkill = true; return; }
     if (e.code === 'KeyC') Input.toggleSit();   // C: 앉기
     // 1 = 도구 세트 전환, 2~6 = 지금 세트의 도구 (하단바에 적힌 번호와 1:1 · 🌾농사는 5칸, 🏕️야외도구는 4칸)
     if (e.code === 'Digit1') Input.cycleToolPage();
@@ -7242,7 +7254,7 @@ function handleAction() {
   if (atOrchard) return orchardAction();   // 🍎 과수원: 심기·물주기·수확·베기(js/game.js orchardAction)
   if (atRiver) {                  // 🛶 나루터 데크: 배 타기 / 창고 열기
     if (nearBoat) return startBoatRun();
-    if (nearBoatShop) { trackEvent('boat_shop_open'); return ui.openBoatShop?.(boatShopView()); }
+    if (nearBoatShop) { trackEvent('boat_shop_open'); return ui.openBoatShop?.(dockView()); }
     ui.toast?.('🛶 정박한 배로 가면 강을 내려갈 수 있어요');
     return;
   }
@@ -8157,6 +8169,6 @@ export {
   spawnWater, spawnWoodChips, stopOutdoorPlacing, swayables, syncBadges, syncFarmHints, syncStory, syncUnlocks, isOpen, unlocksOn, todayStr, toolMesh,
   holdPlaceReveal, keepPlaceReveal, releasePlaceReveal, startReturnWalk,
   toolPage, trackDiffAbandon, trackGateBlocked, trees, triggerFarmReveal, triggerMoment, tryUnlockDrop, ui,
-  updateCarveScene, updatePlotVisual, updateStowPose, updateToolPageAuto, usePet, vtxMat, wakeToMorning, wantAction, warnTexture,
+  updateCarveScene, updatePlotVisual, updateStowPose, updateToolPageAuto, usePet, vtxMat, wakeToMorning, wantAction, wantSkill, warnTexture,
   weatherOf, weedTexture, wiltPlot, woodMat, workerCap, worldGround, worldGroundPatches,
 };
