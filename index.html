@@ -3052,7 +3052,7 @@
   <!-- 사진 크게 보기 -->
   <div id="album-view">
     <div class="tut-card" style="max-width:640px; width:min(640px,94vw);">
-      <img id="album-img" alt="calm forest 사진" style="width:100%; border-radius:14px;" />
+      <img id="album-img" alt="고요한 숲 사진" style="width:100%; border-radius:14px;" />
       <div class="dm-actions" style="justify-content:center; margin-top:12px">
         <button id="album-share">📤 공유</button>
         <button id="album-delete">🗑️ 삭제</button>
@@ -3215,7 +3215,7 @@
   <div id="tutorial-modal">
     <div class="tut-card">
       <div class="tut-emoji">🌿</div>
-      <h2>calm forest에 오신 걸 환영해요!</h2>
+      <h2>고요한 숲에 오신 걸 환영해요!</h2>
       <p style="font-size:14px;line-height:1.6;opacity:.85;margin:0 0 14px;">
         이동·벌목·농사·건축·주민 퀘스트가 있는 포근한 숲이에요.<br>
         <b>화면 안내를 따라 직접 해보는 튜토리얼</b>로 하나씩 익혀볼까요?
@@ -3367,7 +3367,7 @@
   <div id="photo-modal">
     <div class="tut-card" style="max-width:460px; width:min(460px,92vw);">
       <h2 style="margin:0 0 12px;">📷 사진 찍기</h2>
-      <img id="photo-img" alt="calm forest 사진" />
+      <img id="photo-img" alt="고요한 숲 사진" />
       <div class="photo-actions">
         <button id="photo-cloud">☁️ 사진첩</button>
         <button id="photo-save" class="primary">💾 저장</button>
@@ -3377,7 +3377,7 @@
     </div>
   </div>
 
-  <div id="loading">calm forest 불러오는 중… 🌿</div>
+  <div id="loading">고요한 숲 불러오는 중… 🌿</div>
   <div id="survey-card"></div><!-- 🧭 첫 실행 설문(js/install-survey-ui.js) — #loading 안에 넣으면 setLoadWait 가 덮어쓴다 -->
 
   <!-- 🌐 로딩 화면만 먼저 번역한다 — 아래 큰 모듈 스크립트에 맡기면 늦는다.
@@ -5605,7 +5605,7 @@
       $('topleft').classList.remove('open');
       $('invite-modal').classList.add('show');
       openInviteSheet({ box: $('invite-box'), auth: authState, toast: (m) => ui.toast(m, 2200), track: trackEvent, resync: resyncPurchases,
-        shareNative: IS_ANDROID ? (text) => shareUrlNative({ plugin: capPlugin('Photo'), url: text, title: '🌿 calm forest' }) : null });
+        shareNative: IS_ANDROID ? (text) => shareUrlNative({ plugin: capPlugin('Photo'), url: text, title: t('🌿 고요한 숲') }) : null });
     });
     $('invite-close').addEventListener('click', () => $('invite-modal').classList.remove('show'));
     $('invite-modal').addEventListener('click', (e) => { if (e.target.id === 'invite-modal') $('invite-modal').classList.remove('show'); });
@@ -7095,7 +7095,7 @@
             // 좌: 게임 타이틀 + 주소(유입 링크)
             c.textAlign = 'left'; c.fillStyle = '#fffdf4';
             c.font = `800 ${fs}px sans-serif`;
-            c.fillText('🌿 calm forest', pad, H - Math.round(barH * 0.55));
+            c.fillText(t('🌿 고요한 숲'), pad, H - Math.round(barH * 0.55));
             c.font = `500 ${Math.round(fs * 0.58)}px sans-serif`; c.fillStyle = 'rgba(255,253,244,0.85)';
             c.fillText('calmforest.cloud', pad, H - Math.round(barH * 0.18));
             // 우: 오늘 날씨 + 도감 진행도 + 날짜
@@ -7240,11 +7240,11 @@
     $('album-share').addEventListener('click', async () => {
       if (!albumCur) return;
       if (IS_ANDROID) {                                  // 📱 앱: 링크를 공유 시트로
-        try { await shareUrlNative({ plugin: capPlugin('Photo'), url: albumCur.url, title: '🌿 calm forest' }); } catch (e) { ui.toast('공유하지 못했어요'); }
+        try { await shareUrlNative({ plugin: capPlugin('Photo'), url: albumCur.url, title: t('🌿 고요한 숲') }); } catch (e) { ui.toast('공유하지 못했어요'); }
         return;
       }
       try {
-        if (navigator.share) await navigator.share({ title: '🌿 calm forest', url: albumCur.url });
+        if (navigator.share) await navigator.share({ title: t('🌿 고요한 숲'), url: albumCur.url });
         else { await navigator.clipboard.writeText(albumCur.url); ui.toast('🔗 사진 링크를 복사했어요 (1시간 유효)'); }
       } catch (e) {}   // 공유 시트 취소는 정상 흐름
     });
