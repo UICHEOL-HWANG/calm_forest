@@ -3159,4 +3159,18 @@ export const EN = {
   '🎣 곧 만나요': '🎣 Coming soon',
   '꾸미기 세트': 'Decor Sets', '요리': 'Cooking', '꿈의 숲': 'Dream Forest', '광산': 'Mine', '조각': 'Carving',
   '나룻배': 'Ferry', '안개숲': 'Misty Forest', '밤손님 대결': 'Night Duel', '반딧불 숲': 'Firefly Glade',
+  // ── 🛶 나루터 창고: 배 고르기 · 급류 ─────────────
+  '잔잔한 물길': 'Calm Waters', '급류': 'Rapids',
+  '잔잔한 물길을 한 번 완주하면 급류가 열려요': 'Finish Calm Waters once to open the Rapids',
+  '만들기': 'Build', '연잎배': 'Lotus Leaf Boat', '뗏목': 'Raft', '비단잉어': 'Brocade Koi',
+  '강 재료': 'River materials', '🌊 급류': '🌊 Rapids', '오늘 급류 최고 점수': 'Best Rapids score today',
+  '⭐ 별조각 {0#}/{1#}': '⭐ Star Shards {0}/{1}', '🪙 코인 {0#}/{1#}': '🪙 Coins {0}/{1}',
+  '🪷 연꽃 {0#}/{1#}': '🪷 Lotus {0}/{1}', '🪵 떠내려온 나무 {0#}/{1#}': '🪵 Driftwood {0}/{1}',
+  '🐚 강 조개 {0#}/{1#}': '🐚 River Shells {0}/{1}', '🌕 달빛 물고기 {0#}/{1#}': '🌕 Moonlit Fish {0}/{1}',
+  '완주 {0#}/{1#}번': 'Finishes {0}/{1}', '급류 무피해 완주 {0#}/{1#}번': 'Flawless Rapids finishes {0}/{1}',
+  '별 콤보 {0#}/{1#}': 'Star combo {0}/{1}', '뗏목으로 완주 {0#}/{1#}번': 'Raft finishes {0}/{1}',
+  '밤 완주 {0#}/{1#}번': 'Night finishes {0}/{1}', '급류 밤 완주 {0#}/{1#}번': 'Night Rapids finishes {0}/{1}',
+  '아직 없는 배예요': 'You do not have that boat yet', '조건이 아직 모자라요': 'You do not meet the requirements yet',
+  '🍃 연잎배 완성!': '🍃 Lotus Leaf Boat built!', '🪵 뗏목 완성!': '🪵 Raft built!', '🐟 비단잉어 완성!': '🐟 Brocade Koi built!',
+  '⭐ 별조각으로 새 배 만들기': '⭐ Build new boats with star shards',
 };

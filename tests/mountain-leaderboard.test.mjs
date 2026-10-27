@@ -44,10 +44,10 @@ test('sled is a daily board in the subtitle logic', () => {
   assert.equal(EN['초'], 's');
 });
 
-test('seven leaderboard tabs wrap instead of overflowing on a phone', () => {
+test('eight leaderboard tabs wrap instead of overflowing on a phone', () => {
   const html = read('index.html');
   const boards = html.slice(html.indexOf('const LB_BOARDS = ['), html.indexOf('];', html.indexOf('const LB_BOARDS = [')));
-  assert.equal((boards.match(/\{ id: '/g) || []).length, 7);
+  assert.equal((boards.match(/\{ id: '/g) || []).length, 8);
   assert.match(html, /#lb-tabs \{ display: flex; flex-wrap: wrap;/);
   assert.doesNotMatch(html.match(/#lb-tabs \{[^}]*\}/)[0], /overflow|nowrap/);
 });

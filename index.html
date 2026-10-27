@@ -338,6 +338,10 @@
   #boat-boost { width: min(220px, 52vw); height: 6px; border-radius: 4px; background: rgba(255,255,255,0.5); overflow: hidden; }
   #boat-boost i { display: block; height: 100%; width: 0%; background: #ffd05e; }
   #boat-boost.ready i { background: #7ed957; }
+  #boat-stats small { font-size: 11px; font-weight: 800; color: #d98a00; }
+  #boat-skill { position: fixed; right: 28px; bottom: calc(196px + env(safe-area-inset-bottom)); z-index: 13; display: none; width: 64px; height: 64px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.9); font-size: 28px; cursor: pointer; background: conic-gradient(#7ed957 var(--cd, 0%), rgba(255,255,255,0.55) 0); box-shadow: var(--shadow); touch-action: none; user-select: none; -webkit-user-select: none; }
+  body.boat-run #boat-skill.on { display: block; }
+  #boat-skill:not(.ready) { opacity: .75; }
   #boat-quit { position: fixed; right: 14px; top: calc(14px + var(--top-inset)); z-index: 13; display: none; border: none; border-radius: 12px; padding: 8px 12px; font-size: 12px; font-weight: 700; cursor: pointer; background: rgba(255,255,255,0.8); color: var(--ink); box-shadow: var(--shadow); }
   body.boat-run #boat-quit { display: block; }
   /* 🌊 바다터 — 도구 팔레트 숨김(릴대 하나로 노는 공간) */
@@ -426,6 +430,14 @@
   .boat-up .bu-desc { display: block; font-size: 12px; opacity: .7; line-height: 1.35; }
   .boat-up button { border: none; border-radius: 10px; padding: 8px 12px; font-weight: 700; font-size: 12px; cursor: pointer; background: #cdeccd; color: var(--ink); white-space: nowrap; }
   .boat-up button:disabled { opacity: .45; cursor: default; }
+  .bd-course { display: flex; gap: 6px; margin: 8px 0; }
+  .bd-course button { flex: 1 1 0; border: none; border-radius: 10px; padding: 8px 10px; font-weight: 700; font-size: 13px; cursor: pointer; background: #e4efe6; color: var(--ink); }
+  .bd-course button:disabled { opacity: .45; cursor: default; }
+  .bd-course button.on { outline: 2px solid #3fb3c2; }
+  .bd-lacks { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .bd-lacks i { font-style: normal; font-size: 11px; background: rgba(0,0,0,.06); border-radius: 999px; padding: 1px 7px; }
+  .bd-boat.on { outline: 2px solid #3fb3c2; }
+  .bd-mats, .bd-note, .bd-sub { font-size: 12px; opacity: .75; margin: 4px 0; }
   .boat-up.maxed { opacity: .7; }
   /* 튜토리얼 / 씨앗 안내 모달 (공통 카드 스타일) */
   #tutorial-modal, #seed-modal, #hint-modal, #photo-modal, #char-modal, #merchant-modal, #notice-modal, #settings-modal, #invite-modal, #daily-modal { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
@@ -2275,6 +2287,7 @@
     #boat-stats { font-size: 11px; gap: 7px; padding: 5px 9px; max-width: 56vw; flex-wrap: wrap; justify-content: center; }
     #boat-boost { width: 40vw; }
     #boat-quit, #boat-view { padding: 7px 9px; font-size: 11px; }
+    body.is-touch #boat-skill { right: max(20px, calc(env(safe-area-inset-right) + 12px)); bottom: calc(112px + env(safe-area-inset-bottom)); width: 56px; height: 56px; font-size: 24px; }
     #boat-view { top: calc(50px + var(--top-inset)); }
     /* 런 중에는 도구 하트바가 없으므로 조이스틱·액션버튼이 그대로 노출된다(조향+노 젓기) */
     /* 작업대/상점/자유주방 메뉴: 좁은 화면 대응 — 탭 축소, 내용 스크롤 */
@@ -2961,13 +2974,14 @@
     <div id="boat-bar"><div id="boat-fill"></div></div>
     <div id="boat-stats">
       <span id="boat-lamps">💡💡💡</span>
-      <span>⭐<b id="boat-star">0</b></span>
+      <span>⭐<b id="boat-star">0</b><small id="boat-combo"></small></span>
       <span class="bs-dim"><b id="boat-dist">0</b>/620m</span>
       <span class="bs-dim" id="boat-seg">1구간</span>
     </div>
     <div id="boat-boost"><i></i></div>
   </div>
   <button id="boat-quit">✕ 그만두기</button>
+  <button id="boat-skill" aria-label="스킬"></button>
   <div id="sea-vig"></div>
   <div class="sea-ring"></div><div class="sea-ring"></div><div class="sea-ring"></div>
   <div id="sea-hint"></div>
@@ -3044,8 +3058,7 @@
     <div class="tut-card">
       <div class="tut-emoji">🧰</div>
       <h2>뱃사공의 창고</h2>
-      <p id="bs-sub" style="font-size:13px; opacity:.75; margin:-8px 0 14px;"></p>
-      <div id="bs-items"></div>
+      <div id="bs-dock"></div>
       <div class="dm-actions" style="justify-content:center; margin-top:12px"><button id="bs-close">닫기</button></div>
     </div>
   </div>
@@ -3415,6 +3428,7 @@
     import { mountLoginStore } from './js/login-store-ui.js';
     import { createLoginDwell } from './js/login-dwell.js';
     import { initPush, offerPush } from './js/push-ui.js';   // 🔔 안드로이드 푸시 알림(안내 카드·설정 토글)   // 📲 웹 → 앱 유도 배너(웹 전용)
+    import { renderDock } from './js/boat/dock-ui.js';
     import { playChestReveal, stopChestReveal } from './js/boat-chest-reveal.js';   // 🧰 보물상자 개봉 화면(R3)
     import { questPanelView } from './js/quest-panel-view.js';
     import { trackLogin, trackEvent, setGaUser, onTrack, setInstallUserProps, setSurveyUserProps } from './js/analytics.js';
@@ -4597,11 +4611,19 @@
         $('boat-fill').style.width = (d.p * 100).toFixed(1) + '%';
         $('boat-lamps').textContent = '💡'.repeat(Math.max(0, d.lamps)) + '🖤'.repeat(Math.max(0, d.lampMax - d.lamps));
         $('boat-star').textContent = d.stars;
+        $('boat-combo').textContent = d.combo >= 3 ? ` ×${d.combo}` : '';
         $('boat-dist').textContent = d.dist;
         $('boat-seg').textContent = d.seg + '구간';
         const bb = $('boat-boost');
         bb.firstElementChild.style.width = Math.round(d.boost * 100) + '%';
         bb.classList.toggle('ready', d.boost >= 1 && !d.boosting);
+        const sk = $('boat-skill'), has = d.skill != null;
+        sk.classList.toggle('on', has);
+        if (has) {
+          if (sk.textContent !== d.skillIco) sk.textContent = d.skillIco;
+          sk.style.setProperty('--cd', Math.round(d.skill * 100) + '%');
+          sk.classList.toggle('ready', d.skill >= 1);
+        }
       },
       // 🌊 바다터 입장/퇴장 — 도구 팔레트를 걷어냄(액션 버튼 하나로 노는 공간)
       setSeaMode(on) { document.body.classList.toggle('sea-mode', !!on); if (!on) document.body.classList.remove('sea-busy'); },
@@ -4675,6 +4697,8 @@
           ['충돌', `${d.hits}회`], ['⭐ 별조각', `+${d.stars} (보유 ${d.totalStar})`],
         ];
         if (d.picksView.length) rows.push(['수집물', d.picksView.map(p => `${p.ico}${p.name}×${p.n}`).join(' · ')]);
+        const mats = Object.entries(d.matsView || {}).filter(([, n]) => n > 0);
+        if (mats.length) rows.push(['강 재료', mats.map(([k, n]) => `${MAT_ICO[k]} ${n}`).join(' · ')]);
         // 🧰 건졌으면 받은 것, 지나쳤으면 회색 안내(오늘 남은 판에 또 떠내려온다)
         if (d.chestView?.paid) rows.push(['보물상자', d.chestView.name]);
         else if (d.chestView?.missed) rows.push(['보물상자', '다음 뱃길에 또 떠내려와요', 'miss']);
@@ -6710,26 +6734,10 @@
 
     // ── 🛶 나룻배: 결과 모달 · 🧰 창고(배 강화) · 런 조작 버튼 ──
     function renderBoatShop(d) {
-      $('bs-sub').innerHTML = `⭐별조각 <b>${d.star}</b> · 🪙<b>${d.coins}</b> · 🏆최고 <b>${d.best}</b>점 · 오늘 <b>${d.runsLeft}/${d.runsMax}</b>회 남음`;
-      const box = $('bs-items'); box.innerHTML = '';
-      (d.items || []).forEach(it => {
-        const row = document.createElement('div');
-        row.className = 'boat-up' + (it.cost ? '' : ' maxed');
-        const lvTxt = '●'.repeat(it.lv) + '○'.repeat(it.max - it.lv);
-        row.innerHTML =
-          `<span class="bu-ico">${it.ico}</span>` +
-          `<span class="bu-body"><span class="bu-name">${it.name} <span style="opacity:.5;font-size:12px">${lvTxt}</span></span>` +
-          `<span class="bu-desc">${it.desc}</span></span>`;
-        const btn = document.createElement('button');
-        if (!it.cost) { btn.textContent = '완료'; btn.disabled = true; }
-        else { btn.textContent = `⭐${it.cost.star} 🪙${it.cost.coins}`; btn.disabled = !it.affordable; }
-        btn.addEventListener('click', () => {
-          const r = Input.buyBoatUpgrade(it.id);
-          if (!r.ok) { ui.toast(r.msg || '강화할 수 없어요'); return; }
-          ui.toast(`${r.ico} ${r.name} 강화! (${r.lv}단계)`, 2400);
-          renderBoatShop(Input.getDock());
-        });
-        row.appendChild(btn); box.appendChild(row);
+      renderDock($('bs-dock'), d, {
+        select(id) { const r = Input.selectBoat(id); if (!r.ok) ui.toast(r.msg); renderBoatShop(Input.getDock()); },
+        course(c) { const r = Input.selectCourse(c); if (!r.ok && r.msg) ui.toast(r.msg); renderBoatShop(Input.getDock()); },
+        unlock(id) { const r = Input.unlockBoat(id); if (!r.ok) { ui.toast(r.msg); return; } ui.toast(`${r.ico} ${r.name} 완성!`, 2400); renderBoatShop(Input.getDock()); },
       });
     }
     $('bs-close').addEventListener('click', () => $('boat-shop').classList.remove('show'));
@@ -6737,6 +6745,7 @@
     $('boat-result-close').addEventListener('click', () => $('boat-result').classList.remove('show'));
     $('br-again').addEventListener('click', () => { $('boat-result').classList.remove('show'); Input.startBoatRun(); });
     $('boat-quit').addEventListener('click', () => Input.quitBoatRun());
+    $('boat-skill').addEventListener('click', () => Input.boatSkill());
     $('boat-view').addEventListener('click', () => {
       const m = Input.toggleBoatView();
       $('boat-view').textContent = m === 'first' ? '👁️ 1인칭' : '👁️ 3인칭';
@@ -6810,6 +6819,7 @@
     // ═══════════════ 🏆 리더보드 — /api/leaderboard (서버 집계·엣지 캐시) ═══════════════
     const LB_BOARDS = [
       { id: 'boat',  label: '🛶 오늘의 뱃길', unit: '점',  desc: '오늘의 물길 최고 점수 — 코스는 모두에게 같아요', daily: true },
+      { id: 'boat_rapid', label: '🌊 급류', unit: '점', desc: '오늘 급류 최고 점수', daily: true },
       { id: 'sea',   label: '🌊 오늘의 대어', unit: 'kg',  desc: '오늘 낚은 가장 무거운 물고기 — 어종은 가리지 않아요', daily: true, fmt: s => (s / 10).toFixed(1) },
       { id: 'rich',  label: '🪙 주간 부자',   unit: '🪙', desc: '이번 주에 번 코인' },
       { id: 'mine',  label: '⛏️ 광부왕',      unit: '회',  desc: '이번 주 채굴 횟수' },
