@@ -63,16 +63,3 @@ export function drinkPose(p, table, mouth) {
   }
   return { at: lerp3(mouth, table, ease(Math.min(1, (p - DRINK.down) / (1 - DRINK.down)))), tilt: 0, sip: 0 };
 }
-
-function emojiTexture(THREE, emoji) {
-  const cv = document.createElement('canvas');
-  cv.width = cv.height = 128;
-  const c = cv.getContext('2d');
-  c.fillStyle = '#ffffff';
-  c.beginPath(); c.arc(64, 60, 54, 0, Math.PI * 2); c.fill();
-  c.font = '64px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText(emoji, 64, 64);
-  const tex = new THREE.CanvasTexture(cv);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
-}
