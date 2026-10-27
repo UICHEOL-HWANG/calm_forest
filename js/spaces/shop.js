@@ -20,6 +20,8 @@ import { findItem } from '../cosmetics/catalog.js';
 import { HOMI_SKIN_OF } from '../cosmetics/homi-skin-rules.js';
 import { storeOpen } from '../shop/paddle.js';
 import { premiumRowMode } from '../shop/premium-row.js';
+import { BUNDLES, bundleCardMode } from '../shop/bundles.js';
+import { wonLabel } from '../shop/cash.js';
 import { HOMI_ENGRAVES, HOMI_TIERS, buyEngrave, buyTier, equipEngrave, homiBase, homiState } from '../forage/homi.js';
 import { logEcon } from '../metrics.js';
 import { FRUITS, sapKeyOf } from '../orchard.js';
@@ -176,11 +178,15 @@ export function homiStallTiers() {
 
 export function homiStallSkins() {
   const owned = gameState.cosmetics?.owned || [];
-  return Object.keys(HOMI_SKIN_OF).map(findItem).filter(Boolean).map(it => {
-    const mode = premiumRowMode(it, { owned: owned.includes(it.id), platform: PLATFORM, online: !!authState.online,
-      isGuest: !!authState.isGuest, tokenSet: !!CONFIG.PADDLE.token, storeOpen: storeOpen() });
-    return { id: it.id, ico: it.ico, name: it.name, mode, label: it.price.cash?.label || `₩${it.price.won.toLocaleString()}` };
-  }).filter(r => r.mode !== 'hidden');
+  const ctx = { platform: PLATFORM, online: !!authState.online, isGuest: !!authState.isGuest, tokenSet: !!CONFIG.PADDLE.token, storeOpen: storeOpen() };
+  const skins = Object.keys(HOMI_SKIN_OF).map(findItem).filter(Boolean).map(it => {
+    const mode = premiumRowMode(it, { ...ctx, owned: owned.includes(it.id) });
+    return { id: it.id, ico: it.ico, name: it.name, mode, label: it.price.cash?.label || '' };
+  });
+  const sets = BUNDLES.filter(b => b.tab === 'homi').map(b => ({
+    id: b.id, ico: b.ico, name: b.copy.title, mode: bundleCardMode(b, { ...ctx, owned }), label: wonLabel(b.won),
+  }));
+  return [...skins, ...sets].filter(r => r.mode !== 'hidden');
 }
 
 export function buyHomiEngrave(id) {

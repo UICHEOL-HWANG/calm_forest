@@ -1169,8 +1169,8 @@ export function drawCosMenu() {
   }
   const box = document.getElementById('cos-items');
   box.innerHTML = '';
-  drawWelcomeBox(box);
   drawTabBundles(box, cosTab);
+  if (cosTab !== 'homi') drawWelcomeBox(box);
   //  🪞 프리뷰도 탭을 따라간다 — 펫 탭이면 펫을, 나머지 탭이면 내 캐릭터를 본다.
   //  ⚠️ 아직 안 샀으면 **다 자란 모습**을 건다(stageOf(Infinity) = 마지막 단계).
   //     1단계는 "씨앗 — 잎 1장" 이라 잎 하나 꽂힌 씨앗으로 읽히는데, 그걸 3,000🪙 짜리

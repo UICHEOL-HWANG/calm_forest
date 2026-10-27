@@ -10,7 +10,7 @@ import { EN } from '../js/i18n-en.js';
 const box = bundleById('welcome_box');
 
 test('숲 환영 상자: 도구 세트 중 하나 + 반딧불, ₩4,900, 코인 없음', () => {
-  assert.equal(BUNDLES.length, 2);
+  assert.equal(BUNDLES.length, 3);
   assert.equal(box.won, 4900);
   assert.deepEqual(box.fixed, ['firefly']);
   assert.ok(box.choose.length >= 3);

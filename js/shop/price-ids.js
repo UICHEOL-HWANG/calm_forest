@@ -35,5 +35,5 @@ export const PRICE_IDS = Object.freeze({
   wind: null, acorn: null, skiff: null,
   welcome_box: 'pri_01m5a40se6z22skxbg2v9w4q79',
   homi_najeon: 'pri_01m5yj5pa4wkbkss123en74c71', homi_coral: 'pri_01m5yj5pycvkeec9x65fm1zyvr', homi_whale: 'pri_01m5yj5qewvy1rn6r3qjs0maca',
-  homi_trio: 'pri_01m5yj5qzq2thcttma947mxtht',
+  mudflat_set: 'pri_01m5yj5rg2kebcpax83hckb2k1', homi_trio: 'pri_01m5yj5qzq2thcttma947mxtht',
 });

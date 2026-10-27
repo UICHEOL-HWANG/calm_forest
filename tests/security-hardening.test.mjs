@@ -18,7 +18,7 @@ const premiumSqlIds = (name, src) => {
 };
 
 test('💎 SQL _premium_cosmetic_ids() = 카탈로그의 현금 전용(won) + 🤝 초대 보상 품목 — 코인 품목이 섞이면 회수 오판', () => {
-  const catIds = ITEMS.filter(i => i.premium || i.reward).map(i => i.id).sort();
+  const catIds = ITEMS.filter(i => i.premium || i.reward || i.set).map(i => i.id).sort();
   assert.deepEqual(premiumSqlIds('homi_skins', read('sql/migrations/migrate_homi_skins.sql')), catIds);
   for (const [name, src] of [['hardening', MIG], ['referrals', REF], ['premium_sets_2', read('sql/migrations/migrate_premium_sets_2.sql')]]) {
     for (const id of premiumSqlIds(name, src)) assert.ok(catIds.includes(id), `${name}: ${id}`);

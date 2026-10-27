@@ -22,7 +22,8 @@ function head(bundle) {
 
 function tile(ico, name, won) {
   const d = el('div', 'bx-tile');
-  d.append(el('span', 'bx-tile-ico', ico), el('span', 'bx-tile-name', name), el('span', 'bx-tile-won', wonLabel(won)));
+  d.append(el('span', 'bx-tile-ico', ico), el('span', 'bx-tile-name', name));
+  if (won) d.append(el('span', 'bx-tile-won', wonLabel(won)));
   return d;
 }
 
@@ -40,7 +41,7 @@ function overview(card, bundle, { mode, pending, onOpen, onLogin }) {
   }
   const value = el('div', 'bx-value');
   const list = el('span');
-  list.append(el('span', null, copy.list), document.createTextNode(' '), el('s', null, wonLabel(bundle.listWon)));
+  if (bundle.listWon > bundle.won) list.append(el('span', null, copy.list), document.createTextNode(' '), el('s', null, wonLabel(bundle.listWon)));
   value.append(list, el('b', null, wonLabel(bundle.won)));
   const btn = el('button', 'bx-buy');
   btn.type = 'button';

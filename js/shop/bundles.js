@@ -33,11 +33,25 @@ const HOMI_TRIO_COPY = {
   got: '🪏 호미 세 가지가 옷장에 들어왔어요',
 };
 
+const MUDFLAT_SET_COPY = {
+  title: '갯벌 세트',
+  sub: '갯벌 호미에 조개 바구니와 빨간 장화까지. 장화를 신으면 뒤뚱뒤뚱 걸어요. 겉모습만 바뀌고 캐는 성능은 그대로예요.',
+  ribbon: '세트 한정',
+  list: '따로 사면',
+  buy: '{0}에 사기',
+  login: '🔐 로그인 후 구매 가능',
+  note: '호미는 호미 칸, 바구니와 장화는 가방 칸에 들어가요',
+  na: '지금은 살 수 없어요',
+  got: '🦀 갯벌 세트가 옷장에 들어왔어요',
+};
+
 const RAW = [
   { id: 'welcome_box', ico: '🎁', won: 4900, fixed: ['firefly'], choose: ['tools_shroom', 'tools_moon', 'tools_bloom', 'tools_maple', 'tools_frost', 'tools_honey', 'tools_kitty', 'tools_shell'], copy: WELCOME_COPY,
     shopLine: '숲 환영 상자 (도구 세트 1종 + 🌟 반딧불 자국 · 계정당 1번)', seedDesc: 'calm forest 묶음 상품 (도구 세트 1종 + 반딧불 자국, 계정당 1번)' },
   { id: 'homi_trio', ico: '🪏', won: 3500, fixed: ['homi_najeon', 'homi_coral', 'homi_whale'], choose: [], copy: HOMI_TRIO_COPY, tab: 'homi',
     shopLine: '호미 스킨 3종 묶음 (🪷 자개 · 🪸 산호 · 🐋 고래 호미)', seedDesc: 'calm forest 묶음 상품 (호미 스킨 3종: 자개·산호·고래, 겉모습만)' },
+  { id: 'mudflat_set', ico: '🦀', won: 3900, fixed: ['homi_mudset', 'mud_gear'], choose: [], copy: MUDFLAT_SET_COPY, tab: 'homi',
+    shopLine: '갯벌 세트 (🦀 갯벌 호미 + 🧺 조개 바구니와 빨간 장화)', seedDesc: 'calm forest 묶음 상품 (갯벌 호미 + 조개 바구니와 장화, 겉모습만)' },
 ];
 
 export const BUNDLES = Object.freeze(RAW.map(b => Object.freeze({

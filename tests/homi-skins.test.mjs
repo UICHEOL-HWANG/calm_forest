@@ -38,8 +38,8 @@ const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 
 test('homi slot holds three cash-only skins at 1,500 won', () => {
   assert.ok(SLOTS.includes('homi'));
-  assert.deepEqual(itemsOf('homi').map(i => i.id), HOMI_IDS);
-  assert.deepEqual(Object.keys(HOMI_SKIN_OF), HOMI_IDS);
+  assert.deepEqual(itemsOf('homi').filter(i => !i.set).map(i => i.id), HOMI_IDS);
+  assert.deepEqual(Object.keys(HOMI_SKIN_OF), [...HOMI_IDS, 'homi_mudset']);
   for (const id of HOMI_IDS) {
     const it = findItem(id);
     assert.equal(it.premium, true);
@@ -50,7 +50,7 @@ test('homi slot holds three cash-only skins at 1,500 won', () => {
     assert.ok(EN[it.name], it.name);
   }
   assert.equal(findItem('mudflat_set'), null);
-  assert.ok(!('mudflat_set' in PRICE_IDS));
+  assert.equal(PRICE_IDS.mudflat_set, 'pri_01m5yj5rg2kebcpax83hckb2k1');
 });
 
 test('live price ids are wired for the three skins and the trio', () => {

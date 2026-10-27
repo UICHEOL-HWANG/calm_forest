@@ -193,6 +193,7 @@ import { dive, diveAction, diveSpeedMult, clampDive, enterDive, diveAtmosphere, 
 import { HOE_DEFAULT, HOE_FACE, HOMI_ANIM_DUR, buildHoe } from './forage/hoe-art.js';
 import { dressHoe, skinOf as hoeSkinOf } from './forage/hoe-skins.js';
 import { homiSkinOf } from './cosmetics/homi-skin-rules.js';
+import { MUD_GEAR, buildMudGear, stepBoots } from './forage/mudflat-set-art.js';
 import { homiState } from './forage/homi.js';
 import { applySwimPose, swim } from './forage/swim-pose.js';
 import { keepOnGateWalks, updateGateCues, updateGateWalks } from './spaces/gate-cue.js';
@@ -3825,7 +3826,7 @@ export function buildAnimalMesh(id) {
   const anchors = {};
   for (const [name, p] of Object.entries({
     head: headAnchor(HY), neck: neckAnchor(HR, HY),
-    back: backAnchor(bs, R, bodyY), side: kk.side,
+    back: backAnchor(bs, R, bodyY), side: kk.side, root: { x: 0, y: 0, z: 0 },
   })) {
     const a = new THREE.Group();
     a.position.set(p.x, p.y, p.z);
@@ -3859,16 +3860,18 @@ function applyCharacter(id) {
 // ── 🎀 장착 반영 — 앵커의 **자식만** 교체한다 ──
 //   ⚠️ 공유 재질/지오메트리를 dispose 하지 않는다. 다른 곳에서 쓰던 것까지 검게 만든다(§14).
 //      인스턴스만 버린다.
-let charAnchors = null, charK = null, charSkin = null;
+let charAnchors = null, charK = null, charSkin = null, mudBoots = null;
 function applyCosmetics(cos) {
   if (!charAnchors) return;
   //  🧥 스킨은 몸 재질을 바꾼다 — 앵커 자식만 갈아서는 안 되고 캐릭터를 다시 조립해야 한다
   if ((cos?.equipped?.skin || null) !== charSkin) { applyCharacter(curAnimal?.id || gameState.character); return; }
   for (const a of Object.values(charAnchors)) a.clear();
+  mudBoots = null;
   for (const it of equippedItems(cos)) {
     if (it.slot === 'trail' || it.slot === 'skin' || it.slot === 'homi') continue;   // 자국은 월드 이펙트, 스킨은 몸 재질 — 둘 다 앵커가 아니다
-    const m = buildCosmetic(THREE, it.id, charK);
+    const m = it.id === MUD_GEAR ? buildMudGear(THREE, clayMat, charK) : buildCosmetic(THREE, it.id, charK);
     if (m) charAnchors[it.anchor || it.slot].add(m);   // 아이템이 붙을 면을 고른다
+    if (m?.userData.boots) mudBoots = m.userData.boots;
   }
   showSkinParts(charGroup, cos);   // 🌱 모자·🎒 가방을 입으면 스킨의 머리·등 부위를 숨긴다
   if (tailPivot) tailPivot.visible = !hidesTail(cos);
@@ -4075,7 +4078,7 @@ export function buildCharacterMesh(id, cos = gameState.cosmetics) {
   applySkin(THREE, built, cos?.equipped?.skin);   // 🧥 입어보기 포함 — 꾸미기보다 먼저(몸 재질을 바꾼다)
   for (const it of equippedItems(cos)) {
     if (it.slot === 'trail' || it.slot === 'skin' || it.slot === 'homi') continue;
-    const m = buildCosmetic(THREE, it.id, built.k);
+    const m = it.id === MUD_GEAR ? buildMudGear(THREE, clayMat, built.k) : buildCosmetic(THREE, it.id, built.k);
     if (m) built.anchors[it.anchor || it.slot].add(m);
   }
   showSkinParts(built.group, cos);   // 🌱 입어보기 꾸미기도 같은 규칙
@@ -6341,12 +6344,13 @@ function updatePlayer(dt, t) {
     player.position.z += mz * speed * dt;
     player.rotation.y = lerpAngle(player.rotation.y, Math.atan2(mx, mz), 0.2);
     walkPhase += dt * 12;
-    playerAnchor.position.y = Math.abs(Math.sin(walkPhase)) * 0.18;
-    playerAnchor.rotation.z = Math.sin(walkPhase) * 0.05;
+    playerAnchor.position.y = Math.abs(Math.sin(walkPhase)) * (mudBoots ? 0.07 : 0.18);
+    playerAnchor.rotation.z = Math.sin(walkPhase) * (mudBoots ? 0.09 : 0.05);
   } else if (!updateEmote(dt)) {  // 이모트 모션 중이면 기본 idle 숨쉬기 대신 모션 재생
     playerAnchor.position.y = Math.sin(t * 2) * 0.03;
     playerAnchor.rotation.z *= 0.9;
   }
+  if (mudBoots) stepBoots(mudBoots, walkPhase, moving, playerAnchor.position.y);
 
   // 🐾 꼬리 흔들기 — 동물별 속도·진폭(강아지는 신나게, 고양이는 느긋하게).
   //    움직일 때 더 크고 빠르게 흔들려 "살아있는" 느낌을 줌.

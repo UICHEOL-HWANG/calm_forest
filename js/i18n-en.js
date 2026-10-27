@@ -3231,4 +3231,10 @@ export const EN = {
   '묶음 22%↓': 'Bundle 22%↓', '{0}에 사기': 'Buy for {0}',
   '세 호미 모두 옷장의 호미 칸에 들어가요': 'All three hoes go to the Hoe tab in your wardrobe',
   '🪏 호미 세 가지가 옷장에 들어왔어요': '🪏 All three hoes are in your wardrobe',
+  '갯벌 세트': 'Mudflat Set', '갯벌 호미': 'Mudflat Hoe', '갯벌 바구니와 장화': 'Clam Basket and Boots', '세트 한정': 'Set only',
+  '갯벌 호미에 조개 바구니와 빨간 장화까지. 장화를 신으면 뒤뚱뒤뚱 걸어요. 겉모습만 바뀌고 캐는 성능은 그대로예요.': 'The mudflat hoe plus a clam basket and red boots. Boots make you waddle. Only the look changes, digging stays the same.',
+  '호미는 호미 칸, 바구니와 장화는 가방 칸에 들어가요': 'The hoe goes to the Hoe tab, the basket and boots to the Bag tab',
+  '🦀 갯벌 세트가 옷장에 들어왔어요': '🦀 The mudflat set is in your wardrobe',
+  '호미 노점': 'Hoe Stall', '호미 바꾸기': 'Upgrade hoe', '💎 꾸미기 호미': '💎 Hoe looks', '꾸미기 가게에서 입어 보기': 'Try on at the dress-up shop',
+  '🪏 호미 노점': '🪏 Hoe Stall', '갯벌에서 쓸 호미를 키우고 각인을 끼워요': 'Upgrade your mudflat hoe and set engravings', '보유중': 'Owned',
 };

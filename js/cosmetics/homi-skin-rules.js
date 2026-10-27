@@ -1,4 +1,4 @@
-export const HOMI_SKIN_OF = Object.freeze({ homi_najeon: 'najeon', homi_coral: 'coral', homi_whale: 'whale' });
+export const HOMI_SKIN_OF = Object.freeze({ homi_najeon: 'najeon', homi_coral: 'coral', homi_whale: 'whale', homi_mudset: 'mudset' });
 
 export function homiSkinOf(cos) {
   const id = cos?.equipped?.homi;

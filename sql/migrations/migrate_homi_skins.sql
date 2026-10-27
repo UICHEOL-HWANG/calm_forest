@@ -10,7 +10,7 @@ returns text[] language sql immutable set search_path = public as $$
     'tools_maple', 'tools_frost', 'tools_honey', 'tools_kitty', 'tools_shell',
     'acorn_cap', 'bee_band', 'kitty_pack', 'nest_pack', 'maple_trail', 'bubble_trail',
     'tools_star', 'friend_wing', 'friend_pin',
-    'homi_najeon', 'homi_coral', 'homi_whale'
+    'homi_najeon', 'homi_coral', 'homi_whale', 'homi_mudset', 'mud_gear'
   ]::text[]
 $$;
 
