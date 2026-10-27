@@ -24,7 +24,7 @@ test('index.html 은 인앱에서 구글 버튼을 숨기고 넛지 구글 로�
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(html, /body\.inapp #google-btn \{ display: none; \}/);
   assert.match(html, /mountInAppLogin\(\{ \$, track: trackEvent, platform: PLATFORM \}\)/);
-  assert.match(html, /holdGuestForLogin\(getGameState\(\)\);\s*if \(!inAppLogin\.inApp\) return signInWithGoogle\(\);/);
+  assert.match(html, /holdGuestForLogin\(getGameState\(\)\);\s*if \(!inAppLogin\.inApp && !IS_ITCH\) return signInWithGoogle\(\);/);
   assert.match(html, /sessionStorage\.setItem\('cf_login_email', '1'\)/);
   assert.match(html, /if \(sessionStorage\.getItem\('cf_login_email'\)\) \{ sessionStorage\.removeItem\('cf_login_email'\); \$\('email-btn'\)\.click\(\); \}/);
   assert.match(html, /trackEvent\('login_screen', \{ reason: why, inapp: inAppLogin\.app \|\| undefined \}\)/);
