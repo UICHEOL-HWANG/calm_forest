@@ -67,3 +67,13 @@ test('opening the shop from the stall lands on the hoe tab even while the sprout
   const cafe = read('js/spaces/cafe.js');
   assert.match(cafe, /if \(cosTabAsked\) \{ cosTab = cosTabAsked; cosTabAsked = null; \} else if \(sproutOpen\(gameState\.cosmetics\)\) cosTab = 'sprout';/);
 });
+
+test('the stall sign is a real hoe hung sideways from the crossbar ropes', () => {
+  const g = buildHomiStall(THREE, mat);
+  const hung = g.children.find(o => o.userData?.toolId === 'homi' && Math.abs(o.rotation.z + Math.PI / 2) < 1e-6);
+  assert.ok(hung, 'a sideways hoe hangs as the sign');
+  const box = new THREE.Box3().setFromObject(hung);
+  assert.ok(box.max.y <= 2.66 && box.max.y >= 2.55, 'handle meets the rope ends');
+  assert.ok(box.min.y > 2.23, 'blade stays above the awning');
+  assert.ok(box.min.x > -.9 && box.max.x < .9, 'stays between the posts');
+});
