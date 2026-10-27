@@ -66,9 +66,17 @@ export function buildMudBasket(THREE, mat, { R, bs, bodyY }) {
   return g;
 }
 
+const MATS = new Map();
+const cached = mat => (c, ...rest) => {
+  const key = `${c}|${rest.join('|')}`;
+  if (!MATS.has(key)) MATS.set(key, mat(c, ...rest));
+  return MATS.get(key);
+};
+
 export function buildMudGear(THREE, mat, k) {
-  const g = new THREE.Group(), boots = buildMudBoots(THREE, mat, k);
-  g.add(buildMudBasket(THREE, mat, k), boots);
+  const m = cached(mat), g = new THREE.Group(), boots = buildMudBoots(THREE, m, k);
+  g.add(buildMudBasket(THREE, m, k), boots);
+  g.traverse(o => { if (o.isMesh) o.userData.skinOwned = true; });
   g.userData.boots = boots;
   return g;
 }

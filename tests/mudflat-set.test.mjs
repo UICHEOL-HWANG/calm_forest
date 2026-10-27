@@ -82,3 +82,18 @@ test('the character wears the gear and waddles only while the boots are on', () 
   assert.match(game, /Math\.abs\(Math\.sin\(walkPhase\)\) \* \(mudBoots \? 0\.07 : 0\.18\)/);
   assert.match(game, /if \(mudBoots\) stepBoots\(mudBoots, walkPhase, moving, playerAnchor\.position\.y\);/);
 });
+
+test('boots are corrected after every body move in the frame and reset on the boat', () => {
+  const game = read('js/game.js');
+  const body = game.slice(game.indexOf('function updatePlayer('), game.indexOf('\n}\n', game.indexOf('function updatePlayer(')) + 3);
+  assert.ok(body.trimEnd().endsWith('if (mudBoots) stepBoots(mudBoots, walkPhase, moving, playerAnchor.position.y);\n}'));
+  assert.match(body, /if \(mudBoots\) stepBoots\(mudBoots, 0, false, playerAnchor\.position\.y\);\n    return updateBoatRun/);
+});
+
+test('rebuilding the gear frees the old geometry and reuses materials', () => {
+  assert.match(read('js/game.js'), /disposeSkin\(charAnchors\.root\);\n  for \(const a of Object\.values\(charAnchors\)\) a\.clear\(\);/);
+  const a = buildMudGear(THREE, mat, K), b = buildMudGear(THREE, mat, K);
+  const meshes = g => { const out = []; g.traverse(o => o.isMesh && out.push(o)); return out; };
+  assert.ok(meshes(a).every(o => o.userData.skinOwned));
+  assert.equal(meshes(a)[0].material, meshes(b)[0].material);
+});

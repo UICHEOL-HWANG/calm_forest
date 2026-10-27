@@ -3865,6 +3865,7 @@ function applyCosmetics(cos) {
   if (!charAnchors) return;
   //  🧥 스킨은 몸 재질을 바꾼다 — 앵커 자식만 갈아서는 안 되고 캐릭터를 다시 조립해야 한다
   if ((cos?.equipped?.skin || null) !== charSkin) { applyCharacter(curAnimal?.id || gameState.character); return; }
+  disposeSkin(charAnchors.root);
   for (const a of Object.values(charAnchors)) a.clear();
   mudBoots = null;
   for (const it of equippedItems(cos)) {
@@ -6318,6 +6319,7 @@ function updatePlayer(dt, t) {
   if (boat.active) {                               // 🛶 런 중엔 걷기 대신 배 물리
     charGroup?.scale.setScalar(1);                 // 🧸 말랑 스킨이 걷다 멈춘 채 눌려 있지 않게
     charGroup?.userData.skinTick?.(t);             // 🌿 정령 반딧불은 계속 떠다닌다
+    if (mudBoots) stepBoots(mudBoots, 0, false, playerAnchor.position.y);
     return updateBoatRun(dt, t);
   }
   const speed = 6 * (buffOn('speed') ? 1.4 : 1) * mountainSpeedMult() * mudflatSpeedMult() * diveSpeedMult();   // 🥘 채소죽 버프: 이동속도 +40%
@@ -6350,7 +6352,6 @@ function updatePlayer(dt, t) {
     playerAnchor.position.y = Math.sin(t * 2) * 0.03;
     playerAnchor.rotation.z *= 0.9;
   }
-  if (mudBoots) stepBoots(mudBoots, walkPhase, moving, playerAnchor.position.y);
 
   // 🐾 꼬리 흔들기 — 동물별 속도·진폭(강아지는 신나게, 고양이는 느긋하게).
   //    움직일 때 더 크고 빠르게 흔들려 "살아있는" 느낌을 줌.
@@ -6565,6 +6566,7 @@ function updatePlayer(dt, t) {
     }
     poseHeldTool(toolStow);                      // 수납 보간이 끝날 때까지 매 프레임 갱신
   }
+  if (mudBoots) stepBoots(mudBoots, walkPhase, moving, playerAnchor.position.y);
 }
 
 const camOffset = new THREE.Vector3(0, 14, 16);
