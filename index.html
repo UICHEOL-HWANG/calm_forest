@@ -6712,7 +6712,7 @@
     function renderBoatShop(d) {
       $('bs-sub').innerHTML = `⭐별조각 <b>${d.star}</b> · 🪙<b>${d.coins}</b> · 🏆최고 <b>${d.best}</b>점 · 오늘 <b>${d.runsLeft}/${d.runsMax}</b>회 남음`;
       const box = $('bs-items'); box.innerHTML = '';
-      d.items.forEach(it => {
+      (d.items || []).forEach(it => {
         const row = document.createElement('div');
         row.className = 'boat-up' + (it.cost ? '' : ' maxed');
         const lvTxt = '●'.repeat(it.lv) + '○'.repeat(it.max - it.lv);
@@ -6727,7 +6727,7 @@
           const r = Input.buyBoatUpgrade(it.id);
           if (!r.ok) { ui.toast(r.msg || '강화할 수 없어요'); return; }
           ui.toast(`${r.ico} ${r.name} 강화! (${r.lv}단계)`, 2400);
-          renderBoatShop(Input.getBoatShop());
+          renderBoatShop(Input.getDock());
         });
         row.appendChild(btn); box.appendChild(row);
       });

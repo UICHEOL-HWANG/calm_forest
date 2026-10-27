@@ -180,18 +180,6 @@ export const RIVER_DOCK_HALF = 6;                        // 상류 나루터(걸
 
 export { RIVER_W, RIVER_LEN, BOAT_RUNS_PER_DAY, BOAT_BASE_SPEED, BOAT_BOOST_CD, RIVER_OBS, RIVER_PICKS } from '../boat/consts.js';
 
-export const BOAT_LAMPS = 3;                             // 기본 램프(충돌 허용 횟수) — 선체 업그레이드로 +1씩
-
-// 🧰 뱃사공의 창고 — ⭐별조각 + 🪙코인으로 배를 강화(후반 코인 싱크)
-export const BOAT_UPGRADES = [
-  { id: 'oar',  name: '튼튼한 노',   ico: '🚣', max: 2, desc: '좌우로 더 빠르게 피할 수 있어요',
-    cost: [{ star: 8, coins: 80 }, { star: 16, coins: 180 }] },
-  { id: 'hull', name: '단단한 선체', ico: '🛶', max: 2, desc: '💡램프 +1 (충돌을 한 번 더 버텨요)',
-    cost: [{ star: 12, coins: 120 }, { star: 22, coins: 260 }] },
-  { id: 'lamp', name: '뱃머리 등불', ico: '🏮', max: 1, desc: '🌙밤에도 앞이 환하고 밤 보상 +20%',
-    cost: [{ star: 10, coins: 100 }] },
-];
-
 // 🏪 꾸미기 가게 — 마을 서쪽, 집터(-8,-8)와 ⛏️동굴 입구(-14,3) 사이 빈터.
 //    중심에서 18.0 이라 나무 링(r8~30) 한복판이다 — 나무·꽃 산포 제외 목록에 **반드시** 들어가야 한다.
 //    정면은 +Z 라 회전하지 않는다(카메라 시선이 늘 −Z).

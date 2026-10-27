@@ -16,17 +16,18 @@ const REVEAL = readFileSync(new URL('../js/boat-chest-reveal.js', import.meta.ur
 const HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const EN = readFileSync(new URL('../js/i18n-en.js', import.meta.url), 'utf8');
 
-test('buildCourse: 오늘 상자가 남았을 때만, 루프가 끝난 뒤 한 개(상자 없는 날 코스 불변)', () => {
-  const b = fn('buildCourse');
-  assert.match(b, /opts\.chest[\s\S]{0,200}placeChest\(rnd/);
-  assert.ok(b.indexOf('placeChest') > b.indexOf('d += gap'), '루프 안에서 난수를 더 쓰면 모든 코스가 바뀐다');
+const C = readFileSync(new URL('../js/boat/course.js', import.meta.url), 'utf8');
+test('buildCourseData: 오늘 상자가 남았을 때만, 루프가 끝난 뒤 한 개(상자 없는 날 코스 불변)', () => {
+  const i = C.indexOf('function buildCourseData('); const b = C.slice(i, C.indexOf('\n}\n', i));
+  assert.match(b, /if \(chest\)[\s\S]{0,200}placeChest\(rnd/);
+  assert.ok(b.indexOf('placeChest') > b.indexOf('d += gap'));
   assert.match(b, /kind: 'chest'/);
 });
 
 test('startBoatRun: 오늘 상자 여부로 코스를 만들고 런 상태를 초기화, boat_start 에 has_chest', () => {
   const s = fn('startBoatRun');
   assert.match(s, /chestToday\(gameState\.boat, todayStr\(\)\)/);
-  assert.match(s, /buildCourse\(boat\.seed, boat\.night, \{ chest: offered \}\)/);
+  assert.match(s, /buildCourse\(boat\.seed, boat\.night, \{ chest: offered, course \}\)/);
   for (const k of ['chestOffered', 'chestTaken', 'chestSeen', 'chestMissed', 'chestDxMin', 'chestPos']) assert.match(s, new RegExp(`${k}:`), k);
   assert.match(call(s, 'boat_start'), /has_chest:/);
 });

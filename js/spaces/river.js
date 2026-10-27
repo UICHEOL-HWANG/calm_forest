@@ -11,14 +11,19 @@ import {
   lastZoneHint, makeSignpost, nearBoat, nearBoatShop, nearDoor, obstacles, player, playerAnchor, refreshCollectQuests,
   refreshInventoryUI, riverActive, riverCourse, riverGroup, riverPool, scene, setSpaceVisible, snapCamera,
   solidCircle, spawnConfetti, spawnDust, spawnFloatText, spawnSparkle, spawnSplash, syncBadges, todayStr,
-  tryUnlockDrop, ui, wantAction, woodMat,
+  tryUnlockDrop, ui, wantAction, wantSkill, woodMat,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
 import { addGateWalk } from './gate-cue.js';
 import { makeWalk } from './gate-walk.js';
 import { onPlay, decorBanner } from '../decor-drops/index.js';
-import { BOAT_LAMP, BOAT_LAMP_POST } from '../boat-lamp.js';
-import { BOAT_BASE_SPEED, BOAT_BOOST_CD, BOAT_LAMPS, BOAT_RUNS_PER_DAY, BOAT_UPGRADES, DOCK_GATE, DOCK_POND, DOCK_POND_R, RIVER, RIVER_DOCK_HALF, RIVER_LEN, RIVER_OBS, RIVER_PICKS, RIVER_W } from '../data/places.js';
+import { DOCK_GATE, DOCK_POND, DOCK_POND_R, RIVER, RIVER_DOCK_HALF } from '../data/places.js';
+import { BOAT_BASE_SPEED, BOAT_RUNS_PER_DAY, RIVER_LEN, RIVER_OBS, RIVER_PICKS, RIVER_W } from '../boat/consts.js';
+import { BOATS, liveBoatIds } from '../boat/boats.js';
+import { COURSES, COURSE_V, FORK_X, buildCourseData, courseSeedKey, clampW, mulberry32 } from '../boat/course.js';
+import { comboStep, steerParams, boostCd, isHit, isNearMiss, obstacleOutcome, ramPerRun, whirlMode, skillReady, startSkill, NEAR_GAIN, RIDE } from '../boat/abilities.js';
+import { unlockCheck, unlockBoat, addRunMats } from '../boat/economy.js';
+import { makeBoatModel } from '../boat/models.js';
 import { PAL } from '../data/world.js';
 import { logEcon } from '../metrics.js';
 import { Sound } from '../sound.js';
@@ -166,6 +171,20 @@ export function buildRiverSpace() {
   // 🛶 타는 배(정박) — 데크 앞쪽 끝
   const moored = makeBoatHull(1, true); moored.position.set(0, 0.2, -H - 1.4); g.add(moored);
   g.userData.moored = moored;   // 🛶 런 중엔 숨김 — 출발 지점과 겹쳐 배가 이중으로 보이는 것 방지
+  const [f0, f1] = COURSES.rapid.fork;
+  const island = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 0.4, 20), clayMat(0x8fcf7a, false));
+  island.scale.set((FORK_X[1] - FORK_X[0]) / 2, 1, (f1 - f0) / 2);
+  island.position.set((FORK_X[0] + FORK_X[1]) / 2, 0.15, -H - 2 - (f0 + f1) / 2);
+  island.visible = false; g.add(island);
+  g.userData.island = island;
+  g.userData.falls = COURSES.rapid.falls.map(d => {
+    const band = new THREE.Mesh(new THREE.PlaneGeometry(RIVER_W * 2, 1.4),
+      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4, transparent: true, opacity: 0.85 }));
+    band.geometry.rotateX(-Math.PI / 2);
+    band.position.set(0, 0.11, -H - 2 - d);
+    band.visible = false; g.add(band);
+    return band;
+  });
   // 🧰 뱃사공의 창고(업그레이드) — 데크 서쪽
   const shed = new THREE.Group(); shed.position.set(-H + 2, 0, 1.6);
   const body = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.9, 2), clayMat(0xe2c79a)); body.position.y = 1.25; body.castShadow = true; shed.add(body);
@@ -188,39 +207,42 @@ export function boatRunsLeft() { return Math.max(0, BOAT_RUNS_PER_DAY - boatDail
 /** 🧰 오늘 보물상자를 아직 건질 수 있나 — 마을 나루터 입구(doors.js)·탑승 안내가 쓴다 */
 export function chestHintNow() { return chestHintToday(gameState.boat, todayStr(), boatRunsLeft()); }
 
-export function boatLampMax() { return BOAT_LAMPS + (gameState.boat.up.hull || 0); }
-
-// 🧰 창고 UI 데이터 — index.html 이 렌더
-export function boatShopView() {
-  const inv = gameState.inventory;
+export function dockView() {
+  const st = gameState.boat, inv = gameState.inventory;
   return {
-    star: inv.star || 0, coins: inv.coins || 0,
-    best: gameState.boat.best || 0, clears: gameState.boat.clears || 0, runsLeft: boatRunsLeft(), runsMax: BOAT_RUNS_PER_DAY,
-    items: BOAT_UPGRADES.map(u => {
-      const lv = gameState.boat.up[u.id] || 0;
-      const next = lv < u.max ? u.cost[lv] : null;
-      return {
-        id: u.id, name: u.name, ico: u.ico, desc: u.desc, lv, max: u.max, cost: next,
-        affordable: !!next && (inv.star || 0) >= next.star && (inv.coins || 0) >= next.coins,
-      };
+    star: inv.star || 0, coins: inv.coins || 0, runsLeft: boatRunsLeft(), runsMax: BOAT_RUNS_PER_DAY,
+    best: st.best || 0, bestRapid: st.bestRapid || 0, sel: { ...st.sel }, mat: { ...st.mat },
+    rapidOpen: (st.clears || 0) >= 1,
+    boats: liveBoatIds().map(id => {
+      const b = BOATS[id], c = unlockCheck(id, st, inv);
+      return { id, name: b.name, ico: b.ico, owned: !!st.own[id], live: true, selected: st.sel.boat === id, lamps: b.lamps, skill: b.skill?.id || null, lacks: c.lacks, ok: c.ok };
     }),
   };
 }
 
-export function buyBoatUpgrade(id) {
-  const u = BOAT_UPGRADES.find(x => x.id === id); if (!u) return { ok: false };
-  const lv = gameState.boat.up[id] || 0;
-  if (lv >= u.max) return { ok: false, msg: '이미 최고 단계예요' };
-  const c = u.cost[lv];
-  if ((gameState.inventory.star || 0) < c.star) return { ok: false, msg: `⭐별조각이 부족해요 — ${gameState.inventory.star || 0}/${c.star}` };
-  if ((gameState.inventory.coins || 0) < c.coins) return { ok: false, msg: `🪙코인이 부족해요 — ${gameState.inventory.coins || 0}/${c.coins}` };
-  gameState.inventory.star -= c.star;
-  gameState.inventory.coins -= c.coins;
-  gameState.boat.up[id] = lv + 1;
-  logEcon('boat_upgrade', `${id}:${lv + 1}`, -c.coins, gameState.inventory.coins);   // [원장] 코인 싱크
+export function selectBoat(id) {
+  if (!gameState.boat.own[id] || !liveBoatIds().includes(id)) return { ok: false, msg: '아직 없는 배예요' };
+  gameState.boat.sel = { ...gameState.boat.sel, boat: id };
+  return { ok: true };
+}
+
+export function selectCourse(course) {
+  if (!COURSES[course]) return { ok: false };
+  if (course === 'rapid' && (gameState.boat.clears || 0) < 1) return { ok: false, msg: '잔잔한 물길을 한 번 완주하면 급류가 열려요' };
+  gameState.boat.sel = { ...gameState.boat.sel, course };
+  return { ok: true };
+}
+
+export function unlockBoatNow(id) {
+  const r = unlockBoat(id, gameState.boat, gameState.inventory);
+  if (!r.ok) return { ok: false, msg: '조건이 아직 모자라요' };
+  gameState.boat = r.st;
+  gameState.inventory.star = r.inv.star;
+  gameState.inventory.coins = r.inv.coins;
+  if (r.spentCoins) logEcon('boat_unlock', id, -r.spentCoins, gameState.inventory.coins);
   refreshInventoryUI(); Sound.build(); spawnSparkle(player.position.x, 1.5, player.position.z, 18);
-  trackEvent('boat_upgrade', { item: id, level: lv + 1, star_cost: c.star, coin_cost: c.coins });   // [GA4] 성장 퍼널
-  return { ok: true, name: u.name, ico: u.ico, lv: lv + 1 };
+  trackEvent('boat_unlock', { boat_id: id, runs_total: gameState.boat.clears || 0, star_left: gameState.inventory.star || 0 });
+  return { ok: true, name: BOATS[id].name, ico: BOATS[id].ico };
 }
 
 export function enterRiver() {
@@ -244,62 +266,14 @@ export function exitRiver() {
   Sound.blip(); trackEvent('boat_exit');   // [GA4]
 }
 
-// mulberry32 — 시드 하나로 재현 가능한 난수열(같은 날·같은 회차면 코스가 똑같음)
-export function mulberry32(a) {
-  return function () {
-    a = (a + 0x6D2B79F5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-export function clampW(x, pad = 1.1) { return Math.max(-RIVER_W + pad, Math.min(RIVER_W - pad, x)); }
+export { mulberry32, clampW };
 
 export function buildCourse(seed, night, opts = {}) {
+  const r = buildCourseData(seed, { night, chest: !!opts.chest, course: opts.course || 'calm' });
   riverCourse.length = 0;
-  const rnd = mulberry32(seed);
-  let d = 46;                                     // 첫 장애물까지 여유(가속·조작 적응 구간)
-  while (d < RIVER_LEN - 24) {
-    const p = d / RIVER_LEN;                      // 진행도 0~1 (구간 1/2/3)
-    //  1구간은 넉넉하게(조작을 익히는 구간) → 갈수록 촘촘해짐
-    const gap = (p < 0.34 ? 26 : p < 0.67 ? 17 : 12.5) + rnd() * 8;
-    const kinds = p < 0.34 ? ['rock', 'rock', 'log']
-      : p < 0.67 ? ['rock', 'log', 'whirl', 'rock']
-        : ['rock', 'log', 'whirl', 'pile', 'rock'];
-    const kind = kinds[Math.floor(rnd() * kinds.length)];
-    if (kind === 'pile') {                        // 🪧 다리 기둥 — 좁은 문(쌍으로)
-      const gx = (rnd() * 2 - 1) * (RIVER_W - 3);
-      riverCourse.push({ d, kind: 'pile', x: gx - 2.4 });
-      riverCourse.push({ d, kind: 'pile', x: gx + 2.4 });
-    } else {
-      riverCourse.push({ d, kind, x: clampW((rnd() * 2 - 1) * RIVER_W, RIVER_OBS[kind].r + 0.3), drift: kind === 'log' ? (rnd() * 2 - 1) * 0.7 : 0 });
-    }
-    // ⭐ 별조각 라인 — 장애물 사이 빈틈에 곡선으로. "피하면서 줍는" 동선을 만듦
-    if (rnd() < 0.78) {
-      const n = 3 + Math.floor(rnd() * 3);
-      const sx = (rnd() * 2 - 1) * (RIVER_W - 1.4), curve = (rnd() * 2 - 1) * 0.9;
-      for (let i = 0; i < n; i++) riverCourse.push({ d: d + gap * 0.42 + i * 2.7, kind: 'star', x: clampW(sx + curve * i) });
-    }
-    // 🪷 희귀 수집물 — 드물게, 살짝 위험한 자리에(밤 전용은 밤에만)
-    if (rnd() < 0.22) {
-      const cands = RIVER_PICKS.filter(k => !k.night || night);
-      const k = cands[Math.floor(rnd() * cands.length)];
-      riverCourse.push({ d: d + gap * 0.68, kind: 'pick', pick: k.id, x: clampW((rnd() * 2 - 1) * RIVER_W, 1.3) });
-    }
-    d += gap;
-  }
-  // 🧰 보물상자 — 오늘 아직 안 건졌을 때만 한 개. ⚠️ 루프가 끝난 **뒤에만** 난수를 더 쓴다
-  //    (루프 안에서 뽑으면 상자 없는 날의 코스까지 통째로 바뀐다 — 그날 전원 같은 코스 규칙)
-  if (opts.chest) {
-    const c = placeChest(rnd, { len: RIVER_LEN, width: RIVER_W });
-    // 같은 거리대의 장애물과 겹치면 반대편으로 — 상자를 건지려다 바위에 박는 억울함 방지
-    const near = riverCourse.filter(o => RIVER_OBS[o.kind] && Math.abs(o.d - c.d) < 4);
-    const clash = (x) => near.some(o => Math.abs(o.x - x) < RIVER_OBS[o.kind].r + 1.6);
-    if (clash(c.x)) c.x = clash(-c.x) ? clampW(c.x + (c.x > 0 ? -3.2 : 3.2), 1.3) : -c.x;
-    riverCourse.push({ d: c.d, kind: 'chest', x: c.x });
-  }
-  riverCourse.sort((a, b) => a.d - b.d);
+  riverCourse.push(...r.items);
+  boat.fork = r.fork;
+  boat.falls = r.falls;
 }
 
 export function makeRiverMesh(kind, pickId) {
@@ -360,23 +334,33 @@ export function startBoatRun() {
   st.count += 1;
   boat.runNo = st.count;
   boat.night = isNight();
-  // 날짜+회차 시드 — 새로고침해도 같은 코스(리롤 불가) + 그날 전원 동일 코스(실력 비교 가능)
-  boat.seed = dateHash('river:' + boat.runNo);
-  const offered = chestToday(gameState.boat, todayStr());   // 🧰 오늘 아직 안 건졌으면 이 판에도 떠내려온다
-  buildCourse(boat.seed, boat.night, { chest: offered });
+  const sel = gameState.boat.sel;
+  const boatId = gameState.boat.own[sel.boat] && liveBoatIds().includes(sel.boat) ? sel.boat : 'ferry';
+  const course = sel.course === 'rapid' && (gameState.boat.clears || 0) >= 1 ? 'rapid' : 'calm';
+  boat.seed = dateHash(courseSeedKey(boat.runNo, course));
+  const offered = chestToday(gameState.boat, todayStr());
+  buildCourse(boat.seed, boat.night, { chest: offered, course });
+  const parts = gameState.boat.parts || {};
   Object.assign(boat, {
-    active: true, dist: 0, speed: BOAT_BASE_SPEED, vx: 0, lamps: boatLampMax(), stars: 0,
+    active: true, dist: 0, speed: BOAT_BASE_SPEED, vx: 0, lamps: BOATS[boatId].lamps, stars: 0,
     hits: 0, hitLog: [], picks: {}, boostUntil: 0, boostReadyAt: 0, boostUsed: 0,
     invUntil: 0, stunUntil: 0, wreckAt: 0, shake: 0, next: 0, startedAt: performance.now(), t: 0,
-    // 🧰 보물상자 한 판 상태 — 생명주기 트래킹(seen→take|miss→end)이 같은 run_no 로 묶인다
+    boatId, course, combo: { n: 0, last: -99 }, comboMax: 0, nearMiss: 0,
+    ramLeft: ramPerRun(sel.bow === 'ram' ? parts.ram : 0), windLv: sel.flag === 'wind' ? parts.wind || 0 : 0,
+    skillUntil: 0, skillReadyAt: 0, skillUsed: 0, skillSent: 0, rideUntil: 0, rideBoostUntil: 0, airUntil: 0, fallIdx: 0,
     chestOffered: offered, chestTaken: false, chestSeen: false, chestMissed: false, chestDxMin: Infinity, chestPos: null, chest: null,
   });
   clearRiverObjects();
-  if (!boat.group) { boat.group = makeBoatRideable(); scene.add(boat.group); }
-  boat.group.visible = true;
-  const lit = !!(boat.night && gameState.boat.up.lamp);   // 🏮 밤 + 등불 업그레이드일 때만 점등
-  boat.group.userData.lantern.visible = lit;
-  boat.group.userData.light.intensity = lit ? 2.4 : 0;    // 등불 자체는 어둡게, 대신 **앞쪽 물길**을 더 밝힌다
+  boat.models ??= {};
+  if (!boat.models[boatId]) { boat.models[boatId] = makeBoatModel(boatId); scene.add(boat.models[boatId]); }
+  for (const id in boat.models) boat.models[id].visible = id === boatId;
+  boat.group = boat.models[boatId];
+  const lantern = boat.group.userData.lantern, light = boat.group.userData.light;
+  if (lantern) lantern.visible = !!boat.night;
+  if (light) light.intensity = boat.night ? 2.4 : 0;
+  for (const m of boat.group.userData.fpHide) m.visible = boatView === 'third';
+  if (riverGroup?.userData.island) riverGroup.userData.island.visible = course === 'rapid';
+  for (const f of riverGroup?.userData.falls || []) f.visible = course === 'rapid';
   playerAnchor.visible = (boatView === 'third');     // 1인칭이면 캐릭터를 숨김(시야 방해 방지)
   if (heldGroup) heldGroup.visible = false;          // 🛶 배 위에선 도구를 내려놓는다(두 손으로 노를 잡는 느낌)
   playerAnchor.position.y = 0; playerAnchor.rotation.set(0, 0, 0);   // 노 젓기 자세 초기화
@@ -386,48 +370,11 @@ export function startBoatRun() {
   $w.nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); $w.lastZoneHint = null;
   ui.setBoatRun?.(true);
   Sound.water();
-  const up = gameState.boat.up;
   trackEvent('boat_start', {                                   // [GA4] 런 시작(코스 시드까지 남김)
     run_no: boat.runNo, seed: boat.seed, night: boat.night, weather: WEATHER,
-    lamps: boat.lamps, up_oar: up.oar, up_hull: up.hull, up_lamp: up.lamp,
+    lamps: boat.lamps, boat_id: boatId, course,
     has_chest: offered ? 1 : 0,                                // 🧰 이 판에 보물상자가 나오는지(노출 퍼널 분모)
   });
-}
-
-// 실제 타는 배 — 선체 + 좌우 노(젓는 모션). 1인칭에서 화면 아래 양옆에 노가 보인다
-export function makeBoatRideable() {
-  const g = new THREE.Group();
-  g.add(makeBoatHull(1.05));
-  // 노 — 1인칭에서 화면 아래 양옆으로 뻗게(시야 정중앙을 가리지 않도록 낮고 눕혀서)
-  for (const side of [-1, 1]) g.add(makeOar(side));
-  // 🏮 뱃머리 등불 — 업그레이드를 샀고 밤일 때만 켜진다(밤 주행의 체감 보상)
-  //   예전엔 구 하나를 시선 바로 아래 정중앙(0, 0.95, -1.9)에 박아 뒀다 → 밤에 블룸(임계 0.85)까지
-  //   타면서 8~15m 앞 바위가 통째로 후광에 묻혔다("등불 단 게 더 안 보여요").
-  //   → 뱃전 왼쪽 기둥에 매달아 **시선 위**로 올리고, 발광도 후광이 번지지 않는 선까지 낮춘다.
-  //   → 배치 근거·회귀 테스트: js/boat-lamp.js + tests/boat-lamp.test.mjs
-  const lantern = new THREE.Group();
-  const P = BOAT_LAMP_POST, dark = clayMat(0x6f4c2e, false);   // 어두운 나무 — 밝은 막대는 그 자체로 시선을 끈다
-  // 뱃전 왼쪽에 세운 가는 기둥. 화면을 세로로 긋긴 하지만 20m 앞 바위 폭의 1/3 도 안 된다.
-  //   ⚠️ "카메라 뒤(z>0.55)에 세우면 안 보인다"는 함정이다 — 1인칭 카메라는 달릴수록 뒤로 밀려서
-  //     z 0.95 에 세운 돛대가 화면 왼쪽에 통나무처럼 잡혔다. js/boat-lamp.js EYE_Z_RANGE 참고.
-  const post = new THREE.Mesh(new THREE.CylinderGeometry(P.r, P.r * 1.3, P.top - P.bottom, 6), dark);
-  post.position.set(P.x, (P.top + P.bottom) / 2, P.z);
-  lantern.add(post);
-  const globe = new THREE.Mesh(new THREE.SphereGeometry(BOAT_LAMP.r, 8, 8),
-    new THREE.MeshStandardMaterial({ color: 0xf2d79a, emissive: 0xe8a93c, emissiveIntensity: 0.9 }));
-  //   ⚠️ 색은 휘도 0.68 — UnrealBloomPass 임계(0.85) 아래다. 흰끼가 도는 색(0xffe9a8, 휘도 0.93)으로
-  //      되돌리면 세기를 아무리 낮춰도 후광이 번져 다시 앞이 안 보인다.
-  globe.position.set(BOAT_LAMP.x, BOAT_LAMP.y, BOAT_LAMP.z);
-  lantern.add(globe);
-  const cap = new THREE.Mesh(new THREE.ConeGeometry(BOAT_LAMP.r * 1.3, 0.13, 6), dark);
-  cap.position.set(BOAT_LAMP.x, BOAT_LAMP.y + BOAT_LAMP.r + 0.04, BOAT_LAMP.z);   // 갓 — 위로 새는 빛을 가려 하늘이 덜 밝다
-  lantern.add(cap);
-  lantern.visible = false; g.add(lantern);
-  // 빛은 뱃머리보다 앞·위에서 떨어뜨린다 — 코앞 물살이 하얗게 타지 않고 10~25m 앞이 밝아진다
-  const light = new THREE.PointLight(0xffd79a, 0, 34, 1.2);
-  light.position.set(0, 2.0, -5.0); g.add(light);
-  g.userData.lantern = lantern; g.userData.light = light;
-  return g;
 }
 
 export function endBoatRun(result) {
@@ -436,11 +383,9 @@ export function endBoatRun(result) {
   const timeSec = Math.round((performance.now() - boat.startedAt) / 100) / 10;
   const distM = Math.round(boat.dist);
   const rareCount = Object.values(boat.picks).reduce((a, b) => a + b, 0);
-  const up = gameState.boat.up;
   // ⭐ 보상 — 🌧️비(물살↑)·🌙밤+🏮등불 보너스, 완주/무피해 보너스. 코인은 주지 않음(인플레 방지)
   const rainBonus = RAIN_DAY ? 1.15 : 1;
-  const lampBonus = (boat.night && up.lamp) ? 1.2 : 1;
-  let stars = Math.round(boat.stars * rainBonus * lampBonus);
+  let stars = Math.round(boat.stars * rainBonus);
   if (result === 'clear') stars += 5;
   if (result === 'clear' && boat.hits === 0) stars += 5;              // 🏆 무피해 완주
   const give = { star: stars };
@@ -449,14 +394,28 @@ export function endBoatRun(result) {
     for (const res in k.give) give[res] = (give[res] || 0) + k.give[res] * boat.picks[id];
   }
   const score = distM + boat.stars * 8 + rareCount * 40 + (result === 'clear' ? 200 : 0);
-  const best = score > (gameState.boat.best || 0);
-  if (best) gameState.boat.best = score;
+  const bestKey = boat.course === 'rapid' ? 'bestRapid' : 'best';
+  const best = score > (gameState.boat[bestKey] || 0);
+  if (best) gameState.boat[bestKey] = score;
   if (result === 'clear') {
     gameState.boat.clears = (gameState.boat.clears || 0) + 1;
     boatDaily().clearsToday = (gameState.boat.clearsToday || 0) + 1;   // 오늘치 — 🛶 의뢰는 이 값을 읽는다
     refreshCollectQuests();   // 보상(giveReward)은 별조각·희귀가 있을 때만 나가므로 여기서 직접 갱신한다
   }
   if (result === 'clear' && boat.hits === 0) gameState.boat.perfect = (gameState.boat.perfect || 0) + 1;   // 🌊 무피해 완주(배지 소급용)
+  const matMul = COURSES[boat.course].matMul;
+  const runMats = Object.fromEntries(Object.entries(boat.picks).map(([k, n]) => [k, Math.floor(n * matMul + 0.5)]));
+  const stat = { ...gameState.boat.stat, comboBest: Math.max(gameState.boat.stat.comboBest || 0, boat.comboMax) };
+  if (result === 'clear') {
+    if (boat.night) stat.nightClears++;
+    if (boat.boatId === 'raft') stat.raftClears++;
+    if (boat.course === 'rapid') {
+      stat.rapidClears++;
+      if (boat.night) stat.rapidNightClears++;
+      if (boat.hits === 0) stat.rapidPerfect++;
+    }
+  }
+  gameState.boat = { ...addRunMats(gameState.boat, boat.picks, matMul), stat };
 
   clearRiverObjects();
   if (boat.group) boat.group.visible = false;
@@ -492,18 +451,21 @@ export function endBoatRun(result) {
     result, run_no: boat.runNo, seed: boat.seed, night: boat.night, weather: WEATHER,
     dist_m: distM, time_sec: timeSec, score, best, hits: boat.hits, hit_points: boat.hitLog,
     picks: { ...boat.picks }, stars, lamps_left: boat.lamps, boost_used: boat.boostUsed,
-    upgrades: { ...up },
+    upgrades: null,
+    course: boat.course, boat_id: boat.boatId,
+    loadout: { bow: gameState.boat.sel.bow, flag: gameState.boat.sel.flag, stern: gameState.boat.sel.stern, crew: null, lv: { ...gameState.boat.parts } },
+    skill_used: boat.skillUsed, combo_max: boat.comboMax, near_miss: boat.nearMiss, mats: runMats, course_v: COURSE_V,
     chest: chestCode, chest_loot: chestLootId, chest_paid: chestPaidNow ? 1 : 0, chest_d: chestD == null ? null : Math.round(chestD),   // 🧰 boat_runs 4컬럼(마이그레이션 먼저!)
   };
   trackEvent('boat_end', {                                             // [GA4] 완주율·이탈 지점 KPI
-    result, run_no: boat.runNo, dist_m: distM, time_sec: timeSec, score, hits: boat.hits,
+    result, run_no: boat.runNo, boat_id: boat.boatId, course: boat.course, dist_m: distM, time_sec: timeSec, score, hits: boat.hits,
     stars, rare: rareCount, boost_used: boat.boostUsed, night: boat.night, weather: WEATHER, best,
     chest: chestCode, chest_loot: chestLootId, chest_paid: chestPaidNow ? 1 : 0,   // 🧰 0 없음·1 보고 놓침·2 건짐·3 못 감
   });
   if (result !== 'quit') onPlay('ferry');
   sendBoatRun(payload);                                                // [분석] 런 단위 1행(boat_runs)
   ui.showBoatResult?.({
-    ...payload, rare: rareCount, runsLeft: boatRunsLeft(), runsMax: BOAT_RUNS_PER_DAY,
+    ...payload, rare: rareCount, runsLeft: boatRunsLeft(), runsMax: BOAT_RUNS_PER_DAY, matsView: runMats, course: boat.course,
     // 🧰 개봉 화면(R3)·결과 카드용 — payload.chest 는 트래킹 코드(0/1/2)라 화면 정보는 따로
     chestView: { paid: chestPaidNow, missed: chestCode === 1, id: chestLootId, name: chestG?.name ?? null, night: boat.night },
     picksView: Object.entries(boat.picks).map(([id, n]) => {
@@ -524,7 +486,7 @@ export function updateBoatRun(dt, t) {
       boat.group.position.set(player.position.x, -k * k * 0.9, player.position.z);
       boat.group.rotation.x = k * 0.55;                              // 뱃머리부터 물속으로
       boat.group.rotation.z = Math.sin(boat.t * 7) * 0.12 * (1 - k); // 잦아드는 흔들림
-      boat.group.children.forEach(c => { if (c.userData.side) c.rotation.x = 0.85; }); // 노를 놓침
+      boat.group.userData.oars.forEach(c => { c.rotation.x = 0.85; }); // 노를 놓침
     }
     playerAnchor.position.y = -k * k * 0.75;                         // 캐릭터도 배와 함께 잠긴다(3인칭)
     playerAnchor.rotation.x = k * 0.4;
@@ -539,15 +501,16 @@ export function updateBoatRun(dt, t) {
   const restarting = !stunned && boat.stunUntil > 0 && boat.t < boat.stunUntil + 0.9;
   // 속도: 구간이 갈수록 빨라지고, 🌧️비 오는 날은 물살이 세다
   const boosting = boat.t < boat.boostUntil;
-  let sp = BOAT_BASE_SPEED * (1 + p * 0.55) * (RAIN_DAY ? 1.12 : 1);
+  let sp = BOAT_BASE_SPEED * (1 + p * 0.55) * (RAIN_DAY ? 1.12 : 1) * COURSES[boat.course].speedMul;
+  if (boat.t < boat.rideBoostUntil) sp *= RIDE.boost;
   if (boosting) sp *= 1.5;
   if (stunned) sp = 0;                               // 충돌: 완전히 멈춘다(통과 금지)
   boat.speed += (sp - boat.speed) * Math.min(1, dt * (stunned ? 12 : 4));   // 충돌 시 급정거, 재출발은 원래 가속
   boat.dist += boat.speed * dt;
+  if (boat.falls?.[boat.fallIdx] != null && boat.dist >= boat.falls[boat.fallIdx]) { boat.airUntil = boat.t + 0.8; boat.fallIdx++; }
 
   // 조향 — 키보드(A/D·←/→) 또는 조이스틱 x. 🚣노 업그레이드로 반응이 빨라짐
   //        충돌 출렁임 중엔 잠금(부딪혀 밀려나는 vx 만 자연 감쇠)
-  const oar = gameState.boat.up.oar || 0;
   let steer = 0;
   if (!stunned) {
     if (keys.isDown('ArrowLeft') || keys.isDown('KeyA')) steer -= 1;
@@ -555,7 +518,7 @@ export function updateBoatRun(dt, t) {
     if (Math.abs(analog.x) > 0.12) steer += analog.x;
     steer = Math.max(-1, Math.min(1, steer));
   }
-  const acc = 26 + oar * 7, maxVx = 6.2 + oar * 1.4;
+  const { acc, maxVx } = steerParams(boat.boatId);
   boat.vx += steer * acc * dt;
   boat.vx *= Math.pow(stunned ? 0.35 : 0.06, dt);    // 감쇠 — 충돌 밀려남은 천천히(옆으로 미끄러지는 맛)
   boat.vx = Math.max(-maxVx, Math.min(maxVx, boat.vx));
@@ -571,10 +534,21 @@ export function updateBoatRun(dt, t) {
   if (wantAction) {
     $w.wantAction = false;
     if (!stunned && boat.t >= boat.boostReadyAt) {
-      boat.boostUntil = boat.t + 1.5; boat.boostReadyAt = boat.t + BOAT_BOOST_CD; boat.boostUsed++;
+      boat.boostUntil = boat.t + 1.5; boat.boostReadyAt = boat.t + boostCd(boat.windLv); boat.boostUsed++;
       Sound.water(); spawnSplash(player.position.x, 0.6, player.position.z + 1.5, 6, 1.3);
     }
   }
+  const sk = BOATS[boat.boatId].skill;
+  if (wantSkill) {
+    $w.wantSkill = false;
+    if (!stunned && skillReady(sk, boat.t, boat.skillReadyAt)) {
+      const s = startSkill(sk, boat.t);
+      boat.skillUntil = s.until; boat.skillReadyAt = s.readyAt; boat.skillUsed++;
+      Sound.water(); spawnSplash(player.position.x, 0.4, player.position.z - 1, 8, 1.2);
+      if (boat.skillSent < 10) { boat.skillSent++; trackEvent('boat_skill', { boat_id: boat.boatId, skill: sk.id, dist_m: Math.round(boat.dist), seg }); }
+    }
+  }
+  const diving = sk?.id === 'dive' && boat.t < boat.skillUntil;
 
   updateRiverObjects(dt, t, seg);
   if (!boat.active) return;                          // 위에서 난파 처리됐으면 종료
@@ -583,6 +557,7 @@ export function updateBoatRun(dt, t) {
   if (boat.group) {
     boat.group.position.set(player.position.x, 0, player.position.z);
     boat.group.rotation.y = (-boat.vx / maxVx) * 0.16;   // 뱃머리는 모델 로컬 -z = 진행 방향
+    if (boat.t < boat.rideUntil) boat.group.rotation.y += (1 - (boat.rideUntil - boat.t) / RIDE.spin) * Math.PI * 2;
     boat.group.rotation.z = (boat.vx / maxVx) * 0.13;
     boat.group.position.y = Math.sin(boat.t * 3.2) * 0.05;
     if (stunned) {
@@ -591,7 +566,7 @@ export function updateBoatRun(dt, t) {
       boat.group.rotation.z += Math.sin(boat.t * 16) * 0.15 * k;
       boat.group.rotation.x = Math.sin(boat.t * 12) * 0.1 * k;
       boat.group.position.y += Math.sin(boat.t * 9) * 0.06 * k;
-      boat.group.children.forEach(c => { if (c.userData.side) c.rotation.x = 0.7 * k; });
+      boat.group.userData.oars.forEach(c => { c.rotation.x = 0.7 * k; });
       // 캐릭터도 배와 함께 휘청(3인칭)
       playerAnchor.position.y = boat.group.position.y;
       playerAnchor.rotation.x = 0.1;
@@ -601,12 +576,14 @@ export function updateBoatRun(dt, t) {
       // 🚣 재출발·스퍼트 중엔 노를 빠르고 깊게 젓는다 — "다시 출발!" 이 눈에 보이게
       const fast = boosting || restarting;
       const stroke = Math.sin(boat.t * (fast ? 11 : 5.5));
-      boat.group.children.forEach(c => { if (c.userData.side) c.rotation.x = stroke * (fast ? 0.55 : 0.32); });
+      boat.group.userData.oars.forEach(c => { c.rotation.x = stroke * (fast ? 0.55 : 0.32); });
       // 🚣 캐릭터도 노와 같은 위상으로 상체를 앞뒤로 — 젓는 사람이 보이게(3인칭)
       playerAnchor.position.y = boat.group.position.y + Math.abs(stroke) * 0.05;   // 배 출렁임 + 젓는 들썩임
       playerAnchor.rotation.x = 0.12 + stroke * (fast ? 0.24 : 0.14);              // 앞으로 숙였다 젖혔다
       playerAnchor.rotation.z = (boat.vx / maxVx) * 0.13;                          // 배 롤을 따라 기울기
     }
+    if (boat.t < boat.airUntil) boat.group.position.y += Math.sin((1 - (boat.airUntil - boat.t) / 0.8) * Math.PI) * 0.9;
+    if (diving) boat.group.position.y = -0.55;
   }
   if (boat.shake > 0) boat.shake = Math.max(0, boat.shake - dt * 2.4);
 
@@ -616,9 +593,12 @@ export function updateBoatRun(dt, t) {
 
   ui.setBoatHud?.({
     p, seg, dist: Math.round(boat.dist), total: RIVER_LEN,
-    lamps: boat.lamps, lampMax: boatLampMax(), stars: boat.stars,
-    boost: boosting ? 1 : Math.min(1, 1 - (boat.boostReadyAt - boat.t) / BOAT_BOOST_CD),
+    lamps: boat.lamps, lampMax: BOATS[boat.boatId].lamps, stars: boat.stars,
+    boost: boosting ? 1 : Math.min(1, 1 - (boat.boostReadyAt - boat.t) / boostCd(boat.windLv)),
     boosting, speed: Math.round(boat.speed * 3.6),
+    skill: sk ? Math.min(1, 1 - (boat.skillReadyAt - boat.t) / sk.cd) : null,
+    skillIco: { dive: '🫧', fold: '✈️', lure: '🎣' }[sk?.id] || '',
+    combo: boat.combo.n,
   });
 
   if (boat.dist >= RIVER_LEN) endBoatRun('clear');
@@ -634,14 +614,18 @@ export function updateRiverObjects(dt, t, seg) {
     const y = item.kind === 'whirl' ? 0.12 : item.kind === 'star' || item.kind === 'pick' ? 0.85 : item.kind === 'pile' ? 1.3 : item.kind === 'chest' ? 0.08 : 0.35;
     mesh.position.set(item.x, y, -RIVER_DOCK_HALF - 2 - item.d);
     if (item.kind === 'chest') mesh.rotation.y = 0.5;               // 비스듬히 — 금테·자물쇠·부표가 한 번에 보이게
-    riverActive.push({ mesh, item, x: item.x, taken: false, prevRel: Infinity });
+    riverActive.push({ mesh, item, x: item.x, taken: false, prevRel: Infinity, passedCheck: false, rode: false });
     if (item.kind === 'chest' && !boat.chestSeen) {               // 🧰 화면에 들어온 순간 1회(노출)
       boat.chestSeen = true; boat.chestPos = { d: item.d, x: item.x };
       trackEvent('boat_chest_seen', { run_no: boat.runNo, seg, chest_d: Math.round(item.d),
         chest_x: Math.round(item.x * 10) / 10, speed: Math.round(boat.speed * 10) / 10 });
     }
   }
+  const diving = BOATS[boat.boatId].skill?.id === 'dive' && boat.t < boat.skillUntil;
   const bx = player.position.x - RIVER.x;
+  if (boat.fork && boat.dist > boat.fork.d0 && boat.dist < boat.fork.d1 && bx > boat.fork.x0 && bx < boat.fork.x1) {
+    boat.vx = (bx > (boat.fork.x0 + boat.fork.x1) / 2 ? 1 : -1) * 6;
+  }
   for (let i = riverActive.length - 1; i >= 0; i--) {
     const a = riverActive[i], it = a.item;
     const rel = it.d - boat.dist;                    // 배 기준 남은 거리(+앞 / -뒤)
@@ -680,8 +664,14 @@ export function updateRiverObjects(dt, t, seg) {
     }
     if (it.kind === 'star' || it.kind === 'pick') {              // 획득
       if ((Math.abs(rel) < 1.4 || passed) && dx < 1.5) {
+        if (diving) continue;
         a.taken = true; a.mesh.visible = false;
-        if (it.kind === 'star') { boat.stars++; Sound.blip(); }
+        if (it.kind === 'star') {
+          boat.combo = comboStep(boat.combo, boat.t);
+          boat.comboMax = Math.max(boat.comboMax, boat.combo.n);
+          boat.stars += 1 + boat.combo.bonus;
+          Sound.blip();
+        }
         else {
           boat.picks[it.pick] = (boat.picks[it.pick] || 0) + 1;
           const k = RIVER_PICKS.find(x => x.id === it.pick);
@@ -695,12 +685,27 @@ export function updateRiverObjects(dt, t, seg) {
     }
     const meta = RIVER_OBS[it.kind];
     if (it.kind === 'whirl') {                                   // 🌀 끌어당기기(피해 없음)
-      if (Math.abs(rel) < meta.r && dx < meta.r + 1) boat.vx += (a.x - bx) * dt * 5.5;
+      if (Math.abs(rel) < meta.r && dx < meta.r + 1) {
+        if (whirlMode(boat.boatId) === 'ride') {
+          if (!a.rode) { a.rode = true; boat.rideUntil = boat.t + RIDE.spin; boat.rideBoostUntil = boat.t + RIDE.spin + RIDE.boostDur; }
+        } else boat.vx += (a.x - bx) * dt * 5.5;
+      }
       continue;
     }
-    if ((Math.abs(rel) < 1.0 || passed) && dx < meta.r + 0.7) {  // 💥 충돌
+    if (!a.passedCheck && rel < 0) {
+      a.passedCheck = true;
+      if (!a.taken && isNearMiss(dx, boat.boatId, it.kind)) {
+        boat.nearMiss++;
+        boat.boostReadyAt = Math.max(boat.t, boat.boostReadyAt - NEAR_GAIN * boostCd(boat.windLv));
+      }
+    }
+    if ((Math.abs(rel) < 1.0 || passed) && isHit(dx, boat.boatId, it.kind)) {  // 💥 충돌
       a.taken = true;
       if (boat.t < boat.invUntil) continue;                      // 무적 시간(연속 피격 방지)
+      const out = obstacleOutcome(boat.boatId, it.kind, { diving, ramLeft: boat.ramLeft });
+      if (out === 'pass') continue;
+      if (out === 'push') { a.x = clampW(a.x + (Math.sign(a.x - bx) || 1) * 2.4, RIVER_OBS.log.r); a.mesh.position.x = a.x; Sound.water(); continue; }
+      if (out === 'ram') { boat.ramLeft--; boat.speed *= 0.5; Sound.build(); spawnSplash(player.position.x, 0.5, player.position.z - 1.5, 6, 1.2); continue; }
       boat.lamps--; boat.hits++;
       boat.hitLog.push({ d: Math.round(boat.dist), kind: it.kind, seg });   // [분석] 어디서 부딪혔나
       // 💥 충돌 연출: 그냥 통과하지 않는다 — 장애물 앞으로 튕겨나 급정거,
