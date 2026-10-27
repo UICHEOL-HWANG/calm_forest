@@ -16,7 +16,7 @@ test('four tabs, eleven products and the basic sled row in the spec order', () =
 
 test('prices follow the spec table', () => {
   const p = Object.fromEntries(CAFE_ITEMS.map(i => [i.id, i.coins]));
-  assert.deepEqual(p, { cocoa: 10, yuzu: 10, basic: 0, sky: 400, forest: 400, starry: 900, toboggan: 0, wind: 1500, acorn: 1500, skiff: 1500, earmuff: 1000, snowflake: 1200, sled_pack: 1400, snowglobe: 150, hutmodel: 300, summitflag: 250 });
+  assert.deepEqual(p, { cocoa: 10, yuzu: 10, basic: 0, sky: 400, forest: 400, starry: 900, worldtree: 0, toboggan: 0, wind: 1500, acorn: 1500, skiff: 1500, earmuff: 1000, snowflake: 1200, sled_pack: 1400, snowglobe: 150, hutmodel: 300, summitflag: 250 });
 });
 
 test('drinks and souvenirs can be bought again and again', () => {
