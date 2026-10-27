@@ -114,12 +114,17 @@ export function mountEmailLogin({ $, requestCode, verifyCode, track, now = () =>
     return true;
   }
 
-  $('email-btn').addEventListener('click', () => {
-    track('email_login', { stage: 'open' });
+  const title = $('email-title'), hint = $('email-hint');
+  const copy0 = { title: title?.textContent, hint: hint?.textContent };
+  const openEmail = ({ title: tt = copy0.title, hint: hh = copy0.hint, from } = {}) => {
+    track('email_login', from ? { stage: 'open', from } : { stage: 'open' });
+    if (title) title.textContent = tt;
+    if (hint) hint.textContent = hh;
     emailErr.textContent = '';
     show('email');
     emailInput.focus();
-  });
+  };
+  $('email-btn').addEventListener('click', () => openEmail());
   $('email-back').addEventListener('click', () => show('main'));
   $('code-back').addEventListener('click', () => { codeErr.textContent = ''; show('email'); emailInput.focus(); });
 
@@ -169,5 +174,5 @@ export function mountEmailLogin({ $, requestCode, verifyCode, track, now = () =>
   });
 
   paintCells();   // 첫 진입 전에도 빈 칸 6개가 자리를 잡아 둔다(레이아웃이 튀지 않게)
-  return { reset: () => { stopTimer(); show('main'); } };
+  return { reset: () => { stopTimer(); show('main'); }, openEmail };
 }
