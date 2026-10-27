@@ -27,6 +27,7 @@ import { unlockCheck, unlockBoat, addRunMats } from '../boat/economy.js';
 import { makeBoatModel } from '../boat/models.js';
 import { kayakStroke, kayakStun } from '../boat/kayak-pose.js';
 import { placeKayakPaddle } from '../boat/kayak-paddle.js';
+import { makeRapidFall, tickRapidFalls } from '../boat/rapid-falls.js';
 import { PAL } from '../data/world.js';
 import { logEcon } from '../metrics.js';
 import { Sound } from '../sound.js';
@@ -88,7 +89,7 @@ export function buildDockGate() {
 //   ※ 참고 디자인의 금테 대신 마을의 나무 톤(데크·표지판과 같은 색)으로 — 마을 팔레트와 통일
 export const BOAT_TEAL = 0x3fb3c2, BOAT_TRIM = 0xd9a066, BOAT_RED = 0xb2453e;
 
-export function makeBoatHull(s = 1, withOar = false) {
+export function makeBoatHull(s = 1, withOar = false, plain = false) {
   const g = new THREE.Group();
   const teal = clayMat(BOAT_TEAL, false), trim = clayMat(BOAT_TRIM, false), red = clayMat(BOAT_RED, false);
   const hull = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 3, 12), teal);
@@ -109,16 +110,18 @@ export function makeBoatHull(s = 1, withOar = false) {
   // 붉은 좌석 + 등받이
   const seat = new THREE.Mesh(new THREE.BoxGeometry(0.86, 0.2, 0.62), red);
   seat.position.set(0, 0.42, 0.3); seat.castShadow = true; g.add(seat);
-  const back = new THREE.Mesh(new THREE.BoxGeometry(0.86, 0.44, 0.18), red);
-  back.position.set(0, 0.66, 0.66); g.add(back);
-  // 고물 장식(곤돌라의 페로) — 나무를 깎아 만든 기둥 + 빗살
-  const ferro = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.66, 0.16), trim);
-  ferro.position.set(0, 0.85, 1.72); g.add(ferro);
-  const head = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.2, 0.5), trim);
-  head.position.set(0, 1.12, 1.55); g.add(head);
-  for (let i = 0; i < 3; i++) {
-    const tooth = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.09, 0.26), trim);
-    tooth.position.set(0, 0.72 - i * 0.16, 1.86); g.add(tooth);
+  if (!plain) {
+    const back = new THREE.Mesh(new THREE.BoxGeometry(0.86, 0.44, 0.18), red);
+    back.position.set(0, 0.66, 0.66); g.add(back);
+    // 고물 장식(곤돌라의 페로) — 나무를 깎아 만든 기둥 + 빗살
+    const ferro = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.66, 0.16), trim);
+    ferro.position.set(0, 0.85, 1.72); g.add(ferro);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.2, 0.5), trim);
+    head.position.set(0, 1.12, 1.55); g.add(head);
+    for (let i = 0; i < 3; i++) {
+      const tooth = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.09, 0.26), trim);
+      tooth.position.set(0, 0.72 - i * 0.16, 1.86); g.add(tooth);
+    }
   }
   // 노(장식) — 정박한 배에만. 뱃전에 걸쳐 물에 담근 모습
   if (withOar) g.add(makeOar(-1));
@@ -181,12 +184,10 @@ export function buildRiverSpace() {
   island.visible = false; g.add(island);
   g.userData.island = island;
   g.userData.falls = COURSES.rapid.falls.map(d => {
-    const band = new THREE.Mesh(new THREE.PlaneGeometry(RIVER_W * 2, 1.4),
-      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4, transparent: true, opacity: 0.85 }));
-    band.geometry.rotateX(-Math.PI / 2);
-    band.position.set(0, 0.11, -H - 2 - d);
-    band.visible = false; g.add(band);
-    return band;
+    const fall = makeRapidFall();
+    fall.position.set(0, 0, -H - 2 - d);
+    fall.visible = false; g.add(fall);
+    return fall;
   });
   // 🧰 뱃사공의 창고(업그레이드) — 데크 서쪽
   const shed = new THREE.Group(); shed.position.set(-H + 2, 0, 1.6);
@@ -572,6 +573,7 @@ export function updateBoatRun(dt, t) {
   boat.hop = boat.t < boat.airUntil ? Math.sin((1 - (boat.airUntil - boat.t) / 0.8) * Math.PI) * 0.9 : 0;
 
   updateRiverObjects(dt, t, seg);
+  if (boat.course === 'rapid') tickRapidFalls(riverGroup?.userData.falls, t);
   if (!boat.active) return;                          // 위에서 난파 처리됐으면 종료
 
   // 배 메시 — 위치·기울기(조향 방향으로 롤) + 노 젓기 모션

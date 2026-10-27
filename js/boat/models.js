@@ -83,7 +83,7 @@ const koiNoise = (x, y, z) => Math.sin(x * 4.1 + y * 2.3) + Math.sin(y * 3.7 - z
 
 function ferryModel() {
   const g = new THREE.Group();
-  g.add(makeBoatHull(1.05));
+  g.add(makeBoatHull(1.05, false, true));
   g.userData.paddle = makeKayakPaddle();
   g.add(g.userData.paddle);
   const lantern = new THREE.Group();
