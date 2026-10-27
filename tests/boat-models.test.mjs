@@ -20,3 +20,9 @@ test('재질은 공유한다', () => {
   assert.match(src, /const MAT = \{/);
   assert.ok((src.match(/new THREE\.MeshStandardMaterial/g) || []).length <= 16);
 });
+
+test('비단잉어는 1인칭에서 몸통 메시를 모두 숨긴다', () => {
+  const i = src.indexOf('function koiModel(');
+  const body = src.slice(i, src.indexOf('\n}\n', i));
+  assert.match(body, /g\.userData\.fpHide = g\.children\.filter\(c => c\.isMesh\)/);
+});

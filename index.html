@@ -439,6 +439,23 @@
   .bd-boat.on { outline: 2px solid #3fb3c2; }
   .bd-mats, .bd-note, .bd-sub { font-size: 12px; opacity: .75; margin: 4px 0; }
   .boat-up.maxed { opacity: .7; }
+  @media (max-height: 430px) {
+    #boat-shop .tut-card { padding: 8px 14px; max-height: 100vh; width: min(92vw, 640px); max-width: 92vw; }
+    #boat-shop .tut-emoji { display: inline-block; font-size: 20px; margin: 0 6px 0 0; vertical-align: middle; }
+    #boat-shop h2 { display: inline-block; font-size: 16px; margin: 0; vertical-align: middle; }
+    #boat-shop .bd-sub, #boat-shop .bd-mats, #boat-shop .bd-note { font-size: 11px; margin: 2px 0; }
+    #boat-shop .bd-course { margin: 4px 0; }
+    #boat-shop .bd-course button { padding: 5px 8px; font-size: 12px; }
+    #boat-shop .bd-boats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    #boat-shop .boat-up { padding: 5px 8px; margin-bottom: 0; gap: 6px; }
+    #boat-shop .boat-up .bu-ico { font-size: 18px; }
+    #boat-shop .boat-up .bu-name { font-size: 12px; }
+    #boat-shop .boat-up button { padding: 5px 8px; font-size: 11px; }
+    #boat-shop .bd-lacks { gap: 2px; margin-top: 2px; }
+    #boat-shop .bd-lacks i { font-size: 10px; padding: 0 5px; }
+    #boat-shop .dm-actions { margin-top: 6px !important; }
+    #boat-shop .dm-actions button { padding: 5px 14px; }
+  }
   /* 튜토리얼 / 씨앗 안내 모달 (공통 카드 스타일) */
   #tutorial-modal, #seed-modal, #hint-modal, #photo-modal, #char-modal, #merchant-modal, #notice-modal, #settings-modal, #invite-modal, #daily-modal { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
   #tutorial-modal.show, #seed-modal.show, #hint-modal.show, #photo-modal.show, #char-modal.show, #merchant-modal.show, #notice-modal.show, #settings-modal.show, #invite-modal.show, #daily-modal.show { display: grid; }

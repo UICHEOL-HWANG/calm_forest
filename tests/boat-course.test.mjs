@@ -69,3 +69,15 @@ test('상자: 루프 뒤에만 난수를 써서 상자 없는 날 코스가 같�
 test('밤 전용 수집물은 낮에 안 나온다', () => {
   for (const s of SEEDS) assert.ok(buildCourseData(s, { night: false, course: 'rapid' }).items.every(i => i.pick !== 'moon_fish'));
 });
+
+test('급류: 별과 수집물이 갈림 섬 위나 폭포 앞뒤 10m 안에 놓이지 않음', () => {
+  const cfg = COURSES.rapid;
+  for (const s of SEEDS) {
+    const { items, fork } = buildCourseData(s, { night: true, course: 'rapid' });
+    for (const o of items.filter(i => i.kind === 'pick' || (i.kind === 'star' && i.x < FORK_X[1] + 1.01))) {
+      const onIsland = o.d >= fork.d0 && o.d <= fork.d1 && o.x >= FORK_X[0] - 1 && o.x <= FORK_X[1] + 1;
+      assert.ok(!onIsland, `seed ${s}: ${o.kind} d${o.d} x${o.x} on island`);
+      assert.ok(cfg.falls.every(f => Math.abs(o.d - f) >= 10), `seed ${s}: ${o.kind} d${o.d} near fall`);
+    }
+  }
+});

@@ -724,6 +724,7 @@ export function updateRiverObjects(dt, t, seg) {
       trackEvent('boat_hit', { obstacle: it.kind, dist_m: Math.round(boat.dist), seg, lamps_left: boat.lamps }); // [GA4] 난이도 튜닝
       if (boat.lamps <= 0) {                       // 🌊 마지막 충돌: 충돌 지점에서 배가 기울며 가라앉는 연출 → 결과 화면
         boat.wreckAt = boat.t + 1.9;
+        boat.hop = 0;
         Sound.water();
         return;
       }
@@ -741,7 +742,7 @@ export function updateBoatCamera(dt) {
   }
   // 노 젓는 자리(뱃전 안쪽)에서 뱃머리 너머를 본다 — 배 안쪽 구조물이 시야를 막지 않는 위치
   const bob = Math.sin(boat.t * 3.2) * 0.045;
-  _camTarget.set(player.position.x + (Math.random() - 0.5) * shake, 1.5 + bob + (boat.hop || 0), player.position.z + 0.55);
+  _camTarget.set(player.position.x + (Math.random() - 0.5) * shake, 1.5 + bob + (boat.hop || 0) - (boat.t < boat.skillUntil && BOATS[boat.boatId].skill?.id === 'dive' ? 0.35 : 0), player.position.z + 0.55);
   camera.position.lerp(_camTarget, 1 - Math.pow(0.0001, dt));   // 배 위치를 거의 즉시 따라감
   _camLook.lerp(_camTarget.set(player.position.x + boat.vx * 0.35, 1.05, player.position.z - 14), 1 - Math.pow(0.02, dt));
   camera.lookAt(_camLook);

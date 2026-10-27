@@ -35,6 +35,8 @@ export function buildCourseData(seed, { night = false, chest = false, course = '
   const fork = cfg.fork ? { d0: cfg.fork[0], d1: cfg.fork[1], x0: FORK_X[0], x1: FORK_X[1] } : null;
   const inFork = d => !!fork && d > fork.d0 && d < fork.d1;
   const nearFall = d => cfg.falls.some(f => Math.abs(d - f) < 10);
+  const blocked = (dd, x) => nearFall(dd) || (!!fork && dd >= fork.d0 && dd <= fork.d1 && x >= fork.x0 - 1 && x <= fork.x1 + 1);
+  const keep = [];
   let d = cfg.first;
   while (d < RIVER_LEN - 24) {
     const p = d / RIVER_LEN;
@@ -56,15 +58,16 @@ export function buildCourseData(seed, { night = false, chest = false, course = '
     if (rnd() < cfg.starP && !inFork(d)) {
       const n = 3 + Math.floor(rnd() * 3);
       const sx = (rnd() * 2 - 1) * (RIVER_W - 1.4), curve = (rnd() * 2 - 1) * 0.9;
-      for (let i = 0; i < n; i++) items.push({ d: d + gap * 0.42 + i * 2.7, kind: 'star', x: clampW(sx + curve * i) });
+      for (let i = 0; i < n; i++) keep.push({ d: d + gap * 0.42 + i * 2.7, kind: 'star', x: clampW(sx + curve * i) });
     }
     if (rnd() < cfg.pickP) {
       const cands = RIVER_PICKS.filter(k => !k.night || night);
       const k = cands[Math.floor(rnd() * cands.length)];
-      items.push({ d: d + gap * 0.68, kind: 'pick', pick: k.id, x: clampW((rnd() * 2 - 1) * RIVER_W, 1.3) });
+      keep.push({ d: d + gap * 0.68, kind: 'pick', pick: k.id, x: clampW((rnd() * 2 - 1) * RIVER_W, 1.3) });
     }
     d += gap;
   }
+  for (const o of keep) if (!blocked(o.d, o.x)) items.push(o);
   if (fork) for (let s = fork.d0 + 4; s < fork.d1 - 4; s += 3.2) items.push({ d: s, kind: 'star', x: RIVER_W - 1.5 });
   if (chest) {
     const c = placeChest(rnd, { len: RIVER_LEN, width: RIVER_W });

@@ -81,3 +81,9 @@ test('런 밖에서 누른 스킬은 다음 판으로 넘어가지 않는다', (
   assert.match(G, /boatSkill\(\) \{ if \(boat\.active\) wantSkill = true; \}/);
   assert.match(G, /e\.code === 'KeyF' && boat\.active/);
 });
+
+test('1인칭 카메라는 잠수 중 낮아지고, 침몰 시작 때 hop 이 0 이 된다', () => {
+  const cam = fn('updateBoatCamera');
+  assert.match(cam, /boat\.hop \|\| 0\) - \(boat\.t < boat\.skillUntil && BOATS\[boat\.boatId\]\.skill\?\.id === 'dive' \? 0\.35 : 0\)/);
+  assert.match(R, /boat\.wreckAt = boat\.t \+ 1\.9;\s*boat\.hop = 0;/);
+});

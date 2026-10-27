@@ -148,7 +148,7 @@ function koiModel() {
   add(g, new THREE.TorusGeometry(0.085, 0.035, 8, 16), MAT.pink, [0, 0.38, -1.7], [0, 0, 0], [1, 0.8, 1]);
   for (const s of [-1, 1]) curveTube([[s * 0.12, 0.33, -1.6], [s * 0.25, 0.22, -1.72], [s * 0.38, 0.18, -1.68]], 0.014, EXTRA.whisker, g, 8);
   const seat = saddle(g, 0.86, 0.15);
-  g.userData.fpHide = [dorsal, ...seat];
+  g.userData.fpHide = g.children.filter(c => c.isMesh);
   g.userData.oars = [];
   return g;
 }
