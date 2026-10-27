@@ -6,6 +6,7 @@ try { globalThis.navigator ??= { language: 'en-US', languages: ['en-US'] }; } ca
 globalThis.crypto ??= { randomUUID: () => 'test-uuid' };
 const { t, setLang } = await import('../js/i18n.js');
 setLang('en');
+const { keeperLines, KEEPER_PROMPT } = await import('../js/mountain/keeper-talk.js');
 
 const KO = [
   '눈의 가지', '썰매지기', '땔감 꾸러미', '코코아 꾸러미', '눈사람', '펭귄', '물범', '눈토끼', '늑대', '반달곰',
@@ -22,4 +23,9 @@ const KO = [
 
 test('눈의 가지 문구는 전부 영어가 있다', () => {
   for (const s of KO) assert.doesNotMatch(t(s), /[가-힣]/, s);
+});
+
+test('썰매지기 대사·프롬프트 영어', () => {
+  for (const st of ['guide', 'quest', 'thanks']) for (const l of keeperLines(st, { gift: true })) assert.doesNotMatch(t(l), /[가-힣]/, l);
+  assert.doesNotMatch(t(KEEPER_PROMPT), /[가-힣]/);
 });

@@ -3236,4 +3236,11 @@ export const EN = {
   '별조각 · 강 재료': 'Star shards · River materials',
   '🌊 한 번 완주하면 급류가 열려요': '🌊 Finish once to open the rapids',
   '⭐ 별조각으로 새 배 만들기': '⭐ Build new boats with star shards',
+  '💬 썰매지기에게 말 걸기': '💬 Talk to the Sled Keeper',
+  '어서 와요. 산장에서 코코아로 몸부터 녹여요.': 'Welcome. Warm up with a cocoa in the hut first.',
+  '몸이 풀리면 출발대에서 썰매를 타 봐요. 도토리를 주우면 더 빨라져요.': 'Once you warm up, take a sled from the start deck. Acorns make you faster.',
+  '세계수 소식 들었어요. 이 산에도 가지가 하나 있는데, 겨우내 얼어 있어요.': 'I heard about the World Tree. One of its branches reaches this mountain, and it has been frozen all winter.',
+  '세계수 판에서 ❄️ 눈의 가지 빈터를 따뜻하게 꾸며 줄래요?': 'Could you make the ❄️ Snow Branch clearing cozy on the World Tree board?',
+  '창에 불이 다시 켜졌어요. 고마워요.': 'The window is lit again. Thank you.',
+  '이 썰매는 세계수 가지로 만든 거예요. 타고 내려가 봐요.': 'I made this sled from a World Tree branch. Take it for a ride.',
 };
