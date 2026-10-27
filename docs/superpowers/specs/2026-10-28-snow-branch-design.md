@@ -64,6 +64,9 @@ Date: 2026-10-28 · Branch: `feat/snow-branch` · Status: 설계 승인(사용�
 
 **시안 3개(a, b, b 의 높이 변형)를 렌더해 PC·모바일로 나란히 비교받은 뒤 정한다**(design-compare-before-ship 규칙). 잎·꽃 진행은 다른 가지와 같은 `state.branches.snow` 를 쓴다.
 
+- **눈 가지 잎은 흰색**(사용자 요청 2026-10-28: "다른 가지랑 다르게 흰색으로"). `LIMBS.snow.leaf` 로 가지별 잎 팔레트를 받는다. 시안은 서리 흰색 · 순백 · 높은 자리(서리 흰색) 3개.
+- 눈 가지는 `LIMBS` 맨 끝에 두고 자기 난수(`seed`)를 써서 기존 5가지·우듬지 모양이 바뀌지 않게 한다(체크섬 테스트). 구현 계획: `docs/superpowers/plans/2026-10-28-snow-branch.md` §0.
+
 ## 7. 메인 스토리 5장 (js/story/chapters.js · rules.js · game.js)
 
 ### 7-1. 장 표
