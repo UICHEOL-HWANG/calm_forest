@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>호미 상점 시안</title>
+<style>
+:root{--bg:#f4ecdd;--card:#fffaf0;--ink:#3f3122;--sub:#7a6650;--line:#e3d5bd;--accent:#b0683a;--ok:#3f8f5a;--warn:#c0573a;--pay:#6b5bd6}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,"Apple SD Gothic Neo",sans-serif}
+main{max-width:1180px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:24px;margin:0 0 4px}h2{font-size:19px;margin:30px 0 4px}.lead{color:var(--sub);margin:0 0 12px;font-size:14px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.grid4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:820px){.grid,.grid4{grid-template-columns:1fr 1fr}}@media(max-width:520px){.grid,.grid4{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;position:relative}
+.card h3{margin:0 0 4px;font-size:16px}.card p{margin:4px 0;font-size:13px;color:var(--sub);line-height:1.45}
+.pick{outline:3px solid var(--ok)}.tag{position:absolute;top:-10px;right:12px;background:var(--ok);color:#fff;font-size:12px;padding:3px 9px;border-radius:999px}
+.shop{background:#fff;border-radius:14px;border:1px solid var(--line);padding:10px;margin:8px 0}
+.shop .hd{font-size:13px;font-weight:700;margin-bottom:6px}
+.row{display:flex;align-items:center;gap:8px;padding:6px 4px;border-top:1px dashed var(--line);font-size:13px}.row:first-of-type{border-top:0}
+.row img{width:40px;height:46px;object-fit:contain;background:#f6efe2;border-radius:8px}.row b{display:block;font-size:13px}.row small{color:var(--sub)}
+.row .pr{margin-left:auto;white-space:nowrap;font-weight:700}
+.hoe img{width:100%;aspect-ratio:13/15;object-fit:contain;background:#f6efe2;border-radius:12px}
+.price{font-weight:800;font-size:15px;margin-top:6px}.price.won{color:var(--pay)}
+.opt{display:inline-block;background:#efe3cf;border-radius:8px;padding:2px 7px;font-size:12px;margin:2px 2px 0 0}
+table{width:100%;border-collapse:collapse;background:var(--card);border-radius:14px;overflow:hidden;font-size:13px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:#efe3cf}
+.ok{color:var(--ok);font-weight:700}.no{color:var(--warn);font-weight:700}.mid{color:#b08a2a;font-weight:700}
+.npc{font-size:30px;line-height:1;vertical-align:middle}.bubble{background:#f6efe2;border-radius:12px;padding:5px 10px;font-size:13px;display:inline-block;margin-left:6px}
+.slot{display:flex;gap:6px;margin-top:6px}.slot span{flex:1;border:2px dashed var(--line);border-radius:10px;padding:6px;text-align:center;font-size:12px}.slot span.on{border:2px solid var(--accent);background:#fbefe2}
+</style>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}</script>
+</head><body><main>
+<h1>호미 상점 · 옵션 · 유료 스킨 시안</h1>
+<p class="lead">기준 수치: 도구 업그레이드 80~150코인 · 유료 도구 세트 5,000원(도구 9종) · 갯벌 한 판(60초)은 잡을 때 약 15~25코인, 팔면 약 40~60코인 (보상표 기준 추정, 실데이터 아님)</p>
+
+<h2>① 어디서 사나요</h2>
+<p class="lead">세 곳 모두 같은 호미를 팝니다. 차이는 찾기 쉬운지, 잡은 조개를 쓰게 하는지입니다.</p>
+<div class="grid">
+  <div class="card"><h3>A 잡화점 도구 칸</h3>
+    <div class="shop"><div class="hd">🛒 잡화점 · 도구 업그레이드</div>
+      <div class="row"><img data-hoe="t1"><div><b>길쭉 자루 호미</b><small>손 닿는 거리 늘어남</small></div><span class="pr">🪙 90</span></div>
+      <div class="row"><img data-hoe="t2"><div><b>눈 밝은 호미</b><small>대물 구멍이 반짝</small></div><span class="pr">🪙 140</span></div></div>
+    <p>기존 강철 도끼·넓은 삽 옆에 둡니다. 만들기 가장 쉽습니다.</p><p>갯벌을 안 해 본 사람에게도 보여서 왜 필요한지 모를 수 있습니다.</p></div>
+  <div class="card pick"><span class="tag">추천</span><h3>B 갯벌 입구 노점</h3>
+    <div class="shop"><div class="hd"><span class="npc">👵</span><span class="bubble">호미 좋은 거 있어~</span></div>
+      <div class="row"><img data-hoe="t1"><div><b>길쭉 자루 호미</b><small>🪙 90 + 맛조개 3</small></div><span class="pr">사기</span></div>
+      <div class="row"><img data-hoe="t2"><div><b>눈 밝은 호미</b><small>🪙 140 + 가리비 2</small></div><span class="pr">사기</span></div></div>
+    <p>갯벌에서 막 나왔을 때 바로 보입니다. 잡은 조개를 재료로 받아 코인이 덜 풀립니다.</p><p>노점 할머니 조형이 하나 늘어납니다.</p></div>
+  <div class="card"><h3>C 작업대에서 만들기</h3>
+    <div class="shop"><div class="hd">🔧 자재 작업대 · 도구</div>
+      <div class="row"><img data-hoe="t1"><div><b>길쭉 자루 호미</b><small>나무 6 · 맛조개 3 · 🪙 60</small></div><span class="pr">만들기</span></div>
+      <div class="row"><img data-hoe="t2"><div><b>눈 밝은 호미</b><small>석탄 2 · 가리비 2 · 🪙 100</small></div><span class="pr">만들기</span></div></div>
+    <p>마을 재료를 섞어 써서 다른 놀이와 이어집니다.</p><p>작업대가 갯벌에서 멀고, 처음 하는 사람은 못 찾을 수 있습니다.</p></div>
+</div>
+
+<h2>② 옵션은 어떻게 붙나요</h2>
+<div class="grid">
+  <div class="card"><h3>1안 단계형 (정해진 효과)</h3>
+    <div class="slot"><span class="on">1단계 🧭</span><span class="on">2단계 🧭👀</span></div>
+    <p>기본, 길쭉 자루, 눈 밝은 호미 순서로 효과가 정해져 있고 위 단계가 아래 효과를 포함합니다.</p>
+    <p>기존 도구 9종과 같은 방식이라 설명이 필요 없습니다. 고르는 재미는 적습니다.</p></div>
+  <div class="card pick"><span class="tag">추천</span><h3>2안 각인 끼우기 (골라 쓰는 옵션)</h3>
+    <div class="slot"><span class="on">🧭 긴 자루</span><span>👀 눈썰미</span><span>🪨 헛손질 1번</span></div>
+    <p>호미 단계가 오르면 각인 칸이 1칸, 2칸으로 늘고, 가진 각인 중 골라 끼웁니다. 각인은 조개로 삽니다.</p>
+    <p>조개를 계속 쓰게 되고, 누가 어떤 옵션을 고르는지 기록돼 분석에도 좋습니다.</p></div>
+  <div class="card"><h3>3안 랜덤 옵션 (살 때 뽑기)</h3>
+    <div class="slot"><span>❔ 무작위 1개</span><span>💎 진주로 다시</span></div>
+    <p>살 때 옵션 1개가 무작위로 붙고, 진주 1개로 다시 굴릴 수 있습니다.</p>
+    <p>뽑는 재미가 큽니다. 유료와 섞이면 확률 표시 의무가 생기므로 코인·조개 전용이어야 합니다.</p></div>
+</div>
+
+<h2>③ 옵션 후보</h2>
+<p class="lead">원칙: 지금 도구 업그레이드처럼 "덜 수고롭게"만. 보상을 늘리거나 캐는 타이밍 창을 넓히면 코인이 풀리고, 갯벌 난이도 실험(창 폭 0.8·1·1.25배)과 섞입니다.</p>
+<table>
+<tr><th>옵션</th><th>효과</th><th>보상·코인</th><th>난이도 실험</th><th>판정</th></tr>
+<tr><td>🧭 긴 자루</td><td>손 닿는 거리 1.35 → 1.8 (덜 걸어 다님)</td><td>거의 그대로</td><td>창 폭과 무관</td><td class="ok">추천</td></tr>
+<tr><td>👀 눈썰미</td><td>낙지 구멍에 반짝임 표시 (나오는 확률은 그대로)</td><td>약간 늘어남 (골라 캐기)</td><td>무관</td><td class="ok">추천</td></tr>
+<tr><td>🪨 헛손질 1번 봐줌</td><td>구멍이 닫히기까지 헛손질 2번 → 3번</td><td>약간 늘어남</td><td>실패 횟수가 바뀜 → 기록에 호미 칸 필요</td><td class="mid">조건부</td></tr>
+<tr><td>🧺 밀물 5초 늦게</td><td>판 길이 60 → 65초</td><td>약 8% 늘어남</td><td>판 길이가 달라져 비교 불가</td><td class="no">비추천</td></tr>
+<tr><td>⏱️ 숨 창 넓게</td><td>캐는 타이밍 창 +20%</td><td>늘어남</td><td>실험 변수와 정면 충돌</td><td class="no">비추천</td></tr>
+<tr><td>🐚 두 개씩 캐기</td><td>가끔 옆 구멍도 같이</td><td>크게 늘어남 (인플레)</td><td>결과 지표 오염</td><td class="no">비추천</td></tr>
+</table>
+
+<h2>④ 호미 단계와 가격 (B 노점 + 2안 각인 기준)</h2>
+<div class="grid grid4">
+  <div class="card hoe"><img data-hoe="t0"><h3>대장간 호미</h3><p>처음 갯벌에 들어가면 받음</p><span class="opt">각인 칸 0</span><div class="price">무료</div></div>
+  <div class="card hoe"><img data-hoe="t1"><h3>길쭉 자루 호미</h3><p>자루가 진하고 날이 밝아짐</p><span class="opt">각인 칸 1</span><span class="opt">🧭 긴 자루 기본</span><div class="price">🪙 90 + 맛조개 3</div></div>
+  <div class="card hoe"><img data-hoe="t2"><h3>눈 밝은 호미</h3><p>목에 청록 점, 손잡이 붉은 줄</p><span class="opt">각인 칸 2</span><span class="opt">👀 눈썰미 기본</span><div class="price">🪙 140 + 가리비 2</div></div>
+  <div class="card hoe"><img data-hoe="t3"><h3>금빛 호미 (히든)</h3><p>낙지 10마리 의뢰 → 도면. 다른 도구처럼 겉모습만</p><span class="opt">효과는 2단계와 같음</span><div class="price">의뢰 보상</div></div>
+</div>
+<p class="lead">각인 가격 후보: 🧭 긴 자루 바지락 6 · 👀 눈썰미 꼬막 4 + 맛조개 2 · 🪨 헛손질 1번 칠게 8 (2~3판이면 하나 모이는 양)</p>
+
+<h2>⑤ 유료 스킨 (겉모습만)</h2>
+<div class="grid">
+  <div class="card"><h3>P1 기존 도구 세트에 호미 추가</h3>
+    <div class="grid" style="grid-template-columns:1fr 1fr;gap:8px"><div class="hoe"><img data-hoe="shell"></div><div class="hoe"><img data-hoe="moon"></div></div>
+    <p>🐚 바닷가 조개·🌙 달밤 등 이미 산 세트 11종에 호미가 자동으로 들어갑니다. 산 사람에게 공평합니다.</p>
+    <p>새 매출은 없고 조형이 11개 필요합니다.</p><div class="price">추가 결제 없음</div></div>
+  <div class="card pick"><span class="tag">추천</span><h3>P2 호미 단독 스킨 3종</h3>
+    <div class="grid" style="grid-template-columns:1fr 1fr 1fr;gap:6px"><div class="hoe"><img data-hoe="najeon"></div><div class="hoe"><img data-hoe="coral"></div><div class="hoe"><img data-hoe="whale"></div></div>
+    <p>자개 호미 · 산호 호미 · 고래 호미. 갯벌·잠수에서 바로 보입니다. 서버 원장 목록과 결제 상품 3개만 추가합니다.</p>
+    <div class="price won">각 1,500원 · 3종 묶음 3,500원</div></div>
+  <div class="card"><h3>P3 갯벌 세트</h3>
+    <div class="hoe"><img data-hoe="mudset" style="aspect-ratio:2/1"></div>
+    <p>호미 + 등에 메는 바구니 + 장화. 갯벌에서 캐릭터 전체가 바뀌어 보입니다.</p>
+    <p>바구니·장화 조형과 장착 칸이 새로 필요합니다.</p><div class="price won">3,900원</div></div>
+</div>
+<p class="lead">유료는 전부 겉모습만입니다. 옵션(각인)은 코인·조개로만 얻습니다.</p>
+</main>
+<script type="module">
+import * as THREE from 'three';
+import { buildHoe } from '../js/forage/hoe-art.js';
+import { TIER_PALETTE } from '../js/tool-tiers.js';
+const mat = (color, flat = true) => new THREE.MeshStandardMaterial({ color, roughness: .7, metalness: 0, flatShading: flat });
+const T1 = TIER_PALETTE[1], T2 = TIER_PALETTE[2];
+const deco = (g, kind) => {
+  const add = (geo, c, x, y, z) => { const m = new THREE.Mesh(geo, mat(c)); m.position.set(x, y, z); g.add(m); return m; };
+  const ball = r => new THREE.SphereGeometry(r, 10, 8);
+  const ring = (c, y) => { const t = add(new THREE.TorusGeometry(.043, .006, 5, 14), c, 0, y, 0); t.rotation.x = Math.PI / 2; };
+  if (kind === 't2') { add(ball(.016), 0x4fb8c8, 0, .25, .02); [0, .016, .032].forEach(y => ring(0xc0573a, y)); }
+  if (kind === 't3') add(ball(.018), 0x4fb8c8, 0, .25, .02);
+  if (kind === 'najeon') [[.02, 0xf3e8ff], [.08, 0xd6f5ef], [.14, 0xffe3f0]].forEach(([y, c]) => add(ball(.013), c, 0, y, .036));
+  if (kind === 'coral') { add(ball(.022), 0xff8a7a, .015, .12, .035); add(ball(.015), 0xffc2a8, -.015, .06, .035); }
+  if (kind === 'whale') { const t = add(new THREE.ConeGeometry(.035, .05, 3), 0x2c5f8a, 0, -.12, 0); t.rotation.z = Math.PI; }
+  if (kind === 'shell') add(new THREE.SphereGeometry(.022, 10, 6, 0, Math.PI), 0xf4c9b8, 0, .1, .036);
+  if (kind === 'moon') add(new THREE.TorusGeometry(.022, .007, 5, 12, Math.PI * 1.3), 0xf3d77a, 0, .12, .04);
+};
+const LOOK = {
+  t0: null,
+  t1: { wood: T1.wood, iron: 0x5c646c, steel: 0xd3dade },
+  t2: { wood: T1.wood, iron: 0x2f4f58, steel: 0xe2e8ec },
+  t3: { wood: T2.wood, iron: 0x8a6b1c, steel: T2.metal, rope: T2.accent },
+  najeon: { wood: 0x2a1b1e, woodDark: 0x111111, rope: 0xb98ad6, iron: 0x3a3340, steel: 0xeee8f6 },
+  coral: { wood: 0xf08a6a, woodDark: 0xc65a44, rope: 0xffe0c8, iron: 0x3d5a63, steel: 0xffd9c9 },
+  whale: { wood: 0x5d8fb8, woodDark: 0x2c5f8a, rope: 0xe9f3fa, iron: 0x1f3d57, steel: 0xcfe6f5 },
+  shell: { wood: 0xe6cfa6, rope: 0x7cc3c0, iron: 0x4b6d78, steel: 0xf1e6da },
+  moon: { wood: 0x3b3a6b, woodDark: 0x22214a, rope: 0xf3d77a, iron: 0x2c2b55, steel: 0xc9cdf2 },
+};
+const R = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); R.setPixelRatio(2);
+const shot = (key, w = 260, h = 300) => {
+  R.setSize(w, h);
+  const s = new THREE.Scene(); s.background = new THREE.Color(0xf6efe2);
+  s.add(new THREE.HemisphereLight(0xffffff, 0x8a7458, 1.6));
+  const d = new THREE.DirectionalLight(0xffffff, 2.2); d.position.set(2, 3, 4); s.add(d);
+  const make = (k, x) => { const g = buildHoe(THREE, mat, 'A3', -.95, LOOK[k]); deco(g.children[0], k); g.position.x = x; s.add(g); };
+  if (key === 'mudset') {
+    make('shell', -.3);
+    const b = new THREE.Group(); b.position.set(.15, .05, 0); s.add(b);
+    const bk = new THREE.Mesh(new THREE.CylinderGeometry(.16, .12, .22, 12, 1, true), mat(0xc9a46a)); bk.material.side = THREE.DoubleSide; b.add(bk);
+    for (let i = 0; i < 4; i++) { const t = new THREE.Mesh(new THREE.TorusGeometry(.12 + i * .013, .008, 4, 18), mat(0x9a7642)); t.rotation.x = Math.PI / 2; t.position.y = -.09 + i * .06; b.add(t); }
+    const boot = new THREE.Mesh(new THREE.CapsuleGeometry(.06, .16, 4, 10), mat(0xf2c94c)); boot.position.set(.5, 0, 0); s.add(boot);
+    const toe = new THREE.Mesh(new THREE.SphereGeometry(.07, 10, 8), mat(0xf2c94c)); toe.position.set(.55, -.12, .04); toe.scale.set(1, .6, 1.3); s.add(toe);
+  } else make(key, 0);
+  const box = new THREE.Box3().setFromObject(s), c = box.getCenter(new THREE.Vector3()), sz = box.getSize(new THREE.Vector3());
+  const t = Math.tan(15 * Math.PI / 180), dist = Math.max(sz.y / (2 * t), sz.x / (2 * t) / (w / h)) * 1.15;
+  const cam = new THREE.PerspectiveCamera(30, w / h, .01, 50);
+  cam.position.set(c.x, c.y + .03, c.z + dist); cam.lookAt(c);
+  R.render(s, cam);
+  return R.domElement.toDataURL();
+};
+const cache = {};
+document.querySelectorAll('img[data-hoe]').forEach(img => {
+  const k = img.dataset.hoe;
+  img.src = cache[k] ??= k === 'mudset' ? shot(k, 520, 260) : shot(k);
+});
+window.__ready = true;
+</script></body></html>

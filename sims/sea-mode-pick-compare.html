@@ -1,0 +1,260 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>바다터 선택 화면 시안 · calm forest</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gaegu:wght@700&display=swap">
+<style>
+  body{margin:0;padding:22px;background:#e9e4da;font-family:-apple-system,"Apple SD Gothic Neo",sans-serif;color:#3a332a}
+  h1{margin:0 0 4px;font-size:22px}
+  .note{margin:0 0 14px;font-size:14px;opacity:.7;line-height:1.6}
+  .ctl{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;margin:0 0 22px;font-size:13px}
+  .ctl b{margin-right:2px}
+  .ctl button{font:inherit;font-size:13px;padding:5px 10px;border-radius:9px;border:1px solid #c8bca8;background:#fff;cursor:pointer}
+  .ctl button.on{background:#3a332a;color:#fff;border-color:#3a332a}
+  #status{font-size:12px;opacity:.6}
+  .crow{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start;margin-bottom:34px}
+  .crow h2{width:100%;margin:0 0 -6px;font-size:18px}
+  .crow h2 small{font-size:13px;font-weight:400;opacity:.65;margin-left:8px}
+  .dev{position:relative;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.2);background:#2c6f8f}
+  .dev::before{content:'';position:absolute;inset:0;background:linear-gradient(#9fd6ea,#4aa3c8 55%,#c9b48a 56%,#b39a6e);filter:blur(2px);opacity:.9}
+  .pc{width:960px;height:560px;border-radius:14px}
+  .ph{width:375px;height:740px;border-radius:34px}
+  .ls{width:800px;height:370px;border-radius:30px}
+  .lbl{position:absolute;left:12px;bottom:10px;z-index:9;font-size:11px;font-weight:800;color:#fff;background:rgba(0,0,0,.45);padding:3px 9px;border-radius:8px}
+
+  .pk{position:absolute;inset:0;container-type:size;font-family:'Jua',-apple-system,sans-serif;color:#2c2418;-webkit-font-smoothing:antialiased}
+  .pk *{box-sizing:border-box}
+  .pk .clip{display:block;width:100%;height:100%;background:#9fc9d8}
+  .pk .x{position:absolute;right:14px;top:12px;width:40px;height:40px;border-radius:50%;border:0;background:rgba(255,255,255,.85);font-size:18px;cursor:pointer;z-index:3}
+  .pk .new{position:absolute;z-index:2;background:#ff7a59;color:#fff;font-size:12px;padding:3px 9px;border-radius:999px;box-shadow:0 2px 0 #c9502f}
+  .pk .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .pk .chip{font-size:12px;padding:3px 9px;border-radius:999px;background:var(--t);color:var(--c)}
+  .toast{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);background:rgba(30,24,16,.88);color:#fff;font-family:'Jua',sans-serif;font-size:16px;padding:10px 18px;border-radius:14px;z-index:20;animation:tst 1.6s ease forwards}
+  @keyframes tst{0%{opacity:0;transform:translate(-50%,10px)}12%,80%{opacity:1;transform:translate(-50%,0)}100%{opacity:0}}
+
+  .A{background:rgba(250,244,232,.55);backdrop-filter:blur(6px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 34px}
+  .A h3{margin:0 0 20px;font-size:30px;font-weight:400;color:#2c2418;text-shadow:0 2px 0 #fff}
+  .A .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;width:100%;max-width:880px}
+  .A .card{position:relative;background:#fffaf1;border-radius:24px;padding:10px 10px 14px;cursor:pointer;border:0;text-align:left;font:inherit;color:inherit;
+    box-shadow:0 0 0 3px #fff,0 8px 0 var(--c),0 14px 26px rgba(30,20,10,.25);transition:transform .18s cubic-bezier(.3,1.5,.5,1)}
+  .A .card:hover{transform:translateY(-6px) rotate(-.6deg)}
+  .A .card .pv{aspect-ratio:4/3;border-radius:16px;overflow:hidden;box-shadow:inset 0 0 0 3px rgba(0,0,0,.06)}
+  .A .card .nm{display:flex;align-items:center;gap:6px;font-size:23px;margin:12px 4px 2px;color:var(--c)}
+  .A .card .ln{font-family:-apple-system,sans-serif;font-size:14px;color:#5a4a38;margin:0 4px 10px;line-height:1.4}
+  .A .card .chips{margin:0 4px}
+  .A .card .new{right:-6px;top:-8px;transform:rotate(6deg)}
+  @container (max-width:520px){
+    .A{padding:64px 16px 20px;justify-content:flex-start}
+    .A h3{font-size:25px;margin-bottom:16px}
+    .A .cards{grid-template-columns:1fr;gap:14px}
+    .A .card{display:grid;grid-template-columns:132px 1fr;column-gap:12px;align-items:center;padding:8px}
+    .A .card .pv{grid-row:1/4;aspect-ratio:1}
+    .A .card .nm{margin:2px 0 0;font-size:21px}.A .card .ln{margin:2px 0 6px}.A .card .chips{margin:0}
+  }
+  @container (max-height:420px){
+    .A{padding:14px 70px}
+    .A h3{font-size:22px;margin-bottom:10px}
+    .A .card .pv{aspect-ratio:16/9}
+    .A .card .nm{font-size:19px;margin-top:8px}.A .card .ln{font-size:12px;margin-bottom:6px}
+  }
+
+  .B{background:radial-gradient(120% 80% at 50% 30%,rgba(255,250,240,.2),rgba(16,40,56,.65));display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 0}
+  .B h3{margin:0 0 14px;font-size:28px;font-weight:400;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.35)}
+  .B .track{position:relative;width:100%;height:66%;max-height:400px}
+  .B .card{position:absolute;left:50%;top:0;height:100%;aspect-ratio:3/4;max-width:78%;border-radius:28px;overflow:hidden;cursor:pointer;background:#fffaf1;
+    transition:transform .45s cubic-bezier(.3,1.25,.4,1),filter .3s,opacity .3s;box-shadow:0 0 0 5px #fff,0 20px 40px rgba(0,0,0,.35)}
+  .B .card .pv{height:64%}
+  .B .card .body{padding:12px 16px}
+  .B .card .nm{font-size:26px;color:var(--c)}
+  .B .card .ln{font-family:-apple-system,sans-serif;font-size:14px;color:#5a4a38;margin:4px 0 10px}
+  .B .card .new{left:14px;top:14px}
+  .B .card[data-p="0"]{transform:translateX(-50%) scale(1);z-index:3}
+  .B .card[data-p="-1"]{transform:translateX(-128%) scale(.8) rotate(-4deg);z-index:2;filter:brightness(.8) saturate(.8)}
+  .B .card[data-p="1"]{transform:translateX(28%) scale(.8) rotate(4deg);z-index:2;filter:brightness(.8) saturate(.8)}
+  .B .bar{display:flex;align-items:center;gap:16px;margin-top:18px}
+  .B .dots{display:flex;gap:7px}.B .dots i{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.5)}.B .dots i.on{background:#fff;width:24px;border-radius:5px}
+  .B .go{font:inherit;font-size:20px;border:0;border-radius:18px;padding:12px 30px;background:var(--c,#2f6f94);color:#fff;cursor:pointer;box-shadow:0 5px 0 rgba(0,0,0,.25)}
+  .B .arr{width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.85);font-size:20px;cursor:pointer}
+  @container (max-width:520px){.B h3{font-size:24px}.B .track{height:60%}.B .card{max-width:72%}.B .card[data-p="-1"]{transform:translateX(-142%) scale(.82)}.B .card[data-p="1"]{transform:translateX(42%) scale(.82)}}
+  @container (max-height:420px){
+    .B{padding:10px 0}.B h3{font-size:21px;margin-bottom:8px}.B .track{height:70%}
+    .B .card{aspect-ratio:16/9;display:grid;grid-template-columns:54% 46%}.B .card .pv{height:100%}.B .card .nm{font-size:22px}.B .card .ln{font-size:12px}
+    .B .card[data-p="-1"]{transform:translateX(-118%) scale(.78)}.B .card[data-p="1"]{transform:translateX(18%) scale(.78)}
+    .B .bar{margin-top:10px}.B .go{padding:8px 24px;font-size:17px}
+  }
+
+  .C{background:linear-gradient(rgba(140,205,230,.35),rgba(60,140,180,.35));display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:24px 20px 0}
+  .C .banner{position:relative;margin:0 0 6px;padding:10px 36px;font-size:27px;color:#fff6e4;background:#8a5a32;border-radius:10px;
+    background-image:repeating-linear-gradient(0deg,transparent 0 9px,rgba(0,0,0,.08) 9px 10px);box-shadow:0 5px 0 #5e3b1e,0 10px 18px rgba(0,0,0,.25);text-shadow:0 2px 0 #5e3b1e}
+  .C .banner::before,.C .banner::after{content:'';position:absolute;top:50%;width:14px;height:14px;margin-top:-7px;border-radius:50%;background:#c9a06a;box-shadow:inset 0 -2px 0 #8a6a3a}
+  .C .banner::before{left:10px}.C .banner::after{right:10px}
+  .C .posts{flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:22px;width:100%;max-width:880px;align-items:start;padding-top:22px;position:relative}
+  .C .post{position:relative;display:flex;flex-direction:column;align-items:center;cursor:pointer}
+  .C .post::before{content:'';position:absolute;top:-22px;bottom:-200px;width:16px;background:#6e4626;border-radius:4px;box-shadow:inset -4px 0 0 rgba(0,0,0,.18);z-index:0}
+  .C .sign{position:relative;z-index:1;width:100%;background:#c08a52;border-radius:14px;padding:12px;transform-origin:50% -20px;animation:sway 4s ease-in-out infinite;
+    background-image:repeating-linear-gradient(90deg,transparent 0 22px,rgba(0,0,0,.06) 22px 24px);box-shadow:0 6px 0 #8a5a32,0 14px 22px rgba(0,0,0,.28);transition:transform .2s}
+  .C .post:nth-child(2) .sign{animation-delay:-1.3s}.C .post:nth-child(3) .sign{animation-delay:-2.6s}
+  .C .post:hover .sign{animation-play-state:paused;transform:scale(1.04)}
+  @keyframes sway{0%,100%{transform:rotate(-1.4deg)}50%{transform:rotate(1.4deg)}}
+  .C .sign .pv{aspect-ratio:4/3;border-radius:8px;overflow:hidden;box-shadow:0 0 0 5px #6e4626,inset 0 0 12px rgba(0,0,0,.3)}
+  .C .sign .nm{margin:12px 0 0;text-align:center;font-size:25px;color:#3b2410;text-shadow:0 1px 0 rgba(255,255,255,.35)}
+  .C .tagp{position:relative;z-index:1;margin-top:-4px;transform:rotate(-2deg);background:#fffaf0;padding:8px 14px 10px;border-radius:4px;font-family:'Gaegu',sans-serif;font-size:19px;color:#4a3a28;
+    box-shadow:0 4px 8px rgba(0,0,0,.2);max-width:92%;text-align:center}
+  .C .tagp .chips{justify-content:center;margin-top:4px;font-family:'Jua',sans-serif}
+  .C .new{right:-8px;top:-10px;transform:rotate(8deg)}
+  .C .pier{position:absolute;left:0;right:0;bottom:0;height:22%;background:repeating-linear-gradient(90deg,#a87444 0 46px,#8f5f34 46px 48px);box-shadow:0 -6px 0 #6e4626;z-index:0}
+  .C .sign .mobileln{display:none;font-family:'Gaegu',sans-serif;font-size:17px;color:#3b2410;line-height:1.2}
+  @container (max-width:520px){
+    .C{padding:60px 14px 0}.C .banner{font-size:21px;padding:8px 30px}
+    .C .posts{grid-template-columns:1fr;gap:14px;padding-top:14px}
+    .C .post::before{display:none}
+    .C .sign{display:grid;grid-template-columns:116px 1fr;column-gap:10px;align-items:center;padding:8px;animation:none}
+    .C .sign .pv{aspect-ratio:1}.C .sign .nm{margin:0;text-align:left;font-size:21px}
+    .C .tagp{display:none}
+    .C .sign .mobileln{display:block}
+  }
+  @container (max-height:420px){
+    .C{padding:10px 70px 0}.C .banner{font-size:19px;padding:6px 30px}
+    .C .posts{gap:16px;padding-top:12px}
+    .C .sign{padding:8px}.C .sign .pv{aspect-ratio:16/9}.C .sign .nm{font-size:19px;margin-top:6px}
+    .C .tagp{font-size:15px;padding:4px 10px 6px}.C .tagp .chips{display:none}
+  }
+</style>
+<h1>바다터 입장 선택 화면 시안</h1>
+<p class="note">카드 속 영상은 세 시뮬(낚시 C 링 타이밍 · 갯벌 C · 잠수 A)을 실제로 돌려 찍은 장면입니다. 게임에서는 같은 장면을 녹화한 webm/mp4로 바꿔 넣습니다.<br>카드를 누르면 시작 알림이 뜹니다(시안이라 실제 이동은 없음).</p>
+<div class="ctl">
+  <span><b>제목</b> <span id="tBtns"></span></span>
+  <span><b>카드 문구</b> <span id="sBtns"></span></span>
+  <span id="status">미리보기 장면 찍는 중…</span>
+</div>
+<div id="rows"></div>
+<script type="module">
+const TITLES = ['오늘은 바다에서 뭐 할까요?', '바다에서 뭘 해 볼까요?', '오늘의 바다 놀이를 골라요'];
+const MODES = [
+  { k: 'fish', ico: '🎣', name: '대어 낚시', c: '#2f6f94', t: '#dcecf5', meta: '🏆 오늘의 참치 순위',
+    sets: [{ ln: '버티고 당겨서 대어 낚기', tag: '손맛' }, { ln: '링이 겹칠 때 당기면 참치가 와요', tag: '승부' }] },
+  { k: 'mud', ico: '🐚', name: '갯벌 캐기', c: '#a85f30', t: '#f6e3cf', meta: '⏱️ 밀물까지 1분', isNew: true,
+    sets: [{ ln: '밀물 전에 조개 가득 캐기', tag: '수집' }, { ln: '뽀글뽀글 숨구멍을 톡 캐요', tag: '타이밍' }] },
+  { k: 'dive', ico: '🤿', name: '잠수', c: '#1f7f86', t: '#d4efee', meta: '🫧 숨 세 번', isNew: true,
+    sets: [{ ln: '숨 참고 바닷속 보물 줍기', tag: '탐험' }, { ln: '깊이 갈수록 귀한 게 나와요', tag: '보물' }] },
+];
+const LAYOUTS = [
+  { id: 'A', name: '나란히 세 장', desc: '세 놀이를 한눈에 비교 · 한 번 누르면 바로 시작' },
+  { id: 'B', name: '넘겨 보는 큰 카드', desc: '한 장씩 크게 · 넘기고 [시작하기]' },
+  { id: 'C', name: '부두 표지판', desc: '바다터 부두에 걸린 나무 표지판 · 바람에 살랑' },
+];
+let title = 0, set = 0;
+const CLIPS = {
+  fish: { url: 'sea-feel-sim.html?v=C&auto=1&embed=1&seed=3&clip=1', ready: w => { try { return w.__sea().dbg().state === 'fight'; } catch (e) { return false; } }, warm: 25, after: .6 },
+  mud: { url: 'mudflat-dig-sim.html?v=C&auto=1&embed=1&seed=7&clip=1', ready: w => w.__mud && w.__mud.t > 2.5, warm: 6, after: 0 },
+  dive: { url: 'dive-sim.html?v=A&auto=1&embed=1&seed=5&clip=1', ready: w => w.__dive && w.__dive.state === 'swim', warm: 15, after: .8 },
+};
+const FPS = 12, SECS = 3.5, frames = { fish: [], mud: [], dive: [] };
+const nextTick = () => new Promise(r => setTimeout(r, 0));
+async function capture(k) {
+  const c = CLIPS[k];
+  const f = document.createElement('iframe');
+  f.style.cssText = 'position:fixed;left:-3000px;top:0;width:640px;height:420px;border:0';
+  f.src = c.url; document.body.appendChild(f);
+  await new Promise(r => f.onload = r);
+  const w = f.contentWindow;
+  for (let i = 0; i < 200 && !w.__tick; i++) await new Promise(r => setTimeout(r, 50));
+  for (let i = 0; i < c.warm * 60 && !c.ready(w); i++) { w.__tick(1000 / 60); if (i % 30 === 0) await nextTick(); }
+  for (let i = 0; i < c.after * 60; i++) w.__tick(1000 / 60);
+  const src = w.document.querySelector('canvas');
+  const off = document.createElement('canvas'); off.width = 480; off.height = 315;
+  const ctx = off.getContext('2d');
+  for (let n = 0; n < FPS * SECS; n++) {
+    for (let s = 0; s < 60 / FPS; s++) w.__tick(1000 / 60);
+    ctx.drawImage(src, 0, 0, off.width, off.height);
+    frames[k].push(await createImageBitmap(off));
+    await nextTick();
+  }
+  f.remove();
+}
+
+const players = [];
+function clip(k) { const cv = document.createElement('canvas'); cv.className = 'clip'; players.push({ cv, k }); return cv; }
+function play(now) {
+  for (const p of players) {
+    const fr = frames[p.k]; if (!fr.length) continue;
+    const cv = p.cv, w = cv.clientWidth * 2, h = cv.clientHeight * 2;
+    if (!w || !h) continue;
+    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+    const img = fr[Math.floor(now / 1000 * FPS) % fr.length];
+    const s = Math.max(w / img.width, h / img.height), dw = img.width * s, dh = img.height * s;
+    cv.getContext('2d').drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
+  }
+  requestAnimationFrame(play);
+}
+requestAnimationFrame(play);
+window.__draw = () => play(performance.now());
+
+function toast(root, m) { const t = document.createElement('div'); t.className = 'toast'; t.textContent = `${m.ico} ${m.name} 시작!`; root.appendChild(t); setTimeout(() => t.remove(), 1600); }
+const chips = m => `<div class="chips"><span class="chip">${m.sets[set].tag}</span><span class="chip">${m.meta}</span></div>`;
+const newTag = m => m.isNew ? '<span class="new">새로 생겼어요</span>' : '';
+function buildA(root) {
+  root.innerHTML = `<button class="x">✕</button><h3>${TITLES[title]}</h3><div class="cards"></div>`;
+  for (const m of MODES) {
+    const b = document.createElement('button'); b.className = 'card'; b.style.cssText = `--c:${m.c};--t:${m.t}`;
+    b.innerHTML = `${newTag(m)}<div class="pv"></div><div class="nm">${m.ico} ${m.name}</div><div class="ln">${m.sets[set].ln}</div>${chips(m)}`;
+    b.querySelector('.pv').appendChild(clip(m.k)); b.onclick = () => toast(root, m);
+    root.querySelector('.cards').appendChild(b);
+  }
+}
+function buildB(root) {
+  let cur = 0;
+  root.innerHTML = `<button class="x">✕</button><h3>${TITLES[title]}</h3><div class="track"></div><div class="bar"><button class="arr" data-d="-1">‹</button><button class="go">시작하기</button><button class="arr" data-d="1">›</button></div><div class="bar"><div class="dots">${MODES.map(() => '<i></i>').join('')}</div></div>`;
+  const track = root.querySelector('.track');
+  const cards = MODES.map((m, i) => {
+    const c = document.createElement('div'); c.className = 'card'; c.style.cssText = `--c:${m.c};--t:${m.t}`;
+    c.innerHTML = `${newTag(m)}<div class="pv"></div><div class="body"><div class="nm">${m.ico} ${m.name}</div><div class="ln">${m.sets[set].ln}</div>${chips(m)}</div>`;
+    c.querySelector('.pv').appendChild(clip(m.k)); c.onclick = () => { if (i === cur) toast(root, m); else { cur = i; lay(); } };
+    track.appendChild(c); return c;
+  });
+  const lay = () => {
+    cards.forEach((c, i) => { let p = i - cur; if (p > 1) p -= 3; if (p < -1) p += 3; c.dataset.p = p; });
+    root.querySelectorAll('.dots i').forEach((d, i) => d.classList.toggle('on', i === cur));
+    root.querySelector('.go').style.setProperty('--c', MODES[cur].c);
+  };
+  root.querySelectorAll('.arr').forEach(a => a.onclick = () => { cur = (cur + +a.dataset.d + 3) % 3; lay(); });
+  root.querySelector('.go').onclick = () => toast(root, MODES[cur]);
+  lay();
+}
+function buildC(root) {
+  root.innerHTML = `<div class="pier"></div><button class="x">✕</button><div class="banner">${TITLES[title]}</div><div class="posts"></div>`;
+  for (const m of MODES) {
+    const p = document.createElement('div'); p.className = 'post'; p.style.cssText = `--c:${m.c};--t:${m.t}`;
+    p.innerHTML = `<div class="sign">${newTag(m)}<div class="pv"></div><div><div class="nm">${m.ico} ${m.name}</div><div class="mobileln">${m.sets[set].ln}</div></div></div><div class="tagp">${m.sets[set].ln}${chips(m)}</div>`;
+    p.querySelector('.pv').appendChild(clip(m.k)); p.onclick = () => toast(root, m);
+    root.querySelector('.posts').appendChild(p);
+  }
+}
+const BUILD = { A: buildA, B: buildB, C: buildC };
+function render() {
+  players.length = 0;
+  const rows = document.getElementById('rows'); rows.innerHTML = '';
+  for (const L of LAYOUTS) {
+    const row = document.createElement('section'); row.className = 'crow';
+    row.innerHTML = `<h2>${L.id}안 · ${L.name}<small>${L.desc}</small></h2>`;
+    for (const [cls, lbl] of [['pc', 'PC'], ['ph', '세로 폰'], ['ls', '가로 폰']]) {
+      const dev = document.createElement('div'); dev.className = `dev ${cls}`;
+      const pk = document.createElement('div'); pk.className = `pk ${L.id}`;
+      dev.appendChild(pk); dev.insertAdjacentHTML('beforeend', `<span class="lbl">${lbl}</span>`);
+      row.appendChild(dev); BUILD[L.id](pk);
+    }
+    rows.appendChild(row);
+  }
+  document.getElementById('tBtns').innerHTML = TITLES.map((t, i) => `<button data-t="${i}" class="${i === title ? 'on' : ''}">${i + 1}. ${t}</button>`).join(' ');
+  document.getElementById('sBtns').innerHTML = ['가', '나'].map((s, i) => `<button data-s="${i}" class="${i === set ? 'on' : ''}">${s}안</button>`).join(' ');
+  document.querySelectorAll('[data-t]').forEach(b => b.onclick = () => { title = +b.dataset.t; render(); });
+  document.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { set = +b.dataset.s; render(); });
+}
+render();
+(async () => {
+  const st = document.getElementById('status');
+  for (const k of ['mud', 'dive', 'fish']) { st.textContent = `미리보기 장면 찍는 중… (${k})`; try { await capture(k); } catch (e) { st.textContent = `${k} 장면 실패: ${e.message}`; } }
+  st.textContent = `미리보기 준비 완료 (장면당 ${SECS}초 반복)`;
+  window.__ready = true;
+})();
+</script>

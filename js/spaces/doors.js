@@ -14,6 +14,8 @@ import {
   petChoresNear, pickedOutdoor, placingDecor, placingOutdoor, player, plots, requestSave, scene, seaMG, setFogExempt,
   setSpaceVisible, snapCamera, stopOutdoorPlacing, toolPage, ui, updateToolPageAuto, workerCap,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
+import { mudflat, mudflatHint, nearMudflatExit, MUDFLAT_COPY } from './mudflat.js';
+import { dive, diveHint, nearDiveExit, DIVE_COPY } from './dive.js';
 import { plazaSpot } from '../plaza/index.js';
 import { delvePrompt, delveFloorNow } from './delve.js';
 import { trackEvent } from '../analytics.js';
@@ -182,10 +184,19 @@ export function updateDoorInteract() {
     return;   // 존 힌트(의뢰 N/3)는 js/spaces/mirror.js 가 상태표시로 쓴다
   }
   if (atSea) {         // 🌊 바다터: 뭍(남쪽)으로 나가기 / 미니게임 상태 안내
-    if (seaMG.st === 'idle' && dist2D({ x: SEA.x, z: SEA.z + SEA_DECK_Z0 - 0.6 }, player.position) < 1.9) { nd = 'seaexit'; prompt = '🚪 마을로 나가기'; }
+    if (mudflat.active) {
+      if (nearMudflatExit()) { nd = 'seaexit'; prompt = MUDFLAT_COPY.exit; }
+      else prompt = mudflatHint();
+    }
+    else if (dive.active) {
+      if (nearDiveExit()) { nd = 'seaexit'; prompt = DIVE_COPY.exit; }
+      else prompt = diveHint();
+    }
+    else if (seaMG.st === 'idle' && dist2D({ x: SEA.x, z: SEA.z + SEA_DECK_Z0 - 0.6 }, player.position) < 1.9) { nd = 'seaexit'; prompt = '🚪 마을로 나가기'; }
     else prompt = seaPrompt();
     $w.nearDoor = nd;
-    if (prompt !== lastDoorPrompt) { $w.lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt); }
+    const key = `${nd ? '' : 'i|'}${prompt}`;
+    if (key !== lastDoorPrompt) { $w.lastDoorPrompt = key; ui.setDoorPrompt?.(prompt, { info: !nd }); }
     if (lastZoneHint !== null) { $w.lastZoneHint = null; ui.setZoneHint?.(null); }
     return;
   }

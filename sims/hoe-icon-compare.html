@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>호미 아이콘 시안</title>
+<style>
+body{margin:0;background:#f4ecdd;color:#3f3122;font-family:-apple-system,"Apple SD Gothic Neo",sans-serif}
+main{max-width:1100px;margin:0 auto;padding:18px 16px 30px}h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:22px 0 8px}p{margin:2px 0;color:#7a6650;font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.grid4{grid-template-columns:repeat(4,1fr)}
+.card{background:#fffaf0;border:1px solid #e3d5bd;border-radius:16px;padding:14px}.card h3{margin:0 0 6px;font-size:15px}
+.big svg{width:120px;height:120px;display:block;margin:4px auto 10px}
+.sizes{display:flex;gap:14px;align-items:flex-end;justify-content:center;margin-bottom:8px}.sizes svg{display:block}
+.row{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #e3d5bd;border-radius:12px;padding:8px 10px;margin-top:8px;font-size:14px}
+.row .ic{width:40px;height:40px;border-radius:10px;background:#f2f4f6;display:grid;place-items:center}.row .ic svg{width:28px;height:28px}
+.row small{display:block;color:#7a6650;font-size:12px}.row .pr{margin-left:auto;font-weight:700;display:flex;align-items:center;gap:3px}
+.dark{background:#2b3138;border-radius:12px;padding:10px;display:flex;gap:12px;justify-content:center}.dark svg{width:36px;height:36px}
+.tier svg{width:72px;height:72px;display:block;margin:0 auto 6px}.tier{text-align:center;font-size:13px}
+.pick{outline:3px solid #3f8f5a;position:relative}.tag{position:absolute;top:-10px;right:12px;background:#3f8f5a;color:#fff;font-size:12px;padding:3px 9px;border-radius:999px}
+</style></head><body><main>
+<h1>호미 아이콘 시안 (토스풍 · 게임 전용 아이콘 규칙)</h1>
+<p>24×24 · 테두리 없이 단색 2톤 · 쇠는 회색, 자루는 갈색 · 연장은 세워 그린 뒤 눕힘. 잡화점(A안) 도구 칸에 들어갈 모습까지 같이 봅니다.</p>
+<h2>① 호미 모양 3안</h2>
+<div class="grid" id="cands"></div>
+<h2>② 단계별 색 (고른 모양 기준)</h2>
+<div class="grid grid4" id="tiers"></div>
+<h2>③ 옵션(각인) 아이콘</h2>
+<div class="grid" id="opts"></div>
+</main>
+<script>
+const P={ink:'#4e5968',inkD:'#333d4b',ink2:'#6b7684',gray:'#b0b8c1',grayD:'#8b95a1',grayL:'#e5e8eb',white:'#ffffff',yellow:'#ffc342',yellowD:'#f5a524',yellowL:'#ffe38f',red:'#f04452',redD:'#d22c3c',green:'#3dbe6e',greenD:'#22a058',blue:'#3182f6',blueD:'#1b64da',blueL:'#90c2ff',brown:'#9a6a4f',brownD:'#7a5039',woodL:'#f4cf94',woodM:'#e2a85e',teal:'#4fb8c8'};
+const f=(t,d,o={})=>({t,d,...o}), sk=(s,d,w)=>({s,d,w});
+const tr=(x,y,w,h,r)=>`M${x+r} ${y}h${w-2*r}a${r} ${r} 0 0 1 ${r} ${r}v${h-2*r}a${r} ${r} 0 0 1 -${r} ${r}h-${w-2*r}a${r} ${r} 0 0 1 -${r} -${r}v-${h-2*r}a${r} ${r} 0 0 1 ${r} -${r}z`;
+const circ=(cx,cy,r)=>`M${cx-r} ${cy}a${r} ${r} 0 1 0 ${2*r} 0a${r} ${r} 0 1 0 ${-2*r} 0z`;
+const rot=(deg,list,k=.8,dx=0,dy=0,cx=12,cy=12)=>list.map(x=>({...x,r:`translate(${12+dx} ${12+dy}) scale(${k}) rotate(${deg}) translate(${-cx} ${-cy})`}));
+const svg=(list,size)=>`<svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true">${list.map(s=>s.s?`<path d="${s.d}" fill="none" stroke="${P[s.s]||s.s}" stroke-width="${s.w}" stroke-linecap="round" stroke-linejoin="round"${s.r?` transform="${s.r}"`:''}/>`:`<path d="${s.d}" fill="${P[s.t]||s.t}"${s.r?` transform="${s.r}"`:''}${s.o?` opacity="${s.o}"`:''}/>`).join('')}</svg>`;
+const handle=(c={})=>[f(c.wood||'brown',tr(10.6,10.8,2.8,14,1.4)),f(c.woodD||'brownD',tr(12,10.8,1.4,14,.7)),
+  ...(c.rope===false?[]:[0,1.5,3].map(y=>f(c.rope||'woodL',tr(10.3,18.2+y,3.4,.9,.45)))),f('ink2',tr(10.3,9.4,3.4,2.2,.7))];
+const H={
+  H1:(c={})=>rot(32,[...handle(c),sk(c.neck||'ink','M12 10C12 4.6 13.8 2 16.6 2.1c1.9.1 2.8 1.3 2.8 2.9',2.1),
+    f(c.blade||'gray','M15.6 4.8h7.4c.3 3.6-1.3 7.2-3.7 9.6-2.4-2.4-4-6-3.7-9.6z'),f(c.bladeD||'grayD','M19.3 4.8h3.7c.3 3.6-1.3 7.2-3.7 9.6z'),
+    f(c.neck||'ink',tr(17,3.6,4.6,1.8,.9)),...(c.gem?[f(c.gem,circ(13.2,4.6,1.2))]:[])],.98,0,0,16.6,13.4),
+  H2:(c={})=>rot(32,[...handle(c),sk(c.neck||'ink','M12 10C12 4.6 13.8 2 16.6 2.1c1.9.1 2.8 1.3 2.8 2.9',2.1),
+    f(c.edge||'grayL','M15.2 4.6h8.4c.3 4.2-1.5 8-4.2 10.6-2.7-2.6-4.5-6.4-4.2-10.6z'),f(c.edgeD||'gray','M19.4 4.6h4.2c.3 4.2-1.5 8-4.2 10.6z'),
+    f(c.body||'ink2','M15.2 4.6h8.4c.1 1.9-.2 3.6-.9 5.1h-6.6c-.7-1.5-1-3.2-.9-5.1z'),f(c.bodyD||'ink','M19.4 4.6h4.2c.1 1.9-.2 3.6-.9 5.1h-3.3z'),
+    ...(c.gem?[f(c.gem,circ(13.2,4.6,1.2))]:[])],.98,0,0,16.6,13.4),
+  H3:(c={})=>rot(32,[...handle({...c,rope:false}),f(c.neck||'ink',tr(11,4.8,2,6,1)),f(c.neck||'ink',tr(11,3.4,8,2.6,1.3)),
+    f(c.blade||'gray','M16 4.2h6.6l-3.3 10.4z'),f(c.bladeD||'grayD','M19.3 4.2h3.3l-3.3 10.4z'),...(c.gem?[f(c.gem,circ(13,7,1.1))]:[])],.98,0,0,16.6,13.4),
+};
+const NAMES={H1:['1안 굽은 목 + 세모 날','실제 호미처럼 거위목이 보이고 날이 세모로 매달림'],H2:['2안 대장간 날 (검은 몸통 + 은색 날끝)','손에 든 3D 호미(앞면)와 같은 두 톤'],H3:['3안 단순 ㄱ자','작게 봐도 뭉개지지 않는 가장 단순한 실루엣']};
+const coin='<svg viewBox="0 0 24 24" width="16" height="16"><circle cx="12" cy="12" r="10" fill="#ffc342"/><path d="M12 2a10 10 0 0 1 0 20z" fill="#f5a524"/><circle cx="12" cy="12" r="6" fill="#ffe38f"/></svg>';
+document.getElementById('cands').innerHTML=Object.keys(H).map((k,i)=>`<div class="card${k==='H2'?' pick':''}">${k==='H2'?'<span class="tag">추천</span>':''}<h3>${NAMES[k][0]}</h3><p>${NAMES[k][1]}</p>
+<div class="big">${svg(H[k](),120)}</div><div class="sizes">${svg(H[k](),48)}${svg(H[k](),32)}${svg(H[k](),20)}</div>
+<div class="row"><span class="ic">${svg(H[k](),28)}</span><div><b>길쭉 자루 호미</b><small>손 닿는 거리 늘어남</small></div><span class="pr">${coin}90</span></div>
+<div class="dark" style="margin-top:8px">${svg(H[k](),36)}${svg(H[k]({gem:'teal'}),36)}${svg(H[k]({blade:'yellow',bladeD:'yellowD',edge:'yellowL',edgeD:'yellow',body:'yellowD',bodyD:'#c98a10',neck:'#c98a10',gem:'teal'}),36)}</div></div>`).join('');
+const TIERS=[['대장간 호미','무료',{}],['길쭉 자루 호미','🪙 90',{wood:'brownD',woodD:'#5e3a28'}],['눈 밝은 호미','🪙 140',{wood:'brownD',woodD:'#5e3a28',rope:'red',gem:'teal'}],['금빛 호미','의뢰',{wood:'brownD',woodD:'#5e3a28',rope:'yellow',edge:'yellowL',edgeD:'yellow',body:'yellowD',bodyD:'#c98a10',neck:'#c98a10',gem:'teal'}]];
+document.getElementById('tiers').innerHTML=TIERS.map(([n,p,c])=>`<div class="card tier">${svg(H.H2(c),72)}<b>${n}</b><p>${p}</p></div>`).join('');
+const OPT={
+  reach:['긴 자루','손 닿는 거리','',[...rot(32,[...handle({rope:false}),f('ink2',tr(10.3,9.4,3.4,2.2,.7)),f('gray','M15.6 4.8h6.4c.2 3-1.1 6-3.2 8-2.1-2-3.4-5-3.2-8z'),sk('ink','M12 10C12 4.6 13.8 2 16.6 2.1c1.9.1 2.4 1.3 2.4 2.7',2.1)],.72,-2.2,-3,16.6,13.4),sk('blue','M3 21.4h17',2.4),sk('blue','M17.2 18.6l2.8 2.8-2.8 2.8',2.4),sk('blue','M5.8 18.6L3 21.4l2.8 2.8',2.4)]],
+  eye:['눈썰미','대물 구멍이 반짝','',[f('white','M1.8 13c2.6-4.6 6.2-7 10.2-7s7.6 2.4 10.2 7c-2.6 4.6-6.2 7-10.2 7S4.4 17.6 1.8 13z'),f('grayL','M12 13h10.2c-2.6 4.6-6.2 7-10.2 7S4.4 17.6 1.8 13z'),f('ink',circ(12,13,4.2)),f('inkD','M12 8.8a4.2 4.2 0 0 1 0 8.4z'),f('white',circ(13.4,11.6,1.3)),f('yellow','M19.4 1.4l.9 2.3 2.3.9-2.3.9-.9 2.3-.9-2.3-2.3-.9 2.3-.9z'),f('yellowD','M19.4 4.6l.9 2.3-.9-.3-.9.3z')]],
+  spare:['헛손질 1번','구멍이 한 번 더 버팀','',[f('green','M12 2.2l8 3v6.4c0 5-3.4 8.8-8 10.4-4.6-1.6-8-5.4-8-10.4V5.2z'),f('greenD','M12 2.2l8 3v6.4c0 5-3.4 8.8-8 10.4z'),sk('white','M8.2 12.2l2.6 2.6 5-5.2',2.4)]],
+};
+document.getElementById('opts').innerHTML=Object.values(OPT).map(([n,d,_,s])=>`<div class="card"><h3>${n}</h3><p>${d}</p><div class="big">${svg(s,96)}</div><div class="sizes">${svg(s,32)}${svg(s,20)}</div></div>`).join('');
+window.__ready=true;
+</script></body></html>

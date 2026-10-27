@@ -10,6 +10,9 @@ import { BENCH, KITCHEN, SHOP, MARKET, RANK, FARM_GATE, MINE_GATE, COOP, CAFE_GA
 import { NPCS } from './npcs.js';
 import { STATIONS } from '../craft/recipes.js';
 import { REWARD_DECOR } from './reward-decor.js';
+import { FORAGE_SELL } from '../forage/logic.js';
+import { HOMI_TIERS } from '../forage/homi.js';
+import { iconById } from '../icons/index.js';
 
 // 🛋️ 가구 배율 — 14×14 방에 비해 가구가 너무 작아 꾸미기가 허전하다는 베타 피드백(2026-09-09).
 //    decorMesh() 안쪽 그룹에만 곱하고 바깥 그룹은 1 로 둔다(등장 팝 애니메이션이 바깥 scale 을 0.01→1 로 쓴다).
@@ -171,7 +174,7 @@ export const stationLabel = (rec) => { const d = OUTDOOR.find(o => o.id === rec.
 // 🔥 가공물(charcoal·flour·brick·bread) — **파는 건 출구 중 가장 나쁜 선택**이 되게 잡았다.
 //   밀 4개(60)로 밀가루 평균 3.5개(63)라 팔면 본전이고, 빵으로 구우면 카페에서 56을 받는다.
 //   ⚠️ 이 표는 한 줄로 유지한다 — tests/orchard.test.mjs 가 한 줄 정규식으로 파싱한다.
-export const SELL_PRICE = { charcoal: 9, flour: 18, brick: 12, bread: 26, juice: 40, apple_jam: 12, roast_chestnut: 30, gotgam: 24, crop: 5, fish: 8, wood: 2, stone: 3, coal: 6, gem: 40, crystal: 25, egg: 6, bug: 14, forage: 7, wheat: 15, corn: 20, grape: 30, honey: 12, apple: 8, pear: 10, peach: 13, persimmon: 16, chestnut: 20 };   // 기본 판매 단가(코인) — 고급 작물은 js/farm-crops.js price 와 같은 값(3·4·6배), 🍯꿀은 벌통 · 🍎 과수원 과일은 js/orchard.js FRUITS[].price 와 같은 값
+export const SELL_PRICE = { charcoal: 9, flour: 18, brick: 12, bread: 26, juice: 40, apple_jam: 12, roast_chestnut: 30, gotgam: 24, crop: 5, fish: 8, wood: 2, stone: 3, coal: 6, gem: 40, crystal: 25, egg: 6, bug: 14, forage: 7, wheat: 15, corn: 20, grape: 30, honey: 12, apple: 8, pear: 10, peach: 13, persimmon: 16, chestnut: 20, ...FORAGE_SELL };   // 기본 판매 단가(코인) — 고급 작물은 js/farm-crops.js price 와 같은 값(3·4·6배), 🍯꿀은 벌통 · 🍎 과수원 과일은 js/orchard.js FRUITS[].price 와 같은 값
 
 export const SHOP_BUY = [
   // 🪙 코인 전용 소모품 — 재료로는 못 얻는 "시간·운"을 판다(첫 구매처, 20~25🪙)
@@ -202,6 +205,7 @@ export const SHOP_BUY = [
   { id: 'buy_sickle', name: '잘 드는 낫',       ico: '🌾', coin: 150, upgrade: 'sickle', desc: '옆 칸 작물도 함께 거둬요' },   // 효과 대비 싸서 130 → 150
   { id: 'buy_shovel', name: '넓은 삽',          ico: '🪏', coin: 100, upgrade: 'shovel', desc: '빈 밭을 한 번에 메워요' },
   { id: 'buy_hammer', name: '묵직한 망치',      ico: '🔨', coin: 140, upgrade: 'hammer', desc: '건축·증축 목재가 줄어요' },
+  ...HOMI_TIERS.slice(1).map(h => ({ id: `buy_homi${h.tier}`, name: h.name, ico: iconById(h.ico), coin: h.coin, homi: h.tier, desc: h.desc })),
 ];
 
 export const UPGRADES = [
