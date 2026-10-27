@@ -3159,7 +3159,6 @@ export const EN = {
   '🎣 곧 만나요': '🎣 Coming soon',
   '꾸미기 세트': 'Decor Sets', '요리': 'Cooking', '꿈의 숲': 'Dream Forest', '광산': 'Mine', '조각': 'Carving',
   '나룻배': 'Ferry', '안개숲': 'Misty Forest', '밤손님 대결': 'Night Duel', '반딧불 숲': 'Firefly Glade',
-  // ── 🛶 나루터 창고: 배 고르기 · 급류 ─────────────
   '잔잔한 물길': 'Calm Waters', '급류': 'Rapids',
   '잔잔한 물길을 한 번 완주하면 급류가 열려요': 'Finish Calm Waters once to open the Rapids',
   '만들기': 'Build', '연잎배': 'Lotus Leaf Boat', '뗏목': 'Raft', '비단잉어': 'Brocade Koi',

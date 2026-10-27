@@ -21,6 +21,10 @@ function boatCard(b) {
   return `<div class="boat-up bd-boat${b.selected ? ' on' : ''}"><span class="bu-ico">${b.ico}</span><span class="bu-body"><span class="bu-name">${esc(b.name)} <small>💡${b.lamps}</small></span>${lacks}</span>${btn}</div>`;
 }
 
+export function matsRowHtml(matsView) {
+  return Object.entries(matsView || {}).filter(([k, n]) => n > 0 && MAT_ICO[k]).map(([k, n]) => `${MAT_ICO[k]} ${n}`).join(' · ');
+}
+
 export function dockHtml(v) {
   const course = ['calm', 'rapid'].map((c) => {
     const locked = c === 'rapid' && !v.rapidOpen;

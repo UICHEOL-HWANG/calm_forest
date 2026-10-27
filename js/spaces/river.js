@@ -251,7 +251,7 @@ export function enterRiver() {
   $w.nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); $w.lastZoneHint = null;
   snapCamera(); setSpaceVisible();
   firstHint('riverDock', '🛶', '나루터 · 강 내려가기',
-    { steps: [{ ico: '🛶', label: '배 앞 {A}' }, { ico: '⬅️➡️', label: '피하기' }, { ico: '💨', label: '{A} 스퍼트' }], note: '하루 3번', chip: '⭐ 별조각으로 배 강화' });
+    { steps: [{ ico: '🛶', label: '배 앞 {A}' }, { ico: '⬅️➡️', label: '피하기' }, { ico: '💨', label: '{A} 스퍼트' }], note: '하루 3번', chip: '⭐ 별조각으로 새 배 만들기' });
   Sound.blip();
   trackEvent('boat_enter', { runs_left: boatRunsLeft(), night: isNight(), weather: WEATHER });   // [GA4] 유입
   decorBanner('ferry');

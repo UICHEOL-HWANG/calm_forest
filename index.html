@@ -3428,7 +3428,7 @@
     import { mountLoginStore } from './js/login-store-ui.js';
     import { createLoginDwell } from './js/login-dwell.js';
     import { initPush, offerPush } from './js/push-ui.js';   // 🔔 안드로이드 푸시 알림(안내 카드·설정 토글)   // 📲 웹 → 앱 유도 배너(웹 전용)
-    import { renderDock } from './js/boat/dock-ui.js';
+    import { renderDock, matsRowHtml } from './js/boat/dock-ui.js';
     import { playChestReveal, stopChestReveal } from './js/boat-chest-reveal.js';   // 🧰 보물상자 개봉 화면(R3)
     import { questPanelView } from './js/quest-panel-view.js';
     import { trackLogin, trackEvent, setGaUser, onTrack, setInstallUserProps, setSurveyUserProps } from './js/analytics.js';
@@ -4697,8 +4697,8 @@
           ['충돌', `${d.hits}회`], ['⭐ 별조각', `+${d.stars} (보유 ${d.totalStar})`],
         ];
         if (d.picksView.length) rows.push(['수집물', d.picksView.map(p => `${p.ico}${p.name}×${p.n}`).join(' · ')]);
-        const mats = Object.entries(d.matsView || {}).filter(([, n]) => n > 0);
-        if (mats.length) rows.push(['강 재료', mats.map(([k, n]) => `${MAT_ICO[k]} ${n}`).join(' · ')]);
+        const matsRow = matsRowHtml(d.matsView);
+        if (matsRow) rows.push(['강 재료', matsRow]);
         // 🧰 건졌으면 받은 것, 지나쳤으면 회색 안내(오늘 남은 판에 또 떠내려온다)
         if (d.chestView?.paid) rows.push(['보물상자', d.chestView.name]);
         else if (d.chestView?.missed) rows.push(['보물상자', '다음 뱃길에 또 떠내려와요', 'miss']);

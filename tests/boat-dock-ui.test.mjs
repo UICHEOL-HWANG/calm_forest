@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { dockHtml, LACK_LABEL } from '../js/boat/dock-ui.js';
+import { dockHtml, LACK_LABEL, matsRowHtml } from '../js/boat/dock-ui.js';
 
 const view = {
   star: 620, coins: 100, runsLeft: 2, runsMax: 3, best: 812, bestRapid: 0, rapidOpen: false,
@@ -42,4 +42,17 @@ test('index.html wiring', () => {
 
 test('no em dash in dock-ui', () => {
   assert.ok(!readFileSync(new URL('../js/boat/dock-ui.js', import.meta.url), 'utf8').includes('—'));
+});
+
+test('result materials row', () => {
+  assert.equal(matsRowHtml({ lotus: 2, shell: 1 }), '🪷 2 · 🐚 1');
+  assert.equal(matsRowHtml({}), '');
+  assert.equal(matsRowHtml({ lotus: 0, shell: 0 }), '');
+  assert.equal(matsRowHtml(undefined), '');
+});
+
+test('index.html uses matsRowHtml and no bare MAT_ICO', () => {
+  const H = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(H, /import \{[^}]*matsRowHtml[^}]*\} from '\.\/js\/boat\/dock-ui\.js'/);
+  assert.ok(!H.includes('MAT_ICO['));
 });
