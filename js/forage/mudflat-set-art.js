@@ -13,8 +13,8 @@ function boot(THREE, mat, look, s) {
   g.add(mesh(THREE, new THREE.CylinderGeometry(.085 * s, .095 * s, .2 * s, 12), mat(look.body), 0, .1 * s, 0));
   const toe = mesh(THREE, new THREE.SphereGeometry(.1 * s, 12, 8), mat(look.body), 0, .05 * s, .07 * s);
   toe.scale.set(.95, .6, 1.25); g.add(toe);
-  const sole = mesh(THREE, new THREE.BoxGeometry(.2 * s, .035 * s, .3 * s), mat(look.sole), 0, .017 * s, .04 * s);
-  g.add(sole);
+  const sole = mesh(THREE, new THREE.CylinderGeometry(.098 * s, .1 * s, .03 * s, 16), mat(look.sole), 0, .015 * s, .035 * s);
+  sole.scale.z = 1.32; g.add(sole);
   const cuff = mesh(THREE, new THREE.TorusGeometry(.088 * s, .018 * s, 6, 16), mat(look.trim), 0, .2 * s, 0);
   cuff.rotation.x = Math.PI / 2; g.add(cuff);
   if (look.stripe) { const st = mesh(THREE, new THREE.CylinderGeometry(.097 * s, .097 * s, .03 * s, 12), mat(look.trim), 0, .12 * s, 0); g.add(st); }
