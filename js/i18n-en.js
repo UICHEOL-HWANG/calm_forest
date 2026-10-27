@@ -1869,6 +1869,7 @@ export const EN = {
   '숲길을 다시 걷기 시작했어요.': 'Back to walking the forest paths.',
   '배를 띄웠어요. 바다도 열렸어요.': 'The boat is back on the water. The sea is open.',
   '천문대에서 기다리고 있었대요.': 'Was waiting at the observatory.',
+  '고요한 숲 · 20:10': 'Calm Forest · 20:10',
   '💧 물의 가지': '💧 Water Branch',
   '🌾 밭의 가지': '🌾 Field Branch',
   '🍳 부엌의 가지': '🍳 Kitchen Branch',
