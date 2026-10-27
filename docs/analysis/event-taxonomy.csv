@@ -382,6 +382,7 @@ store_decor,decor,decor,2,N,active,70,8,2026-09-10,2026-10-24,item,js/spaces/ind
 store_outdoor,decor,decor,2,N,active,9,6,2026-09-14,2026-10-24,item,js/spaces/outdoor-decor.js:118,마당 장식을 작업대 창고에 보관했을 때 (item=장식),
 story_chapter_complete,progression,story,1,N,active,121,43,2026-08-17,2026-10-24,n|chapter|retro|trigger|hours_since_start,js/game.js:1196,온보딩→후반 진행 퍼널,
 story_chapter_start,progression,story,1,N,active,874,262,2026-08-17,2026-10-24,chapter|n|via,js/game.js:1217,boot = 접속 소급으로 열림(기존 완료자에게 새 장),
+story_migrated,progression,story,2,N,not_fired,0,0,,,from|to,js/game.js:2950,옛 세이브의 장 번호를 한 칸 옮긴 1회 (눈의 가지 5장 삽입; from=옛 장 수; to=새 장 수),
 story_modal_open,progression,story,2,N,active,125,44,2026-10-07,2026-10-24,via|ch,index.html:6709,온보딩 지도 1회 노출,
 terms_open,ui,ui,2,N,not_fired,0,0,,,,index.html:5493,설정 메뉴에서 이용약관 페이지를 열었을 때,
 tool_auto,ui,ui,3,N,active,1511,22,2026-10-17,2026-10-24,reason|to,js/game.js:1788,"근처 대상(호수·집·나무)에 맞춰 도구가 자동으로 바뀌었을 때 (to=도구, reason=사유)",

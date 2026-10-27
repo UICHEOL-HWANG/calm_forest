@@ -149,7 +149,7 @@ import {
 import {
   DEX, DEX_TOTAL, BADGES, STORY, NICK_ADJS, DAILY_COINS,
 } from './data/dex.js';
-import { pendingChapters, buildStoryView, hoursSince, storyReworld } from './story/rules.js';   // 📖 장 판정·뷰(순수, Node 테스트)
+import { pendingChapters, buildStoryView, hoursSince, storyReworld, migrateStory, STORY_V } from './story/rules.js';   // 📖 장 판정·뷰(순수, Node 테스트)
 import { storyFor } from './story/chapters.js';   // 📖 해금 켜짐(새 세이브)이면 1·2장 문구·규칙이 바뀐다
 import {
   _dgUp, _dgQ, _dgW, _dgPQ, _dgP, _dgS, _axX, ARM_AIM_R, ARM_AIM_L, SLASH, WRIST_MAX, TOOL_QREST, TOOL_QSWING, TOOL_QREST_WING,
@@ -1100,9 +1100,9 @@ const gameState = {
   kitchen: { cooked: 0, best: {}, tiers: {} }, // 🍳 자유주방 { 누적 요리 수, 레시피별 최고 점수(0~100), 등급별 획득 수 }
   pantry: [],   // 🍱 찬장 — 보관한 음식 [{ id: 레시피id, score }]. 등급은 score 에서 파생. 최대 PANTRY_MAX 칸
   workshop: { carved: 0, carvedToday: 0, best: {}, tiers: {}, date: null, done: [] }, // 🗿 조각 공방 { 누적 완성 수, 오늘 완성 수(의뢰 판정용), 도안별 최고 점수, 등급별 획득 수, 주문 날짜, 오늘 완료 주문 id }
-  story: { ch: 0, q: 0, started: {} }, // 📖 메인 퀘스트 { 현재 장(0=1장 진행중), 누적 의뢰 완료 수, 장별 시작 기록 }
+  story: { ch: 0, q: 0, started: {}, v: STORY_V }, // 📖 메인 퀘스트 { 현재 장(0=1장 진행중), 누적 의뢰 완료 수, 장별 시작 기록 }
   plaza: plazaDefault(),               // 🌾 수확제 광장 { lastStage, claimed, invited, converted, seen }
-  neighbors: neighborsDefault(),       // 🏡 이웃 마을 { visited: 다녀온 횟수(📖 8장), seenAt: 다녀간 이웃 알림을 마지막으로 확인한 시각(ms) }
+  neighbors: neighborsDefault(),       // 🏡 이웃 마을 { visited: 다녀온 횟수(📖 9장), seenAt: 다녀간 이웃 알림을 마지막으로 확인한 시각(ms) }
   unlocks: defaultUnlocks(),           // 🔓 마을 해금 { v, legacy, flags } — 새 세이브만 legacy:false. 판정은 js/world/unlocks.js(저장 안 하고 계산)
   tree: defaultTree(),                 // 🌳 세계수 판 { v, branches: { water|farm|kitchen|forest: { tiles, given, habitat, bundles } } } — js/world/tree-board.js
   treeBloom: defaultBloom(),
@@ -1220,14 +1220,14 @@ function syncStory(trigger = '') {
   // 현재 장의 시작을 1회만 기록(퍼널 시작점) — 잠긴 장은 시작이 아니다
   const cur = STORY[st.ch];
   if (cur && !cur.soon && !st.started[cur.id]) {
-    // 4장까지 끝낸 기존 유저: 배포 뒤 첫 부팅에 새 장이 열렸음을 한 번 알린다(소급 토스트가 없을 때만) · 7 = 🏡 이웃 마을 출시로 8장이 열린 기존 완료자
-    if (!storyBooted && !retro && (st.ch === 4 || st.ch === 7)) ui.toast?.(`📖 새 이야기: ${st.ch + 1}장 「${cur.title}」`, 3200);
+    // 4장까지 끝낸 기존 유저: 배포 뒤 첫 부팅에 새 장이 열렸음을 한 번 알린다(소급 토스트가 없을 때만) · 8 = 🏡 이웃 마을 출시로 9장이 열린 기존 완료자
+    if (!storyBooted && !retro && (st.ch === 4 || st.ch === 8)) ui.toast?.(`📖 새 이야기: ${st.ch + 1}장 「${cur.title}」`, 3200);
     st.started[cur.id] = Date.now();   // 시각 — 완료 때 hours_since_start 를 잰다(옛 세이브의 1 도 참이라 판정은 그대로)
     trackEvent('story_chapter_start', { chapter: cur.id, n: st.ch + 1, via: storyBooted ? 'live' : 'boot' });   // [GA4] boot = 접속 소급으로 열림(기존 완료자에게 새 장)
   }
   if (retro) ui.toast?.(`📖 지난 이야기 ${st.ch}장까지의 기록이 정리됐어요 (+보상)`, 3000);
   ui.setStory?.(storyView());
-  syncUnlocks();   // 🔓 6·7장 완료로 천문대·이웃 마을이 돌아온다
+  syncUnlocks();   // 🔓 7·8장 완료로 천문대·이웃 마을이 돌아온다
 }
 
 // =============================================================
@@ -2944,7 +2944,11 @@ function applySave(saved) {
     if (gameState.pantry.some(f => isFreeId(f.id))) loadFreePot().catch(e => console.warn('[free-pot] 표 불러오기 실패', e));   // 찬장 이름·버프가 '냄비 요리' 대체값으로 보이지 않게 표를 미리
   }
   if (saved.workshop) gameState.workshop = { carved: saved.workshop.carved || 0, carvedToday: saved.workshop.carvedToday || 0, best: { ...(saved.workshop.best || {}) }, tiers: { ...(saved.workshop.tiers || {}) }, date: saved.workshop.date || null, done: [...(saved.workshop.done || [])] }; // 🗿 조각 공방 기록 복원
-  if (saved.story) gameState.story = { ch: 0, q: 0, started: {}, ...saved.story }; // 📖 메인 퀘스트 진행 복원
+  if (saved.story) {   // 📖 메인 퀘스트 진행 복원
+    const mig = migrateStory({ ch: 0, q: 0, started: {}, ...saved.story });
+    gameState.story = mig.story;
+    if (mig.from !== mig.to) trackEvent('story_migrated', { from: mig.from, to: mig.to });
+  }
   if (saved.nickname) gameState.nickname = saved.nickname;                          // 🏷️ 닉네임 복원
   else if (saved.npcs) gameState.story.q = Object.values(gameState.npcs).reduce((a, n) => a + (n.idx || 0), 0); // 옛 세이브: 의뢰 수 소급 추정
   if (saved.badges) gameState.badges = { ...saved.badges };              // 🏅 배지 복원

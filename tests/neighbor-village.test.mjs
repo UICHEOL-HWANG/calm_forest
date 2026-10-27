@@ -64,8 +64,8 @@ test('설정 토글 — 성공하면 상태·GA4, 실패하면 토스트+실패 
   assert.match(SPACE, /setVillagePublicUi\(villagePublic, member\)/);
 });
 
-test('8장 해제 — 기존 4장 완료자처럼 7장 완료자에게도 새 장 토스트', () => {
-  assert.match(bodyOf('syncStory'), /if \(!storyBooted && !retro && \(st\.ch === 4 \|\| st\.ch === 7\)\)/);
+test('9장 해제 — 기존 4장 완료자처럼 8장 완료자에게도 새 장 토스트', () => {
+  assert.match(bodyOf('syncStory'), /if \(!storyBooted && !retro && \(st\.ch === 4 \|\| st\.ch === 8\)\)/);
 });
 
 test('neighbor balloon: quilt patchwork with a ribbon, no text or house patch', () => {

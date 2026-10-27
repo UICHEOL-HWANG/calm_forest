@@ -69,12 +69,12 @@ export const UNLOCKS = [
   // ── ⑨ 나루터 꾸러미 ──
   { id: 'ferryman',   kind: 'npc',   when: s => branch(s, 'water', 'bundles') },
   { id: 'sea',        kind: 'place', when: s => branch(s, 'water', 'bundles') },
-  // ── ⑩ 6장(숲의 기억) 완료 — story.ch 는 끝낸 장 수 ──
-  { id: 'observatory', kind: 'place', when: s => (s?.story?.ch || 0) >= 6 },
-  { id: 'stargazer',  kind: 'npc',   when: s => (s?.story?.ch || 0) >= 6 },
-  // ── ⑪ 7장(별을 잇는 밤) 완료 ──
-  { id: 'neighbor',   kind: 'place', when: s => (s?.story?.ch || 0) >= 7 },
-  { id: 'mirror',     kind: 'place', when: s => (s?.story?.ch || 0) >= 7 },
+  // ── ⑩ 7장(숲의 기억) 완료 — story.ch 는 끝낸 장 수 ──
+  { id: 'observatory', kind: 'place', when: s => (s?.story?.ch || 0) >= 7 },
+  { id: 'stargazer',  kind: 'npc',   when: s => (s?.story?.ch || 0) >= 7 },
+  // ── ⑪ 8장(별을 잇는 밤) 완료 ──
+  { id: 'neighbor',   kind: 'place', when: s => (s?.story?.ch || 0) >= 8 },
+  { id: 'mirror',     kind: 'place', when: s => (s?.story?.ch || 0) >= 8 },
 ];
 
 export const UNLOCK_IDS = UNLOCKS.map(u => u.id);

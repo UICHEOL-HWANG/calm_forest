@@ -23,10 +23,21 @@ export const STORY_RULES = {
   stars:     { done: s => count(s.star?.cleared) >= 1,            progress: s => `별자리 ${frac(count(s.star?.cleared), 1)}` },
   neighbors: { done: s => num(s.neighbors?.visited) >= 1,         progress: s => `방문 ${frac(num(s.neighbors?.visited), 1)}` },   // 🏡 이웃 마을 첫 방문(js/spaces/neighbor.js exitNeighbor)
   branchWater: { done: s => branchHab(s, 'water'), progress: s => `💧 물의 가지 빈터 ${branchHab(s, 'water') ? 1 : 0}/1` },
+  snowbranch: { done: s => branchHab(s, 'snow'), progress: s => `❄️ 눈의 가지 빈터 ${branchHab(s, 'snow') ? 1 : 0}/1` },
 };
 STORY_RULES.tasteGated = gated(STORY_RULES.taste, ['farm', 'kitchen']);
 STORY_RULES.secretGated = gated(STORY_RULES.secret, ['farm', 'kitchen', 'forest']);
 STORY_RULES.livingGated = gated(STORY_RULES.living, ['farm']);
+
+export const STORY_V = 2;
+const INSERTED_AT = 4;
+
+export function migrateStory(story) {
+  const from = num(story?.ch);
+  if (num(story?.v) >= STORY_V) return { story: { ...story, v: STORY_V }, from, to: from };
+  const to = from > INSERTED_AT ? from + 1 : from;
+  return { story: { ...story, ch: to, v: STORY_V }, from, to };
+}
 
 /**
  * 🌉 1·2장을 「세계수를 지키는 법」 판으로 볼까 — 해금 켜짐 + 새 세이브(legacy 아님).

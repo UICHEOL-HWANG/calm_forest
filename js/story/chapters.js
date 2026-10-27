@@ -32,8 +32,14 @@ export const STORY = [
   {
     id: 'secret', ico: '🌳', title: '세계수의 심장', goal: '안개 걷어내기',
     start: '북서쪽 안개 속에서 세계수의 심장이 희미하게 뛰어요. 빛을 되돌려 주자.',
-    done: '안개가 걷혔어요. "와 줘서 고마워. 다시 숨이 트이는구나."',
+    done: '안개가 걷혔어요. "와 줘서 고마워. 그런데 정상의 가지 하나가 아직 얼어 있단다."',
     reward: { coins: 80 },
+  },
+  {
+    id: 'snowbranch', ico: '❄️', title: '얼어붙은 가지', goal: '눈의 가지 빈터 꾸미기',
+    start: '🛷 설산 정상의 썰매지기를 찾아가 보자. 얼어붙은 가지 이야기를 들려줄 거예요.',
+    done: '눈의 가지에 온기가 돌아요. 산장 창에 불이 켜졌어요.',
+    reward: { coins: 90 },
   },
   {
     id: 'living', ico: '🌾', title: '마을의 살림', goal: '밭 넓히고 과일나무 심기',
@@ -91,3 +97,5 @@ const REWORLD = STORY.map(c => (STORY_REWORLD[c.id] ? { ...c, ...STORY_REWORLD[c
 
 /** 지금 세이브가 쓸 장 표 — reworld=true(해금 켜짐 + 새 세이브)면 1·2장만 바뀐 표. 둘 다 같은 순서·id·보상 */
 export function storyFor(reworld) { return reworld ? REWORLD : STORY; }
+
+export const SNOW_CHAPTER = STORY.findIndex(c => c.id === 'snowbranch');
