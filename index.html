@@ -905,6 +905,12 @@
   body.inapp #login-invite { order: 0; }
   body.inapp #email-btn { order: 1; margin-top: 0; border: none; background: #fff; color: #3a4a40; box-shadow: 0 8px 24px rgba(0,0,0,.2); }
   body.inapp #guest-btn { order: 2; }
+  body.platform-itch #login-main { display: flex; flex-direction: column; align-items: center; }
+  body.platform-itch #login-main > * { order: 5; }
+  body.platform-itch #login-invite { order: 0; }
+  body.platform-itch #email-btn { order: 1; margin-top: 0; border: none; background: #fff; color: #3a4a40; box-shadow: 0 8px 24px rgba(0,0,0,.2); }
+  body.platform-itch #google-btn { order: 2; justify-content: center; margin-top: 12px; padding: 12px 22px; font-size: 14px; color: #fff; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.7); box-shadow: none; opacity: .75; }
+  body.platform-itch #guest-btn { order: 3; }
   body.inapp.e5-guest-first #guest-btn { order: 1; margin: 0 auto; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; border: none; background: #fff; border-radius: 16px; padding: 13px 26px; font-size: 15px; font-weight: 700; color: #3a4a40; box-shadow: 0 8px 24px rgba(0,0,0,.2); font-family: inherit; transition: transform .12s; }
   body.inapp.e5-guest-first #guest-btn:active { transform: scale(0.96); }
   body.inapp.e5-guest-first #e5-sub { order: 1; display: block; margin: 8px 0 0; font-size: 12px; color: rgba(255,255,255,.9); text-shadow: 0 1px 6px rgba(0,0,0,.3); }
@@ -3341,8 +3347,8 @@
       </div>
       <!-- ✉️ 이메일 코드 로그인 — 카드 내용이 단계별로 통째로 바뀐다(A안, js/auth/email-login.js) -->
       <form id="email-step" class="login-step" hidden novalidate>
-        <div class="step-title">이메일로 시작하기</div>
-        <p class="step-hint">메일로 6자리 코드를 보내 드려요. 비밀번호는 필요 없어요.</p>
+        <div id="email-title" class="step-title">이메일로 시작하기</div>
+        <p id="email-hint" class="step-hint">메일로 6자리 코드를 보내 드려요. 비밀번호는 필요 없어요.</p>
         <input id="email-input" class="step-field" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="이메일 주소">
         <button id="email-send" class="step-primary" type="submit">코드 받기</button>
         <p id="email-err" class="step-err" role="alert"></p>
@@ -5652,7 +5658,10 @@
       $('e5-sub').textContent = E5_COPY.sub;
       $('e5-sub').hidden = false;
     }
+    const ITCH_GOOGLE_COPY = { title: 'Gmail로 이어하기', hint: 'itch 안에서는 구글 로그인을 쓸 수 없어요. Gmail 주소를 넣으면 같은 계정으로 코드를 보내 드려요.', from: 'itch_google' };
+    if (IS_ITCH) $('google-btn').lastChild.textContent = ' 구글로 가입하셨나요?';
     const googleOrBlocked = (from) => {
+      if (IS_ITCH) return emailLogin.openEmail(ITCH_GOOGLE_COPY);
       if (!inAppLogin.inApp) return signInWithGoogle();
       trackEvent('inapp_google_blocked', { from, app: inAppLogin.app });
       ui.toast(INAPP_COPY.blocked, 4000);
@@ -5669,7 +5678,7 @@
                                                         : '이번엔 게스트로 시작해요. 진행은 이 기기에만 임시 저장돼요.', 4000), 2200);
     });
     //  ✉️ 이메일 코드 — 세션이 잡히면 initAuth 콜백이 enterPlay (토스·앱은 CSS 로 버튼이 숨고 함수도 막혀 있다)
-    mountEmailLogin({ $, requestCode: requestEmailCode, verifyCode: verifyEmailCode, track: trackEvent });
+    const emailLogin = mountEmailLogin({ $, requestCode: requestEmailCode, verifyCode: verifyEmailCode, track: trackEvent });
     // 🔵 "바로 플레이하기" — 자동 연결이 실패했을 때만 보이는 화면. 식별키를 한 번 더 시도하고,
     //    또 실패하면 유저에게 결정을 떠넘기지 않고 게스트로 바로 시작한다(토스트로만 알림).
     //    📱 플레이 앱도 같은 버튼 — 플레이 게임즈 로그인 창을 한 번 띄워(interactive) 재시도한다. (🍎 iOS 는 이 버튼 없음 — Apple 버튼)
@@ -7356,12 +7365,12 @@
         }
       : () => {
           holdGuestForLogin(getGameState());
-          if (!inAppLogin.inApp) return signInWithGoogle();
-          trackEvent('inapp_nudge_email', { app: inAppLogin.app });
+          if (!inAppLogin.inApp && !IS_ITCH) return signInWithGoogle();
+          trackEvent('inapp_nudge_email', { app: IS_ITCH ? 'itch' : inAppLogin.app });
           try { sessionStorage.setItem('cf_login_email', '1'); } catch { }
           location.reload();
         };
-    if (!IS_TOSS && !IS_NATIVE && inAppLogin.inApp) {
+    if (!IS_TOSS && !IS_NATIVE && (inAppLogin.inApp || IS_ITCH)) {
       $('dex-google').textContent = '✉️ 이메일로 도감 지키기';
       $('nudge-google').textContent = '✉️ 이메일로 가입하고 영구 보존';
     }
@@ -7413,7 +7422,7 @@
       $('nudge-body').textContent = IS_TOSS ? '🔒 토스 계정 연결하면 영구 보존'
         : IS_ANDROID ? '🔒 플레이 게임즈 연결하면 기기를 바꿔도 이어서'
         : IS_IOS ? '🔒 게임 센터 연결하면 기기를 바꿔도 이어서'
-        : inAppLogin.inApp ? '🔒 이메일로 가입하면 지금 마을 그대로'
+        : (inAppLogin.inApp || IS_ITCH) ? '🔒 이메일로 가입하면 지금 마을 그대로'
         : '🔒 로그인하면 어느 기기서든 이어서';
       $('nudge-modal').classList.add('show');
       Input.setAnalog(0, 0);
