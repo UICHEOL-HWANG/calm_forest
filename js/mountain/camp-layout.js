@@ -28,6 +28,14 @@ export const CAMP = Object.freeze({
 
 export const START_SPOT = Object.freeze({ x: CAMP.deck.x, z: CAMP.deck.z + 0.3 });
 
+export function hutLocal(f, r) {
+  const ry = CAMP.hut.ry;
+  return { x: CAMP.hut.x + Math.sin(ry) * f + Math.cos(ry) * r, z: CAMP.hut.z + Math.cos(ry) * f - Math.sin(ry) * r };
+}
+
+export const LEAN_SLEDS = Object.freeze([0, 1, 2].map(i => Object.freeze({ f: 2.7 + i * 0.01, r: 3.2 + i * 0.55, h: 0.62, tilt: i * 0.05 })));
+const LEAN_MID = hutLocal(2.71, 3.75);
+
 export const CAMP_COLLIDERS = Object.freeze([
   { id: 'campfire', ...CAMP.fire, r: 1.25 },
   ...CAMP.benches.map((b, i) => ({ id: `bench${i}`, x: CAMP.fire.x + b.dx, z: CAMP.fire.z + b.dz, r: 0.8 })),
@@ -42,6 +50,7 @@ export const CAMP_COLLIDERS = Object.freeze([
   { id: 'finishR', x: CAMP.finish.x + FINISH_HALF, z: CAMP.finish.z, r: 0.3 },
   { id: 'keeper', ...CAMP.keeper, r: 0.45 },
   { id: 'hut', x: CAMP.hut.x, z: CAMP.hut.z, r: HUT_R },
+  { id: 'leanSleds', ...LEAN_MID, r: 0.8 },
   { id: 'poleL', x: CAMP.deck.x - 2.4, z: CAMP.deck.z + 1.3, r: 0.2 },
   { id: 'poleR', x: CAMP.deck.x + 2.4, z: CAMP.deck.z + 1.3, r: 0.2 },
 ].map(c => Object.freeze(c)));

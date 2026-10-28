@@ -102,9 +102,9 @@ export function exitNeighbor() {
   const sec = (performance.now() - v.t0) / 1000;
   trackEvent(...evVisitEnd(v.publicId, sec, v.reacted));   // [GA4] 머문 시간·반응 여부
   endView(v, sec, v.reacted);                              // [원장] 같은 값으로 village_views 를 닫는다
-  gameState.neighbors = recordVisit(gameState.neighbors);   // 📖 8장 판정(visited ≥ 1)
+  gameState.neighbors = recordVisit(gameState.neighbors);   // 📖 9장 판정(visited ≥ 1)
   requestSave();
-  setTimeout(() => syncStory('neighbor_visit'), 600);       // 📖 8장 — 마을로 돌아온 화면이 먼저 보이고 나서
+  setTimeout(() => syncStory('neighbor_visit'), 600);       // 📖 9장 — 마을로 돌아온 화면이 먼저 보이고 나서
 }
 
 // ── 🏠 이웃 집 실내(2026-10-11) — 전역 indoor/houseFloor 는 건드리지 않는다(내 집 저장·조명 분기 오염 방지) ──

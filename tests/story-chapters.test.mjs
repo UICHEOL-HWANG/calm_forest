@@ -12,13 +12,13 @@ const base = (o = {}) => ({
 const ch4Done = (o = {}) => base({ houseStage: 3, story: { ch: 4, q: 3, started: {} }, kitchen: { cooked: 1 },
   cafe: { served: 1 }, mist: { purifyTotal: 1 }, ...o });
 
-test('STORY: 8장, id 고유, 순서, 잠긴 장 없음(🏡 이웃 마을 출시)', () => {
-  assert.deepEqual(STORY.map(c => c.id), ['home', 'friends', 'taste', 'secret', 'living', 'memory', 'stars', 'neighbors']);
-  assert.deepEqual(STORY.map(c => !!c.soon), [false, false, false, false, false, false, false, false]);
-  assert.deepEqual(STORY.slice(4).map(c => c.reward.coins), [100, 120, 120, 150]);
+test('STORY: 9장, id 고유, 순서, 잠긴 장 없음', () => {
+  assert.deepEqual(STORY.map(c => c.id), ['home', 'friends', 'taste', 'secret', 'snowbranch', 'living', 'memory', 'stars', 'neighbors']);
+  assert.ok(STORY.every(c => !c.soon));
+  assert.deepEqual(STORY.slice(4).map(c => c.reward.coins), [90, 100, 120, 120, 150]);
   for (const c of STORY) assert.ok(STORY_RULES[c.id], `규칙 없음: ${c.id}`);
-  assert.equal(STORY[7].done, '이웃 마을에 다녀왔어요. 숲은 생각보다 넓어요.');   // 짧게(2026-10-17)
-  assert.doesNotMatch(readFileSync(new URL('../js/story/chapters.js', import.meta.url), 'utf8'), /문구 검수 대기/);   // 8장 문구 승인됨(2026-10-07)
+  assert.equal(STORY[8].done, '이웃 마을에 다녀왔어요. 숲은 생각보다 넓어요.');
+  assert.doesNotMatch(readFileSync(new URL('../js/story/chapters.js', import.meta.url), 'utf8'), /문구 검수 대기/);
 });
 
 test('기존 1~4장 판정·진행 문구는 그대로', () => {
@@ -29,53 +29,53 @@ test('기존 1~4장 판정·진행 문구는 그대로', () => {
   assert.equal(chapterProgress(STORY, 3, base()), '정화 0/1');
 });
 
-test('5장 living: 밭 2단계 AND 나무 1그루', () => {
+const snow = { tree: { branches: { snow: { habitat: true } } } };
+
+test('6장 living: 밭 2단계 AND 나무 1그루', () => {
   const tree = [{ x: 0, z: 0 }];
-  assert.equal(chapterDone(STORY, 4, ch4Done({ farm: { stage: 2 } })), false);
-  assert.equal(chapterDone(STORY, 4, ch4Done({ orchard: { trees: tree } })), false);
-  assert.equal(chapterDone(STORY, 4, ch4Done({ farm: { stage: 2 }, orchard: { trees: tree } })), true);
-  assert.equal(chapterProgress(STORY, 4, ch4Done({ farm: { stage: 3 } })), '밭 2/2 · 나무 0/1');
+  assert.equal(chapterDone(STORY, 5, ch4Done({ farm: { stage: 2 } })), false);
+  assert.equal(chapterDone(STORY, 5, ch4Done({ orchard: { trees: tree } })), false);
+  assert.equal(chapterDone(STORY, 5, ch4Done({ farm: { stage: 2 }, orchard: { trees: tree } })), true);
+  assert.equal(chapterProgress(STORY, 5, ch4Done({ farm: { stage: 3 } })), '밭 2/2 · 나무 0/1');
 });
 
-test('6장 memory · 7장 stars: 1개 이상', () => {
-  assert.equal(chapterDone(STORY, 5, ch4Done()), false);
-  assert.equal(chapterDone(STORY, 5, ch4Done({ museum: { special: { rain_fish: { id: 'carp', at: 1 } } } })), true);
-  assert.equal(chapterProgress(STORY, 5, ch4Done()), '특별 진열 0/1');
-  assert.equal(chapterDone(STORY, 6, ch4Done({ star: { cleared: { big_dipper: '2026-10-07' } } })), true);
-  assert.equal(chapterProgress(STORY, 6, ch4Done()), '별자리 0/1');
+test('7장 memory · 8장 stars: 1개 이상', () => {
+  assert.equal(chapterDone(STORY, 6, ch4Done()), false);
+  assert.equal(chapterDone(STORY, 6, ch4Done({ museum: { special: { rain_fish: { id: 'carp', at: 1 } } } })), true);
+  assert.equal(chapterProgress(STORY, 6, ch4Done()), '특별 진열 0/1');
+  assert.equal(chapterDone(STORY, 7, ch4Done({ star: { cleared: { big_dipper: '2026-10-07' } } })), true);
+  assert.equal(chapterProgress(STORY, 7, ch4Done()), '별자리 0/1');
 });
 
-test('8장 neighbors: 이웃 마을 방문 1회 · 범위 밖은 false', () => {
-  assert.equal(isSoon(STORY, 7), false);
-  assert.equal(chapterDone(STORY, 7, ch4Done()), false);
-  assert.equal(chapterDone(STORY, 7, ch4Done({ neighbors: { visited: 1, seenAt: 0 } })), true);
-  assert.equal(chapterProgress(STORY, 7, ch4Done()), '방문 0/1');
-  assert.equal(chapterProgress(STORY, 7, ch4Done({ neighbors: { visited: 3 } })), '방문 1/1');
+test('9장 neighbors: 이웃 마을 방문 1회 · 범위 밖은 false', () => {
+  assert.equal(isSoon(STORY, 8), false);
+  assert.equal(chapterDone(STORY, 8, ch4Done()), false);
+  assert.equal(chapterDone(STORY, 8, ch4Done({ neighbors: { visited: 1, seenAt: 0 } })), true);
+  assert.equal(chapterProgress(STORY, 8, ch4Done()), '방문 0/1');
+  assert.equal(chapterProgress(STORY, 8, ch4Done({ neighbors: { visited: 3 } })), '방문 1/1');
   assert.equal(chapterDone(STORY, 99, ch4Done()), false);
 });
 
-test('pendingChapters: 4장 완료자 소급 — 5~8장 다 충족이면 [4,5,6,7](보상 합 490), 방문 전이면 7장에서 멈춘다', () => {
+test('pendingChapters: 4장 완료자는 눈의 가지에서 멈추고, 다 충족이면 [4..8](보상 합 580)', () => {
   const s = ch4Done({ farm: { stage: 2 }, orchard: { trees: [{}] }, museum: { special: { a: {} } }, star: { cleared: { b: 1 } } });
-  assert.deepEqual(pendingChapters(STORY, s), [4, 5, 6]);
-  const all = pendingChapters(STORY, { ...s, neighbors: { visited: 1 } });
-  assert.deepEqual(all, [4, 5, 6, 7]);
-  assert.equal(all.reduce((n, i) => n + STORY[i].reward.coins, 0), 490);
-  assert.deepEqual(pendingChapters(STORY, ch4Done({ museum: { special: { a: {} } } })), []);   // 5장이 막히면 6장도 안 넘어간다
+  assert.deepEqual(pendingChapters(STORY, s), []);
+  assert.deepEqual(pendingChapters(STORY, { ...s, ...snow }), [4, 5, 6, 7]);
+  const all = pendingChapters(STORY, { ...s, ...snow, neighbors: { visited: 1 } });
+  assert.deepEqual(all, [4, 5, 6, 7, 8]);
+  assert.equal(all.reduce((n, i) => n + STORY[i].reward.coins, 0), 580);
 });
 
-test('buildStoryView: 8장이 현재면 칩이 보이고(allDone false) 진행은 방문 n/1', () => {
-  const v = buildStoryView(STORY, ch4Done({ story: { ch: 7, q: 3, started: {} } }));
+test('buildStoryView: 9장이 현재면 칩이 보이고 진행은 방문 n/1', () => {
+  const v = buildStoryView(STORY, ch4Done({ story: { ch: 8, q: 3, started: {} } }));
   assert.equal(v.allDone, false);
-  assert.equal(v.chapters[7].state, 'now');
-  assert.equal(v.chapters[7].progress, '방문 0/1');
-  assert.equal(v.chapters[6].state, 'done');
+  assert.equal(v.chapters[8].state, 'now');
+  assert.equal(v.chapters[8].progress, '방문 0/1');
+  assert.equal(v.chapters[7].state, 'done');
   const v5 = buildStoryView(STORY, ch4Done());
-  assert.equal(v5.allDone, false);
   assert.equal(v5.chapters[4].state, 'now');
-  assert.equal(v5.chapters[4].progress, '밭 1/2 · 나무 0/1');
+  assert.equal(v5.chapters[4].progress, '🌳 물의 가지 빈터 0/1');
   assert.equal(v5.chapters[5].state, 'lock');
-  assert.equal(v5.chapters[7].state, 'lock');
-  assert.equal(buildStoryView(STORY, base({ story: { ch: 8, q: 3 } })).allDone, true);
+  assert.equal(buildStoryView(STORY, base({ story: { ch: 9, q: 3 } })).allDone, true);
 });
 
 // ── 🌉 1·2장 「세계수를 지키는 법」 — 해금 켜짐 + 새 세이브만 ──
@@ -99,8 +99,10 @@ test('storyFor(true): id·순서·보상은 같고 1·2장 문구만 바뀐다',
   assert.equal(R[1].rule, 'branchWater');
   assert.notEqual(R[1].start, STORY[1].start);
   assert.deepEqual(R.slice(2).map(c => [c.id, c.title, c.goal, c.done]), STORY.slice(2).map(c => [c.id, c.title, c.goal, c.done]));
-  assert.deepEqual(R.slice(2, 5).map(c => c.rule), ['tasteGated', 'secretGated', 'livingGated']);
-  assert.deepEqual(R.slice(5), STORY.slice(5));
+  assert.deepEqual(R.slice(2, 4).map(c => c.rule), ['tasteGated', 'secretGated']);
+  assert.equal(R[5].rule, 'livingGated');
+  assert.deepEqual(R[4], STORY[4]);
+  assert.deepEqual(R.slice(6), STORY.slice(6));
   assert.equal(STORY[0].title, '나의 첫 집');   // 원본 표는 안 건드린다
   for (const k of Object.keys(STORY_REWORLD)) assert.ok(STORY.some(c => c.id === k));
 });
@@ -127,8 +129,8 @@ test('1장(reworld): 집만 지어선 안 끝나고, 다리를 고치면 끝난�
   assert.equal(v.chapters[1].title, '첫 번째 가지');
 });
 
-test('7·8장: 주인공은 씨앗이 아니다 — "너 혼자가 아니란다"', () => {
-  assert.doesNotMatch(STORY[6].done + STORY[7].start, /씨앗/);
-  assert.match(STORY[6].done, /너 혼자가 아니란다/);
-  assert.match(STORY[7].start, /다른 숲에도 세계수를 지키는 이웃이 있대요/);
+test('8·9장: 주인공은 씨앗이 아니다 — "너 혼자가 아니란다"', () => {
+  assert.doesNotMatch(STORY[7].done + STORY[8].start, /씨앗/);
+  assert.match(STORY[7].done, /너 혼자가 아니란다/);
+  assert.match(STORY[8].start, /다른 숲에도 세계수를 지키는 이웃이 있대요/);
 });

@@ -1,0 +1,92 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>snow limb compare</title>
+<style>
+  html,body{margin:0;height:100%;background:#dff0f7;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:#2f3f4a;overflow:hidden}
+  html{overflow:hidden}
+  canvas{display:block;position:absolute;left:0;top:0}
+  #labels{position:absolute;inset:0;z-index:2;display:flex;pointer-events:none}
+  #labels div{flex:1;display:flex;justify-content:center;align-items:flex-end;padding-bottom:10px}
+  #labels span{background:rgba(255,255,255,.9);border-radius:9px;padding:5px 10px;font-size:14px;font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+  body.stack #labels{flex-direction:column}
+  body.stack #labels div{padding-bottom:6px}
+</style>
+<div id="labels"></div>
+<script type="importmap">
+{"imports":{"three":"/vendor/three/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { buildTreeArt, LIMBS } from '/js/world/tree-art.js';
+import { shotFrame } from '/js/world/tree-shot.js';
+
+const FROST = { under: 0xdde6ee, mid: 0xf2f6fa, top: 0xffffff };
+const VARIANTS = [
+  { name: 'A 오른쪽 뒤·높게', snow: { dir: [0.588, -0.809], h: 6.6, len: 5.2, leaf: FROST, seed: 61 } },
+  { name: 'B 앞쪽 가운데', snow: { dir: [0, 1], h: 4.2, len: 5.0, leaf: FROST, seed: 61 } },
+  { name: 'C 왼쪽 뒤·높게', snow: { dir: [-0.588, -0.809], h: 6.6, len: 5.2, leaf: FROST, seed: 61 } },
+];
+
+const params = new URLSearchParams(location.search);
+const stack = params.get('stack') === '1';
+const VW = +params.get('w') || innerWidth, VH = +params.get('h') || innerHeight;
+document.documentElement.style.width = VW + 'px';
+document.documentElement.style.height = VH + 'px';
+Object.assign(document.getElementById('labels').style, { width: VW + 'px', height: VH + 'px', right: 'auto', bottom: 'auto' });
+const FOV = stack ? 32 : 42;
+document.body.classList.toggle('stack', stack);
+document.getElementById('labels').innerHTML = VARIANTS.map(v => `<div><span>${v.name}</span></div>`).join('');
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1);
+renderer.setSize(VW, VH);
+renderer.setScissorTest(true);
+renderer.toneMapping = THREE.NoToneMapping;
+renderer.toneMappingExposure = 1.0;
+document.body.appendChild(renderer.domElement);
+
+const full = Object.fromEntries(Object.keys(LIMBS).map(id => [id, { leaves: 1, bloom: 0 }]));
+
+const box = new THREE.Box3();
+const scenes = VARIANTS.map(v => {
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xdff0f7);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xe0ecdc, 1.5), new THREE.AmbientLight(0xffffff, 0.9));
+  const sun = new THREE.DirectionalLight(0xffffff, 1.4);
+  sun.position.set(6, 18, 14);
+  scene.add(sun);
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(10, 40).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xa9d29a, roughness: 1 }));
+  ground.position.y = -0.4;
+  scene.add(ground);
+  const art = buildTreeArt(THREE, { limbs: { ...LIMBS, snow: v.snow } });
+  art.setState({ life: 1, branches: full }, 1);
+  scene.add(art.group);
+  art.group.updateMatrixWorld(true);
+  box.union(art.fullBox()).expandByPoint(new THREE.Vector3(art.plaque.x, -0.4, art.plaque.z + 0.6));
+  return scene;
+});
+
+const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 200);
+function draw() {
+  const W = VW, H = VH, n = VARIANTS.length;
+  renderer.setSize(W, H);
+  scenes.forEach((scene, i) => {
+    const x = stack ? 0 : Math.round(i * W / n), y = stack ? Math.round((n - 1 - i) * H / n) : 0;
+    const w = stack ? W : Math.round((i + 1) * W / n) - x, h = stack ? Math.round(H / n) : H;
+    renderer.setViewport(x, y, w, h);
+    renderer.setScissor(x, y, w, h);
+    camera.aspect = w / h;
+    const c = box.getCenter(new THREE.Vector3()), hb = box.getSize(new THREE.Vector3()).multiplyScalar(0.5);
+    const f = shotFrame({ cx: c.x, cy: c.y, cz: c.z, hx: hb.x, hy: hb.y, hz: hb.z }, camera.aspect, { margin: 1.08, fov: FOV });
+    camera.fov = FOV;
+    camera.position.set(f.pos.x, f.pos.y, f.pos.z);
+    camera.lookAt(f.look.x, f.look.y, f.look.z);
+    camera.updateProjectionMatrix();
+    renderer.render(scene, camera);
+  });
+  document.title = 'ready';
+}
+draw();
+addEventListener('resize', draw);
+</script>

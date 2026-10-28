@@ -5,7 +5,7 @@ const count = (o) => Object.keys(o || {}).length;
 const frac = (have, need) => `${Math.min(have, need)}/${need}`;
 const trees = (s) => (s.orchard?.trees || []).length;
 const branchHab = (s, id) => !!s?.tree?.branches?.[id]?.habitat;
-const BRANCH_NAME = { water: '물의 가지', farm: '밭의 가지', kitchen: '부엌의 가지', forest: '숲의 가지' };
+const BRANCH_NAME = { water: '물의 가지', farm: '밭의 가지', kitchen: '부엌의 가지', forest: '숲의 가지', snow: '눈의 가지' };
 const gated = (rule, ids) => ({ done: rule.done, progress: s => { const miss = ids.find(id => !branchHab(s, id)); return miss ? `🌳 ${BRANCH_NAME[miss]} 빈터 0/1` : rule.progress(s); } });
 
 export const STORY_RULES = {
@@ -23,10 +23,34 @@ export const STORY_RULES = {
   stars:     { done: s => count(s.star?.cleared) >= 1,            progress: s => `별자리 ${frac(count(s.star?.cleared), 1)}` },
   neighbors: { done: s => num(s.neighbors?.visited) >= 1,         progress: s => `방문 ${frac(num(s.neighbors?.visited), 1)}` },   // 🏡 이웃 마을 첫 방문(js/spaces/neighbor.js exitNeighbor)
   branchWater: { done: s => branchHab(s, 'water'), progress: s => `💧 물의 가지 빈터 ${branchHab(s, 'water') ? 1 : 0}/1` },
+  snowbranchBase: { done: s => branchHab(s, 'snow'), progress: s => `❄️ 눈의 가지 빈터 ${branchHab(s, 'snow') ? 1 : 0}/1` },
 };
 STORY_RULES.tasteGated = gated(STORY_RULES.taste, ['farm', 'kitchen']);
 STORY_RULES.secretGated = gated(STORY_RULES.secret, ['farm', 'kitchen', 'forest']);
 STORY_RULES.livingGated = gated(STORY_RULES.living, ['farm']);
+STORY_RULES.snowbranch = gated(STORY_RULES.snowbranchBase, ['water', 'farm', 'kitchen', 'forest']);
+
+export const STORY_V = 2;
+const INSERTED_AT = 4;
+
+const SNOW_ID = 'snowbranch';
+const atOf = (ids, ch) => ids[ch] ?? 'done';
+
+export function migrateStory(story, ids) {
+  const from = num(story?.ch);
+  if (num(story?.v) >= STORY_V) return { story: { ...story, v: Math.max(num(story.v), STORY_V) }, from, to: from };
+  const to = from > INSERTED_AT ? from + 1 : from;
+  return { story: { ...story, ch: to, v: STORY_V, ...(ids ? { at: atOf(ids, to) } : {}) }, from, to };
+}
+
+export function remapStory(story, ids) {
+  const ch = num(story?.ch);
+  const same = { story, from: ch, to: ch };
+  if (num(story?.v) < STORY_V || typeof story?.at !== 'string' || story.at === 'done' || story.at === atOf(ids, ch)) return same;
+  const oldId = ids.filter(id => id !== SNOW_ID)[ch];
+  const to = oldId ? ids.indexOf(oldId) : ids.length;
+  return { story: { ...story, ch: to, at: atOf(ids, to) }, from: ch, to };
+}
 
 /**
  * 🌉 1·2장을 「세계수를 지키는 법」 판으로 볼까 — 해금 켜짐 + 새 세이브(legacy 아님).
