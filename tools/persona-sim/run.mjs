@@ -48,6 +48,10 @@ const MINUTES = Number(opt('minutes', 20));
 const ROUNDS = Number(opt('rounds', 1));
 const SLOTS = Math.max(1, Number(opt('slots', 1)));
 const PICK = opt('persona', '');
+// --model: 이번 실행의 모든 판을 이 모델로(Opus 섞기 없음) — Aside 의 claude-code 제공자가 끊겼을 때 aside/claude-sonnet-5 로 (2026-10-08)
+const FORCE_MODEL = opt('model', '');
+// --until: 이 시각 이후엔 새 판을 시작하지 않는다(진행 중인 판은 끝까지) — 자는 동안 정해진 시각에 멈추기
+const UNTIL = opt('until', '') ? new Date(opt('until', '')).getTime() : Infinity;
 // 슬롯 1개면 본 도메인 그대로(지금까지와 같음), 여러 개면 sim1~simN
 const HOSTS = SLOTS === 1 ? ['calmforest.cloud'] : Array.from({ length: SLOTS }, (_, i) => `sim${i + 1}.calmforest.cloud`);
 
@@ -138,7 +142,10 @@ function prompt(p, host, model) {
     `[인물] ${p.directive}`,
     ``,
     `규칙:`,
-    `- 최대 ${MINUTES}분. 로그인·로그아웃·계정·설정·결제·현금 상점은 절대 건드리지 마라.`,
+    p.allow_shop
+      // 💎 상점 구경 페르소나(p29) — 상점·옷장은 열어 보되 결제 단계로는 절대 넘어가지 않는다
+      ? `- 최대 ${MINUTES}분. 로그인·로그아웃·계정·설정은 절대 건드리지 마라. 현금 상점·옷장은 구경만 하고 '구매'·'결제' 버튼이나 결제 창(카드·주소 입력)은 절대 누르거나 입력하지 마라. 결제 창이 열리면 즉시 닫아라.`
+      : `- 최대 ${MINUTES}분. 로그인·로그아웃·계정·설정·결제·현금 상점은 절대 건드리지 마라.`,
     ...minTry,
     ...(p.device === 'mobile' ? MOBILE_HOWTO : []),
     `- 인물이 그만두고 싶어지는 순간이 오면 바로 멈추고 마지막 줄에 "QUIT: <그만둔 이유 한 문장>" 이라고 답해라.`,
@@ -169,18 +176,27 @@ function loadDone() {
     for (const line of readFileSync(join(RUNS_DIR, f), 'utf8').split('\n').filter(Boolean)) {
       const r = JSON.parse(line);
       if (!r.outcome || !r.account_id) continue;
-      if (isShortSonnet(r) || isHaiku(r)) continue;   // ③ 모델이 못 다뤄 바로 그만둔 판·Haiku 판 — 다시 돌린다
-      done.set(r.account_id, (done.get(r.account_id) || 0) + 1);
+      if (isShortSonnet(r) || isHaiku(r) || isModelUnavailable(r)) continue;   // ③ 모델이 못 다뤄 바로 그만둔 판·Haiku 판 — 다시 돌린다
+      const k = doneKey(r.persona_id, r.account_id);
+      done.set(k, (done.get(k) || 0) + 1);
     }
   }
   return done;
 }
+
+/** 할당은 (페르소나, 계정) 단위로 센다 — accounts_of 로 다른 페르소나의 계정을 이어 쓰면 그쪽 판 수와 섞이지 않게 */
+const doneKey = (personaId, accountId) => `${personaId}|${accountId}`;
 
 /** 최소 시도 규칙 전에 돈 Sonnet 판 중 2분 안에 끝난 것 */
 function isShortSonnet(r) {
   return /sonnet/.test(r.model || '') && !r.min_try_min && r.started_at && r.ended_at
     && new Date(r.ended_at) - new Date(r.started_at) < SHORT_SONNET_MS;
 }
+
+/** 모델 연결이 안 돼 한 번도 못 돈 판(2026-10-08 Aside 재시작 뒤 claude-code 제공자 끊김) — 할당에 세지 않는다 */
+// 402 크레딧 소진도 같다(2026-10-08 02:19 KST 부터 32판이 0분 만에 실패)
+const NOT_RUN_RE = /is not available for this account|Insufficient credits/;
+function isModelUnavailable(r) { return NOT_RUN_RE.test(r.aside_tail || ''); }
 
 /** Haiku 판 — 지령(반복 파밍 등)을 수행하지 못해 학습용 행동이 안 나온다(2026-10-05 사용자 결정: Sonnet·Opus 만).
  *  기록은 지우지 않고 할당에서만 뺀다 → 그만큼 Sonnet·Opus 로 다시 돈다. 분석에서도 거를 것. */
@@ -189,6 +205,7 @@ function isHaiku(r) { return /haiku/.test(r.model || ''); }
 /** 이번 판의 모델 — 모든 페르소나가 OPUS_EVERY 판마다 1판 Opus, 나머지는 지정 모델(Sonnet) */
 let runCount = 0;
 function pickModel(p) {
+  if (FORCE_MODEL) return FORCE_MODEL;
   const m = p.model || DEFAULT_MODEL;
   return (runCount++ % OPUS_EVERY === OPUS_EVERY - 1) ? OPUS_MODEL : m;
 }
@@ -196,12 +213,14 @@ function pickModel(p) {
 /** 할당을 채웠거나 쉬는 계정이 없으면 null, 아니면 판이 가장 적은 계정(동률이면 a→e 순).
  *  busy — 다른 슬롯이 지금 쓰는 계정. 같은 계정을 두 슬롯이 동시에 쓰면 서버 세이브가 서로 덮인다. */
 function nextAccount(p, done, busy = new Set()) {
-  const ids = ACCOUNT_SUFFIXES.map(s => `${p.id}-${s}`);
-  const total = ids.reduce((n, id) => n + (done.get(id) || 0), 0);
+  // accounts_of: 이미 플레이 기록이 쌓인 다른 페르소나의 계정으로 이어서 한다(복귀 유저·진행된 세이브가 필요한 판)
+  const ids = ACCOUNT_SUFFIXES.map(s => `${p.accounts_of || p.id}-${s}`);
+  const n = id => done.get(doneKey(p.id, id)) || 0;
+  const total = ids.reduce((sum, id) => sum + n(id), 0);
   if (total >= p.quota) return null;
   const free = ids.filter(id => !busy.has(id));
   if (!free.length) return null;
-  return free.reduce((best, id) => ((done.get(id) || 0) < (done.get(best) || 0) ? id : best));
+  return free.reduce((best, id) => (n(id) < n(best) ? id : best));
 }
 
 // ── 한 판 ────────────────────────────────────────────────────
@@ -225,6 +244,7 @@ async function playOnce(p, accountId, round, host, slot) {
   // --speed fast: 스크린샷→판단 지연을 줄여 같은 시간에 더 많이 조작한다(사용자 "빨리", 2026-10-03)
   const r = await sh(findAside(), ['exec', '-m', rec.model, '--effort', 'low', '--speed', 'fast', prompt(p, host, rec.model)], (MINUTES + 10) * 60_000);
   rec.ended_at = new Date().toISOString();
+  if (NOT_RUN_RE.test(r.out)) { await clearSession(tab); throw new Error(`모델 ${rec.model} 으로 못 돌렸다(Aside 제공자 연결·크레딧 확인)`); }
   rec.exit = r.code;
   const last = r.out.trim().split('\n').filter(Boolean).slice(-5).join('\n');
   rec.outcome = /TIMEUP/.test(last) ? 'timeup' : /QUIT:/.test(last) ? 'quit' : r.code === 'timeout' ? 'killed' : 'unknown';
@@ -252,11 +272,12 @@ async function main() {
   async function worker(slot) {
     const host = HOSTS[slot];
     await new Promise(r => setTimeout(r, DRY ? 0 : slot * SLOT_STAGGER_MS));
-    while (next < queue.length) {
+    while (next < queue.length && Date.now() < UNTIL) {
       const { p, round } = queue[next++];
       const accountId = nextAccount(p, done, busy);
       if (!accountId) continue;                     // 할당 완료 또는 다섯 계정이 다 다른 슬롯에서 도는 중
-      busy.add(accountId); done.set(accountId, (done.get(accountId) || 0) + 1);
+      const key = doneKey(p.id, accountId);
+      busy.add(accountId); done.set(key, (done.get(key) || 0) + 1);
       console.log(`[persona-sim] #${slot + 1} ${round}/${ROUNDS} ${accountId} 시작 (${host})`);
       try {
         const rec = await playOnce(p, accountId, round, host, slot + 1);
@@ -264,7 +285,7 @@ async function main() {
         fails[slot] = 0;
         console.log(`[persona-sim] #${slot + 1} ${accountId} [${rec.model.split('/').pop()}] → ${rec.outcome ?? 'dry'} ${rec.quit_reason ?? ''}`);
       } catch (e) {
-        done.set(accountId, done.get(accountId) - 1);   // 예약 되돌림 — 실패한 판은 세지 않는다
+        done.set(key, done.get(key) - 1);   // 예약 되돌림 — 실패한 판은 세지 않는다
         // 🔁 Aside 쪽 실패(데몬 재시작·탭 못 엶)는 판을 버리지 않고 큐 뒤로 돌린 뒤 점점 길게 쉰다.
         //    2026-10-05 01:50 Aside 자동 업데이트 → 쉬지 않고 넘기다 10분 만에 102판 실패로 라운드를 다 태웠다.
         if (queue.length < MAX_REQUEUE) queue.push({ p, round });
