@@ -57,7 +57,7 @@ export const SCHEMA = {
 export function renderTableModule(table) {
   const body = Object.keys(table).sort().map(k => `  ${JSON.stringify(k)}: ${JSON.stringify(table[k])},`).join('\n');
   return `// ⚠️ 생성물 — tools/free-pot/generate.mjs 가 쓴다. 손으로 고칠 땐 validateEntry 규칙을 지킬 것.\n` +
-    `//    검수: node tools/free-pot/review.mjs → dev/active/free-pot/review.html\n` +
+    `//    검수: node tools/free-pot/review.mjs → dev/archive/free-pot/review.html\n` +
     `export const FREE_POT_TABLE = {\n${body}\n};\n`;
 }
 

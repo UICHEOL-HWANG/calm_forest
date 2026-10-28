@@ -1,7 +1,7 @@
 // =============================================================
 //  🏮 빛 공방 모달 #aura-modal — 주문 / 기다림 / 수령 / 다듬기
 //  패턴: js/neighbors/ui.js (CSS 1회 주입 · textContent 만 · id 끝 -modal → anyModalOpen 이 이동을 멈춘다)
-//  문구: dev/active/light-workshop/copy.md "확정" 절. 순수 규칙은 workshop-rules.js(Node 테스트용 분리).
+//  문구: dev/archive/light-workshop/copy.md "확정" 절. 순수 규칙은 workshop-rules.js(Node 테스트용 분리).
 // =============================================================
 import { cardsFromText, swapCard, TEXT_MAX, SPEEDS, RADII, COUNT_MIN, COUNT_MAX } from './recipe.js';
 import { AURA_PALETTE } from './palette.js';

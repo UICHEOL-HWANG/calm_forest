@@ -4,7 +4,7 @@
 //  ------------------------------------------------------------
 //  ▶ 의존성은 전부 인자로 받는다(storage·call·toast·track·resync) — DOM·네트워크 없이 테스트한다.
 //    실제 바인딩은 js/referral/index.js.
-//  ▶ GA4 이벤트(파라미터 ≤ 5 — dev/active/referral-reward 계획 §트래킹):
+//  ▶ GA4 이벤트(파라미터 ≤ 5 — dev/archive/referral-reward 계획 §트래킹):
 //      invite_land {}                         초대 링크로 처음 도착(같은 코드 재방문은 안 셈)
 //      referral_bind { result }               'ok' | 서버 거절 사유 | 'net_fail'
 //      referral_reward_grant { item_id, tier } 정산으로 새로 받은 단계 보상

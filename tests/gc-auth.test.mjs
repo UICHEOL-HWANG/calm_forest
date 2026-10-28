@@ -7,7 +7,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createSign, X509Certificate, randomBytes } from 'node:crypto';
-import worker, { spkiFromCertDer, signedPayload, verifyGcSignature, gcIdentity, checkPublicKeyUrl } from '../gc-auth/src/index.js';
+import worker, { spkiFromCertDer, signedPayload, verifyGcSignature, gcIdentity, checkPublicKeyUrl } from '../workers/gc-auth/src/index.js';
 
 const dir = mkdtempSync(join(tmpdir(), 'gc-auth-'));
 execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-subj', '/CN=gc-test',

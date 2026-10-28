@@ -50,7 +50,7 @@
 | `js/first-loop.js:18` | `DEV_PARAMS` 에 `farmstage`, `farmmax` |
 | `tests/first-loop.test.mjs:19` | dev 파라미터 테스트 1줄 추가 |
 | `js/i18n-en.js` | 새 문구 키 |
-| `dev/active/farm-stage/` | plan·context·tasks 3파일(CLAUDE.md 규칙) |
+| `dev/archive/farm-stage/` | plan·context·tasks 3파일(CLAUDE.md 규칙) |
 | `docs/superpowers/plans/2026-09-13-farm-stage.md` | 이 계획서 사본 |
 
 ---
@@ -256,7 +256,7 @@ if (_wq.get('farmmax') === '1') { gameState.farm.stage = MAX_FARM_STAGE; rebuild
   - `?lang=en` 으로 프롬프트·토스트 영어 확인.
 - [ ] **Step 2:** `?farm=1&farmmax=1&dbg=1&weather=clear&time=0.32` → 콘솔 `__perf()` → **150콜 이하**(스펙 §5-4 합격선). 넘으면 원인 기록.
 - [ ] **Step 3:** 모바일 뷰포트(`resize_window mobile`)에서 프롬프트 줄이 잘리지 않는지 스크린샷.
-- [ ] **Step 4:** `dev/active/farm-stage/{farm-stage-plan.md, -context.md, -tasks.md}` 생성, `docs/superpowers/plans/2026-09-13-farm-stage.md` 에 이 계획 저장. 커밋 `docs: 🌾 밭 단계 증축 계획·dev docs`.
+- [ ] **Step 4:** `dev/archive/farm-stage/{farm-stage-plan.md, -context.md, -tasks.md}` 생성, `docs/superpowers/plans/2026-09-13-farm-stage.md` 에 이 계획 저장. 커밋 `docs: 🌾 밭 단계 증축 계획·dev docs`.
 - [ ] **Step 5:** code-reviewer 에이전트 리뷰 → CRITICAL/HIGH 반영 → `npm test` → 최종 커밋. 배포는 사용자 판단.
 
 ---

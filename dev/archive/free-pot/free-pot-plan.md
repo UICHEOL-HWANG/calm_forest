@@ -59,7 +59,7 @@
 | `js/free-pot/dish.js` (신규) | 표 지연 로드(`loadFreePot`) + `freeDishOf(id)` 합성 레시피 + `freePotCheck` |
 | `tools/free-pot/recipes-src.mjs` (신규) | `js/data/catalog.js` 원문에서 RECIPES 의 id·name·cost 를 파싱(Node 전용) |
 | `tools/free-pot/generate.mjs` (신규) | Gemini 배치 생성기 — 빠진 키만, 검증 실패는 재생성, 표 모듈 기록 |
-| `tools/free-pot/review.mjs` (신규) | 검수용 HTML(★5·★1~2 먼저) → `dev/active/free-pot/review.html` |
+| `tools/free-pot/review.mjs` (신규) | 검수용 HTML(★5·★1~2 먼저) → `dev/archive/free-pot/review.html` |
 | `js/game.js` (수정) | `kitchenStart`·`kitchenFinish` 가 `dishOf` 사용, 자유 요리는 도감 제외·결과에 맛 정보·트래킹 |
 | `js/spaces/cooking.js` (수정) | `dishOf`·`freePotView` 정의, `pantryView`·`cookResolve`·`pantryEat` 가 `dishOf` 사용 |
 | `index.html` (수정) | 주방 메뉴 🍲 탭(재료 고르기) + 결과 카드 맛 ★·한 줄 평 |
@@ -398,7 +398,7 @@ export const SCHEMA = {
 export function renderTableModule(table) {
   const body = Object.keys(table).sort().map(k => `  ${JSON.stringify(k)}: ${JSON.stringify(table[k])},`).join('\n');
   return `// ⚠️ 생성물 — tools/free-pot/generate.mjs 가 쓴다. 손으로 고칠 땐 validateEntry 규칙을 지킬 것.\n` +
-    `//    검수: node tools/free-pot/review.mjs → dev/active/free-pot/review.html\n` +
+    `//    검수: node tools/free-pot/review.mjs → dev/archive/free-pot/review.html\n` +
     `export const FREE_POT_TABLE = {\n${body}\n};\n`;
 }
 
@@ -494,7 +494,7 @@ const html = `<!doctype html><meta charset="utf-8"><meta name="viewport" content
 <table><tr><th>조합</th><th>요리</th><th>★</th><th>평</th><th>EN</th><th>버프·지속·판</th><th>태그</th></tr>
 ${rows.map(([k, e]) => `<tr class="s${e.taste}"><td>${esc(k)}</td><td>${esc(e.ico)} ${esc(e.name)}</td><td>${e.taste}</td><td>${esc(e.judge)}</td><td>${esc(e.name_en)} — ${esc(e.judge_en)}</td><td>${buffOf(k)} · ${durOf(e.taste)}s · ${stageOf(k)}</td><td>${esc(e.tags.join(','))}</td></tr>`).join('\n')}
 </table>`;
-writeFileSync(new URL('../../dev/active/free-pot/review.html', import.meta.url), html);
+writeFileSync(new URL('../../dev/archive/free-pot/review.html', import.meta.url), html);
 console.log(`review.html · ${rows.length}행`);
 ```
 
@@ -512,7 +512,7 @@ git commit -m "feat: 🍲 자유 냄비 조합 표 생성기·검수 페이지"
 ### Task 3: 표 생성·검수 (⏸️ 사람 게이트)
 
 **Files:**
-- Create: `js/free-pot/table.js` (생성물). `dev/active/free-pot/review.html` 은 커밋하지 않는다.
+- Create: `js/free-pot/table.js` (생성물). `dev/archive/free-pot/review.html` 은 커밋하지 않는다.
 - Test: `tests/free-pot.test.mjs`
 
 - [ ] **Step 1: 표 무결성 테스트 추가**

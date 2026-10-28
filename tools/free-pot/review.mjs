@@ -15,5 +15,5 @@ const html = `<!doctype html><meta charset="utf-8"><meta name="viewport" content
 <table><tr><th>조합</th><th>요리</th><th>★</th><th>평</th><th>EN</th><th>버프·지속·판</th><th>태그</th></tr>
 ${rows.map(([k, e]) => `<tr class="s${e.taste}"><td>${esc(k)}</td><td>${esc(e.ico)} ${esc(e.name)}</td><td>${e.taste}</td><td>${esc(e.judge)}</td><td>${esc(e.name_en)} — ${esc(e.judge_en)}</td><td>${buffOf(k)} · ${durOf(e.taste)}s · ${stageOf(k)}</td><td>${esc(e.tags.join(','))}</td></tr>`).join('\n')}
 </table>`;
-writeFileSync(new URL('../../dev/active/free-pot/review.html', import.meta.url), html);
+writeFileSync(new URL('../../dev/archive/free-pot/review.html', import.meta.url), html);
 console.log(`review.html · ${rows.length}행`);

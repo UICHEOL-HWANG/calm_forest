@@ -5,7 +5,7 @@
 //   clips/dream_hook.mp4    — Flow, bear + moon-carriage reference (shots/_ref_dream.png), 10 s, came back 16:9 (panned)
 //   clips/dream_tour.mp4    — tools/cardnews/record.mjs --scenario dream --char 곰 (720x1280 canvas capture)
 //     markers (s): bed 0 · cut_start 2.12 · arrive 8.01 · shard_1..4 12.52/14.91/17.56/20.65 · wake 21.88 · end 25
-//   clips/mirror_teaser.mp4 — tools/cardnews/record-page.mjs on dev/active/reel-dream/mirror-teaser.html?c=b
+//   clips/mirror_teaser.mp4 — tools/cardnews/record-page.mjs on dev/archive/reel-dream/mirror-teaser.html?c=b
 //     (B mock-up from the dimension-maps comparison — the map isn't in the game yet, so it's framed as "곧")
 import { COLORS, beats } from "./timeline";
 

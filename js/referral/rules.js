@@ -2,7 +2,7 @@
 // =============================================================
 //  calm forest · 🤝 친구 초대 — 클라이언트 규칙 (순수: DOM·네트워크·THREE 없음)
 //  ------------------------------------------------------------
-//  계획: dev/active/referral-reward/referral-reward-plan.md
+//  계획: dev/archive/referral-reward/referral-reward-plan.md
 //  ▶ 판정·지급은 서버(SQL referral_bind/claim)가 한다. 여기는 "언제 부를지·무슨 말을 할지"만.
 //  ▶ ?ref= ?from= 은 GA 캠페인 소스(js/analytics.js) — 초대 코드는 ?invite= 로만 읽는다.
 //  ▶ 문구는 사용자 검수를 거친 값(2026-10-08 추천안 A) — 바꾸려면 다시 검수. 숫자 자리는 {0#}(i18n 패턴 키).

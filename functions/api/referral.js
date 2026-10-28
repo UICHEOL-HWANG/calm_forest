@@ -2,7 +2,7 @@
 // =============================================================
 //  calm forest · 🤝 POST /api/referral — 친구 추천
 //  ------------------------------------------------------------
-//  계획: dev/active/referral-reward/referral-reward-plan.md
+//  계획: dev/archive/referral-reward/referral-reward-plan.md
 //  본문 { action }:
 //    'code'  → 내 초대 코드(없으면 발급)               rpc referral_get_code
 //    'bind'  → { code, platform } 초대받은 사람 연결   rpc referral_bind (웰컴 핀 지급)

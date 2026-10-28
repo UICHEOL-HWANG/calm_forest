@@ -1,7 +1,7 @@
 // =============================================================
 //  🪞 거울 마을 트래킹 — 스펙 §8 의 10종(+돌려주기 1, 2026-10-09)을 이름·파라미터째 한곳에 고정한다
 //  ------------------------------------------------------------
-//  키는 기존 게임·꿈 1차 키를 재사용한다(npc·item·elapsed_s·left_today — GA4 키 과다 방지, dev/active/mirror-village/param-review.md).
+//  키는 기존 게임·꿈 1차 키를 재사용한다(npc·item·elapsed_s·left_today — GA4 키 과다 방지, dev/archive/mirror-village/param-review.md).
 //  호출부(js/spaces/mirror.js · indoor.js)는 trackEvent 를 직접 부르지 않고 T.* 만 쓴다(quest_id 누락 사고 재발 방지).
 //  싱크는 주입(bindTracker) — Node 테스트가 analytics.js(브라우저 전역) 없이 돈다.
 // =============================================================

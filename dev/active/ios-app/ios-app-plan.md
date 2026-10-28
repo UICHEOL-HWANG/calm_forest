@@ -27,7 +27,7 @@ Apple Developer Program 결제·Xcode 설치를 기다리는 동안 코드부터
 - 안드로이드 PGS 구조 복제:
   1. `ios/App/App/GameCenterPlugin.swift` — GKLocalPlayer 자동 인증 + fetchItems(forIdentityVerificationSignature:)
      → { publicKeyUrl, signature, salt, timestamp, teamPlayerID, bundleID }. `MainViewController`(CAPBridgeViewController)에서 registerPluginInstance.
-  2. `gc-auth/` Worker — publicKeyUrl 호스트(*.apple.com, https) 검사 → 인증서 DER → SPKI → RSA-SHA256 검증
+  2. `workers/gc-auth/` Worker — publicKeyUrl 호스트(*.apple.com, https) 검사 → 인증서 DER → SPKI → RSA-SHA256 검증
      (teamPlayerID‖bundleID‖timestamp(u64 BE)‖salt) · bundleID=env · timestamp 신선도 · IP 속도 제한
      → gc-{sha256(teamPlayerID)[:32]}@gc.calmforest.local + HMAC 파생 비밀번호 → 세션.
   3. `js/gc-native.js` + supabase-client `signInWithGameCenter` · account-kind 'gc' · provider 'gc'

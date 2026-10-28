@@ -1,5 +1,5 @@
 // 썸네일 시안 캡처 — sims/thumbnail-sim.html 을 헤드리스 Chrome(CDP)으로 열어 규격 해상도 PNG 로 굽는다.
-// 사용: python3 scripts/serve.py 8793 &  →  node dev/active/thumbnail-redesign/shoot.mjs [포트=8793] [시안 목록 ABC]
+// 사용: python3 scripts/serve.py 8793 &  →  node dev/archive/thumbnail-redesign/shoot.mjs [포트=8793] [시안 목록 ABC]
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

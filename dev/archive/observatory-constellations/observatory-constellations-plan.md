@@ -27,7 +27,7 @@
      first_clear, attempt_n, unlocked_n, ease, arm, dda, probe_v + 공통(user_id, session_id, client_id, is_guest, variant, platform, run_date)
    - dev 세션(`IS_DEV_SESSION`)은 둘 다 안 쓴다(기존 게이트 재사용).
 
-## 단계 (dev/active/observatory-constellations/ 에 plan·context·tasks 생성 후 진행)
+## 단계 (dev/archive/observatory-constellations/ 에 plan·context·tasks 생성 후 진행)
 1. **시안**: `sims/constellation-sim.html` — 6종 모양 + 고르기 카드 3안, PC·모바일 캡처 나란히 → 사용자 확인
 2. **SQL**: `sql/migrations/migrate_star_runs.sql` (boat_runs 패턴: identity PK, jsonb, 인덱스, RLS `(select auth.uid())` select/insert own, platform check) → **사용자가 DDL 실행**(클라이언트 배포 전 필수 — 고정 컬럼 insert)
 3. **데이터·로직 (TDD)**: constellations.js, rhythm.js 일반화, star-run.js(첫 클리어·cleared/plays/best), difficulty.js 정규화, game.js 기본값+`applySave` 복원

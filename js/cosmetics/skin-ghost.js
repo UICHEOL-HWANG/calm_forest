@@ -2,7 +2,7 @@
 // =============================================================
 //  calm forest · 👻 할로윈 유령 스킨 — 나이트캡 유령(B) · 구름 유령(C)
 //  ------------------------------------------------------------
-//  시안: sims/halloween-skin-sim.html ghostNightcap·ghostCloud (2026-10-06 확정, dev/active/halloween-premium/look/)
+//  시안: sims/halloween-skin-sim.html ghostNightcap·ghostCloud (2026-10-06 확정, dev/archive/halloween-premium/look/)
 //  ▶ 덧입히기: buildAnimalMesh 의 built 를 받아 built.group 을 제자리에서 고친다.
 //    치수는 built.k(R·bs·bodyY·HR·HY) — 시안의 g.userData.k 와 같은 값이다.
 //  ▶ 부위는 userData.part 표식으로 찾는다(눈동자·하이라이트·두개·몸) — 시안처럼 어두운 구를 추측하지 않는다.
