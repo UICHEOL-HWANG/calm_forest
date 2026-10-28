@@ -53,11 +53,25 @@ export const SHOTS = {
   d02_pond_sit:    { q: 'weather=clear&time=0.66&spawn=0,-16',   wait: 1500 },
   d02_forest_dawn: { q: 'weather=clear&time=0.34&spawn=-20,-17', wait: 1500 },
   d02_cta_pond:    { q: 'weather=clear&time=0.74&spawn=10,-20',  wait: 1500 },
+
+  d04_sea_wide:     { q: 'weather=clear&time=0.62&sea=1&seadebug=1', act: 'sea', sea: 'idle',     wait: 1200 },
+  d04_sea_struggle: { q: 'weather=clear&time=0.62&sea=1&seadebug=1', act: 'sea', sea: 'struggle', wait: 2600 },
+  d04_sea_window:   { q: 'weather=clear&time=0.62&sea=1&seadebug=1', act: 'sea', sea: 'window',   wait: 2600 },
+  d04_sea_edge:     { q: 'weather=clear&time=0.62&sea=1&seadebug=1', act: 'sea', sea: 'edge',     wait: 2600 },
+  d04_sea_dusk:     { q: 'weather=clear&time=0.74&sea=1&seadebug=1', act: 'sea', sea: 'idle',     wait: 1200 },
+  d04_sea_night:    { q: 'weather=clear&time=0.88&sea=1&seadebug=1', act: 'sea', sea: 'idle',     wait: 1500 },
+  d04_gate:         { q: 'weather=clear&time=0.62&spawn=17.5,-4', wait: 1500 },
+  d04_catch_aji:    { q: 'weather=clear&time=0.50&sea=1&seadebug=1', act: 'sea', sea: 'fish', species: 'aji',  wait: 1700 },
+  d04_catch_buri:   { q: 'weather=clear&time=0.62&sea=1&seadebug=1', act: 'sea', sea: 'fish', species: 'buri', wait: 1700 },
+  d04_catch_mola:   { q: 'weather=clear&time=0.90&sea=1&seadebug=1', act: 'sea', sea: 'fish', species: 'mola', wait: 1700 },
+  d04_catch_tuna:   { q: 'weather=clear&time=0.55&sea=1&seadebug=1', act: 'sea', sea: 'fish', species: 'tuna', wait: 1700 },
+  d04_lineup:       { q: 'weather=clear&time=0.46&sea=1&seadebug=1', act: 'sea', sea: 'lineup', wait: 1500 },
 };
 
 // HUD 전부 숨김. body 직계 중 #app(Three.js 캔버스)만 남긴다 —
 // id 를 하나씩 나열하면 UI 가 추가될 때마다 깨진다.
 const PHOTOMODE = 'body > *:not(#app):not(script){display:none!important}';
+const SEA_HUD_BIG = '#sea-hud{transform:translateX(-50%) scale(2.3)!important;transform-origin:top center;top:40px!important}';
 
 /** 로그인 게이트 → 캐릭터 선택 → 인트로 → 튜토리얼 모달을 통과해 플레이 화면까지.
  *  두 번째 촬영부터는 localStorage 에 진행이 남아 인트로·튜토리얼이 아예 안 뜬다.
@@ -165,7 +179,91 @@ async function farmRoutine(page) {
 /** 마지막 물주기 시각 — shoot() 이 촬영까지 남은 시간을 검사한다 */
 let farmWaterAt = 0;
 
-const ACTS = { farm: farmRoutine };
+async function seaRoutine(page, shot) {
+  await page.evaluate(() => document.querySelector('#hint-modal.show') && document.querySelector('#hint-ok')?.click());
+  await page.waitForTimeout(600);
+  if (shot.sea === 'idle') return;
+  if (shot.sea === 'lineup') {
+    const r = await page.evaluate(async () => {
+      const { SEA_SPECIES, SEA } = await import('/js/data/places.js');
+      const { scene } = await import('/js/game.js');
+      const { buildSeaFishMesh } = await import('/js/spaces/sea.js');
+      const THREE = await import('three');
+      const cell = { aji: [-2.0, 4.6, '🐟 전갱이', '1~3kg · 낮에만'], buri: [2.1, 4.6, '🐠 방어', '6~14kg · 언제나'],
+                     mola: [-2.0, 2.0, '🐡 개복치', '40~90kg · 밤에만'], tuna: [2.1, 2.0, '⚔️ 참치', '60kg+ · 하루 한 번'] };
+      const cz = SEA.z - 18, cx = SEA.x;
+      const fish = Object.entries(cell).map(([id, [x, y, name, sub]]) => {
+        const sp = SEA_SPECIES.find(s => s.id === id);
+        const m = buildSeaFishMesh(sp);
+        m.position.set(cx + x, y, cz);
+        m.rotation.set(0, sp.sunfish ? Math.PI / 2 + 0.5 : Math.PI / 2, 0.08);
+        scene.add(m);
+        return { m, name, sub };
+      });
+      const camPos = new THREE.Vector3(cx, 3.2, cz + 15.5);
+      const look = new THREE.Vector3(cx, 0.05, cz);
+      if (scene.fog) { scene.fog.near = 400; scene.fog.far = 900; }
+      let camRef = null;
+      scene.onBeforeRender = (rr, sc, cam) => { cam.position.copy(camPos); cam.lookAt(look); cam.updateMatrixWorld(); camRef = cam; };
+      await new Promise(r => setTimeout(r, 500));
+      const app = document.getElementById('app');
+      const W = innerWidth, H = innerHeight;
+      fish.forEach(({ m, name, sub }) => {
+        const box = new THREE.Box3().setFromObject(m);
+        const p = new THREE.Vector3((box.min.x + box.max.x) / 2, box.min.y - 0.12, m.position.z).project(camRef);
+        const el = document.createElement('div');
+        el.innerHTML = `<b>${name}</b><span>${sub}</span>`;
+        el.style.cssText = `position:fixed;left:${(p.x + 1) / 2 * W}px;top:${(1 - p.y) / 2 * H}px;transform:translateX(-50%);z-index:50;text-align:center;font-family:-apple-system,'Apple SD Gothic Neo',sans-serif;color:#fdf6ea;text-shadow:0 2px 6px rgba(10,20,30,.75),0 0 18px rgba(10,20,30,.45);display:flex;flex-direction:column;gap:4px;white-space:nowrap`;
+        el.querySelector('b').style.cssText = 'font-size:44px;font-weight:800;letter-spacing:-.02em';
+        el.querySelector('span').style.cssText = 'font-size:28px;font-weight:600;opacity:.92';
+        app.appendChild(el);
+      });
+      return true;
+    });
+    if (r !== true) throw new Error('어종 모음 연출 실패');
+    return;
+  }
+  if (shot.sea === 'fish') {
+    const r = await page.evaluate(async (id) => {
+      const { SEA_SPECIES, SEA } = await import('/js/data/places.js');
+      const { scene } = await import('/js/game.js');
+      const { buildSeaFishMesh } = await import('/js/spaces/sea.js');
+      const sp = SEA_SPECIES.find(s => s.id === id);
+      const m = buildSeaFishMesh(sp);
+      m.position.set(SEA.x + 4.2, 0.7 * sp.scale, SEA.z - 6);
+      m.rotation.set(-0.28, 0, 0.12);
+      scene.add(m);
+      const d = 2.6 * sp.scale + 1.4;
+      scene.onBeforeRender = (rr, sc, cam) => {
+        cam.position.set(m.position.x + d, m.position.y + 0.45 * d, m.position.z + 0.35 * d);
+        cam.lookAt(m.position.x, m.position.y - 0.15 * d, m.position.z);
+        cam.updateMatrixWorld();
+      };
+      return true;
+    }, shot.species);
+    if (r !== true) throw new Error('어종 연출 실패');
+    return;
+  }
+  const ok = await page.evaluate(async ([mode, species]) => {
+    const { SEA_SPECIES, SEA, SEA_EDGE } = await import('/js/data/places.js');
+    const mg = window.__sea?.mg;
+    if (!mg) return 'no __sea';
+    window.__sea.action();
+    if (mg.st !== 'cast') return 'cast failed: ' + mg.st;
+    mg.sp = mode === 'catch' ? SEA_SPECIES.find(s => s.id === species) : { ...SEA_SPECIES.find(s => s.id === 'tuna'), drag: 0 };
+    for (let i = 0; i < 80 && mg.st !== 'fight'; i++) await new Promise(r => setTimeout(r, 100));
+    if (mg.st !== 'fight') return 'no bite: ' + mg.st;
+    mg.phase = mode === 'window' ? 'window' : 'struggle';
+    mg.phaseLen = 999; mg.t = 0;
+    mg.progress = mode === 'window' ? 0.55 : mode === 'edge' ? 0.3 : 0.4;
+    if (mode === 'edge') mg.pz = SEA.z + SEA_EDGE + 0.7;
+    if (mode === 'catch') { mg.phase = 'window'; mg.progress = 0.999; window.__sea.action(); if (mg.st !== 'catch') return 'catch failed: ' + mg.st; }
+    return true;
+  }, [shot.sea, shot.species]);
+  if (ok !== true) throw new Error('바다터 연출 실패 — ' + ok);
+}
+
+const ACTS = { farm: farmRoutine, sea: seaRoutine };
 
 async function shoot(page, name, { q, wait, intro, act }) {
   await page.goto(BASE + '?lang=ko&' + q, { waitUntil: 'load' });
@@ -177,9 +275,9 @@ async function shoot(page, name, { q, wait, intro, act }) {
     const ok = await page.evaluate(s => window.__introJump(s), intro);
     if (!ok) throw new Error('intro 진입 실패');
   }
-  if (act) { await ACTS[act](page); }
+  if (act) { await ACTS[act](page, SHOTS[name]); }
   await page.waitForTimeout(wait);
-  await page.addStyleTag({ content: PHOTOMODE });
+  await page.addStyleTag({ content: act === 'sea' ? PHOTOMODE.replace(':not(#app)', ':not(#app):not(#sea-hud)') + SEA_HUD_BIG : PHOTOMODE });
   await page.waitForTimeout(600);                            // 다음 렌더 프레임까지
   // 밭 샷: 물 준 지 5초(WET_TIME)가 지나면 흙이 말라 💧말풍선이 뜬 채로 찍힌다
   if (act === 'farm') {
