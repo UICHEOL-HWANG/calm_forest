@@ -627,7 +627,7 @@ function setSpaceVisible() {
   //   텃밭은 실외라 outdoorZone() 에는 들어가지만 z=84 로 그림자 상자 밖이라 여기선 함께 멈춘다.
   setShadowActive(shadowActiveFor(spaceFlags()));
   // 🌧️ 빗소리: 비 오는 날 야외(마을·텃밭·강)에서만 — 실내·동굴·카페에선 정지
-  if (RAIN_DAY && mode === 'play' && !indoor && !atMine && !atCafe && !atMuseum && !atObservatory && !atMountain && !atDream && !atMirror && !atHalloween && !neighborIndoorFrame()) startRainSound();
+  if (RAIN_DAY && !intro && mode === 'play' && !indoor && !atMine && !atCafe && !atMuseum && !atObservatory && !atMountain && !atDream && !atMirror && !atHalloween && !neighborIndoorFrame()) startRainSound();
   else stopRainSound();
 }
 // ── 🪙 오늘의 시세 — 품목별 판매가가 날짜 시드로 매일 0.7~1.3배 변동(전원 동일) ──
@@ -2778,7 +2778,7 @@ export async function enterGame() {
   const bonusModal = checkDailyBonus(); // [출석] 오늘 첫 접속이면 보상 지급(모달 표시 여부 반환)
   if (WEATHER !== 'clear') {            // [날씨] 궂은 날 안내 + 세션 태깅
     if (!bonusModal) ui.toast?.(WEATHER_MSG[WEATHER], 2800, { afterDialog: true });   // 출석 모달에 이미 합쳐 안내했으면 생략
-    if (RAIN_DAY) startRainSound();
+    if (RAIN_DAY && !intro) startRainSound();
     trackEvent('weather_day', { type: WEATHER }); // [GA4] 세션 요약 counts 에 자동 집계 → 날씨별 행동 비교
   }
   dexDiscover('weather', WEATHER);      // 🌦️ 날씨 도감 — 오늘 날씨를 겪어야 등록(재방문 훅)
