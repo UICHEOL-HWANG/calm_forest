@@ -1,3 +1,5 @@
+begin;
+
 create table if not exists public.signup_gift_config (
   id smallint primary key default 1 check (id = 1),
   starts_at timestamptz not null
@@ -44,10 +46,13 @@ begin
   returning item_id into v_item;
   if v_item is not null then return jsonb_build_object('ok', true, 'item', v_item, 'new', true); end if;
 
-  select item_id into v_item from purchases where event_id = 'signup_gift:' || p_user;
-  return jsonb_build_object('ok', v_item is not null, 'item', v_item, 'new', false);
+  select item_id into v_item from purchases where event_id = 'signup_gift:' || p_user and revoked_at is null;
+  if v_item is null then return jsonb_build_object('ok', false, 'reason', 'revoked'); end if;
+  return jsonb_build_object('ok', true, 'item', v_item, 'new', false);
 end $$;
 
 revoke all on function public._signup_gift_pool()      from public, anon, authenticated;
 revoke all on function public.signup_gift_claim(uuid)  from public, anon, authenticated;
 grant execute on function public.signup_gift_claim(uuid)  to service_role;
+
+commit;

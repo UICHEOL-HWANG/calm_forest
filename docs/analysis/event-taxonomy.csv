@@ -372,6 +372,8 @@ shop_buy,economy,economy,2,N,active,148,22,2026-08-04,2026-10-24,item|cost,js/sp
 shop_enter,economy,economy,2,N,active,112,19,2026-09-22,2026-10-24,from,js/game.js:7265,꾸미기 가게 앞에서 가게에 들어갔을 때 (from=walk),
 shop_open,economy,economy,2,N,active,112,19,2026-09-22,2026-10-24,tab,js/game.js:7266,상점 창을 열었을 때 (tab=cosmetics 등 탭),
 shop_sell,economy,economy,2,N,active,3134,69,2026-08-01,2026-10-24,qty|item|gain|rate|via,js/spaces/npc.js:702,기존 판매 이벤트 + via,
+signup_gift_claim,onboarding,signup_gift,1,N,not_fired,0,0,,,result|item,js/signup-gift/flow.js:8,가입 선물 받기 시도 결과 (result=new·too_early·anonymous·net_fail 등 · item=받은 꾸미기),
+signup_gift_open,onboarding,signup_gift,2,N,not_fired,0,0,,,item,js/signup-gift/index.js:62,가입 선물 상자를 눌러 열었을 때 (item=받은 꾸미기),
 sled_detail,content,mountain,2,N,not_fired,0,0,,,,js/mountain/sled-run.js:127,"설산 썰매 한 판의 조작 상세 (드리프트·점프·묘기 횟수, run_id로 sled_result와 연결)",
 sled_result,content,mountain,2,N,active,5,2,2026-10-17,2026-10-22,rewarded|probe_v|dda|new_best|time_ms|flags|hits|boosts|ease|arm|acorns|run_id,js/mountain/sled-run.js:121,"설산 썰매 한 판이 끝났을 때 (time_ms=기록, flags=통과한 깃발, new_best=최고 기록 경신)",
 sled_start,content,mountain,2,N,active,6,3,2026-10-16,2026-10-22,probe_v|idle_ms|dda|arm|ease|attempt_n|course_v|acorns|run_id|sled_skin,js/mountain/sled-run.js:43,"설산 썰매 한 판을 시작했을 때 (attempt_n=몇 번째 시도, sled_skin=썰매)",

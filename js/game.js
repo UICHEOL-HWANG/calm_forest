@@ -303,6 +303,7 @@ import { restoreMountain } from './mountain/save.js';
 import { onMountainside } from './mountain/landmark.js';
 import { souvenirOutdoorMesh } from './mountain/souvenir-art.js';
 import { SIGNUP_GIFT_IDS, buildSignupGift } from './spaces/signup-gift-art.js';
+import { requestSignupNudge } from './signup-gift/index.js';
 import { FRIEND_ARCH_ID, buildFriendArch } from './spaces/friend-arch-art.js';   // 🌈 무지개 우정 아치(🤝 초대 보상)
 import { MINE_CART_ID, MINE_CART_BOX, buildMineCart } from './delve/cart-art.js';
 import { outdoorFootprint, blockedByWorld } from './world/outdoor-overlap.js';
@@ -7814,6 +7815,7 @@ function tryBuild() {
   syncUnlocks();   // 🔓 집 기초 → 👷 목수 귀환
   trackEvent('house_build', { stage: next, ...Object.fromEntries(info.items.map(i => [i.k, i.need])) });   // [GA4] 건축 퍼널(증축 house_expand 와 같은 축: stage)
   if (next < 3) ui.toast?.(`🪵 ${STAGE_NAMES[next]} 완성!`);
+  if (next === 1) requestSignupNudge(gameState, 'house', ui);
   refreshInventoryUI();
   if (coinCost) requestSave();   // 🪙 코인을 쓴 자리는 바로 저장(새로고침으로 잃지 않게) — 구성품 구매와 같은 규칙
 }

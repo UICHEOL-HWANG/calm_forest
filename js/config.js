@@ -112,6 +112,7 @@ export const CONFIG = {
   //    REFERRAL_ON: ☰ 친구 초대·도착 배너·연결/정산을 켤지. ⚠️ 4곳(웹·토스·안드로이드·itch) 배포가 끝난 뒤에만 true —
   //    옛 클라이언트는 새 보상 id 를 세이브에서 지운다(dev/archive/referral-reward 계획 §리스크).
   REFERRAL_API: `${API_BASE}/api/referral`,
+  SIGNUP_GIFT_API: `${API_BASE}/api/signup-gift`,
   REFERRAL_ON: true,   // 2026-10-09 사용자 결정: 토스 검수 중에도 켠다(옛 클라가 지워도 원장 syncPurchases 가 복구)
 
   // ── A/B 실험 스위치 ─────────────────────────────────────────
