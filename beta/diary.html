@@ -84,7 +84,7 @@
   (async () => {
     $('title').textContent = BETA_COPY.diaryTitle;
     if (!isSupabaseConfigured()) return gate('설정이 비어 있어요. 운영자에게 알려 주세요.', 'warn');
-    const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+    const { createClient } = await import('/vendor/supabase.js');
     const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, { auth: { detectSessionInUrl: true, persistSession: true } });
     const { data: s } = await sb.auth.getSession();
     const user = s?.session?.user;

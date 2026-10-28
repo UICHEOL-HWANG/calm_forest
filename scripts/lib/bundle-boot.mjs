@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const VENDOR = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../vendor');
 const VENDOR_THREE = path.join(VENDOR, 'three');
-const SUPABASE_CDN = 'https://esm.sh/@supabase/supabase-js@2';
+const SUPABASE_CDN = 'https://esm.sh/@supabase/supabase-js@2.116.0';
 const MODULE_RE = /<script type="module"(?: src="(\.\/js\/[^"]+\.js)")?>([\s\S]*?)<\/script>/g;
 const IMPORTMAP_RE = /[ \t]*<script type="importmap">[\s\S]*?<\/script>[ \t]*\n?/;
 const OUT_SUBDIR = 'js/b';

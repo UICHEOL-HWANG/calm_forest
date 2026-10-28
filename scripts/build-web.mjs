@@ -38,6 +38,7 @@ const INCLUDE = [
   'js',              // 게임 모듈
   'dashboards',      // 관리자·분석 페이지(index.html 에서 링크)
   'beta',            // 🧪 베타 일지 페이지(/beta/diary.html) — 대시보드와 분리
+  'vendor/supabase.js',
   'guide',           // 📖 초보자 안내서(fragment+이미지) — index.html 의 #guide-panel 이 fetch 로 주입
   ['pages/auth-popup.html', 'auth-popup.html'], // 🎮 itch(iframe) 구글 팝업 로그인 복귀 페이지 — 토큰을 게임 창에 postMessage
   ['assets/social/preview.jpg', 'preview.jpg'],                 // og:image (사진성 렌더 — JPEG q90)
