@@ -7,5 +7,5 @@
 - [x] Duel transition implementation (stage composition unchanged — verified vs main capture)
 - [x] Trace prompt → near-pill 🐾 + action icon
 - [x] GA4 night_note_show
-- [ ] Code review fixes
-- [ ] Commit, deploy 5 platforms (web, toss, itch, android, iOS) — night-note API change ships with web worker
+- [x] Code review fixes
+- [x] Deploy: web, toss -169 (review pending user), Play v97 all tracks, itch zip — iOS 1.0.13(33) archived, export blocked by Xcode login
