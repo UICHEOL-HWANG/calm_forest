@@ -84,7 +84,7 @@ test('🌧️ 이웃 집 안엔 비·계절 입자·빗소리 없음 · 출입 �
     const i = GAME.indexOf(`function ${fn}(`); const b = GAME.slice(i, GAME.indexOf('\n}\n', i));
     assert.ok(b.includes(`const show = ${G};`), `${fn} 가드 없음`);
   }
-  assert.ok(GAME.includes(`if (RAIN_DAY && ${G}) startRainSound();`), '빗소리 가드 없음');
+  assert.ok(GAME.includes(`if (RAIN_DAY && !intro && ${G}) startRainSound();`), '빗소리 가드 없음');
   const body = (n) => { const i = SPACE.indexOf(`function ${n}(`); return SPACE.slice(i, SPACE.indexOf('\n}\n', i)); };
   assert.match(body('enterIndoor'), /setSpaceVisible\(\)/);
   assert.match(body('leaveIndoor'), /setSpaceVisible\(\)/);
