@@ -29,6 +29,7 @@ import { onRequestPost as pushRegister } from '../functions/api/push-register.js
 import { onRequestPost as gaMp } from '../functions/api/ga-mp.js';
 import { onRequestPost as clientLogs } from '../functions/api/logs.js';   // 🧯 클라이언트 오류 로그
 import { onRequestPost as referral } from '../functions/api/referral.js';
+import { onRequestPost as signupGift } from '../functions/api/signup-gift.js';
 import { onRequest as auraOrder } from '../functions/api/aura-order.js';
 import { onRequestPost as cardsIngest } from '../functions/api/cards-ingest.js';
 import { onRequestGet as cardsTopicsGet, onRequestPatch as cardsTopicsPatch } from '../functions/api/cards-topics.js';
@@ -242,6 +243,11 @@ async function routeApi(pathname, { request, env, ctx }) {
   if (pathname === '/api/referral') {
     if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
     return await referral({ request, env });
+  }
+
+  if (pathname === '/api/signup-gift') {
+    if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
+    return await signupGift({ request, env });
   }
 
   if (pathname === '/api/aura-order') {   // 🏮 빛 공방 주문·조회·수령
