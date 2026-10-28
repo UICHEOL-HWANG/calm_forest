@@ -7,9 +7,9 @@
 //  기존 유저(토스 54·PGS 1, 2026-09-30 확인)도 전부 이 도메인이라 그대로 인식된다.
 // =============================================================
 
-export const TOSS_EMAIL_DOMAIN = 'toss.calmforest.local';   // toss-auth/src/index.js 와 같게
-export const PGS_EMAIL_DOMAIN = 'pgs.calmforest.local';     // pgs-auth/src/index.js 와 같게
-export const GC_EMAIL_DOMAIN = 'gc.calmforest.local';       // 🍎 gc-auth/src/index.js 와 같게
+export const TOSS_EMAIL_DOMAIN = 'toss.calmforest.local';   // workers/toss-auth/src/index.js 와 같게
+export const PGS_EMAIL_DOMAIN = 'pgs.calmforest.local';     // workers/pgs-auth/src/index.js 와 같게
+export const GC_EMAIL_DOMAIN = 'gc.calmforest.local';       // 🍎 workers/gc-auth/src/index.js 와 같게
 
 // → 'toss' | 'pgs' | 'gc' | null
 export function accountKind(user) {

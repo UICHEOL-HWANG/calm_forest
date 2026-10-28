@@ -2,7 +2,7 @@
 // =============================================================
 //  calm forest · 🤝 POST /api/referral — 친구 추천
 //  ------------------------------------------------------------
-//  계획: dev/active/referral-reward/referral-reward-plan.md
+//  계획: dev/archive/referral-reward/referral-reward-plan.md
 //  본문 { action }:
 //    'code'  → 내 초대 코드(없으면 발급)               rpc referral_get_code
 //    'bind'  → { code, platform } 초대받은 사람 연결   rpc referral_bind (웰컴 핀 지급)
@@ -41,12 +41,12 @@ export const REWARD_NOTICE = Object.freeze({
   },
 });
 
-function json(body, status = 200) {
+export function json(body, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json; charset=utf-8' } });
 }
 const log = (o) => console.log(JSON.stringify({ evt: 'referral', ...o }));
 
-async function verifiedUid(env, request, fetchImpl) {
+export async function verifiedUid(env, request, fetchImpl) {
   const token = (request.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
   if (!token) return null;
   try {
@@ -59,13 +59,13 @@ async function verifiedUid(env, request, fetchImpl) {
   } catch (e) { return null; }
 }
 
-const serviceHeaders = (env) => ({
+export const serviceHeaders = (env) => ({
   'content-type': 'application/json',
   apikey: env.SUPABASE_SERVICE_KEY,
   authorization: `Bearer ${env.SUPABASE_SERVICE_KEY}`,
 });
 
-async function rpc(env, fetchImpl, name, args) {
+export async function rpc(env, fetchImpl, name, args) {
   const r = await fetchImpl(`${env.SUPABASE_URL}/rest/v1/rpc/${name}`, {
     method: 'POST', headers: serviceHeaders(env), body: JSON.stringify(args), signal: AbortSignal.timeout(TIMEOUT_MS),
   });

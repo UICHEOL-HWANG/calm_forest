@@ -4,7 +4,7 @@ import { FARM_PLAIN, QUIZ_TEMPLATES, buildDailyQuiz, quizAvailable, quizReward }
 import { nodeQuizData } from '../tools/ferry-quiz/data-node.mjs';
 import { FRUITS } from '../js/orchard.js';
 
-// 🦆 사공 오리 퀴즈 — 문제는 게임 데이터 템플릿에서(정답이 늘 게임 수치와 일치). 계획: dev/active/ferry-quiz
+// 🦆 사공 오리 퀴즈 — 문제는 게임 데이터 템플릿에서(정답이 늘 게임 수치와 일치). 계획: dev/archive/ferry-quiz
 const DATA = nodeQuizData();
 const mulberry = (a) => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a);
   t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };

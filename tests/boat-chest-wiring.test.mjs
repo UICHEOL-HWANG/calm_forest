@@ -6,7 +6,7 @@ import { gameSource } from './helpers/game-source.mjs';
 import { CHEST_LOOT } from '../js/boat-chest.js';
 
 // 🧰 보물상자 배선·트래킹 — river.js(코스·줍기·정산) · game.js(세이브) · index.html(개봉 화면·결과 카드)
-//    트래킹 스펙: dev/active/boat-chest/boat-chest-plan.md 📊 표 (생명주기 전 구간에 run_no)
+//    트래킹 스펙: dev/archive/boat-chest/boat-chest-plan.md 📊 표 (생명주기 전 구간에 run_no)
 
 const src = gameSource();
 const fn = (name) => { const i = src.indexOf(`function ${name}(`); assert.ok(i >= 0, name); return src.slice(i, src.indexOf('\n}\n', i)); };

@@ -1,7 +1,7 @@
 // =============================================================
 //  🏡 이웃 마을 화면 — 오늘의 이웃(A 엽서 카드) · 집주인 말풍선(C) · 다녀간 이웃 알림(A) · 상단 줄·나가기 · ⚙️ 토글
-//  🚩🚫 신고·차단(App Store 1.2, 시안 C 2026-10-11 dev/active/ugc-report-block/mockup.html): 목록 각 줄 ⋯ · 구경 중 상단 줄 ⋯
-//  시안: dev/active/neighbor-village/mockup.html (확정 A+C+A, 2026-10-07)
+//  🚩🚫 신고·차단(App Store 1.2, 시안 C 2026-10-11 dev/archive/ugc-report-block/mockup.html): 목록 각 줄 ⋯ · 구경 중 상단 줄 ⋯
+//  시안: dev/archive/neighbor-village/mockup.html (확정 A+C+A, 2026-10-07)
 //  DOM 은 전부 textContent — 닉네임은 남이 지은 문자열이다(HTML 문자열 주입 금지). 영어는 i18n 옵저버가 번역한다.
 //  모달 루트 id 가 '-modal' 로 끝나야 index.html anyModalOpen() 이 잡는다(js/plaza/ui.js 와 같은 규칙).
 // =============================================================

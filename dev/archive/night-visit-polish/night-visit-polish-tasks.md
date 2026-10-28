@@ -1,0 +1,11 @@
+# Tasks
+- [x] Mockups: note card A/B/C, transition A/B/C, trace button — PC + mobile captures (sims/night-visit-polish/)
+- [x] User pick: note C (bottom sheet), transition A (claw), trace = existing near-pill circle (not a new button)
+- [x] Note timing → lose only (+ tests)
+- [x] night-note prompt kind=lose + fallback copy + i18n
+- [x] Note sheet implementation
+- [x] Duel transition implementation (stage composition unchanged — verified vs main capture)
+- [x] Trace prompt → near-pill 🐾 + action icon
+- [x] GA4 night_note_show
+- [x] Code review fixes
+- [x] Deploy: web, toss -169 (review pending user), Play v97 all tracks, itch zip — iOS 1.0.13(33) archived, export blocked by Xcode login

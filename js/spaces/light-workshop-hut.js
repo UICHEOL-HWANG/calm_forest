@@ -1,6 +1,6 @@
 // =============================================================
 //  🏮 빛 공방 오두막 외관(C안 · 2026-10-08 승인) — 벽돌 벽 + 기와 박공지붕 + 빗살 여닫이문 + 손수레
-//  레퍼런스: dev/active/light-workshop/mockups/hut-reference.webp · 시안 비교: hut-variants.html
+//  레퍼런스: dev/archive/light-workshop/mockups/hut-reference.webp · 시안 비교: hut-variants.html
 //  긴 벽이 카메라(남쪽, +z)를 보고 문·십자창이 한 면에, 기와 경사면이 정면 · 박공은 양옆(±x).
 //  THREE 는 인자로 받는다(node 테스트는 three 를 못 불러 소스만 검사).
 //  반환 지오메트리는 정점색이 칠해져 있어 호출부가 mergeGeos 로 한 메시(드로우콜 1)로 묶는다.

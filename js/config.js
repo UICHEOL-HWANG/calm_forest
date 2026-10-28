@@ -71,11 +71,11 @@ export const CONFIG = {
   TOSS_AUTH_ENDPOINT: 'https://calmforest-toss-auth.icuchoel.workers.dev',
 
   // ── 📱 구글 플레이 앱 Play Games 자동 로그인 ──────────────────
-  //    authCode 를 Supabase 세션으로 바꿔주는 pgs-auth Worker URL(pgs-auth/README.md).
+  //    authCode 를 Supabase 세션으로 바꿔주는 pgs-auth Worker URL(workers/pgs-auth/README.md).
   //    서버 클라이언트 ID 는 Play Games '게임 서버' OAuth 클라이언트(공개값) — Worker 의 PGS_CLIENT_ID 와 같은 값.
   //    둘 중 하나라도 비어 있으면 자동 연결을 건너뛰고 '바로 플레이하기' → 게스트로 폴백한다.
   PGS_AUTH_ENDPOINT: 'https://calmforest-pgs-auth.icuchoel.workers.dev',
-  // 🍎 iOS 앱 게임센터 → Supabase 세션 교환 Worker(gc-auth/). 비어 있으면 자동 연결을 건너뛰고 로그인 화면(Apple·바로 플레이하기).
+  // 🍎 iOS 앱 게임센터 → Supabase 세션 교환 Worker(workers/gc-auth/). 비어 있으면 자동 연결을 건너뛰고 로그인 화면(Apple·바로 플레이하기).
   GC_AUTH_ENDPOINT: 'https://calmforest-gc-auth.icuchoel.workers.dev',
   PGS_SERVER_CLIENT_ID: '536929088498-qo1v15ribu6hfbovbt6eoqgi5magcd6q.apps.googleusercontent.com',   // calm-forest 웹 클라이언트 calmforest-web(Supabase 구글 공급자와 같은 클라이언트)
 
@@ -110,8 +110,9 @@ export const CONFIG = {
 
   // 🤝 친구 초대 — POST { action: code|bind|claim } (functions/api/referral.js). 판정·지급은 서버 SQL.
   //    REFERRAL_ON: ☰ 친구 초대·도착 배너·연결/정산을 켤지. ⚠️ 4곳(웹·토스·안드로이드·itch) 배포가 끝난 뒤에만 true —
-  //    옛 클라이언트는 새 보상 id 를 세이브에서 지운다(dev/active/referral-reward 계획 §리스크).
+  //    옛 클라이언트는 새 보상 id 를 세이브에서 지운다(dev/archive/referral-reward 계획 §리스크).
   REFERRAL_API: `${API_BASE}/api/referral`,
+  SIGNUP_GIFT_API: `${API_BASE}/api/signup-gift`,
   REFERRAL_ON: true,   // 2026-10-09 사용자 결정: 토스 검수 중에도 켠다(옛 클라가 지워도 원장 syncPurchases 가 복구)
 
   // ── A/B 실험 스위치 ─────────────────────────────────────────

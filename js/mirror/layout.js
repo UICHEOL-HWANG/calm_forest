@@ -4,7 +4,7 @@
 //  스펙: docs/superpowers/specs/2026-10-08-mirror-village-design.md §3·§4
 //  ▶ 좌표는 MIRROR(js/data/places.js) 기준 **로컬**(월드 = MIRROR + 로컬). 마을 쪽 상수(VILLAGE_*·LAKE_GATE)만 월드.
 //  ▶ 카메라는 북쪽(-z)을 본다 → 화면 왼쪽 = 서쪽(-x), 앞 = 남쪽(+z). 단서의 왼/오는 이 기준.
-//  ▶ 배치는 확정 시안 dev/active/mirror-village/mockups/village.html 의 L 표와 같다.
+//  ▶ 배치는 확정 시안 dev/archive/mirror-village/mockups/village.html 의 L 표와 같다.
 // =============================================================
 export const WALK_R = 20.4;            // 가장자리 숲 링(20.5~) 안쪽까지만
 export const PICK_R = 1.1;             // 물건 자동 줍기

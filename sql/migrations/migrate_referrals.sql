@@ -1,7 +1,7 @@
 -- =============================================================
 --  calm forest · 🤝 친구 추천 보상 (referrals)
 --  ------------------------------------------------------------
---  계획: dev/active/referral-reward/referral-reward-plan.md
+--  계획: dev/archive/referral-reward/referral-reward-plan.md
 --  실행: 풀러로 파일 전체를 한 번에(pg8000 con.run). 멱등.
 --
 --  ▶ 쓰기는 전부 Worker(service key) → security definer 함수(referral_bind/claim)로만.

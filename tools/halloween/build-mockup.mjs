@@ -1,6 +1,6 @@
 // tools/halloween/build-mockup.mjs — 단독 HTML 하나로 만든다. 워크트리 preview 가 루트를 띄우는 함정 때문에
 // three·조형 모듈을 data URL 로 인라인해 외부 경로가 없게 한다. WebGL 컨텍스트는 하나만 쓰고 <img> 로 굳힌다(컨텍스트 수 제한 회피).
-// 사용: node tools/halloween/build-mockup.mjs  →  dev/active/halloween-coin-decor/look/mockups.html
+// 사용: node tools/halloween/build-mockup.mjs  →  dev/archive/halloween-coin-decor/look/mockups.html
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 const root = new URL('../../', import.meta.url);
 const b64 = (p) => 'data:text/javascript;base64,' + Buffer.from(readFileSync(new URL(p, root))).toString('base64');
@@ -43,6 +43,6 @@ for (const [id, styles] of Object.entries(HALLOWEEN_STYLES)) {
 }
 document.getElementById('tgl').onclick = () => { night = !night; draw(); }; draw();
 </script>`;
-mkdirSync(new URL('dev/active/halloween-coin-decor/look/', root), { recursive: true });
-writeFileSync(new URL('dev/active/halloween-coin-decor/look/mockups.html', root), html);
+mkdirSync(new URL('dev/archive/halloween-coin-decor/look/', root), { recursive: true });
+writeFileSync(new URL('dev/archive/halloween-coin-decor/look/mockups.html', root), html);
 console.log('wrote mockups.html');

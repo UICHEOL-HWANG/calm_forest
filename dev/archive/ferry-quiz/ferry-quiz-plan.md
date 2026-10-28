@@ -295,7 +295,7 @@ export function quizReward(correctN) {
 
   영어 테스트가 실패하면(사전에 없는 이름·`farm_building` 설명) `js/i18n-en.js` 에 추가하거나 Task 1 검수에서 그 템플릿을 뺀다.
 
-- [ ] **Step 5:** `tools/ferry-quiz/review.mjs` — 템플릿마다 시드 1..300 으로 **서로 다른 qid 전부**를 ko/en 표(문제·4보기·정답 굵게·힌트)로 `dev/active/ferry-quiz/review.html` 에 쓴다(`nodeQuizData()` 사용, HTML 이스케이프).
+- [ ] **Step 5:** `tools/ferry-quiz/review.mjs` — 템플릿마다 시드 1..300 으로 **서로 다른 qid 전부**를 ko/en 표(문제·4보기·정답 굵게·힌트)로 `dev/archive/ferry-quiz/review.html` 에 쓴다(`nodeQuizData()` 사용, HTML 이스케이프).
 - [ ] **Step 6: 통과 확인** — `node --test tests/ferry-quiz.test.mjs` → PASS
 - [ ] **Step 7: Commit** — `git add js/ferry-quiz.js tools/ferry-quiz/ tests/ferry-quiz.test.mjs && git commit -m "feat: 🦆 사공 퀴즈 문제 템플릿(게임 데이터에서 생성)"`
 - [ ] **Step 8: ⏸️** review.html 을 사용자에게 보내 문제 목록 승인(Task 1 Step 4).

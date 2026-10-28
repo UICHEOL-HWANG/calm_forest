@@ -78,7 +78,7 @@ const RAW = [
   { id: 'homi_whale',  slot: 'homi', ico: '🐋', name: '고래 호미', won: 1500, tier: '프리미엄' },
   { id: 'homi_mudset', slot: 'homi', ico: '🦀', name: '갯벌 호미', set: 'mudflat_set', tier: '갯벌 세트' },
   { id: 'mud_gear',    slot: 'back', ico: '🧺', name: '갯벌 바구니와 장화', set: 'mudflat_set', tier: '갯벌 세트', anchor: 'root' },
-  // 🤝 친구 초대 보상 — 비매품(dev/active/referral-reward). 1명 무지개 크리스탈 세트 · 5명 날개 · 초대받은 친구 하트핀(🌈 3명 아치는 야외 장식)
+  // 🤝 친구 초대 보상 — 비매품(dev/archive/referral-reward). 1명 무지개 크리스탈 세트 · 5명 날개 · 초대받은 친구 하트핀(🌈 3명 아치는 야외 장식)
   //    id tools_star 는 서버 가드·원장에 이미 등록돼 그대로 둔다(이름만 2026-10-08 시안 B 선택에 맞춰 바꿈)
   { id: 'tools_star',  slot: 'tools', ico: '💎', name: '무지개 크리스탈 세트', reward: 'referral', tier: '친구 초대' },
   { id: 'friend_wing', slot: 'back',  ico: '🦋', name: '별빛 우정 날개', reward: 'referral', tier: '친구 초대', anchor: 'back' },

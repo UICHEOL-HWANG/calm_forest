@@ -1,4 +1,4 @@
-// 🪞 보색 쌍둥이 색 규칙(순수) — 확정 시안 dev/active/mirror-village/mockups/residents.html v=2 의 inv() 와 같다
+// 🪞 보색 쌍둥이 색 규칙(순수) — 확정 시안 dev/archive/mirror-village/mockups/residents.html v=2 의 inv() 와 같다
 export function invertColorPure(hex) {
   const c = 0xffffff - hex;
   let r = (c >> 16 & 255) / 255, g = (c >> 8 & 255) / 255, b = (c & 255) / 255;

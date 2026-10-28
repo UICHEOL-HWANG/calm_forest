@@ -1,5 +1,5 @@
 // ⚠️ 생성물 — tools/free-pot/generate.mjs 가 쓴다. 손으로 고칠 땐 validateEntry 규칙을 지킬 것.
-//    검수: node tools/free-pot/review.mjs → dev/active/free-pot/review.html
+//    검수: node tools/free-pot/review.mjs → dev/archive/free-pot/review.html
 export const FREE_POT_TABLE = {
   "apple": {"name":"생사과","name_en":"Fresh Apple","ico":"🍎","taste":3,"judge":"기분이 상쾌해져요!","judge_en":"Crisp and fresh, brightening your mood.","tags":["fresh","fruity"]},
   "apple+apple": {"name":"상큼 사과조림","name_en":"Fresh Apple Stew","ico":"🍎","taste":3,"judge":"상큼함이 가득해요!","judge_en":"You can feel the pure freshness of apples.","tags":["sweet","fresh"]},

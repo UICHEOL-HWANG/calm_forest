@@ -155,7 +155,7 @@ test('되찾기는 조각마다 제 광석(reclaimGive), 성공 뒤 패널 갱�
 
 test('배너 줄은 낱말 단위로 줄바꿈, 캡처 스크립트에 개인 경로 없음, 안 쓰는 import 없음', () => {
   assert.match(read('index.html'), /#hint-banner \.hb-line \{ word-break: keep-all; \}/);
-  assert.doesNotMatch(read('dev/active/cave-delve/mockup/impl/capture-impl.mjs'), /\/private\/tmp|\/Users\//);
+  assert.doesNotMatch(read('dev/archive/cave-delve/mockup/impl/capture-impl.mjs'), /\/private\/tmp|\/Users\//);
   assert.doesNotMatch(delveSrc().split('\n').slice(0, 5).join('\n'), /\bclock\b/);
   assert.match(src, /\} from '\.\/spaces\/mine\.js';   \/\/ 📦 ⛏️ 채굴 동굴/);
 });
