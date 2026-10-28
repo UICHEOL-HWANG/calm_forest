@@ -8,8 +8,9 @@
 - [x] 5 위키 FAQ
 - [x] 6 /news 페이지
 - [x] 테스트·빌드·curl 검증·코드 리뷰
-- [ ] 2 AI 학습봇 설정(사용자 결정 후 Aside)
-- [ ] 배포·재측정 일정(14일 뒤)
+- [x] 2 AI 학습봇 허용(Cloudflare AI 봇 정책 학습=허용, curl 200)
+- [x] 배포 main 6ac9230a · sitemap-news GSC(성공 18)·네이버 제출
+- [ ] 재측정 2026-11-01 (GSC 노출·클릭·색인, 서치어드바이저, AI 인용 O/X)
 
 ## 결정 (2026-10-18 승인)
 제목 A · og:title 유지 · 소식 A(위키 톤) · AI 학습봇 허용 · sameAs GitHub 제외 · 주민 FAQ 는 박물관 질문 제외

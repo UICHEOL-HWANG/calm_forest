@@ -95,7 +95,7 @@
 
 ## 7/ (링크)
 
-🌿 고요위키: https://calmforest.cloud/wiki/
-🎮 고요한 숲: https://calmforest.cloud/
+🌿 고요위키: https://calmforest.cloud/wiki/?utm_source=threads&utm_medium=social&utm_campaign=seo_wiki&utm_content=post
+🎮 고요한 숲: https://calmforest.cloud/?utm_source=threads&utm_medium=social&utm_campaign=seo_wiki&utm_content=post
 
 여러분은 사이드 프로젝트 SEO 어떻게 하세요? 체크리스트 그대로 따라 하시나요? 🙋
