@@ -20,6 +20,10 @@ export const SLED_LINEUP = Object.freeze({
     id: 'starry', ico: '🛷', name: '별밤 썰매', line: '균형 잡힌 기본 썰매', stats: [3, 3, 3, 3], model: 'davos', coins: 900, needs: 'perfect',
     palette: { wood: 0x24305e, dark: 0x161d3d, metal: 0xf2c94c, accent: 0xf2c94c, stars: true },
   }),
+  worldtree: entry({
+    id: 'worldtree', ico: '❄️', name: '세계수 썰매', line: '균형 잡힌 기본 썰매', stats: [3, 3, 3, 3], model: 'davos', needs: 'snowbranch',
+    palette: { wood: 0xf4f7fa, dark: 0xb9c9d6, metal: 0x7fb2e8, accent: 0x66c96a },
+  }),
   toboggan: entry({
     id: 'toboggan', ico: '⛄', name: '눈뭉치 터보건', line: '부딪혀도 덜 느려져요. 커브는 둔해요', stats: [3, 2, 5, 3], model: 'toboggan', needs: 'finish',
     palette: { body: 0xbfe8d8, dark: 0xe5484d, pad: 0xfff0c2, rope: 0xe5484d },

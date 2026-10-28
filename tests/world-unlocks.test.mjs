@@ -50,10 +50,11 @@ test('세계수 가지: 서식지 → 이웃, 물 꾸러미 → 사공·바다',
   for (const id of ['rancher', 'ferryman', 'sea']) assert.ok(open(s2).has(id), id);
 });
 
-test('장 진행: 6장 → 천문대·별 보는 아이, 7장 → 이웃·거울 마을', () => {
-  assert.ok(!open(fresh({ story: { ch: 5 } })).has('observatory'));
-  assert.ok(open(fresh({ story: { ch: 6 } })).has('stargazer'));
-  const o = open(fresh({ story: { ch: 7 } }));
+test('장 진행: 7장 → 천문대·별 보는 아이, 8장 → 이웃·거울 마을', () => {
+  assert.ok(!open(fresh({ story: { ch: 6 } })).has('observatory'));
+  assert.ok(open(fresh({ story: { ch: 7 } })).has('stargazer'));
+  assert.ok(!open(fresh({ story: { ch: 7 } })).has('neighbor'));
+  const o = open(fresh({ story: { ch: 8 } }));
   assert.ok(o.has('neighbor') && o.has('mirror'));
 });
 

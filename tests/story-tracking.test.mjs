@@ -30,7 +30,7 @@ test('진행 훅마다 trigger 키를 넘긴다', () => {
   for (const [file, key] of [
     ['js/game.js', 'special'], ['js/game.js', 'cook'], ['js/game.js', 'quest'], ['js/game.js', 'farm_expand'],
     ['js/spaces/cafe.js', 'serve'], ['js/spaces/house.js', 'house'], ['js/spaces/mist.js', 'purify'],
-    ['js/spaces/orchard-actions.js', 'sapling'], ['js/spaces/observatory.js', 'star'],
+    ['js/spaces/orchard-actions.js', 'sapling'], ['js/spaces/observatory.js', 'star'], ['js/spaces/world-tree.js', 'tree_habitat'],
   ]) assert.match(file === 'js/game.js' ? g : src(file), new RegExp(`syncStory\\('${key}'\\)`), `${file}: ${key}`);
   const calls = [...g.matchAll(/syncStory\(\)/g)].length;
   assert.equal(calls, 1, 'game.js 의 trigger 없는 syncStory() 는 부팅 소급 한 곳뿐이어야 한다');

@@ -10,6 +10,20 @@ export const CAFE_LOOK = Object.freeze({
   fog: 0x2a2320, fogNear: 30, fogFar: 90, grade: 0, torch: 0.6,
 });
 const BUBBLE = Object.freeze({ w: 0.8, h: 0.8, y: 3.0 });
+
+function emojiTexture(THREE, emoji) {
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = 128;
+  const c = cv.getContext('2d');
+  c.fillStyle = '#ffffff';
+  c.beginPath(); c.arc(64, 60, 54, 0, Math.PI * 2); c.fill();
+  c.font = '64px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText(emoji, 64, 64);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
 export function createCafe({ THREE, scene, mountain, makeNameTag, fadeNameTag, getMountainGroup }) {
   const origin = { x: mountain.x + CAFE_OFFSET.x, z: mountain.z + CAFE_OFFSET.z };
   const sunAt = new THREE.Vector3(origin.x, 0, origin.z);

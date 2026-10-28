@@ -35,7 +35,10 @@ export function createKeeperBubble(THREE, parent, at) {
     bubble.visible = true;
   };
   return {
-    arrive() { show('☕'); swapT = KEEPER_BUBBLE.swapS; },
+    arrive(mode = 'idle') {
+      if (mode === 'quest') { show('❕'); swapT = 0; return; }
+      show('☕'); swapT = KEEPER_BUBBLE.swapS;
+    },
     hide() { bubble.visible = ring.visible = false; swapT = 0; },
     update(dt, time, dist, baseY) {
       if (!bubble.visible) return;

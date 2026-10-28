@@ -11,6 +11,7 @@ export const REGIONS = {
   'farm:habitat':    { id: 'coop',    npc: 'farmer', place: 'coop',    at: { x: -4.5, z: 11.5 },  fx: 'farm',    sub: '🌾 밭의 가지',   main: '닭장에 다시 활기가 돌아요' },
   'kitchen:habitat': { id: 'kitchen', npc: 'chef', place: 'kitchen', at: { x: 7.4, z: -6.4 },   fx: 'kitchen', sub: '🍳 부엌의 가지', main: '부엌에 불이 켜졌어요' },
   'forest:habitat':  { id: 'forest',  npc: 'forager', place: 'forest',  at: { x: -18, z: 23 },     fx: 'forest',  sub: '🌲 숲의 가지',   main: '숲길이 다시 열렸어요' },
+  'snow:habitat':    { id: 'snowpeak', npc: null, place: null,     at: { x: -15, z: -29.5 },   fx: 'snow',    sub: '❄️ 눈의 가지',   main: '정상 산장에 불이 켜졌어요' },
   'mine:habitat':    { id: 'mine',    npc: 'miner', place: null,      at: { x: -14, z: 3 },      fx: 'mine',    sub: '⛏️ 광산의 가지', main: '동굴에 빛이 돌아왔어요' },
 };
 

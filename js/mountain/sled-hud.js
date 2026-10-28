@@ -20,7 +20,7 @@ function ensure() {
     <div class="sled-stick" hidden><div class="sled-knob"></div></div>`;
     const style = document.createElement('style');
     style.textContent = `
-    body.sled-run #mobile-controls, body.sled-run #talk-btn, body.sled-run #hotbar{display:none !important}
+    body.sled-run #mobile-controls, body.sled-run #talk-btn, body.sled-run #hotbar, body.sled-run #story-chip, body.sled-run #quest-panel, body.sled-run #hint-banner, body.sled-run #near-pill{display:none !important}
     #sled-hud{position:fixed;inset:0;pointer-events:none;z-index:40}
     #sled-hud .sled-top{position:absolute;left:50%;top:calc(var(--top-inset) + 12px);transform:translateX(-50%);display:flex;gap:12px;padding:6px 14px;border-radius:999px;background:rgba(20,28,40,.55);color:#fff;font-size:16px}
     #sled-hud .sled-chips{position:absolute;right:calc(env(safe-area-inset-right) + 10px);top:calc(var(--top-inset) + 12px);display:flex;flex-direction:column;align-items:flex-end;gap:6px}

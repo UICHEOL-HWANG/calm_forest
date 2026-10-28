@@ -1,0 +1,87 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>worldtree sled compare</title>
+<style>
+  html,body{margin:0;height:100%;background:#dff0f7;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:#2f3f4a;overflow:hidden}
+  canvas{display:block;position:absolute;left:0;top:0}
+  #labels{position:absolute;inset:0;z-index:2;display:flex;pointer-events:none}
+  #labels div{flex:1;display:flex;justify-content:center;align-items:flex-end;padding-bottom:10px}
+  #labels span{background:rgba(255,255,255,.9);border-radius:9px;padding:5px 10px;font-size:14px;font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+  body.stack #labels{flex-direction:column}
+  body.stack #labels div{padding-bottom:6px}
+</style>
+<div id="labels"></div>
+<script type="importmap">
+{"imports":{"three":"/vendor/three/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { buildSledMesh } from '/js/mountain/sled-art.js';
+import { modelParts } from '/js/mountain/sled-models.js';
+import { mergeColored } from '/js/mountain/merge-colored.js';
+
+const VARIANTS = [
+  { name: 'A 서리', palette: { wood: 0xf4f7fa, dark: 0xb9c9d6, metal: 0x7fb2e8, accent: 0x66c96a } },
+  { name: 'B 흰 나무·초록 띠', palette: { wood: 0xffffff, dark: 0xdfe6ec, metal: 0x3dab84, accent: 0xb8e985 } },
+  { name: 'C 은빛·금', palette: { wood: 0xe8eef3, dark: 0x9fb0be, metal: 0xe8c78e, accent: 0xffffff } },
+];
+
+const params = new URLSearchParams(location.search);
+const stack = params.get('stack') === '1';
+const VW = +params.get('w') || innerWidth, VH = +params.get('h') || innerHeight;
+document.documentElement.style.width = VW + 'px';
+document.documentElement.style.height = VH + 'px';
+Object.assign(document.getElementById('labels').style, { width: VW + 'px', height: VH + 'px', right: 'auto', bottom: 'auto' });
+document.body.classList.toggle('stack', stack);
+document.getElementById('labels').innerHTML = VARIANTS.map(v => `<div><span>${v.name}</span></div>`).join('');
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1);
+renderer.setSize(VW, VH);
+renderer.setScissorTest(true);
+renderer.toneMapping = THREE.NoToneMapping;
+document.body.appendChild(renderer.domElement);
+
+const scenes = VARIANTS.map(v => {
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xdff0f7);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xcfdbe6, 1.6), new THREE.AmbientLight(0xffffff, 0.8));
+  const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+  sun.position.set(-6, 14, 10);
+  scene.add(sun);
+  const sled = buildSledMesh(THREE, 'worldtree');
+  sled.geometry.dispose();
+  sled.geometry = mergeColored(THREE, modelParts(THREE, 'davos', v.palette));
+  sled.visible = true;
+  scene.add(sled);
+  sled.updateMatrixWorld(true);
+  return { scene, sled };
+});
+
+const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 100);
+function draw() {
+  const W = VW, H = VH, n = VARIANTS.length;
+  renderer.setSize(W, H);
+  scenes.forEach(({ scene, sled }, i) => {
+    const x = stack ? 0 : Math.round(i * W / n), y = stack ? Math.round((n - 1 - i) * H / n) : 0;
+    const w = stack ? W : Math.round((i + 1) * W / n) - x, h = stack ? Math.round(H / n) : H;
+    renderer.setViewport(x, y, w, h);
+    renderer.setScissor(x, y, w, h);
+    camera.aspect = w / h;
+    const box = new THREE.Box3().setFromObject(sled);
+    const c = box.getCenter(new THREE.Vector3());
+    const r = box.getSize(new THREE.Vector3()).length() * 0.5;
+    const vfov = THREE.MathUtils.degToRad(camera.fov), hfov = 2 * Math.atan(Math.tan(vfov / 2) * camera.aspect);
+    const dist = r * 0.97 / Math.sin(Math.min(vfov, hfov) / 2);
+    const dir = new THREE.Vector3(-0.8, 0.5, 1).normalize();
+    camera.position.copy(c).addScaledVector(dir, dist);
+    camera.lookAt(c);
+    camera.updateProjectionMatrix();
+    renderer.render(scene, camera);
+  });
+  document.title = 'ready';
+}
+draw();
+addEventListener('resize', draw);
+</script>

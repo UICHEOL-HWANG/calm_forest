@@ -3,6 +3,7 @@ const PALETTE = {
   farm:    [0xffb7cf, 0xffe28a, 0xfff6d8],
   kitchen: [0xffcf7a, 0xffa94d, 0xfff1d0],
   forest:  [0xfff27a, 0xd9ff8a, 0xfffbd0],
+  snow:    [0xffffff, 0xe6f4ff, 0xbfe0ff],
   mine:    [0xa8f0ff, 0xd7b8ff, 0xffffff],
 };
 const AMBIENT = {
@@ -10,6 +11,7 @@ const AMBIENT = {
   farm:    { rate: 22, r: 5, y: [3.5, 6], vy: -0.8, wob: 1.6, life: 3, big: 0, rings: 0 },
   kitchen: { rate: 16, r: 3.2, y: [0.6, 3.5], vy: 0.9, wob: 0.4, life: 1.8, big: 0.25, rings: 0 },
   forest:  { rate: 14, r: 6, y: [0.6, 3], vy: 0.15, wob: 1.4, life: 3.2, big: 0, rings: 0 },
+  snow:    { rate: 20, r: 5, y: [3, 6], vy: -0.6, wob: 1.2, life: 3.4, big: 0, rings: 0 },
   mine:    { rate: 18, r: 3, y: [0.4, 2.6], vy: 0.7, wob: 0.3, life: 1.5, big: 0.15, rings: 0 },
 };
 const MAX = 220;

@@ -1,7 +1,7 @@
 import { terrainHeight } from './terrain.js';
 import { CLIMB_PATH } from './climb.js';
 import { buildSledMesh } from './sled-art.js';
-import { CAMP, YARD } from './camp-layout.js';
+import { CAMP, YARD, LEAN_SLEDS } from './camp-layout.js';
 
 export const CAMP_DRAWS = 2;
 
@@ -345,7 +345,7 @@ export function buildCamp(three) {
   S.add(G.ball, SNOW, H.at(0, 0, -1.6), [11, 3.4, 10]);
   S.add(G.ball, SNOW, [YARD.x, CAMP.deck.y - 0.35, YARD.z], [YARD.r * 2.3, 0.7, YARD.r * 2.3]);
   hutAframe(S, H, T);
-  [0, 1, 2].forEach(i => sledLean(S, H, 2.7 + i * 0.01, 3.2 + i * 0.55, 0.62, i * 0.05));
+  LEAN_SLEDS.forEach(sl => sledLean(S, H, sl.f, sl.r, sl.h, sl.tilt));
   keeper(S, CAMP.keeper.x, CAMP.keeper.z, -Math.PI / 2 - 0.5);
   startDeck(S, T);
   finish(S, T);
@@ -362,5 +362,12 @@ export function buildCamp(three) {
   group.name = 'camp';
   group.add(new THREE.Mesh(mergeAll(S.solid), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true })));
   group.add(new THREE.Mesh(mergeAll(S.glow), new THREE.MeshBasicMaterial({ vertexColors: true })));
+  const W = frame(CAMP.hut.x, CAMP.hut.z, CAMP.hut.ry, CAMP.deck.y - 0.1);
+  const hutLight = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 2.4), new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.55, depthWrite: false }));
+  hutLight.position.set(...W.at(0, 2.32, 1.83));
+  hutLight.rotation.y = CAMP.hut.ry + Math.PI / 2;
+  hutLight.visible = false;
+  group.add(hutLight);
+  group.userData.hutLight = hutLight;
   return group;
 }

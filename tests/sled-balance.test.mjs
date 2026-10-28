@@ -18,7 +18,7 @@ test('trade-offs show at low acorn counts', () => {
 });
 
 test('lineup order, cash sleds and fallbacks', () => {
-  assert.deepEqual(SLED_IDS, ['basic', 'sky', 'forest', 'starry', 'toboggan', 'wind', 'acorn', 'skiff']);
+  assert.deepEqual(SLED_IDS, ['basic', 'sky', 'forest', 'starry', 'worldtree', 'toboggan', 'wind', 'acorn', 'skiff']);
   assert.deepEqual(CASH_SLED_IDS, ['wind', 'acorn', 'skiff']);
   for (const id of CASH_SLED_IDS) { assert.equal(SLED_LINEUP[id].coins, 1500); assert.equal(SLED_LINEUP[id].cashWon, 3900); }
   assert.equal(sledOf('nope').id, 'basic');
