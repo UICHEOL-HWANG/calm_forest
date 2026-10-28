@@ -9,10 +9,10 @@ const SRC = ['js/hud/hud-shell.js', 'js/hud/tool-fan.js', 'js/hud/mobile-hud.js'
   .map((p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8')).join('\n') + HTML;
 
 const all = [
-  ['full', true, 8], ['full', false, 9], ['new', true, 3], ['new', false, 3], ['menu', true, 3], ['menu', false, 3], ['pill', true, 1], ['cam', true, 1], ['cam', false, 1],
+  ['full', true, 10], ['full', false, 9], ['new', true, 3], ['new', false, 3], ['menu', true, 3], ['menu', false, 3], ['pill', true, 1], ['cam', true, 3], ['cam', false, 1],
 ];
 
-test('단계 수 — 모바일 8·PC 9·바뀐 점 3·메뉴 3·근접 알약 1·시점 회전 1', () => {
+test('단계 수 — 모바일 10·PC 9·바뀐 점 3·메뉴 3·근접 알약 1·시점 회전 모바일 3·PC 1', () => {
   for (const [kind, touch, n] of all) assert.equal(spotSteps(kind, touch).length, n, `${kind}/${touch}`);
 });
 
@@ -40,6 +40,22 @@ test('모바일 단계엔 키보드 이야기가 없고, PC 첫 단계는 방향
 
 test('문구는 모두 영어 사전에 있다', () => {
   for (const [kind, touch] of all) for (const s of spotSteps(kind, touch)) assert.ok(EN[s.text], s.text);
+});
+
+test('모바일 시점 회전은 두 손가락 올리기 → 비틀기 → 🧭 되돌리기 3단계', () => {
+  const cam = spotSteps('cam', true);
+  assert.deepEqual(cam.map((s) => s.key), ['cam_two', 'cam', 'cam_reset']);
+  assert.deepEqual(cam.map((s) => s.done), ['act:camtwo', 'act:camrotate', 'click']);
+  assert.deepEqual(cam.map((s) => s.hand), ['two', 'twist', 'tap']);
+  assert.equal(cam[2].target, '#cam-reset-btn');
+  assert.deepEqual(spotSteps('full', true).filter((s) => s.key.startsWith('cam')).map((s) => s.key), ['cam_two', 'cam', 'cam_reset']);
+});
+
+test('두 손가락이 캔버스에 닿으면 camtwo 신호를 보낸다', () => {
+  const g = readFileSync(new URL('../js/camera-gestures.js', import.meta.url), 'utf8');
+  const game = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  assert.match(g, /o\.onTwo\?\.\(\)/);
+  assert.match(game, /onTwo: \(\) => ui\.act\?\.\('camtwo'\)/);
 });
 
 test('첫 실행 핵심 조작(걷기·도구 고르기·쓰기)만 core', () => {

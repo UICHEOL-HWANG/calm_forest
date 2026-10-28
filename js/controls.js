@@ -7,6 +7,7 @@
 // =============================================================
 
 import { Input } from './game.js';
+import { stickCenter, stickVector } from './move-feel.js';
 import { isTouchDevice, touchSimOn } from './touch-sim.js';   // 📱 ?touchsim=1 — 데스크톱에서 모바일 조작 흉내(페르소나)
 
 // 터치 지원 여부 감지 → 모바일 컨트롤 노출
@@ -48,27 +49,31 @@ function setupJoystick() {
   let active = false, cx = 0, cy = 0, id = null;
 
   const start = (t) => {
+    if (active) return;
     active = true; id = t.identifier;
     const r = base.getBoundingClientRect();
-    cx = r.left + r.width / 2; cy = r.top + r.height / 2;
+    ({ x: cx, y: cy } = stickCenter(t.clientX, t.clientY, R, innerWidth, innerHeight));
+    base.style.transform = `translate(${cx - (r.left + r.width / 2)}px, ${cy - (r.top + r.height / 2)}px)`;
     move(t);
   };
   const move = (t) => {
     if (!active) return;
-    let dx = t.clientX - cx, dy = t.clientY - cy;
-    const len = Math.hypot(dx, dy);
-    if (len > R) { dx *= R / len; dy *= R / len; }
-    knob.style.transform = `translate(${dx}px, ${dy}px)`;
+    const v = stickVector(t.clientX - cx, t.clientY - cy, R);
+    knob.style.transform = `translate(${v.x * R}px, ${v.y * R}px)`;
     // 화면 좌표 dy(+아래) → 월드 z(+아래로 이동)와 일치
-    Input.setAnalog(dx / R, dy / R);
+    Input.setAnalog(v.x, v.y);
   };
   const end = () => {
     active = false; id = null;
     knob.style.transform = 'translate(0,0)';
+    base.style.transform = '';
     Input.setAnalog(0, 0);   // 손 떼면 정지
   };
 
-  base.addEventListener('touchstart', (e) => { start(e.changedTouches[0]); e.preventDefault(); }, { passive: false });
+  base.addEventListener('touchstart', (e) => {
+    if (active && ![...e.touches].some((t) => t.identifier === id)) end();
+    start(e.changedTouches[0]); e.preventDefault();
+  }, { passive: false });
   base.addEventListener('touchmove', (e) => {
     for (const t of e.changedTouches) if (t.identifier === id) move(t);
     e.preventDefault();
@@ -77,6 +82,8 @@ function setupJoystick() {
     for (const t of e.changedTouches) if (t.identifier === id) end();
   });
   base.addEventListener('touchcancel', end);
+  addEventListener('blur', () => { if (active) end(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && active) end(); });
 
   // 📱 ?touchsim=1 일 때만 — 마우스로 조이스틱을 끈다(Aside 페르소나는 터치를 못 보낸다). 일반 유저엔 영향 없음
   if (touchSimOn(location.search)) {

@@ -40,7 +40,8 @@ import { trackChop, trackEvent, onTrack } from './analytics.js';          // [GA
 import { IS_ANDROID } from './platform.js';
 import { createPerfSampler, perfContext } from './perf-sample.js';   // 📱 플레이 앱 기기별 FPS(세션당 1회 perf_sample)
 import { createKeyState, isEditableTarget } from './keys.js';      // ⌨️ 키 눌림 상태(입력칸 무시·포커스 손실 리셋) + 우클릭 메뉴 예외 판정
-import { BASE_DIST, camOffsetFor, defaultCam, effectivePitch, isDefaultCam, loadCam, moveToWorld, saveCam } from './camera-user.js';   // 🎥 플레이어 카메라(줌·기울기) — 순수 모델
+import { BASE_DIST, camOffsetFor, defaultCam, effectivePitch, isDefaultCam, loadCam, moveToWorld, saveCam } from './camera-user.js';
+import { followK, stickMove, turnToward } from './move-feel.js';   // 🎥 플레이어 카메라(줌·기울기) — 순수 모델
 import { initCameraGestures } from './camera-gestures.js';   // 🎥 두 손가락 핀치·기울기 / 휠 / 우클릭 드래그
 import { tierOf, paletteOf, GEM_COLOR, mineHitPower, expandWoodOf, seedSaved, digIsOneShot, sickleReach } from './tool-tiers.js';
 import { BLUEPRINTS, blueprintOfTool, hiddenQuestFor, tier2Status, sanitizeToolFlags } from './tool-blueprints.js';   // 🔨 도구 2단계(도면·히든 의뢰·제작)
@@ -5968,6 +5969,7 @@ function initInput() {
     get: () => camUser,
     set: setCamUser,
     commit: commitCamUser,
+    onTwo: () => ui.act?.('camtwo'),
     keyOk: (e) => !isEditableTarget(e.target),
   });
   document.getElementById('cam-reset-btn')?.addEventListener('click', () => { resetCamUser(); Sound.blip(); });
@@ -6339,7 +6341,8 @@ function updatePlayer(dt, t) {
   if (!closeUp) { mx += analog.x; mz += analog.z; }
   if (userCamOn() && camUser.yaw) ({ x: mx, z: mz } = moveToWorld(mx, mz, camUser.yaw));
 
-  const moving = Math.abs(mx) > 0.05 || Math.abs(mz) > 0.05;
+  const stick = stickMove(mx, mz);
+  const moving = stick.scale > 0;
   if (moving && sitting) sitting = false;   // 움직이면 일어남
   if (moving && emoteAnim) { playerAnchor.scale.set(1, 1, 1); emoteAnim = null; } // 움직이면 이모트 취소
   if (moving && !movedOnce) { movedOnce = true; ui.act?.('move'); } // 튜토리얼: 첫 이동
@@ -6347,12 +6350,11 @@ function updatePlayer(dt, t) {
     playerAnchor.position.y = -0.3;         // 앉기: 몸을 낮춤
     playerAnchor.rotation.z *= 0.9;
   } else if (moving) {
-    const len = Math.hypot(mx, mz) || 1;
-    mx /= len; mz /= len;
-    player.position.x += mx * speed * dt;
-    player.position.z += mz * speed * dt;
-    player.rotation.y = lerpAngle(player.rotation.y, Math.atan2(mx, mz), 0.2);
-    walkPhase += dt * 12;
+    ({ mx, mz } = stick);
+    player.position.x += mx * speed * stick.scale * dt;
+    player.position.z += mz * speed * stick.scale * dt;
+    player.rotation.y = turnToward(player.rotation.y, Math.atan2(mx, mz), dt);
+    walkPhase += dt * 12 * (0.5 + 0.5 * stick.scale);
     playerAnchor.position.y = Math.abs(Math.sin(walkPhase)) * (mudBoots ? 0.07 : 0.18);
     playerAnchor.rotation.z = Math.sin(walkPhase) * (mudBoots ? 0.09 : 0.05);
   } else if (!updateEmote(dt)) {  // 이모트 모션 중이면 기본 idle 숨쉬기 대신 모션 재생
@@ -6933,7 +6935,7 @@ function updateCamera(dt) {
   const f = camFocus();
   _camTarget.copy(f).add(_camOff);
   if (userCamOn() && _camTarget.y < f.y + CAM_MIN_H) _camTarget.y = f.y + CAM_MIN_H;   // 🎥 낮은 피치에서 땅을 뚫지 않게
-  const k = 1 - Math.pow(0.025, dt);          // 값↓ = 더 부드럽게(느긋하게) 추적
+  const k = followK(dt);
   camera.position.lerp(_camTarget, k);
   _camLook.lerp(_camTarget.set(f.x, f.y + 1.2, f.z - lookAhead), k);   // ☀️ 루프탑처럼 발밑이 0이 아닐 때도 눈높이를 따라간다
   camera.lookAt(_camLook);

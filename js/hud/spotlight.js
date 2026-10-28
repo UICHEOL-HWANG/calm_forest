@@ -16,8 +16,15 @@ body.tool-fan-open #tool-fan { z-index: 49; }
 #spot-layer .sp-hand[data-h="tap"], #spot-layer .sp-hand[data-h="click"] { animation: sptap 1s ease-in-out infinite; }
 #spot-layer .sp-hand[data-h="hold"] { animation: sphold 1.8s ease-in-out infinite; }
 #spot-layer .sp-hand[data-h="drag"] { animation: spdrag 1.6s ease-in-out infinite; }
-#spot-layer .sp-hand[data-h="twist"] { animation: sptwist 1.6s ease-in-out infinite; }
-@keyframes sptwist { 0%, 100% { transform: rotate(-30deg); } 50% { transform: rotate(30deg); } }
+#spot-layer .sp-hand[data-h="two"], #spot-layer .sp-hand[data-h="twist"] { width: 0; height: 0; margin: 4px 0 0 10px; }
+#spot-layer .sp-hand[data-h="twist"] { animation: sporbit 2.4s ease-in-out infinite; }
+#spot-layer .sp-hand i { position: absolute; width: 36px; height: 36px; margin: -18px 0 0 -18px; border-radius: 50%; background: rgba(255,255,255,.55); border: 3px solid #fff; box-shadow: 0 0 0 5px rgba(255,210,87,.45); }
+#spot-layer .sp-hand[data-h="two"] i:nth-child(1) { left: -42px; top: 12px; animation: sppress 1.4s ease-in-out infinite; }
+#spot-layer .sp-hand[data-h="two"] i:nth-child(2) { left: 42px; top: -12px; animation: sppress 1.4s ease-in-out .15s infinite; }
+#spot-layer .sp-hand[data-h="twist"] i:nth-child(1) { left: -44px; top: 0; }
+#spot-layer .sp-hand[data-h="twist"] i:nth-child(2) { left: 44px; top: 0; }
+@keyframes sppress { 0%, 100% { transform: scale(1.25); opacity: .25; } 40%, 70% { transform: scale(1); opacity: 1; } }
+@keyframes sporbit { 0%, 100% { transform: rotate(-35deg); } 50% { transform: rotate(35deg); } }
 @keyframes sptap { 0%, 100% { transform: translate(0, 0) scale(1); } 45% { transform: translate(0, 6px) scale(.88); } }
 @keyframes sphold { 0% { transform: translate(0, 0) scale(1); } 25% { transform: translate(0, 6px) scale(.86); } 70% { transform: translate(-46px, -30px) scale(.86); } 100% { transform: translate(-46px, -30px) scale(1); opacity: .2; } }
 @keyframes spdrag { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(22px, -18px); } 50% { transform: translate(0, -30px); } 75% { transform: translate(-22px, -18px); } }
@@ -91,7 +98,8 @@ export function createSpotlight({ t, trackEvent, blocked = () => false }) {
     (s.keys || []).forEach((k) => { const kb = document.createElement('kbd'); kb.textContent = k; $('.sp-keys').appendChild(kb); });
     const hand = $('.sp-hand');
     hand.dataset.h = s.hand;
-    hand.textContent = s.hand === 'click' ? '🖱️' : s.hand === 'key' ? '' : s.hand === 'twist' ? '✌️' : '👆';
+    if (s.hand === 'two' || s.hand === 'twist') hand.innerHTML = '<i></i><i></i>';
+    else hand.textContent = s.hand === 'click' ? '🖱️' : s.hand === 'key' ? '' : '👆';
     $('.sp-dots').innerHTML = run.steps.map((_, k) => `<i class="${k <= run.i ? 'on' : ''}"></i>`).join('');
     const canSkip = run.skip === 'all' || (run.skip === 'optional' && !s.core);
     const sk = $('.sp-skip'); sk.textContent = t('건너뛰기 ›'); sk.classList.toggle('show', canSkip);

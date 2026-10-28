@@ -517,6 +517,9 @@ export const EN = {
   '이모트/앉기': 'Emotes / Sit',
   '카메라 되돌리기': 'Reset camera',
   '🔄 두 손가락으로 비틀면 시점이 돌아가요': '🔄 Twist with two fingers to turn the view',
+  '✌️ 화면에 손가락 두 개를 올려 보세요': '✌️ Put two fingers on the screen',
+  '🔄 그대로 동그랗게 비틀면 시점이 돌아가요': '🔄 Now twist them in a circle to turn the view',
+  '🧭 이 버튼을 누르면 처음 시점으로 돌아와요': '🧭 Tap this button to go back to the starting view',
   '🔄 Q·E로 시점을 돌려요': '🔄 Press Q or E to turn the view',   // 🎥 카메라 줌·기울기 되돌리기(#cam-reset-btn)
   '이모트': 'Emotes',
   '메뉴': 'Menu',

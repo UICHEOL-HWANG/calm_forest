@@ -1,13 +1,17 @@
 export const DONE_KINDS = ['act', 'open', 'menu', 'click', 'tap'];
 
-const CAM_TOUCH = { key: 'cam', target: '#cam-spot-zone', hand: 'twist', text: '🔄 두 손가락으로 비틀면 시점이 돌아가요', done: 'act:camrotate' };
+const CAM_TOUCH = [
+  { key: 'cam_two', target: '#cam-spot-zone', hand: 'two', text: '✌️ 화면에 손가락 두 개를 올려 보세요', done: 'act:camtwo' },
+  { key: 'cam', target: '#cam-spot-zone', hand: 'twist', text: '🔄 그대로 동그랗게 비틀면 시점이 돌아가요', done: 'act:camrotate' },
+  { key: 'cam_reset', target: '#cam-reset-btn', hand: 'tap', text: '🧭 이 버튼을 누르면 처음 시점으로 돌아와요', done: 'click' },
+];
 const CAM_PC = { key: 'cam', target: null, keys: ['Q', 'E'], hand: 'key', text: '🔄 Q·E로 시점을 돌려요', done: 'act:camrotate' };
 
 const TOUCH_FULL = [
   { key: 't_move', core: true, target: '#joy-base', hand: 'drag', text: '🕹️ 끌어서 걸어 보세요', done: 'act:move' },
   { key: 't_tool', core: true, target: '#tool-btn', hand: 'tap', text: '🧰 탭해서 도구를 골라요', done: 'act:toolpage' },
   { key: 't_use', core: true, target: '#action-btn', hand: 'tap', text: '⭕ 큰 버튼으로 도구를 써요', done: 'act:use' },
-  CAM_TOUCH,
+  ...CAM_TOUCH,
   { key: 't_bag', target: '#bag-btn', hand: 'tap', text: '🎒 가방엔 재화와 재료가 있어요', done: 'open:bag-menu' },
   { key: 't_dex', target: '#hud-dex', hand: 'tap', text: '📖 도감에서 모은 것을 봐요', done: 'open:dex-modal' },
   { key: 't_menu', target: '#hud-menu', hand: 'tap', text: '☰ 사진·소식함·설정은 여기 있어요', done: 'menu' },
@@ -68,7 +72,7 @@ export function spotSteps(kind, touch, info = null) {
   if (kind === 'new') return touch ? TOUCH_NEW : PC_NEW;
   if (kind === 'menu') return MENU;
   if (kind === 'pill') return [{ ...PILL[0], text: pillText(info) }];
-  if (kind === 'cam') return [touch ? CAM_TOUCH : CAM_PC];
+  if (kind === 'cam') return touch ? CAM_TOUCH : [CAM_PC];
   return [];
 }
 

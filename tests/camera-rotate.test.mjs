@@ -126,8 +126,9 @@ test('투어 단계 목록: 새 유저 full 과 기존 유저 cam 투어 모두 
   const { spotSteps } = await import('../js/onboarding/spot-steps.js');
   for (const touch of [true, false]) {
     assert.ok(spotSteps('full', touch).some(s => s.key === 'cam' && !s.core));
-    assert.equal(spotSteps('cam', touch).length, 1);
-    assert.equal(spotSteps('cam', touch)[0].done, 'act:camrotate');
+    assert.ok(spotSteps('cam', touch).some(s => s.key === 'cam' && s.done === 'act:camrotate'));
   }
+  assert.equal(spotSteps('cam', false).length, 1);
+  assert.equal(spotSteps('cam', true).length, 3);
   assert.equal(spotSteps('cam', true)[0].target, '#cam-spot-zone');
 });

@@ -26,7 +26,7 @@ const pitchOf = v => Math.atan2(v.y, Math.hypot(v.x, v.z));
 const deg = r => (r * 180) / Math.PI;
 
 test('the game faces the avatar along atan2(dx, dz) when it walks', () => {
-  assert.match(gameSource(), /player\.rotation\.y = lerpAngle\(player\.rotation\.y, Math\.atan2\(mx, mz\), 0\.2\)/);
+  assert.match(gameSource(), /player\.rotation\.y = turnToward\(player\.rotation\.y, Math\.atan2\(mx, mz\), dt\)/);
   assert.equal(facingYaw(0, 1), 0);
   assert.equal(facingYaw(1, 0), Math.PI / 2);
   assert.equal(facingYaw(0, -1), Math.PI);

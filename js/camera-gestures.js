@@ -44,7 +44,7 @@ export function initCameraGestures(o) {
 
   canvas.addEventListener('touchstart', (e) => {
     const tt = e.targetTouches;   // 캔버스에서 시작한 손가락만(조이스틱·버튼 손가락은 빠진다)
-    if (tt.length >= 2 && o.enabled()) g.lastMultiAt = performance.now();
+    if (tt.length >= 2 && o.enabled()) { g.lastMultiAt = performance.now(); o.onTwo?.(); }
     if (g.active) { if (tt.length > 2) endGesture(); return; }   // 세 번째 손가락 = 그만(오작동 방지)
     const p = two(tt);
     if (!p || !o.enabled()) return;
