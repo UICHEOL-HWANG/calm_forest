@@ -51,7 +51,7 @@ for (const [lang, read] of BOTH) test(`[${lang}] fragment 에 문서 껍데기·
   assert.doesNotMatch(h, /<(!doctype|html|head|body|script|style|link)\b/i);
 });
 
-// 1부(sec-01..21, 2026-10-18 세계수 장 추가) + 2부 간지(sec-22) + 2부 9장(sec-23..31) — docs: dev/active/app-link-guide
+// 1부(sec-01..21, 2026-10-18 세계수 장 추가) + 2부 간지(sec-22) + 2부 9장(sec-23..31) — docs: dev/archive/app-link-guide
 const SECTION_COUNT = 31;
 for (const [lang, read] of BOTH) test(`[${lang}] 섹션 ${SECTION_COUNT}개 · id sec-01..sec-${SECTION_COUNT} · 각각 eyebrow + h2[data-chip]`, () => {
   const h = read();

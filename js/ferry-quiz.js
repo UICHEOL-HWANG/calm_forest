@@ -5,7 +5,7 @@
 //    (브라우저: game.js quizData() · Node: tools/ferry-quiz/data-node.mjs 가 같은 모양을 만든다)
 //  ▶ qid = '<tpl>:<entity>' — GA4 축. 표시 문자열은 트래킹에 싣지 않는다.
 //  ▶ 날짜 시드 → 그날 모두 같은 세트·같은 보기 순서.
-//  ▶ 승인(2026-09-30): 화면 C 나루터 팻말 · 보상 (b) 코인. 계획: dev/active/ferry-quiz
+//  ▶ 승인(2026-09-30): 화면 C 나루터 팻말 · 보상 (b) 코인. 계획: dev/archive/ferry-quiz
 // =============================================================
 function pickN(rnd, arr, n) {
   const a = [...arr];

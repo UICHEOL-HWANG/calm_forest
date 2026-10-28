@@ -1,5 +1,5 @@
 -- =============================================================
---  /rss.xml 용 전체 공지 읽기 함수 (dev/active/seo-basics)
+--  /rss.xml 용 전체 공지 읽기 함수 (dev/archive/seo-basics)
 --  notices RLS 는 authenticated 만 읽게 돼 있어 anon 키를 쓰는 Worker 가 못 읽는다.
 --  전체 공지(target_user_id is null, reply_to is null)만 돌려주는 security definer 함수로 연다.
 --  개인 답장은 절대 나가지 않는다.

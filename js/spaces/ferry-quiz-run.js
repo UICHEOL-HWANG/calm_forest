@@ -3,7 +3,7 @@
 //  ------------------------------------------------------------
 //  ⚠️ game.js 와 서로 import 한다(순환). 로딩 시점엔 game.js 값을 읽지 않는다 — 함수 안에서만.
 //  ▶ 시작하는 순간 그날은 끝(닫고 다시 열어 정답 캐기 방지). 보상은 맞힐 때마다 바로(quizAnswer).
-//  ▶ 트래킹엔 qid·엔티티 id 만(표시 문자열 금지 — i18n·리네임에 깨진다). 계획: dev/active/ferry-quiz
+//  ▶ 트래킹엔 qid·엔티티 id 만(표시 문자열 금지 — i18n·리네임에 깨진다). 계획: dev/archive/ferry-quiz
 // =============================================================
 import { dateHash, gameState, giveReward, requestSave, todayStr } from '../game.js';   // 🔁 순환 import — 함수 안에서만
 import { trackEvent } from '../analytics.js';

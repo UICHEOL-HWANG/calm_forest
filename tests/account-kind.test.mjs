@@ -33,8 +33,8 @@ test('도메인은 끝자리 정확 일치 — 비슷한 주소·대소문자·�
 });
 
 test('도메인 상수가 Worker 의 합성 이메일과 같다', () => {
-  assert.match(src('toss-auth/src/index.js'), new RegExp('@' + TOSS_EMAIL_DOMAIN.replace(/\./g, '\\.') + '`'));
-  assert.match(src('pgs-auth/src/index.js'), new RegExp('@' + PGS_EMAIL_DOMAIN.replace(/\./g, '\\.') + '`'));
+  assert.match(src('workers/toss-auth/src/index.js'), new RegExp('@' + TOSS_EMAIL_DOMAIN.replace(/\./g, '\\.') + '`'));
+  assert.match(src('workers/pgs-auth/src/index.js'), new RegExp('@' + PGS_EMAIL_DOMAIN.replace(/\./g, '\\.') + '`'));
 });
 
 test('supabase-client 는 user_metadata.toss/pgs 로 판정하지 않는다', () => {
@@ -48,5 +48,5 @@ test('🍎 게임센터 합성 계정 — gc.calmforest.local, gc-auth Worker �
   assert.equal(accountKind(user('gc-ef56@gc.calmforest.local')), 'gc');
   assert.equal(accountKind(user('x@gc.calmforest.local.evil.com')), null);
   assert.equal(accountKind(user('forest@gmail.com', { gc: true })), null);
-  assert.match(src('gc-auth/src/index.js'), new RegExp('@' + GC_EMAIL_DOMAIN.replace(/\./g, '\\.') + '`'));
+  assert.match(src('workers/gc-auth/src/index.js'), new RegExp('@' + GC_EMAIL_DOMAIN.replace(/\./g, '\\.') + '`'));
 });

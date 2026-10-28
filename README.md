@@ -22,10 +22,7 @@ calm_forest/
 │  │                     #      toss-thumbnail.png(앱인토스 가로 썸네일 1932×828 · 웹 배포 제외)
 │  ├─ brand/            #   🐻 브랜드 마크 — bear-25deg-1024.png(원본) · icon-600.png(앱인토스)
 │  └─ pwa/               #   PWA 매니페스트 · icon-192/512 · maskable-512
-├─ sims/                 # 🧪 검수용 프로토타입 (배포 제외)
-│  ├─ sea-sim.html       #   바다 낚시 미니게임·연출
-│  ├─ arm-sim.html       #   릴대 조형·모션
-│  └─ chick-wing-sim.html#   병아리 날개-팔 조형 (2026-08-28 폐기)
+├─ sims/                 # 🧪 디자인 시안·비교 목업 (배포 제외)
 ├─ js/                   # 🎮 게임 소스 (ES 모듈)
 │  ├─ config.js          #   ⚙️ 설정(키/ID, 로깅 간격, A/B EXPERIMENT 스위치)
 │  ├─ supabase-client.js #   🔐 로그인·저장/불러오기·로그 전송·세그먼트(client_id/is_guest/variant)
@@ -57,7 +54,17 @@ calm_forest/
 │  ├─ ci.yml             #   dev/PR 구문 검사(배포 아님)
 │  ├─ supabase-to-bq.yml #   매일 cron 데이터 파이프라인
 │  └─ deploy.yml         #   (비활성) 옛 GitHub Pages 배포 — Cloudflare로 이전
-└─ docs/                 # 📚 문서 (DEPLOY / GA4_GUIDE / DATA_PIPELINE)
+├─ worker/ · functions/  # ☁️ 게임 본체 Worker(wrangler.jsonc main) · /api 라우트·크론
+├─ workers/              # 🔑 로그인 교환 Worker — toss-auth · pgs-auth · gc-auth (각자 wrangler.toml)
+├─ guide/ · beta/ · wiki/# 📖 배포되는 보조 페이지(안내서·베타 일지·도감 위키)
+├─ android/ · ios/       # 📱 Capacitor 네이티브 셸
+├─ vendor/               # three.js·supabase 로컬 사본(Capacitor 번들용, scripts/fetch-vendor.mjs)
+├─ tests/                # ✅ node --test
+├─ ml/ · infra/          # 🤖 모델·분석 게이트(ml) · Airflow VM·API 도커(infra)
+├─ tools/                # 🧰 카드뉴스·릴스·스토어샷 등 배포 밖 도구
+├─ managed-agents/       # 🤖 Claude Managed Agents 리소스
+├─ dev/                  # 📝 작업 문서 — active/(진행 중) · archive/(main 병합 완료)
+└─ docs/                 # 📚 analysis/ · ops/ · design/ · beta/ (+ beginner-guide/ · superpowers/)
 ```
 
 > 실제 연동(Supabase 키·GA4)은 `js/config.js`, DB 초기화는 `sql/setup/supabase_setup.sql` 참고. 키를 안 넣어도 게임은 오프라인 폴백으로 동작합니다.

@@ -1,12 +1,12 @@
 // 🦆 사공 퀴즈 문제 검수 페이지 — 템플릿마다 시드 1..300 으로 나오는 서로 다른 문제를 전부 모아 ko/en 표로.
-//    사용: node tools/ferry-quiz/review.mjs → dev/active/ferry-quiz/review.html
+//    사용: node tools/ferry-quiz/review.mjs → dev/archive/ferry-quiz/review.html
 //    C안(나루터 팻말)은 표찰 4개가 한 줄 — 보기가 길면 2×2 로 접는다. 그 대상을 표에 표시한다.
 import { writeFileSync } from 'node:fs';
 import { QUIZ_TEMPLATES } from '../../js/ferry-quiz.js';
 import { nodeQuizData } from './data-node.mjs';
 
 export const LONG_CHOICE = 5;   // 한국어 글자 수(이모지 제외) — 넘으면 표찰 2×2
-const OUT = new URL('../../dev/active/ferry-quiz/review.html', import.meta.url);
+const OUT = new URL('../../dev/archive/ferry-quiz/review.html', import.meta.url);
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const mulberry = (a) => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a);
   t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };

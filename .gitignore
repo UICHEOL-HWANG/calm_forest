@@ -82,8 +82,8 @@ dist-cap/
 android/app/google-services.json
 
 # 💎 프리미엄 레퍼런스 — 타 게임 스크린샷(저작권), 로컬 전용. README.md 만 추적
-dev/active/premium-cosmetics/refs/*
-!dev/active/premium-cosmetics/refs/README.md
+dev/archive/premium-cosmetics/refs/*
+!dev/archive/premium-cosmetics/refs/README.md
 
 # 🧑‍🤝‍🧑 페르소나 플레이 기록(라벨, user_id 포함)
 tools/persona-sim/runs/
@@ -96,7 +96,7 @@ ml/reports/beta_h1_eda_2026-09-16/tester_metrics.csv
 ml/reports/beta_h2_map_eda_2026-09-16/map_open_event_metrics.csv
 ml/reports/beta_h4_diary_eda_2026-09-16/d7_preference_rows_masked.csv
 ml/reports/beta_h8_completion_eda_2026-09-16/tester_day_grid.csv
-dev/active/halloween-coin-decor/look/mockups.html
+dev/archive/halloween-coin-decor/look/mockups.html
 
 # 🔔🍎 Firebase iOS 설정(API 키 포함) — PUBLIC 저장소라 로컬에만 둔다(안드로이드 google-services.json 과 같은 규칙)
 ios/App/App/GoogleService-Info.plist

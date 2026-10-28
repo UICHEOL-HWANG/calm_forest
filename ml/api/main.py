@@ -25,7 +25,7 @@ app = FastAPI(title="calm-forest ml api", version="1.0.0")
 # CORS 는 보안 경계가 아니다 — 앱인토스 웹뷰의 오리진을 미리 알 수 없고,
 # 오리진을 가려봐야 브라우저 밖 호출은 어차피 막지 못한다.
 # 대신 어떤 오리진이 오는지 churn.py 가 적립 행에 남긴다.
-# (선례: toss-auth/src/index.js 의 corsHeaders — 같은 판단으로 운영 중)
+# (선례: workers/toss-auth/src/index.js 의 corsHeaders — 같은 판단으로 운영 중)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

@@ -88,13 +88,13 @@
 > 사용자 결정: 앱은 구글 로그인 버튼 대신 **켜면 조용히 연결**(토스처럼). 안드로이드 대응물 = PGS v2 자동 로그인 + 서버 검증.
 > 계획: `~/.claude/plans/partitioned-purring-flask.md`. iOS Game Center·웹 구글 계정 연결은 범위 밖.
 - [x] main 병합(a0fd942 나가기 루프 수정 → exit-flag 재사용)
-- [x] `js/pgs-native.js` + 테스트 7 · `pgs-auth/` Worker + 테스트 8 (fetch 주입)
+- [x] `js/pgs-native.js` + 테스트 7 · `workers/pgs-auth/` Worker + 테스트 8 (fetch 주입)
 - [x] `supabase-client.js` signInWithPlayGames · provider 'pgs' · 게스트 이관 대상에 pgs 포함
 - [x] `index.html` 부팅 자동 연결(나가기 직후 건너뜀) · body.platform-android 한 버튼 · 넛지 출구 pgs · GA4 `pgs_connect{mode:auto|button|nudge}`
 - [x] 네이티브 `PlayGamesPlugin.java`(로컬 플러그인) · MainActivity 등록 · play-services-games-v2 22.1.0 · APP_ID 비면 SDK 미초기화(크래시 방지)
 - [x] ⚠️ 빌드는 **JDK 21+** 필요(Capacitor 8) — `JAVA_HOME=~/Library/Java/JavaVirtualMachines/openjdk-22.0.1/Contents/Home` (corretto-17 은 `invalid source release: 21`)
 - [ ] 🧑 **콘솔(사용자)**: Play Games Services 프로젝트 생성 → 프로젝트 ID · Android 사용자 인증 정보(SHA-1 2F:7E:FB…69:1F) · 게임 서버 클라이언트 id/secret · 테스터 추가 또는 구성 게시
-- [ ] 값 반영: `games-ids.xml` · `js/config.js` PGS_SERVER_CLIENT_ID · `pgs-auth/wrangler.toml` PGS_CLIENT_ID
+- [ ] 값 반영: `games-ids.xml` · `js/config.js` PGS_SERVER_CLIENT_ID · `workers/pgs-auth/wrangler.toml` PGS_CLIENT_ID
 - [~] 🧑 시크릿 3종 등록(✅ Worker 배포·PGS_USER_SECRET 2026-09-25, SUPABASE_SERVICE_KEY 사용자 입력 중, PGS_CLIENT_SECRET 콘솔 대기)(`-c wrangler.toml`) → `wrangler deploy` → config.js PGS_AUTH_ENDPOINT → 가짜 코드 curl 401
 - [ ] 📝 새 문구 검수(넛지 '🎮 플레이 게임즈…' 4종 + 실패 토스트)
 - [ ] versionCode 5 → build:cap → bundleRelease → upload:play internal → 실기기: 무화면 입장 · 재시작 이어짐 · 나가기→바로 플레이하기 · 비행기 모드 게스트

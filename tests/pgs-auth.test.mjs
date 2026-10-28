@@ -1,7 +1,7 @@
 // 📱 pgs-auth Worker — Play Games authCode → Supabase 세션
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import worker, { exchangeCode, fetchPlayerId, pgsIdentity } from '../pgs-auth/src/index.js';
+import worker, { exchangeCode, fetchPlayerId, pgsIdentity } from '../workers/pgs-auth/src/index.js';
 
 const ENV = {
   SUPABASE_URL: 'https://sb.test', SUPABASE_ANON_KEY: 'anon', SUPABASE_SERVICE_KEY: 'service',

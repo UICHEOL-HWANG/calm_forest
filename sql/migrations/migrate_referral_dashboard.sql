@@ -6,7 +6,7 @@
 --  ② cf_admin_referral(days) — dashboards/admin_analytics.html 🤝 섹션(C안)이 부른다. 관리자만.
 --     단계 출처: 시트·공유·도착 = session_logs.counts(클라이언트 GA4 카운터 사본) ·
 --               연결·활성 = referrals · 보상 지급 = purchases(source='referral') · 실패 사유 = ①
---  ▶ 페르소나·셀프테스트 계정은 뺀다(이메일 패턴 — dev/active/persona-sim).
+--  ▶ 페르소나·셀프테스트 계정은 뺀다(이메일 패턴 — dev/archive/persona-sim).
 --  ▶ 멱등 — 다시 돌려도 된다.
 -- =============================================================
 

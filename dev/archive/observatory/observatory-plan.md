@@ -13,7 +13,7 @@
 - 시각 기준(픽셀·색·수치의 원본):
   - 외관/실내: `sims/observatory-sim.html?v=c&view=ext|int` (C안 확정)
   - 렌즈 뷰: `sims/observatory-eyepiece-sim.html?v=d` (절충안 확정)
-  - 캡처: `dev/active/observatory/look/compare.png`, `eye-d-compare.png`
+  - 캡처: `dev/archive/observatory/look/compare.png`, `eye-d-compare.png`
 
 ## 1. 확정 문구 (임의로 바꾸지 말 것)
 | 위치 | 문구 |

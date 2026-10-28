@@ -3,7 +3,7 @@
 //  calm forest · 🧙 할로윈 마녀 스킨 — 클래식 고깔(A) · 별밤 견습(C)
 //  ------------------------------------------------------------
 //  시안: sims/halloween-skin-sim.html witchClassic·witchStarry·witchCone·perch·HAT_FIT
-//        (2026-10-06 확정, dev/active/halloween-premium/look/)
+//        (2026-10-06 확정, dev/archive/halloween-premium/look/)
 //  ▶ 덧입히기: buildAnimalMesh 의 built 를 받아 built.group 을 제자리에서 고친다.
 //    치수·동물 id 는 built.k(id·R·bs·bodyY·HR·HY) — 시안의 g.userData.k · a.id 와 같은 값이다.
 //  ▶ 모자는 머리 단위 공간(HR=1)에서 만들어 head 그룹에 굽는다(buildAnimalHead 가 시안과 같은 함수).
