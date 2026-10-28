@@ -543,6 +543,22 @@
   #nudge-modal .dc-grid { margin-bottom: 10px; }
   #nudge-modal #nudge-google { width: 100%; }
   #nudge-modal #nudge-later { display: block; margin: 8px auto 0; }
+  #nudge-modal .nudge-gift { display: flex; gap: 12px; align-items: center; }
+  #nudge-modal .nudge-gift[hidden], #nudge-modal .dc-t[hidden] { display: none; }
+  #nudge-modal .ng-thumb { width: 52px; height: 52px; flex: none; border-radius: 14px; background: linear-gradient(160deg, #e9f5e6, #cfe8d2); display: grid; place-items: center; font-size: 30px; }
+  #nudge-modal #nudge-gift-label { display: block; font-size: 11px; color: #7a8a7f; font-weight: 700; }
+  #nudge-modal #nudge-gift-title { display: block; font-size: 15px; color: #2b3a30; margin-top: 2px; word-break: keep-all; }
+  #nudge-modal #nudge-gift-line { display: block; font-size: 12px; color: #5b6b60; margin-top: 3px; }
+  #gift-box-modal .gift-box-card { width: min(320px, 90vw); background: #f6f0e4; border-radius: 28px; padding: 22px 18px 18px; text-align: center; }
+  #gift-box-modal .gift-box-pkg { display: block; margin: 0 auto 10px; border: none; background: none; font-size: 76px; line-height: 1; cursor: pointer; }
+  #gift-box-modal[data-state="closed"] .gift-box-pkg { animation: giftWobble 1.4s ease-in-out infinite; }
+  #gift-box-modal[data-state="open"] .gift-box-pkg { animation: giftPop .45s ease-out; }
+  #gift-box-modal #gift-box-title { display: block; font-size: 18px; color: #2b3a30; word-break: keep-all; }
+  #gift-box-modal #gift-box-sub { margin: 6px 0 14px; font-size: 13px; color: #5b6b60; word-break: keep-all; }
+  #gift-box-modal #gift-box-ok { width: 100%; }
+  #gift-box-modal #gift-box-ok[hidden] { display: none; }
+  @keyframes giftWobble { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(-8deg); } 40% { transform: rotate(7deg); } 60% { transform: rotate(-4deg); } 80% { transform: rotate(2deg); } }
+  @keyframes giftPop { 0% { transform: scale(.4); } 70% { transform: scale(1.15); } 100% { transform: scale(1); } }
   #toast.panel { display: flex; align-items: center; gap: 8px; background: rgba(28,44,35,.92); color: #fff; border-radius: 22px; padding: 8px 16px 8px 12px; box-shadow: 0 10px 24px rgba(0,0,0,.3); width: max-content; max-width: min(560px, 92vw); line-height: 1.35; }
   #toast .tst-ic { font-size: 1.2em; flex: none; }
   #toast .tst-tx { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
@@ -2208,8 +2224,8 @@
     #worldmap .wm-card h2 { margin: 2px 0 6px; font-size: 17px; }
   }
   #minimap { cursor: pointer; }
-  #dex-modal, #nudge-modal { position: fixed; inset: 0; z-index: 33; display: none; place-items: center; background: rgba(20,40,30,0.55); }
-  #dex-modal.show, #nudge-modal.show { display: grid; }
+  #dex-modal, #nudge-modal, #gift-box-modal { position: fixed; inset: 0; z-index: 33; display: none; place-items: center; background: rgba(20,40,30,0.55); }
+  #dex-modal.show, #nudge-modal.show, #gift-box-modal.show { display: grid; }
   /* 목록만 스크롤시킨다 — 종마다 설명이 붙으면 내용이 2800px 을 넘어서,
      카드째 스크롤하면 제목과 닫기 버튼이 저 아래로 밀려 손이 닿지 않는다.
      (모바일에선 모달이 화면을 거의 채워 바깥을 눌러 닫을 여백도 없다) */
@@ -3088,12 +3104,21 @@
   <div id="nudge-modal">
     <div class="tut-card daily-card">
       <div class="dc-grid">
-        <div class="dc-t dc-hero dc-hero-ic"><span class="dc-ic" id="nudge-ico">📖</span><div><small>GUEST</small><b id="nudge-title">도감이 늘고 있어요!</b></div></div>
+        <div class="dc-t dc-hero dc-hero-ic"><span class="dc-ic" id="nudge-ico">📖</span><div><small id="nudge-tag">GUEST</small><b id="nudge-title">도감이 늘고 있어요!</b></div></div>
+        <div class="dc-t dc-wide nudge-gift" id="nudge-gift" hidden><span class="ng-thumb">🎁</span><div><small id="nudge-gift-label"></small><b id="nudge-gift-title"></b><span id="nudge-gift-line"></span></div></div>
         <div class="dc-t dc-peach dc-wide"><b id="nudge-warn">나가면 도감·코인·마을이 사라져요</b></div>
-        <div class="dc-t dc-wide"><b id="nudge-body"></b></div>
+        <div class="dc-t dc-wide" id="nudge-body-row"><b id="nudge-body"></b></div>
       </div>
       <button id="nudge-google" class="dex-google-btn" style="width:100%">🔐 구글로 로그인하고 영구 보존</button>
       <button id="nudge-later" class="ghost" style="margin-top:8px; border:none; background:none; cursor:pointer; opacity:.6; font-size:13px">나중에 할게요</button>
+    </div>
+  </div>
+  <div id="gift-box-modal" data-state="closed">
+    <div class="tut-card daily-card gift-box-card">
+      <button id="gift-box-pkg" class="gift-box-pkg" type="button">🎁</button>
+      <b id="gift-box-title"></b>
+      <p id="gift-box-sub"></p>
+      <button id="gift-box-ok" class="dex-google-btn" type="button" hidden>확인</button>
     </div>
   </div>
 
@@ -3626,6 +3651,8 @@
     import { PLATFORM, IS_TOSS, IS_ITCH, IS_ANDROID, IS_IOS, IS_NATIVE } from './js/platform.js';   // 🔵 앱인토스 웹뷰 여부(로그인 버튼 전환) · 🎮 itch iframe 여부 · 📱 구글 플레이 앱
     import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input, markNoticesSeen, resyncPurchases } from './js/game.js';
     import { bootReferral, inviteBanner, referralOnPlay, openInviteSheet, referralEnabled } from './js/referral/index.js';   // 🤝 친구 초대
+    import { signupGiftOnPlay } from './js/signup-gift/index.js';
+    import { nudgeView } from './js/signup-gift/copy.js';
     import { bootAppBanner, mountAppBanner } from './js/app-banner-ui.js';
     import { mountLoginStore } from './js/login-store-ui.js';
     import { createLoginDwell } from './js/login-dwell.js';
@@ -5574,6 +5601,7 @@
       try { initPush(); } catch (e) { console.warn('[push] init skipped', e); }   // 🔔 안드로이드만 — 허용한 사람 조용히 재등록·설정 토글
       // 🤝 친구 초대 — 초대받았으면 연결(하트핀), 내가 초대한 친구 정산. 기다리지 않는다(실패해도 게임 진행)
       referralOnPlay({ auth: authState, toast: (m) => ui.toast(m, 2800), track: trackEvent, resync: resyncPurchases });
+      signupGiftOnPlay({ auth: authState, track: trackEvent, resync: resyncPurchases, ui });
       // 📲 앱 유도 배너 — 웹·안드로이드/아이폰·스토어가 열린 OS 에서만(TUNING.appBanner.storeLive). 실패해도 게임 진행
       try {
         mountAppBanner({
@@ -7365,12 +7393,23 @@
 
     // ── 🔔 로그인 넛지(게스트 전용) — 도감 마일스톤(3·7종)에 게임에서 호출 ──
     let nudgeFrom = 'dex';
+    const nudgeBtnText = $('nudge-google').textContent;
+    const nudgeWarnText = $('nudge-warn').textContent;
     ui.loginNudge = (trigger) => {
       if (!isGuestNow()) return;                               // 로그인 유저에겐 표시 안 함
       nudgeFrom = trigger;
       const d = Input.getDex();
-      $('nudge-ico').textContent = trigger === 'shop' ? '💎' : '📖';
-      $('nudge-title').textContent = trigger === 'shop' ? '로그인 후 구매 가능' : `도감 ${d.count}종 수집 중!`;
+      const v = nudgeView({ trigger, platform: PLATFORM, inApp: inAppLogin.inApp });
+      $('nudge-ico').textContent = trigger === 'shop' ? '💎' : (v.ico || '📖');
+      $('nudge-tag').textContent = v.tag || 'GUEST';
+      $('nudge-title').textContent = trigger === 'shop' ? '로그인 후 구매 가능' : (v.title || `도감 ${d.count}종 수집 중!`);
+      $('nudge-gift-label').textContent = v.gift.label;
+      $('nudge-gift-title').textContent = v.gift.title;
+      $('nudge-gift-line').textContent = v.gift.line;
+      $('nudge-gift').hidden = false;
+      $('nudge-warn').textContent = v.warn || nudgeWarnText;
+      $('nudge-google').textContent = v.button || nudgeBtnText;
+      $('nudge-body-row').hidden = !!v.title;
       $('nudge-body').textContent = IS_TOSS ? '🔒 토스 계정 연결하면 영구 보존'
         : IS_ANDROID ? '🔒 플레이 게임즈 연결하면 기기를 바꿔도 이어서'
         : IS_IOS ? '🔒 게임 센터 연결하면 기기를 바꿔도 이어서'

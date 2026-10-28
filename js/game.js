@@ -302,6 +302,8 @@ import { WORLD_TREE, buildWorldTree, debugTreeShot, openWorldTree, queueChapterS
 import { restoreMountain } from './mountain/save.js';
 import { onMountainside } from './mountain/landmark.js';
 import { souvenirOutdoorMesh } from './mountain/souvenir-art.js';
+import { SIGNUP_GIFT_IDS, buildSignupGift } from './spaces/signup-gift-art.js';
+import { requestSignupNudge } from './signup-gift/index.js';
 import { FRIEND_ARCH_ID, buildFriendArch } from './spaces/friend-arch-art.js';   // 🌈 무지개 우정 아치(🤝 초대 보상)
 import { MINE_CART_ID, MINE_CART_BOX, buildMineCart } from './delve/cart-art.js';
 import { outdoorFootprint, blockedByWorld } from './world/outdoor-overlap.js';
@@ -2745,6 +2747,7 @@ export async function enterGame() {
     window.__decorY = () => decorMeshes.map(m => [m.userData.rec?.id, +m.position.y.toFixed(2), !!m.userData.collider, !!m.userData.onSurface]);   // 🪔 높이·충돌체 검수용
     window.__decorPick = (i) => pickDecor(decorMeshes[i]);   // 🪔 i 번째를 들어 올린다(받침 제거 검수)
     window.__decorBack = () => stopDecorPlacing(true);       // 🪔 들었던 걸 제자리로
+    window.__outdoor = (id, x, z, rot = 0) => placeOutdoor(x, z, true, id, rot);
     window.__goFloor = goFloor;                       // 🪜 실내 층 이동(검수용) — goFloor 는 모듈 지역 함수라 여기서만 노출
   }
   // 테스트: ?river=1 — 나루터(강 공간)에서 시작. ?time=0.8 과 조합하면 밤 물길 확인
@@ -5608,6 +5611,8 @@ function outdoorMesh(id) {
     g.add(buildMineCart(THREE));
   } else if (id === FRIEND_ARCH_ID) {   // 🌈 무지개 우정 아치 — 걸어서 통과(충돌체 없음) · 밤 반짝이는 houseWindows
     g.add(buildFriendArch(THREE, (m) => houseWindows.push(m)));
+  } else if (SIGNUP_GIFT_IDS.includes(id)) {
+    g.add(buildSignupGift(THREE, id, (m) => houseWindows.push(m)));
   } else if (id === 'kiln') {
     // 🔥 화덕 — sims/kiln-sim.html 에서 확정한 C안(낮은 아궁이). 상판이 표시 면이라
     //    완성물이 쌓이면 가까이 가지 않아도 "다 구워졌다" 가 읽힌다.
@@ -7810,6 +7815,7 @@ function tryBuild() {
   syncUnlocks();   // 🔓 집 기초 → 👷 목수 귀환
   trackEvent('house_build', { stage: next, ...Object.fromEntries(info.items.map(i => [i.k, i.need])) });   // [GA4] 건축 퍼널(증축 house_expand 와 같은 축: stage)
   if (next < 3) ui.toast?.(`🪵 ${STAGE_NAMES[next]} 완성!`);
+  if (next === 1) requestSignupNudge(gameState, 'house', ui);
   refreshInventoryUI();
   if (coinCost) requestSave();   // 🪙 코인을 쓴 자리는 바로 저장(새로고침으로 잃지 않게) — 구성품 구매와 같은 규칙
 }

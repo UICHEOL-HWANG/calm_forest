@@ -82,7 +82,7 @@ test('SQL — 단계 보상 · 웰컴 · 장식 가드 목록이 카탈로그와
     [[1, 'tools_star', 'cosmetic'], [3, 'friendarch', 'decor'], [5, 'friend_wing', 'cosmetic']]);
   assert.match(SQL, /'friend_pin', 'cosmetic', 'referral'/);
   const decor = SQL.match(/_reward_decor_ids\(\)[\s\S]*?array\[([\s\S]*?)\]::text\[\]/)[1];
-  assert.deepEqual(ids(decor), REWARD_DECOR.map(d => d.id));
+  assert.deepEqual(ids(decor), REWARD_DECOR.filter(d => d.reward === 'referral').map(d => d.id));
   const rewardItems = ITEMS.filter(i => i.reward).map(i => i.id).sort();
   assert.deepEqual(rewardItems, ['friend_pin', 'friend_wing', 'tools_star']);
 });
