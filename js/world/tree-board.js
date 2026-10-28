@@ -26,6 +26,7 @@ export const TREE_DECOR = [
   { id: 'hearth',    ico: '🔥', name: '화롯불',   tags: { light: 3, shelter: 1 }, cost: { wood: 3, coal: 1 }, bloom: 'kitchen' },
   { id: 'oldtree',   ico: '🍄', name: '버섯 고목', tags: { shade: 3, shelter: 2 }, cost: { wood: 5 },          bloom: 'forest' },
   { id: 'crystallamp', ico: '🔮', name: '수정 등불', tags: { light: 3, shelter: 1 }, cost: { stone: 4, coal: 1 }, bloom: 'mine' },
+  { id: 'snowman',   ico: '☃️', name: '눈사람',   tags: { shelter: 2, shade: 2 }, cost: { stone: 3, wood: 1 }, bloom: 'snow' },
 ];
 
 /**
@@ -59,7 +60,14 @@ export const BRANCHES = [
       { id: 'woods',     name: '숲의 꾸러미',    need: { wood: 30, stone: 10 }, reward: { coins: 50 } },
       { id: 'firefly',   name: '반딧불 꾸러미',  need: { coal: 5, gem: 1 },    reward: { coins: 80 } },
     ] },
-  { id: 'mine',    ico: '⛏️', name: '광산의 가지', short: '광산', npc: 'miner',   npcIco: '👷', npcName: '광부 아저씨',
+  { id: 'snow',    ico: '❄️', name: '눈의 가지',   short: '눈',   npc: 'sledkeeper', npcIco: '🛷', npcName: '썰매지기', after: 'forest',
+    lead: { todo: '빈터를 꾸미면 🛷 썰매지기의 산장에 불이 켜져요', done: '🛷 썰매지기의 산장에 불이 켜졌어요' },
+    habitat: { shelter: 4, light: 3 },
+    bundles: [
+      { id: 'firewood',  name: '땔감 꾸러미',    need: { wood: 30, coal: 8 },  reward: { coins: 60 } },
+      { id: 'cocoa',     name: '코코아 꾸러미',  need: { crop: 20, seed: 5 },  reward: { coins: 70 } },
+    ] },
+  { id: 'mine',    ico: '⛏️', name: '광산의 가지', short: '광산', npc: 'miner',   npcIco: '👷', npcName: '광부 아저씨', after: 'forest',
     habitat: { light: 4, shelter: 3, shade: 2 },
     bundles: [
       { id: 'shaft',     name: '갱도 꾸러미',    need: { coal: 15, stone: 20 }, reward: { coins: 60 } },
@@ -219,7 +227,8 @@ export function branchGrowth(tree, id) {
 export function branchUsable(tree, id) {
   const i = BRANCH_IDS.indexOf(id);
   if (i < 0) return false;
-  return i === 0 || habitatDone(tree, BRANCH_IDS[i - 1]);
+  if (i === 0) return true;
+  return habitatDone(tree, BRANCHES[i].after || BRANCH_IDS[i - 1]);
 }
 
 export function canAfford(inv, cost) {

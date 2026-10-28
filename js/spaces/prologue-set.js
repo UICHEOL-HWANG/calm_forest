@@ -17,6 +17,8 @@ import { buildNPCFigure } from './npc.js';
 import { NPCS } from '../data/npcs.js';
 import { t as tr } from '../i18n.js';
 
+const LIMBS_OPENING = Object.fromEntries(Object.entries(LIMBS).filter(([id]) => id !== 'snow'));
+
 // ── 세트 좌표(WILT 로컬) ──
 export const TREE = new THREE.Vector3(0, 0, -6);          // 세계수 밑동
 export const WALK_FROM = new THREE.Vector3(1.5, 0, 29.5); // 컷3 — 마을 어귀(남쪽 아치 밖)
@@ -198,7 +200,7 @@ export function buildIntroSet() {
   }
 
   // 🌳 세계수 — 마을과 같은 조형
-  const art = buildTreeArt(THREE, { label: tr('세계수') });
+  const art = buildTreeArt(THREE, { label: tr('세계수'), limbs: LIMBS_OPENING });
   art.group.position.copy(TREE);
   g.add(art.group);
   const leafMats = [art.crown.material, ...Object.values(art.clusters).map(c => c.mesh.material)];
@@ -462,7 +464,7 @@ export function updateIntroSet(S, T, t) {
   // 🌳 세계수 — 꽃 먼저 지고 → 잎이 물들고 → 가지마다 차례로 진다. 💧 가지가 마지막
   const bloom = 1 - smooth((T - 5.5) / 1.4);
   const branches = {};
-  for (const id of Object.keys(LIMBS)) {
+  for (const id of Object.keys(LIMBS_OPENING)) {
     const o = BR_ORDER[id] ?? 0.5;
     branches[id] = { leaves: 1 - smooth((T - (6.7 + o * 2.4)) / 1.6), bloom };
   }

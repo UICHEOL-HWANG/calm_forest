@@ -63,7 +63,7 @@ test('lineup migration adds the sled column, covers every sled id and re-creates
   const list = m.match(/sled_runs_sled check \(sled is null or sled in \(([^)]*)\)\)/);
   assert.ok(list, 'sled check');
   const ids = [...list[1].matchAll(/'([a-z]+)'/g)].map(x => x[1]);
-  assert.deepEqual(ids, [...SLED_IDS]);
+  assert.deepEqual(ids, SLED_IDS.filter(id => id !== 'worldtree'));
   assert.match(m, /drop constraint if exists sled_runs_phys_v;/);
   assert.match(m, /p_board = 'sled'/);
   assert.doesNotMatch(m, /phys_v = 1/);

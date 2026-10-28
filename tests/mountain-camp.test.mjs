@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from '../vendor/three/three.module.js';
-import { CAMP, CAMP_COLLIDERS, PLAYER_R, pushOutProps, START_SPOT, atHut, YARD, DOOR_SPOT, DOOR_R, inYard, clampSummit, CAFE_EXIT_SPOT, summitHeight } from '../js/mountain/camp-layout.js';
+import { CAMP, CAMP_COLLIDERS, PLAYER_R, pushOutProps, START_SPOT, atHut, YARD, DOOR_SPOT, DOOR_R, inYard, clampSummit, CAFE_EXIT_SPOT, summitHeight, LEAN_SLEDS, hutLocal } from '../js/mountain/camp-layout.js';
 import { CLIMB_PATH, CLIMB_START, PLAZA, clampLocal } from '../js/mountain/climb.js';
 import { buildCamp, CAMP_DRAWS } from '../js/mountain/camp-art.js';
 
@@ -10,7 +10,7 @@ const free = p => CAMP_COLLIDERS.every(c => Math.hypot(p.x - c.x, p.z - c.z) >= 
 
 test('every plaza and summit prop has a collider', () => {
   const ids = new Set(CAMP_COLLIDERS.map(c => c.id));
-  for (const id of ['campfire', 'bench0', 'bench1', 'bench2', 'lamp0', 'lamp1', 'lamp2', 'woodpile', 'stump', 'snowman', 'sign', 'sticks', 'cairn', 'finishL', 'finishR', 'keeper', 'hut', 'poleL', 'poleR']) {
+  for (const id of ['campfire', 'bench0', 'bench1', 'bench2', 'lamp0', 'lamp1', 'lamp2', 'woodpile', 'stump', 'snowman', 'sign', 'sticks', 'cairn', 'finishL', 'finishR', 'keeper', 'hut', 'poleL', 'poleR', 'leanSleds']) {
     assert.ok(ids.has(id), id);
   }
 });
@@ -66,7 +66,7 @@ test('atHut triggers near the summit and not at the trail start', () => {
 test('the camp is two drawables, solid and glowing, both merged', () => {
   const g = buildCamp(THREE);
   const ds = [];
-  g.traverse(o => { if (o.isMesh) ds.push(o); });
+  g.traverse(o => { if (o.isMesh && o !== g.userData.hutLight) ds.push(o); });
   assert.equal(ds.length, CAMP_DRAWS);
   assert.equal(CAMP_DRAWS, 2);
   assert.ok(ds[0].geometry.getAttribute('color'));
@@ -176,4 +176,10 @@ test('from the summit a straight walk reaches the hut door on the yard', () => {
   assert.ok(Math.hypot(s.pos.x - DOOR_SPOT.x, s.pos.z - DOOR_SPOT.z) <= 0.3, `${s.pos.x.toFixed(2)},${s.pos.z.toFixed(2)}`);
   assert.ok(s.c.yard);
   assert.equal(s.y, CAMP.deck.y);
+});
+
+test('the sleds leaning by the hut block the player instead of being walked through', () => {
+  for (const sl of LEAN_SLEDS) assert.ok(!free(hutLocal(sl.f, sl.r)), JSON.stringify(sl));
+  const c = CAMP_COLLIDERS.find(x => x.id === 'leanSleds');
+  assert.ok(Math.hypot(c.x - DOOR_SPOT.x, c.z - DOOR_SPOT.z) > c.r + PLAYER_R + DOOR_R);
 });

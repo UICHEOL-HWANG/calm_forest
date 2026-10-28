@@ -8,6 +8,8 @@ body.is-touch #talk-btn { display: none !important; }
   body.is-touch:has(#hint-banner.slot-bottom.show) #toast { bottom: calc(282px + 70px + env(safe-area-inset-bottom)); }
 }
 body.is-touch:not(.coaching) #hint-banner:not(.slot-bottom) { top: max(var(--rcol-bottom, calc(64px + var(--top-inset))), var(--qp-bottom, 0px)); left: auto; right: max(12px, calc(env(safe-area-inset-right) + 8px)); transform: none; }
+body.is-touch #cold-hud { left: auto; right: max(12px, calc(env(safe-area-inset-right) + 8px)); transform: none; top: max(var(--rcol-bottom, calc(64px + var(--top-inset))), var(--qp-bottom, 0px)); }
+body.is-touch:not(.coaching):has(#cold-hud.show) #hint-banner:not(.slot-bottom) { top: calc(max(var(--rcol-bottom, calc(64px + var(--top-inset))), var(--qp-bottom, 0px)) + 32px); }
 
 body.is-touch #hotbar { left: 0; top: 0; bottom: auto; transform: none; padding: 0; width: 0; height: 0; overflow: visible; background: none; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
 body.is-touch #hotbar > .slot { display: none !important; }
@@ -50,7 +52,7 @@ body.tool-fan-open #tool-btn .tb-tip { display: none; }
 #near-pill.show { display: grid; }
 @keyframes pillbob { 0%, 100% { margin-top: -25px; } 50% { margin-top: -30px; } }
 body:not(.playing) #near-pill, body.menu-open #near-pill, body.mg-open #near-pill, body.duel-open #near-pill, body.intro-open #near-pill,
-body.dream-cut #near-pill, body.guide-open #near-pill, body.boat-run #near-pill, body.tool-fan-open #near-pill { display: none !important; }
+body.dream-cut #near-pill, body.guide-open #near-pill, body.boat-run #near-pill, body.tool-fan-open #near-pill, body:has(#mist-choice.show) #near-pill { display: none !important; }
 body.is-touch.near-pill-on #door-prompt { opacity: 0 !important; }
 
 `;

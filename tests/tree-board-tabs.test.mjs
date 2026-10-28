@@ -18,10 +18,13 @@ test('탭은 상태 점 + 이모지만, 이름은 툴팁·읽기 라벨로', () 
   assert.doesNotMatch(read('index.html'), /\.tb-tab > span:not\(\.tb-tab-name\) \{ display: none; \}/);
 });
 
-test('나무 가지는 판 가지와 1:1 · 5갈래 고르게(72° 간격, 광산은 뒤쪽)', () => {
+test('나무 가지는 판 가지와 1:1 · 처음 5갈래는 72° 그대로 · ❄️ 눈은 숲과 광산 사이', () => {
+  assert.equal(BRANCH_IDS.length, 6);
   assert.deepEqual(Object.keys(LIMBS).sort(), [...BRANCH_IDS].sort());
   const deg = (id) => (Math.round(Math.atan2(LIMBS[id].dir[1], LIMBS[id].dir[0]) * 180 / Math.PI) + 360) % 360;
-  const all = BRANCH_IDS.map(deg).sort((a, b) => a - b);
+  const five = ['water', 'farm', 'kitchen', 'forest', 'mine'];
+  const all = five.map(deg).sort((a, b) => a - b);
   for (let i = 0; i < all.length; i++) assert.equal((all[(i + 1) % all.length] - all[i] + 360) % 360, 72);
   assert.equal(deg('mine'), 270);
+  assert.ok(deg('snow') > Math.min(deg('forest'), deg('mine')) && deg('snow') < Math.max(deg('forest'), deg('mine')), `${deg('forest')} ${deg('snow')} ${deg('mine')}`);
 });
