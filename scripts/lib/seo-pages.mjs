@@ -12,7 +12,7 @@ export const SAME_AS = Object.freeze([
 ]);
 
 export const SEO_PAGES = Object.freeze([
-  { path: '/', src: ['index.html'], title: '고요한 숲', description: '포근한 로우폴리 3D 힐링 마을 게임이에요. 걷고, 농사짓고, 낚시하고, 집을 짓고 꾸며요. 설치 없이 브라우저에서 바로, 안드로이드·iOS 앱으로도 할 수 있어요.' },
+  { path: '/', src: ['index.html'], title: '고요한 숲', description: '농사·낚시·잠수·집 꾸미기를 즐기는 로우폴리 3D 힐링 게임. 설치 없이 웹과 앱에서 바로 플레이.' },
   { path: '/guide/', src: ['guide/guide.html'], lang: 'ko', title: '초보자 안내서 · 고요한 숲', description: '처음 30분을 실제 플레이 화면으로 짚어드려요. 나무 베기, 농사, 집짓기, 낚시, 주민 의뢰까지 한 번에.' },
   { path: '/guide/en/', src: ['guide/guide-en.html'], lang: 'en', title: "Beginner's Guide · calm forest", description: 'Your first 30 minutes in calm forest, with real screenshots: chopping, farming, building, fishing and villager requests.' },
   { path: '/shop', src: ['pages/shop.template.html', 'js/cosmetics/catalog.js'], file: 'shop.html', store: true, title: '가격 안내 · 고요한 숲', description: '고요한 숲 프리미엄 꾸미기 가격표. 겉모습만 바꾸는 현금 전용 아이템이며 게임 진행에 유리한 효과는 없어요.' },
