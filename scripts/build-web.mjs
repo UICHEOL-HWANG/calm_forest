@@ -156,6 +156,9 @@ const wikiData = await loadWiki();
 await writeFile(path.join(DIST, 'llms.txt'), llmsTxt({ ...wikiData, asof: new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10) }));
 await writeFile(path.join(DIST, 'sitemap.xml'), sitemapXml(sitemapPaths));
 await writeFile(path.join(DIST, 'robots.txt'), robotsTxt());
+const { adsTxt } = await import('./lib/ads-txt.mjs');
+await writeFile(path.join(DIST, 'ads.txt'), adsTxt());
+await writeFile(path.join(DIST, 'app-ads.txt'), adsTxt());
 
 // 결과 검증 — 금지 패턴이 하나라도 들어갔으면 배포 전에 멈춘다
 const files = await walk(DIST);
