@@ -24,7 +24,7 @@ if (!FLAGS[TARGET]) throw new Error(`[build-cap] 모르는 타깃: ${TARGET} —
 
 const IMPORTMAP_THREE = '"three": "https://unpkg.com/three@0.160.0/build/three.module.js"';
 const IMPORTMAP_ADDONS = '"three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"';
-const SUPABASE_IMPORT = "await import('https://esm.sh/@supabase/supabase-js@2')";
+const SUPABASE_IMPORT = "await import('https://esm.sh/@supabase/supabase-js@2.116.0')";
 const API_ANCHOR = "const API_BASE = '';";
 
 function replaceOnce(text, from, to, where) {

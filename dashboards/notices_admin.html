@@ -173,7 +173,7 @@
     (async () => {
       if (!isSupabaseConfigured()) { showMsg('⚠️ Supabase 키가 설정되지 않았습니다. <code>js/config.js</code>를 먼저 채워주세요.'); return; }
       $('load').style.display = 'block';
-      const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+      const { createClient } = await import('/vendor/supabase.js');
       sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, { auth: ADMIN_AUTH });
       const { data: s } = await sb.auth.getSession();
       if (!s?.session) {

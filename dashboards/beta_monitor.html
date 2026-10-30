@@ -191,7 +191,7 @@
     // ── 부팅 (admin_analytics.html의 인증·RPC 부트 블록 그대로 복제, rpc명만 교체) ──
     (async () => {
       if (!isSupabaseConfigured()) { showMsg('⚠️ Supabase 키가 설정되지 않았습니다. <code>js/config.js</code>를 먼저 채워주세요.'); return; }
-      const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+      const { createClient } = await import('/vendor/supabase.js');
       sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, { auth: ADMIN_AUTH });
 
       // 공유 링크(?k=토큰)면 로그인 게이트를 건너뜁니다.
