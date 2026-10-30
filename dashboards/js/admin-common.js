@@ -30,7 +30,7 @@ export async function bootAdmin({ allowShare = true } = {}) {
     showMsg('⚠️ Supabase 키가 설정되지 않았습니다. <code>js/config.js</code>를 먼저 채워 주세요.');
     return null;
   }
-  const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+  const { createClient } = await import('/vendor/supabase.js');
   const sb = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, { auth: ADMIN_AUTH });
   if (allowShare && shareKey) return sb;
 

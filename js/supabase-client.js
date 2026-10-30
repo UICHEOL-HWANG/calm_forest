@@ -170,7 +170,7 @@ export async function initAuth(onStatusChange, { keepGuest = false } = {}) {
     // 📦 웹·토스·itch 는 CDN 그대로. 구글 플레이(Capacitor) 빌드만 scripts/build-cap.mjs 가
     //    이 줄을 vendor/supabase.js 로 치환한다 — 앱은 오프라인에서도 떠야 하기 때문.
     //    ⚠️ 이 문자열이 build-cap 의 치환 앵커다. 바꾸면 빌드가 실패하도록 되어 있다.
-    const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+    const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.116.0');
     if (IS_ITCH) dropStoredSession();
     supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, {
       auth: { detectSessionInUrl: true, persistSession: !IS_ITCH, autoRefreshToken: true },

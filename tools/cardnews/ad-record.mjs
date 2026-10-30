@@ -21,7 +21,7 @@ import { spawn } from 'node:child_process';
 import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { enterGame } from './game-session.mjs';
-import { SCENES } from './ad-scenes.mjs';
+import { SCENES, setSceneFps } from './ad-scenes.mjs';
 
 const argv = process.argv.slice(2);
 const arg = (n, d) => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] : d; };
@@ -35,6 +35,7 @@ const EXEC = process.env.CHROMIUM_PATH;          // 클라우드 샌드박스 �
 
 const scene = SCENES[SCENARIO];
 if (!scene) { console.error(`알 수 없는 --scenario: ${SCENARIO} (${Object.keys(SCENES).join('|')})`); process.exit(1); }
+setSceneFps(FPS);
 const DUR = ONLY ? Math.min(Number(ONLY), scene.duration) : scene.duration;
 
 // ── 가상 시계 — 부팅 동안은 실시간, __vtStart() 뒤로는 __vtStep(ms) 로만 흐른다 ──
@@ -80,11 +81,12 @@ await page.evaluate(async (setup) => {
     cos.equipped[slot] = id;
   }
   g.applyCosmetics(cos);
-  window.__tp(setup.at[0], setup.at[1]);
+  if (setup.at) window.__tp(setup.at[0], setup.at[1]);
   if (setup.face != null) g.player.rotation.y = setup.face;
+  if (setup.init) await (0, eval)(setup.init)(g);
   for (const d of setup.decor || []) g.placeOutdoor(d[1], d[2], true, d[0], d[3] ?? 0);
   // 🌲 마당 앞(카메라가 지나갈 자리)의 나무는 숨긴다 — 새 세이브마다 나무 위치가 무작위라 화면을 가린다
-  const [yx, yz] = setup.at;
+  const [yx, yz] = setup.at || [1e9, 1e9];
   for (const t of g.trees) if (Math.abs(t.position.x - yx) < 7 && t.position.z > yz - 1.5 && t.position.z < yz + 14) { t.visible = false; if (t.userData.collider) t.userData.collider.off = true; }   // 충돌체도 꺼야 안 보이는 벽이 안 남는다
   // 🧑‍🤝‍🧑 NPC·이름표·퀘스트 '!' 는 광고 화면에서 뺀다 — 게임 루프가 visible 을 다시 켜므로 속성째 막는다
   for (const o of g.npcObjs) Object.defineProperty(o.group, 'visible', { get: () => false, set() {}, configurable: true });
@@ -138,7 +140,7 @@ for (let f = 0; f < N; f++) {
     window.__vtStep(dt);
     // 렌더 직후 같은 태스크 안에서 뜬다 — preserveDrawingBuffer 없이도 버퍼가 살아 있다
     return document.querySelector('#app canvas').toDataURL('image/jpeg', 0.94).split(',')[1];
-  }, { cam: st.cam, down, up, press: st.press, run: st.run, dt: 1000 / FPS });
+  }, { cam: st.cam, down, up, press: st.press, run: st.run, dt: 1000 / FPS * (st.dtScale ?? 1) });
   if (!ff.stdin.write(Buffer.from(b64, 'base64'))) await new Promise(r => ff.stdin.once('drain', r));
   if (f % FPS === 0) process.stdout.write(`\r${(t).toFixed(0)}s / ${DUR}s  (${((Date.now() - t0) / 1000).toFixed(0)}s 경과)`);
 }

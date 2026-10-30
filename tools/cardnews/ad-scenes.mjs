@@ -26,7 +26,9 @@ const orbit = (t, a, b, { r, h, a0, a1, look = 1.0, fov = 38 }) => {
   return { p: [r * Math.sin(ang), h, r * Math.cos(ang)], l: [0, look, 0], fov };
 };
 /** 이 시각 프레임 하나에만 실행 */
-const once = (t, at, fps = 30) => t >= at && t < at + 1 / fps;
+let sceneFps = 30;
+export const setSceneFps = (f) => { sceneFps = f; };
+const once = (t, at, fps = sceneFps) => t >= at && t < at + 1 / fps;
 
 // 집 앞 마당 — HOUSE_POS(-8,-8) 의 정면(+z). 장식은 플레이어 좌우·뒤로 놓아 카메라와 겹치지 않게
 const YARD = [-8, -3.6];
@@ -39,6 +41,109 @@ const plantTree = `g => {
 }`;
 const place = (id, dx, dz, rot = 0) => `g => g.placeOutdoor(${YARD[0] + dx}, ${YARD[1] + dz}, true, '${id}', ${rot})`;
 const tpYard = `g => { window.__tp(${YARD[0]}, ${YARD[1]}); g.player.rotation.y = ${FACE_CAM}; }`;
+
+const MF0 = [400, 300], DV0 = [400, -300];
+const mudPrep = (spId, near) => `g => {
+  const run = window.__mudflat().run, P = g.player.position;
+  const lx = P.x - ${MF0[0]}, lz = P.z - ${MF0[1]};
+  const pool = run.holes.filter(h => h.z < lz - 1.5 && h.z > lz - 7 && Math.abs(h.x - lx) < 5);
+  const h = (pool.length ? pool : run.holes)[${near}] || run.holes[0];
+  h.sp = window.__MUD_SP.find(s => s.id === '${spId}'); h.period = 2.4; h.phase = .72; h.miss = 0;
+  P.set(${MF0[0]} + h.x, 0, ${MF0[1]} + h.z + .85); g.player.rotation.y = Math.PI;
+}`;
+const diveMark = `g => {
+  const run = window.__dive().run, P = g.player.position;
+  run.air = 1;
+  const lx = P.x - ${DV0[0]}, lz = P.z - ${DV0[1]};
+  const byDist = [...run.items].sort((a, b) => Math.hypot(a.x - lx, a.z - lz) - Math.hypot(b.x - lx, b.z - lz));
+  const a = byDist[0], b = byDist.find(i => i !== a && Math.hypot(i.x - a.x, i.z - a.z) > 2.5);
+  window.__pearl = { id: 90001, x: b.x, z: b.z, d: b.d, ph: b.ph, sp: window.__DIVE_SP.find(s => s.id === 'pearl') };
+  run.items = [...run.items.filter(i => i !== b), window.__pearl];
+  P.set(${DV0[0]} + a.x, P.y, ${DV0[1]} + a.z + .9); g.player.rotation.y = Math.PI;
+}`;
+const diveToPearl = `g => {
+  const p = window.__pearl, P = g.player.position;
+  P.set(${DV0[0]} + p.x, P.y, ${DV0[1]} + p.z + .95); g.player.rotation.y = Math.PI;
+}`;
+
+export const SEA_SCENES = {
+  mudflat_catch: {
+    duration: 4.4,
+    query: 'season=summer&weather=clear&time=0.42&dbg=1&mudflat=1&mudflatdebug=1',
+    char: '곰',
+    setup: { init: `async g => { window.__MUD_SP = (await import('/js/forage/logic.js')).MUD_SPECIES; }` },
+    at(t) {
+      const run = [], press = [];
+      if (once(t, 0)) run.push(mudPrep('clam', 0));
+      if (once(t, 0.95)) press.push('Space');
+      if (once(t, 2.2)) run.push(mudPrep('octo', 1));
+      if (once(t, 3.15)) press.push('Space');
+      const cam = t < 2.2
+        ? move(t, 0, 2.2, { p: [3.5, 6.5, 8.5], l: [0, 0, -5], fov: 56 }, { p: [2.4, 4.2, 6.0], l: [0, 0.2, -3], fov: 52 })
+        : move(t, 2.2, 4.4, { p: [-2.5, 2.0, -3.9], l: [0, 1.25, -0.5], fov: 50 }, { p: [-2.2, 1.9, -3.6], l: [0, 1.3, -0.5], fov: 50 });
+      return { cam, keys: [], press, run };
+    },
+  },
+  sea_fish: {
+    duration: 4.0,
+    query: 'season=summer&weather=clear&time=0.42&dbg=1&sea=1&seadebug=1',
+    char: '곰',
+    setup: {},
+    at(t) {
+      const run = [];
+      if (once(t, 0.1)) run.push(`g => window.__sea.action()`);
+      if (once(t, 0)) run.push(`g => g.setCameraRig((cam) => {
+        const P = g.player.position, mg = window.__sea.mg, f = mg.fmesh && mg.st === 'fight' ? mg.fmesh.getWorldPosition(mg.fmesh.position.clone()) : null;
+        const tx = f ? f.x : P.x, tz = f ? f.z : P.z - 6, ty = f ? Math.max(0.3, f.y) : 0.3;
+        window.__fl = window.__fl || { x: tx, y: ty, z: tz };
+        const k = 0.12; window.__fl.x += (tx - window.__fl.x) * k; window.__fl.y += (ty - window.__fl.y) * k; window.__fl.z += (tz - window.__fl.z) * k;
+        const L = window.__fl;
+        cam.position.set(P.x + (P.x - L.x) * 0.25 + 1.2, 2.3, P.z + 3.2);
+        if (cam.fov !== 50) { cam.fov = 50; cam.updateProjectionMatrix(); }
+        cam.lookAt(P.x * 0.45 + L.x * 0.55, 0.7 + L.y * 0.35, P.z * 0.45 + L.z * 0.55);
+      })`);
+      run.push(`g => { const mg = window.__sea.mg; if (mg.st === 'wait' && mg.biteAt > mg.t + 0.35) { mg.biteAt = mg.t + 0.35; mg.nibbles = []; } if (mg.st === 'hook' && mg.t > 0.12) window.__sea.action(); }`);
+      for (const at of [1.75, 3.0]) if (once(t, at)) run.push(`g => { const mg = window.__sea.mg; if (mg.st === 'fight' && !mg.jump) mg.jump = { k: 0, dur: 0.8, h: 1.3 + mg.sp.scale * 0.7 }; }`);
+      for (const at of [2.6, 2.75, 3.6]) if (once(t, at)) run.push(`g => { if (window.__sea.mg.st === 'fight') window.__sea.action(); }`);
+      const cam = move(t, 0, 4.0, { p: [2.6, 1.7, 2.4], l: [-0.6, 0.7, -5], fov: 50 }, { p: [2.2, 1.5, 2.0], l: [-0.4, 0.8, -5], fov: 48 });
+      return { cam, keys: [], run };
+    },
+  },
+  dive_entry: {
+    duration: 2.4,
+    query: 'season=summer&weather=clear&time=0.42&dbg=1&dive=1&divedebug=1',
+    char: '곰',
+    setup: {},
+    at(t) {
+      const press = [];
+      if (once(t, 0.45)) press.push('Space');
+      const cam = move(t, 0, 2.4, { p: [2.4, 1.9, 3.4], l: [0, 0.1, -0.6], fov: 50 }, { p: [2.0, 1.2, 2.8], l: [0, -1.2, -0.6], fov: 50 });
+      return { cam, keys: [], press, run: [] };
+    },
+  },
+  dive_pearl: {
+    duration: 4.0,
+    query: 'season=summer&weather=clear&time=0.42&dbg=1&dive=1&divedebug=1',
+    char: '곰',
+    setup: { init: `async g => { window.__DIVE_SP = (await import('/js/forage/logic.js')).DIVE_SPECIES; const r = window.__dive().run; r.state = 'swim'; r.breath = 1e6; }` },
+    at(t) {
+      const run = [], press = [];
+      if (once(t, 0)) run.push(diveMark);
+      if (once(t, 0.4)) press.push('Space');
+      if (once(t, 1.2)) run.push(diveToPearl);
+      if (once(t, 2.1)) press.push('Space');
+      const cam = t < 1.2
+        ? move(t, 0, 1.2, { p: [3.4, 1.4, -3.8], l: [0, 0, -0.9], fov: 46 }, { p: [3.0, 1.3, -3.5], l: [0, 0, -0.9], fov: 46 })
+        : t < 1.7
+          ? { p: [1.6, 0.4, -5.2], l: [0, -0.5, -1.0], fov: 40 }
+          : t < 2.15
+            ? move(t, 1.7, 2.05, { p: [1.6, 0.4, -5.2], l: [0, -0.5, -1.0], fov: 40 }, { p: [-0.8, -0.15, -2.3], l: [0, -0.55, -0.95], fov: 32 })
+            : move(t, 2.15, 3.1, { p: [-0.8, -0.15, -2.3], l: [0, -0.55, -0.95], fov: 32 }, { p: [-2.8, 1.0, -5.8], l: [0, 1.5, -0.4], fov: 48 });
+      const dtScale = t >= 2.0 && t < 3.3 ? 0.3 : 1;
+      return { cam, keys: [], press, run, dtScale };
+    },
+  },
+};
 
 export const SCENES = {
   // 🎃 할로윈 — 겨울 밤 + 눈. 마녀 옷·박쥐 망토·호박등 자국. 11/2 까지
@@ -107,4 +212,5 @@ export const SCENES = {
       return { cam, keys, press, run };
     },
   },
+  ...SEA_SCENES,
 };

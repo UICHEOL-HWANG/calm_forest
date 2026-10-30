@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>겨울 분수 단계 시안</title>
+<style>
+  :root { --bg:#eef2f5; --ink:#24303a; --sub:#6a7682; --card:#fff; --line:#d7dee5; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.5 -apple-system, "Apple SD Gothic Neo", "Pretendard", sans-serif; }
+  header { padding:20px 24px 8px; display:flex; flex-wrap:wrap; gap:12px; align-items:baseline; }
+  h1 { font-size:20px; margin:0; }
+  header p { margin:0; color:var(--sub); }
+  .toggle { margin-left:auto; display:flex; gap:6px; }
+  .toggle button { border:1px solid var(--line); background:var(--card); border-radius:999px; padding:6px 14px; font:inherit; cursor:pointer; }
+  .toggle button.on { background:var(--ink); color:#fff; border-color:var(--ink); }
+  section { margin:12px 24px 20px; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 16px 16px; }
+  section h2 { margin:0 0 2px; font-size:16px; }
+  section .why { margin:0 0 10px; color:var(--sub); }
+  .row { display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; }
+  figure { margin:0; }
+  canvas { width:100%; aspect-ratio:4/3; display:block; border-radius:10px; background:#dfe8ee; }
+  figcaption { margin-top:4px; font-size:12px; color:var(--sub); }
+  figcaption b { color:var(--ink); }
+  @media (max-width:700px) {
+    header, section { margin-left:12px; margin-right:12px; }
+    header { padding:16px 12px 4px; }
+    .row { grid-template-columns:repeat(2, 1fr); gap:8px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>❄️ 겨울 분수 · 공사 단계 시안</h1>
+  <p>모델은 확정된 b안(2단 + 둘레 등불 4개). 고를 것은 단계가 어떻게 보이느냐입니다.</p>
+  <div class="toggle"><button data-t="day" class="on">낮</button><button data-t="night">밤</button></div>
+</header>
+<main id="main"></main>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+const PAL = {
+  stone: 0xdcd5c3, stoneDark: 0xb3a994, snow: 0xf2f5f8, ice: 0xc4e6f2, wood: 0xa8683c, woodDark: 0x5e3b22,
+  lamp: 0xffd98a, coal: 0x3a3a40, sack: 0x9b8462, fish: 0x6fa7c9, berry: 0xc94a5a, rope: 0xcbb68a,
+};
+const STAGES = [
+  { key: 1, label: '1단계', mats: '돌 · 목재' },
+  { key: 2, label: '2단계', mats: '돌 · 석탄' },
+  { key: 3, label: '3단계', mats: '물고기 · 채집물' },
+  { key: 4, label: '완공', mats: '' },
+];
+const VARIANTS = [
+  { id: 'A', name: 'A · 차곡차곡 쌓기', why: '분수 자체만 단계마다 자랍니다. 가장 깔끔하지만 무엇을 기부했는지는 안 보입니다.' },
+  { id: 'B', name: 'B · 비계와 자재 더미', why: '나무 비계 안에서 자라고, 그 단계에 모은 재료가 옆에 쌓입니다. 기부가 눈에 보이는 공사장 느낌입니다.' },
+  { id: 'C', name: 'C · 윤곽 먼저, 등불 하나씩', why: '완성 모습이 처음부터 희미하게 보이고 단계마다 채워집니다. 등불이 단계마다 하나씩 켜집니다.' },
+];
+
+const cyl = (rt, rb, h, x, y, z, seg = 16) => new THREE.CylinderGeometry(rt, rb, h, seg).translate(x, y, z);
+const box = (w, h, d, x, y, z) => new THREE.BoxGeometry(w, h, d).translate(x, y, z);
+const ball = (r, x, y, z, sy = 1) => new THREE.IcosahedronGeometry(r, 1).scale(1, sy, 1).translate(x, y, z);
+const cone = (r, h, x, y, z, seg = 5) => new THREE.ConeGeometry(r, h, seg).rotateX(Math.PI).translate(x, y, z);
+const rim = (r, y, t = 0.07) => new THREE.TorusGeometry(r, t, 6, 24).rotateX(Math.PI / 2).translate(0, y, 0);
+
+const LAMP_POS = [0, 1, 2, 3].map(i => {
+  const a = Math.PI / 4 + (i / 4) * Math.PI * 2;
+  return { x: Math.cos(a) * 1.32, z: Math.sin(a) * 1.32 };
+});
+
+function lowerBasin(add, k = 'stone') {
+  add(k, cyl(1.0, 1.08, 0.32, 0, 0.16, 0, 20));
+  add(k === 'stone' ? 'stoneDark' : k, rim(0.98, 0.33, 0.06));
+}
+function baseRingPartial(add, n, of = 12) {
+  for (let i = 0; i < n; i++) {
+    const a = (i / of) * Math.PI * 2 + 0.3;
+    add(i % 2 ? 'stoneDark' : 'stone', box(0.42, 0.22, 0.26, 0, 0.11, 0).rotateY(-a + Math.PI / 2).translate(Math.cos(a) * 0.98, 0, Math.sin(a) * 0.98));
+  }
+}
+function column(add, k = 'stone') { add(k, cyl(0.16, 0.22, 0.6, 0, 0.62, 0, 10)); }
+function upper(add, k = 'stone') {
+  add(k, cyl(0.56, 0.36, 0.18, 0, 0.98, 0, 16));
+  add(k, cyl(0.07, 0.1, 0.36, 0, 1.24, 0, 8));
+}
+function finish(add) {
+  add('ice', cyl(0.92, 0.92, 0.04, 0, 0.34, 0, 20));
+  add('ice', cyl(0.48, 0.48, 0.03, 0, 1.06, 0, 16));
+  add('snow', ball(0.14, 0, 1.46, 0, 0.8));
+  for (let i = 0; i < 8; i++) {
+    const a = 0.5 + (i / 8) * Math.PI * 2;
+    add('ice', cone(0.045, 0.18 + (i % 3) * 0.06, Math.cos(a) * 0.54, 0.86, Math.sin(a) * 0.54));
+  }
+  for (let i = 0; i < 3; i++) {
+    const a = 1.1 + (i / 3) * Math.PI * 2;
+    add('snow', ball(0.16 + (i % 2) * 0.04, Math.cos(a) * 0.98, 0.38, Math.sin(a) * 0.98, 0.45));
+  }
+}
+function lampPost(add, p, lit) {
+  add('woodDark', box(0.07, 0.62, 0.07, p.x, 0.31, p.z));
+  add('woodDark', box(0.2, 0.04, 0.2, p.x, 0.66, p.z));
+  add(lit ? 'lampOn' : 'lampOff', ball(0.1, p.x, 0.76, p.z, 1.1));
+  add('snow', ball(0.1, p.x, 0.7, p.z, 0.4));
+}
+function stakes(add) {
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    add('woodDark', box(0.06, 0.4, 0.06, Math.cos(a) * 1.25, 0.2, Math.sin(a) * 1.25));
+  }
+  add('rope', rim(1.25, 0.34, 0.015));
+}
+function scaffold(add, h) {
+  const r = 1.22;
+  for (const [sx, sz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) add('wood', box(0.08, h, 0.08, sx * r, h / 2, sz * r));
+  for (const y of [h * 0.45, h - 0.05]) {
+    add('wood', box(r * 2 + 0.1, 0.06, 0.06, 0, y, r));
+    add('wood', box(r * 2 + 0.1, 0.06, 0.06, 0, y, -r));
+    add('wood', box(0.06, 0.06, r * 2 + 0.1, r, y, 0));
+    add('wood', box(0.06, 0.06, r * 2 + 0.1, -r, y, 0));
+  }
+  add('wood', box(r * 2, 0.04, 0.34, 0, h * 0.45 + 0.05, -r + 0.2));
+}
+function pileStone(add, x, z) {
+  [[0, 0, 0], [0.26, 0.05, 0], [-0.24, 0.08, 0], [0.02, 0.26, 0], [0.1, 0.12, 0.18]].forEach(([dx, dz, dy], i) =>
+    add(i % 2 ? 'stoneDark' : 'stone', box(0.26, 0.18, 0.22, x + dx, 0.09 + dy, z + dz)));
+}
+function pileWood(add, x, z) {
+  for (let i = 0; i < 3; i++) add('wood', box(0.9, 0.09, 0.14, x, 0.05 + i * 0.09, z - 0.1 + i * 0.12));
+}
+function pileCoal(add, x, z) {
+  add('sack', ball(0.2, x, 0.18, z, 1.1));
+  add('sack', ball(0.18, x + 0.3, 0.16, z + 0.08, 1.1));
+  for (let i = 0; i < 5; i++) add('coal', ball(0.07, x + 0.15 + (i - 2) * 0.09, 0.06, z + 0.3 + (i % 2) * 0.05));
+}
+function basketFish(add, x, z) {
+  add('wood', cyl(0.26, 0.2, 0.22, x, 0.11, z, 10));
+  for (let i = 0; i < 3; i++) add('fish', ball(0.08, x - 0.08 + i * 0.08, 0.24, z + (i % 2) * 0.05, 0.6));
+  add('wood', cyl(0.18, 0.16, 0.16, x + 0.42, 0.08, z + 0.1, 10));
+  for (let i = 0; i < 4; i++) add('berry', ball(0.05, x + 0.36 + (i % 2) * 0.1, 0.18, z + 0.06 + (i > 1 ? 0.08 : 0)));
+}
+
+function variantA(add, s) {
+  if (s === 1) { stakes(add); baseRingPartial(add, 7); }
+  if (s >= 2) { lowerBasin(add); column(add); }
+  if (s >= 3) upper(add);
+  if (s === 4) { finish(add); LAMP_POS.forEach(p => lampPost(add, p, true)); }
+}
+function variantB(add, s) {
+  if (s < 4) scaffold(add, s === 1 ? 0.9 : s === 2 ? 1.25 : 1.6);
+  if (s === 1) { baseRingPartial(add, 7); pileStone(add, -1.75, 0.9); pileWood(add, 1.75, 0.9); }
+  if (s >= 2) { lowerBasin(add); column(add); }
+  if (s === 2) { pileStone(add, -1.75, 0.9); pileCoal(add, 1.55, 0.9); }
+  if (s >= 3) upper(add);
+  if (s === 3) basketFish(add, 1.5, 0.95);
+  if (s === 4) { finish(add); LAMP_POS.forEach(p => lampPost(add, p, true)); }
+}
+function variantC(add, s) {
+  if (s === 1) { lowerBasin(add, 'ghost'); column(add, 'ghost'); upper(add, 'ghost'); baseRingPartial(add, 7); }
+  if (s === 2) { lowerBasin(add); column(add); upper(add, 'ghost'); }
+  if (s >= 3) { lowerBasin(add); column(add); upper(add); }
+  if (s === 4) finish(add);
+  LAMP_POS.forEach((p, i) => lampPost(add, p, i < s));
+}
+const BUILD = { A: variantA, B: variantB, C: variantC };
+
+function materialFor(k, night) {
+  if (k === 'ghost') return new THREE.MeshLambertMaterial({ color: 0xbfd9ea, transparent: true, opacity: 0.32, depthWrite: false });
+  if (k === 'lampOn') return new THREE.MeshStandardMaterial({ color: PAL.lamp, emissive: PAL.lamp, emissiveIntensity: night ? 1.6 : 0.35, roughness: 0.6 });
+  if (k === 'lampOff') return new THREE.MeshLambertMaterial({ color: 0x8f8a7d });
+  return new THREE.MeshLambertMaterial({ color: PAL[k], flatShading: true });
+}
+
+function buildFountain(vid, stage, night) {
+  const byKey = new Map();
+  const add = (k, g) => { const a = byKey.get(k); a ? a.push(g) : byKey.set(k, [g]); };
+  BUILD[vid](add, stage);
+  const group = new THREE.Group();
+  for (const [k, geos] of byKey) for (const g of geos) {
+    const m = new THREE.Mesh(g, materialFor(k, night));
+    m.castShadow = k !== 'ghost'; m.receiveShadow = true;
+    group.add(m);
+    if (k === 'lampOn' && night) {
+      const light = new THREE.PointLight(0xffc56a, 1.6, 3.2, 1.6);
+      g.computeBoundingBox(); g.boundingBox.getCenter(light.position);
+      group.add(light);
+    }
+  }
+  group.scale.setScalar(1.3);
+  return group;
+}
+
+function person() {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 0.42, 4, 10), new THREE.MeshLambertMaterial({ color: 0xd9734e }));
+  body.position.y = 0.45; body.castShadow = true;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 14, 10), new THREE.MeshLambertMaterial({ color: 0xf1d2b6 }));
+  head.position.y = 1.0; head.castShadow = true;
+  const hat = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.26, 10), new THREE.MeshLambertMaterial({ color: 0x3f7fae }));
+  hat.position.y = 1.25;
+  g.add(body, head, hat);
+  g.position.set(-1.5, 0, -2.2);
+  return g;
+}
+
+const W = 640, H = 480;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1);
+renderer.setSize(W, H);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+const camera = new THREE.PerspectiveCamera(42, W / H, 0.1, 100);
+camera.position.copy(new THREE.Vector3(0, 14, 16).normalize().multiplyScalar(7.6));
+camera.lookAt(0, 0.8, 0.3);
+
+function scene(vid, stage, night) {
+  const s = new THREE.Scene();
+  s.background = new THREE.Color(night ? 0x1d2a3e : 0xdbe7ef);
+  s.fog = new THREE.Fog(s.background, 14, 26);
+  s.add(new THREE.HemisphereLight(night ? 0x5a6f9a : 0xffffff, night ? 0x1a2230 : 0xb9c7d2, night ? 0.55 : 1.15));
+  const sun = new THREE.DirectionalLight(night ? 0x9fb4e0 : 0xfff3e2, night ? 0.35 : 1.5);
+  sun.position.set(5, 9, 4); sun.castShadow = true;
+  sun.shadow.mapSize.set(1024, 1024);
+  Object.assign(sun.shadow.camera, { left: -5, right: 5, top: 5, bottom: -5 });
+  s.add(sun);
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(12, 40).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0xf4f7fa }));
+  ground.receiveShadow = true;
+  s.add(ground);
+  const plaza = new THREE.Mesh(new THREE.CircleGeometry(2.4, 32).rotateX(-Math.PI / 2).translate(0, 0.005, 0), new THREE.MeshLambertMaterial({ color: 0xd7d2c6 }));
+  plaza.receiveShadow = true;
+  s.add(plaza);
+  s.add(buildFountain(vid, stage, night));
+  s.add(person());
+  return s;
+}
+
+const main = document.getElementById('main');
+const canvases = [];
+for (const v of VARIANTS) {
+  const sec = document.createElement('section');
+  sec.innerHTML = `<h2>${v.name}</h2><p class="why">${v.why}</p><div class="row"></div>`;
+  const row = sec.querySelector('.row');
+  for (const st of STAGES) {
+    const fig = document.createElement('figure');
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const cap = document.createElement('figcaption');
+    cap.innerHTML = `<b>${st.label}</b>${st.mats ? ' · ' + st.mats : ''}`;
+    fig.append(c, cap);
+    row.append(fig);
+    canvases.push({ c, vid: v.id, stage: st.key });
+  }
+  main.append(sec);
+}
+
+function drawAll(night) {
+  for (const { c, vid, stage } of canvases) {
+    renderer.render(scene(vid, stage, night), camera);
+    c.getContext('2d').drawImage(renderer.domElement, 0, 0);
+  }
+  document.body.dataset.ready = night ? 'night' : 'day';
+}
+document.querySelectorAll('.toggle button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.toggle button').forEach(x => x.classList.toggle('on', x === b));
+  drawAll(b.dataset.t === 'night');
+}));
+drawAll(new URLSearchParams(location.search).get('t') === 'night');
+</script>
+</body>
+</html>

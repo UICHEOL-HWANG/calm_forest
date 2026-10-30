@@ -8,7 +8,7 @@
 //     이 파일은 렌더 함수(순수)와 앱 상태/이벤트 배선을 나눈다 —
 //     순수 렌더 함수는 export 해서 눈으로 검증할 때 목데이터로 재사용한다.
 // =============================================================
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.116.0';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, API_BASE } from './config.js';
 
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
