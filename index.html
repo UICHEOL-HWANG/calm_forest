@@ -2220,7 +2220,9 @@
   #worldmap.show { display: grid; }
   #worldmap .wm-card { width: min(520px, 94vw); }
   /* 하한을 주지 않으면 폰 가로·분할 화면(dvh 작음)에서 calc 가 음수가 되어 지도가 통째로 사라진다 */
-  #wm-canvas { display: block; width: max(240px, min(100%, calc((100dvh - 260px) * 66 / 57))); aspect-ratio: 66 / 57; border-radius: 18px; margin: 10px auto 0; box-shadow: inset 0 0 0 2px rgba(255,255,255,0.6); }
+  #wm-canvas-wrap { position: relative; width: max(240px, min(100%, calc((100dvh - 260px) * 76 / 80))); aspect-ratio: 76 / 80; margin: 10px auto 0; }
+  #wm-canvas { display: block; width: 100%; height: 100%; border-radius: 18px; box-shadow: inset 0 0 0 2px rgba(255,255,255,0.6); }
+  #orchard-map-target { position: absolute; width: 2px; height: 2px; transform: translate(-50%, -50%); pointer-events: none; }
   #worldmap .dm-actions { justify-content: center; margin-top: 18px; padding-bottom: 4px; }
   .wm-quests { font-size: 12.5px; line-height: 1.5; text-align: center; margin: 10px 2px 0; opacity: .85; }
   .wm-quests:empty { display: none; }
@@ -2651,7 +2653,7 @@
     #settings-close { position: sticky; bottom: 0; margin-top: 10px; padding: 9px 16px; }
     /* 🗺️ 지도 — 안내문을 빼고 지도 하한을 낮춰 닫기까지 한 화면에 */
     #worldmap .market-hint { display: none; }
-    #wm-canvas { width: max(180px, min(100%, calc((100dvh - 150px) * 66 / 57))); margin-top: 4px; }
+    #wm-canvas-wrap { width: max(180px, min(100%, calc((100dvh - 150px) * 76 / 80))); margin-top: 4px; }
     #worldmap .dm-actions { margin-top: 8px; }
     .wm-quests { margin-top: 6px; }
   }
@@ -3170,7 +3172,7 @@
     <div class="tut-card wm-card">
       <h2>🗺️ 마을 지도</h2>
       <div class="market-hint">가고 싶은 곳을 찾아보세요 — <b>흐린 곳은 아직 잠겨 있어요</b></div>
-      <canvas id="wm-canvas"></canvas>
+      <div id="wm-canvas-wrap"><canvas id="wm-canvas"></canvas><div id="orchard-map-target" aria-label="과수원 위치"></div></div>
       <!-- 📜 의뢰 요약 — 배지만으로는 "누가 어디" 를 한 번에 못 읽는다(작은 아이콘 16개) -->
       <div id="wm-quests" class="wm-quests"></div>
       <div class="dm-actions"><button id="wm-close">닫기</button></div>
@@ -3656,7 +3658,7 @@
     import { pickText, quoteLine, parseBody, leadEmoji, noticeTone } from './js/notices.js';   // 📮 소식함 — 언어별 본문·답장 원문 인용·'|' 표 파서
     import { isTouchDevice } from './js/touch-sim.js';
     import { PLATFORM, IS_TOSS, IS_ITCH, IS_ANDROID, IS_IOS, IS_NATIVE } from './js/platform.js';   // 🔵 앱인토스 웹뷰 여부(로그인 버튼 전환) · 🎮 itch iframe 여부 · 📱 구글 플레이 앱
-    import { bootWorld, enterGame, requestSave, getGameState, npcAccept, npcClaim, Input, markNoticesSeen, resyncPurchases } from './js/game.js';
+    import { bootWorld, enterGame, requestSave, getGameState, atOrchard, mapLocked, npcAccept, npcClaim, Input, markNoticesSeen, resyncPurchases } from './js/game.js';
     import { bootReferral, inviteBanner, referralOnPlay, openInviteSheet, referralEnabled } from './js/referral/index.js';   // 🤝 친구 초대
     import { signupGiftOnPlay } from './js/signup-gift/index.js';
     import { nudgeView } from './js/signup-gift/copy.js';
@@ -3864,15 +3866,16 @@
     //   예전엔 전체 지도가 {x0:-26, z0:-20, span:52}, 미니맵이 중심(0,0)·반경 30 으로 서로 달라
     //   같은 장소가 두 화면에서 다른 자리에 보였고(싱크 어긋남), 둘 다 x=32 인 🍎과수원 입구를
     //   범위 밖으로 흘려 지도 가장자리에 라벨만 잘려 보였다.
-    //   지명 x 는 -26(🏛️박물관) ~ 32(🍎과수원), z 는 -17(🌫️안개 숲) ~ 26(🌟반딧불이 계곡).
-    //   사방에 라벨 여백 4 를 두고 정사각으로 감싼다 — 지명을 새로 늘리면 이 숫자를 다시 잰다.
-    //   마을은 가로로 길다(x 66 · z 57 — 아래 🍄채집 숲·🌟계곡 라벨이 잘리지 않는 선까지). 정사각으로 감싸면 남는 건 바다뿐인데 그만큼 축척이
-    //   작아져 중앙 시설(작업대·상점·시세판·리더보드) 라벨이 서로 먹는다 — 박스도 캔버스도
-    //   같은 66:57 로 눕힌다(#wm-canvas aspect-ratio 와 이 숫자는 함께 움직인다).
-    const MAP_VIEW = { x0: -30, z0: -21, w: 66, h: 57 };
+    //   위치 범위는 박물관(-26,5) ~ 과수원(33,7), 설산(-15,-29.5) ~ 빛 공방(16.5,33.5).
+    //   서쪽 박물관·북쪽 세계수/설산·동쪽 과수원 음영·남쪽 빛 공방을 모두 담고 라벨 여백을 둔다.
+    //   전체 지도는 76:80, 정사각 미니맵은 contain 축척으로 같은 좌표계를 쓴다.
+    const MAP_VIEW = { x0: -34, z0: -41, w: 76, h: 80 };
     const WM_LAND = [   // 섬 실루엣을 이루는 원들 [월드x, 월드z, 반경]
       [0, 0, 17], [-10, 10, 12], [8, 16, 12], [-8, 20, 12], [5, 24, 11],
-      [-14, 0, 9], [14, -6, 10], [0, -14, 11], [16, 8, 10], [-13, -11, 9], [0, -21, 8], [-17, -16, 8],   // 마지막: 🌫️ 안개 숲 입구(-17,-17) 둘레
+      [-14, 0, 9], [14, -6, 10], [0, -14, 11], [16, 8, 10], [-13, -11, 9], [0, -21, 8], [-17, -16, 8],
+      [-12, -27, 10], [0, -31, 11],   // 🏔️ 설산·🌳 세계수 북쪽 능선, 마을 본섬과 연결
+      [-22, 5, 8],                    // 🏛️ 박물관 서쪽 곶
+      [16, 31, 7],                    // 🏮 빛 공방 남동쪽 숲 가장자리
       [24, 2, 8], [32, 2, 7],   // 🍎 과수원 언덕길 — 마을 동쪽으로 뻗는다. 없으면 과수원이 바다 위에 뜬다
     ];
     const WM_WATER = [[16, 9, 6], [0, -21.5, 7]];        // 🏞️ 마을 호수 · 🛶 나루터 물가
@@ -3899,6 +3902,28 @@
       const px = (wx, wz) => [(wx - MAP_VIEW.x0) * K, (wz - MAP_VIEW.z0) * K];
       const pr = (r) => r * K;
       paintIsland(c, px, pr, S, SH);
+
+      // 🔒 잠긴 과수원은 실제 입구 좌표를 중심으로 지도에 음영 처리한다.
+      //    마커와 안내 스포트라이트가 같은 좌표를 쓰도록 VILLAGE_PLACES 값을 기준으로 둔다.
+      const orchard = (lastPlaces || []).find(p => p.name === '과수원');
+      const orchardTarget = $('orchard-map-target');
+      if (orchard && orchardTarget) {
+        const [ox, oy] = px(orchard.x, orchard.z);
+        orchardTarget.style.left = `${ox / S * 100}%`;
+        orchardTarget.style.top = `${oy / SH * 100}%`;
+        orchardTarget.style.display = 'block';
+        if (orchard.locked) {
+          const radius = 5.2 * K;
+          c.save(); c.beginPath(); c.arc(ox, oy, radius, 0, Math.PI * 2); c.clip();
+          c.fillStyle = 'rgba(49,57,51,.48)'; c.fillRect(ox - radius, oy - radius, radius * 2, radius * 2);
+          c.strokeStyle = 'rgba(239,231,194,.34)'; c.lineWidth = 1;
+          for (let d = -radius * 2; d <= radius * 2; d += 8) {
+            c.beginPath(); c.moveTo(ox - radius + d, oy + radius); c.lineTo(ox + radius + d, oy - radius); c.stroke();
+          }
+          c.restore();
+          c.beginPath(); c.arc(ox, oy, radius, 0, Math.PI * 2); c.strokeStyle = 'rgba(64,72,65,.8)'; c.lineWidth = 2; c.stroke();
+        }
+      } else if (orchardTarget) orchardTarget.style.display = 'none';
 
       // 지명 — 아이콘 + 한글 라벨. 라벨끼리·아이콘과 겹치면 아래·위·좌우로 밀어 자리를 찾는다
       //   (지명이 16곳이라 고정 오프셋으로는 어느 화면 크기에서든 겹치는 곳이 생긴다)
@@ -5061,9 +5086,9 @@
         }
         // 🗺️ 전체 지도와 **같은 박스**(MAP_VIEW)를 쓴다 — 예전엔 중심(0,0)·반경 30 이라
         //   전체 지도와 장소가 어긋났고 x=32 인 🍎과수원이 범위 밖이었다.
-        const K = S / MAP_VIEW.w;                       // 월드 1 → 미니맵 px
-        const OY = (S - MAP_VIEW.h * K) / 2;            // 정사각 캔버스라 위아래 레터박스(가로가 더 길다)
-        const px = (wx, wz) => [(wx - MAP_VIEW.x0) * K, (wz - MAP_VIEW.z0) * K + OY];
+        const K = Math.min(S / MAP_VIEW.w, S / MAP_VIEW.h); // 정사각 미니맵 안에 전체 마을을 왜곡 없이 넣는다
+        const OX = (S - MAP_VIEW.w * K) / 2, OY = (S - MAP_VIEW.h * K) / 2;
+        const px = (wx, wz) => [(wx - MAP_VIEW.x0) * K + OX, (wz - MAP_VIEW.z0) * K + OY];
         lastPlaces = d.places || lastPlaces;
         lastNpcs = d.npcs || lastNpcs;
         lastMapPos = { x: d.x, z: d.z };
@@ -5103,6 +5128,45 @@
           tutIdx++;
           renderCoach();
         }
+      },
+      // 🍎 묘목 구매 안내: 기존 DOM 스포트라이트만 사용해 렌더링 부하를 늘리지 않는다.
+      startSaplingPurchaseSpotlight() {
+        if (!spot || Input.hintSeen('saplingPurchase')) return;
+        Input.markHintsSeen(['saplingPurchase']); requestSave();
+        const mapHand = TOUCH ? 'tap' : 'click';
+        const steps = [
+          { key: 'sapling_bag', target: '#bag-btn', hand: TOUCH ? 'tap' : 'click',
+            text: '🌱 묘목이 가방에 들어왔어요. 아직 심어진 건 아니에요.', done: 'tap' },
+        ];
+        const orchardLocked = mapLocked('orchard');
+        steps.push(
+          { key: 'sapling_map_open', target: '#minimap', hand: mapHand,
+            text: '🗺️ 미니맵을 눌러 마을 지도를 열고 과수원을 찾아봐요.', done: 'click' },
+          { key: 'sapling_map_orchard', target: '#orchard-map-target', hand: 'tap',
+            text: orchardLocked
+              ? '🍎 과수원은 동쪽, 지도 오른쪽에 있어요.\n🌾 고급 작물을 한 번 거두면 열려요.'
+              : '🍎 과수원은 마을 동쪽, 지도 오른쪽에 있어요.', done: 'tap' },
+          { key: 'sapling_map_close', target: '#wm-close', hand: mapHand,
+            text: '위치를 확인했으면 지도를 닫고 과수원 입구로 가요.', done: 'click' },
+        );
+        spot.run(steps, { kind: 'sapling_purchase', skip: 'all', blocked: () => false });
+      },
+      // 🍎 실제 빈 자리에 심는 액션을 완료 신호로 받아 안내를 끝낸다.
+      startSaplingOrchardSpotlight() {
+        if (!spot || Input.hintSeen('saplingOrchard') || saplingOrchardGuidePending) return;
+        saplingOrchardGuidePending = true;
+        const showWhenReady = () => {
+          if (Input.hintSeen('saplingOrchard') || !atOrchard) { saplingOrchardGuidePending = false; return; }
+          // 🧭 신규 유저 기본 코치/다른 음영 안내가 끝난 뒤에 띄워 순서대로 보이게 한다.
+          if (ui.coachActive?.()) { setTimeout(showWhenReady, 350); return; }
+          saplingOrchardGuidePending = false;
+          Input.markHintsSeen(['saplingOrchard']); requestSave();
+          spot.run([{ key: 'sapling_plant', target: TOUCH ? '#action-btn' : '#hotbar', hand: TOUCH ? 'tap' : 'key',
+            text: TOUCH ? '빈 흙자리 가까이 가면 씨앗 도구로 바뀌어요. 오른쪽 액션 버튼을 눌러 심어요.' : '빈 흙자리 가까이 가면 씨앗 도구로 바뀌어요. Space 또는 화면을 클릭해 심어요.',
+            keys: TOUCH ? [] : ['Space'], done: 'act:sapling_plant' }],
+            { kind: 'sapling_orchard', skip: 'all', blocked: () => !atOrchard });
+        };
+        showWhenReady();
       },
     };
     const closeNpc = () => { $('npc-modal').classList.remove('show'); flushPendingToasts(); };
@@ -5354,6 +5418,7 @@
       { key: 'curator', short: '🧑‍🦳 할아버지 만나기',   text: '⑪ 다리 건너 🏛️박물관의 🧑‍🦳할아버지와 이야기해요' },
     ];
     let tutIdx = -1;
+    let saplingOrchardGuidePending = false;
     // ── 🎨 첫 가구 배치 단계 안내(1회) — "소파 어떻게 옮겨요?"·"미리보기가 안 보여요" 베타 피드백
     //   집에 처음 들어오면 ①부터, 행동할 때마다 다음 단계로. 놓고 나면 ④(옮기는 법)를 잠깐 보여주고 졸업.
     //   튜토리얼 코치가 ⑰꾸미기 단계로 떠 있으면 새 카드를 띄우지 않고 코치 문구를 단계별로 바꿔 쓴다(슬롯 충돌 방지).
@@ -6964,7 +7029,9 @@
           el.innerHTML = `<span class="ck-ico">${it.ico}</span><span class="ck-name">${it.name}</span><span class="ck-buff">${it.desc || '&nbsp;'}</span><span class="ck-cost">${costLabel}</span>`;
           el.addEventListener('click', () => {
             if (it.homi && isOwned) { openHomi(); return; }
-            const r = Input.buyShop(it.id); if (!r.ok) { ui.toast(r.msg); return; } ui.toast(`🛍️ ${r.name} 구매!`); renderShop();
+            const r = Input.buyShop(it.id); if (!r.ok) { ui.toast(r.msg); return; }
+            if (it.id.startsWith('sap_') && !Input.hintSeen('saplingPurchase')) pendingSaplingPurchaseSpotlight = true;
+            ui.toast(`🛍️ ${r.name} 구매!`); renderShop();
           });
           box.appendChild(el);
         });
@@ -7073,7 +7140,14 @@
       renderShop();
     }
     document.querySelectorAll('#shop-menu .sh-tab').forEach(b => b.addEventListener('click', () => showShopTab(b.dataset.tab)));
-    $('shop-close').addEventListener('click', () => { $('shop-menu').classList.remove('show'); document.body.classList.remove('menu-open'); });
+    let pendingSaplingPurchaseSpotlight = false;
+    $('shop-close').addEventListener('click', () => {
+      $('shop-menu').classList.remove('show'); document.body.classList.remove('menu-open');
+      if (pendingSaplingPurchaseSpotlight) {
+        pendingSaplingPurchaseSpotlight = false;
+        setTimeout(() => ui.startSaplingPurchaseSpotlight(), 80);
+      }
+    });
     // 🎀 꾸미기 닫기 — 입어보던 건 버리고(실제 장착으로 복귀) 프리뷰 렌더러도 세운다
     $('cos-close').addEventListener('click', () => { $('cos-menu').classList.remove('show'); document.body.classList.remove('menu-open'); Input.closeCosMenu?.(); });
     $('craft-close').addEventListener('click', () => { $('craft-menu').classList.remove('show'); document.body.classList.remove('menu-open'); });
@@ -7673,13 +7747,16 @@
       honey: { ico: '🍯', name: '꿀' }, candy: { ico: '🍬', name: '사탕' },
       apple: { ico: '🍎', name: '사과' }, pear: { ico: '🍐', name: '배' }, peach: { ico: '🍑', name: '복숭아' },
       persimmon: { ico: '🍊', name: '감' }, chestnut: { ico: '🌰', name: '밤' },
+      sap_apple: { ico: '🍎', name: '사과나무 묘목' }, sap_pear: { ico: '🍐', name: '배나무 묘목' },
+      sap_peach: { ico: '🍑', name: '복숭아나무 묘목' }, sap_persimmon: { ico: '🍊', name: '감나무 묘목' },
+      sap_chestnut: { ico: '🌰', name: '밤나무 묘목' },
       ...FORAGE_META,
     };
     const BAG_CATS = [
       { name: '🌲 자원', keys: ['wood', 'seed', 'coins'] },
       { name: '🌱 농사·낚시·닭장', keys: ['crop', 'fish', 'egg', 'fert', 'bait'] },
       { name: '🌾 고급 작물', keys: ['wheat', 'corn', 'grape', 'honey', 'seed_wheat', 'seed_corn', 'seed_grape'] },
-      { name: '🍎 과수원', keys: ['apple', 'pear', 'peach', 'persimmon', 'chestnut'] },
+      { name: '🍎 과수원', keys: ['sap_apple', 'sap_pear', 'sap_peach', 'sap_persimmon', 'sap_chestnut', 'apple', 'pear', 'peach', 'persimmon', 'chestnut'] },
       { name: '⛏️ 광물', keys: ['stone', 'coal', 'gem'] },
       { name: '🌙 밤·숲', keys: ['bug', 'forage'] },
       { name: '🛶 강 · 🌫️ 숲', keys: ['star', 'glow'] },

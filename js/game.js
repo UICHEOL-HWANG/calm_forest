@@ -198,7 +198,7 @@ import { homiSkinOf } from './cosmetics/homi-skin-rules.js';
 import { MUD_GEAR, buildMudGear, stepBoots } from './forage/mudflat-set-art.js';
 import { homiState } from './forage/homi.js';
 import { applySwimPose, swim } from './forage/swim-pose.js';
-import { keepOnGateWalks, updateGateCues, updateGateWalks } from './spaces/gate-cue.js';
+import { keepOnGateWalks, makeGuideSpot, updateGateCues, updateGateWalks } from './spaces/gate-cue.js';
 import { clampToLandmark, clampToMountain, maybeRevealMountain, mountainAction, mountainLookFrame, mountainMinimapMarks, mountainReturnPos, sledActive, cafeDrinking, spawnMountainGate, updateMountain, mountainSpeedMult } from './spaces/mountain.js';
 import { applyObservatoryLight, clampToObservatory, observatoryAction, observatoryCamFocus, observatoryLensOpen, observatoryMinimapMarks, spawnObservatoryGate, updateObservatory, updateObservatoryStairs } from './spaces/observatory.js';   // 📦 🔭 천문대 — 별자리 리듬 실내 공간
 import { clampToNeighbor, initNeighbors, neighborAction, neighborIndoorElevated, neighborIndoorFrame, neighborMinimapMarks, neighborReturnPos, spawnNeighborGate, updateNeighbor } from './spaces/neighbor.js';   // 📦 🏡 이웃 마을 — 남의 앞마당 구경(js/neighbors/*)
@@ -2665,6 +2665,16 @@ export async function enterGame() {
     window.__spawnWorkers = () => { spawnWorkers(); setWorkersVisible(atFarm); return workerObjs.length; };   // 🧑‍🌾 세이브 없이 일꾼 3D 재생성(드로우콜 측정용)
     // 🍎 과수원 검수용 — 해금·자리 채우기·비우기·드로우콜 측정(__spawnWorkers 와 같은 용도)
     window.__orchardOpen = () => { gameState.progress.advHarvest = Math.max(1, gameState.progress.advHarvest || 0); gameState.progress.orchardQuest = restoreStage(gameState.progress.orchardQuest, 1); refreshQuestPanel(); syncOrchardGateLock(); return '🍎 해금 — 마을 동쪽 ' + ORCHARD_GATE.x + ',' + ORCHARD_GATE.z + ' (__tp 로 이동)'; };
+    // 🧪 로컬 전용: 묘목 심기 음영 튜토리얼을 실제 과수원 씬에서 빠르게 검수한다.
+    //    일반 진행도·해금 조건을 건너뛰는 QA 파라미터라 로컬 호스트에서만 작동한다.
+    if (_wq.get('orchardtest') === '1' && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) {
+      gameState.inventory.sap_apple = Math.max(1, gameState.inventory.sap_apple || 0);
+      gameState.hintsSeen.saplingPurchase = true;
+      delete gameState.hintsSeen.saplingOrchard;
+      gameState.hintsSeen.spotV2 = true; gameState.hintsSeen.spot_started = true; gameState.hintsSeen.tutStep = 'done';
+      window.__orchardOpen();
+      setTimeout(() => enterOrchard(), 250);
+    }
     window.__orchardFill = (fruit = 6) => {   // 자리 10개를 5종으로 꽉 채운다(최악 조건)
       gameState.orchard.trees = ORCHARD_SLOTS_LOCAL.map(([x, z], i) => ({
         x: ORCHARD.x + x, z: ORCHARD.z + z, kind: FRUITS[i % FRUITS.length].id,
@@ -3580,6 +3590,10 @@ const ORCHARD_PATH_WAY = [[-1.5, 30], [0, 19], [2.2, 12], [-0.6, 5], [1.4, -2], 
 
 // 🍎 안쪽 소품(돌담·나무다리·돗자리·깃발 줄) — 정적이라 한 번만 만들고, rebuild 때마다 그룹에 다시 붙인다(드로우콜 2)
 let orchardDecor = null;
+let orchardSpotCue = null;
+let orchardSlotApproachReady = true;
+let orchardSlotFocusAt = 0;
+let orchardSlotFocus = -1;
 function orchardDecorGroup() {
   if (orchardDecor) return orchardDecor;
   const { group, solids } = buildOrchardDecor({ half: ORCHARD_HALF, stream: ORCHARD_STREAM_LOCAL, path: ORCHARD_PATH_WAY });
@@ -3619,8 +3633,9 @@ function buildOrchardPaths() {
 // 빈 자리 표시 — 나무 없는 흙 자리에만. 개수가 변하니 InstancedMesh 하나로 묶는다
 function syncOrchardSlotHints() {
   const free = freeSlots(gameState.orchard?.trees || [], orchardSlotsWorld());
+  orchardSlotFocus = -1;
   if (!free.length) return;
-  // 흙바닥과 색이 비슷해 "여기 심어라" 가 안 읽혔다 — 밝은 테두리를 깔고 그 위에 어두운 흙을 얹어 대비를 준다
+  // 기본 빈자리는 은은한 흙 링. 가까운 한 자리는 나루터·바다터 출입구와 같은 빛 스팟으로 강조한다.
   const m = new THREE.Matrix4();
   const ring = new THREE.InstancedMesh(
     shared('orchard.slotring.geo', () => new THREE.CircleGeometry(1.05, 14).rotateX(-Math.PI / 2)),
@@ -3633,6 +3648,45 @@ function syncOrchardSlotHints() {
     shared('orchard.slot.mat', () => clayMat(0x6f4a2a, false)), free.length);
   free.forEach((s, i) => { m.makeTranslation(s.x, 0.05, s.z); im.setMatrixAt(i, m); });
   im.instanceMatrix.needsUpdate = true; orchardGroup.add(im);
+}
+
+// 가장 가까운 빈 자리를 기존 인스턴스 안에서 강조하고, 묘목이 있으면 처음 접근할 때 씨앗 도구로 전환한다.
+// 별도 마커 오브젝트/재질을 만들지 않아 과수원 드로우콜은 그대로 유지한다.
+function updateOrchardSlotApproach(t) {
+  if (!atOrchard) { orchardSpotCue?.group && (orchardSpotCue.group.visible = false); orchardSlotApproachReady = true; orchardSlotFocus = -1; return; }
+  if (orchardSpotCue?.group.visible) orchardSpotCue.tick(t);
+  if (t < orchardSlotFocusAt) return;
+  orchardSlotFocusAt = t + 0.12;
+  const slots = freeSlots(gameState.orchard?.trees || [], orchardSlotsWorld());
+  let nearest = -1, best = Infinity;
+  for (let i = 0; i < slots.length; i++) {
+    const d = dist2D(slots[i], player.position);
+    if (d < best) { best = d; nearest = i; }
+  }
+  if (!orchardSpotCue && nearest >= 0) {
+    orchardSpotCue = makeGuideSpot(0xffd27a, 0.82);
+    scene.add(orchardSpotCue.group);
+  }
+  if (orchardSpotCue) {
+    const show = nearest >= 0 && best <= 9;
+    orchardSpotCue.group.visible = show;
+    if (show) {
+      orchardSpotCue.group.position.set(slots[nearest].x, 0, slots[nearest].z);
+    }
+  }
+  orchardSlotFocus = nearest;
+
+  const close = nearest >= 0 && best <= 3.2;
+  if (!close) { orchardSlotApproachReady = true; return; }
+  if (!orchardSlotApproachReady) return;
+  orchardSlotApproachReady = false;
+  const sapKey = sapKeyOf(gameState.orchard?.sapSel || 'apple');
+  if ((gameState.inventory[sapKey] || 0) > 0) {
+    const changed = TOOLS[currentTool]?.id !== 'seed';
+    if (toolPage !== 'farm') setToolPage('farm', true);
+    if (TOOLS[currentTool]?.id !== 'seed') selectToolAuto('seed');
+    if (changed) ui.toast?.('🌱 묘목 심을 자리에 왔어요 · 씨앗 도구로 바꿨어요', 2200);
+  }
 }
 
 // 밭의 rebuildFarm() 과 같은 꼴 — 상태가 바뀌면 통째로 다시 그린다
@@ -3651,6 +3705,7 @@ function rebuildOrchard() {
     if (c.isInstancedMesh) c.dispose();
     disposeOwned(c);   // 🍎 시안 흙 원판 — shared() 가 아니라 rebuild 마다 새로 굽는 것만 푼다(표식 ownGeo)
   }
+  orchardSlotFocus = -1;
   buildOrchardGround();     // 지면 1 + 시냇물 1(합침)
   buildOrchardPaths();      // 오솔길 1 + 잔모래 1
   buildOrchardRim();        // 경계 나무(줄기 1 + 잎 1)
@@ -6146,6 +6201,7 @@ function animate() {
     else if (sleeping) { wantAction = false; }
     else if (!mgView && !duelActive) { updatePlayer(dt, t); updateObservatoryStairs(dt); updateMuseumView(dt); updateObservatory(dt, t); updateNeighbor(dt); updateMountain(dt); maybeRevealMountain(); updateCamera(dt); updateCameraFade(); }
     else { updateMgScene(dt, t); wantAction = false; }  // 🍳 요리 미니게임 중엔 클로즈업 무대가 카메라를 가짐 — 마을 상호작용(프롬프트·힌트·액션)은 정지
+    updateOrchardSlotApproach(t);
     if (museumView) {                       // 🔍 관람 중: 액션은 '돌아가기' 하나뿐
       if (wantAction) { wantAction = false; closeMuseumView(); }
     } else if (sledActive()) {

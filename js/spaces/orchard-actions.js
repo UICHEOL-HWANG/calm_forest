@@ -60,6 +60,7 @@ export function plantSapling(slot) {
     kind, near_stream: nearStream(tree, orchardStreamWorld()) ? 1 : 0, trees: gameState.orchard.trees.length });
   logOrchardEvent('sapling_plant', {                             // [원장] GA4 유실 대비 — Supabase 직접 기록
     kind, near_stream: nearStream(tree, orchardStreamWorld()), trees: gameState.orchard.trees.length });
+  ui.act?.('sapling_plant');   // 🌰 심기 안내 스포트라이트 완료
   syncStory('sapling');   // 📖 6장(마을의 살림) — 밭 2단계와 함께 나무 1그루
 }
 
