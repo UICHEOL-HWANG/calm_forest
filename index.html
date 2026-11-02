@@ -877,25 +877,24 @@
   body.platform-toss #google-btn { display: none; }
   body.platform-toss #toss-btn { display: inline-flex; }
   body.platform-toss #guest-btn { display: none; }   /* 게스트는 선택지가 아니라 폴백 — 버튼 하나만 */
-  body.platform-toss #stats-btn { display: none; }   /* 활동 기록은 구글 계정 전용 — 토스에선 열 수 없는 버튼을 노출하지 않음 */
+  /* 토스에서도 활동 기록은 기록 메뉴에서 열 수 있다. */
   /* 📷 토스 웹뷰는 <a download> 를 무시한다(공유는 됨, 2026-09-25 실기기) — 누르면 아무 일 없는 버튼을 숨긴다.
      플레이 앱은 네이티브(PhotoPlugin)로 저장된다 — 처음 한 번 시스템 사진 권한 창이 뜬다 */
   body.platform-toss #photo-save { display: none; }
   /* 🎮 itch(iframe): 구글은 팝업 로그인으로 되지만 활동 기록 대시보드는 다른 오리진(웹) 새 탭이라 세션이 안 넘어감 → 숨김 */
   body.platform-itch #stats-btn { display: none; }
-  /* 📱 구글 플레이 앱: 토스와 같은 한 버튼 — '바로 플레이하기' = Play Games 로그인 재시도 → 안 되면 게스트.
-     활동 기록 대시보드는 구글 계정 전용이라 숨긴다 */
-  body.platform-android #google-btn, body.platform-android #guest-btn, body.platform-android #stats-btn { display: none; }
+  /* 📱 구글 플레이 앱: 토스와 같은 한 버튼 — '바로 플레이하기' = Play Games 로그인 재시도 → 안 되면 게스트. */
+  body.platform-android #google-btn, body.platform-android #guest-btn { display: none; }
   body.platform-android #toss-btn { display: inline-flex; }
   /* 🍎 App Store 앱: 게임센터는 부팅 때 조용히 붙는다(화면 없음). 이 화면이 보이면 게임센터가 안 된 것 → 'Apple로 계속하기' 하나.
      Apple 창을 닫거나 실패하면 게스트로 바로 시작한다 — 가이드라인 5.1.1(강제 로그인 금지)을 지키면서 버튼은 하나(사용자 결정 2026-10-11).
      구글은 iOS 에서 쓰지 않는다(4.8 은 외부 소셜 로그인에만 해당 — 게임센터·Apple 은 해당 없음).
-     활동 기록 대시보드는 웹 새 탭이라 앱 세션이 안 넘어감 → 숨김. 📷 WKWebView 는 <a download> 를 무시 → 저장 버튼 숨김(공유는 된다) */
+     활동 기록은 앱 안에서 열어 같은 로그인 세션을 사용한다. 📷 WKWebView 는 <a download> 를 무시 → 저장 버튼 숨김(공유는 된다) */
   #apple-btn { display: none; align-items: center; justify-content: center; gap: 8px; border: none; background: #000; border-radius: 16px; padding: 13px 26px; font-size: 15px; font-weight: 700; color: #fff; cursor: pointer; font-family: inherit; box-shadow: 0 8px 24px rgba(0,0,0,.2); transition: transform .12s; }
   #apple-btn svg { width: 16px; height: 19px; fill: currentColor; margin-top: -2px; }
   #apple-btn:active { transform: scale(0.96); }
   body.platform-ios #apple-btn { display: flex; justify-content: center; width: 100%; max-width: 260px; box-sizing: border-box; margin: 0 auto; }
-  body.platform-ios #google-btn, body.platform-ios #guest-btn, body.platform-ios #stats-btn, body.platform-ios #photo-save { display: none; }   /* 게스트는 Apple 창을 닫으면 자동(안드로이드와 같은 한 버튼) */
+  body.platform-ios #google-btn, body.platform-ios #guest-btn, body.platform-ios #photo-save { display: none; }   /* 게스트는 Apple 창을 닫으면 자동(안드로이드와 같은 한 버튼) */
   #login-note { font-size: 12px; color: rgba(255,255,255,0.8); margin-top: 16px; }
   /* ✉️ 이메일 코드 로그인 — 구글 아래 보조 버튼(반투명 테두리) + 단계 카드 */
   #email-btn { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 12px auto 0; border: 1px solid rgba(255,255,255,.7); background: rgba(255,255,255,.12); border-radius: 16px; padding: 12px 24px; font-size: 15px; font-weight: 700; color: #fff; cursor: pointer; font-family: inherit; transition: transform .12s; }
@@ -3650,6 +3649,7 @@
     import { guestFirst, E5_COPY } from './js/exp-e5.js';
     import { savePhotoNative, sharePhotoNative, shareUrlNative } from './js/photo-native.js';   // 📱 앱: WebView 는 download·share 를 못 한다
     import { capPlugin } from './js/cap-bridge.js';
+    import { bootTenjin, identifyTenjinUser, trackTenjinGameStart } from './js/tenjin-native.js';
     import { SELL_ICO_G } from './js/data/places.js';
     import { FORAGE_KEYS, FORAGE_META } from './js/forage/logic.js';
     import { consumeExit, markExit } from './js/exit-flag.js';   // 🚪 나가기 직후엔 토스·플레이 앱 자동 연결을 건너뛴다 · 🗑️ 계정 삭제 뒤에도
@@ -5604,6 +5604,7 @@
 
       showLoginStatus(authState);
       await enterGame();                             // 저장 로드 + 조작/로깅 on
+      if (IS_NATIVE) void trackTenjinGameStart();
       maybeHudTour();
       try { initPush(); } catch (e) { console.warn('[push] init skipped', e); }   // 🔔 안드로이드만 — 허용한 사람 조용히 재등록·설정 토글
       // 🤝 친구 초대 — 초대받았으면 연결(하트핀), 내가 초대한 친구 정산. 기다리지 않는다(실패해도 게임 진행)
@@ -7122,13 +7123,21 @@
       ui.toast(m === 'first' ? '👁️ 1인칭 시점 (뱃머리)' : '👁️ 3인칭 시점 (멀미가 나면 이쪽으로)');
     });
 
-    // 내 활동 기록 대시보드 — 구글 로그인 유저만. 게스트면 로그인 안내
+    // 내 활동 기록 대시보드 — 영구 계정은 플랫폼에 관계없이 본인 로그를 볼 수 있다.
     $('stats-btn').addEventListener('click', () => {
-      if (authState.provider !== 'google' && authState.provider !== 'email') {
+      const activityProviders = ['google', 'email', 'pgs', 'gc', 'apple', 'toss'];
+      if (!activityProviders.includes(authState.provider)) {
         ui.toast('📊 로그인하면 내 활동 기록을 볼 수 있어요 (게스트는 안 이어져요)');
         return;
       }
-      window.open('dashboards/analytics.html', '_blank');
+      const analyticsUrl = new URL('dashboards/analytics.html', location.href);
+      if (IS_TOSS) analyticsUrl.searchParams.set('platform', 'toss');
+      if (IS_NATIVE || IS_TOSS) {
+        // 앱 WebView 안에서 이동해 현재 Supabase 세션을 그대로 사용한다.
+        location.assign(analyticsUrl.href);
+      } else {
+        window.open(analyticsUrl.href, '_blank');
+      }
     });
     $('seed-ok').addEventListener('click', () => $('seed-modal').classList.remove('show'));
     $('hint-ok').addEventListener('click', () => $('hint-modal').classList.remove('show'));
@@ -7865,6 +7874,7 @@
     });
 
     (async () => {
+      if (IS_NATIVE) void bootTenjin();
       bootReferral({ track: trackEvent });           // 🤝 ?invite= 보관 — 인증(구글 리다이렉트)이 쿼리를 지우기 전에
       try { bootAppBanner(); } catch (e) { /* 저장소 없음 — 배너 연결만 빠진다 */ }   // 📲 jid·utm 보관 — 같은 이유로 인증 전에
       try { bootMetaPixel(); onTrack(metaFromTrack); } catch (e) { /* Pixel 실패해도 게임 진행 */ }   // 📣 fbclid 보관 — 같은 이유로 인증 전에
@@ -7910,6 +7920,7 @@
       const res = await initAuth((s) => {
         showLoginStatus(s);
         if (s.userId && !(deferredGuest && !s.online)) setGaUser(s.userId);   // [④] GA4에 user_id 연결(🧪 E2 계정 생성 전 임시 id 제외)
+        if (IS_NATIVE && s.online && s.userId) void identifyTenjinUser(s.userId);
         if (s.online && !started) enterPlay();
         if (s.online) syncInstall(s);                // 📲 계정마다 1행 — 게스트 → Play Games 로 바뀌면 새 계정에도 붙는다
         if (s.online) syncSurvey(s);                 // 🧭 설문 답도 계정마다 1행(같은 규칙)

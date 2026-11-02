@@ -27,7 +27,7 @@ import { saveGame, loadGame, sendBoatRun, sendSeaRecord, fetchNotices, fetchPurc
 import { syncPurchases } from './shop/purchases.js';   // 💳 원장 → 소유 병합(부팅)
 import { FORAGE_LABEL } from './forage/logic.js';
 import { pickSeaTarget } from './sea-aim.js';   // 🎣 바다터 조준 — 바라보는 쪽의 물고기가 걸린다
-import { retryDelay, offerReload } from './save-guard.js';   // 🛡️ 세이브를 읽을 때까지 기다리는 재시도 간격 + 오래 끌 때 탈출구
+import { retryDelayJittered, offerReload } from './save-guard.js';   // 🛡️ 세이브 재시도(요청 폭주 방지용 jitter) + 오래 끌 때 탈출구
 import { unreadNotices, maxId } from './notices.js';   // 📮 소식함 순수 로직(안 읽은 것 거르기·읽음 id)
 import { NIGHT_MIN, WAKE_TIME, daylightAt, isNightAt } from './daynight.js';
 import { BOAT_LAMP, BOAT_LAMP_POST } from './boat-lamp.js';   // 🏮 등불이 앞 장애물을 안 가리는 배치(순수 기하 규칙)   // 🌞🌙 햇빛 곡선·밤 판정·기상 시각(순수 규칙)
@@ -2442,7 +2442,7 @@ export async function enterGame() {
     if (tries === 0 || (tries + 1) % 10 === 0) trackEvent('save_load_failed', { attempt: tries + 1, code: load.code || 'unknown' });
     // 🚪 오래 끌면 "다시 들어가기"를 띄운다 — 토큰 만료처럼 스스로 낫지 않는 실패의 유일한 출구
     if (offerReload(tries)) ui.setLoadWait?.(true, true);
-    await new Promise(r => setTimeout(r, retryDelay(tries)));
+    await new Promise(r => setTimeout(r, retryDelayJittered(tries)));
     load = await loadGame();
     if (load.canPlay) trackEvent('save_load_recovered', { tries: tries + 1 });   // [GA4] 사고 재발 감시 — 몇 번 만에 붙었나
   }
@@ -2458,7 +2458,7 @@ export async function enterGame() {
     //  뒤에서 조용히 다시 읽어 본다. 성공하면 잠금이 풀려 이 게스트의 진행도 저장되기 시작한다.
     (async () => {
       for (let i = 0; i < 12; i++) {                       // 약 1분간. 그 뒤에도 안 되면 이 세션은 저장을 포기한다
-        await new Promise(r => setTimeout(r, retryDelay(i)));
+        await new Promise(r => setTimeout(r, retryDelayJittered(i)));
         if ((await loadGame()).canSave) { trackEvent('save_load_recovered', { tries: i + 1, fresh_guest: 1 }); return; }
       }
     })();
@@ -3099,7 +3099,7 @@ async function retrySaveUntilOk() {
       // [GA4] 저장이 끊긴 사람을 셀 분모. 매번 보내면 한 세션이 지표를 삼키므로 1회차 + 매 10회차만.
       if (tries === 0 || (tries + 1) % 10 === 0) trackEvent('save_failed', { attempt: tries + 1 });
       if (offerReload(tries)) ui.setSaveStuck?.(true);   // 오래 끌면 "다시 들어가기" — 유일한 출구
-      await new Promise(r => setTimeout(r, retryDelay(tries)));
+      await new Promise(r => setTimeout(r, retryDelayJittered(tries)));
       if ((await saveGame(getGameState())).ok) {
         ui.setSaveStuck?.(false);
         trackEvent('save_recovered', { tries: tries + 1 });   // [GA4] 몇 번 만에 되살아났나

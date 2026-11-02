@@ -17,7 +17,7 @@ import { getPgsAuthCode } from './pgs-native.js';         // 📱 앱: Play Game
 import { getGcIdentity } from './gc-native.js';           // 🍎 iOS 앱: 게임센터 자동 로그인 → 신원 서명 → gc-auth Worker
 import { capPlugin } from './cap-bridge.js';               // 📱 앱: Capacitor.Plugins 는 비어 있다(@capacitor/core 미사용) → nativePromise 로 직접
 import { pickSave, progressScore } from './save-migrate.js';   // 🔵 게스트 → 정식 계정 진행도 이관 규칙
-import { loadOutcome, sessionLoss } from './save-guard.js';    // 🛡️ 읽기 실패를 신규 유저로 오인해 덮어쓰는 사고 방지 · 🔌 노는 중 세션 죽음 판정
+import { loadOutcome, sessionLoss, retryDelayJittered } from './save-guard.js';    // 🛡️ 세이브 보호·세션 판정·백오프 재시도
 import { t, clientId, assignVariant } from './i18n.js';   // i18n + 기기 식별/실험 배정(언어 결정과 공유)
 import { setAbVariant, trackEvent } from './analytics.js';
 import { kstDate } from './kst-date.js';   // 🕛 run_date 는 KST 날짜
@@ -934,6 +934,52 @@ export async function insertInstallSurvey(row) {
 }
 
 // ── [계측] 세션 요약 upsert(session_logs) — 세션당 1행, 주기/이탈 시 갱신 ──
+let latestSessionRow = null;
+let sessionFlushPromise = null;
+
+function isRetryableWriteError(err) {
+  const status = Number(err?.status ?? err?.statusCode);
+  return !Number.isFinite(status) || status === 0 || status === 408 || status === 425 || status === 429 || status >= 500;
+}
+
+async function flushSessionRows() {
+  while (latestSessionRow && state.online && supabase) {
+    const row = latestSessionRow;
+    latestSessionRow = null;
+    let lastError = null;
+    for (let attempt = 0; attempt <= 3; attempt++) {
+      if (!state.online || !supabase) break;
+      try {
+        const { error } = await supabase.from(CONFIG.SESSION_TABLE).upsert(row);
+        if (error) throw error;
+        lastError = null;
+        break;
+      } catch (err) {
+        lastError = err;
+        if (!isRetryableWriteError(err) || attempt === 3) break;
+        // A newer periodic/final snapshot supersedes this one; send the latest next.
+        if (latestSessionRow) break;
+        await new Promise(resolve => setTimeout(resolve, retryDelayJittered(attempt)));
+        if (latestSessionRow) break;
+      }
+    }
+    if (lastError) {
+      console.warn('[Supabase 폴백] 세션 요약 전송 실패:', lastError?.message || lastError);
+      // Failed snapshot is retried when the next periodic/final summary arrives.
+    }
+  }
+}
+
+function startSessionFlush() {
+  if (sessionFlushPromise) return sessionFlushPromise;
+  sessionFlushPromise = flushSessionRows().finally(() => {
+    sessionFlushPromise = null;
+    // A snapshot may have arrived just as the previous drain finished.
+    if (latestSessionRow && state.online && supabase) startSessionFlush();
+  });
+  return sessionFlushPromise;
+}
+
 export async function upsertSessionRow(row) {
   const full = {
     session_id: state.sessionId, user_id: state.userId,
@@ -941,10 +987,8 @@ export async function upsertSessionRow(row) {
     ...row, updated_at: new Date().toISOString(),
   };
   if (!state.online || !supabase) { devLog('[Supabase 폴백] 세션 요약(오프라인):', full); return; }
-  try {
-    const { error } = await supabase.from(CONFIG.SESSION_TABLE).upsert(full);
-    if (error) throw error;
-  } catch (err) { console.warn('[Supabase 폴백] 세션 요약 전송 실패:', err?.message || err); }
+  latestSessionRow = full; // 한 세션은 한 행만 유지 — 전송 중 새 요약이 오면 최신 값으로 합친다.
+  return startSessionFlush();
 }
 
 // ── [계측] 리텐션 안내 예측 점수/피처 스냅샷(retention_guidance_scores) ──
