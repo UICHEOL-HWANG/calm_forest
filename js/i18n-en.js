@@ -553,6 +553,8 @@ export const EN = {
   '왼쪽 📜 에 무엇을 하면 되는지 적혀 있어요.': 'The 📜 on the left says what to do.',
   '집을 손볼 수 있어요': 'You can work on the house',
   '재료가 모였어요. 집터에서 바로 시작하면 돼요.': "You've got the materials. Just head to the house site.",
+  '집 터로 가서 망치로 집을 지어보아요!': 'Go to the house site and build your home with the hammer!',
+  '화살표를 따라가요!': 'Follow the arrow!',
   '물가 쪽도 열려 있어요': 'The water is open to you too',
   '낚시나 바다터에서 짧게 하나 해볼까요.': 'Try something quick at the pond or the sea spot.',
   '안개 숲도 둘러볼까요': 'How about the misty woods',
