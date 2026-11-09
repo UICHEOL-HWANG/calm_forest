@@ -37,8 +37,9 @@ import { easeFor, nextDda, ddaOutcome, defaultDifficulty, mergeDifficulty, PROBE
 import { spotToolStep, spotWant, spotKeep, SPOT_REASON, IDLE as SPOT_IDLE } from './spot-tool-auto.js';
 import { treeFallPose, TREE_FALL_IMPACT, TREE_FALL_PIVOT } from './tree-fall.js';   // 🌳 벌목 쓰러짐(기우뚱 쿵 바운스)
 import { trackChop, trackEvent, onTrack } from './analytics.js';          // [GA4] 이벤트
-import { IS_ANDROID, PLATFORM } from './platform.js';
-import { createPerfSampler, perfContext } from './perf-sample.js';   // 📱 플레이 앱 기기별 FPS(세션당 1회 perf_sample)
+import { PLATFORM } from './platform.js';
+import { createPerfSampler, perfContext, countLitPoints } from './perf-sample.js';   // 📱 플레이 앱 기기별 FPS(세션당 1회 perf_sample)
+import { createQualityGovernor, QUALITY_STEPS } from './adaptive-quality.js';
 import { createKeyState, isEditableTarget } from './keys.js';      // ⌨️ 키 눌림 상태(입력칸 무시·포커스 손실 리셋) + 우클릭 메뉴 예외 판정
 import { BASE_DIST, camOffsetFor, defaultCam, effectivePitch, isDefaultCam, loadCam, moveToWorld, saveCam } from './camera-user.js';
 import { followK, stickMove, turnToward } from './move-feel.js';   // 🎥 플레이어 카메라(줌·기울기) — 순수 모델
@@ -615,6 +616,7 @@ function setSpaceVisible() {
   if (farmCropMeshes) for (const k of ['sprout', 'stem', 'leaf', 'bush', 'fruit']) farmCropMeshes[k].visible = farmVisible;
   if (farmHintMeshes) for (const k of ['warn', 'harvest', 'seedHint', 'weed', 'pest']) farmHintMeshes[k].visible = farmVisible;
   if (mineGroup) mineGroup.visible = atMine && delveFloorNow() === 0;
+  if (mineGroup?.userData.glow) mineGroup.userData.glow.visible = atMine;
   if (cafeInGroup) cafeInGroup.visible = atCafe;
   if (museumGroup) museumGroup.visible = atMuseum;
   if (observatoryGroup) observatoryGroup.visible = atObservatory;
@@ -2132,7 +2134,7 @@ export const Input = {
   talkWeather() { return WEATHER; },             // 첫인사를 고를 때 쓴다
   seasonStatus() { const f = seasonFish(SEASON); return seasonStatusLine({ season: seasonById(SEASON), left: SEASON_INFO.left }, f, seasonOwned(f)); },   // 🍂 HUD 계절 아이콘 탭
   seasonIco() { return seasonById(SEASON).ico; },
-  capturePhoto() { try { return renderer.domElement.toDataURL('image/png'); } catch (e) { return null; } }, // 사진 캡처(현재 화면 그대로)
+  capturePhoto() { try { composer.render(); return renderer.domElement.toDataURL('image/png'); } catch (e) { return null; } }, // 사진 캡처(현재 화면 그대로)
   captureActionShot() { return startActionShot(); },  // 📷 밀착 액션샷(포즈 정점 캡처, Promise<dataURL>)
   toggleSit() { if (intro) return; sitting = !sitting; if (sitting) Sound.blip(); },   // 앉기 토글(컷신 중엔 포즈 보호)
   // 캐릭터(동물) 선택
@@ -2748,6 +2750,8 @@ export async function enterGame() {
     window.__mine = { enter: enterMine, exit: exitMine, ores: () => oreRocks.filter(r => !r.userData.depleted).map(r => [Math.round(r.position.x * 10) / 10, Math.round(r.position.z * 10) / 10, r.userData.ore.id]) };   // ⛏️ 채굴 검수용 즉시 입퇴장 + 광맥 좌표
     window.__scene = scene;   // 🎨 시안 캡처용(로컬 전용) — 후보 모형을 실제 마을에 꽂아 비교
     window.__perf = () => ({ calls: (() => { renderer.info.autoReset = false; renderer.info.reset(); composer.render(); const c = renderer.info.render.calls; renderer.info.autoReset = true; return c; })(), tris: renderer.info.render.triangles, geoms: renderer.info.memory.geometries, tex: renderer.info.memory.textures, dpr: renderer.getPixelRatio(), shadow: renderer.shadowMap.enabled, shadowAuto: renderer.shadowMap.autoUpdate, objs: (() => { let n = 0, v = 0; scene.traverse(o => { if (o.isMesh) { n++; if (o.visible) v++; } }); return [n, v]; })() });   // 성능 조사
+    window.__quality = (lvl) => { applyQualityStep(lvl); return { dpr: renderer.getPixelRatio(), bloom: bloomPass.enabled }; };
+    window.__bloomSize = () => [bloomPass.renderTargetBright.width, bloomPass.renderTargetBright.height];
     // 🌓 그림자·드로우콜 검수용 즉시 입퇴장 — __house·__mine 과 같은 패턴(마을 밖 공간 전부)
     window.__space = { farm: [enterFarm, exitFarm], cafe: [enterCafe, exitCafe], river: [enterRiver, exitRiver],
       mist: [enterMist, exitMist], sea: [enterSea, exitSea], house: [enterHouse, exitHouse], mine: [enterMine, exitMine],
@@ -3141,8 +3145,8 @@ async function retrySaveUntilOk() {
 // =============================================================
 function initRenderer() {
   // 모바일은 안티앨리어싱 off + 픽셀비율 상한을 낮춰 GPU 부담 감소
-  renderer = new THREE.WebGLRenderer({ antialias: !IS_MOBILE, powerPreference: 'high-performance', preserveDrawingBuffer: true }); // preserveDrawingBuffer: 사진 캡처용
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, IS_MOBILE ? 1.5 : 2));
+  renderer = new THREE.WebGLRenderer({ antialias: !IS_MOBILE, powerPreference: 'high-performance', preserveDrawingBuffer: !IS_MOBILE });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, IS_MOBILE ? QUALITY_STEPS[0].dpr : 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = IS_MOBILE ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
@@ -5944,6 +5948,10 @@ let lastZoneHint = null;
 // =============================================================
 //  포스트 프로세싱
 // =============================================================
+function fitBloom() {
+  if (IS_MOBILE && bloomPass) bloomPass.setSize(window.innerWidth * 2 / 3, window.innerHeight * 2 / 3);
+}
+
 function initPostProcessing() {
   composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
@@ -5951,6 +5959,7 @@ function initPostProcessing() {
   const bloomRes = IS_MOBILE ? new THREE.Vector2(window.innerWidth / 3, window.innerHeight / 3) : new THREE.Vector2(window.innerWidth, window.innerHeight);   // 모바일은 1/3 — 어차피 번지는 효과라 눈에 안 띄고 필레이트가 크게 준다
   bloomPass = new UnrealBloomPass(bloomRes, 0.55, 0.9, 0.85); // 세기는 낮/밤에 따라 조절
   composer.addPass(bloomPass);
+  fitBloom();
 
   // [셰이더] 비네팅 + 따뜻한 컬러 그레이딩 + 밤 푸른 톤(uNight)
   gradePass = new ShaderPass({
@@ -6195,7 +6204,18 @@ function minimapMarks(place) {
   return marks;
 }
 
-const perfSampler = IS_ANDROID ? createPerfSampler() : null;   // 📱 플레이 중 60초분 프레임 → perf_sample 1회
+const perfSampler = createPerfSampler();
+const qualityGov = IS_MOBILE ? createQualityGovernor({ warmupMs: 4000 }) : null;
+function applyQualityStep(level) {
+  const step = QUALITY_STEPS[level];
+  const ratio = Math.min(window.devicePixelRatio, step.dpr);
+  renderer.setPixelRatio(ratio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  composer.setPixelRatio(ratio);
+  composer.setSize(window.innerWidth, window.innerHeight);
+  fitBloom();
+  if (bloomPass) bloomPass.enabled = step.bloom;
+}
 function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.05);
@@ -6335,7 +6355,8 @@ function animate() {
   if (houseSign) { houseSign.visible = showHouseCue; if (showHouseCue) houseSign.position.y = 3.3 + Math.sin(t * 2) * 0.12; }
   if (houseGhost) { houseGhost.visible = showHouseCue; if (showHouseCue) houseGhost.scale.setScalar(1 + Math.sin(t * 2) * 0.03); }
   if (!observatoryLensOpen()) composer.render();   // 🔭 불투명 렌즈 뷰가 덮는 동안엔 3D 를 그리지 않는다
-  if (perfSampler && mode === 'play') { const ps = perfSampler.frame(performance.now()); if (ps) trackEvent('perf_sample', { ...ps, ...perfContext(renderer) }); }
+  if (perfSampler && mode === 'play') { const ps = perfSampler.frame(performance.now()); if (ps) trackEvent('perf_sample', { ...ps, ...perfContext(renderer), night: isNight() ? 1 : 0, pt_lights: countLitPoints(scene), q_lvl: qualityGov ? qualityGov.level() : 0 }); }
+  if (qualityGov && mode === 'play' && !photoResolve) { const lvl = qualityGov.frame(performance.now()); if (lvl != null) { applyQualityStep(lvl); trackEvent('quality_step', { q_lvl: lvl }); } }
 
   // 📷 액션샷 정점 캡처 — 렌더 직후 캡처해 항상 온전한 프레임을 얻음
   if (photoResolve && photoT >= photoPeakT) {
@@ -7152,7 +7173,11 @@ function updateDayNight(dt) {
   // 실내 조명: 안에 있을 때만 켜고, 밤일수록 더 밝게(저녁·밤엔 방 안이 포근하게 은은한 온기)
   // ☀️ 루프탑엔 벽도 천장도 없다 — 실내용 따뜻한 점광이 허공에 뜬 것처럼 보여 끈다.
   //   밤엔 대신 파이어핏·자쿠지 같은 층 전용 가구(houseWindows 점등)와 기본 밤 앰비언트로 밝힌다.
-  if (interiorLamp) interiorLamp.intensity = indoor && !curFloorDef().outdoor ? (1.8 + nightAmt * 2.6) : 0;
+  if (interiorLamp) {
+    const lampOn = indoor && !curFloorDef().outdoor;
+    interiorLamp.visible = lampOn;
+    interiorLamp.intensity = lampOn ? (1.8 + nightAmt * 2.6) : 0;
+  }
   // 캐릭터 주변 횃불: 저녁부터 서서히 밝아져 밤에 가장 밝음(낮엔 꺼짐)
   if (playerLight) playerLight.intensity = Math.max(0, nightAmt - 0.15) * 4.4;
   scene.fog.near = 18; scene.fog.far = 74;   // 기본 안개(동굴에선 아래서 걷음)
@@ -8343,6 +8368,7 @@ function onResize() {
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
   composer.setSize(window.innerWidth, window.innerHeight);
+  fitBloom();
   if (museumView) museumView.frame = museumViewFrame(museumView.mesh);   // 🔍 관람 중 화면이 돌면 무대도 다시 잰다
 }
 
