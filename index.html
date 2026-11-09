@@ -1469,6 +1469,7 @@
   #mt-line { font-size: 14.5px; line-height: 1.5; word-break: keep-all; overflow-wrap: anywhere; }
   #mt-next { position: absolute; right: 14px; bottom: 7px; font-size: 11px; opacity: 0.6; }
   body:has(#mirror-talk.show) #door-prompt, body:has(#mirror-talk.show) #hint, body:has(#mirror-talk.show) #zone-prompt { opacity: 0 !important; }   /* 박스가 조작 안내 줄 자리까지 쓴다(위의 의뢰 N/3 칩과 안 겹치게) */
+  body.sea-mode:not(.is-touch) #mirror-talk { bottom: calc(5% + 124px + env(safe-area-inset-bottom)); }
   #door-prompt.show { opacity: 1; }
 
   /* 🎣 캐치 배너 — "무엇을 얻었나"를 프롬프트 줄에 두 줄로 크게 띄운다.
@@ -2678,6 +2679,7 @@
     body.is-touch #sea-btn { width: 104px; height: 104px; bottom: calc(12px + env(safe-area-inset-bottom)); left: calc(100% - 52px - max(20px, calc(env(safe-area-inset-right) + 8px))); }
     body.is-touch.sea-mode #door-prompt { bottom: calc(20px + env(safe-area-inset-bottom)); }
     body.is-touch.sea-mode.sea-busy #door-prompt { bottom: calc(128px + env(safe-area-inset-bottom)); }
+    body.is-touch.sea-mode #mirror-talk { bottom: calc(12px + env(safe-area-inset-bottom)); width: min(560px, calc(100vw - 280px)); }
     body.is-touch #sea-hud { top: calc(80px + var(--top-inset)); }
     body.is-touch #forage-hud { top: calc(80px + var(--top-inset)); width: min(52vw, 340px); }
     body.is-touch #feedback-tab { bottom: auto; right: max(12px, env(safe-area-inset-right)); padding: 6px 10px; font-size: 12px; }

@@ -3392,7 +3392,7 @@ function buildWorld() {
   });
 
   buildPlayer();
-  bindPortEnv({ $w, scene, player, ui, snapCamera, setSpaceVisible, gameState: () => gameState, requestSave, analog, keys, trackEvent, exitSea, isNight, popAt: (p, ico) => spawnFloatText(p.x, 1.4, p.z, ico, '#ffffff', 1.1) });
+  bindPortEnv({ $w, scene, player, ui, snapCamera, setSpaceVisible, gameState: () => gameState, requestSave, analog, keys, trackEvent, exitSea, isNight, popAt: (p, ico) => spawnFloatText(p.x, 1.4, p.z, ico, '#ffffff', 1.1), solidCircle, todayStr, refreshQuestPanel, isTouch: () => document.body.classList.contains('is-touch'), spendCoins: n => { if ((gameState.inventory.coins || 0) < n) return false; gameState.inventory.coins -= n; logEcon('port_market', 'market', -n, gameState.inventory.coins); refreshInventoryUI(); return true; } });
   buildFireflies();
   buildStars();
   buildRain();              // 🌧️ 빗줄기(비 오는 날에만 표시)
@@ -6290,7 +6290,7 @@ function animate() {
       } else if (place !== 'village') {   // 서브 공간: 중심·반경·랜드마크를 함께 전달
         const C = place === 'house' ? INT : place === 'farm' ? { x: FARM.x - YARD_D / 2, z: FARM.z } : place === 'cafe' ? CAFE : place === 'observatory' ? OBSERVATORY : place === 'mountain' ? MOUNTAIN : place === 'neighbor' ? (neighborIndoorFrame()?.c ?? NEIGHBOR) : place === 'river' ? RIVER : place === 'mist' ? MIST : place === 'sea' ? (port.active ? player.position : mudflat.active ? MUDFLAT : dive.active ? DIVE : SEA) : place === 'museum' ? MUSEUM : place === 'orchard' ? ORCHARD : MINE;
         md.cx = C.x; md.cz = C.z;
-        md.half = place === 'house' ? curHalf() : place === 'farm' ? farmHalf() + YARD_D / 2 : place === 'cafe' ? CAFE_HALF : place === 'observatory' ? OBSERVATORY_R : place === 'mountain' ? MOUNTAIN_R : place === 'neighbor' ? (neighborIndoorFrame()?.half ?? NEIGHBOR_R) : place === 'river' ? RIVER_DOCK_HALF : place === 'mist' ? MIST_HALF : place === 'sea' ? (mudflat.active || dive.active ? 16 : 14) : place === 'museum' ? Math.max(museumDims().hw, museumDims().hd) : place === 'orchard' ? ORCHARD_HALF : MINE_HALF;
+        md.half = place === 'house' ? curHalf() : place === 'farm' ? farmHalf() + YARD_D / 2 : place === 'cafe' ? CAFE_HALF : place === 'observatory' ? OBSERVATORY_R : place === 'mountain' ? MOUNTAIN_R : place === 'neighbor' ? (neighborIndoorFrame()?.half ?? NEIGHBOR_R) : place === 'river' ? RIVER_DOCK_HALF : place === 'mist' ? MIST_HALF : place === 'sea' ? (port.active ? 24 : mudflat.active || dive.active ? 16 : 14) : place === 'museum' ? Math.max(museumDims().hw, museumDims().hd) : place === 'orchard' ? ORCHARD_HALF : MINE_HALF;
         // 🛶 런 중엔 배를 중심으로 앞뒤를 보는 레이더(고정 데크 지도 대신)
         if (place === 'river' && boat.active) { md.cx = player.position.x; md.cz = player.position.z - 14; md.half = 22; }
         md.marks = minimapMarks(place);

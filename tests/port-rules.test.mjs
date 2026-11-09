@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { PANTRY_KEYS, QUESTS, CATCH } from '../js/port/data.js';
 import { defaultPort, sanitizePort, rollCatch, acceptQuest, pickItem, claimQuest, addToPantry, pantryUnits } from '../js/port/rules.js';
 import { steer, pushOutOfIsland, fastStep } from '../js/port/sail.js';
+import { portCard, splitLines } from '../js/port/card.js';
 
 test('기본 상태는 의뢰 4개가 모두 대기, 창고는 0', () => {
   const p = defaultPort();
@@ -80,4 +81,20 @@ test('바로 가기는 항로 점을 차례로 따라가 끝에서 done', () => 
   for (let i = 0; i < 10 && !st.done; i++) st = fastStep(st.p, route, st.wp, 1);
   assert.equal(st.done, true);
   assert.deepEqual(st.p, { x: 3, z: 4 });
+});
+
+test('대사는 문장 끝에서 나눈다', () => {
+  assert.deepEqual(splitLines('그물 부표가 떠내려갔어. 3개만 주워 줄래?'), ['그물 부표가 떠내려갔어.', '3개만 주워 줄래?']);
+});
+
+test('의뢰 카드는 섬 안에서, 진행 중인 의뢰가 있을 때만 뜬다', () => {
+  assert.equal(portCard(defaultPort(), true), null);
+  assert.equal(portCard(undefined, true), null);
+  const p = pickItem(acceptQuest(defaultPort(), 'fisher'), 'fisher');
+  assert.equal(portCard(p, false), null);
+  const c = portCard(p, true);
+  assert.equal(c.id, 'port_quest');
+  assert.equal(c.progress, 1);
+  assert.equal(c.target, 3);
+  assert.equal(c.ready, false);
 });

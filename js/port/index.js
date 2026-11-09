@@ -1,19 +1,26 @@
 import * as THREE from 'three';
 import { PORT } from '../data/places.js';
 import { ISLAND, ISLAND_R, ISLAND_DOCK, VILLAGE_DOCK, PIER_END, WALK_R, LAND_Y, ROUTE, SEA_BOUNDS, MARKET_POS, HUT_POS, LIGHT_POS,
-  BOAT_SPEED, BOAT_TURN, FAST_MULT, BITE_FIRST, BITE_WIN, SEA_SPOTS, PIER_SPOT, SPOT_LEFT, PANTRY_ICO, PORT_COPY } from './data.js';
+  BOAT_SPEED, BOAT_TURN, FAST_MULT, BITE_FIRST, BITE_WIN, SEA_SPOTS, PIER_SPOT, SPOT_LEFT, PANTRY_ICO, PORT_COPY,
+  QUESTS, SOLIDS, MARKET_PRICE, MARKET_GIVE } from './data.js';
 import { tubBoat, buildPortShops, setPortNight, mat, glow } from './models.js';
-import { defaultPort, rollCatch, addToPantry } from './rules.js';
+import { defaultPort, rollCatch, addToPantry, acceptQuest, pickItem, claimQuest } from './rules.js';
+import { buildIslandNPC, beachBuoy, npcPortrait, setNpcNight, ISLAND_NPCS } from './npc-models.js';
+import { showTalk, hideTalk, onTalkTap, talkShown } from '../mirror/talk-box.js';
+import { splitLines } from './card.js';
 import { steer, pushOutOfIsland, fastStep } from './sail.js';
 import { seaHoldRod } from '../spaces/sea.js';
 
 export const port = { active: false };
 const env = {};
-let group = null, boat = null, shops = null, justLeft = false, night = null, btnKey = '';
+let group = null, boat = null, shops = null, justLeft = false, night = null, btnKey = '', chipKey = null, talk = null;
+const npcs = {}, glyphs = {}, items = [], solids = [];
 const P = { phase: 'sail', dir: 1, fast: false, wp: 1, heading: -Math.PI / 2, speed: 0, moved: 0, fishing: null, trip: null, spots: [], t: 0 };
 const W = (x, z, y = 0) => new THREE.Vector3(PORT.x + x, y, PORT.z + z);
 const ZONE_COL = { near: 0xbfe6ff, far: 0x9fd0ff, night: 0xffd27a, pier: 0xbfe6ff };
 const guideActive = () => false;
+const TALK_R = 2.6, PICK_R = 1.5, TALK_CLOSE_R = 3, PIER_END_R = 1.2;
+const portState = () => env.gameState().port ?? defaultPort();
 
 export function bindPortEnv(e) { Object.assign(env, e); }
 
@@ -76,6 +83,89 @@ function buildPort() {
   market.position.copy(W(MARKET_POS.x, MARKET_POS.z, LAND_Y)); market.rotation.y = 0.55; shops.add(market);
   hut.position.copy(W(HUT_POS.x, HUT_POS.z, LAND_Y)); hut.rotation.y = 0.5; shops.add(hut);
   boat = tubBoat(); group.add(boat);
+  buildResidents();
+  for (const [c, r] of SOLIDS) solids.push(env.solidCircle(PORT.x + c.x, PORT.z + c.z, r));
+}
+
+function itemMesh(kind) {
+  if (kind === 'buoy') return beachBuoy();
+  const g = new THREE.Group();
+  const put = (geo, c, y, sc) => { const m = new THREE.Mesh(geo, mat(c)); m.position.y = y; if (sc) m.scale.set(...sc); g.add(m); return m; };
+  if (kind === 'clam') put(new THREE.IcosahedronGeometry(0.22, 1), 0xe8d2b4, 0.08, [1.2, 0.45, 1]);
+  else if (kind === 'cabbage') { put(new THREE.IcosahedronGeometry(0.36, 1), 0x7fbf55, 0.25, [1, 0.8, 1]); put(new THREE.IcosahedronGeometry(0.22, 1), 0xc9e6a0, 0.45); }
+  else if (kind === 'oil') { put(new THREE.CylinderGeometry(0.22, 0.22, 0.5, 10), 0x3f6d8c, 0.25); put(new THREE.TorusGeometry(0.22, 0.03, 4, 12), 0xd9a066, 0.35).rotation.x = Math.PI / 2; }
+  return g;
+}
+
+function glyphSprite(npc) {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 128;
+  const tex = new THREE.CanvasTexture(cv);
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+  sprite.scale.setScalar(0.9);
+  sprite.position.y = new THREE.Box3().setFromObject(npc).max.y - npc.position.y + 0.65;
+  sprite.visible = false; npc.add(sprite);
+  return { sprite, ctx: cv.getContext('2d'), tex, last: null, y0: sprite.position.y };
+}
+
+function buildResidents() {
+  for (const q of QUESTS) {
+    const m = buildIslandNPC(q.id);
+    m.position.copy(W(q.pos[0], q.pos[1], LAND_Y));
+    m.rotation.y = Math.atan2(28 - q.pos[0], 4 - q.pos[1]);
+    group.add(m); npcs[q.id] = m;
+    glyphs[q.id] = glyphSprite(m);
+    for (const [x, z] of q.spots) {
+      const mesh = itemMesh(q.item); mesh.position.copy(W(x, z, LAND_Y)); mesh.visible = false; group.add(mesh);
+      items.push({ id: q.id, mesh, pos: mesh.position, taken: false });
+    }
+  }
+}
+
+const questOpen = q => !q.night || !!env.isNight?.();
+
+function showItems(id, skip = 0) {
+  items.filter(it => it.id === id).forEach((it, i) => { it.taken = i < skip; it.mesh.visible = !it.taken; });
+}
+
+function syncItems() {
+  const pq = portState().quests;
+  for (const q of QUESTS) {
+    const s = pq[q.id];
+    if (s?.state === 'active' && s.got < q.need) showItems(q.id, s.got);
+    else items.filter(it => it.id === q.id).forEach(it => { it.mesh.visible = false; });
+  }
+}
+
+function glyphOf(q, s) {
+  if (!s || s.state === 'done') return '';
+  if (!questOpen(q)) return '💤';
+  if (s.state === 'avail') return '❗';
+  return s.got >= q.need ? '🎁' : '';
+}
+
+function drawGlyph(o, g) {
+  if (g === o.last) return; o.last = g;
+  const c = o.ctx; c.clearRect(0, 0, 128, 128);
+  o.sprite.visible = !!g;
+  if (g) {
+    c.fillStyle = g === '🎁' ? '#8fd6a0' : g === '❗' ? '#ffd27a' : '#cfe3ff';
+    c.beginPath(); c.roundRect(18, 14, 92, 82, 22); c.fill();
+    c.beginPath(); c.moveTo(54, 94); c.lineTo(74, 94); c.lineTo(60, 118); c.closePath(); c.fill();
+    c.font = '54px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(g, 64, 57);
+  }
+  o.tex.needsUpdate = true;
+}
+
+function residentsTick() {
+  env.player.position.y = LAND_Y;
+  const pq = portState().quests;
+  for (const q of QUESTS) {
+    const o = glyphs[q.id];
+    drawGlyph(o, glyphOf(q, pq[q.id]));
+    if (o.sprite.visible) o.sprite.position.y = o.y0 + Math.sin(P.t * 2.5 + q.pos[0]) * 0.08;
+  }
+  if (talk && env.player.position.distanceTo(npcs[talk.id].position) >= TALK_CLOSE_R) closeTalk();
 }
 
 function resetSpots() {
@@ -98,13 +188,14 @@ export function enterPort(o = {}) {
   if (port.active) return;
   if (!group) buildPort();
   justLeft = false;
+  for (const c of solids) c.off = false;
   env.$w.atSea = true;
   port.active = true;
   group.visible = true;
   Object.assign(P, { phase: 'sail', dir: 1, fast: !!o.fast, wp: 1, heading: -Math.PI / 2, speed: 0, moved: 0, fishing: null,
     trip: { t0: performance.now(), caught: 0, quests: 0, via: o.fast ? 'fast' : 'sail' } });
   resetSpots();
-  night = null; btnKey = '';
+  night = null; btnKey = ''; chipKey = null;
   boat.position.copy(W(VILLAGE_DOCK.x, VILLAGE_DOCK.z)); boat.rotation.y = P.heading;
   seatPlayer();
   seaHoldRod(true);
@@ -118,6 +209,9 @@ export function leavePort() {
   env.player.position.y = 0;
   port.active = false;
   P.fishing = null;
+  closeTalk();
+  for (const c of solids) c.off = true;
+  setChips(null);
   justLeft = true;
   if (group) group.visible = false;
 }
@@ -219,11 +313,14 @@ function spotsTick(isNight) {
   }
 }
 
+const ISLAND_BTN = { port_next: '💬', port_talk: '💬', port_pick: '✋', port_buy: '🛒', port_board: '🛶' };
+
 function btnState() {
   const f = P.fishing;
   if (f) return f.state === 'bite' ? ['낚아채기!', 'hook', false] : ['낚아채기', 'wait', false];
   if (P.phase === 'sail' && !P.fast && nearSpot(3.4)) return ['🎣 던지기', '', false];
-  return [P.phase === 'island' ? '🏝️' : '⛵', 'wait', false];
+  if (P.phase === 'island') return [ISLAND_BTN[env.$w.nearDoor] ?? '🏝️', ISLAND_BTN[env.$w.nearDoor] ? '' : 'wait', false];
+  return ['⛵', 'wait', false];
 }
 
 function hudTick() {
@@ -234,8 +331,9 @@ function hudTick() {
 export function updatePort(dt) {
   P.t += dt;
   const isNight = !!env.isNight?.();
-  if (isNight !== night) { night = isNight; setPortNight(shops, isNight); }
+  if (isNight !== night) { night = isNight; setPortNight(shops, isNight); for (const m of Object.values(npcs)) setNpcNight(m, isNight); }
   spotsTick(isNight);
+  if (port.active && P.phase === 'island') residentsTick();
   fishTick(dt);
   if (P.phase === 'sail') sailTick(dt);
   if (port.active) hudTick();
@@ -245,12 +343,142 @@ export function portAction() {
   const nd = env.$w.nearDoor;
   if (nd === 'port_cast') return startFish(nearSpot(3.4));
   if (nd === 'port_fish') return tapFish();
+  if (P.phase !== 'island') return;
+  if (nd === 'port_next') return advanceTalk();
+  const c = islandContext();
+  if (!c) return;
+  if (c.nd === 'port_pick') return pick(c.it);
+  if (c.nd === 'port_talk') return talkTo(c.id, c.kind);
+  if (c.nd === 'port_buy') return buy();
+  if (c.nd === 'port_board') return leaveIsland(false);
 }
 
 export function portPrompt() {
   if (P.phase === 'sail' && P.fishing) return { nd: 'port_fish', prompt: '' };
   if (P.phase === 'sail' && !P.fast && nearSpot(3.4)) return { nd: 'port_cast', prompt: '' };
-  return { nd: null, prompt: '' };
+  if (P.phase !== 'island') return { nd: null, prompt: '' };
+  const c = islandContext();
+  setChips(c?.nd === 'port_board' && portState().fastUnlocked ? 'island' : null);
+  return c ? { nd: c.nd, prompt: c.prompt ?? '' } : { nd: null, prompt: '' };
+}
+
+function setChips(kind) {
+  if (kind === chipKey) return;
+  chipKey = kind;
+  if (env.$w) env.$w.lastFloorChoiceKey = kind ? 'port_board,port_fast' : null;
+  env.ui?.setFloorChoice?.(kind ? [
+    { label: PORT_COPY.board, onSelect: () => leaveIsland(false) },
+    { label: PORT_COPY.fastHome, onSelect: () => leaveIsland(true) },
+  ] : null);
+}
+
+function nearItem(p) {
+  const pq = portState().quests;
+  let best = null, bd = PICK_R;
+  for (const it of items) {
+    if (it.taken || !it.mesh.visible) continue;
+    const s = pq[it.id], q = QUESTS.find(x => x.id === it.id);
+    if (s?.state !== 'active' || s.got >= q.need) continue;
+    const d = Math.hypot(it.pos.x - p.x, it.pos.z - p.z);
+    if (d < bd) { bd = d; best = it; }
+  }
+  return best;
+}
+
+function nearNpc(p) {
+  let best = null, bd = TALK_R;
+  for (const q of QUESTS) { const m = npcs[q.id], d = Math.hypot(m.position.x - p.x, m.position.z - p.z); if (d < bd) { bd = d; best = q; } }
+  return best;
+}
+
+function talkKind(q, s) {
+  if (!questOpen(q)) return s.state === 'done' ? null : 'sleep';
+  if (s.state === 'avail') return 'accept';
+  if (s.state === 'active') return s.got >= q.need ? 'turnin' : 'remind';
+  return null;
+}
+
+function islandContext() {
+  if (talk) return { nd: 'port_next' };
+  const p = env.player.position, ps = portState();
+  const it = nearItem(p);
+  if (it) return { nd: 'port_pick', it };
+  const q = nearNpc(p);
+  const kind = q && talkKind(q, ps.quests[q.id]);
+  if (kind) return { nd: 'port_talk', id: q.id, kind };
+  if (guideActive()) return null;
+  if (ps.boughtDay !== env.todayStr() && Math.hypot(p.x - PORT.x - MARKET_POS.x, p.z - PORT.z - MARKET_POS.z) < TALK_R) return { nd: 'port_buy' };
+  if (Math.hypot(p.x - PORT.x - PIER_END.x, p.z - PORT.z - PIER_END.z) < PIER_END_R) return { nd: 'port_board', prompt: PORT_COPY.home };
+  return null;
+}
+
+function showLine() {
+  const def = ISLAND_NPCS[talk.id];
+  const badge = '#' + def.badge.toString(16).padStart(6, '0');
+  showTalk({ face: '', color: `url(${npcPortrait(talk.id)}) center / 100% no-repeat, ${badge}44`, name: def.name, line: talk.lines[0], next: env.isTouch() ? '▶ 탭' : '▶ Space · 클릭' });
+}
+
+function talkTo(id, kind) {
+  const q = QUESTS.find(x => x.id === id), s = portState().quests[id];
+  const gs = env.gameState();
+  let lines, onDone = null;
+  if (kind === 'accept') {
+    lines = splitLines(q.ask);
+    onDone = () => {
+      gs.port = acceptQuest(portState(), id); showItems(id);
+      env.trackEvent('port_quest', { quest_id: id, act: 'accept' }); env.refreshQuestPanel(); env.requestSave();
+    };
+  } else if (kind === 'turnin') {
+    const r = claimQuest(portState(), id); if (!r) return;
+    gs.port = r.port; P.trip.quests++;
+    items.filter(it => it.id === id).forEach(it => { it.mesh.visible = false; });
+    env.popAt?.(npcs[id].position, Object.entries(r.reward).map(([k, n]) => `${PANTRY_ICO[k]}+${n}`).join(' '));
+    env.trackEvent('port_quest', { quest_id: id, act: 'done' }); env.refreshQuestPanel(); env.requestSave();
+    lines = splitLines(q.thanks);
+  } else if (kind === 'sleep') lines = [...PORT_COPY.sleep];
+  else lines = [PORT_COPY.nag, `${q.itemName} (${s.got}/${q.need})`];
+  talk = { id, lines, onDone };
+  onTalkTap(advanceTalk);
+  showLine();
+}
+
+function advanceTalk() {
+  if (!talk) return;
+  talk.lines = talk.lines.slice(1);
+  if (talk.lines.length) return showLine();
+  const done = talk.onDone; talk = null; hideTalk(); done?.();
+}
+
+function closeTalk() {
+  if (!talk) return;
+  talk = null;
+  if (talkShown()) hideTalk();
+}
+
+function pick(it) {
+  const gs = env.gameState(), q = QUESTS.find(x => x.id === it.id);
+  gs.port = pickItem(portState(), it.id);
+  it.taken = true; it.mesh.visible = false;
+  env.popAt?.(it.pos, `✋ ${gs.port.quests[it.id].got}/${q.need}`);
+  env.refreshQuestPanel(); env.requestSave();
+}
+
+function buy() {
+  if (!env.spendCoins(MARKET_PRICE)) { env.ui.toast?.('코인이 모자라요', 2000); return; }
+  const gs = env.gameState();
+  gs.port = { ...addToPantry(portState(), MARKET_GIVE), boughtDay: env.todayStr() };
+  env.popAt?.(W(MARKET_POS.x, MARKET_POS.z), Object.entries(MARKET_GIVE).map(([k, n]) => `${PANTRY_ICO[k]}+${n}`).join(' '));
+  env.ui.toast?.(PORT_COPY.market, 3200);
+  env.requestSave();
+}
+
+function leaveIsland(fast) {
+  if (!port.active || P.phase !== 'island') return;
+  closeTalk(); setChips(null);
+  boat.position.copy(W(ISLAND_DOCK.x, ISLAND_DOCK.z));
+  Object.assign(P, { phase: 'sail', dir: -1, fast, wp: 1, speed: 0, heading: Math.PI / 2 });
+  boat.rotation.y = P.heading;
+  seatPlayer();
 }
 
 function arrive() {
@@ -266,5 +494,9 @@ function arrive() {
 
 function arriveIsland() {
   P.phase = 'island';
-  env.player.position.copy(W(PIER_END.x, PIER_END.z));
+  boat.position.copy(W(ISLAND_DOCK.x, ISLAND_DOCK.z)); boat.rotation.y = -Math.PI / 2;
+  env.player.position.copy(W(PIER_END.x, PIER_END.z, LAND_Y));
+  env.player.rotation.y = Math.PI / 2;
+  syncItems();
+  env.refreshQuestPanel();
 }

@@ -59,3 +59,11 @@ test('섬은 바다 공간의 하위 모드로 붙는다', () => {
   assert.match(game, /_wq\.get\('port'\) === '1'/);
   assert.match(doors, /else if \(port\.active\) \{ const pp = portPrompt\(\); nd = pp\.nd; prompt = pp\.prompt; \}/);
 });
+
+test('포구 의뢰 카드가 의뢰 패널에 붙고 대화는 아래 대사 박스를 쓴다', () => {
+  assert.match(read('js/spaces/npc.js'), /portCard\(gameState\.port, port\.active\)/);
+  const idx = read('js/port/index.js');
+  assert.match(idx, /from '\.\.\/mirror\/talk-box\.js'/);
+  assert.match(idx, /npcPortrait\(/);
+  assert.doesNotMatch(idx, /npc-modal|openNPCModal/);
+});
