@@ -23,7 +23,7 @@ export function spawnPortPier() {
   }
   portPierBoat = tubBoat(); portPierBoat.position.set(boat.x, 0.18, boat.z); portPierBoat.rotation.y = boat.ry; g.add(portPierBoat);
   const sign = makeSignpost('⛵ 포구 섬', ax + 1.6, az + 1.5); g.add(sign);
-  solidCircle(boat.x, boat.z, 1.1);
+  solidCircle(boat.x, boat.z, 0.8);
   addGateWalk(g, 'port', { water: coveSolid(), color: 0xffc94a, ringR: 0.85, walk: makeWalk({ ax, az, bx, bz, hw: 0.6, y: 0.36 }) });
 }
 

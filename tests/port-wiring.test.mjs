@@ -39,3 +39,10 @@ test('후미 바탕은 cove, 바다터 입구는 sea, 통배 부두는 port 잠�
   assert.match(doors, /isOpen\('port'\) && nearPortPier\(player\.position\)/);
   assert.match(doors, /nd = 'port_board'/);
 });
+
+test('방파제 바위줄은 바다터 입구와 같이 잠기고 후미에는 없다', () => {
+  const sea = read('js/spaces/sea.js');
+  const body = name => { const i = sea.indexOf(`export function ${name}(`); return sea.slice(i, sea.indexOf('\nexport function', i + 1)); };
+  assert.match(body('spawnSeaGate'), /IcosahedronGeometry\(0\.42 - t \* 0\.14/);
+  assert.doesNotMatch(body('spawnSeaCove'), /IcosahedronGeometry\(0\.42 - t \* 0\.14/);
+});

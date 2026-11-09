@@ -43,6 +43,8 @@ export let coveWater = null, seaWater = null;
 export let seaBeacon = null, seaLampMat = null, seaBeamMats = [];
 let coveSolidRef = null;
 export const coveSolid = () => coveSolidRef;
+const CX = SEA_COVE.x - SEA_GATE.x, CZ = SEA_COVE.z - SEA_GATE.z;
+const LX = CX - 4.9, LZ = CZ + 4.6;
 
 export function makeWavyWater(radius, thetaSeg, rings, colCenter, colEdge, opacity, dampFn, gradR) {
   const geo = new THREE.RingGeometry(0.02, radius, thetaSeg, rings);
@@ -106,7 +108,6 @@ export function updateSeaVisuals(t) {
 
 export function spawnSeaCove() {
   const g = new THREE.Group(); g.position.copy(SEA_GATE); scene.add(g);
-  const CX = SEA_COVE.x - SEA_GATE.x, CZ = SEA_COVE.z - SEA_GATE.z;   // 후미 중심(로컬)
   // ── 후미(만) — 모래톱 → 바닷물 → 먼바다 톤. 게이트에 서면 바다가 보인다
   const sand = new THREE.Mesh(new THREE.CircleGeometry(SEA_COVE.r + 1.1, 48), clayMat(0xe8d9a8, false));
   sand.geometry.rotateX(-Math.PI / 2); sand.position.set(CX, 0.03, CZ); sand.receiveShadow = true; g.add(sand);
@@ -125,7 +126,6 @@ export function spawnSeaCove() {
     g.add(foam);
   }
   // ── 등대 — 물속 바위섬 위(빨간 줄무늬 2단, 마을에서 잘 보이는 랜드마크)
-  const LX = CX - 4.9, LZ = CZ + 4.6;
   const islet = new THREE.Mesh(new THREE.IcosahedronGeometry(1.05, 0), clayMat(0x9aa4ab));
   islet.scale.y = 0.5; islet.position.set(LX, 0.16, LZ); islet.castShadow = true; g.add(islet);
   [[-0.9, 0.5, 0.4], [0.8, -0.6, 0.34]].forEach(([dx, dz, s]) => {
@@ -167,13 +167,6 @@ export function spawnSeaCove() {
     });
   });
   g.add(seaBeacon);
-  // ── 방파제 — 물가에서 등대 바위섬 쪽으로 뻗는 바위줄
-  for (let i = 0; i < 6; i++) {
-    const t = i / 5;
-    const rock = new THREE.Mesh(new THREE.IcosahedronGeometry(0.42 - t * 0.14 + (i % 2) * 0.06, 0), clayMat(0xb9c0c4));
-    rock.position.set(0.8 + (LX - 1.6) * t, 0.16, -0.8 + (LZ + 0.8) * t);
-    rock.castShadow = true; g.add(rock);
-  }
   // 부표 — 물 위 주황 부표(바다터 부표와 같은 문법)
   [[CX - 1, CZ + 6.5], [CX + 4.5, CZ + 2]].forEach(([bx, bz]) => {
     const b = new THREE.Mesh(new THREE.SphereGeometry(0.16, 9, 7), clayMat(0xef8a4a));
@@ -186,6 +179,13 @@ export function spawnSeaCove() {
 export function spawnSeaGate() {
   const g = new THREE.Group(); g.position.copy(SEA_GATE); scene.add(g);
   g.add(makeSignpost('🌊 바다터', -1.6, 1.2));
+  // ── 방파제 — 물가에서 등대 바위섬 쪽으로 뻗는 바위줄
+  for (let i = 0; i < 6; i++) {
+    const t = i / 5;
+    const rock = new THREE.Mesh(new THREE.IcosahedronGeometry(0.42 - t * 0.14 + (i % 2) * 0.06, 0), clayMat(0xb9c0c4));
+    rock.position.set(0.8 + (LX - 1.6) * t, 0.16, -0.8 + (LZ + 0.8) * t);
+    rock.castShadow = true; g.add(rock);
+  }
   const stall = buildHomiStall(THREE, clayMat);
   stall.position.set(HOMI_STALL.x - SEA_GATE.x, 0, HOMI_STALL.z - SEA_GATE.z); stall.rotation.y = HOMI_STALL.ry; g.add(stall);
   solidCircle(HOMI_STALL.x, HOMI_STALL.z, HOMI_STALL.r);

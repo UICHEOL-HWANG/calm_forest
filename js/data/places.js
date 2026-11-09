@@ -237,7 +237,7 @@ export const SEA_COVE = { x: SEA_GATE.x + 9.5, z: SEA_GATE.z - 9, r: 12 };  // �
 const PORT_DIR = Math.atan2(-9 - SEA_COVE.z, 26.5 - SEA_COVE.x);
 const coveAt = (r) => ({ x: SEA_COVE.x + Math.cos(PORT_DIR) * r, z: SEA_COVE.z + Math.sin(PORT_DIR) * r });
 const PIER_A = coveAt(SEA_COVE.r - 1.2), PIER_B = coveAt(SEA_COVE.r - 4.4);
-export const PORT_PIER = { ax: PIER_A.x, az: PIER_A.z, bx: PIER_B.x, bz: PIER_B.z, end: coveAt(SEA_COVE.r - 3.9), boat: { ...coveAt(SEA_COVE.r - 4.6), ry: 0.4 } };
+export const PORT_PIER = { ax: PIER_A.x, az: PIER_A.z, bx: PIER_B.x, bz: PIER_B.z, end: coveAt(SEA_COVE.r - 3.9), boat: { ...coveAt(SEA_COVE.r - 5.7), ry: 0.4 } };
 export const PORT = new THREE.Vector3(700, 0, 0);
 
 export const SEA = new THREE.Vector3(400, 0, 0);             // 바다 인스턴스 — 다른 공간이 전부 x=0 축이라 동쪽으로 뺌
