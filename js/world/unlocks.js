@@ -69,6 +69,8 @@ export const UNLOCKS = [
   // ── ⑨ 나루터 꾸러미 ──
   { id: 'ferryman',   kind: 'npc',   when: s => branch(s, 'water', 'bundles') },
   { id: 'sea',        kind: 'place', when: s => branch(s, 'water', 'bundles') },
+  { id: 'cove',       kind: 'place', when: s => branch(s, 'water', 'bundles') || branch(s, 'kitchen', 'habitat') },
+  { id: 'port',       kind: 'place', when: s => branch(s, 'kitchen', 'habitat') },
   // ── ⑩ 7장(숲의 기억) 완료 — story.ch 는 끝낸 장 수 ──
   { id: 'observatory', kind: 'place', when: s => (s?.story?.ch || 0) >= 7 },
   { id: 'stargazer',  kind: 'npc',   when: s => (s?.story?.ch || 0) >= 7 },

@@ -176,3 +176,18 @@ test('광부 귀환은 GA4 unlock 에서 npc 로 남는다', () => {
   const g = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
   assert.match(g, /kind: def \|\| id === 'miner' \? 'npc' : 'place'/);
 });
+
+test('포구 섬은 부엌 서식지에서, 후미 바탕은 바다터나 포구 중 하나만 열려도 열린다', () => {
+  const st = (b) => ({ unlocks: {}, tree: { branches: b } });
+  const none = st({});
+  const kitchen = st({ kitchen: { habitat: true } });
+  const water = st({ water: { bundles: true } });
+  assert.equal(isUnlocked(none, 'port'), false);
+  assert.equal(isUnlocked(none, 'cove'), false);
+  assert.equal(isUnlocked(kitchen, 'port'), true);
+  assert.equal(isUnlocked(kitchen, 'cove'), true);
+  assert.equal(isUnlocked(kitchen, 'sea'), false);
+  assert.equal(isUnlocked(water, 'cove'), true);
+  assert.equal(isUnlocked(water, 'port'), false);
+  assert.deepEqual(newlyUnlocked(unlockedSet(none), unlockedSet(kitchen)).filter(id => id === 'port' || id === 'cove'), ['cove', 'port']);
+});
