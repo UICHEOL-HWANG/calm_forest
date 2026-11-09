@@ -16,7 +16,7 @@ import {
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { mudflat, mudflatHint, nearMudflatExit, MUDFLAT_COPY } from './mudflat.js';
 import { dive, diveHint, nearDiveExit, DIVE_COPY } from './dive.js';
-import { port, portPrompt } from '../port/index.js';
+import { port, portPrompt, enterPort } from '../port/index.js';
 import { plazaSpot } from '../plaza/index.js';
 import { delvePrompt, delveFloorNow } from './delve.js';
 import { trackEvent } from '../analytics.js';
@@ -342,6 +342,7 @@ export function updateDoorInteract() {
     firstHintBanner('dockGate', '🛶', '나루터', '나룻배 타고 하루 3번 강을 내려가요');
   } else if (isOpen('port') && nearPortPier(player.position)) {
     nd = 'port_board'; prompt = PORT_COPY.board;
+    if (gameState.port?.fastUnlocked) floorChoiceOpts = [{ f: 'port_board', label: PORT_COPY.board, onSelect: () => enterPort() }, { f: 'port_fast', label: PORT_COPY.fastGo, onSelect: () => enterPort({ fast: true }) }];
   } else if (isOpen('sea') && nearGateEnd('sea')) {
     nd = 'sea';
     const locked = mapLocked('sea');
@@ -476,7 +477,7 @@ export function updateDoorInteract() {
   const fcKey = floorChoiceOpts ? floorChoiceOpts.map(o => o.f).join(',') : null;
   if (fcKey !== lastFloorChoiceKey) {
     $w.lastFloorChoiceKey = fcKey;
-    ui.setFloorChoice?.(floorChoiceOpts ? floorChoiceOpts.map(o => ({ label: o.label, onSelect: () => goFloor(o.f) })) : null);
+    ui.setFloorChoice?.(floorChoiceOpts ? floorChoiceOpts.map(o => ({ label: o.label, onSelect: o.onSelect ?? (() => goFloor(o.f)) })) : null);
   }
   // 첫 접근 안내(1회) — 초보가 각 시설 용도를 알게
   if (nearKitchen) firstHintBanner('kitchen', '🍳', '자유주방', '탭 타이밍 요리로 버프를 얻는 곳');

@@ -19,8 +19,8 @@ test('sea branches hand control to the mudflat while it is active', () => {
   assert.match(sea, /export function exitSea\(\) \{\n  leaveMudflat\(\);/);
   assert.match(game, /if \(atSea\) \{ \(mudflat\.active \? mudflatAction : dive\.active \? diveAction : port\.active \? portAction : seaAction\)\(\); return; \}/);
   assert.match(game, /if \(mudflat\.active\) clampMudflat\(player\.position\);/);
-  assert.match(game, /if \(atSea && \(seaRodMesh \|\| mudflat\.active \|\| dive\.active\)\) return;/);
-  assert.match(game, /place === 'sea' \? \(mudflat\.active \? MUDFLAT : dive\.active \? DIVE : SEA\)/);
+  assert.match(game, /if \(atSea && \(seaRodMesh \|\| mudflat\.active \|\| dive\.active \|\| port\.active\)\) return;/);
+  assert.match(game, /place === 'sea' \? \((port\.active \? player\.position : )?mudflat\.active \? MUDFLAT : dive\.active \? DIVE : SEA\)/);
   assert.match(game, /_wq\.get\('mudflat'\) === '1'/);
   assert.match(doors, /if \(mudflat\.active\) \{/);
   assert.match(doors, /else prompt = mudflatHint\(\);/);

@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { PANTRY_KEYS, QUESTS, CATCH } from '../js/port/data.js';
 import { defaultPort, sanitizePort, rollCatch, acceptQuest, pickItem, claimQuest, addToPantry, pantryUnits } from '../js/port/rules.js';
+import { steer, pushOutOfIsland, fastStep } from '../js/port/sail.js';
 
 test('기본 상태는 의뢰 4개가 모두 대기, 창고는 0', () => {
   const p = defaultPort();
@@ -57,4 +58,26 @@ test('창고 합계와 영업 회분(재료 8개 = 1회)', () => {
   assert.equal(p.pantry.fish, 6);
   assert.equal(pantryUnits(p), 1.5);
   assert.equal(addToPantry(p, { gold: 3 }).pantry.gold, undefined);
+});
+
+test('조이스틱 방향으로 돌고 속도가 붙으며, 놓으면 멈춘다', () => {
+  let s = { heading: 0, speed: 0 };
+  for (let i = 0; i < 20; i++) s = steer(s, { x: 1, y: 0 }, 0.05, { speed: 6, turn: 5 });
+  assert.ok(Math.abs(s.heading - (-Math.PI / 2)) < 0.05);
+  assert.ok(s.speed > 5);
+  for (let i = 0; i < 40; i++) s = steer(s, { x: 0, y: 0 }, 0.05, { speed: 6, turn: 5 });
+  assert.equal(s.speed, 0);
+});
+
+test('섬 안으로 들어오면 테두리 밖으로 밀어낸다', () => {
+  const p = pushOutOfIsland({ x: 30, z: 0 }, { x: 44, z: 0 }, 22.2);
+  assert.ok(Math.abs(Math.hypot(p.x - 44, p.z) - 22.2) < 1e-9);
+});
+
+test('바로 가기는 항로 점을 차례로 따라가 끝에서 done', () => {
+  let st = { p: { x: 0, z: 0 }, wp: 1, done: false };
+  const route = [[0, 0], [3, 0], [3, 4]];
+  for (let i = 0; i < 10 && !st.done; i++) st = fastStep(st.p, route, st.wp, 1);
+  assert.equal(st.done, true);
+  assert.deepEqual(st.p, { x: 3, z: 4 });
 });
