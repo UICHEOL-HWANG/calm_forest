@@ -114,3 +114,17 @@ test('통배 부두 데크는 물 충돌 원 밖 뭍에서 시작해 걸어서 �
   const water = -+sea.match(/solidCircle\(SEA_COVE\.x, SEA_COVE\.z, SEA_COVE\.r - ([\d.]+)\)/)[1];
   assert.ok(a > water + 0.45, `deck start r+${a} must clear water r${water} + player radius`);
 });
+
+test('안내 free 단계에선 섬 부두 끝 탑승 래치를 켜고, 매 프레임 일은 줄인다', () => {
+  const idx = read('js/port/index.js'), view = read('js/guide/view.js');
+  assert.match(idx, /if \(guide\?\.current\(\)\?\.id === 'free'\) boardArmed = true;\n  const g = boardGate\(boardArmed,/);
+  const upd = idx.slice(idx.indexOf('export function updatePortGuide'));
+  assert.doesNotMatch(upd, /SOLIDS\.map|W\(/);
+  const ctx = idx.slice(idx.indexOf('function guideCtx'), idx.indexOf('function setPoint'));
+  assert.doesNotMatch(ctx, /W\(|\.filter\(/);
+  assert.match(idx, /if \(DBG\) window\.__portGuide = /);
+  assert.doesNotMatch(idx, /^\s*window\.__portGuide = /m);
+  const show = view.slice(view.indexOf('function show'));
+  assert.doesNotMatch(show, /getBoundingClientRect/);
+  assert.match(view, /addEventListener\('resize'/);
+});

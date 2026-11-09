@@ -26,8 +26,25 @@ test('완료 조건을 만족할 때만 다음 단계로 가고 머문 시간을
   assert.deepEqual(log, [{ flow: 'port', step: 1, ms: 1500 }]);
 });
 
+test('첫 tick 에 이미 끝난 단계는 건너뛴 것이라 기록하지 않고 onDone 은 부른다', () => {
+  const { g, log, adv, finished } = make();
+  adv(200); g.tick({ a: true, b: true });
+  assert.deepEqual(log, []);
+  assert.equal(g.active(), false);
+  assert.equal(finished(), 1);
+});
+
+test('첫 tick 에 건너뛴 뒤 플레이어가 끝낸 단계는 그 단계부터 머문 시간을 기록한다', () => {
+  const { g, log, adv } = make();
+  adv(100); g.tick({ a: true, b: false });
+  assert.equal(g.current().id, 'b');
+  adv(700); g.tick({ a: true, b: true });
+  assert.deepEqual(log, [{ flow: 'port', step: 2, ms: 700 }]);
+});
+
 test('한 tick 에 여러 단계가 끝나면 모두 기록하고 끝나면 onDone 한 번', () => {
   const { g, log, adv, finished } = make();
+  g.tick({ a: false, b: false });
   adv(200); g.tick({ a: true, b: true });
   assert.deepEqual(log.map(e => e.step), [1, 2]);
   assert.equal(g.active(), false);

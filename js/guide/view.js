@@ -10,7 +10,10 @@ export function createGuideView({ scene, camera, root }) {
   chev.visible = false; chev.renderOrder = 5; scene.add(chev);
   const card = root.querySelector('#guide-card'), mark = root.querySelector('#guide-mark'), edge = root.querySelector('#guide-edge');
   const v = new THREE.Vector3();
-  let cardKey = null, markKey = null, edgeKey = null;
+  let cardKey = null, markKey = null, edgeKey = null, markAt = null, edgeAt = null;
+  let rect = root.getBoundingClientRect();
+  addEventListener('resize', () => { rect = root.getBoundingClientRect(); });
+  const place = (el, x, y, last) => { const k = `${Math.round(x)},${Math.round(y)}`; if (k !== last) { el.style.left = `${Math.round(x)}px`; el.style.top = `${Math.round(y)}px`; } return k; };
   const html = (el, key, last, s) => { if (key !== last) el.innerHTML = s; return key; };
   function hide() { ring.visible = chev.visible = false; card.hidden = mark.hidden = edge.hidden = true; }
   function show(step, index, total, ctx, me, solids, groundY = 0) {
@@ -30,12 +33,12 @@ export function createGuideView({ scene, camera, root }) {
       chev.quaternion.setFromEuler(new THREE.Euler(-Math.PI / 2, 0, ang + Math.PI, 'XYZ'));
     }
     v.set(tgt.x, (tgt.y ?? groundY) + 1.6, tgt.z).project(camera);
-    const r = root.getBoundingClientRect();
+    const r = rect;
     const e = edgeArrow({ x: (v.x + 1) / 2 * r.width, y: (1 - v.y) / 2 * r.height, inFront: v.z < 1 }, r.width, r.height);
     const label = `${Math.round(d)}m`;
     mark.hidden = !e.inside; edge.hidden = e.inside;
-    if (e.inside) { mark.style.left = `${e.x}px`; mark.style.top = `${e.y}px`; markKey = html(mark, d > 3 ? label : '', markKey, `⬇️<span>${d > 3 ? label : ''}</span>`); }
-    else { edge.style.left = `${e.x}px`; edge.style.top = `${e.y}px`; edgeKey = html(edge, `${Math.round(e.deg)}|${label}`, edgeKey, `<i style="transform:rotate(${e.deg}deg)">➜</i><span>${label}</span>`); }
+    if (e.inside) { markAt = place(mark, e.x, e.y, markAt); markKey = html(mark, d > 3 ? label : '', markKey, `⬇️<span>${d > 3 ? label : ''}</span>`); }
+    else { edgeAt = place(edge, e.x, e.y, edgeAt); edgeKey = html(edge, `${Math.round(e.deg)}|${label}`, edgeKey, `<i style="transform:rotate(${e.deg}deg)">➜</i><span>${label}</span>`); }
   }
   hide();
   return { show, hide };
