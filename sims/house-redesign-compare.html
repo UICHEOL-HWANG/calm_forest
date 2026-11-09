@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>거울 마을·꿈의 숲 집 시안 v2</title>
+<style>
+  body { margin: 0; background: #15122a; color: #e8e4ff; font: 14px/1.5 system-ui, sans-serif; }
+  h1 { font-size: 18px; margin: 16px 16px 4px; } h2 { font-size: 15px; margin: 22px 16px 6px; color: #c8bfff; }
+  p.note { margin: 0 16px 8px; color: #a9a2d6; font-size: 12px; }
+  .grid { display: grid; gap: 10px; padding: 0 16px; grid-template-columns: repeat(4, 1fr); }
+  .cell { background: #211c40; border-radius: 10px; padding: 8px; }
+  .cell b { display: block; margin-bottom: 4px; } .cell small { color: #a9a2d6; display: block; margin-top: 4px; }
+  .row { display: flex; gap: 6px; align-items: flex-start; margin-top: 4px; }
+  canvas { display: block; border-radius: 6px; }
+  .c-close { width: 100%; }
+</style>
+<script type="importmap">{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }</script>
+</head><body>
+<h1>🏠 특수맵 집 시안 v2 — 거울 마을 3안 + 꿈의 숲 신축 3안</h1>
+<p class="note">v2 = 모서리 둥글림(RoundedBox)·두꺼운 지붕+처마 판(fascia)·기와 단·용마루·벽 모서리 기둥·창틀+창턱·아치 문틀·받침돌 · 조명은 게임 atMirror / atDream 값 · 칸마다 위 = 근접, 아래 = 플레이 카메라 PC·모바일</p>
+<h2>🪞 거울 마을 — 집 한 채 (현재 + 3안)</h2>
+<div class="grid" id="mirror"></div>
+<h2>🌙 꿈의 숲 — 현재는 집이 없다. 메인 섬(구름 침대 옆)에 지을 오두막 3안</h2>
+<div class="grid" id="dream"></div>
+<script type="module">
+import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { bakeGroup, part, cloudBedParts } from '../js/dream/art.js';
+import { PAL3 } from '../js/mirror/art.js';
+
+const P = PAL3;
+const R = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+R.outputColorSpace = THREE.SRGBColorSpace; R.toneMapping = THREE.ACESFilmicToneMapping; R.toneMappingExposure = 1.05; R.setPixelRatio(1);
+
+const LIGHT = {
+  mirror: { bg: 0x2e2858, near: 26, far: 90, hemi: [0xb8c4ff, 0x3a3270, 0.95], amb: [0x8a90d8, 0.6], sun: [0xe8dcff, 1.0, [10, 22, 8]] },
+  dream: { bg: 0xb89ad8, near: 28, far: 95, hemi: [0xe8dcff, 0x6a5aa8, 0.7], amb: [0x9a86d8, 0.55], sun: [0xffe6f5, 0.95, [-12, 22, 10]] },
+};
+function makeScene(kind) {
+  const L = LIGHT[kind], s = new THREE.Scene();
+  s.background = new THREE.Color(L.bg); s.fog = new THREE.Fog(L.bg, L.near, L.far);
+  s.add(new THREE.HemisphereLight(L.hemi[0], L.hemi[1], L.hemi[2]));
+  s.add(new THREE.AmbientLight(L.amb[0], L.amb[1]));
+  const sun = new THREE.DirectionalLight(L.sun[0], L.sun[1]); sun.position.set(...L.sun[2]); s.add(sun);
+  const pl = new THREE.PointLight(0xffb95e, 0.6, 16, 1.3); pl.position.set(0.5, 1.8, 3.8); s.add(pl);   // 게임의 플레이어 조명(집 앞에 선 모습)
+  return s;
+}
+function bake(solid, glow) {
+  const g = new THREE.Group();
+  g.add(new THREE.Mesh(bakeGroup(solid), new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.85, side: THREE.DoubleSide })));
+  g.add(new THREE.Mesh(bakeGroup(glow), new THREE.MeshBasicMaterial({ vertexColors: true })));
+  return g;
+}
+
+// ── 조형 도구: 둥근 모서리·아치·곡선 지붕 ───────────────────
+const B = (w, h, d) => new THREE.BoxGeometry(w, h, d);
+const Cy = (rt, rb, h, n = 12) => new THREE.CylinderGeometry(rt, rb, h, n);
+const Sp = (r, a = 10, b = 8) => new THREE.SphereGeometry(r, a, b);
+const Ico = (r) => new THREE.IcosahedronGeometry(r, 1);
+const shade = (hex, k) => new THREE.Color(hex).multiplyScalar(k).getHex();
+/** 모서리 둥근 상자 — 모든 벽·판·몰딩의 기본. 날 선 모서리가 "조잡함"의 주범이었다 */
+const RB = (p, c, w, h, d, x, y, z, r = 0.07) => part(p, new RoundedBoxGeometry(w, h, d, 2, Math.min(r, w / 2 - 1e-3, h / 2 - 1e-3, d / 2 - 1e-3)), c, x, y, z);
+/** 아치 판(문·창) — 바닥 y, 앞면 +z */
+function arch(p, c, w, h, d, x, y, z, bev = 0.03) {
+  const sh = new THREE.Shape(); const r = w / 2;
+  sh.moveTo(-r, 0); sh.lineTo(-r, h - r); sh.absarc(0, h - r, r, Math.PI, 0, true); sh.lineTo(r, 0); sh.lineTo(-r, 0);
+  return part(p, new THREE.ExtrudeGeometry(sh, { depth: d, bevelEnabled: true, bevelSize: bev, bevelThickness: bev, bevelSegments: 1, curveSegments: 10 }), c, x, y, z);
+}
+/** 회전체 지붕 — 끝이 살짝 들린 처마 곡선(원뿔의 직선 실루엣 대신) */
+function lathe(p, c, r, h, seg, x, y, z, flare = true) {
+  const pts = flare
+    ? [[0.001, h], [0.26 * r, 0.7 * h], [0.6 * r, 0.34 * h], [0.9 * r, 0.1 * h], [r, 0.07 * h], [0.97 * r, -0.08 * h], [0.001, -0.08 * h]]
+    : [[0.001, h], [0.5 * r, 0.8 * h], [0.85 * r, 0.45 * h], [r, 0.12 * h], [r, -0.06 * h], [0.001, -0.06 * h]];
+  return part(p, new THREE.LatheGeometry(pts.map(([a, b]) => new THREE.Vector2(a, b)), seg), c, x, y, z);
+}
+/** 두꺼운 박공 지붕 — 압출한 지붕 판 + 처마 판(fascia) + 기와 단 + 용마루. 능선이 x */
+function gableRoof(p, color, trim, len, hw, rise, t, y0) {
+  const sh = new THREE.Shape(); sh.moveTo(-hw, 0); sh.lineTo(0, rise); sh.lineTo(hw, 0); sh.lineTo(hw, -t); sh.lineTo(0, rise - t); sh.lineTo(-hw, -t);
+  const g = new THREE.ExtrudeGeometry(sh, { depth: len, bevelEnabled: true, bevelSize: 0.05, bevelThickness: 0.05, bevelSegments: 1 }); g.translate(0, 0, -len / 2);
+  part(p, g, color, 0, y0, 0).rotation.y = Math.PI / 2;
+  const a = Math.atan2(rise, hw), dk = shade(color, 0.82);
+  for (const s of [-1, 1]) {
+    RB(p, trim, len + 0.12, 0.13, 0.16, 0, y0 - 0.02, s * (hw + 0.03), 0.05);
+    for (let k = 1; k <= 3; k++) { const f = k / 4; const b = RB(p, dk, len - 0.06, 0.05, 0.1, 0, y0 + rise * f + 0.05, s * hw * (1 - f), 0.02); b.rotation.x = s * a; }
+  }
+  RB(p, shade(color, 1.18), len + 0.1, 0.17, 0.34, 0, y0 + rise + 0.01, 0, 0.07);
+}
+function gableEnd(p, color, x, hw, rise, t, y0) {
+  const sh = new THREE.Shape(); sh.moveTo(-hw, 0); sh.lineTo(hw, 0); sh.lineTo(0, rise - t + 0.06);
+  part(p, new THREE.ExtrudeGeometry(sh, { depth: 0.1, bevelEnabled: false }), color, x, y0, 0).rotation.y = Math.PI / 2;
+}
+const TRIM = 0xf0e8ff, DOOR = 0x4a4060;
+/** 둥근 창 — 창틀 링 + 유리 + 십자 살 + 창턱 */
+function roundWindow(solid, glow, color, x, y, z, r = 0.4) {
+  part(solid, Cy(r + 0.12, r + 0.12, 0.1, 16), TRIM, x, y, z).rotation.x = Math.PI / 2;
+  part(glow, Cy(r, r, 0.08, 16), color, x, y, z + 0.03).rotation.x = Math.PI / 2;
+  RB(solid, TRIM, 2 * r, 0.06, 0.1, x, y, z + 0.08, 0.02); RB(solid, TRIM, 0.06, 2 * r, 0.1, x, y, z + 0.08, 0.02);
+  RB(solid, TRIM, 2 * r + 0.4, 0.1, 0.26, x, y - r - 0.14, z + 0.1, 0.04);
+}
+function squareWindow(solid, glow, color, x, y, z, w = 0.62, h = 0.7, shutter = null) {
+  RB(solid, TRIM, w + 0.2, h + 0.2, 0.1, x, y, z, 0.05);
+  part(glow, B(w, h, 0.08), color, x, y, z + 0.04);
+  RB(solid, TRIM, 0.05, h, 0.1, x, y, z + 0.06, 0.02); RB(solid, TRIM, w, 0.05, 0.1, x, y, z + 0.06, 0.02);
+  RB(solid, TRIM, w + 0.38, 0.1, 0.24, x, y - h / 2 - 0.15, z + 0.08, 0.04);
+  if (shutter) for (const s of [-1, 1]) RB(solid, shutter, 0.2, h + 0.16, 0.07, x + s * (w / 2 + 0.3), y, z + 0.03, 0.03);
+}
+function archDoor(solid, x, z, w = 0.85, h = 1.3, frame = TRIM, door = DOOR) {
+  arch(solid, frame, w + 0.28, h + 0.14, 0.1, x, 0.3, z, 0.03);
+  arch(solid, door, w, h, 0.1, x, 0.3, z + 0.08, 0.02);
+  part(solid, Sp(0.05, 6, 5), 0xffe08a, x + w * 0.3, 0.95, z + 0.2);
+}
+function corners(solid, color, w, h, d, y) {
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) RB(solid, color, 0.17, h, 0.17, sx * w / 2, y, sz * d / 2, 0.06);
+}
+
+// ── 🪞 거울 마을 집 ───────────────────────────────────────
+const M = {
+  cur(solid, glow, i) {
+    part(solid, B(3, 2.2, 2.6), P.walls[i], 0, 1.1, 0);
+    const r = part(solid, new THREE.ConeGeometry(2.4, 1.5, 4), P.roofs[i], 0, 2.95, 0); r.rotation.y = Math.PI / 4; r.scale.set(1, 1, 0.85);
+    part(solid, B(0.7, 1.1, 0.05), DOOR, 0, 0.55, 1.31);
+    for (const wx of [-0.75, 0.75]) part(glow, B(0.6, 0.6, 0.05), P.win[i], wx, 1.3, 1.31);
+  },
+  A(solid, glow, i) {   // 아늑한 박공 오두막
+    const wall = P.walls[i], rf = P.roofs[i];
+    RB(solid, P.stone, 3.15, 0.32, 2.75, 0, 0.16, 0, 0.1);
+    RB(solid, wall, 2.9, 1.9, 2.5, 0, 1.27, 0, 0.1);
+    corners(solid, TRIM, 2.9, 1.9, 2.5, 1.27);
+    RB(solid, shade(wall, 0.9), 2.96, 0.14, 2.56, 0, 0.5, 0, 0.05);
+    gableEnd(solid, shade(wall, 0.85), 1.46, 1.25, 1.3, 0.28, 2.2); gableEnd(solid, shade(wall, 0.85), -1.5, 1.25, 1.3, 0.28, 2.2);
+    gableRoof(solid, rf, TRIM, 3.6, 1.7, 1.35, 0.28, 2.2);
+    RB(solid, P.stone, 0.55, 1.5, 0.55, 0.95, 3.0, -0.55, 0.08); RB(solid, shade(P.stone, 1.12), 0.72, 0.16, 0.72, 0.95, 3.78, -0.55, 0.06);
+    RB(solid, shade(P.stone, 0.88), 0.6, 0.1, 0.6, 0.95, 3.2, -0.55, 0.04);
+    archDoor(solid, -0.6, 1.26);
+    RB(solid, P.stone, 1.35, 0.16, 0.62, -0.6, 0.4, 1.62, 0.06); RB(solid, shade(P.stone, 1.1), 1.0, 0.14, 0.45, -0.6, 0.55, 1.62, 0.06);
+    roundWindow(solid, glow, P.win[i], 0.8, 1.55, 1.26, 0.38);
+    RB(solid, P.wood, 1.0, 0.24, 0.3, 0.8, 0.95, 1.52, 0.06);
+    for (const fx of [-0.3, 0, 0.3]) part(glow, Sp(0.12, 7, 5), [0xff9ee0, 0xffe08a, 0xff9ee0][fx === 0 ? 1 : 0], 0.8 + fx, 1.15, 1.52);
+    part(solid, Cy(0.05, 0.06, 1.55, 6), P.wood, 0.05, 0.78, 1.85); RB(solid, P.wood, 0.34, 0.06, 0.34, 0.05, 1.6, 1.85, 0.02);
+    part(glow, B(0.24, 0.3, 0.24), P.lampGlow, 0.05, 1.8, 1.85);
+    for (const [sx, sz] of [[-1.45, 2.4], [-1.0, 2.95], [-0.8, 3.5]]) part(solid, Cy(0.28, 0.3, 0.1, 7), shade(P.stone, 1.1), sx, 0.05, sz);
+  },
+  B(solid, glow, i) {   // 거울 지붕집: 지붕 위에 거꾸로 뜬 지붕 + 벽에 걸린 타원 거울
+    const wall = P.walls[i], rf = P.roofs[i];
+    RB(solid, P.stone, 3.15, 0.32, 2.75, 0, 0.16, 0, 0.1);
+    RB(solid, wall, 2.9, 2.0, 2.5, 0, 1.32, 0, 0.1);
+    corners(solid, TRIM, 2.9, 2.0, 2.5, 1.32);
+    RB(solid, shade(wall, 0.9), 2.96, 0.14, 2.56, 0, 0.55, 0, 0.05);
+    RB(solid, TRIM, 3.2, 0.16, 2.8, 0, 2.38, 0, 0.07);
+    const r1 = lathe(solid, rf, 2.45, 1.6, 4, 0, 2.42, 0); r1.rotation.y = Math.PI / 4; r1.scale.z = 0.92;
+    const r2 = lathe(solid, rf, 1.0, 1.0, 4, 0, 4.95, 0); r2.rotation.set(Math.PI, Math.PI / 4, 0);
+    part(glow, new THREE.OctahedronGeometry(0.2, 0), 0xffe08a, 0, 4.12, 0).scale.y = 1.4;
+    part(solid, Cy(0.05, 0.05, 0.35, 5), TRIM, 0, 4.12, 0);
+    archDoor(solid, -0.75, 1.26);
+    RB(solid, P.stone, 1.3, 0.16, 0.6, -0.75, 0.4, 1.62, 0.06);
+    const fr = part(solid, Cy(0.68, 0.68, 0.14, 22), TRIM, 0.72, 1.55, 1.27); fr.rotation.x = Math.PI / 2; fr.scale.set(1, 1, 1.5);
+    const fc = part(glow, Cy(0.52, 0.52, 0.1, 22), 0x8fb4ff, 0.72, 1.55, 1.33); fc.rotation.x = Math.PI / 2; fc.scale.set(1, 1, 1.5);
+    part(glow, new THREE.OctahedronGeometry(0.1, 0), 0xe8f2ff, 0.55, 1.95, 1.42).scale.set(1, 1.5, 0.4);
+    squareWindow(solid, glow, P.win[i], -0.75, 1.9 + 0.12, 1.26, 0.5, 0.42, rf);
+    for (const [sx, sz] of [[1.6, 1.9], [1.1, 2.4]]) part(solid, Cy(0.3, 0.32, 0.1, 7), shade(P.stone, 1.1), sx, 0.05, sz);
+  },
+  C(solid, glow, i) {   // 비튼 2층 탑집
+    const wall = P.walls[i], rf = P.roofs[i];
+    RB(solid, P.stone, 3.15, 0.32, 2.75, 0, 0.16, 0, 0.1);
+    RB(solid, wall, 2.9, 1.5, 2.5, 0, 1.07, 0, 0.1);
+    corners(solid, TRIM, 2.9, 1.5, 2.5, 1.07);
+    RB(solid, rf, 3.3, 0.22, 2.9, 0, 1.92, 0, 0.09);
+    RB(solid, TRIM, 3.2, 0.1, 2.8, 0, 1.78, 0, 0.04);
+    const up = new THREE.Group(); up.position.y = 2.03; up.rotation.y = 0.55; solid.add(up);
+    RB(up, shade(wall, 1.1), 1.9, 1.45, 1.9, 0, 0.73, 0, 0.1);
+    corners(up, TRIM, 1.9, 1.45, 1.9, 0.73);
+    RB(up, TRIM, 2.2, 0.1, 2.2, 0, 1.48, 0, 0.04);
+    lathe(up, rf, 1.5, 1.9, 6, 0, 1.5, 0);
+    part(up, Cy(0.04, 0.04, 0.8, 5), TRIM, 0, 3.85, 0);
+    const upg = new THREE.Group(); upg.position.y = 2.03; upg.rotation.y = 0.55; glow.add(upg);
+    arch(upg, P.win[i], 0.5, 0.8, 0.06, 0, 0.35, 0.96, 0.01); arch(up, TRIM, 0.7, 0.95, 0.06, 0, 0.28, 0.92, 0.02);
+    const sw = part(upg, B(0.06, 0.8, 0.5), P.win[(i + 1) % 3], 0.96, 0.75, 0); sw.scale.y = 0.9;
+    part(upg, new THREE.OctahedronGeometry(0.2, 0), 0xffe08a, 0, 4.4, 0).scale.y = 1.5;
+    archDoor(solid, 0, 1.26);
+    RB(solid, P.stone, 1.4, 0.16, 0.6, 0, 0.4, 1.62, 0.06);
+    for (const wx of [-1.0, 1.0]) squareWindow(solid, glow, P.win[i], wx, 1.28, 1.26, 0.4, 0.5);
+    for (const [sx, sz] of [[-0.6, 2.4], [-0.2, 2.9]]) part(solid, Cy(0.28, 0.3, 0.1, 7), shade(P.stone, 1.1), sx, 0.05, sz);
+  },
+};
+
+// ── 🌙 꿈의 숲 오두막(신축) ───────────────────────────────
+const CREAM = 0xf4e6ff, LAV = 0xb98fd6, DEEP = 0x7a64b8, GOLD = 0xffe9a8, DREAM_TRIM = 0xfff6ff;
+function dreamArchDoor(solid, x, z, w = 0.9, h = 1.3, trim = DREAM_TRIM) {
+  arch(solid, trim, w + 0.3, h + 0.15, 0.12, x, 0.02, z, 0.03);
+  arch(solid, 0x6a5a9a, w, h, 0.1, x, 0.02, z + 0.09, 0.02);
+  part(solid, Sp(0.05, 6, 5), 0xffe08a, x + w * 0.28, 0.7, z + 0.2);
+}
+function dreamRound(solid, glow, x, y, z, ang, r = 0.3) {
+  const g = new THREE.Group(); g.position.set(x, y, z); g.rotation.y = ang; solid.add(g);
+  const gg = new THREE.Group(); gg.position.set(x, y, z); gg.rotation.y = ang; glow.add(gg);
+  part(g, Cy(r + 0.1, r + 0.1, 0.1, 14), DREAM_TRIM, 0, 0, 0).rotation.x = Math.PI / 2;
+  part(gg, Cy(r, r, 0.08, 14), GOLD, 0, 0, 0.04).rotation.x = Math.PI / 2;
+  RB(g, DREAM_TRIM, 2 * r, 0.05, 0.1, 0, 0, 0.08, 0.02); RB(g, DREAM_TRIM, 0.05, 2 * r, 0.1, 0, 0, 0.08, 0.02);
+}
+const D = {
+  cur() {},
+  A(solid, glow, cloud) {   // 구름 오두막: 구름 단 3층 지붕(구름은 게임 구름 바다처럼 달빛 발광 재질)
+    part(solid, Cy(1.55, 1.7, 1.9, 16), 0xf6f0ff, 0, 0.95, 0);
+    part(solid, Cy(1.62, 1.62, 0.16, 16), LAV, 0, 0.1, 0);
+    part(solid, Cy(1.6, 1.6, 0.14, 16), DREAM_TRIM, 0, 1.15, 0);
+    for (let k = 0; k < 9; k++) { const a = k / 9 * Math.PI * 2; part(cloud, Ico(0.62), 0xf4eeff, Math.cos(a) * 1.65, 2.0, Math.sin(a) * 1.65); }
+    for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2 + 0.3; part(cloud, Ico(0.58), 0xf4eeff, Math.cos(a) * 1.0, 2.6, Math.sin(a) * 1.0); }
+    for (let k = 0; k < 3; k++) { const a = k / 3 * Math.PI * 2; part(cloud, Ico(0.5), 0xf4eeff, Math.cos(a) * 0.4, 3.1, Math.sin(a) * 0.4); }
+    part(cloud, Ico(0.55), 0xf4eeff, 0, 3.4, 0);
+    part(glow, new THREE.OctahedronGeometry(0.28, 0), 0xfff09e, 0, 4.1, 0).scale.y = 1.5;
+    dreamArchDoor(solid, 0, 1.62);
+    RB(solid, LAV, 1.4, 0.14, 0.7, 0, 0.07, 2.0, 0.05);
+    dreamRound(solid, glow, 1.1, 1.0, 1.15, 0.8); dreamRound(solid, glow, -1.1, 1.0, 1.15, -0.8);
+  },
+  B(solid, glow) {   // 버섯집
+    const stalk = [[0.001, 1.75], [1.2, 1.75], [1.1, 1.1], [1.25, 0.5], [1.4, 0], [0.001, 0]];
+    part(solid, new THREE.LatheGeometry(stalk.map(([a, b]) => new THREE.Vector2(a, b)), 14), CREAM, 0, 0, 0);
+    const cap = [[0.001, 3.3], [0.9, 3.15], [1.7, 2.65], [2.25, 1.95], [2.45, 1.55], [2.35, 1.4], [1.3, 1.55], [0.001, 1.6]];
+    part(solid, new THREE.LatheGeometry(cap.map(([a, b]) => new THREE.Vector2(a, b)), 18), 0xff9ed8, 0, 0, 0);
+    part(solid, Cy(2.2, 2.2, 0.1, 18), 0xffc9ea, 0, 1.5, 0);
+    for (const [a, y] of [[0.4, 3.0], [1.9, 2.8], [3.2, 2.9], [4.4, 2.7], [5.4, 2.85], [0.9, 2.3], [2.6, 2.25], [4.0, 2.2], [5.7, 2.2]]) {
+      const rr = y > 2.6 ? 1.1 : 1.95; part(solid, Sp(y > 2.6 ? 0.3 : 0.26, 8, 6), 0xfff4fb, Math.cos(a) * rr, y - (y > 2.6 ? 0.15 : 0.1), Math.sin(a) * rr);
+    }
+    dreamArchDoor(solid, 0, 1.12, 0.85, 1.2);
+    RB(solid, LAV, 1.3, 0.14, 0.65, 0, 0.07, 1.6, 0.05);
+    dreamRound(solid, glow, 0.95, 0.95, 0.8, 0.8, 0.26); dreamRound(solid, glow, -0.95, 0.95, 0.8, -0.8, 0.26);
+    part(solid, Cy(0.3, 0.38, 0.9, 6), 0xffc9ea, 0.95, 3.0, -0.8); part(solid, Cy(0.4, 0.34, 0.14, 6), 0xfff4fb, 0.95, 3.5, -0.8);
+    for (const [x, z, s] of [[2.4, 0.9, 1], [-2.3, 1.6, 0.8]]) { part(solid, Cy(0.08 * s, 0.1 * s, 0.5 * s, 6), 0xffffff, x, 0.25 * s, z); part(glow, new THREE.SphereGeometry(0.3 * s, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), 0x9ef0ff, x, 0.5 * s, z); }
+  },
+  C(solid, glow) {   // 달 탑집
+    const tw = [[0.001, 3.2], [1.22, 3.2], [1.28, 2.2], [1.4, 1.2], [1.5, 0], [0.001, 0]];
+    part(solid, new THREE.LatheGeometry(tw.map(([a, b]) => new THREE.Vector2(a, b)), 14), 0xd6bdf4, 0, 0, 0);
+    for (const y of [0.15, 1.25, 2.3]) part(solid, Cy(1.5 - y * 0.1, 1.5 - y * 0.1, 0.16, 14), DREAM_TRIM, 0, y, 0);
+    part(solid, Cy(1.75, 1.75, 0.2, 14), 0xe2d6ff, 0, 3.3, 0);
+    for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2; part(solid, Cy(0.06, 0.06, 0.45, 5), DREAM_TRIM, Math.cos(a) * 1.66, 3.55, Math.sin(a) * 1.66); }
+    part(solid, Cy(1.7, 1.7, 0.08, 14), DREAM_TRIM, 0, 3.8, 0);
+    lathe(solid, DEEP, 1.75, 2.3, 10, 0, 3.4, 0);
+    part(solid, Cy(0.04, 0.04, 0.6, 5), DREAM_TRIM, 0, 5.85, 0);
+    part(glow, new THREE.TorusGeometry(0.42, 0.13, 6, 18, Math.PI * 1.5), 0xffe08a, 0, 6.35, 0).rotation.set(0, Math.PI / 2, Math.PI * 0.75);
+    dreamArchDoor(solid, 0, 1.46, 0.9, 1.3);
+    RB(solid, 0xe2d6ff, 1.9, 0.16, 0.7, 0, 0.08, 2.0, 0.06); RB(solid, 0xf0e8ff, 1.4, 0.16, 0.5, 0, 0.2, 2.0, 0.06);
+    [[0.0, 2.45, 1.26, 0], [1.0, 2.3, 0.95, 0.75], [-1.0, 2.3, 0.95, -0.75]].forEach(([x, y, z, ry]) => {
+      const gw = new THREE.Group(); gw.position.set(x, y, z); gw.rotation.y = ry; glow.add(gw); part(gw, new THREE.OctahedronGeometry(0.26, 0), GOLD, 0, 0, 0.05).scale.set(1, 1.35, 0.4);
+      const sw = new THREE.Group(); sw.position.set(x, y, z); sw.rotation.y = ry; solid.add(sw); part(sw, new THREE.OctahedronGeometry(0.36, 0), DREAM_TRIM, 0, 0, 0).scale.set(1, 1.35, 0.3);
+    });
+    for (const [x, z, r] of [[-1.7, 0.8, 0.45], [-1.4, 1.5, 0.35], [1.7, 1.1, 0.4], [1.8, -0.3, 0.5]]) part(solid, Ico(r), 0xffffff, x, 0.3, z);
+  },
+};
+
+function mirrorStage(key) {
+  const s = makeScene('mirror'), solid = new THREE.Group(), glow = new THREE.Group();
+  part(solid, Cy(9, 9, 0.4, 28), P.ground, 0, -0.2, 0);
+  M[key](solid, glow, 0);
+  const g = bake(solid, glow); g.rotation.y = 0.3; s.add(g);
+  return { s, focus: new THREE.Vector3(0, 2.0, 0) };
+}
+function dreamStage(key) {
+  const s = makeScene('dream'), solid = new THREE.Group(), glow = new THREE.Group();
+  part(solid, Cy(7, 6.5, 0.6, 11), 0xd9ccff, 0, -0.3, 0);
+  const bed = new THREE.Group(); bed.position.set(-3.6, 0, 2.4); solid.add(bed);
+  const bg = new THREE.Group(); bg.position.copy(bed.position); glow.add(bg); cloudBedParts(bed, bg);
+  part(solid, Cy(0.1, 0.16, 1.2, 5), 0xf0e2ff, 4.2, 0.6, 2.4); part(glow, new THREE.OctahedronGeometry(0.85, 0), 0x9ee8ff, 4.2, 1.75, 2.4).scale.set(1, 1.35, 1);
+  part(solid, Cy(0.08, 0.12, 0.6, 6), 0xffffff, 1.8, 0.3, 5.0); part(glow, new THREE.SphereGeometry(0.35, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), 0xffb3e6, 1.8, 0.55, 5.0);
+  const house = new THREE.Group(), hg = new THREE.Group(), hc = new THREE.Group(); D[key](house, hg, hc);
+  house.position.set(0.8, 0, -2.2); hg.position.copy(house.position); hc.position.copy(house.position); solid.add(house); glow.add(hg);
+  s.add(bake(solid, glow));
+  if (hc.children.length) s.add(new THREE.Mesh(bakeGroup(hc), new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 1, emissive: 0x6a5aa8, emissiveIntensity: 0.35 })));
+  return { s, focus: new THREE.Vector3(-0.2, 1.8, 0) };
+}
+
+function shot(stage, canvas, mode) {
+  const { s, focus } = stage;
+  const W = canvas.width, H = canvas.height, cam = new THREE.PerspectiveCamera(mode === 'close' ? 38 : 42, W / H, 0.1, 200);
+  if (mode === 'close') { cam.position.set(focus.x + 4.6, 3.6, focus.z + 8.8); cam.lookAt(focus.x, focus.y + 0.2, focus.z); }
+  else { const d = mode === 'mob' ? 21 : 15, p = 41 * Math.PI / 180; cam.position.set(focus.x, focus.y + Math.sin(p) * d, focus.z + Math.cos(p) * d); cam.lookAt(focus.x, focus.y - 0.6, focus.z); }
+  R.setSize(W, H, false); R.render(s, cam); canvas.getContext('2d').drawImage(R.domElement, 0, 0);
+}
+function cell(parent, title, note, stageFn) {
+  const el = document.createElement('div'); el.className = 'cell';
+  el.innerHTML = `<b>${title}</b><canvas class="c-close" width="440" height="360"></canvas><div class="row"><canvas width="300" height="220" style="width:62%"></canvas><canvas width="150" height="266" style="width:36%"></canvas></div><small>${note}</small>`;
+  parent.appendChild(el);
+  const st = stageFn(), cv = el.querySelectorAll('canvas');
+  shot(st, cv[0], 'close'); shot(st, cv[1], 'pc'); shot(st, cv[2], 'mob');
+}
+const mEl = document.getElementById('mirror'), dEl = document.getElementById('dream');
+cell(mEl, '현재', '상자 + 사각뿔 + 문·창 2. 3채 모두 같은 형태', () => mirrorStage('cur'));
+cell(mEl, 'A. 아늑한 박공 오두막', '두꺼운 지붕·기와 단·용마루·굴뚝 띠·아치 문틀·둥근 창+꽃 상자·등불·디딤돌', () => mirrorStage('A'));
+cell(mEl, 'B. 거울 지붕집', '처마 들린 지붕 + 거꾸로 뜬 거울 지붕 · 타원 거울 · 작은 창 겹창+덧문', () => mirrorStage('B'));
+cell(mEl, 'C. 비튼 2층 탑집', '비튼 윗층 + 들린 육각 지붕 · 풍향계 · 아치 창 · 1층 몰딩 띠', () => mirrorStage('C'));
+cell(dEl, '현재 (집 없음)', '구름 침대·수정 나무·버섯 등만 있는 맨 섬', () => dreamStage('cur'));
+cell(dEl, 'A. 구름 오두막', '구름 3단 지붕 · 몰딩 띠 · 둥근 창 · 아치 문 + 별', () => dreamStage('A'));
+cell(dEl, 'B. 버섯집', '허리 잘록한 줄기 + 림 있는 갓 + 점 · 굴뚝 · 아치 문 · 둥근 창', () => dreamStage('B'));
+cell(dEl, 'C. 달 탑집', '띠 두른 탑 + 난간 발코니 + 들린 보라 지붕 + 초승달 · 별 창 · 계단', () => dreamStage('C'));
+document.title = 'ready';
+</script>
+</body></html>

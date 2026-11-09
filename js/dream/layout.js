@@ -23,6 +23,7 @@ export const BRIDGES = Object.freeze(ISLANDS.slice(1).map(b => Object.freeze({ f
 
 export const CLOUD_BED = Object.freeze({ x: -3.6, z: 2.4 });   // 🛏️ 깨어나는 자리(머리가 -z)
 export const LANDING = Object.freeze({ x: 1.6, z: 4.2 });      // 마차에서 내리는 자리
+export const COTTAGE = Object.freeze({ x: 0, z: -4.8, r: 2.0 });
 
 // ✨ 조각 후보 14곳 — main 3 · pink 3 · sky 4 · star 2 · 다리 2
 export const SHARD_SPOTS = Object.freeze([
@@ -54,25 +55,49 @@ function segClosest(b, x, z) {
   return { x: b.ax + dx * t, z: b.az + dz * t };
 }
 
+const insideCottage = (x, z) => Math.hypot(x - COTTAGE.x, z - COTTAGE.z) < COTTAGE.r - 1e-9;
+
 export function isWalkable(x, z) {
+  if (insideCottage(x, z)) return false;
   for (const i of ISLANDS) if (Math.hypot(x - i.x, z - i.z) <= i.r - EDGE_PAD + 1e-9) return true;
   for (const b of BRIDGES) { const c = segClosest(b, x, z); if (Math.hypot(x - c.x, z - c.z) <= BRIDGE_HALF + 1e-9) return true; }
   return false;
 }
 
-/** 걸을 수 없는 자리면 가장 가까운 영역 가장자리로 되민다. 걸을 수 있으면 그대로 돌려준다. */
+const PAD = 1e-4;
+
+function boundaryPoint(cx, cz, rad, x, z) {
+  const d = Math.hypot(x - cx, z - cz) || 1e-6, k = (rad - PAD) / d;
+  return { x: cx + (x - cx) * k, z: cz + (z - cz) * k };
+}
+
+function cottageCandidates(x, z) {
+  const out = [], r = COTTAGE.r + PAD;
+  if (insideCottage(x, z)) {
+    const dx = x - COTTAGE.x, dz = z - COTTAGE.z, d = Math.hypot(dx, dz);
+    out.push(d < 1e-6 ? { x: COTTAGE.x, z: COTTAGE.z + r } : { x: COTTAGE.x + dx / d * r, z: COTTAGE.z + dz / d * r });
+  }
+  const main = ISLANDS[0], R = main.r - EDGE_PAD - PAD, ex = COTTAGE.x - main.x, ez = COTTAGE.z - main.z, d = Math.hypot(ex, ez);
+  if (d > 1e-6 && d < R + r && d > Math.abs(R - r)) {
+    const a = (R * R - r * r + d * d) / (2 * d), h = Math.sqrt(Math.max(0, R * R - a * a)), ux = ex / d, uz = ez / d;
+    for (const s of [-1, 1]) out.push({ x: main.x + ux * a - uz * h * s, z: main.z + uz * a + ux * h * s });
+  }
+  return out;
+}
+
+/** 걸을 수 없는 자리면 가장 가까운 걸을 수 있는 자리(섬·다리 가장자리, 탑집 둘레)로 되민다. 걸을 수 있으면 그대로 돌려준다. */
 export function clampWalkable(x, z) {
   if (isWalkable(x, z)) return { x, z };
-  let best = null, bestGap = Infinity;
-  const consider = (cx, cz, rad) => {
-    const d = Math.hypot(x - cx, z - cz) || 1e-6;
-    const k = (rad - 1e-4) / d;
-    const gap = d - rad;
-    if (gap < bestGap) { bestGap = gap; best = { x: cx + (x - cx) * k, z: cz + (z - cz) * k }; }
-  };
-  for (const i of ISLANDS) consider(i.x, i.z, i.r - EDGE_PAD);
-  for (const b of BRIDGES) { const c = segClosest(b, x, z); consider(c.x, c.z, BRIDGE_HALF); }
-  return best;
+  const candidates = ISLANDS.map(i => boundaryPoint(i.x, i.z, i.r - EDGE_PAD, x, z));
+  for (const b of BRIDGES) { const c = segClosest(b, x, z); candidates.push(boundaryPoint(c.x, c.z, BRIDGE_HALF, x, z)); }
+  candidates.push(...cottageCandidates(x, z));
+  let best = null, bestDist = Infinity;
+  for (const c of candidates) {
+    if (!isWalkable(c.x, c.z)) continue;
+    const dist = Math.hypot(c.x - x, c.z - z);
+    if (dist < bestDist) { bestDist = dist; best = c; }
+  }
+  return best ?? { x: LANDING.x, z: LANDING.z };
 }
 
 // ── 하루 조각 배치 ──────────────────────────────────────────

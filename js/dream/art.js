@@ -8,7 +8,8 @@
 //  ⚠️ 블룸 임계 0.85 — 흰색에 가까운 발광은 번진다. 수정은 채도 있는 파스텔로, 하얗게 빛나는 건 조각뿐.
 // =============================================================
 import * as THREE from 'three';
-import { ISLANDS, BRIDGES, SHARD_SPOTS, CLOUD_BED, BRIDGE_HALF } from './layout.js';
+import { ISLANDS, BRIDGES, SHARD_SPOTS, CLOUD_BED, BRIDGE_HALF, COTTAGE } from './layout.js';
+import { buildMoonTower } from './cottage.js';
 
 const ISLAND_TOP = { main: 0xd9ccff, pink: 0xffd6ec, sky: 0xc6f2ff, star: 0xe2d6ff };
 const CRYSTAL = [0xff9ee0, 0x9ee8ff, 0xffd59e, 0xb59eff];
@@ -209,8 +210,13 @@ export function buildDreamWorld() {
   for (const isl of ISLANDS) islandParts(solid, isl);
   [[-4.0, -2.2, 1.2, 0], [3.8, -3.8, 1.0, 1], [5.0, 0.6, 0.8, 2], [-14.6, -14.0, 1.4, 3], [12.0, -16.6, 1.1, 0], [14.8, -15.8, 0.9, 2], [21.0, 1.6, 1.0, 1]]
     .forEach(([x, z, s, ci]) => crystalTree(solid, glow, x, z, s, CRYSTAL[ci]));
-  [[1.8, 5.0, 0xffb3e6], [-0.6, 5.6, 0x9ef0ff], [-1.2, -5.4, 0xfff09e], [-12.4, -11.2, 0x9ef0ff], [13.6, -12.6, 0xffb3e6]]
+  [[1.8, 5.0, 0xffb3e6], [-0.6, 5.6, 0x9ef0ff], [-3.4, -5.0, 0xfff09e], [-12.4, -11.2, 0x9ef0ff], [13.6, -12.6, 0xffb3e6]]
     .forEach(([x, z, col]) => mushroomLamp(solid, glow, x, z, col));
+  const tower = new THREE.Group(), towerGlow = new THREE.Group();
+  for (const g of [tower, towerGlow]) g.position.set(COTTAGE.x, 0, COTTAGE.z);
+  solid.add(tower);
+  glow.add(towerGlow);
+  buildMoonTower(tower, towerGlow);
   const bed = new THREE.Group(); bed.position.set(CLOUD_BED.x, 0, CLOUD_BED.z); solid.add(bed);
   const bedGlow = new THREE.Group(); bedGlow.position.copy(bed.position); glow.add(bedGlow);
   cloudBedParts(bed, bedGlow);

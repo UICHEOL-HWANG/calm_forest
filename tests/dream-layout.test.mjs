@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  ISLANDS, BRIDGES, SHARD_SPOTS, SHARDS_PER_DAY, CLOUD_BED, LANDING,
+  ISLANDS, BRIDGES, SHARD_SPOTS, SHARDS_PER_DAY, CLOUD_BED, LANDING, COTTAGE,
   isWalkable, clampWalkable, pickShards, normalizeDream, shardsLeft, islandOf,
 } from '../js/dream/layout.js';
 
@@ -17,6 +17,43 @@ test('조각 후보·구름 침대·도착 지점은 전부 걸을 수 있는 �
   for (const s of SHARD_SPOTS) assert.ok(isWalkable(s.x, s.z), `${s.id} 가 허공에 있다`);
   assert.ok(isWalkable(CLOUD_BED.x, CLOUD_BED.z + 1.6), '구름 침대 앞에 설 자리가 있어야 한다');
   assert.ok(isWalkable(LANDING.x, LANDING.z));
+});
+
+test('달 탑집 — 안은 못 걷고 밀려난 자리는 걸을 수 있다', () => {
+  assert.equal(isWalkable(COTTAGE.x, COTTAGE.z), false);
+  assert.equal(isWalkable(COTTAGE.x + COTTAGE.r - 0.05, COTTAGE.z), false);
+  assert.ok(isWalkable(COTTAGE.x + COTTAGE.r + 0.05, COTTAGE.z));
+  for (const [dx, dz] of [[0, 0], [0.5, 0.2], [-1.2, 0.4], [0, -1.5], [1.9, 0], [-0.3, -1.9]]) {
+    const out = clampWalkable(COTTAGE.x + dx, COTTAGE.z + dz);
+    assert.ok(isWalkable(out.x, out.z), `(${dx},${dz}) 에서 밀려난 자리가 걸을 수 없다`);
+    assert.ok(Math.hypot(out.x - COTTAGE.x, out.z - COTTAGE.z) >= COTTAGE.r - 1e-3);
+  }
+});
+
+test('달 탑집 — 북쪽 가장자리에서도 반대편으로 순간이동하지 않고 항상 걸을 수 있는 자리를 돌려준다', () => {
+  const rim = clampWalkable(1.5, -6.1);
+  assert.ok(isWalkable(rim.x, rim.z));
+  assert.ok(Math.hypot(rim.x - 1.5, rim.z + 6.1) < 0.6, '탑 너머로 건너뛰었다');
+  const north = clampWalkable(0, -9);
+  assert.ok(isWalkable(north.x, north.z), '북쪽 허공에서 탑 안으로 밀렸다');
+  for (let x = -30; x <= 30; x += 0.7) {
+    for (let z = -30; z <= 30; z += 0.7) {
+      const out = clampWalkable(x, z);
+      assert.ok(isWalkable(out.x, out.z), `(${x.toFixed(1)},${z.toFixed(1)}) → (${out.x.toFixed(2)},${out.z.toFixed(2)}) 걸을 수 없다`);
+      const again = clampWalkable(out.x, out.z);
+      assert.ok(Math.hypot(again.x - out.x, again.z - out.z) < 1e-9, '한 번 밀린 자리는 그대로여야 한다');
+    }
+  }
+});
+
+test('달 탑집 — 다리 길과 섬 가장자리를 막지 않는다', () => {
+  for (const b of BRIDGES) {
+    for (let t = 0.1; t < 0.95; t += 0.05) {
+      const x = b.ax + (b.bx - b.ax) * t, z = b.az + (b.bz - b.az) * t;
+      assert.ok(isWalkable(x, z), `다리 ${b.to} ${t.toFixed(2)} 지점이 막혔다`);
+    }
+  }
+  assert.ok(Math.hypot(COTTAGE.x, COTTAGE.z) + COTTAGE.r < ISLANDS[0].r, '탑집이 섬 밖으로 걸친다');
 });
 
 test('islandOf — 후보 자리의 섬을 돌려준다(다리 위는 bridge)', () => {
