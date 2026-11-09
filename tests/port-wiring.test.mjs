@@ -82,3 +82,35 @@ test('port 는 기본값으로 시작하고 불러올 때 정규화한다', () =
   assert.match(game, /port: defaultPort\(\),/);
   assert.match(game, /gameState\.port = sanitizePort\(saved\.port\);/);
 });
+
+test('첫 방문 안내: 시작·매 프레임·숨김·귀항 순서가 연결된다', () => {
+  const idx = read('js/port/index.js'), game = read('js/game.js'), doors = read('js/spaces/doors.js'), html = read('index.html');
+  assert.doesNotMatch(idx, /const guideActive = \(\) => false/);
+  assert.match(idx, /export const guideActive = \(\) => !!guide\?\.active\(\)/);
+  for (const f of ['startPortGuide', 'updatePortGuide', 'guideHides']) assert.match(idx, new RegExp(`export (function|const) ${f}\\b`));
+  assert.match(idx, /onStep: e => env\.trackEvent\('guide_step', e\)/);
+  assert.match(idx, /guideDone: true/);
+  assert.match(idx, /if \(guideHides\(\)\) return null;/);
+  assert.match(idx, /flushGuideHome\(\);\n  env\.exitSea\(\);/);
+  assert.match(game, /updateSeaVisuals\(t\);[^\n]*\n  updatePortGuide\(/);
+  assert.match(game, /syncUnlocks\(\);[^\n]*maybeStartPortGuide\(|maybeStartPortGuide\([^\n]*syncUnlocks\(\)/);
+  assert.match(game, /setActPoint:/);
+  assert.match(doors, /fastUnlocked && !guideHides\(\)/);
+  for (const id of ['guide-card', 'guide-mark', 'guide-edge']) assert.match(html, new RegExp(`<div id="${id}" hidden></div>`));
+  assert.match(html, /body:has\(#mirror-talk\.show\) #guide-card \{ display: none; \}/);
+  assert.match(html, /\.point::after \{ content: '👆'/);
+  for (const f of ['js/guide/view.js', 'js/port/guide-steps.js']) assert.doesNotMatch(read(f), /^\s*\/\/|\/\*/m);
+});
+
+test('guide_step 이벤트는 분류표에 flow|step|ms 로 있다', () => {
+  const row = read('docs/analysis/event-taxonomy.csv').split('\n').find(l => l.startsWith('guide_step,'));
+  assert.ok(row);
+  assert.match(row, /,flow\|step\|ms,/);
+});
+
+test('통배 부두 데크는 물 충돌 원 밖 뭍에서 시작해 걸어서 오를 수 있다', () => {
+  const places = read('js/data/places.js'), sea = read('js/spaces/sea.js');
+  const a = +places.match(/const PIER_A = coveAt\(SEA_COVE\.r ([+-] [\d.]+)\)/)[1].replace(' ', '');
+  const water = -+sea.match(/solidCircle\(SEA_COVE\.x, SEA_COVE\.z, SEA_COVE\.r - ([\d.]+)\)/)[1];
+  assert.ok(a > water + 0.45, `deck start r+${a} must clear water r${water} + player radius`);
+});

@@ -1,11 +1,14 @@
 import * as THREE from 'three';
-import { PORT } from '../data/places.js';
+import { PORT, PORT_PIER } from '../data/places.js';
 import { ISLAND, ISLAND_R, ISLAND_DOCK, VILLAGE_DOCK, PIER_END, WALK_R, LAND_Y, ROUTE, SEA_BOUNDS, MARKET_POS, HUT_POS, LIGHT_POS,
   BOAT_SPEED, BOAT_TURN, FAST_MULT, BITE_FIRST, BITE_WIN, SEA_SPOTS, PIER_SPOT, SPOT_LEFT, PANTRY_ICO, PORT_COPY,
   QUESTS, SOLIDS, MARKET_PRICE, MARKET_GIVE } from './data.js';
 import { tubBoat, buildPortShops, setPortNight, mat, glow } from './models.js';
 import { rollCatch, addToPantry, acceptQuest, pickItem, claimQuest, boardGate } from './rules.js';
-import { disarmPortPier } from './pier.js';
+import { disarmPortPier, nearPortPier, portPierBoat } from './pier.js';
+import { createGuide } from '../guide/runner.js';
+import { createGuideView } from '../guide/view.js';
+import { portGuideSteps } from './guide-steps.js';
 import { buildIslandNPC, beachBuoy, npcPortrait, setNpcNight, ISLAND_NPCS } from './npc-models.js';
 import { showTalk, hideTalk, onTalkTap, talkShown } from '../mirror/talk-box.js';
 import { splitLines } from './card.js';
@@ -19,7 +22,9 @@ const npcs = {}, glyphs = {}, items = [], solids = [];
 const P = { phase: 'sail', dir: 1, fast: false, wp: 1, heading: -Math.PI / 2, speed: 0, moved: 0, fishing: null, trip: null, spots: [], t: 0 };
 const W = (x, z, y = 0) => new THREE.Vector3(PORT.x + x, y, PORT.z + z);
 const ZONE_COL = { near: 0xbfe6ff, far: 0x9fd0ff, night: 0xffd27a, pier: 0xbfe6ff };
-const guideActive = () => false;
+let guide = null, view = null, guideHome = false, pointKey = null;
+export const guideActive = () => !!guide?.active();
+export const guideHides = () => guideActive() && guide.index() < 10;
 const TALK_R = 2.6, PICK_R = 1.5, TALK_CLOSE_R = 3, PIER_END_R = 1.2;
 const portState = () => env.gameState().port;
 
@@ -408,7 +413,7 @@ function islandContext() {
   const q = nearNpc(p);
   const kind = q && talkKind(q, ps.quests[q.id]);
   if (kind) return { nd: 'port_talk', id: q.id, kind };
-  if (guideActive()) return null;
+  if (guideHides()) return null;
   if (ps.boughtDay !== env.todayStr() && Math.hypot(p.x - PORT.x - MARKET_POS.x, p.z - PORT.z - MARKET_POS.z) < TALK_R) return { nd: 'port_buy' };
   const g = boardGate(boardArmed, Math.hypot(p.x - PORT.x - PIER_END.x, p.z - PORT.z - PIER_END.z), PIER_END_R);
   boardArmed = g.armed;
@@ -493,6 +498,7 @@ function arrive() {
   env.trackEvent('port_trip', { via: P.trip.via, caught: P.trip.caught, quests: P.trip.quests, sec: Math.round((performance.now() - P.trip.t0) / 1000) });
   if (!cur.fastUnlocked) { gs.port = { ...cur, visited: true, fastUnlocked: true }; env.ui.toast?.(PORT_COPY.arrive); }
   env.requestSave();
+  flushGuideHome();
   env.exitSea();
 }
 
@@ -504,4 +510,80 @@ function arriveIsland() {
   env.player.rotation.y = Math.PI / 2;
   syncItems();
   env.refreshQuestPanel();
+}
+
+export function startPortGuide() {
+  const gs = env.gameState();
+  if (guide || !gs.port || gs.port.guideDone) return;
+  view ??= createGuideView({ scene: env.scene, camera: env.camera, root: env.hudRoot });
+  guideHome = false;
+  guide = createGuide({ flow: 'port', steps: portGuideSteps(), now: () => performance.now(),
+    onStep: e => env.trackEvent('guide_step', e),
+    onDone: () => { const g = env.gameState(); g.port = { ...g.port, guideDone: true }; env.requestSave(); view.hide(); setPoint(null); guide = null; window.__portGuide = { step: null }; } });
+}
+
+export function maybeStartPortGuide(ok) { if (ok) startPortGuide(); }
+
+function nearest(list, from) {
+  let best = null, bd = Infinity;
+  for (const p of list) { const d = Math.hypot(p.x - from.x, p.z - from.z); if (d < bd) { bd = d; best = p; } }
+  return best;
+}
+
+function pierVia(p) {
+  const { ax, az, end } = PORT_PIER, ex = end.x - ax, ez = end.z - az, len = Math.hypot(ex, ez);
+  const t = Math.max(0, Math.min(1, ((p.x - ax) * ex + (p.z - az) * ez) / (len * len)));
+  if (Math.hypot(p.x - ax - ex * t, p.z - az - ez * t) < 1) return null;
+  return { x: ax - (ex / len) * 0.6, z: az - (ez / len) * 0.6 };
+}
+
+function guideCtx() {
+  const phase = guideHome ? 'done' : port.active ? P.phase : 'village';
+  const fq = portState()?.quests?.fisher;
+  const sea = port.active && P.phase === 'sail';
+  return {
+    phase, done: phase === 'done', dir: P.dir, moved: P.moved, device: env.isTouch() ? 'phone' : 'pc',
+    nearPier: !port.active && !guideHome && nearPortPier(env.player.position),
+    canCast: sea && !P.fast && !!nearSpot(3.4), fishing: !!P.fishing, caught: port.active ? P.trip?.caught ?? 0 : 0,
+    quest: fq?.state, got: fq?.got ?? 0,
+    pierEnd: { x: PORT_PIER.end.x, z: PORT_PIER.end.z, y: 0.38 },
+    pierVia: port.active ? null : pierVia(env.player.position),
+    boat: portPierBoat?.position,
+    spot: port.active ? nearest(P.spots.filter(sp => sp.left > 0 && sp.mesh.visible).map(sp => sp.pos), boat.position) : null,
+    islandDock: W(ISLAND_DOCK.x, ISLAND_DOCK.z),
+    fisher: npcs.fisher?.position,
+    item: port.active ? nearest(items.filter(it => it.id === 'fisher' && !it.taken && it.mesh.visible).map(it => it.pos), env.player.position) : null,
+    pierEndIsland: W(PIER_END.x, PIER_END.z, LAND_Y),
+    villageDock: W(VILLAGE_DOCK.x, VILLAGE_DOCK.z),
+  };
+}
+
+function setPoint(k) {
+  if (k === pointKey) return;
+  pointKey = k; env.setActPoint?.(k);
+}
+
+function flushGuideHome() {
+  if (!guide) return;
+  guideHome = true;
+  guide.tick(guideCtx());
+}
+
+export function updatePortGuide(visible) {
+  if (!guide) return;
+  const ctx = guideCtx();
+  guide.tick(ctx);
+  if (!guide) return;
+  const step = guide.current(), island = port.active && P.phase === 'island';
+  const me = port.active && P.phase === 'sail' ? boat.position : env.player.position;
+  const sol = island ? SOLIDS.map(([c, r]) => [W(c.x, c.z), r]) : [];
+  const nd = env.$w.nearDoor, want = !!step?.expect?.includes(nd) && !(nd === 'port_fish' && P.fishing?.state !== 'bite');
+  if (!visible) { view.hide(); setPoint(null); }
+  else {
+    view.show(step, guide.index(), guide.total, ctx, me, sol, island ? LAND_Y : 0);
+    setPoint(want ? (talkShown() ? 'talk' : 'btn') : null);
+  }
+  const tgt = step?.target(ctx);
+  const via = step?.via?.(ctx);
+  window.__portGuide = { step: step?.id ?? null, index: guide.index(), target: tgt ? { x: tgt.x, z: tgt.z } : null, via: via ? { x: via.x, z: via.z } : null, nearDoor: nd };
 }

@@ -1470,6 +1470,20 @@
   #mt-next { position: absolute; right: 14px; bottom: 7px; font-size: 11px; opacity: 0.6; }
   body:has(#mirror-talk.show) #door-prompt, body:has(#mirror-talk.show) #hint, body:has(#mirror-talk.show) #zone-prompt { opacity: 0 !important; }   /* 박스가 조작 안내 줄 자리까지 쓴다(위의 의뢰 N/3 칩과 안 겹치게) */
   body.sea-mode:not(.is-touch) #mirror-talk { bottom: calc(5% + 124px + env(safe-area-inset-bottom)); }
+  #guide-card { position: fixed; left: 50%; top: calc(58px + var(--top-inset, 0px)); transform: translateX(-50%); z-index: 8; padding: 5px 14px; border-radius: 14px; background: rgba(255,248,232,.97); color: #3d3424; font-size: 14px; font-weight: 700; white-space: nowrap; max-width: calc(100vw - 24px); overflow: hidden; text-overflow: ellipsis; border: 2px solid #ffc94a; box-shadow: 0 2px 10px rgba(0,0,0,.3); pointer-events: none; }
+  #guide-card small { color: #9a6a12; margin-right: 6px; font-size: 12px; }
+  #guide-card[hidden], #guide-mark[hidden], #guide-edge[hidden] { display: none; }
+  body:has(#mirror-talk.show) #guide-card { display: none; }
+  #guide-mark { position: fixed; z-index: 6; transform: translate(-50%, -100%); font-size: 30px; line-height: 1; text-align: center; pointer-events: none; filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); animation: guide-bob .8s infinite alternate ease-in-out; }
+  #guide-mark span, #guide-edge span { display: block; font-size: 12px; font-weight: 800; color: #fff; text-shadow: 0 1px 2px #000; white-space: nowrap; }
+  @keyframes guide-bob { to { transform: translate(-50%, -125%); } }
+  #guide-edge { position: fixed; z-index: 6; width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%; background: #ffc94a; color: #2f2414; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 21px; box-shadow: 0 2px 8px rgba(0,0,0,.4); pointer-events: none; }
+  #guide-edge i { font-style: normal; display: block; }
+  #guide-edge span { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 2px; }
+  #action-btn.point, #sea-btn.point { overflow: visible; }
+  #action-btn.point::after, #sea-btn.point::after { content: '👆'; position: absolute; right: -6px; bottom: -14px; font-size: 28px; pointer-events: none; animation: guide-tap .6s infinite alternate; }
+  #mirror-talk.point #mt-next::after { content: ' 👆'; font-size: 18px; }
+  @keyframes guide-tap { to { transform: translate(-4px, -6px); } }
   #door-prompt.show { opacity: 1; }
 
   /* 🎣 캐치 배너 — "무엇을 얻었나"를 프롬프트 줄에 두 줄로 크게 띄운다.
@@ -2691,6 +2705,10 @@
     body.is-touch #npc-prompt { display: none; }
     body.is-touch #door-prompt, body.is-touch #fish-prompt, body.is-touch #zone-prompt { bottom: calc(104px + env(safe-area-inset-bottom)); }
     body.is-touch #toast, body.is-touch.coaching #toast, body.is-touch.hintbanner #toast, body.is-touch.decor-guide #toast, body.is-touch.mist-guide #toast { top: max(calc(72px + var(--top-inset)), var(--rcol-bottom, 0px)); left: auto; right: max(12px, env(safe-area-inset-right)); transform: none; max-width: min(260px, 34vw); font-size: 13px; padding: 8px 12px; }
+    body.is-touch #guide-card { top: calc(8px + var(--top-inset, 0px)); font-size: 12.5px; padding: 3px 12px; }
+    body.is-touch #guide-mark { font-size: 24px; }
+    body.is-touch #guide-edge { width: 34px; height: 34px; margin: -17px 0 0 -17px; font-size: 18px; }
+    body.is-touch #action-btn.point::after, body.is-touch #sea-btn.point::after { font-size: 22px; }
   }
   /* ── 폰 가로모드 — 아래에 붙는 메뉴 창(상점·꾸미기·가방·작업대…) ──
      세로 기준 bottom 90px(핫바 자리)을 그대로 두면 높이 390 대(iPhone 가로 + 홈 인디케이터 21px)에서
@@ -3544,6 +3562,7 @@
   </div>
 
   <!-- 🪞 거울 주민 대화 박스(B안) — js/mirror/talk-box.js -->
+  <div id="guide-card" hidden></div><div id="guide-mark" hidden></div><div id="guide-edge" hidden></div>
   <div id="mirror-talk" role="dialog" aria-live="polite"><div id="mt-face"></div><div id="mt-name"></div><div id="mt-line"></div><div id="mt-next"></div></div>
 
   <!-- 🧪 E1 처치 시작 안내(아래 시트) — 내용은 js/spaces/e1-start.js 가 채운다 -->

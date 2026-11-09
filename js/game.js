@@ -194,7 +194,7 @@ import {
   buildSea, enterSea, exitSea, seaAction, seaCamera, seaPrompt, spawnSeaCove, spawnSeaGate, updateSea, updateSeaVisuals,
 } from './spaces/sea.js';   // 📦 🌊 바다터 — 대형 낚시 (docs/design/SEA_FISHING_PLAN.md · 프로토타입 sims/sea-sim.html)
 import { spawnPortPier } from './port/pier.js';
-import { port, enterPort, portAction, clampPort, portOwnsMovement, bindPortEnv } from './port/index.js';
+import { port, enterPort, portAction, clampPort, portOwnsMovement, bindPortEnv, updatePortGuide, maybeStartPortGuide } from './port/index.js';
 import { openSeaPick } from './spaces/sea-pick.js';
 import { mudflat, mudflatAction, mudflatSpeedMult, clampMudflat, enterMudflat, mudflatDebug, setMudflatCam } from './spaces/mudflat.js';
 import { dive, diveAction, diveSpeedMult, clampDive, enterDive, diveAtmosphere, diveDebug } from './spaces/dive.js';
@@ -2650,6 +2650,7 @@ export async function enterGame() {
       return { stage: gameState.houseStage, inv: { wood: gameState.inventory.wood, stone: gameState.inventory.stone, coins: gameState.inventory.coins } };
     };
     // 🚧 __pos() / __tp(x,z) — 충돌·배치 검증용 위치 조회·텔레포트
+    if (_wq.has('dbg')) window.__setAnalog = (x, z) => Input.setAnalog(x, z);
     window.__pos = () => [Math.round(player.position.x * 100) / 100, Math.round(player.position.z * 100) / 100];
     window.__tp = (x, z) => { player.position.set(x, 0, z); snapCamera(); return window.__pos(); };
     // 🌾 __farmMax() — 텃밭을 밭으로 가득 채워 최악 상태를 재현(드로우콜 측정용). 로컬 전용.
@@ -3395,7 +3396,7 @@ function buildWorld() {
   });
 
   buildPlayer();
-  bindPortEnv({ $w, scene, player, ui, snapCamera, setSpaceVisible, gameState: () => gameState, requestSave, analog, keys, trackEvent, exitSea, isNight, popAt: (p, ico) => spawnFloatText(p.x, 1.4, p.z, ico, '#ffffff', 1.1), solidCircle, todayStr, refreshQuestPanel, isTouch: () => document.body.classList.contains('is-touch'), spendCoins: n => { if ((gameState.inventory.coins || 0) < n) return false; gameState.inventory.coins -= n; logEcon('port_market', 'market', -n, gameState.inventory.coins); refreshInventoryUI(); return true; } });
+  bindPortEnv({ $w, scene, camera, hudRoot: document.body, setActPoint: k => { for (const id of ['action-btn', 'sea-btn']) document.getElementById(id)?.classList.toggle('point', k === 'btn'); document.getElementById('mirror-talk')?.classList.toggle('point', k === 'talk'); }, player, ui, snapCamera, setSpaceVisible, gameState: () => gameState, requestSave, analog, keys, trackEvent, exitSea, isNight, popAt: (p, ico) => spawnFloatText(p.x, 1.4, p.z, ico, '#ffffff', 1.1), solidCircle, todayStr, refreshQuestPanel, isTouch: () => document.body.classList.contains('is-touch'), spendCoins: n => { if ((gameState.inventory.coins || 0) < n) return false; gameState.inventory.coins -= n; logEcon('port_market', 'market', -n, gameState.inventory.coins); refreshInventoryUI(); return true; } });
   buildFireflies();
   buildStars();
   buildRain();              // 🌧️ 빗줄기(비 오는 날에만 표시)
@@ -6316,6 +6317,7 @@ function animate() {
   updateSeasonDrift(dt, t);   // 🌸🍂 꽃잎·낙엽
   updateSway(t);
   updateSeaVisuals(t);  // 🌊 일렁이는 수면(후미·바다터) + 등대 야간 빔
+  updatePortGuide(mode === 'play' && (inVillage2() || port.active));
   updateGateCues(t, dt);
   updateTrees(dt);
   updateOreRocks();
@@ -6350,7 +6352,7 @@ function animate() {
   updateCatchItem(dt);   // 🎁 캐치 아이템(수확물/물고기 들어올리기)
   updateFloatTexts(dt);
   updateNPC(dt, t);
-  if (t - unlockTickAt > 1) { unlockTickAt = t; if (mode === 'play') syncUnlocks(); }   // 🔓 매초 한 번 — 놓친 해금 지점이 있어도 1초 안에 맞춘다(꺼져 있으면 즉시 반환)
+  if (t - unlockTickAt > 1) { unlockTickAt = t; if (mode === 'play') { syncUnlocks(); maybeStartPortGuide(isOpen('port') && !atSea); } }   // 🔓 매초 한 번 — 놓친 해금 지점이 있어도 1초 안에 맞춘다(꺼져 있으면 즉시 반환)
   updateWorldTree(dt, t);    // 🌳 세계수 잎이 판 진척을 따라 자란다
   updateLightWorkshop();   // 🏷️ 반디 요정 이름표
   updateMerchantVisit(dt);   // 🧙 상인 방문 이벤트(1회)
