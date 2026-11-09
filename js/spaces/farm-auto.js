@@ -36,7 +36,7 @@ import { finishOrchardQuest, maybeOfferOrchardQuest, tryHoe } from '../spaces/or
 import { maybeOfferCosQuest } from '../spaces/cos-quest.js';
 import { DIG_HIT_AT, DIG_RESTORE, digHit, expireDig, setPlotDug, trySeed, tryWater, updateDigFx } from '../spaces/shovel.js';
 import { refreshCovers } from '../spaces/weather.js';
-import { e1OnHarvest } from '../spaces/e1-start.js';   // 🧪 E1 — 첫 수확이 처치 대기를 끝낸다
+import { e1OnHarvest, e1Pending } from '../spaces/e1-start.js';   // 🧪 E1 — 첫 수확이 처치 대기를 끝낸다
 import { sickleReach } from '../tool-tiers.js';
 import * as THREE from 'three';
 
@@ -134,6 +134,7 @@ export function tryHarvest(plot = plots.find(p => p.state === 'mature' && dist2D
   if (plot.cropType?.id) dexDiscover('crop', plot.cropType.id);   // 📖 도감(작물 첫 수확)
   if (plot.cropType?.id) noteSpecialExhibit('crop', plot.cropType.id);   // 🏛️ ✨눈 오는 날이면 특별 전시(일꾼이 거둔 건 안 센다 — 직접 한 것만)
   ui.act?.('harvest');                                            // 튜토리얼: 수확
+  const e1Was = e1Pending();
   e1OnHarvest();                                                  // 🧪 E1 처치: 말풍선 거두고 환영 모달·방문객 이어서
   if (!adv) maybeOfferOrchardQuest();                              // 🌾→🍎 기본 작물을 거두면 과수원 가는 길 의뢰(한 번)
   maybeOfferCosQuest({ via: 'harvest' });
@@ -147,7 +148,7 @@ export function tryHarvest(plot = plots.find(p => p.state === 'mature' && dist2D
   }
   trackEvent('harvest_crop', { crop: gameState.inventory.crop, kind: harvestKind, qty, adv, pest: harvestPest, sickle: viaSickle ? 1 : 0 }); // [GA4] 종류·수량·해충 손실 + 낫으로 딸려 온 칸
   if (!viaSickle) onPlay('crop');
-  requestSignupNudge(gameState, 'harvest', ui);
+  if (!e1Was) requestSignupNudge(gameState, 'harvest', ui);
   // 🌾 잘 드는 낫 — 옆 칸도 함께. 총량은 그대로고 손만 덜 간다(🌾밭 확장 7단계로 밭이 많아졌다).
   //   ⚠️ 밭 격자는 짝수 좌표 2칸 간격이라 2.6 이면 상하좌우만 걸린다(대각선은 2.83).
   if (!viaSickle && sickleReach(gameState)) {

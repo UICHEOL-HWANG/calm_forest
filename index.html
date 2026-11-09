@@ -7628,6 +7628,7 @@
     let nudgeFrom = 'dex';
     const nudgeBtnText = $('nudge-google').textContent;
     const nudgeWarnText = $('nudge-warn').textContent;
+    ui.isGuestNow = isGuestNow;
     ui.loginNudge = (trigger) => {
       if (!isGuestNow()) return;                               // 로그인 유저에겐 표시 안 함
       nudgeFrom = trigger;

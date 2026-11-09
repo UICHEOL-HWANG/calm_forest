@@ -108,9 +108,26 @@ test('도착 반경은 그 목적지의 상호작용 거리보다 작다', async
     farmBranch: 2.4 + 2.3,
     wall: 3.2, roof: 3.2,
     cosShop: 2.8, bridge: 2.2, museum: 2.4,
+    exit: 1.7,
   };
   for (const key of Object.keys(GOALS)) {
     assert.ok(Number.isFinite(ARRIVE[key]), key);
     assert.ok(ARRIVE[key] <= INTERACT[key] - 0.15, `${key} ${ARRIVE[key]} vs ${INTERACT[key]}`);
   }
+});
+
+test('마을 목적지인데 다른 공간 안이면 그 공간의 나가는 문부터 가리킨다', async () => {
+  const { exitFirst } = await import('../js/guide/guide-rules.js');
+  const door = { x: 0, z: 10 };
+  const tree = { at: { x: 5, z: 5 }, g: GOALS.tree };
+  assert.equal(exitFirst('tree', tree, { exitAt: door }), tree);
+  const out = exitFirst('tree', null, { exitAt: door });
+  assert.equal(out.exit, true);
+  assert.equal(out.key, 'exit');
+  assert.deepEqual(out.at, door);
+  assert.equal(out.g.title, '🚪 마을로 나가기');
+  assert.equal(exitFirst('tree', null, { exitAt: null }), null);
+  assert.equal(exitFirst('farm', null, { inSpaceFor: true, exitAt: door }), null);
+  assert.equal(exitFirst('coal', null, { exitAt: door }), null);
+  assert.equal(exitFirst('lift', null, { exitAt: door }), null);
 });

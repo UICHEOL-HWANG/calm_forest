@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { createShotRig } from '../world/tree-shot.js';
 import { regionFrame } from '../world/region-cine.js';
-import { ARRIVE, CINE_SUB, GOALS, detourPoint, edgeAnchor, guideEventParams, minerGoal, tutGoal } from './guide-rules.js';
+import { ARRIVE, CINE_SUB, GOALS, detourPoint, edgeAnchor, exitFirst, guideEventParams, minerGoal, tutGoal } from './guide-rules.js';
 
 const CINE_HOLD = 1.6;
 const CINE_DELAY = 0.6;
@@ -72,6 +72,10 @@ export function createGoalGuide(deps) {
   }
 
   function resolve(key) {
+    return exitFirst(key, resolveTarget(key), { inSpaceFor: key === 'farm' && deps.atFarm(), exitAt: deps.exitSpot() });
+  }
+
+  function resolveTarget(key) {
     const inV = deps.inVillage(), inMine = deps.atMine();
     if (key === 'tree') {
       if (!inV) return null;
@@ -190,13 +194,14 @@ export function createGoalGuide(deps) {
     else el.style[prop] = val;
   }
 
-  function drawArrow(at, g, dt, via) {
+  function drawArrow(r, dt) {
     mount();
+    const { at, g, via } = r;
     const p = deps.player.position;
     const dist = Math.hypot(at.x - p.x, at.z - p.z);
-    goal.near = dist < (ARRIVE[goal.key] || 1.5);
-    if (goal.near) {
-      if (!goal.arrived) { goal.arrived = true; stepEvent('arrive'); }
+    goal.near = !r.exit && dist < (ARRIVE[goal.key] || 1.5);
+    if (goal.near || (r.exit && dist < ARRIVE.exit)) {
+      if (goal.near && !goal.arrived) { goal.arrived = true; stepEvent('arrive'); }
       hideArrow();
       return;
     }
@@ -236,14 +241,14 @@ export function createGoalGuide(deps) {
     if (!cached || cached.goal !== goal || cacheT >= RESOLVE_SEC) { cacheT = 0; cached = { goal, r: resolve(goal.key) }; }
     const r = cached.r;
     if (!r?.at) { hideArrow(); return; }
-    if (goal.cine && !seen(goal.cineKey)) {
+    if (goal.cine && !r.exit && !seen(goal.cineKey)) {
       hideArrow();
       waitT += dt;
       if (waitT >= CINE_DELAY && canCine()) startCine(r.at, r.g);
       return;
     }
     if (deps.modalOpen() || document.hidden || !deps.cameraFree()) { hideArrow(); return; }
-    drawArrow(r.at, r.g, dt, r.via);
+    drawArrow(r, dt);
   }
 
   function boardTab(id) {
@@ -257,7 +262,7 @@ export function createGoalGuide(deps) {
     const p = deps.player.position;
     const to = r?.via || r?.at;
     const wp = to ? detourPoint({ x: p.x, z: p.z }, { x: to.x, z: to.z }, deps.solids()) : null;
-    return { goal: goal && { flow: goal.flow, key: goal.key, step: goal.step, arrived: goal.arrived, near: !!goal.near }, at: r?.at ? { x: r.at.x, z: r.at.z } : null, wp, cine: !!cine };
+    return { goal: goal && { flow: goal.flow, key: goal.key, step: goal.step, arrived: goal.arrived, near: !!goal.near }, at: r?.at ? { x: r.at.x, z: r.at.z } : null, wp, cine: !!cine, exit: !!r?.exit };
   }
 
   return { update, boardTab, skip, debug, get cinematic() { return !!cine; } };

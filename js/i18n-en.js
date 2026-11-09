@@ -3325,4 +3325,5 @@ export const EN = {
   '🏠 지붕 올리기': '🏠 Put on the roof',
   '🎀 새 옷 고르기': '🎀 Pick a new outfit',
   '다리': 'Bridge',
+  '나가는 문': 'Exit',
 };

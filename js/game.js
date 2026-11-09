@@ -2825,6 +2825,15 @@ export async function enterGame() {
         museum: { at: museumGoal(), via: offIsle && !bridgeBrokenNow() ? foot : null },
       };
     },
+    atFarm: () => atFarm,
+    exitSpot: () => {
+      if (indoor) return houseFloor === 0 ? { x: INT.x, z: INT.z - INT_HALF } : null;
+      if (atFarm) return { x: FARM.x, z: FARM.z + farmHalf() };
+      if (atMine) return delveFloorNow() ? null : { x: MINE.x, z: MINE.z - MINE_HALF };
+      if (atOrchard) return { x: ORCHARD.x, z: ORCHARD.z + ORCHARD_HALF };
+      if (atCafe) return { x: CAFE.x, z: CAFE.z + CAFE_HALF };
+      return null;
+    },
     farmBranchDue: () => unlocksOn() && !gameState.unlocks?.legacy && habitatDone(gameState.tree, 'water') && !habitatDone(gameState.tree, 'farm'),
   });
   if (_wq.has('dbg')) window.__guide = goalGuide;

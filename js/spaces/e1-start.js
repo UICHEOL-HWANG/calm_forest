@@ -23,6 +23,7 @@ import { clientId, t } from '../i18n.js';
 import { PLATFORM } from '../platform.js';
 import { createPlot, syncFarmCrops, syncFarmSoil } from './farm.js';
 import { enterFarm, startVisitors } from './visitors.js';
+import { nudgeWaiting, requestSignupNudge } from '../signup-gift/index.js';
 import * as THREE from 'three';
 
 const TOUCH = isTouchDevice();   // index.html TOUCH 와 같은 판정(둘째 카드 문구)
@@ -182,16 +183,17 @@ function nearestRipe() {
 
 // ── 첫 수확(어느 밭이든) — 처치 대기를 끝내고 미뤄 둔 것들을 이어 준다 ──
 export function e1OnHarvest() {   // 환영 모달은 otherModalOpen() 이 빌 때까지 기다린다(showTutorialWhenClear)
-  if (!e1Pending()) return;
+  if (!e1Pending() || nearestRipe()) return;
   gameState.e1 = { ...gameState.e1, harvested: true };
   document.body.classList.remove('e1-pending');
   hideBubble();
   if (atFarm) startVisitors();
+  if (ui.isGuestNow?.()) requestSignupNudge(gameState, 'harvest', ui, { first: E1_TUTORIAL_DELAY_MS });
   setTimeout(showTutorialWhenClear, E1_TUTORIAL_DELAY_MS);
 }
 
 // 수확 순간엔 '새 집 색'·과수원 의뢰 같은 기존 연출이 같이 뜬다 — 그 카드가 닫힌 뒤에 환영 모달을 연다(겹침 방지)
-function otherModalOpen() { return !!document.querySelector('.show > .tut-card, .show > .npc-card'); }
+function otherModalOpen() { return nudgeWaiting() || !!document.querySelector('.show > .tut-card, .show > .npc-card, #nudge-modal.show, #gift-box-modal.show'); }
 function showTutorialWhenClear() {
   if (gameState.tutorialSeen) return;
   if (otherModalOpen()) { setTimeout(showTutorialWhenClear, 400); return; }

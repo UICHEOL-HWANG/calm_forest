@@ -12,11 +12,14 @@ export const GOALS = {
   cosShop: { ico: '🎀', label: '꾸미기 가게', title: '🎀 새 옷 고르기' },
   bridge: { ico: '🌉', label: '다리', title: '🌉 다리 고치기' },
   museum: { ico: '🏛️', label: '박물관', title: '🧑‍🦳 할아버지 만나기' },
+  exit: { ico: '🚪', label: '나가는 문', title: '🚪 마을로 나가기' },
 };
+
+export const VILLAGE_KEYS = new Set(['tree', 'cave', 'farmBranch', 'wall', 'roof', 'farm', 'cosShop', 'bridge', 'museum']);
 
 const TUT_KEYS = { chop: 'tree', mine: 'cave', house2: 'wall', harvest: 'farm', build: 'roof', dress: 'cosShop', bridge: 'bridge', curator: 'museum' };
 
-export const ARRIVE = { tree: 2.3, cave: 1.6, stone: 2.2, farmBranch: 4.2, coal: 2.2, miner: 1.5, lift: 1.8, wall: 2.4, roof: 2.4, farm: 1.6, cosShop: 1.8, bridge: 1.8, museum: 2.0 };
+export const ARRIVE = { tree: 2.3, cave: 1.6, stone: 2.2, farmBranch: 4.2, coal: 2.2, miner: 1.5, lift: 1.8, wall: 2.4, roof: 2.4, farm: 1.6, cosShop: 1.8, bridge: 1.8, museum: 2.0, exit: 1.5 };
 
 export const CINE_SUB = '다음 목적지';
 export const MERCHANT_WOOD = 5;
@@ -87,4 +90,9 @@ export function guideEventParams(flow, goal, act, extra = {}) {
 export function rearmMerchant(hints) {
   if (hints?.tutStep !== 'sell' || hints.merchantMet || !hints.merchantVisit) return hints;
   return { ...hints, merchantVisit: false };
+}
+
+export function exitFirst(key, found, { inSpaceFor = false, exitAt = null } = {}) {
+  if (found || inSpaceFor || !VILLAGE_KEYS.has(key) || !exitAt) return found || null;
+  return { at: exitAt, g: GOALS.exit, key: 'exit', exit: true };
 }
