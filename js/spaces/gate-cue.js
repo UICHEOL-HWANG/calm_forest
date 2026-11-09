@@ -41,8 +41,8 @@ export function makeGuideSpot(color = 0xffd27a, r = 0.85) {
 }
 
 export function addGateWalk(parent, kind, { walk, water, color, ringR = 1 }) {
-  water.except = p => onWalk(walk, p);
-  entries[kind] = { walk, water };
+  entries[kind] = { walk, water, parent };
+  water.except = p => open().some(e => e.water === water && onWalk(e.walk, p));
   const end = walkEnd(walk), cue = glowRing(color, ringR);
   cue.group.position.set(end.x - parent.position.x, walk.y, end.z - parent.position.z);
   cue.parent = parent; parent.add(cue.group); rings.push(cue);
@@ -50,7 +50,7 @@ export function addGateWalk(parent, kind, { walk, water, color, ringR = 1 }) {
 
 export function gateWalkEnd(kind) { const e = entries[kind]; return e ? walkEnd(e.walk) : null; }
 
-function open() { return Object.values(entries).filter(e => !e.water.lock); }
+function open() { return Object.values(entries).filter(e => !e.water.lock && shown(e.parent)); }
 
 export function keepOnGateWalks(p) {
   for (const { walk, water } of open()) keepOnWalk([walk], p, q => Math.hypot(q.x - water.x, q.z - water.z) < water.r + PLAYER_R);

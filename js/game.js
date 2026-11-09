@@ -190,8 +190,9 @@ import {
   houseSolidR, unregisterWindows, updateHouseSign, woodTexture,
 } from './spaces/house.js';   // 📦 집(건축) — 정해진 터, 단계별 건설
 import {
-  buildSea, enterSea, exitSea, seaAction, seaCamera, seaPrompt, spawnSeaGate, updateSea, updateSeaVisuals,
+  buildSea, enterSea, exitSea, seaAction, seaCamera, seaPrompt, spawnSeaCove, spawnSeaGate, updateSea, updateSeaVisuals,
 } from './spaces/sea.js';   // 📦 🌊 바다터 — 대형 낚시 (docs/design/SEA_FISHING_PLAN.md · 프로토타입 sims/sea-sim.html)
+import { spawnPortPier } from './port/pier.js';
 import { openSeaPick } from './spaces/sea-pick.js';
 import { mudflat, mudflatAction, mudflatSpeedMult, clampMudflat, enterMudflat, mudflatDebug, setMudflatCam } from './spaces/mudflat.js';
 import { dive, diveAction, diveSpeedMult, clampDive, enterDive, diveAtmosphere, diveDebug } from './spaces/dive.js';
@@ -3357,7 +3358,9 @@ function buildWorld() {
   buildFarmInstances();   // 🌾 밭 흙 인스턴스 버퍼
   spawnMineGate();    // 채굴 동굴 입구
   buildMine();        // 채굴 동굴
+  lockFrom('cove'); spawnSeaCove(); lockTo();
   lockFrom('sea'); spawnSeaGate(); lockTo();     // 🌊 바다터 포구(마을 북동)
+  lockFrom('port'); spawnPortPier(); lockTo();
   buildSea();         // 🌊 바다 인스턴스(부두+대형 낚시)
   rebuildOrchard();   // 🍎 과수원 언덕(지형·시냇물·나무)
 

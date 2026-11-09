@@ -26,3 +26,16 @@ test('조형은 js/port 로 옮기고 sims 를 import 하지 않는다', () => {
   const n = read('js/port/npc-models.js');
   for (const name of ['buildIslandNPC', 'netBuoy', 'beachBuoy', 'npcPortrait', 'setNpcNight']) assert.match(n, new RegExp(`export function ${name}\\(`));
 });
+
+test('후미 바탕은 cove, 바다터 입구는 sea, 통배 부두는 port 잠금으로 나뉜다', () => {
+  const game = read('js/game.js');
+  assert.match(game, /lockFrom\('cove'\); spawnSeaCove\(\); lockTo\(\);/);
+  assert.match(game, /lockFrom\('sea'\); spawnSeaGate\(\); lockTo\(\);/);
+  assert.match(game, /lockFrom\('port'\); spawnPortPier\(\); lockTo\(\);/);
+  const places = read('js/data/places.js');
+  assert.match(places, /export const PORT = new THREE\.Vector3\(700, 0, 0\);/);
+  assert.match(places, /export const PORT_PIER = /);
+  const doors = read('js/spaces/doors.js');
+  assert.match(doors, /isOpen\('port'\) && nearPortPier\(player\.position\)/);
+  assert.match(doors, /nd = 'port_board'/);
+});

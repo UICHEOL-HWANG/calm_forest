@@ -41,6 +41,8 @@ export const seaAngDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b))
 export let coveWater = null, seaWater = null;
 
 export let seaBeacon = null, seaLampMat = null, seaBeamMats = [];
+let coveSolidRef = null;
+export const coveSolid = () => coveSolidRef;
 
 export function makeWavyWater(radius, thetaSeg, rings, colCenter, colEdge, opacity, dampFn, gradR) {
   const geo = new THREE.RingGeometry(0.02, radius, thetaSeg, rings);
@@ -102,7 +104,7 @@ export function updateSeaVisuals(t) {
   }
 }
 
-export function spawnSeaGate() {
+export function spawnSeaCove() {
   const g = new THREE.Group(); g.position.copy(SEA_GATE); scene.add(g);
   const CX = SEA_COVE.x - SEA_GATE.x, CZ = SEA_COVE.z - SEA_GATE.z;   // 후미 중심(로컬)
   // ── 후미(만) — 모래톱 → 바닷물 → 먼바다 톤. 게이트에 서면 바다가 보인다
@@ -177,15 +179,19 @@ export function spawnSeaGate() {
     const b = new THREE.Mesh(new THREE.SphereGeometry(0.16, 9, 7), clayMat(0xef8a4a));
     b.scale.y = 1.25; b.position.set(bx, 0.28, bz); g.add(b);
   });
+  obstacles.push({ x: SEA_COVE.x, z: SEA_COVE.z, r: SEA_COVE.r + 1 });
+  coveSolidRef = solidCircle(SEA_COVE.x, SEA_COVE.z, SEA_COVE.r - 0.35);
+}
+
+export function spawnSeaGate() {
+  const g = new THREE.Group(); g.position.copy(SEA_GATE); scene.add(g);
   g.add(makeSignpost('🌊 바다터', -1.6, 1.2));
   const stall = buildHomiStall(THREE, clayMat);
   stall.position.set(HOMI_STALL.x - SEA_GATE.x, 0, HOMI_STALL.z - SEA_GATE.z); stall.rotation.y = HOMI_STALL.ry; g.add(stall);
   solidCircle(HOMI_STALL.x, HOMI_STALL.z, HOMI_STALL.r);
   obstacles.push({ x: HOMI_STALL.x, z: HOMI_STALL.z, r: 2 });    // 다른 게이트와 같은 문법의 표지판
   obstacles.push({ x: SEA_GATE.x, z: SEA_GATE.z, r: 2.2 });                     // 밭 금지(게이트 앞)
-  obstacles.push({ x: SEA_COVE.x, z: SEA_COVE.z, r: SEA_COVE.r + 1 });          // 밭 금지(후미)
-  const water = solidCircle(SEA_COVE.x, SEA_COVE.z, SEA_COVE.r - 0.35);         // 🚧 물엔 못 들어감(돌다리 위만 예외)
-  addGateWalk(g, 'sea', { water, color: 0x8fe8ff, ringR: 0.85,
+  addGateWalk(g, 'sea', { water: coveSolid(), color: 0x8fe8ff, ringR: 0.85,
     walk: makeWalk({ ax: SEA_GATE.x + 0.2, az: SEA_GATE.z - 0.1, bx: SEA_GATE.x + 3.4, bz: SEA_GATE.z - 3.9, hw: 0.5, y: 0.36 }) });
 }
 

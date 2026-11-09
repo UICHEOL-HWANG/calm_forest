@@ -50,6 +50,8 @@ import { nearestOutdoor, outdoorZone } from '../spaces/outdoor-decor.js';
 import { chestHintNow, updateRiverInteract } from '../spaces/river.js';
 import { seaPrompt } from '../spaces/sea.js';
 import { gateWalkEnd } from './gate-cue.js';
+import { nearPortPier } from '../port/pier.js';
+import { PORT_COPY } from '../port/data.js';
 import { TELESCOPE_SPOT } from '../spaces/observatory.js';
 import { MOUNTAIN_EXIT_LOCAL, mountainOpen, sledStartReady, hutDoorReady, keeperReady, KEEPER_PROMPT, inCafe, atCafeSpot } from '../spaces/mountain.js';
 import { state as authState } from '../supabase-client.js';
@@ -336,6 +338,8 @@ export function updateDoorInteract() {
     nd = 'river'; prompt = chestHintNow() ? '🛶 나루터 · 🧰 오늘의 보물상자가 떠내려와요' : '🛶 나루터 (나룻배 타러 가기)';   // 🧰 상자는 나룻배에만 — 입구에서 알린다
   } else if (isOpen('river') && dist2D({ x: DOCK_GATE.x, z: DOCK_GATE.z + 1.2 }, player.position) < 2.4) {
     firstHintBanner('dockGate', '🛶', '나루터', '나룻배 타고 하루 3번 강을 내려가요');
+  } else if (isOpen('port') && nearPortPier(player.position)) {
+    nd = 'port_board'; prompt = PORT_COPY.board;
   } else if (isOpen('sea') && nearGateEnd('sea')) {
     nd = 'sea';
     const locked = mapLocked('sea');

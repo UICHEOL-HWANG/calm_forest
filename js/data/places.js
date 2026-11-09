@@ -234,6 +234,11 @@ export const SEA_GATE = new THREE.Vector3(14.5, 0, -12.5);   // 마을 북동(�
 
 export const HOMI_STALL = { x: 17.2, z: -9.4, ry: -0.6, r: 1.15 };
 export const SEA_COVE = { x: SEA_GATE.x + 9.5, z: SEA_GATE.z - 9, r: 12 };  // 포구 앞 후미(만) — 게이트 너머로 보이는 진짜 바다
+const PORT_DIR = Math.atan2(-9 - SEA_COVE.z, 26.5 - SEA_COVE.x);
+const coveAt = (r) => ({ x: SEA_COVE.x + Math.cos(PORT_DIR) * r, z: SEA_COVE.z + Math.sin(PORT_DIR) * r });
+const PIER_A = coveAt(SEA_COVE.r - 1.2), PIER_B = coveAt(SEA_COVE.r - 4.4);
+export const PORT_PIER = { ax: PIER_A.x, az: PIER_A.z, bx: PIER_B.x, bz: PIER_B.z, end: coveAt(SEA_COVE.r - 3.9), boat: { ...coveAt(SEA_COVE.r - 4.6), ry: 0.4 } };
+export const PORT = new THREE.Vector3(700, 0, 0);
 
 export const SEA = new THREE.Vector3(400, 0, 0);             // 바다 인스턴스 — 다른 공간이 전부 x=0 축이라 동쪽으로 뺌
 export const MUDFLAT = new THREE.Vector3(400, 0, 300);
