@@ -16,6 +16,7 @@ import {
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { mudflat, mudflatHint, nearMudflatExit, MUDFLAT_COPY } from './mudflat.js';
 import { dive, diveHint, nearDiveExit, DIVE_COPY } from './dive.js';
+import { port, portPrompt } from '../port/index.js';
 import { plazaSpot } from '../plaza/index.js';
 import { delvePrompt, delveFloorNow } from './delve.js';
 import { trackEvent } from '../analytics.js';
@@ -194,6 +195,7 @@ export function updateDoorInteract() {
       if (nearDiveExit()) { nd = 'seaexit'; prompt = DIVE_COPY.exit; }
       else prompt = diveHint();
     }
+    else if (port.active) { const pp = portPrompt(); nd = pp.nd; prompt = pp.prompt; }
     else if (seaMG.st === 'idle' && dist2D({ x: SEA.x, z: SEA.z + SEA_DECK_Z0 - 0.6 }, player.position) < 1.9) { nd = 'seaexit'; prompt = '🚪 마을로 나가기'; }
     else prompt = seaPrompt();
     $w.nearDoor = nd;

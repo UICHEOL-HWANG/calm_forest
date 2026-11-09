@@ -193,6 +193,7 @@ import {
   buildSea, enterSea, exitSea, seaAction, seaCamera, seaPrompt, spawnSeaCove, spawnSeaGate, updateSea, updateSeaVisuals,
 } from './spaces/sea.js';   // 📦 🌊 바다터 — 대형 낚시 (docs/design/SEA_FISHING_PLAN.md · 프로토타입 sims/sea-sim.html)
 import { spawnPortPier } from './port/pier.js';
+import { port, enterPort, portAction, clampPort, portOwnsMovement, bindPortEnv } from './port/index.js';
 import { openSeaPick } from './spaces/sea-pick.js';
 import { mudflat, mudflatAction, mudflatSpeedMult, clampMudflat, enterMudflat, mudflatDebug, setMudflatCam } from './spaces/mudflat.js';
 import { dive, diveAction, diveSpeedMult, clampDive, enterDive, diveAtmosphere, diveDebug } from './spaces/dive.js';
@@ -2777,6 +2778,7 @@ export async function enterGame() {
   if (_wq.get('sea') === '1') setTimeout(() => enterSea(), 60);
   if (_wq.get('mudflat') === '1') setTimeout(() => enterMudflat({ entry: 'pick' }), 60);
   if (_wq.get('dive') === '1') setTimeout(() => enterDive({ entry: 'pick' }), 60);
+  if (_wq.get('port') === '1') setTimeout(() => enterPort(), 60);
   if (_wq.get('divedebug') === '1') window.__dive = diveDebug;
   if (_wq.get('mudflatdebug') === '1') { window.__mudflat = mudflatDebug; window.__mudflatCam = setMudflatCam; }   // 테스트: ?sea=1 — 바다터 바로 입장
   if (_wq.get('seadebug') === '1') window.__sea = { mg: seaMG, action: seaAction };   // 테스트: 상태 점검용(연출 검수)
@@ -3390,6 +3392,7 @@ function buildWorld() {
   });
 
   buildPlayer();
+  bindPortEnv({ $w, scene, player, ui, snapCamera, setSpaceVisible, gameState: () => gameState, requestSave, analog, keys });
   buildFireflies();
   buildStars();
   buildRain();              // 🌧️ 빗줄기(비 오는 날에만 표시)
@@ -6430,6 +6433,7 @@ function doPlayerAction(tx, tz, kind) {
   actAnim = 1; actKind = kind || 'swing';
 }
 function updatePlayer(dt, t) {
+  if (portOwnsMovement()) return;
   if (boat.active) {                               // 🛶 런 중엔 걷기 대신 배 물리
     charGroup?.scale.setScalar(1);                 // 🧸 말랑 스킨이 걷다 멈춘 채 눌려 있지 않게
     charGroup?.userData.skinTick?.(t);             // 🌿 정령 반딧불은 계속 떠다닌다
@@ -6518,6 +6522,7 @@ function updatePlayer(dt, t) {
     // 🌊 부두 위만 걷기 — 좌우는 널판 안, 앞뒤는 뭍끝~부두끝(싸움 중 끌려가는 건 updateSea 의 pz 가 제어)
     if (mudflat.active) clampMudflat(player.position);
     else if (dive.active) clampDive(player.position);
+    else if (port.active) clampPort(player.position);
     else {
       player.position.x = Math.max(SEA.x - SEA_DECK_W / 2 + 0.45, Math.min(SEA.x + SEA_DECK_W / 2 - 0.45, player.position.x));
       player.position.z = Math.max(SEA.z + SEA_EDGE - 0.1, Math.min(SEA.z + SEA_DECK_Z0 - 0.2, player.position.z));
@@ -7482,9 +7487,10 @@ function handleAction() {
   if (nearDoor === 'riverexit') return exitRiver();
   if (nearDoor === 'mist') return enterMist();
   if (nearDoor === 'mistexit') return exitMist();
+  if (nearDoor === 'port_board' && !atSea) return enterPort();
   if (nearDoor === 'sea') return openSeaPick();
   if (nearDoor === 'seaexit') return exitSea();
-  if (atSea) { (mudflat.active ? mudflatAction : dive.active ? diveAction : seaAction)(); return; }   // 🌊 바다터: 액션 = 던지기/버티기/감기
+  if (atSea) { (mudflat.active ? mudflatAction : dive.active ? diveAction : port.active ? portAction : seaAction)(); return; }   // 🌊 바다터: 액션 = 던지기/버티기/감기
   if (atMist) { mistAction(); return; }
   if (atOrchard) return orchardAction();   // 🍎 과수원: 심기·물주기·수확·베기(js/game.js orchardAction)
   if (atRiver) {                  // 🛶 나루터 데크: 배 타기 / 창고 열기

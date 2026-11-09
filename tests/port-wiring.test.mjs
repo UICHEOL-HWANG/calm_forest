@@ -46,3 +46,16 @@ test('방파제 바위줄은 바다터 입구와 같이 잠기고 후미에는 �
   assert.match(body('spawnSeaGate'), /IcosahedronGeometry\(0\.42 - t \* 0\.14/);
   assert.doesNotMatch(body('spawnSeaCove'), /IcosahedronGeometry\(0\.42 - t \* 0\.14/);
 });
+
+test('섬은 바다 공간의 하위 모드로 붙는다', () => {
+  const sea = read('js/spaces/sea.js'), game = read('js/game.js'), doors = read('js/spaces/doors.js');
+  assert.match(sea, /if \(port\.active\) return updatePort\(dt, t\);/);
+  assert.match(sea, /if \(port\.active\) return portCamera\(camera, look, dt\);/);
+  assert.match(sea, /leaveMudflat\(\);\n  leaveDive\(\);\n  leavePort\(\);/);
+  assert.match(game, /if \(nearDoor === 'port_board' && !atSea\) return enterPort\(\);/);
+  assert.match(game, /port\.active \? portAction :/);
+  assert.match(game, /else if \(port\.active\) clampPort\(player\.position\);/);
+  assert.match(game, /if \(portOwnsMovement\(\)\) return;/);
+  assert.match(game, /_wq\.get\('port'\) === '1'/);
+  assert.match(doors, /else if \(port\.active\) \{ const pp = portPrompt\(\); nd = pp\.nd; prompt = pp\.prompt; \}/);
+});
