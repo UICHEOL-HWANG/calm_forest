@@ -171,6 +171,15 @@
         "revision" : "55d7a1cc5666b85c13464aea1c4b4a90feccb4c8",
         "version" : "1.38.1"
       }
+    },
+    {
+      "identity" : "tenjin-ios-sdk",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/tenjin/tenjin-ios-sdk.git",
+      "state" : {
+        "revision" : "e1f1cd662548d566c80b20c13278b81a37f3e527",
+        "version" : "1.20.0"
+      }
     }
   ],
   "version" : 3
