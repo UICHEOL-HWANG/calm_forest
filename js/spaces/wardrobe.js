@@ -104,6 +104,7 @@ export function drawPets(box, preview) {
   const redraw = () => drawPets(box, preview);
   preview?.showTrail(false);
   preview?.showTools(false);
+  preview?.showHomi(false);
   box.innerHTML = '';
   const mine = PET_KINDS.filter(k => gameState.pets[k.id]);
   const active = gameState.pet ? gameState.pet.kind : null;

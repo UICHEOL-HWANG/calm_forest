@@ -37,7 +37,7 @@ import { easeFor, nextDda, ddaOutcome, defaultDifficulty, mergeDifficulty, PROBE
 import { spotToolStep, spotWant, spotKeep, SPOT_REASON, IDLE as SPOT_IDLE } from './spot-tool-auto.js';
 import { treeFallPose, TREE_FALL_IMPACT, TREE_FALL_PIVOT } from './tree-fall.js';   // 🌳 벌목 쓰러짐(기우뚱 쿵 바운스)
 import { trackChop, trackEvent, onTrack } from './analytics.js';          // [GA4] 이벤트
-import { IS_ANDROID } from './platform.js';
+import { IS_ANDROID, PLATFORM } from './platform.js';
 import { createPerfSampler, perfContext } from './perf-sample.js';   // 📱 플레이 앱 기기별 FPS(세션당 1회 perf_sample)
 import { createKeyState, isEditableTarget } from './keys.js';      // ⌨️ 키 눌림 상태(입력칸 무시·포커스 손실 리셋) + 우클릭 메뉴 예외 판정
 import { BASE_DIST, camOffsetFor, defaultCam, effectivePitch, isDefaultCam, loadCam, moveToWorld, saveCam } from './camera-user.js';
@@ -62,7 +62,9 @@ import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed, 
 import { buildMuseumExtras } from './museum/extras.js';   // 🏛️ 1층 ✨조건부 전시(조형)   // 🏛️ 증축은 수집률로 열린다   // 🪓 도구 등급(0 기본 / 1 업그레이드 / 2 히든) — 색·판정은 이 모듈이 단일 출처
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
-import { t, LANG, aiBucket } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
+import { t, LANG, aiBucket, clientId } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
+import { createHouseGuide } from './spaces/house-guide.js';   // 🏠 목재 15개 → 집터 조망 + 방향 안내 50:50
+import { sanitizeHouseGuide } from './house-guide-rules.js';
 import { initPlaza, updatePlaza, plazaSpotNow, openPlaza, plazaScatterBlocks, plazaDefault, restorePlaza, refreshPlaza, plazaDecorMesh, plazaMapVisible } from './plaza/index.js';
 import { refreshPond, updatePond, pondScatterBlocks } from './pond/index.js';
 import { onPlay, decorBanner, applySetFx } from './decor-drops/index.js';
@@ -1069,6 +1071,7 @@ const gameState = {
   hintsSeen: {},                            // 첫 접근 안내 표시 여부 { key: true }
   drops: {},
   e1: null,                                 // 🧪 E1 첫 5분 수확 실험 { arm, seeded, harvested } — 등록된 신규만(js/exp-e1.js)
+  houseGuide: null,                         // 🏠 집 기초 안내 실험 { arm, shown, arrived } — E1 과 독립
   dream: { visits: 0, day: '', got: [], total: 0 },   // 🌙 꿈의 숲 — 누적 방문·그날 주운 조각 자리·누적 획득(js/dream/layout.js normalizeDream)
   mirror: { visits: 0, day: '', done: 0, hinted: [], total: 0 },   // 🪞 거울 마을 — 누적 방문·그날 마친 의뢰·힌트 쓴 의뢰·누적 조각(js/mirror/quests.js normalizeMirror)
   halloween: null,
@@ -1576,6 +1579,7 @@ let lastFloorChoiceKey = null;   // 🪜 양방향(6단계 2층) 선택 UI 중�
 const decorMeshes = [];    // 배치된 가구 메시
 
 let mode = 'attract';   // 'attract'(로그인 배경) | 'play'(플레이)
+let houseGuidance = null;   // 🏠 집터 안내 실험(부팅 후 시작)
 let dayPaused = false;  // 낮/밤 자동 순환 정지 여부 — ?time= 로 시간대를 고정하는 스토어 촬영용
 const npcObjs = [];     // 런타임 NPC 객체들
 let nearNPC = null;     // 현재 근접한 NPC(런타임 객체) 또는 null
@@ -2772,6 +2776,18 @@ export async function enterGame() {
   if (_wq.get('mudflatdebug') === '1') { window.__mudflat = mudflatDebug; window.__mudflatCam = setMudflatCam; }   // 테스트: ?sea=1 — 바다터 바로 입장
   if (_wq.get('seadebug') === '1') window.__sea = { mg: seaMG, action: seaAction };   // 테스트: 상태 점검용(연출 검수)
   mode = 'play';
+  houseGuidance = createHouseGuide({
+    state: () => gameState, player, camera, house: HOUSE_POS,
+    clientId, platform: PLATFORM, dev: IS_DEV_SESSION, translate: t,
+    cameraFree, setCameraRig, snapCamera,
+    inVillage: inVillage2,
+    modalOpen: () => !!ui.anyModalOpen?.() || document.body.classList.contains('spot-on'),
+    stopAnalog: () => Input.setAnalog?.(0, 0),
+    projectPlayer: () => projectToScreen(player.position, 0),
+    playReminder: () => Sound.houseGuide(),
+    track: trackEvent, save: requestSave,
+  });
+  houseGuidance.onInventory();          // 로컬 강제 시안(?houseguide=)만 부팅 보유량으로 시험; 실제 배정은 플레이 중 15개 도달
   movedOnce = false;
   startLogging();                      // [센서] 배치 전송 시작
   // [🎯 이탈 예측] dev 세션은 만들지 않는다 — 센서 샘플이 없어 윈도가 안 차고, API 로그도 더럽힌다
@@ -2858,6 +2874,7 @@ function applySave(saved) {
   if (typeof saved.timeOfDay === 'number') timeOfDay = saved.timeOfDay; // 시간대 복원
   if (saved.tutorialSeen) gameState.tutorialSeen = true;                 // 튜토리얼 이미 봄
   gameState.e1 = sanitizeE1(saved.e1);                                   // 🧪 E1 무리 — 다른 기기에서 로그인해도 같은 무리
+  gameState.houseGuide = sanitizeHouseGuide(saved.houseGuide);             // 🏠 안내 실험 — 재접속·다른 기기에서도 같은 무리
   if (saved.guideNudgeSeen) gameState.guideNudgeSeen = true;             // 📖 안내서 배너 이미 봄
   if (saved.house && saved.house.stored && typeof saved.house.stored === 'object') {   // 🧺 창고 복원(개수만, 음수·비숫자 버림)
     gameState.house.stored = {};
@@ -6199,6 +6216,7 @@ function animate() {
     // 🛏️ 자는 동안엔 조작을 멈춘다 — #sleep-fade 는 포인터만 막아서, 이게 없으면
     //    데스크톱에서 암전 아래로 걸어가 문에 Space 를 눌러 집을 나가 버린다(키는 window 에서 받는다).
     else if (sleeping) { wantAction = false; }
+    else if (houseGuidance?.cinematic) { wantAction = false; updateCamera(dt); updateCameraFade(); }
     else if (!mgView && !duelActive) { updatePlayer(dt, t); updateObservatoryStairs(dt); updateMuseumView(dt); updateObservatory(dt, t); updateNeighbor(dt); updateMountain(dt); maybeRevealMountain(); updateCamera(dt); updateCameraFade(); }
     else { updateMgScene(dt, t); wantAction = false; }  // 🍳 요리 미니게임 중엔 클로즈업 무대가 카메라를 가짐 — 마을 상호작용(프롬프트·힌트·액션)은 정지
     updateOrchardSlotApproach(t);
@@ -6206,7 +6224,7 @@ function animate() {
       if (wantAction) { wantAction = false; closeMuseumView(); }
     } else if (sledActive()) {
       wantAction = false;
-    } else if (!mgView && !duelActive && !intro && !dreamCutActive() && !mirrorRideActive()) {
+    } else if (!mgView && !duelActive && !intro && !houseGuidance?.cinematic && !dreamCutActive() && !mirrorRideActive()) {
       handleAction();
       updateNPCInteract();
       updateDoorInteract();
@@ -6311,6 +6329,7 @@ function animate() {
   updatePlaza(dt, inVillage2());   // 🌾 광장 근처면 진행률 재조회
   updatePond(dt, inVillage2());
   updateShopCue(t);          // 🛒 좌판 안내 스프라이트
+  houseGuidance?.update();   // 🏠 조망샷은 다른 카메라 연출·모달이 비었을 때만 시작
   // 집 터 안내판/마커: 플레이 중 + 미완성일 때만 (로그인 화면에선 숨김)
   const showHouseCue = (mode === 'play' && gameState.houseStage < 3);
   if (houseSign) { houseSign.visible = showHouseCue; if (showHouseCue) houseSign.position.y = 3.3 + Math.sin(t * 2) * 0.12; }
@@ -7901,8 +7920,9 @@ function tryBuild() {
   if (coinCost) logEcon('house_build', 'stage' + next, -coinCost, gameState.inventory.coins);   // [원장] 증축 'house_expand' 와 같은 축
   doPlayerAction(HOUSE_POS.x, HOUSE_POS.z); // 건축 제스처
   buildHouseStage(next);
+  if (next === 1) houseGuidance?.built();
   syncUnlocks();   // 🔓 집 기초 → 👷 목수 귀환
-  trackEvent('house_build', { stage: next, ...Object.fromEntries(info.items.map(i => [i.k, i.need])) });   // [GA4] 건축 퍼널(증축 house_expand 와 같은 축: stage)
+  trackEvent('house_build', { stage: next, ...(next === 1 && gameState.houseGuide ? { house_guide_arm: gameState.houseGuide.arm } : {}), ...Object.fromEntries(info.items.map(i => [i.k, i.need])) });   // [GA4] 건축 퍼널(증축 house_expand 와 같은 축: stage)
   if (next < 3) ui.toast?.(`🪵 ${STAGE_NAMES[next]} 완성!`);
   if (next === 1) requestSignupNudge(gameState, 'house', ui);
   refreshInventoryUI();
@@ -8306,6 +8326,7 @@ function giveReward(r, source = 'reward', item = null) {
 function refreshInventoryUI() {
   ui.setInventory?.(gameState.inventory);
   refreshCollectQuests();   // 보유량형 퀘스트 진행 갱신
+  houseGuidance?.onInventory();   // 🏠 부팅 시 보유 목재는 기준으로만 잡고, 플레이 중 15개를 넘을 때 배정
 }
 function dist2D(a, b) { return Math.hypot(a.x - b.x, a.z - b.z); }
 // 해당 위치가 장애물(나무·호수·벤치·가로등·집)과 겹치는지 — 밭 크기 여유(0.95) 포함

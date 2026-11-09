@@ -863,6 +863,90 @@
   #login-qr .lq-codes img { display: block; width: 88px; height: 88px; border-radius: 10px; background: #fff; padding: 5px; margin-bottom: 6px; box-sizing: border-box; }
   @media (max-width: 759px), (max-height: 520px) { #login-qr { display: none; } }
   #login-links a { color: inherit; text-decoration: underline; }
+  #login-screen.with-guide {
+    align-content: safe center;
+    overflow-y: auto;
+    padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+  }
+  .with-guide #login-entry {
+    display: grid;
+    gap: 12px;
+    width: min(330px, calc(100vw - 24px));
+  }
+  #login-guide {
+    border: 1px solid #819079;
+    border-radius: 21px;
+    background: #374335;
+    color: #fffdf4;
+    box-shadow: 0 12px 26px #1c2d2250;
+  }
+  .with-guide #login-card { max-height: none; padding: 15px 16px 14px; }
+  #login-screen.with-guide #login-card .leaf { font-size: 24px; line-height: 1.15; }
+  #login-screen.with-guide #login-card h1 { margin: 3px 0 0; font-size: 33px; line-height: 1.1; }
+  .with-guide #login-card .tagline { margin: 4px 0 13px; font-size: 12px; }
+  .with-guide #google-btn, .with-guide #email-btn { padding-block: 9px; }
+  .with-guide #guest-btn { margin-top: 10px; }
+  .with-guide #login-store { margin-top: 12px; padding-top: 8px; }
+  .with-guide #login-store p { margin-bottom: 6px; }
+  .with-guide #login-store .store-badge img { height: 30px; }
+  .with-guide #login-note { margin-top: 8px; }
+  .with-guide #login-links { margin: 0; text-align: center; color: #fff; text-shadow: 0 1px 4px #253025; }
+  .with-guide .login-wiki-legacy { display: none; }
+  @media (min-width: 760px) and (min-height: 521px) {
+    #login-screen.with-guide:has(#login-qr:not([hidden])) {
+      grid-template-columns: 330px 270px;
+      grid-template-areas: "login qr" "login guide" "links links";
+      row-gap: 12px;
+    }
+    .with-guide:has(#login-qr:not([hidden])) #login-entry { display: contents; }
+    .with-guide:has(#login-qr:not([hidden])) #login-card { grid-area: login; width: 100%; }
+    .with-guide:has(#login-qr:not([hidden])) #login-qr { grid-area: qr; width: 100%; }
+    .with-guide:has(#login-qr:not([hidden])) #login-guide { grid-area: guide; width: 100%; }
+    .with-guide:has(#login-qr:not([hidden])) #login-links { grid-area: links; }
+  }
+  #login-guide { overflow: hidden; text-align: center; }
+  #login-guide img {
+    display: block;
+    width: 100%;
+    height: clamp(130px, calc(43vw - 14px), 155px);
+    object-fit: cover;
+    object-position: center 22%;
+  }
+  .login-guide-copy { padding: 13px 13px 12px; }
+  .login-guide-copy h2 { margin: 0; font-size: 18px; letter-spacing: -.035em; }
+  .login-guide-copy p { margin: 5px 0 8px; color: #e7ebd9; font-size: 13px; line-height: 1.55; word-break: keep-all; }
+  .login-guide-copy nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+  .login-guide-copy a {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 44px;
+    padding: 0 9px;
+    border-radius: 11px;
+    background: #e8f2cc;
+    color: #293a28;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .login-guide-copy a:hover { text-decoration: underline; text-underline-offset: 3px; }
+  .with-guide :is(#login-store > p, #login-qr > b, #login-lang) { display: inline-flex; }
+  .with-guide :is(#google-btn, #email-btn, #login-lang, #login-store > p, #login-qr > b, .login-guide-copy a) {
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .with-guide :is(#email-btn, #login-lang, #login-store > p, #login-qr > b) > .te,
+  .with-guide #google-btn > .g,
+  .with-guide .login-guide-copy a > span[aria-hidden] {
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    width: 16px;
+    height: 16px;
+    line-height: 1;
+  }
+  .with-guide .login-guide-copy a .te { width: 100%; height: 100%; }
   #login-card .leaf { font-size: 40px; filter: drop-shadow(0 2px 8px rgba(0,0,0,.25)); }
   #login-card h1 { margin: 6px 0 2px; font-size: 40px; font-weight: 800; letter-spacing: -0.5px;
     color: #fff; text-shadow: 0 2px 16px rgba(0,0,0,.3); }
@@ -3317,60 +3401,73 @@
 
   <!-- 로그인 화면 (뒤로 실제 게임 씬이 흐름) -->
   <div id="login-screen">
-    <div id="login-card">
-      <div class="leaf">🌿</div>
-      <h1>calm forest</h1>
-      <div class="tagline">a cozy little forest</div>
-      <div id="login-main">
-        <div id="login-invite"></div>
-        <button id="google-btn"><span class="g">G</span> Google로 시작하기</button>
-        <button id="toss-btn">바로 플레이하기</button>
-        <button id="apple-btn"><svg viewBox="0 0 384 512" aria-hidden="true"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg> Apple로 계속하기</button>
-        <button id="email-btn">✉️ 이메일로 시작하기</button>
-        <button id="guest-btn">게스트로 둘러보기</button>
-        <p id="e5-sub" hidden></p>
-        <div id="login-store" hidden>
-          <p>📱 앱으로도 만나요</p>
-          <div class="ls-row"></div>
-          <template id="store-badges">
-            <img data-os="ios" data-lang="ko" data-src="assets/badges/app-store-ko.svg" alt="App Store에서 다운로드하기" height="40">
-            <img data-os="ios" data-lang="en" data-src="assets/badges/app-store-en.svg" alt="Download on the App Store" height="40">
-            <img data-os="android" data-lang="ko" data-src="assets/badges/google-play-ko.png" alt="다운로드하기 Google Play" height="40">
-            <img data-os="android" data-lang="en" data-src="assets/badges/google-play-en.png" alt="Get it on Google Play" height="40">
-          </template>
+    <div id="login-entry">
+      <div id="login-card">
+        <div class="leaf">🌿</div>
+        <h1>calm forest</h1>
+        <div class="tagline">a cozy little forest</div>
+        <div id="login-main">
+          <div id="login-invite"></div>
+          <button id="google-btn"><span class="g">G</span> Google로 시작하기</button>
+          <button id="toss-btn">바로 플레이하기</button>
+          <button id="apple-btn"><svg viewBox="0 0 384 512" aria-hidden="true"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg> Apple로 계속하기</button>
+          <button id="email-btn">✉️ 이메일로 시작하기</button>
+          <button id="guest-btn">게스트로 둘러보기</button>
+          <p id="e5-sub" hidden></p>
+          <div id="login-store" hidden>
+            <p>📱 앱으로도 만나요</p>
+            <div class="ls-row"></div>
+            <template id="store-badges">
+              <img data-os="ios" data-lang="ko" data-src="assets/badges/app-store-ko.svg" alt="App Store에서 다운로드하기" height="40">
+              <img data-os="ios" data-lang="en" data-src="assets/badges/app-store-en.svg" alt="Download on the App Store" height="40">
+              <img data-os="android" data-lang="ko" data-src="assets/badges/google-play-ko.png" alt="다운로드하기 Google Play" height="40">
+              <img data-os="android" data-lang="en" data-src="assets/badges/google-play-en.png" alt="Get it on Google Play" height="40">
+            </template>
+          </div>
+          <div id="login-note"></div>
+          <!-- 🌐 언어 전환 — HUD(☰ 메뉴)가 숨겨지는 로그인 화면에서도 보이게 별도 배치 -->
+          <button id="login-lang" style="margin-top:14px;background:none;border:none;color:rgba(255,255,255,.85);font-size:13px;cursor:pointer;text-decoration:underline;">🌐 English</button>
+          <!-- 💳 Paddle 도메인 심사 — 로그인 없이 가격·약관·환불·개인정보가 닿아야 한다. CONFIG.PADDLE.storeOpen 이 false 거나 토스·안드로이드면 JS 가 제거(앱 번들은 빌드 때도 제거) -->
+          <nav id="login-links">
+            <span class="login-wiki-legacy"><a href="https://calmforest.cloud/wiki/" target="_blank" rel="noopener">📖 고요위키</a> · </span><a href="/shop" target="_blank" rel="noopener">가격 안내</a> · <a href="/terms" target="_blank" rel="noopener">이용약관</a> · <a href="/refund" target="_blank" rel="noopener">환불 정책</a> · <a href="/privacy" target="_blank" rel="noopener">개인정보처리방침</a>
+          </nav>
         </div>
-        <div id="login-note"></div>
-        <!-- 🌐 언어 전환 — HUD(☰ 메뉴)가 숨겨지는 로그인 화면에서도 보이게 별도 배치 -->
-        <button id="login-lang" style="margin-top:14px;background:none;border:none;color:rgba(255,255,255,.85);font-size:13px;cursor:pointer;text-decoration:underline;">🌐 English</button>
-        <!-- 💳 Paddle 도메인 심사 — 로그인 없이 가격·약관·환불·개인정보가 닿아야 한다. CONFIG.PADDLE.storeOpen 이 false 거나 토스·안드로이드면 JS 가 제거(앱 번들은 빌드 때도 제거) -->
-        <nav id="login-links">
-          <a href="https://calmforest.cloud/wiki/" target="_blank" rel="noopener">📖 고요위키</a> · <a href="/shop" target="_blank" rel="noopener">가격 안내</a> · <a href="/terms" target="_blank" rel="noopener">이용약관</a> · <a href="/refund" target="_blank" rel="noopener">환불 정책</a> · <a href="/privacy" target="_blank" rel="noopener">개인정보처리방침</a>
-        </nav>
+        <!-- ✉️ 이메일 코드 로그인 — 카드 내용이 단계별로 통째로 바뀐다(A안, js/auth/email-login.js) -->
+        <form id="email-step" class="login-step" hidden novalidate>
+          <div id="email-title" class="step-title">이메일로 시작하기</div>
+          <p id="email-hint" class="step-hint">메일로 6자리 코드를 보내 드려요. 비밀번호는 필요 없어요.</p>
+          <input id="email-input" class="step-field" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="이메일 주소">
+          <button id="email-send" class="step-primary" type="submit">코드 받기</button>
+          <p id="email-err" class="step-err" role="alert"></p>
+          <button id="email-back" class="step-link" type="button">← 다른 방법으로 시작하기</button>
+        </form>
+        <form id="code-step" class="login-step" hidden novalidate>
+          <div class="step-title">코드 입력</div>
+          <p class="step-hint"><span id="code-sent-to"></span><br><span>메일함에 없으면 스팸함도 확인해 주세요.</span></p>
+          <!-- 🔢 보이는 건 칸 6개(장식), 입력은 위에 겹친 투명 input 하나 — 붙여넣기·iOS 코드 자동 채우기·백스페이스가 그대로 돈다 -->
+          <div class="otp">
+            <div id="code-cells" class="otp-cells" aria-hidden="true"></div>
+            <input id="code-input" class="otp-input" type="text" inputmode="numeric" autocomplete="one-time-code" aria-label="6자리 코드" maxlength="24">
+          </div>
+          <button id="code-verify" class="step-primary" type="submit">시작하기</button>
+          <p id="code-err" class="step-err" role="alert"></p>
+          <div class="step-links">
+            <button id="code-back" class="step-link" type="button">← 이메일 바꾸기</button>
+            <button id="code-resend" class="step-link" type="button">코드 다시 받기</button>
+          </div>
+        </form>
       </div>
-      <!-- ✉️ 이메일 코드 로그인 — 카드 내용이 단계별로 통째로 바뀐다(A안, js/auth/email-login.js) -->
-      <form id="email-step" class="login-step" hidden novalidate>
-        <div id="email-title" class="step-title">이메일로 시작하기</div>
-        <p id="email-hint" class="step-hint">메일로 6자리 코드를 보내 드려요. 비밀번호는 필요 없어요.</p>
-        <input id="email-input" class="step-field" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="이메일 주소">
-        <button id="email-send" class="step-primary" type="submit">코드 받기</button>
-        <p id="email-err" class="step-err" role="alert"></p>
-        <button id="email-back" class="step-link" type="button">← 다른 방법으로 시작하기</button>
-      </form>
-      <form id="code-step" class="login-step" hidden novalidate>
-        <div class="step-title">코드 입력</div>
-        <p class="step-hint"><span id="code-sent-to"></span><br><span>메일함에 없으면 스팸함도 확인해 주세요.</span></p>
-        <!-- 🔢 보이는 건 칸 6개(장식), 입력은 위에 겹친 투명 input 하나 — 붙여넣기·iOS 코드 자동 채우기·백스페이스가 그대로 돈다 -->
-        <div class="otp">
-          <div id="code-cells" class="otp-cells" aria-hidden="true"></div>
-          <input id="code-input" class="otp-input" type="text" inputmode="numeric" autocomplete="one-time-code" aria-label="6자리 코드" maxlength="24">
+      <section id="login-guide" aria-labelledby="login-guide-title" hidden>
+        <img data-src="assets/social/login-lakeside.jpg" alt="붉은 나무 아래 호숫가에 서 있는 여우" width="940" height="610" loading="lazy" decoding="async">
+        <div class="login-guide-copy">
+          <h2 id="login-guide-title">고요한 숲에서 보내는 하루</h2>
+          <p>밭을 가꾸고 호수에서 낚시해요.<br>모은 재료로 나만의 집을 꾸며 보세요.</p>
+          <nav aria-label="게임 안내">
+            <a id="login-guide-link" href="guide/" target="_blank" rel="noopener"><span aria-hidden="true">📖</span> 초보자 안내서</a>
+            <a href="wiki/" target="_blank" rel="noopener"><span aria-hidden="true">📚</span> 고요위키</a>
+          </nav>
         </div>
-        <button id="code-verify" class="step-primary" type="submit">시작하기</button>
-        <p id="code-err" class="step-err" role="alert"></p>
-        <div class="step-links">
-          <button id="code-back" class="step-link" type="button">← 이메일 바꾸기</button>
-          <button id="code-resend" class="step-link" type="button">코드 다시 받기</button>
-        </div>
-      </form>
+      </section>
     </div>
     <div id="login-qr" hidden>
       <b>📱 폰에서도 만나요</b>
@@ -4393,7 +4490,11 @@
           $('char-cancel').textContent = tab === 'char' ? '취소' : '닫기';   // 옷장·펫은 누르는 즉시 반영 — 되돌릴 게 없다
           $('char-preview-hint').style.visibility = '';
           const pv = ui._charPreview;
-          if (tab === 'char') { pv?.showPet(null); pv?.showTrail(false); pv?.setAnimal(selected); return; }
+          if (tab === 'char') {
+            pv?.showTools(false); pv?.showHomi(false);   // 옷장의 도구·호미 진열 상태도 해제한다(창을 다시 열 때 포함)
+            pv?.showPet(null); pv?.showTrail(false); pv?.setAnimal(selected);
+            return;
+          }
           pv?.setAnimal(current || selected);
           if (tab === 'wear') Input.drawWardrobe?.($('wd-slots'), $('wd-items'), pv, $('char-preview-hint'));
           else Input.drawPets?.($('wd-items'), pv);
@@ -5624,7 +5725,12 @@
       trackEvent('login_screen', { reason: why, inapp: inAppLogin.app || undefined });   // [GA4] 토스 유저 중 몇 %가 이 화면을 보는지
       loginStore?.shown();
       loginDwell.start();
-      try { if (sessionStorage.getItem('cf_login_email')) { sessionStorage.removeItem('cf_login_email'); $('email-btn').click(); } } catch { }
+      try { if (sessionStorage.getItem('cf_login_email')) {
+        const from = sessionStorage.getItem('cf_login_email_from') || 'login_nudge';
+        sessionStorage.removeItem('cf_login_email');
+        sessionStorage.removeItem('cf_login_email_from');
+        emailLogin.openEmail({ from });
+      } } catch { }
       const inv = inviteBanner();                    // 🤝 초대 링크로 왔으면 — 로그인하면 하트핀
       if (inv) { $('login-invite').textContent = inv; $('login-invite').classList.add('show'); }
     }
@@ -5679,7 +5785,7 @@
       try {
         mountAppBanner({
           config: TUNING.appBanner, platform: PLATFORM, t, track: trackEvent, onTrack,
-          isGuest: () => isGuestNow(), clientId: () => authState.clientId, connect: () => nudgeConnect(),
+          isGuest: () => isGuestNow(), clientId: () => authState.clientId, connect: () => nudgeConnect('premium_chip'),
           devParam: IS_DEV_SESSION ? new URLSearchParams(location.search).get('appbanner') : null,   // QA: ?weather=clear&appbanner=android-guest
         });
       } catch (e) { console.warn('[app-banner] skipped', e); }
@@ -5716,6 +5822,19 @@
     if (IS_ITCH) document.body.classList.add('platform-itch');
     if (IS_ANDROID) document.body.classList.add('platform-android');
     if (IS_IOS) document.body.classList.add('platform-ios');
+    if (PLATFORM === 'web') {
+      const guide = $('login-guide');
+      const photo = guide.querySelector('img');
+      const links = $('login-links');
+      const main = $('login-main');
+      guide.after(links);
+      photo.src = photo.dataset.src;
+      if (LANG === 'en') $('login-guide-link').href = 'guide/en/';
+      $('login-screen').classList.add('with-guide');
+      const syncGuide = () => { guide.hidden = links.hidden = main.hidden; };
+      syncGuide();
+      new MutationObserver(syncGuide).observe(main, { attributes: true, attributeFilter: ['hidden'] });
+    }
     const inAppLogin = mountInAppLogin({ $, track: trackEvent, platform: PLATFORM });
     const e5 = e5Decision();
     const e5GuestFirst = guestFirst(e5) && (inAppLogin.inApp || e5.reason === 'forced');
@@ -7433,7 +7552,7 @@
     //    (안 바꾸면 게스트가 "구글로 로그인하세요"라는 실행 불가능한 안내에 갇힌다)
     //    📱 플레이 앱도 같은 이유(WebView 구글 OAuth 차단)로 출구를 플레이 게임즈 연결로 바꾼다.
     //    🍎 iOS 앱은 게임센터로 연결하고, 게임센터를 꺼 둔 유저는 이어서 Apple 로 연결한다.
-    const NUDGE_TARGET = IS_TOSS ? 'toss' : IS_ANDROID ? 'pgs' : IS_IOS ? 'gc' : 'google';
+    const NUDGE_TARGET = IS_TOSS ? 'toss' : IS_ANDROID ? 'pgs' : IS_IOS ? 'gc' : (inAppLogin.inApp || IS_ITCH) ? 'email' : 'google';
     const nudgeConnect = IS_TOSS ? () => signInWithToss()
       : IS_IOS ? async () => {
           const r = await signInWithGameCenter({ interactive: true });
@@ -7447,11 +7566,11 @@
           if (r.ok) $('nudge-modal').classList.remove('show');
           else ui.toast('플레이 게임즈에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.');
         }
-      : () => {
+      : (from = 'login_nudge') => {
           holdGuestForLogin(getGameState());
           if (!inAppLogin.inApp && !IS_ITCH) return signInWithGoogle();
-          trackEvent('inapp_nudge_email', { app: IS_ITCH ? 'itch' : inAppLogin.app });
-          try { sessionStorage.setItem('cf_login_email', '1'); } catch { }
+          trackEvent('inapp_nudge_email', { from, app: IS_ITCH ? 'itch' : inAppLogin.app });
+          try { sessionStorage.setItem('cf_login_email', '1'); sessionStorage.setItem('cf_login_email_from', from); } catch { }
           location.reload();
         };
     if (!IS_TOSS && !IS_NATIVE && (inAppLogin.inApp || IS_ITCH)) {
@@ -7481,7 +7600,7 @@
     }
     $('dex-google').addEventListener('click', () => {
       trackEvent('login_nudge_click', { from: 'dex', target: NUDGE_TARGET });   // [GA4] 넛지 클릭(→ login 이벤트로 전환 완성)
-      nudgeConnect();
+      nudgeConnect('dex');
     });
 
     // ── 🔔 로그인 넛지(게스트 전용) — 도감 마일스톤(3·7종)에 게임에서 호출 ──
@@ -7514,7 +7633,7 @@
     };
     $('nudge-google').addEventListener('click', () => {
       trackEvent('login_nudge_click', { from: nudgeFrom, target: NUDGE_TARGET });   // [GA4] 넛지 클릭
-      nudgeConnect();
+      nudgeConnect(nudgeFrom);
     });
     $('nudge-later').addEventListener('click', () => $('nudge-modal').classList.remove('show'));
     $('nudge-modal').addEventListener('click', (e) => { if (e.target === $('nudge-modal')) $('nudge-modal').classList.remove('show'); });
