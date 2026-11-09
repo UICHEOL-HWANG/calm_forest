@@ -346,7 +346,7 @@ function hudTick() {
 export function updatePort(dt) {
   P.t += dt;
   const isNight = !!env.isNight?.();
-  if (isNight !== night) { night = isNight; setPortNight(shops, isNight); for (const m of Object.values(npcs)) setNpcNight(m, isNight); }
+  if (isNight !== night) { night = isNight; setPortNight(boat, isNight); for (const m of Object.values(npcs)) setNpcNight(m, isNight); }
   spotsTick(isNight);
   if (port.active && P.phase === 'island') residentsTick();
   fishTick(dt);

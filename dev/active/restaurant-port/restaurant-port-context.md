@@ -42,3 +42,12 @@ Last Updated: 2026-11-10 01:30 KST
 - 저장은 game_saves.state.port(jsonb, 키 CHECK 없음, 크기 제한만) → 1단계는 마이그레이션 없음
 - 아이콘은 GAME_IDS 에 tub_boat·buoy 추가 후 tools/icons/build-game-icons.mjs 재생성(⛵ 는 그대로)
 - 새 이벤트 3개는 docs/analysis/event-taxonomy.csv 에 행 추가해야 테스트 통과
+
+## 성능 측정 (2026-11-10, Task 14)
+- 방법: ?dbg&e2=skip_login&unlocks=on&weather=clear&time=0.32(낮) / time=0.8(밤), __perf() 로 드로우콜·삼각형. 바다는 빠른 이동 중간(wp 3), 섬은 도착 1초 뒤
+- 드로우콜(낮/밤): 마을 475/465, 바다 한가운데 75/91, 섬 도착 128/164. 삼각형 약 8.9만 / 1.4만 / 1.7만
+- 섬이 마을보다 훨씬 낮아 병합은 하지 않음. shadow-scope 의 atSea 는 이미 OUT_OF_REACH_FLAGS 에 있음
+- 점광원(포구 진입 시): 이전 8개(마을 3 + 포구 5) → 이후 5개(마을 3 + 통배 등 1 + 부엉이 손등불 1). 종이등 3개는 발광 재질만 남김
+- 🐛 통배 등불은 setPortNight 가 shops 만 훑어 한 번도 켜지지 않았음 → boat 를 훑도록 고침
+- 포구 첫 진입 첫 프레임 약 126~150ms(건물 생성 + 광원 수 변화 재컴파일), 밤 첫 측정 한 번은 약 1초(콜드). 재진입은 약 30ms. 광원을 부팅 때 상시 추가하면 마을이 늘 비용을 내므로 완화는 하지 않음
+- npcPortrait: 임시 렌더러에 forceContextLoss 추가, 초상 씬의 부엉이 광원은 visible=false

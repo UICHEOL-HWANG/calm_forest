@@ -67,7 +67,6 @@ function paperLantern(g, p, v, s = 1) {
   put(L, cyl(0.1, 0.1, 0.05, 10), mat(0x3b2a20), [0, 0.22, 0]);
   put(L, cyl(0.1, 0.1, 0.05, 10), mat(0x3b2a20), [0, -0.22, 0]);
   put(L, new THREE.TorusGeometry(0.168, 0.018, 4, 18), mat(v.band), [0, 0.04, 0], [Math.PI / 2, 0, 0]);
-  lampLight(g, p, 6);
 }
 
 function spokedWheel(g, x, y, z, r, col) {
@@ -175,5 +174,5 @@ export function buildPortShops() {
 }
 
 export function setPortNight(root, on) {
-  root.traverse(o => { if (o.isPointLight) o.intensity = on ? (o.distance > 10 ? 14 : 7) : 0; });
+  root.traverse(o => { if (o.isPointLight) o.intensity = on ? 14 : 0; });
 }

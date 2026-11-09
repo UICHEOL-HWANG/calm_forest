@@ -164,11 +164,13 @@ export function npcPortrait(id, size = 160) {
   sc.add(new THREE.HemisphereLight(0xfff4e4, 0x8a8a7a, 1.15));
   const key = new THREE.DirectionalLight(0xffffff, 1.1); key.position.set(-1.5, 2.5, 3); sc.add(key);
   const fig = buildIslandNPC(id); sc.add(fig);
+  fig.traverse(o => { if (o.isLight) o.visible = false; });
   const cam = new THREE.PerspectiveCamera(24, 1, 0.1, 20);
   cam.position.set(0.35, 1.38, 2.35); cam.lookAt(0.02, 1.2, 0);
   r.render(sc, cam);
   const url = r.domElement.toDataURL('image/png');
   r.dispose();
+  r.forceContextLoss();
   portraits.set(id, url);
   return url;
 }
