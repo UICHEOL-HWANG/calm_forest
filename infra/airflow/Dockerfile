@@ -14,6 +14,10 @@ RUN pip install --no-cache-dir \
       "google-cloud-bigquery>=3.25,<4" \
       "gspread>=6.1,<7" \
       "db-dtypes>=1.3" \
-      "scikit-learn>=1.5" \
+      "scikit-learn>=1.5,<1.10" \
       "pandas>=2.2" \
-      "wandb>=0.19"
+      "wandb>=0.19" \
+      "lightgbm>=4.5" \
+      "xgboost>=2.1" \
+      "pyarrow>=17" \
+      "pyyaml>=6"

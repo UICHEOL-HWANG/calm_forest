@@ -40,8 +40,6 @@ create table if not exists public.game_logs (
 create index if not exists idx_game_logs_user    on public.game_logs (user_id);
 create index if not exists idx_game_logs_session on public.game_logs (session_id);
 create index if not exists idx_game_logs_created on public.game_logs (created_at);
-create index if not exists idx_game_logs_client  on public.game_logs (client_id);
-create index if not exists idx_game_logs_variant on public.game_logs (variant);
 
 -- ─────────────────────────────────────────────────────────────
 -- 3) RLS(행 수준 보안): 각 유저는 "자기 데이터"만 읽고 쓸 수 있음

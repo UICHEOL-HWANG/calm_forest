@@ -10,10 +10,12 @@ services:
       CHURN_LOG_DIR: /opt/calm-api/data
       RETENTION_GUIDANCE_MODEL_PATH: /opt/calm-api/model/retention_guidance.json
       RETENTION_GUIDANCE_LOG_DIR: /opt/calm-api/data
+      OCI_S3_JSON: /opt/calm-api/secrets/oci_s3.json
     volumes:
       - ./app:/app:ro                    # ml/api · ml/calm_ml 을 올린 것
-      - ./model:/opt/calm-api/model:ro   # Airflow 가 coef.json 을 쓰는 곳
-      - ./data:/opt/calm-api/data        # 적립 JSONL — Airflow 가 읽어 BQ 로 올린다
+      - ./model:/opt/calm-api/model      # model_sync 가 버킷 ml/models/ 에서 받아 교체
+      - ./data:/opt/calm-api/data        # 적립 JSONL — ship_logs 가 버킷 ml/serving-logs/ 로 올린다
+      - ./secrets:/opt/calm-api/secrets:ro
     ports:
       - "127.0.0.1:8100:8100"            # 외부 노출은 nginx 가 한다. 직접 열지 않는다
     healthcheck:

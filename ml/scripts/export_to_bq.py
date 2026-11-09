@@ -271,10 +271,13 @@ def rollup_before_prune():
     원본이 온전한 최근 며칠을 다시 말아 덮어쓴다(멱등). 실패하면 예외 → main 이 prune 까지 가지 않는다
     — 집계되지 않은 원본을 지우면 대시보드 이력이 영영 비기 때문."""
     kst_today = (datetime.now(timezone.utc) + timedelta(hours=9)).date()
-    body = {"p_from": str(kst_today - timedelta(days=RETENTION_DAYS - 2)), "p_to": str(kst_today)}
-    r = requests.post(f"{SUPABASE_URL}/rest/v1/rpc/cf_rollup", headers=HEADERS, json=body, timeout=300)
-    r.raise_for_status()
-    print(f"[rollup] {r.json()}")
+    first = kst_today - timedelta(days=RETENTION_DAYS - 2)
+    for i in range((kst_today - first).days + 1):
+        day = str(first + timedelta(days=i))
+        r = requests.post(f"{SUPABASE_URL}/rest/v1/rpc/cf_rollup", headers=HEADERS,
+                          json={"p_from": day, "p_to": day}, timeout=300)
+        r.raise_for_status()
+        print(f"[rollup] {r.json()}")
 
 
 def prune_old_logs():

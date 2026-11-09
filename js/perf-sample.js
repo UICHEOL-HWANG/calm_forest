@@ -46,6 +46,18 @@ function summarize(dts, active) {
   };
 }
 
+export function countLitPoints(root) {
+  if (!root) return 0;
+  let n = 0;
+  const walk = (o) => {
+    if (!o.visible) return;
+    if (o.isLight && (o.isPointLight || o.isSpotLight)) n += 1;
+    for (const c of o.children || []) walk(c);
+  };
+  walk(root);
+  return n;
+}
+
 // 기기·렌더 설정 맥락 — 느린 기종을 가려 대응(그림자·해상도)할 근거. 개인정보 없음.
 export function perfContext(renderer) {
   const ctx = {

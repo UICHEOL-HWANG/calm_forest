@@ -63,7 +63,7 @@ def test_dag_parses_with_weekly_schedule():
     assert m.dag.dag_id == "retention_guidance_train"
     assert m.dag.kwargs["schedule"] == "30 4 * * 1"   # churn_train(04:00) 뒤
     assert m.dag.kwargs["catchup"] is False
-    assert m.MODEL_OUT == Path("/opt/calm-api/model/retention_guidance.json")
+    assert m.MODEL_OUT.name == "retention_guidance.json"
 
 
 def test_train_refuses_small_sample_and_keeps_model(monkeypatch):
@@ -80,13 +80,24 @@ def test_train_refuses_small_sample_and_keeps_model(monkeypatch):
     fake_train.fit_and_export = lambda *a, **k: calls.append("export")
     _fake_modules(monkeypatch, fake_train)
 
+    bucket = MemBucket()
     with pytest.raises(ValueError):
-        m._train()
-    assert calls == ["check"]   # export 까지 가지 않는다 — 기존 모델 파일을 안 건드린다
+        m._train(bucket=bucket)
+    assert calls == ["check"]
+    assert bucket.objects == {}   # export 까지 가지 않는다 — 기존 모델 파일을 안 건드린다
 
 
-def test_train_exports_after_gate_and_logs_wandb(monkeypatch):
+class MemBucket:
+    def __init__(self):
+        self.objects = {}
+
+    def put(self, key, body, **_):
+        self.objects[key] = body
+
+
+def test_train_exports_after_gate_and_logs_wandb(monkeypatch, tmp_path):
     m = _load_dag_module()
+    m.MODEL_OUT = tmp_path / "retention_guidance.json"
     seen = {}
     fake_train = types.ModuleType("train_retention_guidance")
     fake_train.SQL = Path("sample.sql")
@@ -94,13 +105,16 @@ def test_train_exports_after_gate_and_logs_wandb(monkeypatch):
 
     def fit_and_export(df, out, log_wandb):
         seen.update(df=df, out=out, log_wandb=log_wandb)
+        Path(out).write_text('{"model_version": "rg-1"}')
         return {"metrics": {"n": 1}}
 
     fake_train.fit_and_export = fit_and_export
     _fake_modules(monkeypatch, fake_train)
     monkeypatch.setenv("WANDB_API_KEY", "x")
 
-    m._train()
+    bucket = MemBucket()
+    m._train(bucket=bucket)
     assert seen["checked"] == "df" and seen["df"] == "df"
     assert seen["out"] == m.MODEL_OUT
     assert seen["log_wandb"] is True
+    assert bucket.objects["ml/models/retention_guidance.json"] == b'{"model_version": "rg-1"}'
