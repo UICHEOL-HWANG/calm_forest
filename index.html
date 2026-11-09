@@ -2258,6 +2258,10 @@
   .tb-mnum { text-align: right; font-variant-numeric: tabular-nums; opacity: .8; }
   .tb-meter.ok .tb-mnum { color: #3e8f50; font-weight: 800; opacity: 1; }
   .tb-hint { margin: 0; font-size: 11.5px; opacity: .7; }
+  .tb-advice { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 11px; background: #eef7e8; border: 1.5px solid #cfe6c4; font-size: 12.5px; font-weight: 700; color: #355c3b; }
+  .tb-advice b { background: #58b468; color: #fff; border-radius: 7px; padding: 1px 7px; font-size: 11.5px; }
+  .tb-advice.clear { background: #fff4e3; border-color: #f0d6a8; }
+  .tb-advice-note { margin: 0; font-size: 12px; font-weight: 700; color: #9a6a12; }
   .tb-decos { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 7px; }
   .tb-deco { text-align: left; border: 2px solid #e2d8c2; background: #fffaf0; border-radius: 13px; padding: 6px 8px; display: flex; align-items: center; gap: 7px;
     box-shadow: 0 3px 0 #e2d8c2; color: var(--ink); font: inherit; cursor: pointer; touch-action: manipulation; min-width: 0; }
@@ -5526,8 +5530,8 @@
           ? `② 나무 옆에 서면 🪓도끼를 저절로 들어요. 베면 집 지을 🪵목재가 나와요 ${A}`
           : `② 🪓도끼(2)로 나무를 베면 집 지을 🪵목재가 나와요 ${A}` },
       { key: 'sell', short: '🧙 상인 맞이하기',    text: `③ 🪵목재 5개를 모으면 떠돌이 🧙상인이 마을에 와요. 목재를 팔아 🪙코인 ${A}` },
-      { key: 'mine', short: '⛏️ 돌 캐기',    text: TOUCH ? `④ 다리 앞 ⛏️동굴에서 괭이로 집 지을 🪨돌 캐기 ${A}` : `④ 다리 앞 ⛏️동굴에서 괭이(2)로 집 지을 🪨돌 캐기 ${A}` },
       { key: 'house1', short: '🔨 집 바닥 깔기',   text: TOUCH ? '⑤ 집 터에 서면 🔨망치를 저절로 들어요. 🪵목재 15개로 바닥을 깔아요' : '⑤ 🔨망치(3)로 집 터에 🪵목재 15개를 넣어 바닥을 깔아요' },
+      { key: 'mine', short: '⛏️ 돌 캐기',    text: TOUCH ? `④ 다리 앞 ⛏️동굴에서 괭이로 집 지을 🪨돌 캐기 ${A}` : `④ 다리 앞 ⛏️동굴에서 괭이(2)로 집 지을 🪨돌 캐기 ${A}` },
       { key: 'house2', short: '🔨 벽 세우기',   text: '⑥ 🪵목재 20개·🪨돌 10개로 통나무 벽을 세워요' },
       { key: 'harvest', short: '🌾 밭에서 코인 벌기', text: TOUCH ? `⑦ ⛏️괭이로 갈고 🌰심고 💧물 주면 자라요. 다 자라면 거둬서 팔아요 ${A}` : `⑦ ⛏️괭이(2)로 갈고 🌰심고 💧물 주면 자라요. 다 자라면 낫(5)으로 거둬서 팔아요 ${A}` },
       { key: 'build', short: '🔨 지붕 올리기',   text: '⑧ 🪵목재 25개·🪨돌 15개·🪙코인 80으로 지붕을 올려 집 완성 🏠' },
@@ -5573,7 +5577,7 @@
     const STEP_DONE = {
       move: () => Input.hintSeen('spot_t_move') || Input.hintSeen('spot_pc_move'),
       toolpage: () => Input.hintSeen('spot_t_tool') || Input.hintSeen('spot_pc_set'),
-      sell: () => Input.hintSeen('merchantArrived'),
+      sell: () => Input.hintSeen('merchantMet'),
       mine: () => Input.houseStage() >= 2,
       house1: () => Input.houseStage() >= 1,
       house2: () => Input.houseStage() >= 2,

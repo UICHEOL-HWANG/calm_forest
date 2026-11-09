@@ -103,6 +103,12 @@ export function renderTreeBoard(view) {
     meters.appendChild(row);
   }
   habRow.appendChild(meters);
+  if (c.advice) {
+    const adv = el('p', c.advice.clear ? 'tb-advice clear' : 'tb-advice');
+    adv.append(el('b', null, '추천'), el('span', null, c.advice.items.map(a => `${a.ico} ${a.name} ×${a.n}`).join(' · ')));
+    hab.appendChild(adv);
+    if (c.advice.clear) hab.appendChild(el('p', 'tb-advice-note', '지금 칸으로는 모자라요. 놓인 칸을 눌러 빼고 추천대로 다시 놓아요'));
+  }
   hab.appendChild(el('p', 'tb-hint', '눌러서 놓기 · 놓인 칸을 누르면 빼기'));
 
   const decos = el('div', 'tb-decos');

@@ -1,0 +1,116 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { GOALS, tutGoal, minerGoal, edgeAnchor, onScreen, detourPoint, freshBranchTab, guideEventParams, rearmMerchant } from '../js/guide/guide-rules.js';
+
+test('튜토리얼 단계마다 목적지를 하나만 고르고 집 바닥은 실험에 맡긴다', () => {
+  assert.deepEqual(tutGoal('chop', { wood: 0 }), { key: 'tree', cine: true });
+  assert.deepEqual(tutGoal('sell', { wood: 2 }), { key: 'tree', cine: false });
+  assert.equal(tutGoal('sell', { wood: 5 }), null);
+  assert.deepEqual(tutGoal('mine', { wood: 0 }), { key: 'cave', cine: true });
+  assert.equal(tutGoal('house1', { wood: 15 }), null);
+  assert.deepEqual(tutGoal('house2', {}), { key: 'wall', cine: true });
+  assert.deepEqual(tutGoal('harvest', {}), { key: 'farm', cine: true });
+  assert.deepEqual(tutGoal('build', {}), { key: 'roof', cine: true });
+  assert.deepEqual(tutGoal('dress', {}), { key: 'cosShop', cine: true });
+  assert.deepEqual(tutGoal('bridge', {}), { key: 'bridge', cine: true });
+  assert.deepEqual(tutGoal('curator', {}), { key: 'museum', cine: true });
+  assert.equal(tutGoal('move', {}), null);
+  assert.equal(tutGoal('done', {}), null);
+});
+
+test('목적지 문구는 하기 말투이고 엠대시와 놀다가 없다', () => {
+  for (const g of Object.values(GOALS)) {
+    assert.ok(g.title && g.label && g.ico);
+    assert.ok(!/[—–]/.test(g.title + g.label));
+    assert.ok(!/놀/.test(g.title + g.label));
+  }
+  assert.equal(GOALS.cave.title, '⛏️ 동굴 탐험하기');
+  assert.equal(GOALS.farmBranch.title, '🌾 밭의 가지 살리기');
+  assert.equal(GOALS.museum.title, '🧑‍🦳 할아버지 만나기');
+});
+
+test('광부 의뢰는 석탄 → 광부 → 승강기 순서로 이어진다', () => {
+  assert.equal(minerGoal({ started: false, stage: 0 }, { coal: 0 }), null);
+  assert.deepEqual(minerGoal({ started: true, stage: 0 }, { coal: 1 }), { key: 'coal', cine: true });
+  assert.deepEqual(minerGoal({ started: true, stage: 0 }, { coal: 3 }), { key: 'miner', cine: false });
+  assert.deepEqual(minerGoal({ started: true, stage: 1, maxFloor: 0 }, {}), { key: 'lift', cine: true });
+  assert.equal(minerGoal({ started: true, stage: 1, maxFloor: 1 }, {}), null);
+  assert.equal(minerGoal({ started: true, stage: 2, maxFloor: 0 }, {}), null);
+});
+
+test('화면 안 판정은 여백을 둔다', () => {
+  assert.equal(onScreen({ x: 100, y: 200 }, 400, 800, 40), true);
+  assert.equal(onScreen({ x: 10, y: 200 }, 400, 800, 40), false);
+  assert.equal(onScreen(null, 400, 800, 40), false);
+});
+
+test('가장자리 화살표는 방향을 따라 화면 테두리 안쪽에 선다', () => {
+  const left = edgeAnchor({ x: 200, y: 400 }, { x: -900, y: 400 }, 400, 800, 60);
+  assert.equal(Math.round(left.x), 60);
+  assert.equal(Math.round(left.y), 400);
+  assert.ok(Math.abs(Math.abs(left.ang) - Math.PI) < 1e-6);
+  const up = edgeAnchor({ x: 200, y: 400 }, { x: 200, y: -3000 }, 400, 800, 60);
+  assert.equal(Math.round(up.y), 60);
+  const corner = edgeAnchor({ x: 200, y: 400 }, { x: 5000, y: 5000 }, 400, 800, 60);
+  assert.ok(corner.x <= 340 && corner.y <= 740 && corner.x >= 60 && corner.y >= 60);
+});
+
+test('곧은 길을 막는 건물이 있으면 옆으로 돌아가는 경유점을 준다', () => {
+  const from = { x: 0, z: 0 }, to = { x: 10, z: 0 };
+  assert.deepEqual(detourPoint(from, to, []), to);
+  const wp = detourPoint(from, to, [{ x: 5, z: 0.3, r: 2 }]);
+  assert.ok(Math.abs(wp.z) >= 2, JSON.stringify(wp));
+  assert.ok(wp.x > 3 && wp.x < 7);
+  const box = detourPoint(from, to, [{ x1: 4, z1: -1, x2: 6, z2: 3 }]);
+  assert.ok(box.z < -1, JSON.stringify(box));
+  assert.deepEqual(detourPoint(from, to, [{ x: 10, z: 0, r: 1.5 }]), to);
+  assert.deepEqual(detourPoint(from, to, [{ x: 5, z: 6, r: 2 }]), to);
+  assert.deepEqual(detourPoint(from, to, [{ x: 5, z: 0, r: 2, off: true }]), to);
+});
+
+test('판은 막 열린 가지(빈터 미완성) 탭으로 연다', () => {
+  const ids = ['water', 'farm', 'kitchen'];
+  const usable = { water: true, farm: true, kitchen: false };
+  const hab = { water: true, farm: false, kitchen: false };
+  const bloom = { water: false, farm: false, kitchen: false };
+  const pick = () => freshBranchTab(ids, id => usable[id], id => hab[id], id => bloom[id]);
+  assert.equal(pick(), 'farm');
+  hab.farm = true;
+  assert.equal(pick(), 'water');
+  bloom.water = true;
+  assert.equal(pick(), 'farm');
+  bloom.farm = true;
+  assert.equal(pick(), null);
+});
+
+test('guide_step 파라미터는 5개 이하 키값이다', () => {
+  assert.deepEqual(guideEventParams('tut', 'cave', 'cine_skip', { step: 'mine' }), { flow: 'tut', goal: 'cave', act: 'cine_skip', step: 'mine' });
+  const p = guideEventParams('tree', 'farmBranch', 'arrive', { step: 'farm', dist: 12.4, extra: 1 });
+  assert.ok(Object.keys(p).length <= 5);
+  assert.equal(p.dist, 12);
+  assert.equal(p.extra, undefined);
+});
+
+test('상인 맞이 단계에서 제안창을 못 본 세이브는 상인이 다시 오게 한다', () => {
+  assert.deepEqual(rearmMerchant({ tutStep: 'sell', merchantVisit: true, merchantArrived: true }), { tutStep: 'sell', merchantVisit: false, merchantArrived: true });
+  const met = { tutStep: 'sell', merchantVisit: true, merchantMet: true };
+  assert.equal(rearmMerchant(met), met);
+  const later = { tutStep: 'mine', merchantVisit: true };
+  assert.equal(rearmMerchant(later), later);
+});
+
+test('도착 반경은 그 목적지의 상호작용 거리보다 작다', async () => {
+  const { ARRIVE } = await import('../js/guide/guide-rules.js');
+  const INTERACT = {
+    tree: 2.6, stone: 2.4, coal: 2.4,
+    cave: 2.0, farm: 2.0,
+    miner: 1.8, lift: 2.0,
+    farmBranch: 2.4 + 2.3,
+    wall: 3.2, roof: 3.2,
+    cosShop: 2.8, bridge: 2.2, museum: 2.4,
+  };
+  for (const key of Object.keys(GOALS)) {
+    assert.ok(Number.isFinite(ARRIVE[key]), key);
+    assert.ok(ARRIVE[key] <= INTERACT[key] - 0.15, `${key} ${ARRIVE[key]} vs ${INTERACT[key]}`);
+  }
+});

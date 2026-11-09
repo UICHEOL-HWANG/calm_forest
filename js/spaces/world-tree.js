@@ -11,9 +11,10 @@
 import {
   Input, camera, cameraFree, defaultCamPose, setCameraRig, dist2D, gameState, giveReward, isOpen, obstacles, player, refreshInventoryUI, requestSave,
   habitatCtx, rewardText, scene, solidCircle, spawnConfetti, spawnSparkle, syncUnlocks, todayStr, ui, unlocksOn,
-  holdPlaceReveal, keepPlaceReveal, releasePlaceReveal, startReturnWalk, syncStory,
+  holdPlaceReveal, keepPlaceReveal, releasePlaceReveal, startReturnWalk, syncStory, guideBoardTab,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다
 import { trackEvent } from '../analytics.js';
+import { freshBranchTab } from '../guide/guide-rules.js';
 import { Sound } from '../sound.js';
 import { TAG_LABEL } from '../habitat.js';
 import {
@@ -140,8 +141,19 @@ function boardView() {
         };
       }),
       bloom: bloomView(def.id),
+      advice: adviceOf(tree, def.id),
     },
   };
+}
+
+function adviceOf(tree, id) {
+  if (!branchUsable(tree, id) || habitatDone(tree, id)) return null;
+  const b = tree.branches[id];
+  let items = recommendDecor(tree, id);
+  const clear = !items.length;
+  if (clear) items = recommendDecor({ ...tree, branches: { ...tree.branches, [id]: { ...b, tiles: b.tiles.map(() => null) } } }, id);
+  if (!items.length) return null;
+  return { clear, items: items.map(r => { const d = decorOf(r.id); return { ico: d.ico, name: d.name, n: r.n }; }) };
 }
 
 function tabStatus(tree, id) {
@@ -181,7 +193,7 @@ function bloomView(id) {
 }
 
 const ACTIONS = {
-  tab(id) { tab = id; rerender(); Sound.blip?.(); },
+  tab(id) { if (id !== tab) trackEvent('tree_tab', { branch: id, from: tab }); tab = id; guideBoardTab(id); rerender(); Sound.blip?.(); },
   place(decoId) { placeAction(decoId); },
   remove(tile) { removeAction(tile); },
   offer(bundleId) { offerAction(bundleId); },
@@ -196,8 +208,9 @@ function rerender() { if (treeBoardOpen()) renderTreeBoard(boardView()); freshTi
 export function openWorldTree() {
   if (!worldTreeBoardOpen()) { ui.toast?.('🌳 시든 세계수 · 할아버지를 찾아가요', 2600); return; }
   // 처음 열 땐 아직 안 끝난 첫 가지로
-  const firstOpen = BRANCH_IDS.find(id => branchUsable(gameState.tree, id) && !bloomed(gameState.treeBloom, id));
+  const firstOpen = freshBranchTab(BRANCH_IDS, id => branchUsable(gameState.tree, id), id => habitatDone(gameState.tree, id), id => bloomed(gameState.treeBloom, id));
   if (!treeBoardOpen() && firstOpen) tab = firstOpen;
+  guideBoardTab(tab);
   Input.setAnalog?.(0, 0);
   openTreeBoard(boardView(), ACTIONS);
   trackEvent('tree_board_open', { life: lifePercent(gameState.tree) });

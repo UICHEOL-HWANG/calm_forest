@@ -14,9 +14,14 @@ export const WELCOME_OFFERS = [
 //   당근 4개 = E1 처치 밭 2×2 그대로. 정가 5🪙×4=20🪙 → 25🪙(물고기와 같은 값 — 3배를 주면 경제 가드레일을 넘는다)
 export const WELCOME_CROP = { item: 'crop', qty: 4, gain: 25 };
 /** reworld: 해금 켜짐 + 새 세이브(js/story/rules.js storyReworld). 아니면 예전 그대로 목재·물고기만 */
-export function welcomeOffer(inv = {}, { reworld = false } = {}) {
+export function welcomeOffer(inv = {}, { reworld = false, houseWood = 0 } = {}) {
   const list = reworld ? [...WELCOME_OFFERS, WELCOME_CROP] : WELCOME_OFFERS;
-  return list.find(o => (inv[o.item] || 0) >= o.qty) || null;
+  const offer = list.find(o => (inv[o.item] || 0) >= o.qty) || null;
+  const wood = inv.wood || 0;
+  if (offer?.item === 'wood' && houseWood > 0 && wood >= houseWood && wood - offer.qty < houseWood) {
+    return { item: 'wood', qty: 0, gain: 0, keep: true };
+  }
+  return offer;
 }
 
 // 개발용 URL 파라미터가 하나라도 있으면 "dev 세션" — 원장·세션·센서·GA4 기록을 남기지 않는다

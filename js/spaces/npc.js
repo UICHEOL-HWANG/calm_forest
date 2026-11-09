@@ -17,6 +17,7 @@ import { DAILY_COUNT, NPCS, QUEST_HOW } from '../data/npcs.js';
 import { SHOP } from '../data/places.js';
 import { returnStart } from '../world/return-path.js';   // 🚶 귀환 걷기 출발점(물 회피, 순수)
 import { welcomeOffer } from '../first-loop.js';
+import { BUILD_STAGES } from '../house-cost.js';
 import { storyReworld } from '../story/rules.js';
 import { logEcon } from '../metrics.js';
 import { activeQuestList, pickGated, questIdFor } from '../quests.js';
@@ -639,6 +640,21 @@ export function stepNpcToward(o, target, speed, dt) {
   return Math.hypot(target.x - o.group.position.x, target.z - o.group.position.z);
 }
 
+const MERCHANT_WALK_SEC = 8;
+
+function placeNearPlayer(o) {
+  for (const r of [1.4, 2, 2.6, 3.4, 4.2]) {
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2 + Math.PI;
+      const x = player.position.x + Math.sin(a) * r, z = player.position.z + Math.cos(a) * r;
+      if (npcBlocked(x, z, o)) continue;
+      o.group.position.x = x; o.group.position.z = z;
+      return true;
+    }
+  }
+  return false;
+}
+
 export function updateMerchantVisit(dt) {
   if (mode !== 'play') return;
   const m = merchantObj(); if (!m) return;
@@ -646,7 +662,7 @@ export function updateMerchantVisit(dt) {
     if (gameState.hintsSeen.merchantVisit) return;
     if (!inVillage2()) return;   // 마을(실외) 밖(텃밭·동굴·카페·강·바다·안개숲·실내)에선 발동 금지
     if (ui.anyModalOpen?.()) return;
-    const offer = welcomeOffer(gameState.inventory, { reworld: storyReworld(gameState, unlocksOn()) });   // 🔓 첫 수확으로도 돌아온다(E1 처치는 당근부터 거둔다)
+    const offer = welcomeOffer(gameState.inventory, { reworld: storyReworld(gameState, unlocksOn()), houseWood: gameState.houseStage === 0 ? BUILD_STAGES[0].cost.wood : 0 });   // 🔓 첫 수확으로도 돌아온다(E1 처치는 당근부터 거둔다)
     if (!offer) return;
     gameState.hintsSeen.merchantVisit = true;            // 즉시 소진(세이브에 남아 재발동 없음)
     gameState.hintsSeen.merchantArrived = true;
@@ -663,8 +679,10 @@ export function updateMerchantVisit(dt) {
     if (d <= 1.6) {
       if (ui.anyModalOpen?.()) { v.t = 0; return; }   // 튜토리얼 카드 등이 떠 있으면 옆에서 기다린다(뒤에 묻혀 1회권만 소진되던 것)
       v.state = 'talk'; openMerchantOffer(v.offer);
-    } else if (v.t > 12) {                             // 못 왔다(벤치 등에 걸림) → 멀리서 모달 띄우지 말고 돌아가고, 다음 기회에 다시
-      merchantVisit = { state: 'return', t: 0, offer: v.offer }; gameState.hintsSeen.merchantVisit = false;
+    } else if (v.t > MERCHANT_WALK_SEC) {
+      if (ui.anyModalOpen?.()) return;
+      placeNearPlayer(m);
+      v.state = 'talk'; openMerchantOffer(v.offer);
     }
   } else if (v.state === 'talk') {
     const dx = player.position.x - m.group.position.x, dz = player.position.z - m.group.position.z;
@@ -683,6 +701,16 @@ const WELCOME_LINES = {
 
 export function openMerchantOffer(offer) {
   if (!ui.openMerchantModal) return;
+  gameState.hintsSeen.merchantMet = true;
+  if (offer.keep) {
+    ui.openMerchantModal({
+      title: '방랑 상인',
+      body: '오, 그 🪵 목재는 집 지을 몫이로구먼! 집부터 짓게. 남는 목재는 동쪽 좌판에서 사 주지.',
+      primary: { label: '🔨 집부터 지을게요', onClick: () => merchantKeepWood() },
+    });
+    trackEvent('merchant_offer_shown', { item: 'wood_keep', qty: 0 });
+    return;
+  }
   const line = WELCOME_LINES[offer.item] || WELCOME_LINES.wood;
   ui.openMerchantModal({
     title: '방랑 상인',
@@ -710,6 +738,11 @@ export function merchantWelcomeSell(offer) {
     primary: { label: '🛒 좌판 구경', onClick: () => { merchantDismiss(); ui.openShop?.('buy'); } },
     secondary: { label: '다음에', onClick: () => merchantDismiss() },
   });
+}
+
+export function merchantKeepWood() {
+  ui.act?.('sell');
+  merchantDismiss();
 }
 
 export function merchantDismiss() {

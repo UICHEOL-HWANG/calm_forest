@@ -65,6 +65,8 @@ import { logEcon, startMetrics } from './metrics.js';            // [계측] 경
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
 import { t, LANG, aiBucket, clientId } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
 import { createHouseGuide } from './spaces/house-guide.js';   // 🏠 목재 15개 → 집터 조망 + 방향 안내 50:50
+import { rearmMerchant } from './guide/guide-rules.js';
+import { createGoalGuide } from './guide/goal-guide.js';
 import { sanitizeHouseGuide } from './house-guide-rules.js';
 import { initPlaza, updatePlaza, plazaSpotNow, openPlaza, plazaScatterBlocks, plazaDefault, restorePlaza, refreshPlaza, plazaDecorMesh, plazaMapVisible } from './plaza/index.js';
 import { refreshPond, updatePond, pondScatterBlocks } from './pond/index.js';
@@ -253,7 +255,7 @@ import {
 import {
   buildMine, enterMine, exitMine, spawnMineGate, tryMine, updateOreRocks,
 } from './spaces/mine.js';   // 📦 ⛏️ 채굴 동굴 (구역 머리말 — 분리 2단계)
-import { delveFloorNow, clampDelve, handleDelveDoor, tryDelveMine, updateDelve, settleMinerRewards, delveMinimapMarks } from './spaces/delve.js';
+import { delveFloorNow, clampDelve, handleDelveDoor, tryDelveMine, updateDelve, settleMinerRewards, delveMinimapMarks, delveGuideSpots } from './spaces/delve.js';
 import {
   enterHouse, exitHouse, goFloor, inVillage2, updateDoorInteract,
 } from './spaces/doors.js';   // 📦 🚪 침대·문 근접·구역 안내 (구역 머리말 — 분리 2단계)
@@ -300,7 +302,7 @@ import { resolveFirstDay, ensureFirstDay } from './mountain/unlock.js';
 import { UNLOCK_IDS, defaultUnlocks, newlyUnlocked, restoreUnlocks, unlockQuestCtx, unlockedSet, unlocksForSave } from './world/unlocks.js';   // 🔓 마을 해금(순수) — docs/superpowers/specs/2026-10-16-world-unlocks-design.md
 import { BRIDGE_ANG, BRIDGE_COST, ISLE, ISLE_R, bridgeBroken, bridgeFoot, bridgePoint, streamR } from './world/bridge.js';   // 🌉 박물관 섬 개울·다리(순수)
 import { bridgeBrokenNow, bridgeInteract, buildBridge, clampToStream, syncBridge } from './spaces/bridge.js';   // 📦 🌉 무너진 다리(해금 4단계)
-import { defaultTree, restoreTree } from './world/tree-board.js';   // 🌳 세계수 판(순수) — docs/superpowers/specs/2026-10-16-world-tree-board-design.md
+import { defaultTree, habitatDone, restoreTree } from './world/tree-board.js';   // 🌳 세계수 판(순수) — docs/superpowers/specs/2026-10-16-world-tree-board-design.md
 import { defaultBloom, restoreBloom } from './world/tree-bloom.js';
 import { WORLD_TREE, buildWorldTree, debugTreeShot, openWorldTree, queueChapterShot, treeShotBusy, treeShotFogPush, updateWorldTree } from './spaces/world-tree.js';   // 📦 🌳 마을 세계수 랜드마크 + 판 진입
 import { restoreMountain } from './mountain/save.js';
@@ -1581,6 +1583,13 @@ let lastFloorChoiceKey = null;   // 🪜 양방향(6단계 2층) 선택 UI 중�
 const decorMeshes = [];    // 배치된 가구 메시
 
 let mode = 'attract';   // 'attract'(로그인 배경) | 'play'(플레이)
+let goalGuide = null;
+const museumDoor = { x: MUSEUM_GATE.x, z: MUSEUM_GATE.z + 3.0 };
+function museumGoal() {
+  const curator = npcObjs.find(o => o.def.id === 'curator' && !o.hidden);
+  return curator ? curator.group.position : museumDoor;
+}
+export function guideBoardTab(id) { goalGuide?.boardTab(id); }
 let houseGuidance = null;   // 🏠 집터 안내 실험(부팅 후 시작)
 let dayPaused = false;  // 낮/밤 자동 순환 정지 여부 — ?time= 로 시간대를 고정하는 스토어 촬영용
 const npcObjs = [];     // 런타임 NPC 객체들
@@ -2791,6 +2800,34 @@ export async function enterGame() {
     playReminder: () => Sound.houseGuide(),
     track: trackEvent, save: requestSave,
   });
+  goalGuide = createGoalGuide({
+    state: () => gameState, player, camera, scene,
+    translate: t, track: trackEvent, save: requestSave,
+    cameraFree, setCameraRig, defaultCamPose,
+    inVillage: inVillage2, atMine: () => atMine && !delveFloorNow(),
+    coaching: () => document.body.classList.contains('coaching'),
+    modalOpen: () => !!ui.anyModalOpen?.() || document.body.classList.contains('spot-on') || !!houseGuidance?.cinematic,
+    stopAnalog: () => Input.setAnalog?.(0, 0),
+    project: (pos, lift) => projectToScreen(pos, lift),
+    touch: () => document.body.classList.contains('is-touch'),
+    bottomInset: () => { const r = document.getElementById('tool-btn')?.getBoundingClientRect(); return r && r.height ? Math.round(innerHeight - r.top + 56) : 0; },
+    topInset: () => { const c = document.getElementById('coach'); const r = c?.classList.contains('show') ? c.getBoundingClientRect() : null; return r && r.height ? Math.round(r.bottom + 30) : 0; },
+    trees: () => trees, oreRocks: () => oreRocks, mineSpots: delveGuideSpots,
+    npcSpots: () => npcObjs.filter(o => !o.hidden).map(o => o.group.position),
+    solids: () => colliders.filter(c => ('r' in c ? c.r >= 1.0 : true)),
+    mineGate: MINE_GATE, worldTree: WORLD_TREE,
+    villageSpots: () => {
+      const foot = bridgeFoot();
+      const offIsle = dist2D(player.position, ISLE) > ISLE_R + 0.5 && dist2D(player.position, foot) > 2.5;
+      return {
+        wall: { at: HOUSE_POS }, roof: { at: HOUSE_POS }, farm: { at: FARM_GATE }, cosShop: { at: SHOP_DOOR },
+        bridge: { at: foot },
+        museum: { at: museumGoal(), via: offIsle && !bridgeBrokenNow() ? foot : null },
+      };
+    },
+    farmBranchDue: () => unlocksOn() && !gameState.unlocks?.legacy && habitatDone(gameState.tree, 'water') && !habitatDone(gameState.tree, 'farm'),
+  });
+  if (_wq.has('dbg')) window.__guide = goalGuide;
   houseGuidance.onInventory();          // 로컬 강제 시안(?houseguide=)만 부팅 보유량으로 시험; 실제 배정은 플레이 중 15개 도달
   movedOnce = false;
   startLogging();                      // [센서] 배치 전송 시작
@@ -3045,7 +3082,7 @@ function applySave(saved) {
   gameState.aura = restoreAura(saved.aura);   // 🏮 모르는 값·4칸째·사라진 장착 id 는 걸러진다
   refreshAura();
   gameState.star = restoreStar(saved.star, saved.starDay);   // 🌌 별자리 기록(옛 북두칠성 보상 기록은 클리어로 친다)
-  if (saved.hintsSeen) gameState.hintsSeen = { ...saved.hintsSeen }; // 안내 표시 이력 복원
+  if (saved.hintsSeen) gameState.hintsSeen = rearmMerchant({ ...saved.hintsSeen }); // 안내 표시 이력 복원
   if (saved.character) { gameState.character = saved.character; applyCharacter(saved.character); } // 캐릭터 복원
   if (saved.houseStyle) { gameState.houseStyle = { ...gameState.houseStyle, ...saved.houseStyle }; applyHouseStyle(); } // 집 외관 복원
   if (saved.unlocked) { for (const p of ['roof', 'wall', 'door']) if (Array.isArray(saved.unlocked[p])) gameState.unlocked[p] = [...new Set([0, ...saved.unlocked[p]])]; } // 획득 색 복원
@@ -6236,7 +6273,7 @@ function animate() {
     // 🛏️ 자는 동안엔 조작을 멈춘다 — #sleep-fade 는 포인터만 막아서, 이게 없으면
     //    데스크톱에서 암전 아래로 걸어가 문에 Space 를 눌러 집을 나가 버린다(키는 window 에서 받는다).
     else if (sleeping) { wantAction = false; }
-    else if (houseGuidance?.cinematic) { wantAction = false; updateCamera(dt); updateCameraFade(); }
+    else if (houseGuidance?.cinematic || goalGuide?.cinematic) { wantAction = false; updateCamera(dt); updateCameraFade(); }
     else if (!mgView && !duelActive) { updatePlayer(dt, t); updateObservatoryStairs(dt); updateMuseumView(dt); updateObservatory(dt, t); updateNeighbor(dt); updateMountain(dt); maybeRevealMountain(); updateCamera(dt); updateCameraFade(); }
     else { updateMgScene(dt, t); wantAction = false; }  // 🍳 요리 미니게임 중엔 클로즈업 무대가 카메라를 가짐 — 마을 상호작용(프롬프트·힌트·액션)은 정지
     updateOrchardSlotApproach(t);
@@ -6244,7 +6281,7 @@ function animate() {
       if (wantAction) { wantAction = false; closeMuseumView(); }
     } else if (sledActive()) {
       wantAction = false;
-    } else if (!mgView && !duelActive && !intro && !houseGuidance?.cinematic && !dreamCutActive() && !mirrorRideActive()) {
+    } else if (!mgView && !duelActive && !intro && !houseGuidance?.cinematic && !goalGuide?.cinematic && !dreamCutActive() && !mirrorRideActive()) {
       handleAction();
       updateNPCInteract();
       updateDoorInteract();
@@ -6349,6 +6386,7 @@ function animate() {
   updatePlaza(dt, inVillage2());   // 🌾 광장 근처면 진행률 재조회
   updatePond(dt, inVillage2());
   updateShopCue(t);          // 🛒 좌판 안내 스프라이트
+  if (mode === 'play') goalGuide?.update(dt);
   houseGuidance?.update();   // 🏠 조망샷은 다른 카메라 연출·모달이 비었을 때만 시작
   // 집 터 안내판/마커: 플레이 중 + 미완성일 때만 (로그인 화면에선 숨김)
   const showHouseCue = (mode === 'play' && gameState.houseStage < 3);
