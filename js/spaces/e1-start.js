@@ -50,8 +50,8 @@ function bubbleTexture() {
 function readStored() {
   try { return parseStored(localStorage.getItem(E1_STORE_KEY)); } catch (e) { return null; }
 }
-function writeStored(arm) {
-  try { localStorage.setItem(E1_STORE_KEY, JSON.stringify({ arm, platform: PLATFORM })); } catch (e) { /* 차단 — 세이브 기록이 대신한다 */ }
+function writeStored(arm, rollout) {
+  try { localStorage.setItem(E1_STORE_KEY, JSON.stringify({ arm, platform: PLATFORM, rollout: !!rollout })); } catch (e) { /* 차단 — 세이브 기록이 대신한다 */ }
 }
 
 // ── 배정 — 로드 판정(load.kind)이 정해진 직후, 어떤 분기보다 먼저 ──
@@ -59,9 +59,9 @@ export function enrollE1(load) {
   const forced = new URLSearchParams(location.search).get('e1');   // QA 강제 — DEV_PARAMS 라 기록은 남지 않는다
   const d = decideE1({ clientId: clientId(), platform: PLATFORM, loadKind: load?.kind, saved: load?.state || null, stored: readStored(), forced, dev: IS_DEV_SESSION });
   if (!d.enrolled) return d;
-  if (d.reason !== 'forced' && !IS_DEV_SESSION) writeStored(d.arm);   // dev 세션은 기기에 남기지 않는다(GA4 도 안 나간다)
+  if (d.reason !== 'forced' && !IS_DEV_SESSION) writeStored(d.arm, d.rollout);   // dev 세션은 기기에 남기지 않는다(GA4 도 안 나간다)
   setExpArm(d.arm);   // 이 세션의 획득 이벤트에 exp_arm + GA4 유저 속성
-  trackEvent('exp_exposure', { exp: 'e1', exp_arm: d.arm, first: d.first ? 1 : 0 });   // [GA4] 배정 직후 · session counts e1_<arm>
+  trackEvent('exp_exposure', { exp: d.exp, exp_arm: d.arm, first: d.first ? 1 : 0 });   // [GA4] 배정 직후 · session counts e1_<arm>
   return d;
 }
 
@@ -69,7 +69,7 @@ export function enrollE1(load) {
 export function applyE1(d) {
   if (!d?.enrolled) return;
   active = true;
-  if (!gameState.e1 || gameState.e1.arm !== d.arm) gameState.e1 = { arm: d.arm, seeded: false, harvested: false, intro: false };
+  if (!gameState.e1 || gameState.e1.arm !== d.arm) gameState.e1 = { arm: d.arm, seeded: false, harvested: false, intro: false, rollout: d.rollout };
   if (shouldSeed(d, gameState.e1)) { seedField(); gameState.e1 = { ...gameState.e1, seeded: true }; }
   document.body.classList.toggle('e1-pending', isPending(gameState.e1));
 }
