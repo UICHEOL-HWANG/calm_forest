@@ -874,11 +874,12 @@
     width: min(330px, calc(100vw - 24px));
   }
   #login-guide {
-    border: 1px solid #819079;
-    border-radius: 21px;
-    background: #374335;
-    color: #fffdf4;
-    box-shadow: 0 12px 26px #1c2d2250;
+    border: 1px solid rgba(255,255,255,0.35);
+    border-radius: 24px;
+    background: rgba(255,255,255,0.16);
+    backdrop-filter: blur(16px) saturate(1.2);
+    color: #fff;
+    box-shadow: 0 20px 60px rgba(30,50,40,0.35);
   }
   .with-guide #login-card { max-height: none; padding: 15px 16px 14px; }
   #login-screen.with-guide #login-card .leaf { font-size: 24px; line-height: 1.15; }
@@ -898,6 +899,22 @@
       grid-template-areas: "login qr" "login guide" "links links";
       row-gap: 12px;
     }
+    .with-guide:has(#login-qr:not([hidden])) :is(#login-card, #login-qr, #login-guide) { align-self: stretch; }
+    .with-guide:has(#login-qr:not([hidden])) #login-guide {
+      display: grid;
+      grid-template-columns: 64px 1fr;
+      grid-template-rows: auto auto auto;
+      align-content: center;
+      column-gap: 11px;
+      padding: 12px 14px;
+      text-align: left;
+    }
+    .with-guide:has(#login-qr:not([hidden])) #login-guide img { grid-column: 1; grid-row: 1 / 3; width: 64px; height: 100%; min-height: 64px; border-radius: 14px; }
+    .with-guide:has(#login-qr:not([hidden])) .login-guide-copy { display: contents; }
+    .with-guide:has(#login-qr:not([hidden])) .login-guide-copy h2 { grid-column: 2; grid-row: 1; align-self: end; }
+    .with-guide:has(#login-qr:not([hidden])) .login-guide-copy p { grid-column: 2; grid-row: 2; margin: 3px 0 0; align-self: start; font-size: 11.5px; }
+    .with-guide:has(#login-qr:not([hidden])) .login-guide-copy nav { grid-column: 1 / -1; grid-row: 3; margin-top: 10px; flex-wrap: nowrap; }
+    .with-guide:has(#login-qr:not([hidden])) .login-guide-copy a { flex: 1; justify-content: center; }
     .with-guide:has(#login-qr:not([hidden])) #login-entry { display: contents; }
     .with-guide:has(#login-qr:not([hidden])) #login-card { grid-area: login; width: 100%; }
     .with-guide:has(#login-qr:not([hidden])) #login-qr { grid-area: qr; width: 100%; }
@@ -908,13 +925,13 @@
   #login-guide img {
     display: block;
     width: 100%;
-    height: clamp(130px, calc(43vw - 14px), 155px);
+    height: clamp(84px, 24vw, 104px);
     object-fit: cover;
     object-position: center 22%;
   }
-  .login-guide-copy { padding: 13px 13px 12px; }
-  .login-guide-copy h2 { margin: 0; font-size: 18px; letter-spacing: -.035em; }
-  .login-guide-copy p { margin: 5px 0 8px; color: #e7ebd9; font-size: 13px; line-height: 1.55; word-break: keep-all; }
+  .login-guide-copy { padding: 12px 13px 12px; }
+  .login-guide-copy h2 { margin: 0; font-size: 16px; letter-spacing: -.035em; text-shadow: 0 1px 8px rgba(0,0,0,.25); }
+  .login-guide-copy p { margin: 4px 0 8px; color: rgba(255,255,255,.88); font-size: 12px; line-height: 1.5; word-break: keep-all; }
   .login-guide-copy nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
   .login-guide-copy a {
     display: inline-flex;
@@ -923,8 +940,8 @@
     min-height: 44px;
     padding: 0 9px;
     border-radius: 11px;
-    background: #e8f2cc;
-    color: #293a28;
+    background: rgba(255,255,255,.92);
+    color: #3a4a40;
     font-size: 12px;
     font-weight: 700;
     text-decoration: none;
