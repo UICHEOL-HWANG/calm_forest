@@ -22,7 +22,7 @@ export function spawnPortPier() {
     const post = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.8, 6), clayMat(0x6e4a2c));
     post.position.set(s * 0.6, 0.15, d); deck.add(post);
   }
-  portPierBoat = tubBoat(); portPierBoat.position.set(boat.x, 0.18, boat.z); portPierBoat.rotation.y = boat.ry; g.add(portPierBoat);
+  portPierBoat = tubBoat({ light: false }); portPierBoat.position.set(boat.x, 0.18, boat.z); portPierBoat.rotation.y = boat.ry; g.add(portPierBoat);
   const sign = makeSignpost('⛵ 포구 섬', ax + 1.6, az + 1.5); g.add(sign);
   solidCircle(boat.x, boat.z, 0.8);
   addGateWalk(g, 'port', { water: coveSolid(), color: 0xffc94a, ringR: 0.85, walk: makeWalk({ ax, az, bx, bz, hw: 0.6, y: 0.36 }) });

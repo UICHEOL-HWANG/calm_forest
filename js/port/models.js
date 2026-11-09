@@ -20,7 +20,7 @@ function lampLight(g, p, dist = 7) {
   return l;
 }
 
-export function tubBoat() {
+export function tubBoat({ light = true } = {}) {
   const g = new THREE.Group();
   const red = twoSided(mat(0xc8452f)), rim = mat(0xe06a3c), deep = mat(0x7b2e22), wood = mat(0x6e4a2c);
   put(g, lathe([[0.02, 0.02], [0.5, 0.04], [0.82, 0.16], [0.97, 0.34], [1.0, 0.46]], 20), red, [0, 0, 0], [0, 0, 0], [0.95, 1, 1.22]);
@@ -31,7 +31,7 @@ export function tubBoat() {
   put(g, cyl(0.02, 0.02, 0.32, 6), wood, [0.48, 0.6, -0.92]);
   put(g, cyl(0.1, 0.12, 0.05, 10), mat(0x3b2a20), [0.48, 0.92, -0.92]);
   put(g, ball(0.14, 1), glow(0xffcf6b, 1.8), [0.48, 0.8, -0.92]);
-  lampLight(g, [0.48, 0.95, -0.92], 14);
+  if (light) lampLight(g, [0.48, 0.95, -0.92], 14);
   g.userData.seat = new THREE.Vector3(0, 0.34, 0.15);
   g.userData.lamp = new THREE.Vector3(0.48, 0.8, -0.92);
   return g;
