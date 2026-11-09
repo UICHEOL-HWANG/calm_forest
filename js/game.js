@@ -626,7 +626,7 @@ function setSpaceVisible() {
   if (mountainGroup) mountainGroup.visible = atMountain;
   if (riverGroup) riverGroup.visible = atRiver;
   if (mistGroup) mistGroup.visible = atMist;
-  if (seaGroup) seaGroup.visible = atSea;
+  if (seaGroup) seaGroup.visible = atSea && !port.active;
   if (orchardGroup) orchardGroup.visible = atOrchard;
   setDreamVisible(atDream);   // 🌙 꿈의 숲(처음 꿈꿀 때 지어진다)
   setMirrorVisible(atMirror);

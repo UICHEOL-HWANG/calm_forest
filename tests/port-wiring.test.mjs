@@ -128,3 +128,13 @@ test('안내 free 단계에선 섬 부두 끝 탑승 래치를 켜고, 매 프�
   assert.doesNotMatch(show, /getBoundingClientRect/);
   assert.match(view, /addEventListener\('resize'/);
 });
+
+test('포구를 떠나면 의뢰 카드를 다시 그리고, 잡은 물고기는 바로 저장하며, 프레임마다 새 배열·Euler 를 만들지 않는다', () => {
+  const src = read('js/port/index.js'), body = name => src.slice(src.indexOf(`function ${name}(`), src.indexOf('\n}\n', src.indexOf(`function ${name}(`)));
+  assert.match(body('leavePort'), /env\.refreshQuestPanel\(\)/);
+  assert.match(body('tapFish'), /addToPantry[\s\S]*env\.requestSave\(\)/);
+  assert.doesNotMatch(body('sailTick'), /\[\.\.\.ROUTE\]/);
+  assert.match(src, /const ROUTE_BACK = \[\.\.\.ROUTE\]\.reverse\(\);/);
+  assert.doesNotMatch(read('js/guide/view.js'), /new THREE\.Euler/);
+  assert.match(read('js/game.js'), /seaGroup\.visible = atSea && !port\.active;/);
+});

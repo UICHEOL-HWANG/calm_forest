@@ -229,6 +229,7 @@ export function leavePort() {
   disarmPortPier();
   justLeft = true;
   if (group) group.visible = false;
+  env.refreshQuestPanel();
 }
 
 export function leftPort() { const was = justLeft; justLeft = false; return was; }
@@ -244,6 +245,8 @@ export function clampPort(pos) {
   const onPier = lx >= 21.9 && lx <= 26.5 && Math.abs(lz) <= 0.75;
   if (!onPier && d > WALK_R) { pos.x = cx + (dx / d) * WALK_R; pos.z = cz + (dz / d) * WALK_R; }
 }
+
+const ROUTE_BACK = [...ROUTE].reverse();
 
 const _v = new THREE.Vector3();
 export function portCamera(camera, look, dt) {
@@ -268,7 +271,7 @@ function sailTick(dt) {
   const p = { x: boat.position.x - PORT.x, z: boat.position.z - PORT.z }, ox = p.x, oz = p.z;
   let next = p;
   if (P.fast) {
-    const route = P.dir > 0 ? ROUTE : [...ROUTE].reverse();
+    const route = P.dir > 0 ? ROUTE : ROUTE_BACK;
     const st = fastStep(p, route, P.wp ?? 1, BOAT_SPEED * FAST_MULT * dt);
     P.wp = st.wp; next = st.p;
     if (Math.hypot(next.x - ox, next.z - oz) > 1e-6) P.heading = Math.atan2(-(next.x - ox), -(next.z - oz));
@@ -307,6 +310,7 @@ function tapFish() {
     const gs = env.gameState(); gs.port = addToPantry(gs.port, { [kind]: 1 });
     P.trip.caught++; f.spot.left--; if (!f.spot.left) f.spot.mesh.visible = false;
     env.popAt?.(f.spot.pos, PANTRY_ICO[kind]);
+    env.requestSave();
   }
   P.fishing = null;
 }

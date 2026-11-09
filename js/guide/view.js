@@ -30,7 +30,7 @@ export function createGuideView({ scene, camera, root }) {
     if (chev.visible) {
       const wp = step.via?.(ctx) ?? waypoint(me, tgt, solids), ang = Math.atan2(wp.x - me.x, wp.z - me.z);
       chev.position.set(me.x + Math.sin(ang) * 1.9, groundY + 0.12, me.z + Math.cos(ang) * 1.9);
-      chev.quaternion.setFromEuler(new THREE.Euler(-Math.PI / 2, 0, ang + Math.PI, 'XYZ'));
+      chev.rotation.set(-Math.PI / 2, 0, ang + Math.PI);
     }
     v.set(tgt.x, (tgt.y ?? groundY) + 1.6, tgt.z).project(camera);
     const r = rect;

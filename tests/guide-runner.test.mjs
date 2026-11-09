@@ -100,3 +100,53 @@ test('포구 안내 완료 조건은 ctx 만 보고 순서대로 넘어간다', 
   const tg = { pierEnd: 1, boat: 2, spot: 3, islandDock: 4, fisher: 5, item: 6, pierEndIsland: 7, villageDock: 8 };
   assert.deepEqual(s.map(x => x.target(tg)), [1, 2, 3, 3, 3, 3, 4, 5, 6, 5, 7, 8]);
 });
+
+const runPort = seq => {
+  let t = 0; const seen = []; let finished = 0;
+  const g = createGuide({ flow: 'port', steps: portGuideSteps(), now: () => (t += 10), onStep: e => seen.push(e.step), onDone: () => finished++ });
+  const base = { phase: 'village', nearPier: false, dir: 1, moved: 0, canCast: false, fishing: false, caught: 0, quest: 'avail', got: 0, done: false };
+  const ids = [];
+  g.tick(base);
+  for (const c of seq) { g.tick({ ...base, ...c }); ids.push(g.current()?.id ?? null); }
+  return { ids, finished: () => finished, g };
+};
+
+test('낚시 없이 곧장 섬에 닿아도 안내가 수달 어부 단계로 넘어가 끝까지 간다', () => {
+  const { ids, finished } = runPort([
+    { nearPier: true },
+    { phase: 'sail', moved: 2 },
+    { phase: 'island', moved: 40 },
+    { phase: 'island', moved: 40, quest: 'active' },
+    { phase: 'island', moved: 40, quest: 'active', got: 3 },
+    { phase: 'island', moved: 40, quest: 'done', got: 3 },
+    { phase: 'sail', dir: -1, moved: 40, quest: 'done', got: 3 },
+    { phase: 'done', done: true, dir: -1, quest: 'done', got: 3 },
+  ]);
+  assert.deepEqual(ids, ['embark', 'move', 'npc', 'collect', 'turnin', 'free', 'home', null]);
+  assert.equal(finished(), 1);
+});
+
+test('수달 어부 의뢰를 이미 끝낸 사람은 섬에 닿자마자 free 로 가고 집에 오면 끝난다', () => {
+  const { ids, finished } = runPort([
+    { nearPier: true, quest: 'done', got: 3 },
+    { phase: 'sail', quest: 'done', got: 3 },
+    { phase: 'island', quest: 'done', got: 3 },
+    { phase: 'sail', dir: -1, quest: 'done', got: 3 },
+    { phase: 'done', done: true, dir: -1, quest: 'done', got: 3 },
+  ]);
+  assert.deepEqual(ids, ['embark', 'move', 'free', 'home', null]);
+  assert.equal(finished(), 1);
+});
+
+test('뒤 단계로 이미 넘어간 상황이면 앞 단계는 모두 끝난 것으로 본다', () => {
+  const s = portGuideSteps();
+  const later = [
+    { phase: 'sail', dir: 1 },
+    { phase: 'island', dir: 1 },
+    { phase: 'sail', dir: -1 },
+    { phase: 'done', done: true, dir: -1 },
+  ];
+  const base = { nearPier: false, moved: 0, canCast: false, fishing: false, caught: 0, quest: 'avail', got: 0, done: false };
+  const firstAt = { walk: 0, embark: 0, move: 1, spot: 1, cast: 1, bite: 1, island: 1, npc: 2, collect: 2, turnin: 2, free: 2, home: 3 };
+  for (const st of s) for (let k = firstAt[st.id]; k < later.length; k++) assert.equal(st.done({ ...base, ...later[k] }), true, `${st.id} @ ${JSON.stringify(later[k])}`);
+});
