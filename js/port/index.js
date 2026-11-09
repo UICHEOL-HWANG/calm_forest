@@ -79,7 +79,10 @@ function buildPort() {
 }
 
 function resetSpots() {
-  for (const s of P.spots) group.remove(s.mesh);
+  for (const s of P.spots) {
+    group.remove(s.mesh);
+    s.mesh.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
+  }
   P.spots = [...SEA_SPOTS, PIER_SPOT].map(s => {
     const m = makeSpot(s.at[0], s.at[1], s.zone);
     return { zone: s.zone, pos: W(s.at[0], s.at[1]), left: SPOT_LEFT[s.zone], mesh: m.g, rings: m.rings, shadow: m.shadow };
