@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { PANTRY_KEYS, QUESTS, CATCH } from '../js/port/data.js';
-import { defaultPort, sanitizePort, rollCatch, acceptQuest, pickItem, claimQuest, addToPantry, pantryUnits } from '../js/port/rules.js';
+import { defaultPort, sanitizePort, rollCatch, acceptQuest, pickItem, claimQuest, addToPantry, pantryUnits, boardGate } from '../js/port/rules.js';
 import { steer, pushOutOfIsland, fastStep } from '../js/port/sail.js';
 import { portCard, splitLines } from '../js/port/card.js';
 
@@ -97,4 +97,16 @@ test('의뢰 카드는 섬 안에서, 진행 중인 의뢰가 있을 때만 뜬�
   assert.equal(c.progress, 1);
   assert.equal(c.target, 3);
   assert.equal(c.ready, false);
+});
+
+test('도착한 자리에선 한 번 반경 밖으로 나가기 전엔 배를 다시 타지 않는다', () => {
+  let armed = false;
+  let g = boardGate(armed, 0, 1.2);
+  assert.equal(g.can, false); armed = g.armed;
+  g = boardGate(armed, 0.5, 1.2);
+  assert.equal(g.can, false); armed = g.armed;
+  g = boardGate(armed, 1.3, 1.2);
+  assert.equal(g.can, false); assert.equal(g.armed, true); armed = g.armed;
+  g = boardGate(armed, 0.4, 1.2);
+  assert.equal(g.can, true);
 });

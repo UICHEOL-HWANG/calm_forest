@@ -70,3 +70,7 @@ export function pantryUnits(port) {
   const total = Object.values(port.pantry).reduce((a, b) => a + b, 0);
   return Math.floor((total / 8) * 10) / 10;
 }
+
+export function boardGate(armed, dist, r) {
+  return { armed: armed || dist >= r, can: armed && dist < r };
+}

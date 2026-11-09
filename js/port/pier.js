@@ -5,6 +5,7 @@ import { scene, clayMat, solidCircle, makeSignpost } from '../game.js';
 import { addGateWalk } from '../spaces/gate-cue.js';
 import { makeWalk } from '../spaces/gate-walk.js';
 import { coveSolid } from '../spaces/sea.js';
+import { boardGate } from './rules.js';
 
 export let portPierBoat = null;
 
@@ -27,6 +28,11 @@ export function spawnPortPier() {
   addGateWalk(g, 'port', { water: coveSolid(), color: 0xffc94a, ringR: 0.85, walk: makeWalk({ ax, az, bx, bz, hw: 0.6, y: 0.36 }) });
 }
 
+let pierArmed = true;
+export function disarmPortPier() { pierArmed = false; }
+
 export function nearPortPier(p) {
-  return Math.hypot(p.x - PORT_PIER.end.x, p.z - PORT_PIER.end.z) < 1.6;
+  const g = boardGate(pierArmed, Math.hypot(p.x - PORT_PIER.end.x, p.z - PORT_PIER.end.z), 1.6);
+  pierArmed = g.armed;
+  return g.can;
 }

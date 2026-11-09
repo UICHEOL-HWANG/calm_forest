@@ -4,7 +4,8 @@ import { ISLAND, ISLAND_R, ISLAND_DOCK, VILLAGE_DOCK, PIER_END, WALK_R, LAND_Y, 
   BOAT_SPEED, BOAT_TURN, FAST_MULT, BITE_FIRST, BITE_WIN, SEA_SPOTS, PIER_SPOT, SPOT_LEFT, PANTRY_ICO, PORT_COPY,
   QUESTS, SOLIDS, MARKET_PRICE, MARKET_GIVE } from './data.js';
 import { tubBoat, buildPortShops, setPortNight, mat, glow } from './models.js';
-import { defaultPort, rollCatch, addToPantry, acceptQuest, pickItem, claimQuest } from './rules.js';
+import { defaultPort, rollCatch, addToPantry, acceptQuest, pickItem, claimQuest, boardGate } from './rules.js';
+import { disarmPortPier } from './pier.js';
 import { buildIslandNPC, beachBuoy, npcPortrait, setNpcNight, ISLAND_NPCS } from './npc-models.js';
 import { showTalk, hideTalk, onTalkTap, talkShown } from '../mirror/talk-box.js';
 import { splitLines } from './card.js';
@@ -13,7 +14,7 @@ import { seaHoldRod } from '../spaces/sea.js';
 
 export const port = { active: false };
 const env = {};
-let group = null, boat = null, shops = null, justLeft = false, night = null, btnKey = '', chipKey = null, talk = null;
+let group = null, boat = null, shops = null, justLeft = false, night = null, btnKey = '', chipKey = null, talk = null, boardArmed = false;
 const npcs = {}, glyphs = {}, items = [], solids = [];
 const P = { phase: 'sail', dir: 1, fast: false, wp: 1, heading: -Math.PI / 2, speed: 0, moved: 0, fishing: null, trip: null, spots: [], t: 0 };
 const W = (x, z, y = 0) => new THREE.Vector3(PORT.x + x, y, PORT.z + z);
@@ -212,6 +213,7 @@ export function leavePort() {
   closeTalk();
   for (const c of solids) c.off = true;
   setChips(null);
+  disarmPortPier();
   justLeft = true;
   if (group) group.visible = false;
 }
@@ -408,7 +410,9 @@ function islandContext() {
   if (kind) return { nd: 'port_talk', id: q.id, kind };
   if (guideActive()) return null;
   if (ps.boughtDay !== env.todayStr() && Math.hypot(p.x - PORT.x - MARKET_POS.x, p.z - PORT.z - MARKET_POS.z) < TALK_R) return { nd: 'port_buy' };
-  if (Math.hypot(p.x - PORT.x - PIER_END.x, p.z - PORT.z - PIER_END.z) < PIER_END_R) return { nd: 'port_board', prompt: PORT_COPY.home };
+  const g = boardGate(boardArmed, Math.hypot(p.x - PORT.x - PIER_END.x, p.z - PORT.z - PIER_END.z), PIER_END_R);
+  boardArmed = g.armed;
+  if (g.can) return { nd: 'port_board', prompt: PORT_COPY.home };
   return null;
 }
 
@@ -464,7 +468,7 @@ function pick(it) {
 }
 
 function buy() {
-  if (!env.spendCoins(MARKET_PRICE)) { env.ui.toast?.('코인이 모자라요', 2000); return; }
+  if (!env.spendCoins(MARKET_PRICE)) { env.ui.toast?.(PORT_COPY.noCoins, 2000); return; }
   const gs = env.gameState();
   gs.port = { ...addToPantry(portState(), MARKET_GIVE), boughtDay: env.todayStr() };
   env.popAt?.(W(MARKET_POS.x, MARKET_POS.z), Object.entries(MARKET_GIVE).map(([k, n]) => `${PANTRY_ICO[k]}+${n}`).join(' '));
@@ -494,6 +498,7 @@ function arrive() {
 
 function arriveIsland() {
   P.phase = 'island';
+  boardArmed = false;
   boat.position.copy(W(ISLAND_DOCK.x, ISLAND_DOCK.z)); boat.rotation.y = -Math.PI / 2;
   env.player.position.copy(W(PIER_END.x, PIER_END.z, LAND_Y));
   env.player.rotation.y = Math.PI / 2;

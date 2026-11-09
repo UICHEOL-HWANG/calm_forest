@@ -67,3 +67,12 @@ test('포구 의뢰 카드가 의뢰 패널에 붙고 대화는 아래 대사 �
   assert.match(idx, /npcPortrait\(/);
   assert.doesNotMatch(idx, /npc-modal|openNPCModal/);
 });
+
+test('도착 직후 첫 누름으로 다시 떠나지 않게 섬·마을 부두 모두 잠근다', () => {
+  const idx = read('js/port/index.js');
+  assert.match(idx, /function arriveIsland\(\) \{[^}]*boardArmed = false/);
+  assert.match(idx, /boardGate\(boardArmed,/);
+  assert.match(idx, /disarmPortPier\(\)/);
+  assert.match(read('js/port/pier.js'), /boardGate\(pierArmed,/);
+  assert.match(idx, /PORT_COPY\.noCoins/);
+});
