@@ -8,6 +8,7 @@ Last Updated: 2026-11-10 01:30 KST
 - 시안: `sims/port-entry-compare.html`(진입 위치 3안), `sims/restaurant-kitchen-sim.html`, `sims/port-island-sim.html`, `sims/port-shop-compare.html`
 - 조형 단일 소스: `sims/port-shop-models.js` (`tubBoat`, `yatai`, `dockHouse`, `C_VARIANTS`), 섬 주민 `sims/port-npc-models.js` (`buildIslandNPC`, 마을 주민과 같은 몸 규격)
 - 캡처: `sims/restaurant-kitchen/`, `sims/port-island/`, `sims/port-shop/`
+- 길 안내 겹침 점검(2026-11-10): `js/guide/` 화살표·경유점 모듈은 없음(`js/house-guide-rules.js`는 집 짓기 실험 규칙), 온보딩 화살표 시안 `sims/onboarding-cine/arrow-compare.html`은 이 체크아웃에 없고 `cranky-boyd-5fbb89` 워크트리에만 있어 계획대로 `js/guide/` 신설
 
 ## 사용자 결정 (2026-11-09)
 - 식당은 카페와 별도 건물, 직접 걷기 조작, 홀+주방+배식대
