@@ -1,15 +1,19 @@
 # 추론 API 배포 (오라클 VM)
 
-Airflow 와 **별도 스택**이다. 서로의 재시작에 영향받지 않는다.
+Airflow 와 **별도 VM**(`calmforest-ml`, 129.213.27.178 / 사설 10.0.0.193)이다. 공개 입구 nginx(`nginx/lab.conf`, lab·ml 도메인)와 Cloudflare 전용 방화벽(`update-cf-ips.sh`)도 이 VM 에 있다.
+
+- 모델: OCI 버킷 `ml/models/*.json` → cron `*/15` `docker compose exec -T api python -m calm_ml.model_sync` → `model/` 원자 교체 → 핫리로드
+- 적립 로그: cron 매일 00:20 UTC `python -m calm_ml.ship_logs` → 버킷 `ml/serving-logs/` (Airflow `churn_upload_events` 가 BQ 로)
+- 시크릿: `secrets/oci_s3.json`(600)
 
 ## 최초 1회
-    ssh oracle-calmforest 'sudo mkdir -p /opt/calm-api/{app,model,data} && sudo chown -R ubuntu:ubuntu /opt/calm-api'
-    scp infra/api/Dockerfile infra/api/docker-compose.yml oracle-calmforest:/opt/calm-api/
+    ssh calmforest-ml 'sudo mkdir -p /opt/calm-api/{app,model,data} && sudo chown -R ubuntu:ubuntu /opt/calm-api'
+    scp infra/api/Dockerfile infra/api/docker-compose.yml calmforest-ml:/opt/calm-api/
 
 ## 코드 배포 (매번)
-    ssh oracle-calmforest 'find /opt/calm-api/app -mindepth 1 -delete'
-    scp -r ml/api ml/calm_ml oracle-calmforest:/opt/calm-api/app/
-    ssh oracle-calmforest 'cd /opt/calm-api && sudo docker compose up -d --build'
+    ssh calmforest-ml 'find /opt/calm-api/app -mindepth 1 -delete'
+    scp -r ml/api ml/calm_ml calmforest-ml:/opt/calm-api/app/
+    ssh calmforest-ml 'cd /opt/calm-api && sudo docker compose up -d --build'
 
 ## 확인
     curl -s https://lab.calmforest.cloud/health   # {"ok":true}

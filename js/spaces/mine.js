@@ -84,6 +84,7 @@ export function buildMine() {
   scene.add(g); $w.mineGroup = g; mineGroup.visible = false;   // 동굴에 있을 때만 표시
   // 위쪽 은은한 푸른 필(깊이감)
   const glow = new THREE.PointLight(0x9ac4ff, 0.5, 44, 1.2); glow.position.set(MINE.x, 7, MINE.z); scene.add(glow);
+  glow.visible = false; g.userData.glow = glow;
   // 벽 횃불(사이드) — 넓은 동굴 곳곳을 밝힘
   const torchPos = [
     [-H + 0.6, -5], [-H + 0.6, 5], [H - 0.6, -5], [H - 0.6, 5],

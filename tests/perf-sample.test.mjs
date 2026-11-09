@@ -1,7 +1,32 @@
 // 📱 FPS 샘플러 — js/perf-sample.js (구글 플레이 앱 기기별 성능 수집)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createPerfSampler } from '../js/perf-sample.js';
+import { createPerfSampler, countLitPoints } from '../js/perf-sample.js';
+
+const node = (props = {}, children = []) => ({ visible: true, children, ...props });
+
+test('보이는 점광원·스포트라이트만 센다', () => {
+  const root = node({}, [
+    node({ isLight: true, isPointLight: true }),
+    node({ isLight: true, isSpotLight: true }),
+    node({ isLight: true, isDirectionalLight: true }),
+    node({}, [node({ isLight: true, isPointLight: true, intensity: 0 })]),
+  ]);
+  assert.equal(countLitPoints(root), 3);
+});
+
+test('숨긴 부모 아래 광원은 셰이더에 안 잡히므로 세지 않는다', () => {
+  const root = node({}, [
+    node({ visible: false }, [node({ isLight: true, isPointLight: true })]),
+    node({}, [node({ isLight: true, isPointLight: true, visible: false })]),
+    node({ isLight: true, isPointLight: true }),
+  ]);
+  assert.equal(countLitPoints(root), 1);
+});
+
+test('장면이 없으면 0', () => {
+  assert.equal(countLitPoints(null), 0);
+});
 
 // dtList 간격으로 frame() 을 부르고 처음 나온 요약을 돌려준다
 function run(sampler, dtList, start = 1000) {

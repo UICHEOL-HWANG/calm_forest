@@ -174,81 +174,98 @@ def stub_bigquery(monkeypatch):
     return state
 
 
-def _write_jsonl(path: Path, lines):
-    """lines 의 각 원소를 그대로 한 줄씩 쓴다(문자열은 그대로, dict 는 json.dumps)."""
-    with path.open("w", encoding="utf-8") as f:
-        for line in lines:
-            f.write(line if isinstance(line, str) else json.dumps(line))
-            f.write("\n")
+class MemBucket:
+    def __init__(self):
+        self.objects = {}
+
+    def get(self, key):
+        return self.objects.get(key)
+
+    def put(self, key, body, **_):
+        self.objects[key] = body
 
 
-def _load_dag_module_with_dirs(data_dir: Path):
-    """DAG 모듈을 로드하고 DATA_DIR/ML_DIR 를 테스트용 경로로 바꿔친다."""
+def _jsonl(lines) -> bytes:
+    return "".join((ln if isinstance(ln, str) else json.dumps(ln)) + "\n" for ln in lines).encode()
+
+
+def _log_key(day) -> str:
+    return f"ml/serving-logs/churn-{day.isoformat()}.jsonl"
+
+
+def _load_dag_module_real_ml():
     module = _load_dag_module()
-    module.DATA_DIR = data_dir
-    module.ML_DIR = ML_DIR_REAL  # ml/sql/churn_events_schema.json 이 실재하는 실제 경로
+    module.ML_DIR = ML_DIR_REAL
     return module
 
 
-def test_upload_events_skips_today_processes_yesterday(tmp_path, stub_bigquery):
-    today = datetime.now(timezone.utc).date()
-    yesterday = today - timedelta(days=1)
+TODAY = datetime(2026, 11, 9, tzinfo=timezone.utc).date()
 
-    today_file = tmp_path / f"churn-{today.isoformat()}.jsonl"
-    yesterday_file = tmp_path / f"churn-{yesterday.isoformat()}.jsonl"
-    _write_jsonl(today_file, [{"session_id": "today-1"}])
-    _write_jsonl(yesterday_file, [{"session_id": "yesterday-1"}])
 
-    module = _load_dag_module_with_dirs(tmp_path)
-    module._upload_events()
+def test_upload_events_skips_today_processes_yesterday(stub_bigquery):
+    b = MemBucket()
+    yesterday = TODAY - timedelta(days=1)
+    b.objects[_log_key(TODAY)] = _jsonl([{"session_id": "today-1"}])
+    b.objects[_log_key(yesterday)] = _jsonl([{"session_id": "yesterday-1"}])
 
-    # 오늘 파일: 처리도 안 되고 .done 도 안 찍힌다.
-    assert not today_file.with_suffix(".done").exists()
-    # 어제 파일: 처리되고 .done 이 찍힌다.
-    assert yesterday_file.with_suffix(".done").exists()
+    module = _load_dag_module_real_ml()
+    module._upload_events(bucket=b, today=TODAY)
 
+    assert _log_key(TODAY) + ".done" not in b.objects
+    assert _log_key(yesterday) + ".done" in b.objects
     assert len(stub_bigquery["calls"]) == 1
-    uploaded_rows = stub_bigquery["calls"][0]["rows"]
-    assert uploaded_rows == [{"session_id": "yesterday-1"}]
+    assert stub_bigquery["calls"][0]["rows"] == [{"session_id": "yesterday-1"}]
 
 
-def test_upload_events_skips_malformed_line_loads_rest(tmp_path, stub_bigquery):
-    yesterday = datetime.now(timezone.utc).date() - timedelta(days=1)
-    p = tmp_path / f"churn-{yesterday.isoformat()}.jsonl"
-    _write_jsonl(p, [
-        {"session_id": "ok-1"},
-        "{not valid json",
-        {"session_id": "ok-2"},
-    ])
+def test_upload_events_skips_done_days(stub_bigquery):
+    b = MemBucket()
+    yesterday = TODAY - timedelta(days=1)
+    b.objects[_log_key(yesterday)] = _jsonl([{"session_id": "y"}])
+    b.objects[_log_key(yesterday) + ".done"] = b""
 
-    module = _load_dag_module_with_dirs(tmp_path)
-    module._upload_events()
-
-    assert p.with_suffix(".done").exists()
-    assert len(stub_bigquery["calls"]) == 1
-    uploaded_rows = stub_bigquery["calls"][0]["rows"]
-    assert uploaded_rows == [{"session_id": "ok-1"}, {"session_id": "ok-2"}]
+    _load_dag_module_real_ml()._upload_events(bucket=b, today=TODAY)
+    assert stub_bigquery["calls"] == []
 
 
-def test_upload_events_failed_file_not_marked_done_others_continue_and_raises(
-    tmp_path, stub_bigquery,
-):
-    # 둘 다 '어제 이전'이 확실하도록 과거 고정 날짜를 쓴다. 정렬 순서(=처리 순서)는
-    # 파일명 오름차순이라 01 이 먼저, 02 가 나중에 처리된다.
-    file_a = tmp_path / "churn-2020-01-01.jsonl"  # 이게 실패하도록 만든다
-    file_b = tmp_path / "churn-2020-01-02.jsonl"  # 이건 성공해야 한다
-    _write_jsonl(file_a, [{"session_id": "a-1"}])
-    _write_jsonl(file_b, [{"session_id": "b-1"}])
+def test_upload_events_looks_back_a_week_only(stub_bigquery):
+    b = MemBucket()
+    old = TODAY - timedelta(days=30)
+    b.objects[_log_key(old)] = _jsonl([{"session_id": "old"}])
+    _load_dag_module_real_ml()._upload_events(bucket=b, today=TODAY)
+    assert stub_bigquery["calls"] == []
 
+
+def test_upload_events_skips_malformed_line_loads_rest(stub_bigquery):
+    b = MemBucket()
+    yesterday = TODAY - timedelta(days=1)
+    b.objects[_log_key(yesterday)] = _jsonl([{"session_id": "ok-1"}, "{not valid json", {"session_id": "ok-2"}])
+
+    _load_dag_module_real_ml()._upload_events(bucket=b, today=TODAY)
+
+    assert _log_key(yesterday) + ".done" in b.objects
+    assert stub_bigquery["calls"][0]["rows"] == [{"session_id": "ok-1"}, {"session_id": "ok-2"}]
+
+
+def test_upload_events_failed_day_not_marked_done_others_continue_and_raises(stub_bigquery):
+    b = MemBucket()
+    day_a = TODAY - timedelta(days=3)
+    day_b = TODAY - timedelta(days=2)
+    b.objects[_log_key(day_a)] = _jsonl([{"session_id": "a-1"}])
+    b.objects[_log_key(day_b)] = _jsonl([{"session_id": "b-1"}])
     stub_bigquery["behaviors"] = ["raise", "ok"]
 
-    module = _load_dag_module_with_dirs(tmp_path)
     with pytest.raises(RuntimeError):
-        module._upload_events()
+        _load_dag_module_real_ml()._upload_events(bucket=b, today=TODAY)
 
-    assert not file_a.with_suffix(".done").exists()
-    assert file_b.with_suffix(".done").exists()
+    assert _log_key(day_a) + ".done" not in b.objects
+    assert _log_key(day_b) + ".done" in b.objects
+    assert [c["rows"] for c in stub_bigquery["calls"]] == [[{"session_id": "a-1"}], [{"session_id": "b-1"}]]
 
-    assert len(stub_bigquery["calls"]) == 2
-    assert stub_bigquery["calls"][0]["rows"] == [{"session_id": "a-1"}]
-    assert stub_bigquery["calls"][1]["rows"] == [{"session_id": "b-1"}]
+
+def test_publish_model_puts_file_to_bucket(tmp_path):
+    module = _load_dag_module_real_ml()
+    f = tmp_path / "coef.json"
+    f.write_text('{"model_version": "v9"}')
+    b = MemBucket()
+    module._publish(f, bucket=b)
+    assert b.objects["ml/models/coef.json"] == f.read_bytes()
