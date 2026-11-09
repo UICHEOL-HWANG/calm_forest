@@ -26,6 +26,14 @@ writeFileSync('dist-toss/index.html', html);
 cpSync('js', 'dist-toss/js', { recursive: true });
 cpSync('assets/decor-sets', 'dist-toss/assets/decor-sets', { recursive: true });
 
+// 활동 기록 페이지는 Toss 번들 내부에서 WebView 세션을 이어받아 보여준다.
+// 페이지와 로컬 의존성도 함께 넣어야 앱 내부 경로에서 정상 로드된다.
+mkdirSync('dist-toss/dashboards', { recursive: true });
+cpSync('dashboards/analytics.html', 'dist-toss/dashboards/analytics.html');
+cpSync('dashboards/_dash.css', 'dist-toss/dashboards/_dash.css');
+mkdirSync('dist-toss/vendor', { recursive: true });
+cpSync('vendor/supabase.js', 'dist-toss/vendor/supabase.js');
+
 // ② config.js: API_BASE 를 절대 오리진으로 치환.
 //    앵커가 사라지면(리팩터링 등) 조용히 깨진 번들이 나가지 않도록 빌드를 실패시킨다.
 const CONFIG_PATH = 'dist-toss/js/config.js';

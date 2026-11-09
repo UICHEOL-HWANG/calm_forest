@@ -121,6 +121,18 @@ export const SEA_SCENES = {
       return { cam, keys: [], press, run: [] };
     },
   },
+  boat_ride: {
+    duration: 4.2,
+    query: 'season=autumn&weather=clear&time=0.42&dbg=1&river=1',
+    char: '곰',
+    setup: {},
+    at(t) {
+      const run = [];
+      if (once(t, 0)) run.push(`g => { window.__boatTest(); window.__boat.start(); if (g.Input.boatViewMode() !== 'third') g.Input.toggleBoatView(); }`);
+      const cam = move(t, 0, 4.2, { p: [3.4, 2.5, -6.4], l: [0, 1.5, 0.4], fov: 48 }, { p: [-3.0, 2.3, -6.0], l: [0, 1.5, 0.4], fov: 48 });
+      return { cam, keys: [], run };
+    },
+  },
   dive_pearl: {
     duration: 4.0,
     query: 'season=summer&weather=clear&time=0.42&dbg=1&dive=1&divedebug=1',

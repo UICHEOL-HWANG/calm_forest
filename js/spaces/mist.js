@@ -16,7 +16,7 @@ import { trackEvent } from '../analytics.js';
 import { mistClearTiles } from '../ui-cards.js';
 import { onPlay, decorBanner } from '../decor-drops/index.js';
 import { LANTERN_CALM_R, MIST, MIST_DRAIN, MIST_GATE, MIST_HALF, MIST_LANTERN_POS, MIST_PRACTICE_STEPS, MIST_WAVES, ORCHARD, ORCHARD_GATE, ORCHARD_HALF, PURIFY_GLOW, SOOTHE_GLOW, SPIRITS, TREE_LIGHT_MAX } from '../data/places.js';
-import { FRUITS, sapKeyOf } from '../orchard.js';
+import { FRUITS, TREE_SLOTS, sapKeyOf } from '../orchard.js';
 import { GATE_PATCH, GATE_W, buildGateArt } from '../orchard-art.js';
 import { t } from '../i18n.js';
 import { Sound, setBGMTheme } from '../sound.js';
@@ -266,9 +266,16 @@ export function enterOrchard() {
   // 묘목이 없으면 "심어라" 가 아니라 "사 와라" 를 먼저 말한다 — 살 곳을 안 알려준 탓에
   //   고급 작물 채택률이 0% 였다. 같은 실수를 반복하지 않는다.
   const hasSap = FRUITS.some(f => (gameState.inventory[sapKeyOf(f.id)] || 0) > 0);
-  firstHint('orchardIntro', '🍎', '과수원 · 묘목 키우기',
-    { steps: [...(hasSap ? [] : [{ ico: '🛒', label: '상점에서 사기' }]), { ico: '🌰', label: '흙 자리에 심기' }, ...(hasSap ? [{ ico: '🍎', label: '매일 따기' }] : [])],
-      note: '시냇가는 물 안 줘도 돼요' });
+  const shouldShowPlantingSpotlight = gameState.hintsSeen?.saplingPurchase && hasSap
+    && (gameState.orchard?.trees || []).length < TREE_SLOTS && !gameState.hintsSeen?.saplingOrchard;
+  if (shouldShowPlantingSpotlight) {
+    gameState.hintsSeen.orchardIntro = true;   // 인트로 카드와 심기 스포트라이트가 겹치지 않게
+    ui.startSaplingOrchardSpotlight?.();
+  } else {
+    firstHint('orchardIntro', '🍎', '과수원 · 묘목 키우기',
+      { steps: [...(hasSap ? [] : [{ ico: '🛒', label: '상점에서 사기' }]), { ico: '🌰', label: '흙 자리에 심기' }, ...(hasSap ? [{ ico: '🍎', label: '매일 따기' }] : [])],
+        note: '시냇가는 물 안 줘도 돼요' });
+  }
   Sound.blip(); setBGMTheme?.('main');
   trackEvent('orchard_enter', { trees: (gameState.orchard?.trees || []).length });   // [GA4] 유입
   decorBanner('orchard');

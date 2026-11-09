@@ -85,7 +85,7 @@ function applyAliasCampaign() {
   s.src = 'https://www.googletagmanager.com/gtag/js?id=' + id;
   document.head.appendChild(s);
   applyAliasCampaign();   // ※ config 보다 먼저 — 첫 page_view 부터 소스가 붙게
-  gtag('config', id);
+  gtag('config', id, PLATFORM === 'itch' ? { cookie_flags: 'SameSite=None;Secure' } : {});
   // 유저 단위 차원 — platform(앱인토스), 그리고 표시 언어·A/B 변형.
   //   한 번에 set 해야 뒤 호출이 앞 호출을 덮어쓰지 않는다(gtag user_properties 는 병합이 아니라 치환).
   //   🧪 exp_entry(E2 웹 로그인 화면 건너뛰기) — 등록된 웹 첫 방문 기기만. 이벤트 파라미터가 아니라 사용자 속성(25개 한도와 무관)

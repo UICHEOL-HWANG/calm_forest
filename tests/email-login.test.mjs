@@ -263,3 +263,45 @@ test('로그인 화면: 코드 칸 마크업 — 입력은 하나, 칸은 장식
 test('IS_NATIVE 는 안드로이드·iOS 둘 다 포함한다(이메일 로그인 차단 범위)', () => {
   assert.match(src('js/platform.js'), /export const IS_NATIVE = IS_ANDROID \|\| IS_IOS;/);
 });
+
+test('가입 안내 경로가 재전송·인증 실패·성공까지 유지되고 일반 입구에 남지 않는다', async () => {
+  const { $, els } = fakeDom();
+  const events = []; let clock = 1000; let attempts = 0;
+  const ui = mountEmailLogin({ $, now: () => clock,
+    track: (_name, params) => events.push(params),
+    requestCode: async () => ({ ok: true }),
+    verifyCode: async () => ({ ok: ++attempts > 1, error: { code: 'otp_expired' } }),
+  });
+  await withUi(ui, async () => {
+    ui.openEmail({ from: 'harvest' });
+    els['email-input'].value = 'a@b.co';
+    await els['email-step'].fire('submit');
+    clock += 61000;
+    await els['code-resend'].fire('click');
+    els['code-input'].value = '123456';
+    await els['code-step'].fire('submit');
+    await els['code-step'].fire('submit');
+    assert.deepEqual(events.map(e => [e.stage, e.from, e.result]), [
+      ['open', 'harvest', undefined], ['request', 'harvest', 'ok'],
+      ['request', 'harvest', 'ok'], ['verify', 'harvest', 'fail'], ['verify', 'harvest', 'ok'],
+    ]);
+    ui.reset(); els['email-btn'].fire('click');
+    assert.equal(events.at(-1).from, 'login_screen');
+    ui.openEmail({ from: 'someone@example.com' });
+    assert.equal(events.at(-1).from, 'login_screen', '임의 문자열을 분석 경로로 보내지 않는다');
+  });
+});
+
+test('요청 중 다른 입구를 열어도 완료된 요청과 인증은 원래 경로로 기록된다', async () => {
+  const { $, els } = fakeDom(); const events = []; const d = deferred();
+  const ui = mountEmailLogin({ $, track: (_n, p) => events.push(p), requestCode: () => d.p,
+    verifyCode: async () => { ui.reset(); return { ok: true }; } });
+  await withUi(ui, async () => {
+    ui.openEmail({ from: 'house' }); els['email-input'].value = 'a@b.co';
+    const pending = els['email-step'].fire('submit');
+    ui.openEmail({ from: 'dex' }); d.resolve({ ok: true }); await pending;
+    els['code-input'].value = '123456'; await els['code-step'].fire('submit');
+    assert.equal(events.find(e => e.stage === 'request').from, 'house');
+    assert.equal(events.find(e => e.stage === 'verify').from, 'house');
+  });
+});

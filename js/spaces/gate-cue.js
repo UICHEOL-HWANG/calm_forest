@@ -34,6 +34,12 @@ function glowRing(color, r) {
   } };
 }
 
+// 다른 공간의 작업 지점에서도 나루터·바다터 출입구와 같은 링과 박자를 재사용한다.
+export function makeGuideSpot(color = 0xffd27a, r = 0.85) {
+  const cue = glowRing(color, r);
+  return cue;
+}
+
 export function addGateWalk(parent, kind, { walk, water, color, ringR = 1 }) {
   water.except = p => onWalk(walk, p);
   entries[kind] = { walk, water };

@@ -59,7 +59,7 @@ test('renderDoc: 제목·canonical·정보 표·목차·BreadcrumbList·게임 �
 });
 
 test('renderCat·renderHome·searchIndex', () => {
-  const cat = renderCat(wiki.cats[0], wiki.entries.filter(e => e.cat === 'fish'), { cats: wiki.cats });
+  const cat = renderCat(wiki.cats[0], wiki.entries.filter(e => e.cat === 'fish'), { cats: wiki.cats, index, entries: wiki.entries });
   assert.match(cat, /<title>물고기 · 고요위키<\/title>/);
   assert.equal((cat.match(/href="\/wiki\/fish\/[a-z_]+"/g) || []).length >= 11, true);
   const home = renderHome(wiki.cats, wiki.entries);
@@ -110,6 +110,6 @@ test('위키: GA4 태그와 게임 링크 UTM', () => {
   assert.match(doc, /class="wk-foot"><a href="\/\?utm_source=wiki&amp;utm_medium=referral&amp;utm_campaign=fish_sea_buri"/);
   const home = renderHome(wiki.cats, wiki.entries);
   assert.match(home, /utm_campaign=wiki_home/);
-  const cat = renderCat(wiki.cats[0], wiki.entries.filter(e => e.cat === 'fish'), { cats: wiki.cats });
+  const cat = renderCat(wiki.cats[0], wiki.entries.filter(e => e.cat === 'fish'), { cats: wiki.cats, index, entries: wiki.entries });
   assert.match(cat, /utm_campaign=cat_fish/);
 });

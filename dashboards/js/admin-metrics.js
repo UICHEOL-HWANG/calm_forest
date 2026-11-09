@@ -266,8 +266,26 @@ export const mdeProp = (p, n) => (Z975 + Z80) * Math.sqrt(2 * p * (1 - p) / n) *
 const mmdd = (iso) => String(iso).slice(5).replace('-', '/');
 
 /** 실험 1개 → 효과 크기·검정·판정. 판정 순서는 고정(실험 페이지 '판정 규칙' 과 같다). */
+export function funnelRows(funnel) {
+  const cols = funnel?.cols || [];
+  const steps = funnel?.steps || [];
+  return steps.map((s, i) => ({
+    label: s.label,
+    unlinked: !!s.unlinked,
+    cells: cols.map((c) => {
+      const n = s.by?.[c.key] ?? 0;
+      const prev = i === 0 || s.unlinked ? 0 : steps[i - 1].by?.[c.key] ?? 0;
+      return { key: c.key, n, pct: prev ? Math.round((n / prev) * 1000) / 10 : null };
+    }),
+  }));
+}
+
 export function analyzeExperiment(e, today) {
   const r = e.result;
+  if (r?.funnel && !r.arms?.length) {
+    const first = r.funnel.steps?.[0]?.by || {};
+    return { verdict: ['obs', '설명용'], n: Object.values(first).reduce((s, v) => s + v, 0) };
+  }
   if (!r || !r.arms?.length || !r.arms.some((a) => a.n > 0)) {
     const v = e.status === 'plan' ? ['st', '시작 전'] : e.kind === 'ext' ? ['st', '결과 입력 전'] : ['st', '결과 없음'];
     return { verdict: v, n: 0 };

@@ -795,8 +795,17 @@ export function buildDecorGhost(id, outdoor = false) {
   g.traverse(o => {
     if (!o.isMesh) return;
     o.castShadow = false; o.receiveShadow = false;
-    o.material = o.material.clone();
-    o.material.transparent = true; o.material.opacity = 0.45; o.material.depthWrite = false;
+    // GLTF meshes can have one material or a material array (multi-material geometry).
+    // Clone every material so the ghost opacity never leaks into the placed object.
+    const ghostMaterial = material => {
+      const clone = material?.clone?.();
+      if (!clone) return material;
+      clone.transparent = true; clone.opacity = 0.45; clone.depthWrite = false;
+      return clone;
+    };
+    o.material = Array.isArray(o.material)
+      ? o.material.map(ghostMaterial)
+      : ghostMaterial(o.material);
   });
   // 🏗️ 밭 시설은 발자국(2×2·1×3)이 커서 작은 링으론 "어디를 차지하는지" 가 안 보인다 — 발자국 크기로 키운다
   const fdef = FARM_BUILDINGS.find(d => d.id === id);

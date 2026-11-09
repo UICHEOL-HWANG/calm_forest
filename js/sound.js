@@ -144,6 +144,12 @@ export const Sound = {
   introChime() { const c = enabled ? ensureCtx() : null; if (!c) return; [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => chime(f, 1.6, 0.07, { at: c.currentTime + i * 0.18, wet: 0.45 })); },
   introWind()  { sweep(3.2, 260, 900, 0.05, 0.7); },
   nudge()  { tone(880, 0.12, 'sine', 0.35); setTimeout(() => tone(1175, 0.22, 'sine', 0.3), 110); }, // 🎯 이탈 배너 "띠링" — 수확음보다 한 톤 낮고 짧게
+  houseGuide() { // 화살표가 두 번 튀는 순간에 맞춘 또렷한 두 음
+    if (!enabled || document.hidden) return;
+    const c = ensureCtx(), t = c.currentTime;
+    chime(880, 0.22, 0.34, { type: 'triangle', at: t + 0.168 });
+    chime(1108.7, 0.25, 0.30, { type: 'triangle', at: t + 0.448 });
+  },
   plant()  { tone(440, 0.1, 'sine', 0.3, 560); },                               // 씨앗 심기
   // 🔭 천문대 별 잇기 — 효과음 세트 1 '별 차임'(sims/observatory-sound-sim.html, 2026-10-05 사용자 선택)
   starPerfect(step = 0) { const f = starNote(step); chime(f, 0.5, 0.16, { wet: 0.5 }); chime(f * 2, 0.25, 0.05, { type: 'triangle' }); chime(f * 4, 0.12, 0.02); },

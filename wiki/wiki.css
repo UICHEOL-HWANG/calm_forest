@@ -33,6 +33,18 @@ h1 { font-size: 30px; line-height: 1.3; margin: 0 0 4px; }
 .wk-cta { display: inline-block; margin-top: 20px; background: #2f7a4a; color: #fff; padding: 12px 20px; border-radius: 12px; font-weight: 700; }
 .wk-cta:hover { text-decoration: none; background: #276a3f; }
 .wk-lead { color: #4a5a50; }
+.wk-cat-guide { margin: 24px 0 34px; padding: 20px 22px; background: #f7faf7; border: 1px solid #d7e6da; border-radius: 14px; }
+.wk-cat-guide > h2 { margin: 0 0 16px; font-size: 22px; }
+.wk-cat-guide section + section { margin-top: 18px; padding-top: 16px; border-top: 1px solid #dde7df; }
+.wk-cat-guide h3 { margin: 0 0 5px; color: #285b3e; font-size: 17px; }
+.wk-cat-guide p { margin: 0; color: #36463b; }
+.wk-blurbs { margin: 0; padding-left: 18px; color: #36463b; }
+.wk-blurbs li { margin: 4px 0; }
+.wk-list-title { margin: 0 0 8px; font-size: 21px; }
+.wk-entry-guide { margin-top: 30px; padding: 18px 20px; background: #f7faf7; border-left: 4px solid #4d8a62; }
+.wk-entry-guide h2 { margin: 0 0 10px; font-size: 19px; }
+.wk-entry-guide p { margin: 0 0 10px; }
+.wk-entry-guide p:last-child { margin-bottom: 0; }
 .wk-list { width: 100%; border-collapse: collapse; font-size: 15px; }
 .wk-list th, .wk-list td { border-bottom: 1px solid #e3e9e5; padding: 9px 8px; text-align: left; }
 .wk-list .wk-ic { font-size: 26px; width: 44px; text-align: center; }
@@ -53,6 +65,8 @@ h1 { font-size: 30px; line-height: 1.3; margin: 0 0 4px; }
   h1 { font-size: 26px; }
   .wk-list td:last-child { font-size: 13px; }
   .wk-info td { overflow-wrap: anywhere; }
+  .wk-cat-guide { padding: 17px 16px; }
+  .wk-entry-guide { padding: 16px; }
 }
 .wk-faq { margin-top: 30px; }
 .wk-faq h2 { font-size: 19px; margin: 0 0 10px; }

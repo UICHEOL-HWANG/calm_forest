@@ -3,6 +3,11 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<script>
+  if (new URLSearchParams(location.search).get('platform') === 'toss') {
+    document.documentElement.classList.add('platform-toss');
+  }
+</script>
 <title>고요한 숲 · 데이터 분석 대시보드 📊</title>
 <meta name="description" content="고요한 숲 — 내 플레이 데이터(이동 히트맵·세션·시선) 분석 대시보드" />
 <link rel="icon" href="/favicon.ico" sizes="any" />
@@ -30,7 +35,7 @@
   .kpis { margin-bottom: 16px; }
 </style>
 </head>
-<body>
+<body class="activity-page">
   <a class="back" href="../index.html">← 게임으로</a>
   <h1>🌿 고요한 숲 · 데이터 분석</h1>
   <div class="sub">Supabase <code>game_logs</code> 기반 · 이동 히트맵 · 세션 지표 · 시선/활동 분포</div>
@@ -39,7 +44,7 @@
   <div class="kpis" id="stats"></div>
 
   <div class="grid">
-    <div class="card" style="grid-column:span 2;min-width:280px;">
+    <div class="card analytics-heatmap-card">
       <h2>🗺️ 이동 히트맵 (캐릭터 체류 빈도)</h2>
       <canvas id="heatmap" width="300" height="300"></canvas>
       <div class="legend-note">진할수록 오래 머문 구역 · 필드 반경 ±42 기준 격자 집계</div>
@@ -48,6 +53,10 @@
     <div class="card"><h2>⏱️ 분당 활동량(샘플 수)</h2><canvas id="timeChart" height="220"></canvas></div>
     <div class="card"><h2>🎮 세션별 지속시간(초)</h2><canvas id="sessionChart" height="220"></canvas></div>
   </div>
+
+  <nav class="activity-return-dock" aria-label="게임으로 돌아가기">
+    <a href="../index.html" class="activity-return-btn">← 게임으로 돌아가기</a>
+  </nav>
 
   <script type="module">
     import { CONFIG, isSupabaseConfigured } from '../js/config.js';
@@ -72,7 +81,7 @@
         // 익명으로 새로 붙으면 다른 유저가 돼 0행이 나오므로, 세션 없으면 안내만.
         const { data: s } = await sb.auth.getSession();
         if (!s?.session) {
-          return { rows: demoData(), demo: '로그인이 필요해요 — 게임에 구글 로그인한 뒤 같은 브라우저에서 여세요. (전체 데이터는 admin_analytics.html)' };
+          return { rows: demoData(), demo: '로그인이 필요해요 — 게임 계정으로 로그인한 뒤 같은 앱이나 브라우저에서 여세요. 게스트 기록은 이어지지 않아요.' };
         }
         const { data, error } = await sb.from('game_logs')
           .select('*').order('created_at', { ascending: true }).limit(20000);

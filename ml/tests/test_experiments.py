@@ -100,3 +100,57 @@ def test_cluster_bootstrap_with_strata_resamples_inside_each_stratum():
     lo_s, _ = cluster_bootstrap_ci(y, arm, cl, n_boot=400, seed=1, strata=strata)
     lo, _ = cluster_bootstrap_ci(y, arm, cl, n_boot=400, seed=1)
     assert lo_s > 0 and lo == 0
+
+
+def _ev(rows):
+    return pd.DataFrame(rows, columns=["d", "event_name", "us", "stage", "res"])
+
+
+def test_chain_steps_keeps_only_devices_that_follow_the_order():
+    from calm_ml.experiments import chain_steps
+
+    ev = _ev([
+        ("a", "login_nudge", 1, None, None), ("a", "login_nudge_click", 2, None, None), ("a", "email_login", 3, "open", None),
+        ("b", "login_nudge", 1, None, None), ("b", "email_login", 0, "open", None),
+        ("c", "login_nudge_click", 1, None, None),
+    ])
+    steps = [
+        ("노출", lambda e: e.event_name == "login_nudge"),
+        ("클릭", lambda e: e.event_name == "login_nudge_click"),
+        ("열기", lambda e: (e.event_name == "email_login") & (e.stage == "open")),
+    ]
+    out = chain_steps(ev, steps)
+    assert [s["label"] for s in out] == ["노출", "클릭", "열기"]
+    assert [sorted(s["devices"]) for s in out] == [["a", "b"], ["a"], ["a"]]
+
+
+def test_chain_steps_uses_first_event_after_previous_step_not_the_earliest():
+    from calm_ml.experiments import chain_steps
+
+    ev = _ev([
+        ("a", "email_login", 0, "open", None), ("a", "login_nudge", 5, None, None),
+        ("a", "email_login", 9, "open", None),
+    ])
+    steps = [("노출", lambda e: e.event_name == "login_nudge"),
+             ("열기", lambda e: (e.event_name == "email_login") & (e.stage == "open"))]
+    assert [sorted(s["devices"]) for s in chain_steps(ev, steps)] == [["a"], ["a"]]
+
+
+def test_funnel_payload_counts_devices_per_group():
+    from calm_ml.experiments import funnel_payload
+
+    steps = [{"label": "노출", "devices": {"a", "b", "c"}}, {"label": "클릭", "devices": {"a", "c"}}]
+    group = {"a": "control", "b": "guest_first", "c": "none"}
+    p = funnel_payload(steps, group, [("all", "전체"), ("control", "대조"), ("guest_first", "처치")])
+    assert p["cols"] == [{"key": "all", "label": "전체"}, {"key": "control", "label": "대조"}, {"key": "guest_first", "label": "처치"}]
+    assert p["steps"][0]["by"] == {"all": 3, "control": 1, "guest_first": 1}
+    assert p["steps"][1]["by"] == {"all": 2, "control": 1, "guest_first": 0}
+
+
+def test_funnel_payload_marks_unlinked_steps():
+    from calm_ml.experiments import funnel_payload
+
+    steps = [{"label": "클릭", "devices": {"a"}}, {"label": "인증", "devices": {"x", "y"}, "unlinked": True}]
+    p = funnel_payload(steps, {}, [("all", "전체")])
+    assert "unlinked" not in p["steps"][0] or p["steps"][0]["unlinked"] is False
+    assert p["steps"][1]["unlinked"] is True

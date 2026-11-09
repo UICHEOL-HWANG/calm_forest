@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { twoProp, welch, srm, mdeProp, analyzeExperiment } from '../dashboards/js/admin-metrics.js';
+import { twoProp, welch, srm, mdeProp, analyzeExperiment, funnelRows } from '../dashboards/js/admin-metrics.js';
 
 const src = (p) => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 const close = (a, b, eps = 0.05) => assert.ok(Math.abs(a - b) < eps, `${a} ≈ ${b}`);
@@ -99,4 +99,29 @@ test('기대 빈도가 5 미만인 군이 있으면 SRM 을 판단하지 않는�
 test('기술 통계 실험(descriptive)은 p 가 작아도 효과 판정을 내리지 않는다', () => {
   const e = { kind: 'ab', status: 'run', result: twoArm([900, 600], [100, 30], { ratio: [0.9, 0.1], descriptive: true }) };
   assert.equal(analyzeExperiment(e, '2026-10-26').verdict[1], '방향만 · 판정 안 함');
+});
+
+test('깔때기만 있는 설명용 카드는 시작 전이 아니라 설명용으로 판정하고 첫 단계 합을 표본으로 쓴다', () => {
+  const funnel = { cols: [{ key: 'control', label: '대조' }, { key: 'guest_first', label: '처치' }],
+    steps: [{ label: '안내 노출', by: { control: 20, guest_first: 12 } }, { label: '버튼 클릭', by: { control: 6, guest_first: 3 } }] };
+  const a = analyzeExperiment({ kind: 'policy', status: 'run', result: { funnel } }, '2026-11-09');
+  assert.deepEqual(a.verdict, ['obs', '설명용']);
+  assert.equal(a.n, 32);
+});
+
+test('깔때기 단계는 직전 단계 대비 비율을 센다', () => {
+  const rows = funnelRows({ cols: [{ key: 'a', label: 'A' }], steps: [{ label: 's1', by: { a: 50 } }, { label: 's2', by: { a: 10 } }, { label: 's3', by: { a: 0 } }] });
+  assert.deepEqual(rows.map((r) => r.cells[0].pct), [null, 20, 0]);
+});
+
+test('깔때기 단계의 직전 값이 0이면 비율은 null', () => {
+  const rows = funnelRows({ cols: [{ key: 'a', label: 'A' }], steps: [{ label: 's1', by: { a: 0 } }, { label: 's2', by: { a: 0 } }] });
+  assert.equal(rows[1].cells[0].pct, null);
+});
+
+test('연결 안 되는 깔때기 단계는 직전 대비 비율을 내지 않고 표시만 넘긴다', () => {
+  const rows = funnelRows({ cols: [{ key: 'a', label: 'A' }], steps: [{ label: 's1', by: { a: 10 } }, { label: 's2', unlinked: true, by: { a: 4 } }] });
+  assert.equal(rows[1].cells[0].pct, null);
+  assert.equal(rows[1].unlinked, true);
+  assert.equal(rows[0].unlinked, false);
 });

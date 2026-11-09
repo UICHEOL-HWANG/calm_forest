@@ -27,7 +27,7 @@ import { saveGame, loadGame, sendBoatRun, sendSeaRecord, fetchNotices, fetchPurc
 import { syncPurchases } from './shop/purchases.js';   // 💳 원장 → 소유 병합(부팅)
 import { FORAGE_LABEL } from './forage/logic.js';
 import { pickSeaTarget } from './sea-aim.js';   // 🎣 바다터 조준 — 바라보는 쪽의 물고기가 걸린다
-import { retryDelay, offerReload } from './save-guard.js';   // 🛡️ 세이브를 읽을 때까지 기다리는 재시도 간격 + 오래 끌 때 탈출구
+import { retryDelayJittered, offerReload } from './save-guard.js';   // 🛡️ 세이브 재시도(요청 폭주 방지용 jitter) + 오래 끌 때 탈출구
 import { unreadNotices, maxId } from './notices.js';   // 📮 소식함 순수 로직(안 읽은 것 거르기·읽음 id)
 import { NIGHT_MIN, WAKE_TIME, daylightAt, isNightAt } from './daynight.js';
 import { BOAT_LAMP, BOAT_LAMP_POST } from './boat-lamp.js';   // 🏮 등불이 앞 장애물을 안 가리는 배치(순수 기하 규칙)   // 🌞🌙 햇빛 곡선·밤 판정·기상 시각(순수 규칙)
@@ -37,7 +37,7 @@ import { easeFor, nextDda, ddaOutcome, defaultDifficulty, mergeDifficulty, PROBE
 import { spotToolStep, spotWant, spotKeep, SPOT_REASON, IDLE as SPOT_IDLE } from './spot-tool-auto.js';
 import { treeFallPose, TREE_FALL_IMPACT, TREE_FALL_PIVOT } from './tree-fall.js';   // 🌳 벌목 쓰러짐(기우뚱 쿵 바운스)
 import { trackChop, trackEvent, onTrack } from './analytics.js';          // [GA4] 이벤트
-import { IS_ANDROID } from './platform.js';
+import { IS_ANDROID, PLATFORM } from './platform.js';
 import { createPerfSampler, perfContext } from './perf-sample.js';   // 📱 플레이 앱 기기별 FPS(세션당 1회 perf_sample)
 import { createKeyState, isEditableTarget } from './keys.js';      // ⌨️ 키 눌림 상태(입력칸 무시·포커스 손실 리셋) + 우클릭 메뉴 예외 판정
 import { BASE_DIST, camOffsetFor, defaultCam, effectivePitch, isDefaultCam, loadCam, moveToWorld, saveCam } from './camera-user.js';
@@ -62,7 +62,9 @@ import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed, 
 import { buildMuseumExtras } from './museum/extras.js';   // 🏛️ 1층 ✨조건부 전시(조형)   // 🏛️ 증축은 수집률로 열린다   // 🪓 도구 등급(0 기본 / 1 업그레이드 / 2 히든) — 색·판정은 이 모듈이 단일 출처
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
-import { t, LANG, aiBucket } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
+import { t, LANG, aiBucket, clientId } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
+import { createHouseGuide } from './spaces/house-guide.js';   // 🏠 목재 15개 → 집터 조망 + 방향 안내 50:50
+import { sanitizeHouseGuide } from './house-guide-rules.js';
 import { initPlaza, updatePlaza, plazaSpotNow, openPlaza, plazaScatterBlocks, plazaDefault, restorePlaza, refreshPlaza, plazaDecorMesh, plazaMapVisible } from './plaza/index.js';
 import { refreshPond, updatePond, pondScatterBlocks } from './pond/index.js';
 import { onPlay, decorBanner, applySetFx } from './decor-drops/index.js';
@@ -198,7 +200,7 @@ import { homiSkinOf } from './cosmetics/homi-skin-rules.js';
 import { MUD_GEAR, buildMudGear, stepBoots } from './forage/mudflat-set-art.js';
 import { homiState } from './forage/homi.js';
 import { applySwimPose, swim } from './forage/swim-pose.js';
-import { keepOnGateWalks, updateGateCues, updateGateWalks } from './spaces/gate-cue.js';
+import { keepOnGateWalks, makeGuideSpot, updateGateCues, updateGateWalks } from './spaces/gate-cue.js';
 import { clampToLandmark, clampToMountain, maybeRevealMountain, mountainAction, mountainLookFrame, mountainMinimapMarks, mountainReturnPos, sledActive, cafeDrinking, spawnMountainGate, updateMountain, mountainSpeedMult } from './spaces/mountain.js';
 import { applyObservatoryLight, clampToObservatory, observatoryAction, observatoryCamFocus, observatoryLensOpen, observatoryMinimapMarks, spawnObservatoryGate, updateObservatory, updateObservatoryStairs } from './spaces/observatory.js';   // 📦 🔭 천문대 — 별자리 리듬 실내 공간
 import { clampToNeighbor, initNeighbors, neighborAction, neighborIndoorElevated, neighborIndoorFrame, neighborMinimapMarks, neighborReturnPos, spawnNeighborGate, updateNeighbor } from './spaces/neighbor.js';   // 📦 🏡 이웃 마을 — 남의 앞마당 구경(js/neighbors/*)
@@ -1069,6 +1071,7 @@ const gameState = {
   hintsSeen: {},                            // 첫 접근 안내 표시 여부 { key: true }
   drops: {},
   e1: null,                                 // 🧪 E1 첫 5분 수확 실험 { arm, seeded, harvested } — 등록된 신규만(js/exp-e1.js)
+  houseGuide: null,                         // 🏠 집 기초 안내 실험 { arm, shown, arrived } — E1 과 독립
   dream: { visits: 0, day: '', got: [], total: 0 },   // 🌙 꿈의 숲 — 누적 방문·그날 주운 조각 자리·누적 획득(js/dream/layout.js normalizeDream)
   mirror: { visits: 0, day: '', done: 0, hinted: [], total: 0 },   // 🪞 거울 마을 — 누적 방문·그날 마친 의뢰·힌트 쓴 의뢰·누적 조각(js/mirror/quests.js normalizeMirror)
   halloween: null,
@@ -1576,6 +1579,7 @@ let lastFloorChoiceKey = null;   // 🪜 양방향(6단계 2층) 선택 UI 중�
 const decorMeshes = [];    // 배치된 가구 메시
 
 let mode = 'attract';   // 'attract'(로그인 배경) | 'play'(플레이)
+let houseGuidance = null;   // 🏠 집터 안내 실험(부팅 후 시작)
 let dayPaused = false;  // 낮/밤 자동 순환 정지 여부 — ?time= 로 시간대를 고정하는 스토어 촬영용
 const npcObjs = [];     // 런타임 NPC 객체들
 let nearNPC = null;     // 현재 근접한 NPC(런타임 객체) 또는 null
@@ -2442,7 +2446,7 @@ export async function enterGame() {
     if (tries === 0 || (tries + 1) % 10 === 0) trackEvent('save_load_failed', { attempt: tries + 1, code: load.code || 'unknown' });
     // 🚪 오래 끌면 "다시 들어가기"를 띄운다 — 토큰 만료처럼 스스로 낫지 않는 실패의 유일한 출구
     if (offerReload(tries)) ui.setLoadWait?.(true, true);
-    await new Promise(r => setTimeout(r, retryDelay(tries)));
+    await new Promise(r => setTimeout(r, retryDelayJittered(tries)));
     load = await loadGame();
     if (load.canPlay) trackEvent('save_load_recovered', { tries: tries + 1 });   // [GA4] 사고 재발 감시 — 몇 번 만에 붙었나
   }
@@ -2458,7 +2462,7 @@ export async function enterGame() {
     //  뒤에서 조용히 다시 읽어 본다. 성공하면 잠금이 풀려 이 게스트의 진행도 저장되기 시작한다.
     (async () => {
       for (let i = 0; i < 12; i++) {                       // 약 1분간. 그 뒤에도 안 되면 이 세션은 저장을 포기한다
-        await new Promise(r => setTimeout(r, retryDelay(i)));
+        await new Promise(r => setTimeout(r, retryDelayJittered(i)));
         if ((await loadGame()).canSave) { trackEvent('save_load_recovered', { tries: i + 1, fresh_guest: 1 }); return; }
       }
     })();
@@ -2665,6 +2669,16 @@ export async function enterGame() {
     window.__spawnWorkers = () => { spawnWorkers(); setWorkersVisible(atFarm); return workerObjs.length; };   // 🧑‍🌾 세이브 없이 일꾼 3D 재생성(드로우콜 측정용)
     // 🍎 과수원 검수용 — 해금·자리 채우기·비우기·드로우콜 측정(__spawnWorkers 와 같은 용도)
     window.__orchardOpen = () => { gameState.progress.advHarvest = Math.max(1, gameState.progress.advHarvest || 0); gameState.progress.orchardQuest = restoreStage(gameState.progress.orchardQuest, 1); refreshQuestPanel(); syncOrchardGateLock(); return '🍎 해금 — 마을 동쪽 ' + ORCHARD_GATE.x + ',' + ORCHARD_GATE.z + ' (__tp 로 이동)'; };
+    // 🧪 로컬 전용: 묘목 심기 음영 튜토리얼을 실제 과수원 씬에서 빠르게 검수한다.
+    //    일반 진행도·해금 조건을 건너뛰는 QA 파라미터라 로컬 호스트에서만 작동한다.
+    if (_wq.get('orchardtest') === '1' && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) {
+      gameState.inventory.sap_apple = Math.max(1, gameState.inventory.sap_apple || 0);
+      gameState.hintsSeen.saplingPurchase = true;
+      delete gameState.hintsSeen.saplingOrchard;
+      gameState.hintsSeen.spotV2 = true; gameState.hintsSeen.spot_started = true; gameState.hintsSeen.tutStep = 'done';
+      window.__orchardOpen();
+      setTimeout(() => enterOrchard(), 250);
+    }
     window.__orchardFill = (fruit = 6) => {   // 자리 10개를 5종으로 꽉 채운다(최악 조건)
       gameState.orchard.trees = ORCHARD_SLOTS_LOCAL.map(([x, z], i) => ({
         x: ORCHARD.x + x, z: ORCHARD.z + z, kind: FRUITS[i % FRUITS.length].id,
@@ -2762,6 +2776,18 @@ export async function enterGame() {
   if (_wq.get('mudflatdebug') === '1') { window.__mudflat = mudflatDebug; window.__mudflatCam = setMudflatCam; }   // 테스트: ?sea=1 — 바다터 바로 입장
   if (_wq.get('seadebug') === '1') window.__sea = { mg: seaMG, action: seaAction };   // 테스트: 상태 점검용(연출 검수)
   mode = 'play';
+  houseGuidance = createHouseGuide({
+    state: () => gameState, player, camera, house: HOUSE_POS,
+    clientId, platform: PLATFORM, dev: IS_DEV_SESSION, translate: t,
+    cameraFree, setCameraRig, snapCamera,
+    inVillage: inVillage2,
+    modalOpen: () => !!ui.anyModalOpen?.() || document.body.classList.contains('spot-on'),
+    stopAnalog: () => Input.setAnalog?.(0, 0),
+    projectPlayer: () => projectToScreen(player.position, 0),
+    playReminder: () => Sound.houseGuide(),
+    track: trackEvent, save: requestSave,
+  });
+  houseGuidance.onInventory();          // 로컬 강제 시안(?houseguide=)만 부팅 보유량으로 시험; 실제 배정은 플레이 중 15개 도달
   movedOnce = false;
   startLogging();                      // [센서] 배치 전송 시작
   // [🎯 이탈 예측] dev 세션은 만들지 않는다 — 센서 샘플이 없어 윈도가 안 차고, API 로그도 더럽힌다
@@ -2848,6 +2874,7 @@ function applySave(saved) {
   if (typeof saved.timeOfDay === 'number') timeOfDay = saved.timeOfDay; // 시간대 복원
   if (saved.tutorialSeen) gameState.tutorialSeen = true;                 // 튜토리얼 이미 봄
   gameState.e1 = sanitizeE1(saved.e1);                                   // 🧪 E1 무리 — 다른 기기에서 로그인해도 같은 무리
+  gameState.houseGuide = sanitizeHouseGuide(saved.houseGuide);             // 🏠 안내 실험 — 재접속·다른 기기에서도 같은 무리
   if (saved.guideNudgeSeen) gameState.guideNudgeSeen = true;             // 📖 안내서 배너 이미 봄
   if (saved.house && saved.house.stored && typeof saved.house.stored === 'object') {   // 🧺 창고 복원(개수만, 음수·비숫자 버림)
     gameState.house.stored = {};
@@ -3099,7 +3126,7 @@ async function retrySaveUntilOk() {
       // [GA4] 저장이 끊긴 사람을 셀 분모. 매번 보내면 한 세션이 지표를 삼키므로 1회차 + 매 10회차만.
       if (tries === 0 || (tries + 1) % 10 === 0) trackEvent('save_failed', { attempt: tries + 1 });
       if (offerReload(tries)) ui.setSaveStuck?.(true);   // 오래 끌면 "다시 들어가기" — 유일한 출구
-      await new Promise(r => setTimeout(r, retryDelay(tries)));
+      await new Promise(r => setTimeout(r, retryDelayJittered(tries)));
       if ((await saveGame(getGameState())).ok) {
         ui.setSaveStuck?.(false);
         trackEvent('save_recovered', { tries: tries + 1 });   // [GA4] 몇 번 만에 되살아났나
@@ -3580,6 +3607,10 @@ const ORCHARD_PATH_WAY = [[-1.5, 30], [0, 19], [2.2, 12], [-0.6, 5], [1.4, -2], 
 
 // 🍎 안쪽 소품(돌담·나무다리·돗자리·깃발 줄) — 정적이라 한 번만 만들고, rebuild 때마다 그룹에 다시 붙인다(드로우콜 2)
 let orchardDecor = null;
+let orchardSpotCue = null;
+let orchardSlotApproachReady = true;
+let orchardSlotFocusAt = 0;
+let orchardSlotFocus = -1;
 function orchardDecorGroup() {
   if (orchardDecor) return orchardDecor;
   const { group, solids } = buildOrchardDecor({ half: ORCHARD_HALF, stream: ORCHARD_STREAM_LOCAL, path: ORCHARD_PATH_WAY });
@@ -3619,8 +3650,9 @@ function buildOrchardPaths() {
 // 빈 자리 표시 — 나무 없는 흙 자리에만. 개수가 변하니 InstancedMesh 하나로 묶는다
 function syncOrchardSlotHints() {
   const free = freeSlots(gameState.orchard?.trees || [], orchardSlotsWorld());
+  orchardSlotFocus = -1;
   if (!free.length) return;
-  // 흙바닥과 색이 비슷해 "여기 심어라" 가 안 읽혔다 — 밝은 테두리를 깔고 그 위에 어두운 흙을 얹어 대비를 준다
+  // 기본 빈자리는 은은한 흙 링. 가까운 한 자리는 나루터·바다터 출입구와 같은 빛 스팟으로 강조한다.
   const m = new THREE.Matrix4();
   const ring = new THREE.InstancedMesh(
     shared('orchard.slotring.geo', () => new THREE.CircleGeometry(1.05, 14).rotateX(-Math.PI / 2)),
@@ -3633,6 +3665,45 @@ function syncOrchardSlotHints() {
     shared('orchard.slot.mat', () => clayMat(0x6f4a2a, false)), free.length);
   free.forEach((s, i) => { m.makeTranslation(s.x, 0.05, s.z); im.setMatrixAt(i, m); });
   im.instanceMatrix.needsUpdate = true; orchardGroup.add(im);
+}
+
+// 가장 가까운 빈 자리를 기존 인스턴스 안에서 강조하고, 묘목이 있으면 처음 접근할 때 씨앗 도구로 전환한다.
+// 별도 마커 오브젝트/재질을 만들지 않아 과수원 드로우콜은 그대로 유지한다.
+function updateOrchardSlotApproach(t) {
+  if (!atOrchard) { orchardSpotCue?.group && (orchardSpotCue.group.visible = false); orchardSlotApproachReady = true; orchardSlotFocus = -1; return; }
+  if (orchardSpotCue?.group.visible) orchardSpotCue.tick(t);
+  if (t < orchardSlotFocusAt) return;
+  orchardSlotFocusAt = t + 0.12;
+  const slots = freeSlots(gameState.orchard?.trees || [], orchardSlotsWorld());
+  let nearest = -1, best = Infinity;
+  for (let i = 0; i < slots.length; i++) {
+    const d = dist2D(slots[i], player.position);
+    if (d < best) { best = d; nearest = i; }
+  }
+  if (!orchardSpotCue && nearest >= 0) {
+    orchardSpotCue = makeGuideSpot(0xffd27a, 0.82);
+    scene.add(orchardSpotCue.group);
+  }
+  if (orchardSpotCue) {
+    const show = nearest >= 0 && best <= 9;
+    orchardSpotCue.group.visible = show;
+    if (show) {
+      orchardSpotCue.group.position.set(slots[nearest].x, 0, slots[nearest].z);
+    }
+  }
+  orchardSlotFocus = nearest;
+
+  const close = nearest >= 0 && best <= 3.2;
+  if (!close) { orchardSlotApproachReady = true; return; }
+  if (!orchardSlotApproachReady) return;
+  orchardSlotApproachReady = false;
+  const sapKey = sapKeyOf(gameState.orchard?.sapSel || 'apple');
+  if ((gameState.inventory[sapKey] || 0) > 0) {
+    const changed = TOOLS[currentTool]?.id !== 'seed';
+    if (toolPage !== 'farm') setToolPage('farm', true);
+    if (TOOLS[currentTool]?.id !== 'seed') selectToolAuto('seed');
+    if (changed) ui.toast?.('🌱 묘목 심을 자리에 왔어요 · 씨앗 도구로 바꿨어요', 2200);
+  }
 }
 
 // 밭의 rebuildFarm() 과 같은 꼴 — 상태가 바뀌면 통째로 다시 그린다
@@ -3651,6 +3722,7 @@ function rebuildOrchard() {
     if (c.isInstancedMesh) c.dispose();
     disposeOwned(c);   // 🍎 시안 흙 원판 — shared() 가 아니라 rebuild 마다 새로 굽는 것만 푼다(표식 ownGeo)
   }
+  orchardSlotFocus = -1;
   buildOrchardGround();     // 지면 1 + 시냇물 1(합침)
   buildOrchardPaths();      // 오솔길 1 + 잔모래 1
   buildOrchardRim();        // 경계 나무(줄기 1 + 잎 1)
@@ -6144,13 +6216,15 @@ function animate() {
     // 🛏️ 자는 동안엔 조작을 멈춘다 — #sleep-fade 는 포인터만 막아서, 이게 없으면
     //    데스크톱에서 암전 아래로 걸어가 문에 Space 를 눌러 집을 나가 버린다(키는 window 에서 받는다).
     else if (sleeping) { wantAction = false; }
+    else if (houseGuidance?.cinematic) { wantAction = false; updateCamera(dt); updateCameraFade(); }
     else if (!mgView && !duelActive) { updatePlayer(dt, t); updateObservatoryStairs(dt); updateMuseumView(dt); updateObservatory(dt, t); updateNeighbor(dt); updateMountain(dt); maybeRevealMountain(); updateCamera(dt); updateCameraFade(); }
     else { updateMgScene(dt, t); wantAction = false; }  // 🍳 요리 미니게임 중엔 클로즈업 무대가 카메라를 가짐 — 마을 상호작용(프롬프트·힌트·액션)은 정지
+    updateOrchardSlotApproach(t);
     if (museumView) {                       // 🔍 관람 중: 액션은 '돌아가기' 하나뿐
       if (wantAction) { wantAction = false; closeMuseumView(); }
     } else if (sledActive()) {
       wantAction = false;
-    } else if (!mgView && !duelActive && !intro && !dreamCutActive() && !mirrorRideActive()) {
+    } else if (!mgView && !duelActive && !intro && !houseGuidance?.cinematic && !dreamCutActive() && !mirrorRideActive()) {
       handleAction();
       updateNPCInteract();
       updateDoorInteract();
@@ -6255,6 +6329,7 @@ function animate() {
   updatePlaza(dt, inVillage2());   // 🌾 광장 근처면 진행률 재조회
   updatePond(dt, inVillage2());
   updateShopCue(t);          // 🛒 좌판 안내 스프라이트
+  houseGuidance?.update();   // 🏠 조망샷은 다른 카메라 연출·모달이 비었을 때만 시작
   // 집 터 안내판/마커: 플레이 중 + 미완성일 때만 (로그인 화면에선 숨김)
   const showHouseCue = (mode === 'play' && gameState.houseStage < 3);
   if (houseSign) { houseSign.visible = showHouseCue; if (showHouseCue) houseSign.position.y = 3.3 + Math.sin(t * 2) * 0.12; }
@@ -7845,8 +7920,9 @@ function tryBuild() {
   if (coinCost) logEcon('house_build', 'stage' + next, -coinCost, gameState.inventory.coins);   // [원장] 증축 'house_expand' 와 같은 축
   doPlayerAction(HOUSE_POS.x, HOUSE_POS.z); // 건축 제스처
   buildHouseStage(next);
+  if (next === 1) houseGuidance?.built();
   syncUnlocks();   // 🔓 집 기초 → 👷 목수 귀환
-  trackEvent('house_build', { stage: next, ...Object.fromEntries(info.items.map(i => [i.k, i.need])) });   // [GA4] 건축 퍼널(증축 house_expand 와 같은 축: stage)
+  trackEvent('house_build', { stage: next, ...(next === 1 && gameState.houseGuide ? { house_guide_arm: gameState.houseGuide.arm } : {}), ...Object.fromEntries(info.items.map(i => [i.k, i.need])) });   // [GA4] 건축 퍼널(증축 house_expand 와 같은 축: stage)
   if (next < 3) ui.toast?.(`🪵 ${STAGE_NAMES[next]} 완성!`);
   if (next === 1) requestSignupNudge(gameState, 'house', ui);
   refreshInventoryUI();
@@ -8250,6 +8326,7 @@ function giveReward(r, source = 'reward', item = null) {
 function refreshInventoryUI() {
   ui.setInventory?.(gameState.inventory);
   refreshCollectQuests();   // 보유량형 퀘스트 진행 갱신
+  houseGuidance?.onInventory();   // 🏠 부팅 시 보유 목재는 기준으로만 잡고, 플레이 중 15개를 넘을 때 배정
 }
 function dist2D(a, b) { return Math.hypot(a.x - b.x, a.z - b.z); }
 // 해당 위치가 장애물(나무·호수·벤치·가로등·집)과 겹치는지 — 밭 크기 여유(0.95) 포함

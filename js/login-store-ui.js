@@ -1,5 +1,6 @@
 import { loginStorePlan } from './login-store.js';
 import { TOUCH_KEY } from './app-banner.js';
+import { trackTenjinStoreClick } from './tenjin-web-to-app.js';
 
 function readTouch() {
   try { return JSON.parse(localStorage.getItem(TOUCH_KEY) || 'null'); } catch { return null; }
@@ -24,7 +25,10 @@ export function mountLoginStore({ config, platform, track, lang = 'ko', doc = do
   const card = doc.getElementById('login-store');
   const row = card?.querySelector('.ls-row');
   if (!row) return null;
-  const onClick = (os) => track('login_store_click', { os, device: plan.device, jid: plan.jid });
+  const onClick = (os) => {
+    track('login_store_click', { os, device: plan.device, jid: plan.jid });
+    trackTenjinStoreClick(os, config, readTouch());
+  };
   const arts = doc.getElementById('store-badges')?.content;
   const artFor = (os) => arts?.querySelector(`img[data-os="${os}"][data-lang="${lang === 'en' ? 'en' : 'ko'}"]`);
   const links = plan.links.filter(l => artFor(l.os));

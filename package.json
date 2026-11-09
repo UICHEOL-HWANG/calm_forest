@@ -34,7 +34,8 @@
     "@capacitor/cli": "^8.5.2",
     "@capacitor/core": "^8.5.2",
     "@supabase/supabase-js": "2.116.0",
-    "esbuild": "^0.28.2"
+    "esbuild": "^0.28.2",
+    "wrangler": "^4.156.1"
   },
   "private": true,
   "dependencies": {

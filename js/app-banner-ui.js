@@ -6,6 +6,7 @@
 // =============================================================
 
 import { createAppBanner, captureTouch, isHoldout, TOUCH_KEY } from './app-banner.js';
+import { trackTenjinStoreClick } from './tenjin-web-to-app.js';
 
 const storage = {
   get(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } },
@@ -78,7 +79,11 @@ export function mountAppBanner({ config, platform, t, track, onTrack, isGuest, c
     },
     hide() { el.classList.remove('show'); document.body.classList.remove('app-banner-on'); },
     connect, track,
-    navigate: (url) => { location.href = url; },
+    navigate: (url) => {
+      const os = /play\.google\.com/.test(url) ? 'android' : 'ios';
+      trackTenjinStoreClick(os, config, storage.get(TOUCH_KEY));
+      location.href = url;
+    },
     setTimeout: (fn, ms) => setTimeout(fn, ms),
     clearTimeout: (id) => clearTimeout(id),
   });
