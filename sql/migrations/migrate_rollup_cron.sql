@@ -7,10 +7,11 @@ security definer
 set search_path = public
 as $$
 declare
-  today date := (now() at time zone 'Asia/Seoul')::date;
+  local_now timestamp := now() at time zone 'Asia/Seoul';
+  today date := local_now::date;
 begin
   if pg_try_advisory_xact_lock(hashtext('cf_rollup')) then
-    perform public.cf_rollup(today - 1, today);
+    perform public.cf_rollup(case when extract(hour from local_now) < 1 then today - 1 else today end, today);
   end if;
 end
 $$;
