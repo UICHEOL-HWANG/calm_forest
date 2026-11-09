@@ -42,6 +42,10 @@ export const TUNING = {
     storeLive: { android: true, ios: true },   // 2026-10-13 켬 — Play 프로덕션(10/12)·App Store 1.0.2(10/13) 공개 확인
     iosAppId: '6821420691',                    // apps.apple.com/kr/app/id6821420691
     iosProviderToken: '129595134',             // App Store Connect 캠페인 링크 pt
+    tenjinClickUrls: {
+      ios: 'https://track.tenjin.com/v0/metapixel/bMFUmJpVCTh0je7WTB6g19?jsr=true&bundle_id=com.cheorish.lab.calmforest&platform=ios',
+      android: '', // Android SDK 이벤트 수신 뒤 Tenjin이 표시하는 주소를 채운다.
+    },
   },
 };
 

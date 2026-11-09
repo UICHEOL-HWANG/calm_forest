@@ -64,7 +64,8 @@ export function createMenuSheet({ Input, t, trackEvent, dotTarget = null, onOpen
     head.append(ttl, env, x);
     sheet.appendChild(head);
     CATS.forEach(([ico, cat, list]) => {
-      const cells = list.map(([id, cico]) => [$(id), cico]).filter(([el]) => el && el.style.display !== 'none');
+      const cells = list.map(([id, cico]) => [$(id), cico]).filter(([el]) =>
+        el && !el.hidden && getComputedStyle(el).display !== 'none');
       if (!cells.length) return;
       const h = document.createElement('div'); h.className = 'ms-cat'; h.innerHTML = iconHtml(ico); h.append(` ${t(cat)}`);
       const g = document.createElement('div'); g.className = 'ms-grid';

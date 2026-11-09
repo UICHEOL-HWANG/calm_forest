@@ -140,6 +140,8 @@ h2.sec {
 .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: 11px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
 .grid.wide { grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); }
+.analytics-heatmap-card { grid-column: span 2; min-width: 0; }
+.activity-return-dock { display: none; }
 
 /* 카드 */
 .card {
@@ -260,6 +262,30 @@ body.admin-gated #msg {
 #refSec .tiers .t .l { font-size: 10.5px; color: var(--ink-3); }
 #refSec .warn { color: var(--down); font-weight: 700; }
 @media (max-width: 640px) {
+  .grid, .grid.wide { grid-template-columns: minmax(0, 1fr); }
+  .analytics-heatmap-card { grid-column: 1; }
+  .activity-page > a.back { display: none; }
+  body.activity-page { padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px)); }
+  html.platform-toss body.activity-page {
+    /* Toss의 상단 상태/더보기/닫기 UI가 페이지를 덮으므로 제목 시작 위치를 내린다. */
+    padding-top: max(112px, calc(env(safe-area-inset-top, 0px) + 48px));
+  }
+  .activity-return-dock {
+    position: fixed; z-index: 20; inset: auto 0 0;
+    display: flex; justify-content: center;
+    padding: 10px 20px calc(10px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--line);
+    background: color-mix(in srgb, var(--surface-0) 94%, transparent);
+    backdrop-filter: blur(12px);
+  }
+  .activity-return-btn {
+    min-width: min(220px, 100%); min-height: 46px; padding: 0 22px;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--line); border-radius: 14px;
+    background: var(--surface-2); color: var(--ink);
+    font-size: 14px; font-weight: 700; white-space: nowrap;
+    text-decoration: none;
+  }
   #refSec .one { grid-template-columns: 1fr; } #refSec .one .stack { grid-template-columns: 1fr 1fr; }
   #refSec .funnel-row .fl { width: 80px; font-size: 11px; } #refSec .funnel-row .fv { width: 104px; font-size: 11px; }
 }

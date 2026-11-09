@@ -34,7 +34,8 @@ if os.environ.get("GCP_SA_KEY"):   # GitHub Actions — export_to_bq.py 와 같�
 
 from calm_ml import bq  # noqa: E402
 from calm_ml.experiments import (  # noqa: E402
-    cluster_bootstrap_ci, daily_cumulative, first_text, mean_arms, prop_arms, randomization_pvalue, resident_key, revisit_within,
+    chain_steps, cluster_bootstrap_ci, daily_cumulative, first_text, funnel_payload, mean_arms, prop_arms, randomization_pvalue,
+    resident_key, revisit_within,
 )
 
 KST = "Asia/Seoul"
@@ -246,6 +247,9 @@ ev as (
          (select value.int_value from unnest(event_params) where key = 'ga_session_id') as sid,
          (select value.string_value from unnest(event_params) where key = 'exp') as exp,
          (select value.string_value from unnest(event_params) where key = 'exp_arm') as arm_p,
+         (select coalesce(value.string_value, cast(value.int_value as string)) from unnest(event_params) where key = 'stage') as stage,
+         (select value.string_value from unnest(event_params) where key = 'result') as res,
+         (select coalesce(value.string_value, cast(value.int_value as string)) from unnest(event_params) where key in ('house_guide_arm', 'arm') limit 1) as garm,
          (select up.value.string_value from unnest(user_properties) up where up.key = @prop) as prop
   from {GA4}
   where regexp_contains(_TABLE_SUFFIX, r'^[0-9]{{8}}$') and _TABLE_SUFFIX between @since and @until
@@ -433,6 +437,127 @@ def run_banner(persona_ids: list[str]) -> dict:
     }
 
 
+E5_SQL = f"""
+with {GA4_EV},
+scr as (
+  select d, min(day) as day0, array_agg(distinct prop ignore nulls) as arms
+  from ev where event_name = 'login_screen' and prop is not null group by d
+)
+select scr.d, scr.arms, scr.day0 as day, dev.local, dev.persona, dev.country, any_value(lim.data_max) as data_max,
+       coalesce(logical_or(ev.event_name in ('login', 'nickname_step', 'tutorial_start') and ev.day = scr.day0), false) as y,
+       coalesce(logical_or(ev.event_name = 'login_store_click' and ev.day = scr.day0), false) as store,
+       coalesce(logical_or(ev.event_name = 'email_login' and ev.stage = 'open' and ev.day = scr.day0), false) as email_open,
+       coalesce(logical_or(ev.day = date_add(scr.day0, interval 1 day)), false) as d1
+from scr join dev using (d) cross join lim left join ev on ev.d = scr.d
+group by 1, 2, 3, 4, 5, 6
+"""
+
+HGUIDE_SQL = f"""
+with {GA4_EV},
+el as (
+  select d, min(us) as t0, min(day) as day0, array_agg(distinct garm ignore nulls) as arms
+  from ev where event_name = 'house_guide_eligible' group by d
+)
+select el.d, el.arms, el.day0 as day, dev.local, dev.persona, any_value(lim.data_max) as data_max,
+       coalesce(logical_or(ev.event_name = 'house_build' and ev.stage = '1' and ev.us between el.t0 and el.t0 + 86400000000), false) as y24,
+       coalesce(logical_or(ev.event_name = 'house_build' and ev.stage = '1' and ev.us >= el.t0), false) as y_any
+from el join dev using (d) cross join lim left join ev on ev.d = el.d
+group by 1, 2, 3, 4, 5
+"""
+
+GIFT_SQL = f"""
+with {GA4_EV}
+select ev.d, ev.event_name, ev.us, ev.stage, ev.res, ev.prop, dev.local, dev.persona
+from ev join dev using (d)
+where ev.event_name in ('login_nudge', 'login_nudge_click', 'inapp_nudge_email', 'email_login', 'signup_gift_claim', 'signup_gift_open')
+"""
+
+GIFT_LINKED = [
+    ("가입 선물 안내 노출", lambda e: e.event_name == "login_nudge"),
+    ("안내의 로그인 버튼 클릭", lambda e: e.event_name == "login_nudge_click"),
+    ("앱 안 브라우저에서 이메일 경로로 이동", lambda e: e.event_name == "inapp_nudge_email"),
+]
+GIFT_UNLINKED = [
+    ("이메일 화면 열기", lambda e: (e.event_name == "email_login") & (e.stage == "open")),
+    ("인증 코드 요청 성공", lambda e: (e.event_name == "email_login") & (e.stage == "request") & (e.res == "ok")),
+    ("인증 완료", lambda e: (e.event_name == "email_login") & (e.stage == "verify") & (e.res == "ok")),
+    ("가입 선물 지급(새 수령)", lambda e: (e.event_name == "signup_gift_claim") & (e.res == "new")),
+    ("선물 상자 열기", lambda e: e.event_name == "signup_gift_open"),
+]
+
+
+def _mature(df: pd.DataFrame, data_max, days: int = 1) -> pd.DataFrame:
+    if data_max is None:
+        return df.iloc[:0]
+    return df[pd.to_datetime(df.day) + pd.Timedelta(days=days) <= data_max]
+
+
+def run_e5(persona_ids: list[str]) -> dict:
+    df = bq.read_sql(E5_SQL, prop="exp_login", since="20261031", until="20261106", persona_ids=persona_ids)
+    n_all = len(df)
+    df, mixed = _one_arm(df)
+    df = df[~df.local & ~df.persona & df.country.eq("South Korea")].copy()
+    df["day"] = df.day.astype(str)
+    data_max = pd.Timestamp(df.data_max.max()) if len(df) else None
+    order = [("guest_first", "게스트 우선(처치)"), ("control", "지금 그대로")]
+    return {
+        "type": "prop", "compare": ["guest_first", "control"],
+        "arms": prop_arms(df, "arm", "y", order),
+        "secondary": [
+            {"label": "스토어 배지 클릭(가드레일)", "type": "prop", "arms": prop_arms(df, "arm", "store", order)},
+            {"label": "이메일 화면 열기", "type": "prop", "arms": prop_arms(df, "arm", "email_open", order)},
+            {"label": "다음 날 재방문", "type": "prop", "arms": prop_arms(_mature(df, data_max), "arm", "d1", order)},
+        ],
+        "daily": daily_cumulative(df, "day", "arm", "y", "guest_first", "control"),
+        "official": _ci_official(df, "y", "guest_first"),
+        "window": {"from": "2026-10-31", "to": "2026-11-06"},
+        "notes": [f"로그인 화면을 본 배정 기기 {n_all}대 · 무리가 섞인 기기 {mixed}대 제외 · localhost·한국 밖·페르소나 제외",
+                  "주 지표 = 로그인 화면을 본 날(KST) 게임 진입(login·nickname_step·tutorial_start)",
+                  "사전등록 판정은 11/6 까지 데이터로 한 번 · 목표 표본 무리당 약 115대에 못 미치면 판정 불가로 읽는다",
+                  "버튼 위치와 문구를 같이 바꿔서 어느 쪽 덕인지는 가를 수 없다"],
+    }
+
+
+def run_hguide(persona_ids: list[str]) -> dict:
+    df = bq.read_sql(HGUIDE_SQL, prop="exp_arm", since="20261103", until="99999999", persona_ids=persona_ids)
+    n_all = len(df)
+    df, mixed = _one_arm(df)
+    df = df[~df.local & ~df.persona].copy()
+    df["day"] = df.day.astype(str)
+    data_max = pd.Timestamp(df.data_max.max()) if len(df) else None
+    mat = _mature(df, data_max)
+    order = [("guide", "집터 안내(처치)"), ("control", "안내 없음")]
+    return {
+        "type": "prop", "compare": ["guide", "control"], "descriptive": True,
+        "arms": prop_arms(mat, "arm", "y24", order),
+        "secondary": [{"label": "첫 집 완공(기간 제한 없음 · 관측 진행 중)", "type": "prop", "arms": prop_arms(df, "arm", "y_any", order)}],
+        "daily": daily_cumulative(mat, "day", "arm", "y24", "guide", "control"),
+        "official": None,
+        "window": {"from": "2026-11-03", "to": None, "data_max": str(data_max.date()) if data_max is not None else None},
+        "notes": [f"집 터 안내 대상(나무 5개를 모은 순간) 기기 {n_all}대 · 무리가 섞인 기기 {mixed}대 제외 · localhost·페르소나 제외",
+                  "주 지표 = 대상이 된 뒤 24시간 안 첫 집 기초 완공(house_build stage 1) · 24시간이 지난 기기만",
+                  "사전등록 없음 · 방향만 본다 · E1 과 독립 배정"],
+    }
+
+
+def run_gift_path(persona_ids: list[str]) -> dict:
+    df = bq.read_sql(GIFT_SQL, prop="exp_login", since="20261030", until="99999999", persona_ids=persona_ids)
+    df = df[~df.local & ~df.persona]
+    group_of = df.dropna(subset=["prop"]).groupby("d")["prop"].first().to_dict()
+    events = df[["d", "event_name", "us", "stage", "res"]]
+    linked = chain_steps(events, GIFT_LINKED)
+    unlinked = [{"label": label, "devices": set(events[pred(events)]["d"]), "unlinked": True} for label, pred in GIFT_UNLINKED]
+    e5_nudged = sum(1 for d in linked[0]["devices"] if d in group_of)
+    return {
+        "funnel": funnel_payload(linked + unlinked, group_of, [("all", "전체")]),
+        "window": {"from": "2026-10-30", "to": None},
+        "notes": ["게스트로 하다가 가입 선물 안내를 보고 이메일로 이어가는 경로 · 윗부분 3단계는 같은 기기 ID 로 앞 단계를 거친 기기만 센다",
+                  "이메일 화면 이후는 외부 브라우저로 넘어가며 기기 ID 가 바뀌어 이어 붙일 수 없다 → 같은 기간 전체 기기 합계로 따로 본다. 안내를 본 기기가 인증까지 갔는지는 지금 기록으로 알 수 없다",
+                  f"안내를 본 기기 {len(linked[0]['devices'])}대 중 E5 배정(exp_login) 기기는 {e5_nudged}대 — 이 경로는 E5 무리별로 나눠 볼 수 없다",
+                  "버튼 클릭을 '더 하고 싶은 마음'으로 단정하지 않고 계속하려는 행동으로만 읽는다"],
+    }
+
+
 # ── Supabase 쓰기 ────────────────────────────────────────────────
 def _headers() -> dict:
     key = os.environ["SUPABASE_SERVICE_ROLE"]
@@ -463,7 +588,8 @@ def main() -> None:
     jobs = {"hint": lambda: run_hint(sessions), "probe": lambda: run_probe(pids),
             "guide": lambda: run_guide(sessions, pids), "beta": lambda: run_beta(sessions),
             "e1": lambda: run_e1(pids), "e2": lambda: run_e2(pids), "e3": lambda: run_e3(pids),
-            "banner": lambda: run_banner(pids)}
+            "banner": lambda: run_banner(pids), "e5": lambda: run_e5(pids), "hguide": lambda: run_hguide(pids),
+            "gift_path": lambda: run_gift_path(pids)}
     if a.only:
         jobs = {k: v for k, v in jobs.items() if k in a.only}
     failed = []
@@ -473,7 +599,8 @@ def main() -> None:
         except Exception as e:      # 한 실험이 실패해도 나머지는 갱신하고, 끝에서 실패로 알린다
             failed.append(f"{exp_id}: {e!r}")
             continue
-        arms = ", ".join(f"{x['key']} n={x['n']}" for x in res["arms"])
+        arms = ", ".join(f"{x['key']} n={x['n']}" for x in res["arms"]) if res.get("arms") else \
+            " → ".join(f"{s['label']} {s['by']['all']}" for s in res["funnel"]["steps"])
         print(f"[{exp_id}] {arms}" + (f" · official p={res['official']['p']}" if res.get("official") else ""))
         if not a.dry_run:
             upsert(exp_id, res)

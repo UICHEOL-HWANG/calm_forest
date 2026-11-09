@@ -5,7 +5,7 @@
 //  계산·판정: ./admin-metrics.js analyzeExperiment (테스트: tests/admin-experiments.test.mjs)
 // =============================================================
 import { $, V, nf, esc, CHAR, shareKey, bootAdmin, explainRpcError, showRpcError, showMsg, createLoader } from './admin-common.js';
-import { analyzeExperiment, twoProp } from './admin-metrics.js';
+import { analyzeExperiment, twoProp, funnelRows } from './admin-metrics.js';
 
 const STEPS = [
   ['chick', '병아리가 실험 명단을 펼치는 중'],
@@ -133,6 +133,11 @@ function armsTable(e) {
     : `<tr><td><b>${esc(x.label || x.key)}</b></td><td class="r">${nf(x.n)}</td><td class="r">${nf(x.x)} (${x.n ? (x.x / x.n * 100).toFixed(1) : '—'}%)</td></tr>`).join('');
   return `<div class="scroll-x"><table class="t">${head}${body}</table></div>`;
 }
+function funnelPanel(f) {
+  const head = `<tr><th>단계</th>${f.cols.map((c) => `<th class="r">${esc(c.label)}</th>`).join('')}</tr>`;
+  const body = funnelRows(f).map((r) => `<tr><td><b>${esc(r.label)}</b>${r.unlinked ? ' <span class="chip st">별도 집계</span>' : ''}</td>${r.cells.map((c) => `<td class="r">${nf(c.n)}${c.pct == null ? '' : ` <span class="def" style="display:inline">(${c.pct}%)</span>`}</td>`).join('')}</tr>`).join('');
+  return `<section class="panel"><h3>단계별 깔때기</h3><p class="def">괄호 = 직전 단계 대비 비율. 단위 = 기기. '별도 집계'는 앱 안 브라우저에서 외부 브라우저로 넘어가면 기기 ID가 바뀌어 앞 단계와 이어 붙일 수 없는 숫자(같은 기간 전체 합계)입니다.</p><div class="scroll-x"><table class="t">${head}${body}</table></div></section>`;
+}
 function emptyResult(e) {
   if (e.kind === 'ext') {
     return `<div class="empty-st"><img src="${CHAR('fox')}" alt=""><b>외부 플랫폼 숫자를 아직 안 넣었어요</b>
@@ -159,7 +164,7 @@ function renderDetail() {
       <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">${chip(a.verdict)}${e.prereg ? `<span class="lock">🔒 사전 기준 · ${esc(e.prereg)}</span>` : ''}</div>
       ${warn}
     </header>
-    ${!res?.arms?.some((x) => x.n > 0) ? emptyResult(e) : `
+    ${!res?.arms?.some((x) => x.n > 0) ? (res?.funnel ? '' : emptyResult(e)) : `
     <div class="checks">
       <div><span class="eyebrow">배정 비율(SRM)${res.ratio ? ` · 설계 ${res.ratio.map((x) => Math.round(x * 100)).join(':')}` : ''}</span><span class="num">${a.srm == null ? '—' : a.srm < 0.01 ? '어긋남' : '정상'}</span>${srmTxt(a.srm, e)}</div>
       <div><span class="eyebrow">표본</span><span class="num">${nf(a.n)}${e.need ? `<span class="def" style="display:inline"> / ${nf(e.need)}</span>` : ''}</span>
@@ -176,8 +181,9 @@ function renderDetail() {
       ${res.daily?.length ? `<section class="panel"><h3>날마다 쌓인 표본으로 본 차이</h3><p class="def">띠가 좁아지는지(표본이 쌓이는지)를 봅니다. 중간에 멈추고 판정하지 않습니다.</p>
         <div class="chartbox"><canvas id="cCum" height="200"></canvas></div></section>` : ''}
     </div>`}
+    ${res?.funnel ? funnelPanel(res.funnel) : ''}
     <div class="xtwo">
-      <section class="panel"><h3>군별 결과</h3>${armsTable(e)}
+      <section class="panel"><h3>군별 결과</h3>${res?.funnel && !res.arms?.length ? '<p class="def">무작위 배정이 없어 군 비교 없이 단계만 봅니다.</p>' : armsTable(e)}
         <p class="def">검정: ${esc(e.test || '—')}</p>
         ${(res?.notes || []).map((n) => `<p class="def">· ${esc(n)}</p>`).join('')}
         ${e.computed_at ? `<p class="def">계산 ${kst(e.computed_at)} · 원천 ${esc(e.source === 'manual' ? '수동 입력' : 'BigQuery')}</p>` : ''}</section>

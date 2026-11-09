@@ -51,6 +51,12 @@ export function retryDelay(attempt) {
   return Math.min(RETRY_MAX, RETRY_FIRST * Math.pow(2, n));
 }
 
+// Spread retries across clients so a brief outage does not cause every client
+// to hit Supabase on the same 600ms/1.2s/2.4s schedule.
+export function retryDelayJittered(attempt, random = Math.random) {
+  return Math.min(RETRY_MAX, Math.round(retryDelay(attempt) * (0.8 + random() * 0.4)));
+}
+
 //  🚪 스스로 낫지 않는 실패 — refresh token 폐기·만료(모든 요청이 401), game_saves RLS 정책
 //    사고, 결제 문제로 정지된 프로젝트. 이때는 5초마다 영원히 재시도만 하고 유저는 갇힌다.
 //    로그아웃 버튼은 enterGame() 다음 줄에서야 화면에 붙어서 손댈 수도 없다.

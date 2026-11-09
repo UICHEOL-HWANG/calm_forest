@@ -1,8 +1,10 @@
 import { seoHead, escapeHtml } from '../seo-meta.mjs';
 import { SITE } from '../seo-pages.mjs';
-import { SECTION_ORDER, renderBlock, linkedRefs, toPlain, firstSentence } from './content.mjs';
+import { SECTION_ORDER, renderBlock, renderInline, linkedRefs, toPlain, firstSentence } from './content.mjs';
 import { CONFIG } from '../../../js/config.js';
 import { faqOf } from './faq.mjs';
+import { categoryGuide, entryGuide } from './guides.mjs';
+import { HOME_GUIDE, CAT_BLURB } from './guides-text.mjs';
 
 const WIKI_KEYWORDS = ['고요위키', '고요한 숲', '고요한 숲 공략', '고요한 숲 도감', 'calm forest wiki'];
 
@@ -82,6 +84,7 @@ export function renderDoc(entry, secs, ctx) {
     ],
   };
   const faqHtml = qa.length ? `<section class="wk-faq"><h2>자주 묻는 질문</h2><dl>${qa.map(([q, a]) => `<dt>${escapeHtml(q)}</dt><dd>${escapeHtml(a)}</dd>`).join('')}</dl></section>\n` : '';
+  const guideHtml = `<section class="wk-entry-guide"><h2>공략 메모</h2>${entryGuide(entry, ctx.entries, ctx.backlinks).map(p => `<p>${renderInline(p, ctx.index)}</p>`).join('')}</section>`;
   const body = `<h1>${escapeHtml(entry.name)}</h1>
 <nav class="wk-crumb"><a href="/wiki/">고요위키</a> › <a href="${catPath(cat)}">${escapeHtml(cat.name)}</a> › ${escapeHtml(entry.name)}</nav>
 <div class="wk-cats">분류: <a href="${catPath(cat)}">${escapeHtml(cat.name)}</a></div>
@@ -96,6 +99,7 @@ ${order.map((h, i) => `<h2 id="s-${i + 1}"><span>${i + 1}.</span>${h}</h2>\n${re
 ${facts.map(([k, v]) => `<tr><th>${escapeHtml(k)}</th><td>${escapeHtml(v)}</td></tr>`).join('\n')}
 </table></aside>
 </div>
+${guideHtml}
 ${faqHtml}<section class="wk-rel"><h2>함께 보면 좋아요</h2><div class="wk-cards">${rel.map(e => `<a href="${docPath(e)}">${e.ico} ${escapeHtml(e.name)}</a>`).join('')}</div>
 <a class="wk-cta" href="${gameHref(`${entry.cat}_${entry.id}`)}">🌿 게임에서 만나러 가기</a></section>`;
   return shell({ path, title, description, jsonLd, body, campaign: `${entry.cat}_${entry.id}` });
@@ -110,9 +114,13 @@ export function renderCat(cat, entries, ctx) {
     crumbLd([['고요위키', '/wiki/'], [cat.name, path]]),
   ] };
   const others = ctx.cats.filter(c => c.id !== cat.id).map(c => `<a href="${catPath(c)}">${c.ico} ${escapeHtml(c.name)}</a>`).join('');
+  const guide = categoryGuide(cat.id, entries);
+  const guideHtml = `<section class="wk-cat-guide"><h2>${escapeHtml(cat.name)} 공략</h2>${guide.map(([heading, text]) => `<section><h3>${escapeHtml(heading)}</h3>${text.split('\n\n').map(p => `<p>${renderInline(p, ctx.index).replace(/\n/g, '<br>')}</p>`).join('')}</section>`).join('')}</section>`;
   const body = `<h1>${cat.ico} ${escapeHtml(cat.name)}</h1>
 <nav class="wk-crumb"><a href="/wiki/">고요위키</a> › ${escapeHtml(cat.name)}</nav>
 <p class="wk-lead">${escapeHtml(description)}</p>
+${guideHtml}
+<h2 class="wk-list-title">${escapeHtml(cat.name)} 전체 목록</h2>
 <table class="wk-list"><tr><th></th><th>이름</th><th>만나는 곳 · 때</th></tr>
 ${rows}
 </table>
@@ -127,9 +135,12 @@ export function renderHome(cats, entries) {
     return `<a class="wk-cat" href="${catPath(c)}"><span>${c.ico}</span><b>${escapeHtml(c.name)}</b><small>${n}개 문서</small></a>`;
   };
   const jsonLd = { '@context': 'https://schema.org', '@type': 'WebSite', name: '고요위키', url: `${SITE}/wiki/`, inLanguage: 'ko', about: { '@type': 'VideoGame', name: '고요한 숲', url: `${SITE}/` } };
+  const index = buildIndex(entries);
+  const guideHtml = `<section class="wk-cat-guide">${HOME_GUIDE.map(([h, t]) => `<section><h3>${escapeHtml(h)}</h3><p>${renderInline(t, index)}</p></section>`).join('')}<section><h3>분류별 안내</h3><ul class="wk-blurbs">${cats.map(c => `<li><a href="${catPath(c)}">${c.ico} ${escapeHtml(c.name)}</a> ${escapeHtml(CAT_BLURB[c.id] ?? '')}</li>`).join('')}</ul></section></section>`;
   const body = `<h1>🌿 고요위키</h1>
 <p class="wk-lead">${escapeHtml(description)} 지금 ${entries.length}개 문서가 있어요.</p>
 <div class="wk-grid">${cats.map(card).join('')}</div>
+${guideHtml}
 <section class="wk-rel"><h2>처음이라면</h2><div class="wk-cards"><a href="/guide/">📖 초보자 안내서</a><a href="/wiki/fish/">🐟 물고기 도감</a><a href="/wiki/cook/">🍳 요리 목록</a><a href="/wiki/npc/">🧑‍🌾 주민 소개</a></div>
 <a class="wk-cta" href="${gameHref('wiki_home')}">🌿 고요한 숲 하러 가기</a></section>`;
   return shell({ path: '/wiki/', title: '고요위키 · 고요한 숲 공식 위키', description, jsonLd, body, campaign: 'wiki_home', type: 'website' });

@@ -72,6 +72,7 @@ export function mountEmailLogin({ $, requestCode, verifyCode, track, now = () =>
   const cells = $('code-cells');   // 보이는 칸(장식). 실제 입력은 그 위의 투명 code-input 하나
   //  sentEmail/sentAt = 마지막으로 코드가 **실제로 나간** 주소·시각. 확인은 늘 이 주소로 한다
   //  (입력칸은 뒤로 가서 바꿀 수 있다). 요청·확인은 따로 잠근다 — 재전송 중에도 코드 확인은 된다.
+  let entryFrom = 'login_screen', sentFrom = 'login_screen';
   let view = 'main', sentEmail = '', sentAt = 0, timer = null, sending = false, verifying = false;
 
   const show = (which) => {
@@ -97,18 +98,18 @@ export function mountEmailLogin({ $, requestCode, verifyCode, track, now = () =>
   const openCode = () => { codeInput.value = ''; codeErr.textContent = ''; show('code'); codeInput.focus(); paintCells(); };
 
   // 요청 → 성공 여부만 돌려준다(화면 전환은 호출한 쪽이 지금 단계를 보고 정한다)
-  async function send(email, errEl) {
+  async function send(email, errEl, from = entryFrom) {
     errEl.textContent = '';
     sending = true;
     const r = await requestCode(email);
     sending = false;
     const reason = r.ok ? undefined : classifyAuthError(r.error);
-    track('email_login', { stage: 'request', result: r.ok ? 'ok' : 'fail', reason });
+    track('email_login', { stage: 'request', from, result: r.ok ? 'ok' : 'fail', reason });
     if (!r.ok) {
       errEl.textContent = MESSAGES[reason === 'rate_limit' || reason === 'invalid_email' ? reason : 'send_fail'];
       return false;
     }
-    sentEmail = email; sentAt = now();
+    sentEmail = email; sentFrom = from; sentAt = now();
     sentTo.textContent = `${email} 로 코드를 보냈어요.`;
     stopTimer(); timer = setInterval(paintResend, 1000); paintResend();
     return true;
@@ -117,7 +118,8 @@ export function mountEmailLogin({ $, requestCode, verifyCode, track, now = () =>
   const title = $('email-title'), hint = $('email-hint');
   const copy0 = { title: title?.textContent, hint: hint?.textContent };
   const openEmail = ({ title: tt = copy0.title, hint: hh = copy0.hint, from } = {}) => {
-    track('email_login', from ? { stage: 'open', from } : { stage: 'open' });
+    entryFrom = ['harvest', 'house', 'dex', 'dex5', 'dex12', 'shop', 'login_nudge', 'itch_google', 'premium_chip'].includes(from) ? from : 'login_screen';
+    track('email_login', { stage: 'open', from: entryFrom });
     if (title) title.textContent = tt;
     if (hint) hint.textContent = hh;
     emailErr.textContent = '';
@@ -145,7 +147,7 @@ export function mountEmailLogin({ $, requestCode, verifyCode, track, now = () =>
   resendBtn.addEventListener('click', async () => {
     if (sending || !sentEmail || cooldownLeft(sentAt, now()) > 0) return;
     resendBtn.disabled = true;
-    const ok = await send(sentEmail, codeErr);
+    const ok = await send(sentEmail, codeErr, sentFrom);
     if (!ok) paintResend();
   });
 
@@ -164,10 +166,11 @@ export function mountEmailLogin({ $, requestCode, verifyCode, track, now = () =>
     if (code.length < CODE_MIN) { codeErr.textContent = MESSAGES.invalid_code; return; }
     codeErr.textContent = '';
     verifying = true; codeVerify.disabled = true; codeVerify.textContent = '확인하는 중…';
+    const from = sentFrom; // 인증 콜백이 화면을 초기화해도 이번 시도의 경로 유지
     const r = await verifyCode(sentEmail, code);
     verifying = false; codeVerify.disabled = false; codeVerify.textContent = '시작하기';
     const reason = r.ok ? undefined : classifyAuthError(r.error);
-    track('email_login', { stage: 'verify', result: r.ok ? 'ok' : 'fail', reason });
+    track('email_login', { stage: 'verify', from, result: r.ok ? 'ok' : 'fail', reason });
     if (r.ok) { stopTimer(); return; }   // 세션 반영 → initAuth 콜백이 enterPlay
     codeErr.textContent = MESSAGES[['invalid_code', 'rate_limit', 'network'].includes(reason) ? reason : 'retry'];
     codeInput.select();

@@ -73,6 +73,7 @@ export function createSpotlight({ t, trackEvent, blocked = () => false }) {
     trackEvent?.('tutorial_spot', { step: s.key, ms: Date.now() - run.t, via });
     run.onStep?.(s, run.i);
     run.i += 1; run.t = Date.now(); run.stuck = false; run.gone = 0;
+    run.viewLogged = false;
     if (run.i >= run.steps.length) return finish();
     paint();
   }
@@ -130,6 +131,16 @@ export function createSpotlight({ t, trackEvent, blocked = () => false }) {
     const show = !isBlocked && visible;
     layer.classList.toggle('on', show);
     document.body.classList.toggle('spot-on', show);
+    // [GA4] 실제 화면에 노출된 단계 — 완료(tutorial_spot)와 분리해 마지막 노출 위치를 알 수 있게 한다.
+    if (show && !run.viewLogged) {
+      trackEvent?.('tutorial_spot_view', {
+        kind: run.kind,
+        step: s.key,
+        step_index: run.stepOffset + run.i + 1,
+        step_count: run.stepCount,
+      });
+      run.viewLogged = true;
+    }
     if (show) {
       const vw = innerWidth, vh = innerHeight;
       const h = s.target ? holeRect(r, PAD, vw, vh) : { l: vw / 2, t: vh / 2, r: vw / 2, b: vh / 2 };
@@ -181,7 +192,7 @@ export function createSpotlight({ t, trackEvent, blocked = () => false }) {
       if (!list.length) return Promise.resolve();
       return new Promise((resolve) => {
         if (run) stack.push(run);
-        run = { steps: list, i: 0, kind, onStep, blocked: blk, skip, resolve, t: Date.now(), t0: Date.now(), stuck: false, gone: 0 };
+        run = { steps: list, i: 0, stepOffset: startAt, stepCount: steps.length, viewLogged: false, kind, onStep, blocked: blk, skip, resolve, t: Date.now(), t0: Date.now(), stuck: false, gone: 0 };
         paint();
       });
     },

@@ -9,11 +9,25 @@
 
 const HTTP_REPORT = s => s === 404 || s >= 500;   // 400·401·409 는 정상 흐름(중복 23505·로그인 필요 등)
 
+// Third-party analytics requests are routinely blocked by privacy tools and are not
+// actionable game network failures. Keep application/API requests in the error feed.
+function isTelemetryRequest(url) {
+  try {
+    const parsed = new URL(String(url), globalThis.location?.href || 'https://localhost');
+    return (parsed.hostname === 'www.google-analytics.com' && parsed.pathname === '/g/collect')
+      || (parsed.hostname === 'www.google.com' && parsed.pathname === '/g/collect')
+      || (parsed.hostname === 'connect.facebook.net' && parsed.pathname.startsWith('/signals/'));
+  } catch (e) { return false; }
+}
+
 export function installErrorHooks({ win, doc, reporter, consoleObj, fetchScope, endpoint }) {
   const safeReport = (entry) => { try { reporter.report(entry); } catch (e) { /* 수집 실패는 삼킨다 */ } };
   const safeFlush = () => { try { reporter.flush({ beacon: true }); } catch (e) { /* 위와 같음 */ } };
 
   const onError = (ev) => {
+    // Android in-app browser's own navigation performance logger can outlive its
+    // native bridge during close; it is not an application error.
+    if (String(ev.filename || '').startsWith('iabjs://navigation_performance_logger_android')) return;
     const t = ev.target;
     if (t && t !== win && (t.src || t.href)) {
       if (/^(data|blob):/i.test(t.src || t.href)) return;   // 인라인 자원 — 원인 추적에 쓸모없고 길다
@@ -46,14 +60,15 @@ export function installErrorHooks({ win, doc, reporter, consoleObj, fetchScope, 
   fetchScope.fetch = async function (input, init) {
     const url = typeof input === 'string' ? input : input?.url || String(input);
     const method = (init?.method || input?.method || 'GET').toUpperCase();
+    const telemetryRequest = isTelemetryRequest(url);
     let res;
     try {
       res = await origFetch.call(this, input, init);
     } catch (e) {
-      if (!isOwnEndpoint(url) && e?.name !== 'AbortError') safeReport({ kind: 'network', msg: `${method} ${e?.message || 'fetch failed'}`, url });
+      if (!isOwnEndpoint(url) && !telemetryRequest && e?.name !== 'AbortError') safeReport({ kind: 'network', msg: `${method} ${e?.message || 'fetch failed'}`, url });
       throw e;
     }
-    if (!isOwnEndpoint(url) && HTTP_REPORT(res?.status)) safeReport({ kind: 'http', msg: `${method} ${res.status}`, url, status: res.status });
+    if (!isOwnEndpoint(url) && !telemetryRequest && HTTP_REPORT(res?.status)) safeReport({ kind: 'http', msg: `${method} ${res.status}`, url, status: res.status });
     return res;
   };
 

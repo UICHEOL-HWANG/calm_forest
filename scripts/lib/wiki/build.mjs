@@ -6,6 +6,7 @@ import { loadWiki, WIKI_DATA_FILES } from './load-data.mjs';
 import { gitDate } from '../git-date.mjs';
 import { parseContent, SECTION_ORDER } from './content.mjs';
 import { renderDoc, renderCat, renderHome, searchIndex, buildIndex, docPath, catPath } from './render.mjs';
+import { buildBacklinks } from './guides.mjs';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const CONTENT_DIR = path.join(ROOT, 'wiki', 'content');
@@ -24,7 +25,7 @@ export async function writeWiki(dist) {
   const { cats, entries } = await loadWiki();
   const index = buildIndex(entries);
   const content = loadAllContent();
-  const ctx = { index, entries, cats };
+  const ctx = { index, entries, cats, backlinks: buildBacklinks(content, index) };
   const missing = entries.filter(e => !content.has(`${e.cat}/${e.id}`)).map(e => `${e.cat}/${e.id}`);
   if (missing.length) throw new Error(`위키 본문 없음: ${missing.join(', ')}`);
   const problems = [];

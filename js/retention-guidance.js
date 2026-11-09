@@ -21,6 +21,7 @@ export const DEFAULT_RETENTION_GUIDANCE = {
 const SYSTEM_EVENTS = new Set([
   'churn_score',
   'session_time',
+  'tutorial_spot_view', // 노출 계측 전용 — 초기 행동 수·리텐션 개입 판단에는 넣지 않는다.
 ]);
 
 const ACTION_EVENTS = new Set([

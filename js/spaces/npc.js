@@ -682,13 +682,15 @@ const WELCOME_LINES = {
 };
 
 export function openMerchantOffer(offer) {
+  if (!ui.openMerchantModal) return;
   const line = WELCOME_LINES[offer.item] || WELCOME_LINES.wood;
-  ui.openMerchantModal?.({
+  ui.openMerchantModal({
     title: '방랑 상인',
     body: line.body,
     primary: { label: line.label, onClick: () => merchantWelcomeSell(offer) },
     secondary: { label: '다음에', onClick: () => merchantDismiss() },
   });
+  trackEvent('merchant_offer_shown', { item: offer.item, qty: offer.qty });
 }
 
 export function merchantWelcomeSell(offer) {
