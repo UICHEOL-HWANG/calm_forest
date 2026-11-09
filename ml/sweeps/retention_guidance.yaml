@@ -1,0 +1,145 @@
+shared:
+  method: bayes
+  metric:
+    name: objective
+    goal: maximize
+  feature_set:
+    values: [all, no_session_proxy, behavior]
+
+families:
+  logreg:
+    pos_weight:
+      distribution: q_uniform
+      min: 1
+      max: 10
+      q: 1
+    C:
+      distribution: log_uniform_values
+      min: 0.001
+      max: 10.0
+    penalty:
+      values: [l1, l2, elasticnet]
+    l1_ratio:
+      distribution: uniform
+      min: 0.1
+      max: 0.9
+
+  complement_nb:
+    alpha:
+      distribution: log_uniform_values
+      min: 0.01
+      max: 10.0
+
+  extra_trees:
+    pos_weight:
+      distribution: q_uniform
+      min: 1
+      max: 10
+      q: 1
+    n_estimators:
+      distribution: q_uniform
+      min: 200
+      max: 800
+      q: 100
+    max_depth:
+      values: [2, 3, 4]
+    min_samples_leaf:
+      distribution: q_uniform
+      min: 5
+      max: 50
+      q: 5
+    max_features:
+      values: [sqrt, 0.5]
+
+  hist_gbm:
+    pos_weight:
+      distribution: q_uniform
+      min: 1
+      max: 10
+      q: 1
+    max_depth:
+      values: [2, 3, 4]
+    learning_rate:
+      distribution: log_uniform_values
+      min: 0.02
+      max: 0.2
+    n_estimators:
+      distribution: q_uniform
+      min: 100
+      max: 500
+      q: 50
+    reg_lambda:
+      distribution: log_uniform_values
+      min: 0.01
+      max: 10.0
+    min_samples_leaf:
+      distribution: q_uniform
+      min: 10
+      max: 60
+      q: 5
+
+  lightgbm:
+    pos_weight:
+      distribution: q_uniform
+      min: 1
+      max: 10
+      q: 1
+    max_depth:
+      values: [2, 3, 4]
+    num_leaves:
+      distribution: q_uniform
+      min: 4
+      max: 15
+      q: 1
+    learning_rate:
+      distribution: log_uniform_values
+      min: 0.02
+      max: 0.2
+    n_estimators:
+      distribution: q_uniform
+      min: 100
+      max: 500
+      q: 50
+    min_samples_leaf:
+      distribution: q_uniform
+      min: 10
+      max: 60
+      q: 5
+    reg_lambda:
+      distribution: log_uniform_values
+      min: 0.01
+      max: 10.0
+    subsample:
+      values: [0.7, 0.85, 1.0]
+    colsample:
+      values: [0.6, 0.8, 1.0]
+
+  xgboost:
+    pos_weight:
+      distribution: q_uniform
+      min: 1
+      max: 10
+      q: 1
+    max_depth:
+      values: [2, 3, 4]
+    learning_rate:
+      distribution: log_uniform_values
+      min: 0.02
+      max: 0.2
+    n_estimators:
+      distribution: q_uniform
+      min: 100
+      max: 500
+      q: 50
+    min_child_weight:
+      distribution: log_uniform_values
+      min: 1.0
+      max: 20.0
+    reg_lambda:
+      distribution: log_uniform_values
+      min: 0.01
+      max: 10.0
+    subsample:
+      values: [0.7, 0.85, 1.0]
+    colsample:
+      values: [0.6, 0.8, 1.0]
