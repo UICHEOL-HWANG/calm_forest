@@ -115,3 +115,30 @@ def cluster_bootstrap_ci(y, arm, cluster, n_boot: int = 2000, seed: int = 0, alp
         stats.append(_diff(y[pick], a))
     lo, hi = np.quantile(stats, [alpha / 2, 1 - alpha / 2])
     return round(float(lo) * 100, 2), round(float(hi) * 100, 2)
+
+
+def chain_steps(events: pd.DataFrame, steps: list) -> list[dict]:
+    alive: set | None = None
+    prev: dict = {}
+    out: list[dict] = []
+    for label, pred in steps:
+        hit = events[pred(events)]
+        if alive is not None:
+            hit = hit[hit["d"].isin(alive)]
+            hit = hit[hit["us"] >= hit["d"].map(prev)]
+        first = hit.groupby("d")["us"].min()
+        alive = set(first.index)
+        prev = first.to_dict()
+        out.append({"label": label, "devices": alive})
+    return out
+
+
+def funnel_payload(steps: list[dict], group_of: dict, cols: list[tuple[str, str]]) -> dict:
+    def count(devices: set, key: str) -> int:
+        return len(devices) if key == "all" else sum(1 for d in devices if group_of.get(d) == key)
+
+    return {
+        "cols": [{"key": k, "label": label} for k, label in cols],
+        "steps": [{"label": s["label"], "unlinked": bool(s.get("unlinked")), "by": {k: count(s["devices"], k) for k, _ in cols}}
+                  for s in steps],
+    }
