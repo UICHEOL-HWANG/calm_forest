@@ -1,0 +1,13 @@
+# tasks · admob-rewarded
+- [x] 플러그인 설치·앱 ID
+- [x] 보상형 모듈 + 테스트(TDD)
+- [x] UMP·ATT 흐름 (문구 검수 대기)
+- [x] paid event 값
+- [x] Android 에뮬레이터: 테스트 광고 표시·complete(valueMicros 포함)·로드 실패 fail 분류 (shots/android-*)
+- [ ] skip 실화면 확인: 테스트 광고가 보상 전 닫기를 막아 UI로 재현 못함 → 단위 테스트로만 검증, 실기기에서 확인 필요
+- [x] iOS 시뮬레이터: ATT 창(ko)·테스트 광고·complete(valueMicros 포함)·로드 시간 초과 fail (shots/ios-*)
+- [x] 스토어 변경 목록
+- [x] 키 스캔·커밋 (푸시·업로드·심사는 승인 뒤)
+- [ ] (후속) 개인정보처리방침 수정, 프리패스 버튼·계측, 설정 화면 개인정보 옵션 버튼
+- [ ] (사용자) 애드몹 콘솔 개인정보 보호 및 메시지: GDPR 메시지 게시 — 없으면 UMP 가 'no form(s) configured' 오류 → 운영 빌드는 광고 요청 안 함
+- [ ] (사용자) ATT 문구 후보 확정

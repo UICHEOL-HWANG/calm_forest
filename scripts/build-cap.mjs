@@ -40,7 +40,9 @@ mkdirSync(OUT, { recursive: true });
 
 // ── index.html ──
 let html = readFileSync('index.html', 'utf8');
-html = replaceOnce(html, '<head>', `<head>\n  <script>window.${FLAGS[TARGET]} = true;</script>`, 'index.html');   // ①
+const ADS_TEST = process.env.ADS_TEST === '1';
+const adsFlag = ADS_TEST ? ' window.__ADS_TEST__ = true;' : '';
+html = replaceOnce(html, '<head>', `<head>\n  <script>window.${FLAGS[TARGET]} = true;${adsFlag}</script>`, 'index.html');   // ①
 html = replaceOnce(html, IMPORTMAP_THREE, '"three": "./vendor/three/three.module.js"', 'index.html');     // ②
 html = replaceOnce(html, IMPORTMAP_ADDONS, '"three/addons/": "./vendor/three/addons/"', 'index.html');
 html = html.replace(/^\s*<!-- 📱 PWA[\s\S]*?-->\s*\n/gm, '');                                              // ④ 설명 주석
@@ -70,6 +72,15 @@ const { bundleBoot } = await import('./lib/bundle-boot.mjs');
 const boot = await bundleBoot(OUT);
 html = readFileSync(`${OUT}/index.html`, 'utf8');
 console.log(`[build-cap] 첫 화면 JS ${boot.bootFiles.length}개로 묶음`);
+
+const ADS_DEBUG = 'js/ads/rewarded-debug.js';
+if (ADS_TEST) {
+  html = replaceOnce(html, '</body>', `  <script type="module" src="./${ADS_DEBUG}"></script>\n</body>`, 'index.html');
+  writeFileSync(`${OUT}/index.html`, html);
+  console.log('[build-cap] ⚠️ ADS_TEST=1 — 구글 테스트 광고 단위 + 검증 버튼. 스토어에 올리지 말 것');
+} else {
+  rmSync(`${OUT}/${ADS_DEBUG}`, { force: true });
+}
 
 // ── 검증: 오프라인에서 필요한 코드가 외부에서 오면 안 된다 ──
 const problems = [];
