@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>포구 섬 가게 비교</title>
+<style>
+  :root { --bg: #f3efe6; --ink: #2f3a2c; --sub: #6b7563; --card: #fffdf8; --line: #ddd5c4; --accent: #4f7a3a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
+  header { padding: 18px 24px 4px; }
+  h1 { margin: 0 0 4px; font-size: 22px; }
+  .lead { margin: 0; color: var(--sub); max-width: 1000px; }
+  .bar { display: flex; flex-wrap: wrap; gap: 14px; padding: 10px 24px; align-items: center; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--card); }
+  .seg button { border: 0; background: none; padding: 6px 13px; font: inherit; color: var(--sub); cursor: pointer; }
+  .seg button.on { background: var(--accent); color: #fff; }
+  .seg-label { color: var(--sub); font-size: 13px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 22px; padding: 8px 24px 28px; }
+  .col { width: var(--w); }
+  .col h2 { margin: 0 0 2px; font-size: 16px; }
+  .col p { margin: 0 0 10px; color: var(--sub); font-size: 13px; min-height: 40px; }
+  .screen { width: var(--w); height: var(--h); border-radius: var(--r); overflow: hidden; box-shadow: 0 0 0 var(--bez) #262a24, 0 10px 28px rgba(0,0,0,.18); }
+  .screen canvas { display: block; width: 100%; height: 100%; }
+</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+</head>
+<body>
+<header>
+  <h1>🏝️ 포구 섬 가게: C안(포장마차 + 기둥집) 다듬기 3변형</h1>
+  <p class="lead">왼쪽이 🏮 포장마차, 오른쪽이 🛖 어부 기둥집입니다. 레퍼런스(어묵 야타이: 가파른 박공지붕·붉은 기둥·처마 끝 종이등·노렌·큰 바퀴살·둥근 의자 / 독하우스: 둥근 지붕·위가 넓은 벽·버팀목 기둥·넓은 데크·구명튜브)를 형태로 옮기고, 세 변형은 색과 비율만 다릅니다.</p>
+</header>
+<div class="bar">
+  <span class="seg-label">시간</span>
+  <div class="seg" id="tod"><button data-v="night" class="on">밤</button><button data-v="day">낮</button></div>
+  <span class="seg-label">시점</span>
+  <div class="seg" id="view"><button data-v="game" class="on">게임 시점</button><button data-v="near">가까이</button></div>
+  <span class="seg-label">화면</span>
+  <div class="seg" id="dev"><button data-v="phone" class="on">가로 폰</button><button data-v="pc">PC</button></div>
+</div>
+<div class="grid" id="grid"></div>
+<script type="module">
+import * as THREE from 'three';
+import { tubBoat, buildShops, C_VARIANTS as SHOP_STYLES, setNight, mat } from './port-shop-models.js';
+
+let tod = 'night', view = 'game', device = 'phone';
+const scenes = [];
+
+function makeHero() {
+  const g = new THREE.Group();
+  const c = 0x9b6a43;
+  const body = new THREE.Mesh(new THREE.IcosahedronGeometry(0.4, 1), mat(c)); body.scale.set(1, 1.05, 0.9); body.position.y = 0.43; g.add(body);
+  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.33, 1), mat(c)); head.position.y = 1.03; g.add(head);
+  for (const s of [-1, 1]) { const e = new THREE.Mesh(new THREE.IcosahedronGeometry(0.1, 0), mat(c)); e.position.set(0.21 * s, 1.3, 0); g.add(e); }
+  const hat = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.32, 10), mat(0xc0432b)); hat.position.y = 1.42; g.add(hat);
+  return g;
+}
+
+function tree(g, x, z, s = 1) {
+  const t = new THREE.Mesh(new THREE.CylinderGeometry(0.14 * s, 0.2 * s, 1.3 * s, 6), mat(0x8a5a36)); t.position.set(x, 0.65 * s, z); g.add(t);
+  const c = new THREE.Mesh(new THREE.IcosahedronGeometry(0.9 * s, 0), mat(0x4f8a45)); c.position.set(x, 1.8 * s, z); g.add(c);
+}
+
+function glowTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const x = c.getContext('2d'); const gr = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+  gr.addColorStop(0, 'rgba(255,190,110,0.8)'); gr.addColorStop(0.4, 'rgba(255,170,90,0.3)'); gr.addColorStop(1, 'rgba(255,160,80,0)');
+  x.fillStyle = gr; x.fillRect(0, 0, 128, 128);
+  return new THREE.CanvasTexture(c);
+}
+
+function build(style) {
+  const col = document.createElement('div'); col.className = 'col';
+  col.innerHTML = `<h2>${SHOP_STYLES[style].title}</h2><p>${SHOP_STYLES[style].note}</p><div class="screen"><canvas></canvas></div>`;
+  document.getElementById('grid').appendChild(col);
+  const renderer = new THREE.WebGLRenderer({ canvas: col.querySelector('canvas'), antialias: true });
+  renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(30, 2, 0.1, 200);
+  const hemi = new THREE.HemisphereLight(0xfff1dc, 0x2c4a5a, 1); scene.add(hemi);
+  const sun = new THREE.DirectionalLight(0xffe2b8, 1.2); sun.position.set(-8, 16, 10); scene.add(sun);
+  const sea = new THREE.Mesh(new THREE.PlaneGeometry(120, 80), mat(0x24557a)); sea.rotation.x = -Math.PI / 2; sea.position.y = -0.05; scene.add(sea);
+  const world = new THREE.Group(); scene.add(world);
+  const sand = new THREE.Mesh(new THREE.CylinderGeometry(9, 10, 0.8, 22), mat(0xe8d7a8)); sand.position.set(1, -0.4, -3.2); world.add(sand);
+  const grass = new THREE.Mesh(new THREE.CylinderGeometry(6.2, 6.6, 0.2, 18), mat(0x86b86f)); grass.position.set(1.8, 0.05, -4.6); world.add(grass);
+  const pier = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.18, 4.2), mat(0x9b6b3f)); pier.position.set(-0.4, 0.3, 4.8); world.add(pier);
+  for (const z of [3.2, 4.8, 6.4]) for (const x of [-1.1, 0.3]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 1.1, 6), mat(0x6e4a2c)); p.position.set(x, 0.05, z); world.add(p); }
+  const { market, hut } = buildShops(style);
+  market.position.set(-3.2, 0, -1.4); market.rotation.y = 0.62; world.add(market);
+  hut.position.set(3.6, 0, -2.2); hut.rotation.y = -0.55; world.add(hut);
+  tree(world, -6, -5, 1.1); tree(world, 7.2, -5.5, 1.3); tree(world, 0.4, -7, 0.9);
+  const boat = tubBoat(); boat.position.set(1.4, 0.02, 5.6); boat.rotation.y = 0.5; world.add(boat);
+  const hero = makeHero(); hero.scale.setScalar(0.75); hero.position.copy(boat.userData.seat); boat.add(hero);
+  for (const [x, z, s] of [[3.8, 6.4, 0.7], [4.6, 4.8, 0.5], [-2.8, 7, 0.6]]) { const pad = new THREE.Mesh(new THREE.CylinderGeometry(s, s, 0.04, 12), mat(0x5aa35a)); pad.position.set(x, 0.0, z); world.add(pad); }
+  const wg = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 4.5), new THREE.MeshBasicMaterial({ map: glowTexture(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  wg.rotation.x = -Math.PI / 2; wg.position.set(0.48, 0.06, -0.92); boat.add(wg);
+  const S = { col, renderer, scene, camera, hemi, sun, sea, world, wg, boat };
+  scenes.push(S);
+  return S;
+}
+
+function apply(S) {
+  const night = tod === 'night';
+  S.scene.background = new THREE.Color(night ? 0x0d1a26 : 0x9fd3e8);
+  S.sea.material = mat(night ? 0x24557a : 0x4fb3c9);
+  S.hemi.intensity = night ? 0.62 : 1.05;
+  S.hemi.color.set(night ? 0x8fa6d6 : 0xfff1dc);
+  S.sun.intensity = night ? 0.25 : 1.2;
+  S.sun.color.set(night ? 0x9fb6e6 : 0xffe2b8);
+  setNight(S.world, night);
+  S.wg.visible = night;
+  const w = device === 'phone' ? 420 : 560, h = device === 'phone' ? 194 : 350;
+  S.col.style.setProperty('--w', w + 'px'); S.col.style.setProperty('--h', h + 'px');
+  S.col.style.setProperty('--r', device === 'phone' ? '20px' : '8px'); S.col.style.setProperty('--bez', device === 'phone' ? '6px' : '3px');
+  S.renderer.setSize(w, h, false);
+  S.camera.aspect = w / h;
+  if (view === 'game') { S.camera.fov = device === 'phone' ? 30 : 34; S.camera.position.set(0.4, 17, 15); S.camera.lookAt(0.4, 0, 0.6); }
+  else { S.camera.fov = 30; S.camera.position.set(0.2, 6.2, 12.5); S.camera.lookAt(0.2, 1.2, -1.2); }
+  S.camera.updateProjectionMatrix();
+}
+
+for (const s of ['C1', 'C2', 'C3']) build(s);
+scenes.forEach(apply);
+let t = 0;
+function loop() {
+  t += 0.016;
+  for (const S of scenes) { S.boat.position.y = 0.02 + Math.sin(t * 2) * 0.04; S.boat.rotation.z = Math.sin(t * 1.5) * 0.03; S.renderer.render(S.scene, S.camera); }
+  requestAnimationFrame(loop);
+}
+loop();
+function seg(id, fn) { document.getElementById(id).addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; for (const x of e.currentTarget.children) x.classList.toggle('on', x === b); fn(b.dataset.v); scenes.forEach(apply); }); }
+seg('tod', v => tod = v);
+seg('view', v => view = v);
+seg('dev', v => device = v);
+window.__shop = { scenes, apply };
+</script>
+</body>
+</html>

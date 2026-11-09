@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>포구 섬 진입 위치 비교</title>
+<style>
+  :root { --bg: #f3efe6; --ink: #2f3a2c; --sub: #6b7563; --card: #fffdf8; --line: #ddd5c4; --accent: #4f7a3a; --gold: #e8b23a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
+  header { padding: 18px 24px 4px; }
+  h1 { margin: 0 0 4px; font-size: 22px; }
+  .lead { margin: 0; color: var(--sub); max-width: 1100px; }
+  .bar { display: flex; flex-wrap: wrap; gap: 14px; padding: 10px 24px; align-items: center; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--card); }
+  .seg button { border: 0; background: none; padding: 6px 13px; font: inherit; color: var(--sub); cursor: pointer; }
+  .seg button.on { background: var(--accent); color: #fff; }
+  .seg-label { color: var(--sub); font-size: 13px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 22px; padding: 8px 24px 28px; align-items: flex-start; }
+  .col { width: var(--w); }
+  .col h2 { margin: 0 0 2px; font-size: 16px; }
+  .col .sum { margin: 0 0 10px; color: var(--sub); font-size: 13px; min-height: 40px; }
+  .screen { position: relative; width: var(--w); height: var(--h); border-radius: var(--r); overflow: hidden; box-shadow: 0 0 0 var(--bez) #262a24, 0 10px 28px rgba(0,0,0,.18); }
+  .screen canvas { display: block; width: 100%; height: 100%; }
+  .card { position: absolute; left: 12px; top: 10px; background: rgba(255,253,248,.94); border-radius: 12px; padding: 5px 12px; font-size: 13px; font-weight: 600; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+  .card small { color: var(--sub); font-weight: 500; margin-left: 6px; }
+  .dist { position: absolute; font-size: 12px; font-weight: 700; color: #5a3d0c; background: var(--gold); border-radius: 999px; padding: 1px 8px; transform: translate(-50%, -100%); white-space: nowrap; }
+  .meta { margin-top: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; grid-template-columns: 200px 1fr; gap: 12px; }
+  .meta svg { width: 200px; height: 190px; background: #e6eedb; border-radius: 8px; }
+  .meta dl { margin: 0; font-size: 13px; }
+  .meta dt { font-weight: 700; margin-top: 4px; }
+  .meta dt:first-child { margin-top: 0; }
+  .meta dd { margin: 0 0 2px; color: var(--sub); }
+  .pro { color: #2f6a2a; }
+  .con { color: #a0482c; }
+</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+</head>
+<body>
+<header>
+  <h1>⛵ 포구 섬 진입 위치: 통배를 어디서 타나</h1>
+  <p class="lead">세 안 모두 첫 방문 길 안내 1단계(“통배를 타 보세요”) 화면입니다. 금색 고리·머리 위 화살표·발밑 화살촉은 같은 규칙을 씁니다. 좌표는 실제 마을 값(js/data/places.js)을 썼고, 아래 지도의 점선은 마을 한가운데(0,0)에서 걷는 길입니다.</p>
+</header>
+<div class="bar">
+  <span class="seg-label">시간</span>
+  <div class="seg" id="tod"><button data-v="day" class="on">낮</button><button data-v="night">밤</button></div>
+  <span class="seg-label">화면</span>
+  <div class="seg" id="dev"><button data-v="phone" class="on">가로 폰</button><button data-v="pc">PC</button></div>
+</div>
+<div class="grid" id="grid"></div>
+<script type="module">
+import * as THREE from 'three';
+import { tubBoat, setNight, mat, glow } from './port-shop-models.js';
+
+let tod = 'day', device = 'phone';
+const scenes = [];
+
+const SEA_GATE = { x: 14.5, z: -12.5 };
+const COVE = { x: 24, z: -21.5, r: 12 };
+const POND = { x: 0, z: -21.5, r: 7 };
+const LAKE = { x: 16, z: 9, r: 6 };
+const HOUSE = { x: -8, z: -8 };
+const STALL = { x: 17.2, z: -9.4 };
+const FERRYMAN = { x: 2.5, z: -13.5 };
+
+const coveDir = Math.atan2(-9 - COVE.z, 26.5 - COVE.x);
+const COVE_SHORE = { x: COVE.x + Math.cos(coveDir) * COVE.r, z: COVE.z + Math.sin(coveDir) * COVE.r };
+const COVE_PIER_END = { x: COVE.x + Math.cos(coveDir) * (COVE.r - 3.2), z: COVE.z + Math.sin(coveDir) * (COVE.r - 3.2) };
+
+const OPTIONS = [
+  {
+    id: 'A', title: 'A안 · 바다터 후미에 통배 부두',
+    sum: '마을 북동쪽 후미(지금 등대가 보이는 바닷가)에 짧은 부두를 하나 더 놓고 통배를 묶어 둡니다. 타면 후미 물 위로 바로 나갑니다.',
+    hero: { x: 22.4, z: -5.2 }, focus: { x: 23, z: -9.5 },
+    route: [[0, 0], [8, -3], [16, -5], [22.4, -5.2], [COVE_SHORE.x, COVE_SHORE.z], [COVE_PIER_END.x, COVE_PIER_END.z]],
+    hops: '공간 전환 1번(출항할 때)',
+    open: '바다터와 따로 열 수 있음. 다만 지금 후미 일대는 바다터 잠금 구역이라 잠금 범위를 나눠야 함',
+    pro: '마을에서 배가 바로 보여 화살표 목표가 한 화면 안에 있음. 바다 쪽으로 출항하는 그림이 자연스러움',
+    con: '후미 물가에 돌다리·호미 가판·등대가 이미 있어 소품이 붐빔. 잠금 구역 분리 작업이 생김',
+    build: buildCove,
+  },
+  {
+    id: 'B', title: 'B안 · 바다터 안 데크 끝',
+    sum: '마을은 그대로 두고, 바다터에 들어간 뒤 낚시 데크 끝 옆에 통배를 묶어 둡니다. 바다 콘텐츠가 한곳에 모입니다.',
+    hero: { x: 0, z: 2.2 }, focus: { x: 0.8, z: -3.6 },
+    route: [[0, 0], [8, -5], [SEA_GATE.x, SEA_GATE.z]],
+    inner: 12,
+    hops: '공간 전환 2번(바다터 입장 → 출항)',
+    open: '바다터가 열려야 함(물 가지 꾸러미 완료). 식당을 카페 다음에 열면 바다터가 아직 잠긴 사람이 생김',
+    pro: '마을 수정이 없음. 바다 낚시·갯벌·잠수와 같은 공간이라 “바다는 여기”로 기억하기 쉬움',
+    con: '첫 길 안내가 마을과 바다터 두 공간에 걸침. 데크 끝은 기존 낚시 자리와 동선이 겹침',
+    build: buildSeaDeck,
+  },
+  {
+    id: 'C', title: 'C안 · 사공 나루터에 함께',
+    sum: '마을 12시 방향 나루터(사공 오리 자리)에 나룻배와 나란히 통배를 묶습니다. 사공 오리가 섬 가는 길을 알려 줍니다.',
+    hero: { x: 0.4, z: -8.6 }, focus: { x: 1, z: -13.2 },
+    route: [[0, 0], [0.4, -8.6], [0.6, -14.2], [2.1, -17.6]],
+    hops: '공간 전환 1번(출항할 때)',
+    open: '강(물 서식지)과 함께 이미 열려 있는 곳. 식당을 여는 사람은 모두 여기에 와 본 적이 있음',
+    pro: '가장 가깝고, 주민(사공 오리)이 말로 안내할 수 있음',
+    con: '둥근 연못·강 나루라 바다로 나가는 그림이 어색함. 강 가는 나룻배와 바다 가는 통배가 한 부두에 섞여 헷갈림',
+    build: buildPond,
+  },
+];
+
+function put(g, geo, m, p, r = [0, 0, 0], s = [1, 1, 1]) {
+  const o = new THREE.Mesh(geo, m); o.position.set(...p); o.rotation.set(...r); o.scale.set(...s); g.add(o); return o;
+}
+function disc(g, x, z, r, c, y = 0.02) {
+  const m = new THREE.Mesh(new THREE.CircleGeometry(r, 48), new THREE.MeshStandardMaterial({ color: c, roughness: 0.4 }));
+  m.rotation.x = -Math.PI / 2; m.position.set(x, y, z); g.add(m); return m;
+}
+function tree(g, x, z, s = 1) {
+  put(g, new THREE.CylinderGeometry(0.14 * s, 0.2 * s, 1.3 * s, 6), mat(0x8a5a36), [x, 0.65 * s, z]);
+  put(g, new THREE.IcosahedronGeometry(0.9 * s, 0), mat(0x4f8a45), [x, 1.8 * s, z]);
+}
+function textTex(txt, w = 256, h = 96, bg = '#f6ead0', fg = '#4a3320') {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const x = c.getContext('2d'); x.fillStyle = bg; x.fillRect(0, 0, w, h);
+  x.fillStyle = fg; x.font = `700 ${Math.round(h * 0.42)}px -apple-system, "Apple SD Gothic Neo", sans-serif`;
+  x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(txt, w / 2, h / 2 + 2);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function signpost(g, x, z, txt, ry = 0, fresh = false) {
+  const s = new THREE.Group(); s.position.set(x, 0, z); s.rotation.y = ry; g.add(s);
+  put(s, new THREE.CylinderGeometry(0.07, 0.08, 1.6, 6), mat(0x6e4a2c), [0, 0.8, 0]);
+  const wood = mat(0x8a5a36);
+  const board = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.74, 0.08), [wood, wood, wood, wood,
+    new THREE.MeshStandardMaterial({ map: textTex(txt, 256, 96, fresh ? '#fff2c2' : '#f6ead0') }), wood]);
+  board.position.y = 1.5; s.add(board);
+  return s;
+}
+function hero() {
+  const g = new THREE.Group(); const c = 0x9b6a43;
+  put(g, new THREE.IcosahedronGeometry(0.4, 1), mat(c), [0, 0.43, 0], [0, 0, 0], [1, 1.05, 0.9]);
+  put(g, new THREE.IcosahedronGeometry(0.33, 1), mat(c), [0, 1.03, 0]);
+  for (const s of [-1, 1]) put(g, new THREE.IcosahedronGeometry(0.1, 0), mat(c), [0.21 * s, 1.3, 0]);
+  put(g, new THREE.ConeGeometry(0.34, 0.32, 10), mat(0xc0432b), [0, 1.42, 0]);
+  return g;
+}
+function duck() {
+  const g = new THREE.Group();
+  put(g, new THREE.IcosahedronGeometry(0.42, 1), mat(0xf0ede4), [0, 0.45, 0], [0, 0, 0], [1, 1, 1.1]);
+  put(g, new THREE.IcosahedronGeometry(0.3, 1), mat(0xf5f2ea), [0, 1.0, 0.05]);
+  put(g, new THREE.BoxGeometry(0.22, 0.08, 0.2), mat(0xe8a33c), [0, 0.96, 0.32]);
+  put(g, new THREE.ConeGeometry(0.5, 0.22, 12), mat(0xe8a33c), [0, 1.3, 0]);
+  return g;
+}
+function pier(g, ax, az, bx, bz, w = 1.4) {
+  const len = Math.hypot(bx - ax, bz - az), ang = Math.atan2(bx - ax, bz - az);
+  const p = new THREE.Group(); p.position.set(ax, 0, az); p.rotation.y = ang; g.add(p);
+  for (let d = 0.3; d < len; d += 0.62) put(p, new THREE.BoxGeometry(w, 0.1, 0.54), mat(d > len - 1.2 ? 0xc46a4a : 0xb98a5a), [0, 0.32, d]);
+  for (let d = 0.6; d < len; d += 2) for (const s of [-1, 1]) put(p, new THREE.CylinderGeometry(0.09, 0.09, 0.8, 6), mat(0x6e4a2c), [s * (w / 2 - 0.05), 0.15, d]);
+  return p;
+}
+function waterMat(night, shallow) {
+  return new THREE.MeshStandardMaterial({ color: night ? (shallow ? 0x2c6a88 : 0x1f4f73) : (shallow ? 0x8fd0ea : 0x3b8fbe), roughness: 0.25, metalness: 0.1, transparent: true, opacity: 0.94 });
+}
+
+function buildCove(W, S) {
+  disc(W, COVE.x, COVE.z, COVE.r + 1.1, 0xe8d9a8, 0.03);
+  S.water.push([disc(W, COVE.x, COVE.z, COVE.r, 0x3b8fbe, 0.12), false]);
+  const LX = COVE.x - 4.9, LZ = COVE.z + 4.6;
+  put(W, new THREE.IcosahedronGeometry(1.05, 0), mat(0x9aa4ab), [LX, 0.16, LZ], [0, 0, 0], [1, 0.5, 1]);
+  put(W, new THREE.CylinderGeometry(0.4, 0.52, 2.3, 8), mat(0xf2ede2), [LX, 1.45, LZ]);
+  for (const [y, r] of [[1.05, 0.5], [1.85, 0.46]]) put(W, new THREE.CylinderGeometry(r, r + 0.02, 0.34, 8), mat(0xd94f4f), [LX, y, LZ]);
+  put(W, new THREE.SphereGeometry(0.18, 8, 6), glow(0xffd77a, 1), [LX, 2.56, LZ]);
+  put(W, new THREE.ConeGeometry(0.46, 0.45, 8), mat(0x5f6f7c), [LX, 2.82, LZ]);
+  for (let i = 0; i < 6; i++) { const t = i / 5; put(W, new THREE.IcosahedronGeometry(0.42 - t * 0.14, 0), mat(0xb9c0c4), [SEA_GATE.x + 0.8 + (LX - SEA_GATE.x - 1.6) * t, 0.16, SEA_GATE.z - 0.8 + (LZ - SEA_GATE.z + 0.8) * t]); }
+  for (let i = 0; i <= 6; i++) { const t = i / 6; put(W, new THREE.CylinderGeometry(0.42, 0.46, 0.14, 7), mat(0xc9c2b2), [SEA_GATE.x + 0.2 + 3.2 * t, 0.2, SEA_GATE.z - 0.1 - 3.8 * t]); }
+  signpost(W, SEA_GATE.x - 1.6, SEA_GATE.z + 1.2, '🌊 바다터');
+  const st = new THREE.Group(); st.position.set(STALL.x, 0, STALL.z); st.rotation.y = -0.6; W.add(st);
+  put(st, new THREE.BoxGeometry(1.6, 0.8, 0.9), mat(0xb98a5a), [0, 0.4, 0]);
+  put(st, new THREE.BoxGeometry(1.9, 0.1, 1.2), mat(0x4f8fb8), [0, 1.5, 0]);
+  for (const s of [-1, 1]) put(st, new THREE.CylinderGeometry(0.05, 0.05, 1.1, 6), mat(0x6e4a2c), [s * 0.8, 1, -0.35]);
+  pier(W, COVE_SHORE.x + Math.cos(coveDir) * 1.2, COVE_SHORE.z + Math.sin(coveDir) * 1.2, COVE_PIER_END.x, COVE_PIER_END.z, 1.3);
+  signpost(W, COVE_SHORE.x + 1.6, COVE_SHORE.z + 1.5, '⛵ 포구 섬', -0.3, true);
+  for (const [x, z, s] of [[30, -4, 1.2], [33, -10, 1.1], [12, -3, 1], [9, -10, 1.2], [31.5, -15, 1]]) tree(W, x, z, s);
+  S.water.push([disc(W, LAKE.x, LAKE.z, LAKE.r, 0x8fd0ea, 0.04), true]);
+  return { boatAt: { x: COVE_PIER_END.x - 1.1, z: COVE_PIER_END.z - 0.6 }, boatRy: 0.4 };
+}
+
+function buildSeaDeck(W, S) {
+  S.ground.visible = false;
+  S.water.push([disc(W, 0, -8, 60, 0x3b8fbe, 0.0), false]);
+  put(W, new THREE.BoxGeometry(40, 0.6, 14), mat(0xe8d9a8), [0, -0.2, 11]);
+  for (let z = 4; z > -10.4; z -= 0.82) put(W, new THREE.BoxGeometry(3.4, 0.12, 0.72), mat(z < -8.2 ? 0xc46a4a : 0xb98a5a), [0, 0.3, z]);
+  for (let z = 3.4; z > -10; z -= 2.6) for (const s of [-1, 1]) put(W, new THREE.CylinderGeometry(0.16, 0.16, 1, 6), mat(0x6e4a2c), [s * 1.6, 0.2, z]);
+  put(W, new THREE.CylinderGeometry(0.06, 0.06, 1.6, 6), mat(0x6e4a2c), [1.55, 0.8, -10]);
+  put(W, new THREE.BoxGeometry(0.7, 0.4, 0.04), mat(0xd94f4f), [1.15, 1.3, -10]);
+  for (const [x, z] of [[-5, -14], [6, -16], [-9, -6], [8, -4]]) put(W, new THREE.SphereGeometry(0.2, 9, 7), mat(0xef8a4a), [x, 0.12, z], [0, 0, 0], [1, 1.25, 1]);
+  for (let k = 0; k < 3; k++) put(W, new THREE.BoxGeometry(0.5, 0.06, 0.12), mat(0x6e4a2c), [1.95, 0.08 + k * 0.1, -8.6], [0, 0, 0.9]);
+  signpost(W, 2.4, -6.6, '⛵ 포구 섬', -0.4, true);
+  for (const [x, z] of [[-6, 8], [7, 9], [-12, 10], [13, 8]]) tree(W, x, z, 1.1);
+  return { boatAt: { x: 3.3, z: -8.8 }, boatRy: 0.3 };
+}
+
+function buildPond(W, S) {
+  disc(W, POND.x, POND.z, POND.r + 0.6, 0xa9a08c, 0.025);
+  S.water.push([disc(W, POND.x, POND.z, POND.r, 0x8fd0ea, 0.07), true]);
+  for (let i = 0; i < 22; i++) { const a = i / 22 * Math.PI * 2; put(W, new THREE.IcosahedronGeometry(0.32 + (i % 3) * 0.08, 0), mat(0xb9c0c4), [POND.x + Math.cos(a) * (POND.r + 0.3), 0.12, POND.z + Math.sin(a) * (POND.r + 0.3)]); }
+  for (const [x, z] of [[-3.5, -24], [3.8, -25], [-2, -19]]) disc(W, x, z, 0.45, 0x5aa35a, 0.09);
+  pier(W, 0.6, -14.1, 0.6, -18.2, 1.6);
+  const canoe = new THREE.Group(); canoe.position.set(-1.2, 0.08, -18.4); canoe.rotation.y = 0.1; W.add(canoe);
+  put(canoe, new THREE.CylinderGeometry(0.42, 0.42, 2.4, 10, 1, true, Math.PI / 2, Math.PI), new THREE.MeshStandardMaterial({ color: 0x9b6b3f, side: THREE.DoubleSide, flatShading: true }), [0, 0.35, 0], [Math.PI / 2, 0, 0]);
+  signpost(W, -1.4, -13.4, '🛶 상류 나루');
+  signpost(W, 2.9, -14.6, '⛵ 포구 섬', -0.3, true);
+  const d = duck(); d.position.set(FERRYMAN.x, 0, FERRYMAN.z); d.rotation.y = -0.6; W.add(d);
+  const bub = new THREE.Sprite(new THREE.SpriteMaterial({ map: textTex('⛵', 96, 96, '#ffffff', '#000') }));
+  bub.scale.set(0.6, 0.6, 1); bub.position.set(FERRYMAN.x, 2, FERRYMAN.z); W.add(bub);
+  for (const [x, z, s] of [[-6, -12, 1.2], [6.5, -10, 1], [-8.5, -19, 1.2], [8.5, -20, 1.1], [-3, -6, 0.9]]) tree(W, x, z, s);
+  const house = new THREE.Group(); house.position.set(HOUSE.x, 0, HOUSE.z); W.add(house);
+  put(house, new THREE.BoxGeometry(3, 2, 3), mat(0xf0e2c4), [0, 1, 0]);
+  put(house, new THREE.ConeGeometry(2.6, 1.4, 4), mat(0xb4563c), [0, 2.7, 0], [0, Math.PI / 4, 0]);
+  return { boatAt: { x: 2.3, z: -18 }, boatRy: -0.4 };
+}
+
+function guide(W, S, from, to) {
+  const gold = new THREE.MeshBasicMaterial({ color: 0xffcf4a });
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.95, 1.2, 40), new THREE.MeshBasicMaterial({ color: 0xffcf4a, transparent: true, opacity: 0.9, side: THREE.DoubleSide }));
+  ring.rotation.x = -Math.PI / 2; ring.position.set(to.x, 0.5, to.z); W.add(ring); S.ring = ring;
+  const arrow = new THREE.Group(); arrow.position.set(to.x, 2.6, to.z); W.add(arrow); S.arrow = arrow;
+  put(arrow, new THREE.ConeGeometry(0.34, 0.6, 4), gold, [0, 0, 0], [Math.PI, Math.PI / 4, 0]);
+  put(arrow, new THREE.BoxGeometry(0.2, 0.5, 0.2), gold, [0, 0.5, 0]);
+  const shape = new THREE.Shape(); shape.moveTo(0, 0.42); shape.lineTo(0.32, -0.08); shape.lineTo(0.1, -0.08); shape.lineTo(0.1, -0.36); shape.lineTo(-0.1, -0.36); shape.lineTo(-0.1, -0.08); shape.lineTo(-0.32, -0.08); shape.closePath();
+  const foot = new THREE.Mesh(new THREE.ShapeGeometry(shape), new THREE.MeshBasicMaterial({ color: 0xffcf4a, transparent: true, opacity: 0.85, side: THREE.DoubleSide }));
+  const ang = Math.atan2(to.x - from.x, to.z - from.z);
+  foot.rotation.order = 'YXZ'; foot.rotation.set(-Math.PI / 2, ang + Math.PI, 0);
+  foot.position.set(from.x + Math.sin(ang) * 0.9, 0.06, from.z + Math.cos(ang) * 0.9); W.add(foot);
+}
+
+function minimap(o) {
+  const X = x => (x + 30) / 66 * 200, Z = z => (z + 34) / 64 * 190, R = r => r / 66 * 200;
+  const route = o.route.map(([x, z]) => `${X(x).toFixed(1)},${Z(z).toFixed(1)}`).join(' ');
+  const walk = o.route.slice(1).reduce((a, [x, z], i) => a + Math.hypot(x - o.route[i][0], z - o.route[i][1]), 0);
+  const [tx, tz] = o.route[o.route.length - 1];
+  const svg = `<svg viewBox="0 0 200 190">
+    <circle cx="${X(COVE.x)}" cy="${Z(COVE.z)}" r="${R(COVE.r)}" fill="#7fc3dd"/>
+    <circle cx="${X(POND.x)}" cy="${Z(POND.z)}" r="${R(POND.r)}" fill="#a8dbee"/>
+    <circle cx="${X(LAKE.x)}" cy="${Z(LAKE.z)}" r="${R(LAKE.r)}" fill="#a8dbee"/>
+    <rect x="${X(HOUSE.x) - 6}" y="${Z(HOUSE.z) - 6}" width="12" height="12" rx="2" fill="#c97b5a"/>
+    <text x="${X(HOUSE.x)}" y="${Z(HOUSE.z) + 17}" font-size="9" text-anchor="middle" fill="#5b4a3a">집</text>
+    <text x="${X(COVE.x)}" y="${Z(COVE.z) + 3}" font-size="9" text-anchor="middle" fill="#fff">후미</text>
+    <text x="${X(POND.x)}" y="${Z(POND.z) + 3}" font-size="9" text-anchor="middle" fill="#3b6a80">나루</text>
+    <text x="${X(LAKE.x)}" y="${Z(LAKE.z) + 3}" font-size="9" text-anchor="middle" fill="#3b6a80">호수</text>
+    <polyline points="${route}" fill="none" stroke="#c98a12" stroke-width="2.4" stroke-dasharray="4 3"/>
+    <circle cx="${X(0)}" cy="${Z(0)}" r="4" fill="#2f3a2c"/>
+    <text x="${X(0) + 6}" y="${Z(0) + 12}" font-size="9" fill="#2f3a2c">마을 중앙</text>
+    <circle cx="${X(tx)}" cy="${Z(tz)}" r="6" fill="none" stroke="#e8b23a" stroke-width="3"/>
+    ${o.inner ? `<text x="${X(tx) + 9}" y="${Z(tz) + 3}" font-size="9" fill="#a0482c">+데크 ${o.inner}m</text>` : ''}
+  </svg>`;
+  return { svg, len: Math.round(walk + (o.inner || 0)) };
+}
+
+function build(o) {
+  const col = document.createElement('div'); col.className = 'col';
+  const mm = minimap(o);
+  col.innerHTML = `<h2>${o.title}</h2><p class="sum">${o.sum}</p>
+    <div class="screen"><canvas></canvas><div class="card">⛵ 통배를 타 보세요<small>1/10</small></div><div class="dist"></div></div>
+    <div class="meta">${mm.svg}<dl>
+      <dt>가는 길</dt><dd>마을 중앙에서 약 ${mm.len}m · ${o.hops}</dd>
+      <dt>여는 조건</dt><dd>${o.open}</dd>
+      <dt class="pro">좋은 점</dt><dd>${o.pro}</dd>
+      <dt class="con">걸리는 점</dt><dd>${o.con}</dd></dl></div>`;
+  document.getElementById('grid').appendChild(col);
+  const renderer = new THREE.WebGLRenderer({ canvas: col.querySelector('canvas'), antialias: true });
+  renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(34, 2, 0.1, 300);
+  const hemi = new THREE.HemisphereLight(0xfff1dc, 0x3d5a3a, 1); scene.add(hemi);
+  const sun = new THREE.DirectionalLight(0xffe2b8, 1.2); sun.position.set(-8, 16, 10); scene.add(sun);
+  const W = new THREE.Group(); scene.add(W);
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), mat(0x86b86f)); ground.rotation.x = -Math.PI / 2; W.add(ground);
+  const S = { o, col, renderer, scene, camera, hemi, sun, W, ground, water: [] };
+  const { boatAt, boatRy } = o.build(W, S);
+  const boat = tubBoat(); boat.position.set(boatAt.x, 0.1, boatAt.z); boat.rotation.y = boatRy; W.add(boat); S.boat = boat;
+  const h = hero(); h.position.set(o.hero.x, 0, o.hero.z); h.rotation.y = Math.atan2(boatAt.x - o.hero.x, boatAt.z - o.hero.z); W.add(h);
+  guide(W, S, o.hero, boatAt);
+  S.tgt = new THREE.Vector3(boatAt.x, 0, boatAt.z);
+  S.heroPos = new THREE.Vector3(o.hero.x, 0, o.hero.z);
+  scenes.push(S);
+}
+
+function apply(S) {
+  const night = tod === 'night';
+  S.scene.background = new THREE.Color(night ? 0x0d1a26 : 0x9fd3e8);
+  S.hemi.intensity = night ? 0.6 : 1.05; S.hemi.color.set(night ? 0x8fa6d6 : 0xfff1dc);
+  S.sun.intensity = night ? 0.22 : 1.2;
+  S.water.forEach(([m, shallow]) => { m.material = waterMat(night, shallow); });
+  setNight(S.W, night);
+  const w = device === 'phone' ? 440 : 560, h = device === 'phone' ? 204 : 315;
+  S.col.style.setProperty('--w', w + 'px'); S.col.style.setProperty('--h', h + 'px');
+  S.col.style.setProperty('--r', device === 'phone' ? '20px' : '8px'); S.col.style.setProperty('--bez', device === 'phone' ? '6px' : '3px');
+  S.renderer.setSize(w, h, false);
+  S.camera.aspect = w / h; S.camera.fov = device === 'phone' ? 36 : 34;
+  const f = S.o.focus;
+  S.camera.position.set(f.x, 17, f.z + 15); S.camera.lookAt(f.x, 0, f.z);
+  S.camera.updateProjectionMatrix();
+  S.w = w; S.h = h;
+}
+
+OPTIONS.forEach(build);
+scenes.forEach(apply);
+let t = 0;
+const v = new THREE.Vector3();
+function frame() {
+  t += 0.016;
+  for (const S of scenes) {
+    S.boat.position.y = 0.1 + Math.sin(t * 2) * 0.04;
+    S.arrow.position.y = 2.6 + Math.sin(t * 3) * 0.2;
+    S.ring.scale.setScalar(1 + Math.sin(t * 3) * 0.06);
+    S.renderer.render(S.scene, S.camera);
+    v.copy(S.tgt); v.y = 3.3; v.project(S.camera);
+    const d = S.col.querySelector('.dist');
+    d.style.left = ((v.x + 1) / 2 * S.w) + 'px'; d.style.top = ((1 - v.y) / 2 * S.h) + 'px';
+    d.textContent = Math.round(S.heroPos.distanceTo(S.tgt)) + 'm';
+  }
+}
+function loop() { frame(); requestAnimationFrame(loop); }
+loop();
+function seg(id, fn) { document.getElementById(id).addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; for (const x of e.currentTarget.children) x.classList.toggle('on', x === b); fn(b.dataset.v); scenes.forEach(apply); frame(); }); }
+seg('tod', x => tod = x);
+seg('dev', x => device = x);
+window.__entry = { scenes, apply, frame, set: (k, x) => { if (k === 'tod') tod = x; else device = x; scenes.forEach(apply); frame(); } };
+</script>
+</body>
+</html>
