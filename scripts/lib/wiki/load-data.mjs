@@ -16,8 +16,8 @@ export const WIKI_CATS = Object.freeze([
   { id: 'forage', name: '채집물', ico: '🍄', place: '채집 숲' },
   { id: 'bug', name: '반딧불이', ico: '🌟', place: '반딧불이 계곡' },
   { id: 'track', name: '밤손님 흔적', ico: '🐾', place: '밭 둘레' },
-  { id: 'dig', name: '땅속 보물', ico: '🪏', place: '빈 땅' },
-  { id: 'river', name: '강가 줍기', ico: '🛶', place: '나루터 강' },
+  { id: 'dig', name: '광석 캐기', ico: '🪏', place: '빈 땅' },
+  { id: 'river', name: '배타기', ico: '🛶', place: '나루터 강' },
   { id: 'spirit', name: '안개 정령', ico: '🌫️', place: '안개 낀 숲' },
   { id: 'weather', name: '날씨', ico: '🌦️', place: '마을' },
   { id: 'visitor', name: '텃밭 방문객', ico: '🦋', place: '내 텃밭' },
@@ -26,6 +26,8 @@ export const WIKI_CATS = Object.freeze([
 const RES_KO = { crop: '작물', fish: '물고기', forage: '채집물', egg: '달걀', flour: '밀가루', juice: '과즙', seed: '씨앗', wood: '목재', stone: '돌', coal: '석탄', gem: '보석', coins: '코인', bug: '반딧불이' };
 const WEATHER_KO = { clear: '맑음', rain: '비', snow: '눈', fog: '안개' };
 const WHEN_KO = { day: '낮', night: '밤', rain: '비 오는 날' };
+
+const RIVER_EXTRA_GIVE = { shell: '별조각', moon_fish: '물고기 · 별조각' };
 
 const resList = (obj) => Object.entries(obj || {}).map(([k, n]) => `${RES_KO[k] ?? k} ${n}`).join(' · ');
 
@@ -66,7 +68,7 @@ export async function loadWiki() {
       if (!adv) return [['종류', '기본 작물'], ['장소', '밭'], ['판매가', `${sell.crop}🪙`]];
       return [['종류', '고급 작물'], ['장소', '밭'], ['성장 단계', `${adv.stages}단계`], ['물 주기', `${adv.waters}번`], ['씨앗', `${adv.seedCoin}🪙`], ['판매가', `${adv.price}🪙`]];
     },
-    ore: (it) => [['장소', '동굴'], ...gateFacts(DEX_GATES.ore?.[it.id], seasonName), ['판매가', `${sell[it.id]}🪙`]],
+    ore: (it) => [['장소', '동굴'], ...(it.id === 'crystal' ? [['깊이', '지하 11층 아래']] : []), ...gateFacts(DEX_GATES.ore?.[it.id], seasonName), ['판매가', `${sell[it.id]}🪙`]],
     cook: (it) => {
       const r = catalog.RECIPES.find(x => x.id === it.id);
       return [['재료', resList(r.cost)], ['효과', r.desc], ['난이도', '★'.repeat(r.stages.length)], ['카페 판매가', `${catalog.CAFE_PAY[r.id]}🪙`]];
@@ -86,7 +88,7 @@ export async function loadWiki() {
     dig: () => [['장소', '빈 땅'], ['도구', '삽']],
     river: (it) => {
       const r = places.RIVER_PICKS.find(x => x.id === it.id);
-      return [['장소', '나루터 강'], ...(r?.night ? [['시간', '밤']] : []), ['얻는 것', resList(r?.give)]];
+      return [['장소', '나루터 강'], ...(r?.night ? [['시간', '밤']] : []), ['얻는 것', resList(r?.give) || RIVER_EXTRA_GIVE[it.id] || '']];
     },
     spirit: (it) => {
       const s = places.SPIRITS.find(x => x.id === it.id);
