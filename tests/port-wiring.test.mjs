@@ -76,3 +76,9 @@ test('도착 직후 첫 누름으로 다시 떠나지 않게 섬·마을 부두 
   assert.match(read('js/port/pier.js'), /boardGate\(pierArmed,/);
   assert.match(idx, /PORT_COPY\.noCoins/);
 });
+
+test('port 는 기본값으로 시작하고 불러올 때 정규화한다', () => {
+  const game = read('js/game.js');
+  assert.match(game, /port: defaultPort\(\),/);
+  assert.match(game, /gameState\.port = sanitizePort\(saved\.port\);/);
+});

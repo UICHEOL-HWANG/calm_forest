@@ -4,7 +4,7 @@ import { ISLAND, ISLAND_R, ISLAND_DOCK, VILLAGE_DOCK, PIER_END, WALK_R, LAND_Y, 
   BOAT_SPEED, BOAT_TURN, FAST_MULT, BITE_FIRST, BITE_WIN, SEA_SPOTS, PIER_SPOT, SPOT_LEFT, PANTRY_ICO, PORT_COPY,
   QUESTS, SOLIDS, MARKET_PRICE, MARKET_GIVE } from './data.js';
 import { tubBoat, buildPortShops, setPortNight, mat, glow } from './models.js';
-import { defaultPort, rollCatch, addToPantry, acceptQuest, pickItem, claimQuest, boardGate } from './rules.js';
+import { rollCatch, addToPantry, acceptQuest, pickItem, claimQuest, boardGate } from './rules.js';
 import { disarmPortPier } from './pier.js';
 import { buildIslandNPC, beachBuoy, npcPortrait, setNpcNight, ISLAND_NPCS } from './npc-models.js';
 import { showTalk, hideTalk, onTalkTap, talkShown } from '../mirror/talk-box.js';
@@ -21,7 +21,7 @@ const W = (x, z, y = 0) => new THREE.Vector3(PORT.x + x, y, PORT.z + z);
 const ZONE_COL = { near: 0xbfe6ff, far: 0x9fd0ff, night: 0xffd27a, pier: 0xbfe6ff };
 const guideActive = () => false;
 const TALK_R = 2.6, PICK_R = 1.5, TALK_CLOSE_R = 3, PIER_END_R = 1.2;
-const portState = () => env.gameState().port ?? defaultPort();
+const portState = () => env.gameState().port;
 
 export function bindPortEnv(e) { Object.assign(env, e); }
 
@@ -291,7 +291,7 @@ function tapFish() {
   const f = P.fishing; if (!f) return;
   if (f.state === 'bite') {
     const kind = rollCatch(f.spot.zone, Math.random());
-    const gs = env.gameState(); gs.port = addToPantry(gs.port ?? defaultPort(), { [kind]: 1 });
+    const gs = env.gameState(); gs.port = addToPantry(gs.port, { [kind]: 1 });
     P.trip.caught++; f.spot.left--; if (!f.spot.left) f.spot.mesh.visible = false;
     env.popAt?.(f.spot.pos, PANTRY_ICO[kind]);
   }
@@ -489,7 +489,7 @@ function arrive() {
   P.speed = 0; P.fast = false; P.wp = 1;
   if (P.dir > 0) return arriveIsland();
   const gs = env.gameState();
-  const cur = gs.port ?? defaultPort();
+  const cur = gs.port;
   env.trackEvent('port_trip', { via: P.trip.via, caught: P.trip.caught, quests: P.trip.quests, sec: Math.round((performance.now() - P.trip.t0) / 1000) });
   if (!cur.fastUnlocked) { gs.port = { ...cur, visited: true, fastUnlocked: true }; env.ui.toast?.(PORT_COPY.arrive); }
   env.requestSave();
