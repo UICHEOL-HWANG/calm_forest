@@ -27,6 +27,7 @@ import { accountKind } from './auth/account-kind.js';
 import { resolveLoginVia, LOGIN_VIA_KEY } from './auth/login-via.js';   // 🔑 로그인 수단 ≠ 계정 종류(GA4 오염 방지)   // 🔵📱 토스·PGS 판정(합성 이메일 도메인 — user_metadata 는 유저가 바꿀 수 있다)
 import { devLog } from './devlog.js';
 import { setLogUser } from './client-errors-boot.js';   // 🧯 오류 로그에 uid 앞 8자를 싣는다
+import { once } from './boot-order.js';
 
 let supabase = null;   // Supabase 클라이언트 (오프라인이면 null)
 export const state = {
@@ -155,6 +156,12 @@ function markSessionLost() {
 //  반환: { needLogin } → true면 로그인 화면을 띄워야 함.
 // =============================================================
 //  keepGuest: 🧪 E2 처치(skip_login) 기기 — 웹이라도 남아 있는 게스트(익명) 세션을 이어 간다(같은 기기 재방문, js/exp-e2.js)
+const loadSupabaseLib = once(async () => await import('https://esm.sh/@supabase/supabase-js@2.116.0'));
+
+export function preloadSupabase() {
+  return isSupabaseConfigured() ? loadSupabaseLib() : Promise.resolve(null);
+}
+
 export async function initAuth(onStatusChange, { keepGuest = false } = {}) {
   statusCb = onStatusChange;
   state.variant = assignVariant();   // 실험 off면 'control', 켜지면 client_id 해시로 A/B
@@ -170,7 +177,7 @@ export async function initAuth(onStatusChange, { keepGuest = false } = {}) {
     // 📦 웹·토스·itch 는 CDN 그대로. 구글 플레이(Capacitor) 빌드만 scripts/build-cap.mjs 가
     //    이 줄을 vendor/supabase.js 로 치환한다 — 앱은 오프라인에서도 떠야 하기 때문.
     //    ⚠️ 이 문자열이 build-cap 의 치환 앵커다. 바꾸면 빌드가 실패하도록 되어 있다.
-    const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.116.0');
+    const { createClient } = await preloadSupabase();
     if (IS_ITCH) dropStoredSession();
     supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, {
       auth: { detectSessionInUrl: true, persistSession: !IS_ITCH, autoRefreshToken: true },

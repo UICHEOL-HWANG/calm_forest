@@ -18,7 +18,7 @@ const ROOT = new URL('../', import.meta.url);
 const html = readFileSync(new URL('index.html', ROOT), 'utf8');
 
 /** 정적 마크업의 로딩 문구 — 사전 키와 글자 하나까지 같아야 번역된다. */
-const LOADING_RE = /<div id="loading">([^<]*)<\/div>/;
+const LOADING_RE = /<div id="loading"[^>]*>([^<]*)<\/div>/;
 
 test('로딩 문구가 정적 마크업에 있고 EN 사전에 키로 등록돼 있다', () => {
   const m = html.match(LOADING_RE);
