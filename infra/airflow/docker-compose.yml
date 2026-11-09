@@ -21,6 +21,9 @@ x-airflow-common: &airflow-common
     GOOGLE_APPLICATION_CREDENTIALS: /opt/airflow/secrets/gcp_sa.json
     # 🎯 이탈 예측 — 학습 DAG 가 W&B 에 로깅할 때만 쓴다(선택). VM .env 엔 아직 없음.
     WANDB_API_KEY: ${WANDB_API_KEY:-}
+    OCI_S3_JSON: /opt/airflow/secrets/oci_s3.json
+    MODEL_OUT_DIR: /opt/airflow/model-out
+    AIRFLOW__WEBSERVER__BASE_URL: https://lab.calmforest.cloud
   user: "${AIRFLOW_UID}:0"
   volumes:
     - ./dags:/opt/airflow/dags
@@ -29,10 +32,8 @@ x-airflow-common: &airflow-common
     - ./config:/opt/airflow/config
     # 서비스계정 키(600). 리포에 없고 VM 에만 둔다 — .gitignore 대상.
     - ./secrets:/opt/airflow/secrets:ro
-    # 🎯 이탈 예측 — 학습 산출물(coef.json)을 API 가 읽는 위치에 쓴다
-    - /opt/calm-api/model:/opt/calm-api/model
-    # 🎯 이탈 예측 — API 가 적립한 JSONL 을 읽어 BQ 로 올린다
-    - /opt/calm-api/data:/opt/calm-api/data
+    # 학습 산출물 임시 위치 — 서빙 VM 으로는 OCI 버킷 ml/models/ 를 거쳐 간다
+    - ./model-out:/opt/airflow/model-out
   depends_on:
     postgres:
       condition: service_healthy
@@ -66,7 +67,7 @@ services:
     <<: *airflow-common
     command: webserver
     ports:
-      - "127.0.0.1:8080:8080"
+      - "${AIRFLOW_BIND:-127.0.0.1}:8080:8080"
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
       interval: 15s

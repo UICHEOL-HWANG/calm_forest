@@ -3,7 +3,7 @@
 #  ------------------------------------------------------------
 #  매주 월 04:30 (churn_train 04:00 뒤)
 #    BQ(GA4 export) → ml/sql/retention_guidance_train_sample.sql → 로지스틱 학습
-#    → /opt/calm-api/model/retention_guidance.json 원자 교체 (API 가 mtime 보고 핫리로드)
+#    → OCI 버킷 ml/models/retention_guidance.json put → 서빙 VM model_sync(15분)가 원자 교체 → API 핫리로드
 #    → W&B 런(지표) + 아티팩트 retention-guidance-model(버전·롤백)
 #
 #  ⚠️ 표본은 9/4 이후 누적이고, 라벨 창 안에 배너를 본 기기는 뺀다(개입 효과가 라벨에 섞여서).
@@ -20,13 +20,24 @@ from pathlib import Path
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
-MODEL_OUT = Path("/opt/calm-api/model/retention_guidance.json")
+MODEL_OUT = Path(os.environ.get("MODEL_OUT_DIR", "/opt/airflow/model-out")) / "retention_guidance.json"
+MODEL_KEY = "ml/models/retention_guidance.json"
 ML_DIR = Path("/opt/airflow/dags/ml")     # scp 로 올리는 ml/ 사본(train_*.py·calm_ml·sql·reports)
 
 default_args = {"retries": 1, "retry_delay": timedelta(minutes=10)}
 
 
-def _train(**_):
+def _default_bucket():
+    sys.path.insert(0, str(ML_DIR))
+    from calm_ml.storage import default_bucket  # noqa: E402
+
+    bucket = default_bucket()
+    if bucket is None:
+        raise RuntimeError("OCI bucket not configured — serving VM cannot receive the model")
+    return bucket
+
+
+def _train(bucket=None, **_):
     """BQ 표본으로 학습해 retention_guidance.json 을 교체한다. 표본 게이트를 못 넘으면 손대지 않는다."""
     sys.path.insert(0, str(ML_DIR))
     from calm_ml import bq                                                  # noqa: E402
@@ -35,6 +46,7 @@ def _train(**_):
     df = bq.read_sql_file(str(SQL))
     check_sample(df)
     m = fit_and_export(df, MODEL_OUT, log_wandb=bool(os.environ.get("WANDB_API_KEY")))
+    (bucket or _default_bucket()).put(MODEL_KEY, MODEL_OUT.read_bytes(), content_type="application/json")
     print(json.dumps(m["metrics"], indent=2, ensure_ascii=False))
 
 

@@ -1,7 +1,9 @@
 # calm forest · 실험실 인프라 (Oracle VM)
 
-`https://lab.calmforest.cloud` — Airflow 2.10 (LocalExecutor) + Postgres 16 + nginx.
-Oracle Cloud VM(x86_64, Ubuntu 20.04)의 실제 구성을 코드로 보관한 것.
+`https://lab.calmforest.cloud` — Airflow 2.10 (LocalExecutor) + Postgres 16.
+Oracle Cloud VM `calmforest-main`(150.136.95.135 / 사설 10.0.0.129, aarch64, Ubuntu 24.04)의 구성을 코드로 보관한 것.
+공개 입구(nginx·Cloudflare 방화벽)는 서빙 VM `calmforest-ml` 에 있고, 그 nginx 가 사설망으로 `10.0.0.129:8080` 을 넘겨준다 → `infra/api/README.md`.
+학습 산출물은 OCI 버킷 `ml/models/` 에 올리고, 서빙 VM 이 15분마다 받아 간다(`calm_ml.model_sync`).
 
 ## 구성
 
@@ -9,8 +11,6 @@ Oracle Cloud VM(x86_64, Ubuntu 20.04)의 실제 구성을 코드로 보관한 �
 |---|---|---|
 | `docker-compose.yml` | `/opt/airflow/docker-compose.yml` | Airflow 스택(웹 127.0.0.1:8080 바인딩) |
 | `dags/` | `/opt/airflow/dags/` | DAG 소스 |
-| `nginx/airflow.conf` | `/etc/nginx/sites-available/airflow` | 80/443 → 8080 프록시(Cloudflare 뒤) |
-| `update-cf-ips.sh` | `/usr/local/sbin/update-cf-ips.sh` | 방화벽: Cloudflare IPv4 대역만 80/443 허용(주 1회 cron) |
 | `Dockerfile` | `/opt/airflow/Dockerfile` | 순정 이미지 + `google-cloud-bigquery`·`gspread` |
 
 시크릿(`POSTGRES_PASSWORD`·`FERNET_KEY`·`WEBSERVER_SECRET`·`AIRFLOW_ADMIN_PASSWORD`)은
@@ -25,16 +25,16 @@ Cloudflare 대역 외 트래픽을 차단 → 오리진 IP 직접 접근 불가.
 ## DAG 배포
 
 ```bash
-scp infra/airflow/dags/*.py oracle-calmforest:/opt/airflow/dags/
+scp infra/airflow/dags/*.py calmforest-main:/opt/airflow/dags/
 ```
 
 스케줄러가 자동 리로드한다(재시작 불필요). compose/nginx 변경 시:
 
 ```bash
-scp infra/airflow/docker-compose.yml oracle-calmforest:/opt/airflow/ && \
-  ssh oracle-calmforest 'cd /opt/airflow && sudo docker compose up -d'
-scp infra/airflow/nginx/airflow.conf oracle-calmforest:/tmp/ && \
-  ssh oracle-calmforest 'sudo mv /tmp/airflow.conf /etc/nginx/sites-available/airflow && sudo nginx -t && sudo systemctl reload nginx'
+scp infra/airflow/docker-compose.yml calmforest-main:/opt/airflow/ && \
+  ssh calmforest-main 'cd /opt/airflow && sudo docker compose up -d'
+scp infra/api/nginx/lab.conf calmforest-ml:/tmp/ && \
+  ssh calmforest-ml 'sudo mv /tmp/lab.conf /etc/nginx/sites-available/lab && sudo nginx -t && sudo systemctl reload nginx'
 ```
 
 ## DAG 목록
@@ -65,9 +65,9 @@ SQL 은 `sql/analytics/tableau_export.sql` 한 파일이 원본이고, DAG 는 �
 3. 서비스계정 JSON 키를 VM 에 배치(리포엔 절대 두지 않는다 — `.gitignore` 처리됨)
 
 ```bash
-ssh oracle-calmforest 'mkdir -p /opt/airflow/secrets && chmod 700 /opt/airflow/secrets'
-scp <키파일>.json oracle-calmforest:/opt/airflow/secrets/gcp_sa.json
-ssh oracle-calmforest 'chmod 600 /opt/airflow/secrets/gcp_sa.json'
+ssh calmforest-main 'mkdir -p /opt/airflow/secrets && chmod 700 /opt/airflow/secrets'
+scp <키파일>.json calmforest-main:/opt/airflow/secrets/gcp_sa.json
+ssh calmforest-main 'chmod 600 /opt/airflow/secrets/gcp_sa.json'
 ```
 
 4. Airflow UI → Admin → Variables 에 `tableau_sheet_id` = 시트 URL 의 `/d/<ID>/edit` 부분
@@ -75,11 +75,11 @@ ssh oracle-calmforest 'chmod 600 /opt/airflow/secrets/gcp_sa.json'
 #### 배포
 
 ```bash
-ssh oracle-calmforest 'mkdir -p /opt/airflow/dags/sql'
-scp sql/analytics/tableau_export.sql oracle-calmforest:/opt/airflow/dags/sql/
-scp infra/airflow/dags/tableau_sheets.py oracle-calmforest:/opt/airflow/dags/
-scp infra/airflow/Dockerfile infra/airflow/docker-compose.yml oracle-calmforest:/opt/airflow/
-ssh oracle-calmforest 'cd /opt/airflow && sudo docker compose up -d --build'
+ssh calmforest-main 'mkdir -p /opt/airflow/dags/sql'
+scp sql/analytics/tableau_export.sql calmforest-main:/opt/airflow/dags/sql/
+scp infra/airflow/dags/tableau_sheets.py calmforest-main:/opt/airflow/dags/
+scp infra/airflow/Dockerfile infra/airflow/docker-compose.yml calmforest-main:/opt/airflow/
+ssh calmforest-main 'cd /opt/airflow && sudo docker compose up -d --build'
 ```
 
 `--build` 를 빼먹으면 순정 이미지가 그대로 떠서 DAG 가 `ModuleNotFoundError: gspread` 로
@@ -101,9 +101,9 @@ GA4 export(다음 날 09~19시 도착) + calm_forest_raw.session_logs
 - 메타 열(C:G 비용·노출·도달·링크 클릭·랜딩페이지조회)은 `extract_meta` 가 Marketing API insights(level=ad, 일별)로 채운다. 매 실행 기간 전체를 다시 받아 `ads.meta_insights` 를 통째로 덮어쓰고, 소재별 일별 수치는 `_auto_meta_ad` 탭에 쓴다. 도달은 광고 합산이라 중복이 섞인 근사치. 토큰·계정 Variable 이 없거나 API 가 실패하면 C:G 는 그대로 두고 나머지는 평소대로 돈다(실패는 슬랙 경고).
 
 ```bash
-ssh oracle-calmforest 'mkdir -p /opt/airflow/dags/sql'
-scp sql/analytics/ads_funnel.sql oracle-calmforest:/opt/airflow/dags/sql/
-scp infra/airflow/dags/ads_funnel_daily.py oracle-calmforest:/opt/airflow/dags/
+ssh calmforest-main 'mkdir -p /opt/airflow/dags/sql'
+scp sql/analytics/ads_funnel.sql calmforest-main:/opt/airflow/dags/sql/
+scp infra/airflow/dags/ads_funnel_daily.py calmforest-main:/opt/airflow/dags/
 ```
 
 Variables: `ads_sheet_id`(필수) · `ads_utm_source`(기본 meta) · `ads_slack_channel`(기본 #cf-data). · `meta_ad_account_id`(숫자만, 없으면 메타 추출 건너뜀) · `meta_api_version`(기본 v24.0)
@@ -111,5 +111,5 @@ Variables: `ads_sheet_id`(필수) · `ads_utm_source`(기본 meta) · `ads_slack
 메타 토큰 = 비즈니스 포트폴리오 시스템 사용자 토큰(`ads_read`, 광고 계정 자산 할당). 키체인에서 파이프로 넣는다:
 
 ```bash
-security find-generic-password -s calmforest-meta-ads-token -w | ssh oracle-calmforest 'umask 077; cat > /opt/airflow/secrets/meta_ads_token'
+security find-generic-password -s calmforest-meta-ads-token -w | ssh calmforest-main 'umask 077; cat > /opt/airflow/secrets/meta_ads_token'
 ```

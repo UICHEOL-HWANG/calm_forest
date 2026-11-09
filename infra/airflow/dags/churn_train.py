@@ -4,8 +4,8 @@
 #  설계서: docs/superpowers/specs/2026-09-04-churn-intervention-design.md §5·§9
 #
 #  두 스케줄이 한 파일에 있다:
-#    upload_events  매일 03:00  API 가 적립한 JSONL → BQ
-#    train          매주 월 04:00  BQ → 학습 → coef.json (API 가 mtime 보고 핫리로드)
+#    upload_events  매일 03:00  서빙 VM 이 버킷 ml/serving-logs/ 에 올린 JSONL → BQ
+#    train          매주 월 04:00  BQ → 학습 → 버킷 ml/models/coef.json → 서빙 VM model_sync 가 교체
 #
 #  ⚠️ 학습 표본은 BQ 의 game_logs 에서 뽑는다. 적립 JSONL 은 '실제로 판정에 쓴 피처'의
 #     기록이고, 다음 단계에서 학습 원천으로 옮길 예정이다(지금은 표본이 부족하다).
@@ -22,8 +22,9 @@ from pathlib import Path
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
-DATA_DIR = Path("/opt/calm-api/data")
-MODEL_OUT = Path("/opt/calm-api/model/coef.json")
+MODEL_OUT = Path(os.environ.get("MODEL_OUT_DIR", "/opt/airflow/model-out")) / "coef.json"
+LOG_PREFIX = "ml/serving-logs"
+LOOKBACK_DAYS = 7
 ML_DIR = Path("/opt/airflow/dags/ml")     # scp 로 올리는 ml/ 사본(train_churn.py·calm_ml·sql)
 
 BQ_PROJECT = "calm-forest"
@@ -33,32 +34,33 @@ EVENTS_TABLE = f"{BQ_PROJECT}.calm_forest_raw.churn_events"
 default_args = {"retries": 1, "retry_delay": timedelta(minutes=10)}
 
 
-def _eligible_files():
-    """오늘(UTC) 이전 날짜의 churn-*.jsonl 파일만, 파일명에서 날짜를 파싱해 고른다.
+def _default_bucket():
+    sys.path.insert(0, str(ML_DIR))
+    from calm_ml.storage import default_bucket  # noqa: E402
 
-    API(`ml/api/churn.py`)는 오늘 날짜 파일에 하루 종일 append 한다. DAG 가 03:00 에
-    그 파일을 처리하고 .done 을 찍어버리면 그날 남은 21시간치가 영영 안 올라간다 —
-    그래서 '어제까지'만 대상으로 삼는다. 파일명이 날짜로 안 읽히면 건너뛰고 로그만
-    남긴다(적재 대상에서 조용히 빠뜨리지 않기 위해서다).
-    """
-    today = datetime.now(timezone.utc).date()
-    files = []
-    for p in sorted(DATA_DIR.glob("churn-*.jsonl")):
-        date_part = p.stem[len("churn-"):]  # "churn-YYYY-MM-DD" → "YYYY-MM-DD"
-        try:
-            file_date = datetime.strptime(date_part, "%Y-%m-%d").date()
-        except ValueError as e:
-            print(f"{p}: 파일명에서 날짜 파싱 실패, 건너뜀: {e}")
-            continue
-        if file_date >= today:
-            continue
-        if p.with_suffix(".done").exists():
-            continue
-        files.append(p)
-    return files
+    bucket = default_bucket()
+    if bucket is None:
+        raise RuntimeError("OCI bucket not configured")
+    return bucket
 
 
-def _upload_events(**_):
+def _pending_days(bucket, today):
+    for back in range(LOOKBACK_DAYS, 0, -1):
+        day = today - timedelta(days=back)
+        key = f"{LOG_PREFIX}/churn-{day.isoformat()}.jsonl"
+        if bucket.get(key + ".done") is not None:
+            continue
+        body = bucket.get(key)
+        if body is not None:
+            yield key, body
+
+
+def _publish(path: Path, bucket=None) -> None:
+    (bucket or _default_bucket()).put(f"ml/models/{path.name}", path.read_bytes(),
+                                      content_type="application/json")
+
+
+def _upload_events(bucket=None, today=None, **_):
     """어제까지의 JSONL 을 파일 단위로 BQ 에 올리고, 올린 파일만 .done 으로 표시한다.
 
     파일마다 따로 적재한다 — 한 줄이 깨졌다고(부분 쓰기·포맷 드리프트) backlog
@@ -68,8 +70,10 @@ def _upload_events(**_):
     """
     from google.cloud import bigquery
 
-    files = _eligible_files()
-    if not files:
+    bucket = bucket or _default_bucket()
+    today = today or datetime.now(timezone.utc).date()
+    pending = list(_pending_days(bucket, today))
+    if not pending:
         print("올릴 파일 없음")
         return
 
@@ -84,9 +88,9 @@ def _upload_events(**_):
 
     failures = []
     total_rows = 0
-    for p in files:
+    for p, body in pending:
         rows = []
-        for lineno, line in enumerate(p.read_text(encoding="utf-8").splitlines(), start=1):
+        for lineno, line in enumerate(body.decode("utf-8").splitlines(), start=1):
             if not line.strip():
                 continue
             try:
@@ -96,7 +100,7 @@ def _upload_events(**_):
 
         if not rows:
             print(f"{p}: 빈 파일(또는 전부 깨짐) — .done 처리")
-            p.with_suffix(".done").touch()
+            bucket.put(p + ".done", b"")
             continue
 
         try:
@@ -114,12 +118,12 @@ def _upload_events(**_):
             failures.append(p)
             continue
 
-        p.with_suffix(".done").touch()
+        bucket.put(p + ".done", b"")
         total_rows += len(rows)
         print(f"{p}: {len(rows)}행 적재 → {EVENTS_TABLE}")
 
     if failures:
-        raise RuntimeError(f"{len(failures)}개 파일 적재 실패: {[str(p) for p in failures]}")
+        raise RuntimeError(f"{len(failures)}개 파일 적재 실패: {failures}")
 
     print(f"총 {total_rows}행 적재 완료")
 
@@ -137,12 +141,13 @@ def _train(**_):
 
     # W&B 는 VM 에 아직 키가 없다 — 있을 때만 로그, 없으면 학습 자체는 그대로 돈다.
     m = fit_and_export(df, MODEL_OUT, log_wandb=bool(os.environ.get("WANDB_API_KEY")))
+    _publish(MODEL_OUT)
     print(json.dumps(m["metrics"], indent=2, ensure_ascii=False))
 
 
 with DAG(
     dag_id="churn_upload_events",
-    description="🎯 이탈 예측 — API 적립 JSONL 을 BQ 로",
+    description="🎯 이탈 예측 — 버킷 serving-logs JSONL 을 BQ 로",
     start_date=datetime(2026, 9, 1),
     schedule="0 3 * * *",
     catchup=False,
