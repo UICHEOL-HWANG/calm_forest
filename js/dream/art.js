@@ -8,7 +8,7 @@
 //  ⚠️ 블룸 임계 0.85 — 흰색에 가까운 발광은 번진다. 수정은 채도 있는 파스텔로, 하얗게 빛나는 건 조각뿐.
 // =============================================================
 import * as THREE from 'three';
-import { ISLANDS, BRIDGES, SHARD_SPOTS, CLOUD_BED, BRIDGE_HALF, COTTAGE } from './layout.js';
+import { ISLANDS, BRIDGES, SHARD_SPOTS, CLOUD_BED, BRIDGE_HALF, COTTAGE, CRYSTAL_TREES, MUSHROOM_LAMPS } from './layout.js';
 import { buildMoonTower } from './cottage.js';
 
 const ISLAND_TOP = { main: 0xd9ccff, pink: 0xffd6ec, sky: 0xc6f2ff, star: 0xe2d6ff };
@@ -208,10 +208,8 @@ export function buildDreamWorld() {
   const mh = halo(0xffeec0, 46, 0.45); mh.material.fog = false; mh.position.copy(moon.position); group.add(mh);
 
   for (const isl of ISLANDS) islandParts(solid, isl);
-  [[-4.0, -2.2, 1.2, 0], [3.8, -3.8, 1.0, 1], [5.0, 0.6, 0.8, 2], [-14.6, -14.0, 1.4, 3], [12.0, -16.6, 1.1, 0], [14.8, -15.8, 0.9, 2], [21.0, 1.6, 1.0, 1]]
-    .forEach(([x, z, s, ci]) => crystalTree(solid, glow, x, z, s, CRYSTAL[ci]));
-  [[1.8, 5.0, 0xffb3e6], [-0.6, 5.6, 0x9ef0ff], [-3.4, -5.0, 0xfff09e], [-12.4, -11.2, 0x9ef0ff], [13.6, -12.6, 0xffb3e6]]
-    .forEach(([x, z, col]) => mushroomLamp(solid, glow, x, z, col));
+  CRYSTAL_TREES.forEach(([x, z, s, ci]) => crystalTree(solid, glow, x, z, s, CRYSTAL[ci]));
+  MUSHROOM_LAMPS.forEach(([x, z, col]) => mushroomLamp(solid, glow, x, z, col));
   const tower = new THREE.Group(), towerGlow = new THREE.Group();
   for (const g of [tower, towerGlow]) g.position.set(COTTAGE.x, 0, COTTAGE.z);
   solid.add(tower);
@@ -232,7 +230,7 @@ export function buildDreamWorld() {
   group.add(new THREE.Mesh(bakeGroup(solid), vtx({})));
   group.add(new THREE.Mesh(bakeGroup(glow), new THREE.MeshBasicMaterial({ vertexColors: true })));
   group.add(new THREE.Mesh(bakeGroup(cloud), vtx({ roughness: 1, transparent: true, opacity: 0.85, emissive: 0x6a5aa8, emissiveIntensity: 0.35 })));   // 달빛 받은 구름 — 무광이면 보라 앰비언트에 회색으로 죽는다
-  [[-4.0, 2.1, -2.2, CRYSTAL[0], 3.2], [3.8, 1.8, -3.8, CRYSTAL[1], 2.8], [-14.6, 2.4, -14.0, CRYSTAL[3], 3.6], [13.4, 1.9, -16.2, CRYSTAL[0], 3.0]]
+  [[-4.0, 2.1, -2.2, CRYSTAL[0], 3.2], [4.4, 1.8, -3.0, CRYSTAL[1], 2.8], [-14.6, 2.4, -14.0, CRYSTAL[3], 3.6], [13.4, 1.9, -16.2, CRYSTAL[0], 3.0]]
     .forEach(([x, y, z, col, s]) => { const h = halo(col, s, 0.35); h.position.set(x, y, z); group.add(h); });
 
   // 디딤돌 — 다리를 따라 1.3 간격(섬 안쪽은 건너뜀). InstancedMesh 하나로 떠다니게

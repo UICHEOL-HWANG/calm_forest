@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   ISLANDS, BRIDGES, SHARD_SPOTS, SHARDS_PER_DAY, CLOUD_BED, LANDING, COTTAGE,
+  OBSTACLES, PARK, CRYSTAL_TREES, MUSHROOM_LAMPS,
   isWalkable, clampWalkable, pickShards, normalizeDream, shardsLeft, islandOf,
 } from '../js/dream/layout.js';
 
@@ -43,6 +44,29 @@ test('달 탑집 — 북쪽 가장자리에서도 반대편으로 순간이동�
       const again = clampWalkable(out.x, out.z);
       assert.ok(Math.hypot(again.x - out.x, again.z - out.z) < 1e-9, '한 번 밀린 자리는 그대로여야 한다');
     }
+  }
+});
+
+test('소품 충돌 — 정박 마차·구름 침대·수정 나무·버섯 등은 통과할 수 없다', () => {
+  assert.ok(OBSTACLES.length >= 10);
+  assert.equal(new Set(OBSTACLES.map(o => o.id)).size, OBSTACLES.length, '소품 id 가 겹친다');
+  assert.equal(isWalkable(PARK.x + 1, PARK.z), false, '마차 몸통');
+  assert.equal(isWalkable(PARK.x + 2.6, PARK.z), false, '마차 앞 양');
+  assert.equal(isWalkable(PARK.x, PARK.z - 1.6), true, '마차 옆 길은 열려 있다');
+  assert.equal(isWalkable(CLOUD_BED.x, CLOUD_BED.z), false, '구름 침대 위');
+  for (const [x, z] of CRYSTAL_TREES) assert.equal(isWalkable(x, z), false, `수정 나무 (${x},${z})`);
+  for (const [x, z] of MUSHROOM_LAMPS) assert.equal(isWalkable(x, z), false, `버섯 등 (${x},${z})`);
+  for (const o of OBSTACLES) {
+    const out = clampWalkable((o.ax + o.bx) / 2, (o.az + o.bz) / 2);
+    assert.ok(isWalkable(out.x, out.z), `${o.id} 안에서 밀려난 자리가 걸을 수 없다`);
+  }
+});
+
+test('소품 충돌 — 침대 깨어나기 사거리 안에는 설 수 있다', () => {
+  for (const [dx, dz] of [[0, 1.6], [0, -1.6], [1.5, 0], [-1.5, 0]]) {
+    const x = CLOUD_BED.x + dx, z = CLOUD_BED.z + dz;
+    const out = clampWalkable(x, z);
+    assert.ok(Math.hypot(out.x - CLOUD_BED.x, out.z - CLOUD_BED.z) < 2.4, `(${dx},${dz}) 에서 침대 사거리를 벗어난다`);
   }
 });
 
