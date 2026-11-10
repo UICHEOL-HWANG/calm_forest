@@ -2,7 +2,7 @@ import { HALL, STAR, RESTAURANT, MENU, PATIENCE } from './data.js';
 import { createSession, tickSession, contextAt, actAt, finishSession, stationView } from './session.js';
 import { recordServe, takeIngredient, settleService } from './rules.js';
 import { showForStar, itemMesh, itemHeight } from './hall.js';
-import { mountHud, contextLabel, goalRows } from './hud.js';
+import { mountHud, contextLabel, goalRows, resultView } from './hud.js';
 
 const BOARD_R = 1.6;
 const START_PROMPT = '🍽️ 저녁 영업 시작';
@@ -148,9 +148,7 @@ export function createRestaurantRuntime(env) {
     env.trackEvent('restaurant_service', { star: star0, served: r.served, avg_score: Math.round(r.avg * 10) / 10, dda: out.rest.dda.iv });
     if (out.starUp) env.trackEvent('restaurant_star_up', { star: out.rest.star });
     env.requestSave();
-    const lines = [`🍽️ ${r.served}명 · 평균 ★${r.avg.toFixed(1)} · 🪙 ${r.coins}`];
-    if (out.bonus) lines.push(`🎁 🪙 ${out.bonus}`);
-    hud.result({ title: out.starUp ? env.copy.starUp(out.rest.star) : env.copy.done, lines, goals: goalRows(out.rest), onDone: refresh });
+    hud.result(resultView(r, out, goalRows(out.rest), env.copy), refresh);
     env.onFinish?.(r, out);
   }
 
