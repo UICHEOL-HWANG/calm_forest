@@ -26,11 +26,10 @@ export function buildAuctionStage(THREE) {
   const g = new THREE.Group();
   const lanterns = [];
   const batches = new Map();
-  const noShadow = new Set();
   const part = (color, geo, shadow = true) => {
-    if (!batches.has(color)) batches.set(color, []);
-    batches.get(color).push(geo);
-    if (!shadow) noShadow.add(color);
+    const key = `${color}:${shadow}`;
+    if (!batches.has(key)) batches.set(key, { color, shadow, geos: [] });
+    batches.get(key).geos.push(geo);
   };
   const box = (c, w, h, d, x, y, z, rx = 0, ry = 0, rz = 0, shadow = true) => part(c, place(new THREE.BoxGeometry(w, h, d), x, y, z, rx, ry, rz), shadow);
   const cyl = (c, rt, rb, h, seg, x, y, z, rx = 0, ry = 0, rz = 0, shadow = true) => part(c, place(new THREE.CylinderGeometry(rt, rb, h, seg), x, y, z, rx, ry, rz), shadow);
@@ -43,6 +42,7 @@ export function buildAuctionStage(THREE) {
     part(i % 2 ? CREAM : PINK, place(new THREE.ConeGeometry(0.19, 0.32, 3), -3.0 + i * 0.4, 0.33, 1.7, Math.PI, Math.PI / 6, 0, [1, 1, 0.25]), false);
   }
   box(WOOD_D, 1.3, 0.25, 0.45, 0, 0.125, 1.85);
+  for (let i = 0; i < 7; i++) box(WOOD_D, 6.4, 0.012, 0.02, 0, 0.506, -1.4 + i * 0.45);
   for (const sx of [-3.15, 3.15]) cyl(WOOD_DD, 0.1, 0.12, 4.1, 8, sx, 2.05, -1.4);
   for (let i = 0; i < 14; i++) box(i % 2 ? RED : RED_L, 0.45, 3.1, 0.12, -2.93 + i * 0.45, 2.05, -1.42 + (i % 2) * 0.07);
   box(WOOD_DD, 6.6, 0.16, 0.22, 0, 4.0, -1.35);
@@ -52,6 +52,7 @@ export function buildAuctionStage(THREE) {
   box(WOOD_DD, 0.9, 1.0, 0.62, 1.75, 1.0, 0.5);
   box(0xa0703f, 1.06, 0.08, 0.74, 1.75, 1.54, 0.5, -0.12);
   box(GOLD, 0.5, 0.36, 0.02, 1.75, 1.05, 0.82, 0, 0, 0, false);
+  cyl(WOOD_DD, 0.12, 0.12, 0.05, 12, 2.0, 1.6, 0.58);
   box(WOOD_DD, 0.5, 0.06, 0.06, -3.4, 3.65, -1.2, 0, 0, 0, false);
   for (const x of [-6.4, 6.4]) {
     cyl(WOOD_DD, 0.09, 0.11, 4.6, 8, x, 2.3, 4.0);
@@ -79,6 +80,7 @@ export function buildAuctionStage(THREE) {
   addTo(gavel, 0x7a5232, place(new THREE.CylinderGeometry(0.028, 0.028, 0.46, 6), 0.23, 0, 0, 0, 0, Math.PI / 2));
   addTo(gavel, 0x5e3d27, place(new THREE.CylinderGeometry(0.075, 0.075, 0.26, 10), 0.47, 0, 0, Math.PI / 2, 0, 0));
   const bell = pivot(-3.6, 3.62, -1.2);
+  addTo(bell, 0x3a2a20, place(new THREE.CylinderGeometry(0.01, 0.01, 0.12, 4), 0, -0.06, 0)).castShadow = false;
   addTo(bell, 0xd9a93a, place(new THREE.CylinderGeometry(0.07, 0.19, 0.26, 14), 0, -0.25, 0));
   addTo(bell, 0x8a6a2a, place(new THREE.SphereGeometry(0.06, 8, 6), 0, -0.4, 0)).castShadow = false;
 
@@ -106,9 +108,9 @@ export function buildAuctionStage(THREE) {
   string([-3.15, 4.05, -1.3], [6.4, 4.45, 4.0], 0.8, 9, warm.slice(1));
   string([3.15, 4.05, -1.3], [-6.4, 4.45, 4.0], 0.8, 9, warm.slice(2).concat(warm.slice(0, 2)));
 
-  for (const [color, geos] of batches) {
+  for (const { color, shadow, geos } of batches.values()) {
     const m = new THREE.Mesh(merge(geos), clay(color));
-    m.castShadow = !noShadow.has(color);
+    m.castShadow = shadow;
     m.receiveShadow = true;
     g.add(m);
   }
@@ -116,9 +118,11 @@ export function buildAuctionStage(THREE) {
   const beamMat = new THREE.MeshBasicMaterial({ color: 0xfff3c6, transparent: true, opacity: 0.04, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
   const cone = new THREE.Mesh(new THREE.ConeGeometry(1, 1, 28, 1, true), beamMat);
   g.add(cone);
+  const CONE_BASE = 0.04, POOL_BASE = 0.18;
+  let nightLevel = 0;
   const pool = new THREE.Mesh(new THREE.CircleGeometry(1.1, 32), beamMat.clone());
   pool.rotation.x = -Math.PI / 2;
-  pool.material.opacity = 0.18;
+  pool.material.opacity = 0;
   g.add(pool);
 
   const top = new THREE.Vector3(-1.25, 7.4, 2.2), aim = new THREE.Vector3(), dir = new THREE.Vector3();
@@ -134,10 +138,26 @@ export function buildAuctionStage(THREE) {
     pool.position.set(x, y, z);
   };
   focus(-1.25, -0.05);
+  const applyNight = () => {
+    cone.material.opacity = CONE_BASE * nightLevel;
+    pool.material.opacity = POOL_BASE * nightLevel;
+    cone.visible = pool.visible = nightLevel > 0.02;
+  };
+  applyNight();
+  const disposeTree = root => {
+    const seen = new Set();
+    root.traverse(o => {
+      if (o.geometry && !seen.has(o.geometry)) { seen.add(o.geometry); o.geometry.dispose(); }
+      for (const m of [].concat(o.material || [])) {
+        if (!seen.has(m)) { seen.add(m); m.dispose(); }
+      }
+    });
+  };
 
   return {
     group: g, lanterns, gavel, bell, pedestal, cone, pool, focus,
     setItem(id) {
+      for (const old of pedestal.children) disposeTree(old);
       pedestal.clear();
       const m = auctionItemMesh(THREE, id);
       if (m) {
@@ -146,11 +166,14 @@ export function buildAuctionStage(THREE) {
       }
     },
     setNight(level) {
-      const k = 0.05 + 0.5 * Math.max(0, Math.min(1, level));
+      nightLevel = Math.max(0, Math.min(1, level));
+      const k = 0.05 + 0.5 * nightLevel;
+      applyNight();
       for (const m of lanterns) m.material.emissiveIntensity = k;
     },
     setTension(on, t) {
-      cone.material.opacity = on ? 0.035 + 0.03 * (0.5 + 0.5 * Math.sin(t * 14)) : 0.04;
+      const flicker = on ? 0.875 + 0.75 * (0.5 + 0.5 * Math.sin(t * 14)) * 0.5 : 1;
+      cone.material.opacity = CONE_BASE * nightLevel * flicker;
     },
   };
 }

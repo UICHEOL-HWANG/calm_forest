@@ -39,3 +39,48 @@ test('mesh budget', () => {
   buildAuctionStage(THREE).group.traverse(o => { if (o.isMesh) n++; });
   assert.ok(n <= 140, String(n));
 });
+
+test('night level fades cone and pool and tension keeps the base', () => {
+  const s = buildAuctionStage(THREE);
+  s.setNight(0);
+  assert.equal(s.cone.visible, false);
+  assert.equal(s.pool.visible, false);
+  s.setNight(1);
+  assert.ok(s.cone.visible && s.pool.visible);
+  const full = s.cone.material.opacity;
+  s.setTension(false, 3);
+  assert.equal(s.cone.material.opacity, full);
+  s.setTension(true, 0.1);
+  assert.ok(s.cone.material.opacity > 0 && s.cone.material.opacity <= full * 1.6);
+  s.setTension(false, 3);
+  s.setNight(0.5);
+  assert.ok(Math.abs(s.cone.material.opacity - full / 2) < 1e-9);
+  assert.ok(Math.abs(s.pool.material.opacity - 0.09) < 1e-9);
+});
+
+test('setItem disposes the previous item resources', () => {
+  const s = buildAuctionStage(THREE);
+  s.setItem('starvane');
+  const geos = new Set(), mats = new Set();
+  s.pedestal.traverse(o => {
+    if (o.geometry) geos.add(o.geometry);
+    for (const m of [].concat(o.material || [])) mats.add(m);
+  });
+  assert.ok(geos.size > 0 && mats.size > 0);
+  const hits = new Map();
+  for (const r of [...geos, ...mats]) {
+    const orig = r.dispose.bind(r);
+    r.dispose = () => { hits.set(r, (hits.get(r) || 0) + 1); orig(); };
+  }
+  s.setItem('moonswing');
+  for (const r of [...geos, ...mats]) assert.equal(hits.get(r), 1);
+});
+
+test('large wood and gold batches keep casting shadows', () => {
+  const s = buildAuctionStage(THREE);
+  const big = [0x6d4a2e, 0xe0b04a].map(c => {
+    const list = s.group.children.filter(o => o.isMesh && o.material.color && o.material.color.getHex() === c && o.geometry.getAttribute('position').count > 200);
+    return list;
+  });
+  for (const list of big) assert.ok(list.some(m => m.castShadow));
+});
