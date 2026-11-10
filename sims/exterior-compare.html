@@ -55,6 +55,16 @@
   <div class="tag">게임 거리</div>
   <div class="grid far"></div>
 </section>
+<section data-prop="board">
+  <h2>⚖️ 저울 간판 판면</h2>
+  <p class="lead">글자 이름 없이 오늘 가장 비싼 작물과 가장 싼 작물을 아이콘·화살표·숫자로만 보여 줘요. 판면은 {작물 아이콘, 등락 %} 로 그리는 캔버스예요.</p>
+  <div class="tag">낮</div>
+  <div class="grid day"></div>
+  <div class="tag">밤 (hemi 0.55)</div>
+  <div class="grid night"></div>
+  <div class="tag">게임 거리</div>
+  <div class="grid far"></div>
+</section>
 </div>
 
 <script type="module">
@@ -68,8 +78,10 @@ import { buildWorkbench, buildMarketBoard, buildFigure, meshCount } from './exte
 const CAPTIONS = {
   workbench: { now: '현재', A: 'A 공방 부스', B: 'B 야외 목공 마당', C: 'C 장인 수레' },
   market: { now: '현재', A: 'A 시장 게시대', B: 'B 저울 간판', C: 'C 경매 무대 세트' },
+  board: { B: '현재 B', B1: 'B1 아이콘 가격표', B2: 'B2 저울이 말해요', B3: 'B3 칠판 그림' },
 };
 const VARIANTS = ['now', 'A', 'B', 'C'];
+const SECTIONS = [['workbench', buildWorkbench, VARIANTS], ['market', buildMarketBoard, VARIANTS], ['board', buildMarketBoard, ['B', 'B1', 'B2', 'B3']]];
 const SETS = {
   day: { sky: 0xdff3ff, hemi: [0xffffff, 0xbfe8c9, 0.9], amb: 0.25, sun: [0xffe9c4, 1.1], ground: 0x7cc456, bloom: 0.35, lamp: 0.2 },
   night: { sky: 0x1b2145, hemi: [0x8090c0, 0x303848, 0.55], amb: 0.2, sun: [0x8a9ad8, 0.6], ground: 0x46685a, bloom: 0.55, lamp: 0.6 },
@@ -91,14 +103,14 @@ Object.assign(sun.shadow.camera, { left: -5, right: 5, top: 5, bottom: -5, near:
 sun.shadow.bias = -0.0005;
 scene.add(hemi, amb, sun, sun.target);
 const groundMat = new THREE.MeshStandardMaterial({ color: SETS.day.ground, roughness: 1 });
-const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 120), groundMat);
-ground.rotation.x = -Math.PI / 2; ground.position.x = 100; ground.receiveShadow = true;
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(420, 120), groundMat);
+ground.rotation.x = -Math.PI / 2; ground.position.x = 160; ground.receiveShadow = true;
 scene.add(ground);
 
 const props = [];
 let slot = 0;
-for (const [kind, build] of [['workbench', buildWorkbench], ['market', buildMarketBoard]]) {
-  for (const v of VARIANTS) {
+for (const [kind, build, list] of SECTIONS) {
+  for (const v of list) {
     const obj = build(THREE, v);
     const x = slot * 30; slot += 1;
     obj.position.set(x, 0, 0);
@@ -135,7 +147,7 @@ for (const sec of document.querySelectorAll('section[data-prop]')) {
   const kind = sec.dataset.prop;
   for (const view of Object.keys(VIEWS)) {
     const grid = sec.querySelector(`.grid.${view}`);
-    for (const v of VARIANTS) {
+    for (const v of SECTIONS.find(x => x[0] === kind)[2]) {
       const p = props.find(q => q.kind === kind && q.v === v);
       const fig = document.createElement('figure');
       const wrap = document.createElement('div'); wrap.className = 'cv';
