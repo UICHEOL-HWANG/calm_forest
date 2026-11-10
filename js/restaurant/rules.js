@@ -110,3 +110,9 @@ export function grantStarter(rest, port) {
   for (const [k, n] of Object.entries(STARTER_STOCK)) pantry[k] = nat(pantry[k]) + n;
   return { given: true, rest: { ...rest, starterGiven: true }, port: { ...port, pantry } };
 }
+
+export function settleService(rest, result) {
+  const { dir, dda } = adjustDda(rest.dda, result);
+  const up = applyStarUp({ ...rest, dda, services: rest.services + 1 });
+  return { rest: up.rest, bonus: up.coins, starUp: up.rest.star !== rest.star, dir };
+}

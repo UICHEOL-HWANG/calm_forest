@@ -1,5 +1,5 @@
-import { HALL, SERVICE_SEC, LAST_SPAWN_SEC, STAR, EAT_SEC, COIN_PER_STAR, PATIENCE } from './data.js';
-import { cookState, panState, flipOk, chopTap, chopDone, serveStars, spawnInterval, serviceAvg } from './rules.js';
+import { HALL, SERVICE_SEC, LAST_SPAWN_SEC, STAR, EAT_SEC, COIN_PER_STAR, PATIENCE, COOK } from './data.js';
+import { cookState, panState, flipOk, flipZone, chopTap, chopDone, serveStars, spawnInterval, serviceAvg } from './rules.js';
 
 const DISH = new Set(['grilled', 'riceball', 'soup']);
 const RAW = new Set(['fish', 'rice']);
@@ -239,4 +239,29 @@ export function finishSession(S) {
     served: st.served, stars: [...st.stars], unserved, late: st.late, perfect: st.perfect,
     takes: st.takes, burnt: st.burnt, coins: st.coins, avg: serviceAvg(st.stars, unserved),
   };
+}
+
+const BEAT = 0.35;
+
+export function stationView(S, id) {
+  const s = stationDef(id);
+  if (!isActive(S, s)) return null;
+  const st = S.stations[id];
+  if (!st.item) return null;
+  if (s.kind === 'board') return chopDone(st.chop) ? null : { kind: 'chop', taps: st.chop.taps, beat: S.time % BEAT < 0.12 };
+  if (s.kind === 'pan') {
+    const state = panState(st.t), cook = COOK.pan.cook;
+    if (state === 'raw') {
+      const [a, b] = flipZone(S.dda.win);
+      return { kind: 'gauge', p: st.t / cook, zone: st.flipped === null ? [a / cook, b / cook] : null, state, perfect: st.flipped === true };
+    }
+    return { kind: 'gauge', p: Math.min(1, (st.t - cook) / COOK.pan.burn), zone: null, state, perfect: st.flipped === true };
+  }
+  if (s.kind === 'pot') {
+    const win = COOK.pot.win * S.dda.win, span = COOK.pot.cook + win + 2;
+    const cs = cookState('pot', st.t, S.dda.win);
+    return { kind: 'gauge', p: Math.min(1, st.t / span), zone: [COOK.pot.cook / span, (COOK.pot.cook + win) / span],
+      state: cs === 'burnt' ? 'burnt' : cs === 'over' ? 'done' : 'raw', perfect: cs === 'perfect' };
+  }
+  return null;
 }

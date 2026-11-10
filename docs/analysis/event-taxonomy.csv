@@ -444,3 +444,7 @@ worker_offline,system,ops,3,N,dormant,14,1,2026-09-14,2026-09-28,wage|water|harv
 worker_promote,farming,farm_worker,2,N,dormant,4,1,2026-09-15,2026-09-16,works|job|grade,js/spaces/farm-auto.js:294,성장 곡선,
 worker_wage,farming,farm_worker,2,N,dormant,6,1,2026-09-15,2026-09-28,workers|paid|resting,js/spaces/farm-auto.js:338,"하루 한 번 일꾼 월급을 정산했을 때 (paid=지급액, workers=일꾼 수, resting=쉬는 일꾼)",
 zone_enter,ui,ui,1,N,active,1813,75,2026-08-12,2026-10-24,zone|weather|night,js/spaces/doors.js:489,밤 콘텐츠 유입,
+enter_restaurant,crafting,restaurant,2,N,not_fired,0,0,,,,js/spaces/restaurant.js:145,식당 안으로 들어갔을 때,
+exit_restaurant,crafting,restaurant,2,N,not_fired,0,0,,,,js/spaces/restaurant.js:156,식당에서 마을로 나왔을 때 (영업 중이면 결과 없이 끝),
+restaurant_service,crafting,restaurant,1,N,not_fired,0,0,,,star|served|avg_score|dda,js/restaurant/runtime.js:147,"식당 저녁 영업 한 판이 끝났을 때 (star=영업 때 별 단계, served=받은 손님 수, avg_score=못 받은 주문을 1점으로 센 평균 별점, dda=영업 뒤 손님 간격 배율)",
+restaurant_star_up,crafting,restaurant,1,N,not_fired,0,0,,,star,js/restaurant/runtime.js:148,식당 평판 별이 올랐을 때 (star=오른 뒤 별 단계),

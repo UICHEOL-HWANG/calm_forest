@@ -93,7 +93,7 @@ import { defaultDelve, sanitizeDelve } from './delve/rules.js';
 import { defaultPort, sanitizePort } from './port/rules.js';
 import { defaultRestaurant, sanitizeRestaurant } from './restaurant/rules.js';
 import { RESTAURANT, RESTAURANT_GATE, HALL } from './restaurant/data.js';
-import { enterRestaurant, exitRestaurant } from './spaces/restaurant.js';
+import { enterRestaurant, exitRestaurant, spawnRestaurantGate, buildRestaurantHall, restaurantAction, tickRestaurant, updateRestaurantNight } from './spaces/restaurant.js';
 import { restoreStage as restoreCosStage } from './cos-onboard.js';
 import { cosQuestActive, maybeOfferCosQuest, noteCosQuestVisit, updateCosQuestBubble } from './spaces/cos-quest.js';
 import { ORCHARD_TREE, GATE_PATCH, buildOrchardDecor, fruitSpots, buildTreeSoil, disposeOwned } from './orchard-art.js';   // 🍎 과수원 외관(나무 모양·안쪽 소품·입구 잔디 판)
@@ -3335,7 +3335,7 @@ function buildWorld() {
     for (let tries = 0; tries < 60 && !ok; tries++) { // 호수·집터·시설 위에 안 생기게 재시도
       const r = 8 + Math.random() * 22, a = Math.random() * Math.PI * 2;
       x = Math.cos(a) * r; z = Math.sin(a) * r;
-      ok = !(dist2D({ x, z }, LAKE) < LAKE_R + 2.5 || dist2D({ x, z }, HOUSE_POS) < HOUSE_CLEAR_R || dist2D({ x, z }, BENCH) < 2.5 || dist2D({ x, z }, KITCHEN) < 3 || dist2D({ x, z }, SHOP) < 2.5 || dist2D({ x, z }, FARM_GATE) < 2.5 || dist2D({ x, z }, MINE_GATE) < 2.5 || dist2D({ x, z }, COOP) < 6 || dist2D({ x, z }, GLADE) < GLADE_R + 1 || dist2D({ x, z }, CAFE_GATE) < 5.5 || dist2D({ x, z }, FOREST) < FOREST_R + 1
+      ok = !(dist2D({ x, z }, LAKE) < LAKE_R + 2.5 || dist2D({ x, z }, HOUSE_POS) < HOUSE_CLEAR_R || dist2D({ x, z }, BENCH) < 2.5 || dist2D({ x, z }, KITCHEN) < 3 || dist2D({ x, z }, SHOP) < 2.5 || dist2D({ x, z }, FARM_GATE) < 2.5 || dist2D({ x, z }, MINE_GATE) < 2.5 || dist2D({ x, z }, COOP) < 6 || dist2D({ x, z }, GLADE) < GLADE_R + 1 || dist2D({ x, z }, CAFE_GATE) < 5.5 || dist2D({ x, z }, RESTAURANT_GATE) < 6 || dist2D({ x, z }, FOREST) < FOREST_R + 1
       || dist2D({ x, z }, DOCK_POND) < DOCK_POND_R + 2 || dist2D({ x, z }, DOCK_GATE) < 4   // 🛶 나루터 연못·데크 위엔 나무 금지
       || dist2D({ x, z }, MIST_GATE) < 5   // 🌫️ 안개 숲 입구 앞은 비워둠(자체 고목 연출이 있음)
       || dist2D({ x, z }, SHOP_POS) < 4   // 🏪 꾸미기 가게 — 반치수 2.56 + 걸어다닐 틈. 없으면 나무가 가게 안에 박힌다
@@ -3389,7 +3389,8 @@ function buildWorld() {
     const x = Math.cos(a) * r, z = Math.sin(a) * r;
     if (dist2D({ x, z }, SEA_COVE) < SEA_COVE.r + 0.5) continue;  // 🌊 후미 물 위 제외
     if (dist2D({ x, z }, SHOP_POS) < 3.2) continue;
-    if (dist2D({ x, z }, HOMI_STALL) < 2.4) continue;               // 🏪 가게 바닥은 두께 0.09 라 풀(높이 0.7)이 마루를 뚫고 올라온다
+    if (dist2D({ x, z }, HOMI_STALL) < 2.4) continue;
+    if (dist2D({ x, z }, RESTAURANT_GATE) < 5) continue;               // 🏪 가게 바닥은 두께 0.09 라 풀(높이 0.7)이 마루를 뚫고 올라온다
     if (dist2D({ x, z }, LIGHT_WORKSHOP) < 3.2) continue;            // 🏮 빛 공방 받침도 같은 이유
     if (plazaScatterBlocks(x, z, 0.5)) continue;
     if (pondScatterBlocks(x, z, 0.5)) continue;
@@ -5019,6 +5020,7 @@ function buildEnvironment() {
     if (dist2D({ x, z }, WORLD_TREE) < 5) continue;                   // 🌳 세계수 밑동·뿌리 위 제외
     if (dist2D({ x, z }, LIGHT_WORKSHOP) < 3.2) continue;            // 🏮 빛 공방 받침·디딤판 위 제외
     if (dist2D({ x, z }, MIRROR_STOP) < 4) continue;                 // 🚏 거울 마을 정류장
+    if (dist2D({ x, z }, RESTAURANT_GATE) < 5) continue;
     if (dist2D({ x, z }, NEIGHBOR_GATE) < 1.5) continue;             // 🏡 이웃 마을 팻말 밑
     if (plazaScatterBlocks(x, z, 1)) continue;
     if (pondScatterBlocks(x, z, 1)) continue;
@@ -5027,7 +5029,8 @@ function buildEnvironment() {
   lockFrom('coop'); buildCoopSite(); lockTo();   // 🐔 닭장 터 표지(남쪽 필드)
   lockFrom('glade'); buildGlade(); lockTo();      // 🌟 반딧불이 계곡(남쪽 숲) — 밤 콘텐츠
   lockFrom('lightWorkshop'); buildLightWorkshop(); lockTo();   // 🏮 빛 공방(계곡 연못가 오두막 + 주인)
-  lockFrom('cafe'); spawnCafeGate(); lockTo();   // ☕ 카페 건물(마을 남쪽) — 처음부터 있음
+  lockFrom('cafe'); spawnCafeGate(); lockTo();
+  lockFrom('restaurant'); spawnRestaurantGate(); lockTo();   // ☕ 카페 건물(마을 남쪽) — 처음부터 있음
   spawnCosmeticShop();  // 🏪 꾸미기 가게(마을 서쪽) — 처음부터 있음
   refreshMuseumGate(); // 🏛️ 박물관(마을 서쪽) — 처음부터 있음. 층은 수집률로 자란다
   buildBridge();       // 🌉 박물관 섬을 두른 개울 + 다리(해금 켜짐·새 세이브면 무너진 채 시작 — js/spaces/bridge.js)
@@ -5036,7 +5039,8 @@ function buildEnvironment() {
   buildWorldTree();   // 🌳 마을 북쪽 세계수(판 진척만큼 잎·꽃) — js/spaces/world-tree.js
   lockFrom('neighbor'); spawnNeighborGate(); lockTo();
   spawnHalloweenGate();    // 🏡 이웃 마을 가는 길(마을 남쪽, 🍄숲·🌟계곡 사이) — 처음부터 있음
-  buildCafeHall();   // ☕ 카페 홀(별도 공간)
+  buildCafeHall();
+  buildRestaurantHall();   // ☕ 카페 홀(별도 공간)
   lockFrom('forest'); buildForest(); lockTo();     // 🍄 채집 숲(남서쪽) — 줍기
   lockFrom('river'); buildDockGate(); lockTo();   // 🛶 나루터(마을 북쪽 12시) — 처음부터 있음
   buildRiverSpace(); // 🛶 강(별도 공간) — 나룻배 러너
@@ -6247,6 +6251,7 @@ function animate() {
       updateDoorInteract();
     }
     updateFishing();
+    if (atRestaurant) tickRestaurant(dt);
     updateE1Bubble(dt, t);   // 🧪 E1 처치 말풍선(첫 수확 전에만 있다)
     updateSea(dt, t);     // 🌊 바다터(배회 물고기 + 줄다리기 미니게임)
     emitBuffs();          // 활성 버프 HUD 갱신(만료 처리 포함)
@@ -7165,7 +7170,8 @@ function updateDayNight(dt) {
   // 별 하늘(밤에 페이드인 + 반짝임)
   if (stars) stars.material.opacity = Math.max(0, nightAmt - 0.35) * 1.5 * (0.8 + Math.sin(t * 3.3) * 0.2);
   // 집 창문 따뜻한 불빛
-  houseWindows.forEach(m => { m.emissiveIntensity = nightAmt * 2.1 * (m.userData.nightScale ?? 1); });   // nightScale: 통유리 집은 약하게
+  houseWindows.forEach(m => { m.emissiveIntensity = nightAmt * 2.1 * (m.userData.nightScale ?? 1); });
+  updateRestaurantNight(nightAmt);   // nightScale: 통유리 집은 약하게
   for (const anim of houseAddonAnims) anim(t);   // 🧩 굴뚝 연기 등 움직이는 구성품
   // 🔥 화덕 불꽃 — 세로로 늘 때 가로가 눌리고(부피 보존 인상), 두 겹이 반대로 비틀린다
   for (const f of kilnFlames) {
@@ -7510,6 +7516,10 @@ function handleAction() {
       if (TOOLS[currentTool].id === 'hoe') return delveFloorNow() > 0 ? tryDelveMine() : tryMine();
     }
     ui.toast?.('⛏️ 🌾농사 세트의 괭이(2)로 캐야 해요');
+    return;
+  }
+  if (atRestaurant) {
+    restaurantAction();
     return;
   }
   if (atCafe) {                   // ☕ 홀: 손님에게 서빙 / 주문판 열기

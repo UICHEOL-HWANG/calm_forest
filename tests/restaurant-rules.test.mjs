@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { STAR, COOK, STARTER_STOCK } from '../js/restaurant/data.js';
 import { defaultRestaurant, sanitizeRestaurant, cookState, panState, flipZone, flipOk, chopTap, chopDone, serveStars, spawnInterval, serviceAvg, adjustDda,
-  recordServe, starUpReady, applyStarUp, takeIngredient, grantStarter } from '../js/restaurant/rules.js';
+  recordServe, starUpReady, applyStarUp, takeIngredient, grantStarter, settleService } from '../js/restaurant/rules.js';
 
 test('기본값과 정규화', () => {
   const d = defaultRestaurant();
@@ -132,4 +132,18 @@ test('시작 재료는 한 번만', () => {
 test('별 단계표 모양', () => {
   assert.deepEqual(Object.keys(STAR), ['1', '2', '3', '4']);
   assert.equal(COOK.pan.cook, 5);
+});
+
+test('영업 정산: 횟수 +1, DDA 조정, 조건이 되면 별이 오르고 보상', () => {
+  const base = { ...defaultRestaurant(), rating: 40, served: { grilled: 0, riceball: 5, soup: 0 } };
+  const out = settleService(base, { avg: 5, late: 0, unserved: 0, served: 7 });
+  assert.equal(out.rest.services, 1);
+  assert.equal(out.rest.star, 2);
+  assert.equal(out.bonus, 100);
+  assert.equal(out.starUp, true);
+  assert.equal(out.dir, 'hard');
+  const stay = settleService(defaultRestaurant(), { avg: 2, late: 2, unserved: 2, served: 2 });
+  assert.equal(stay.starUp, false);
+  assert.equal(stay.bonus, 0);
+  assert.equal(stay.rest.dda.iv, 1.08);
 });

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { HALL, SERVICE_SEC } from '../js/restaurant/data.js';
-import { createSession, tickSession, contextAt, actAt, finishSession } from '../js/restaurant/session.js';
+import { createSession, tickSession, contextAt, actAt, finishSession, stationView } from '../js/restaurant/session.js';
 
 const at = id => {
   const s = HALL.stations.find(s => s.id === id);
@@ -151,4 +151,23 @@ test('완주 봇: ★1 한 판에서 6명 이상, 평균 ★4 이상', () => {
   assert.ok(done, 'end 이벤트');
   assert.ok(r.served >= 6, `served ${r.served}`);
   assert.ok(r.avg >= 4, `avg ${r.avg}`);
+});
+
+test('설비 게이지: 도마 칸, 팬 초록 구간, 냄비 완벽', () => {
+  const S = createSession({ star: 2, dda: one, rng: seq(0) });
+  assert.equal(stationView(S, 'board'), null);
+  actAt(S, at('crate_rice'), { take: yes });
+  actAt(S, at('board'), { take: yes });
+  actAt(S, at('board'), { take: yes });
+  assert.deepEqual({ ...stationView(S, 'board'), beat: 0 }, { kind: 'chop', taps: 1, beat: 0 });
+  actAt(S, at('crate_fish'), { take: () => false });
+  const S2 = createSession({ star: 1, dda: one, rng: seq(0) });
+  actAt(S2, at('crate_fish'), { take: yes });
+  actAt(S2, at('pan0'), { take: yes });
+  for (let i = 0; i < 20; i++) tickSession(S2, 0.05);
+  const v = stationView(S2, 'pan0');
+  assert.equal(v.state, 'raw');
+  assert.deepEqual(v.zone, [2.2 / 5, 3.2 / 5]);
+  assert.ok(Math.abs(v.p - 0.2) < 1e-6);
+  assert.equal(stationView(S2, 'pot'), null);
 });

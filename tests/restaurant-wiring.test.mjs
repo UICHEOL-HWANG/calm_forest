@@ -97,3 +97,27 @@ test('js/spaces/restaurant.js 는 입퇴장 함수를 내보낸다', () => {
   assert.match(STUB, /export function enterRestaurant\(/);
   assert.match(STUB, /export function exitRestaurant\(/);
 });
+
+test('마을 배치·실내·프레임·행동·밤 점등이 연결돼 있다', () => {
+  assert.match(SRC, /lockFrom\('restaurant'\); spawnRestaurantGate\(\); lockTo\(\);/);
+  assert.match(SRC, /buildCafeHall\(\);\n  buildRestaurantHall\(\);/);
+  assert.match(SRC, /if \(atRestaurant\) tickRestaurant\(dt\);/);
+  assert.match(SRC, /if \(atRestaurant\) \{\n    restaurantAction\(\);\n    return;\n  \}/);
+  assert.match(SRC, /updateRestaurantNight\(nightAmt\);/);
+  assert.match(SRC, /dist2D\(\{ x, z \}, RESTAURANT_GATE\) < 6/);
+  assert.equal((SRC.match(/dist2D\(\{ x, z \}, RESTAURANT_GATE\) < 5\) continue;/g) || []).length, 2);
+});
+
+test('문: 마을에서 들어가기, 안에서 나가기와 영업 맥락', () => {
+  assert.match(DOORS, /isOpen\('restaurant'\) && nearRestaurantDoor\(player\.position\)/);
+  assert.match(DOORS, /nd = 'restaurant'; prompt = RESTAURANT_COPY\.enter;/);
+  assert.match(DOORS, /nearRestaurantExit\(player\.position\)\) \{ nd = 'restaurantexit'/);
+  assert.match(DOORS, /else prompt = updateRestaurantInteract\(\);/);
+});
+
+test('식당 이벤트 파라미터는 5개 이하', () => {
+  const src = read('js/restaurant/runtime.js');
+  const m = src.match(/trackEvent\('restaurant_service', \{([^}]*)\}/);
+  assert.ok(m);
+  assert.ok(m[1].split(',').length <= 5);
+});

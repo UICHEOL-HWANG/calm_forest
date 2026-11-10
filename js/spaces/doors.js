@@ -20,6 +20,7 @@ import { port, portPrompt, enterPort, guideHides } from '../port/index.js';
 import { plazaSpot } from '../plaza/index.js';
 import { delvePrompt, delveFloorNow } from './delve.js';
 import { trackEvent } from '../analytics.js';
+import { RESTAURANT_COPY, nearRestaurantDoor, nearRestaurantExit, updateRestaurantInteract } from './restaurant.js';
 import { decorBanner } from '../decor-drops/index.js';
 import { DECOR, DECOR_SCALE, OUTDOOR, STATION_IDS, stationLabel } from '../data/catalog.js';
 import { BENCH, CAFE, CAFE_GATE, CAFE_HALF, COOP, DOCK_GATE, FARM, FARM_GATE, FOREST, FOREST_R, GLADE, GLADE_R, HOUSE_POS, LIGHT_WORKSHOP, INT, KITCHEN, MARKET, MINE, MINE_GATE, MINE_HALF, MIST, MIST_GATE, MIST_HALF, MOUNTAIN, MOUNTAIN_GATE, MUSEUM, MUSEUM_GATE, NEIGHBOR_GATE, OBSERVATORY, OBSERVATORY_GATE, OBSERVATORY_R, ORCHARD, ORCHARD_GATE, ORCHARD_HALF, ORCHARD_PROMPT_R, RANK, RIVER, RIVER_DOCK_HALF, ROOF_Y, SEA, SEA_DECK_Z0, SEA_GATE, HOMI_STALL, SHOP, SHOP_DOOR } from '../data/places.js';
@@ -299,6 +300,9 @@ export function updateDoorInteract() {
     else if (delveFloorNow() === 0 && dist2D({ x: MINE.x, z: MINE.z - MINE_HALF }, player.position) < 1.7) { nd = 'mineexit'; prompt = '🚪 나가기'; }
   } else if (atOrchard) {   // 🍎 과수원 언덕: 들어온 남쪽 경계로 나가기
     if (dist2D({ x: ORCHARD.x, z: ORCHARD.z + ORCHARD_HALF }, player.position) < 1.9) { nd = 'orchardexit'; prompt = '🚪 나가기'; }
+  } else if (atRestaurant) {
+    if (nearRestaurantExit(player.position)) { nd = 'restaurantexit'; prompt = RESTAURANT_COPY.exit; }
+    else prompt = updateRestaurantInteract();
   } else if (atCafe) {   // ☕ 홀: 남쪽 문으로 나가기 / 손님·주문판 근접 안내
     if (dist2D({ x: CAFE.x, z: CAFE.z + CAFE_HALF }, player.position) < 1.9) { nd = 'cafeexit'; prompt = '🚪 나가기'; }
     else prompt = updateCafeInteract();
@@ -360,6 +364,8 @@ export function updateDoorInteract() {
     //    진행도 게이트라 {N}(날짜)이 없어 openDay 를 넘기지 않는다 — replace 가 그대로 통과한다.
     prompt = locked ? lockLine('orchard') : '🍎 과수원에 들어가기';
     if (!locked) firstHintBanner('orchardGate', '🍎', '과수원', '묘목을 심어 매일 열매를 따는 곳');
+  } else if (isOpen('restaurant') && nearRestaurantDoor(player.position)) {
+    nd = 'restaurant'; prompt = RESTAURANT_COPY.enter;
   } else if (isOpen('cafe') && dist2D({ x: CAFE_GATE.x, z: CAFE_GATE.z + 1.3 }, player.position) < 2.2) {
     nd = 'cafe'; prompt = '☕ 카페에 들어가기';
     firstHintBanner('cafeGate', '☕', '카페', '모은 재료로 손님에게 요리를 서빙하는 곳');
