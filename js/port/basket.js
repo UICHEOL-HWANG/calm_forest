@@ -3,7 +3,7 @@ import { PANTRY_KEYS, PANTRY_ICO } from './data.js';
 const LABEL = '🧺 섬 바구니';
 export const BASKET_TIP = '도구 대신 섬에서 모은 재료가 담겨요';
 const TIP_KEY = 'cf_port_basket_tip', TIP_MS = 6000;
-let root = null, cells = null, lastKey = '';
+let root = null, cells = null, lastKey = '', lastPantry = null, tipShownNow = false, tipTimer = 0;
 
 export function basketKey(pantry = {}) {
   return PANTRY_KEYS.map(k => Math.max(0, pantry[k] | 0)).join(',');
@@ -22,21 +22,29 @@ function tipSeen() { try { return !!localStorage.getItem(TIP_KEY); } catch (e) {
 function markTipSeen() { try { localStorage.setItem(TIP_KEY, '1'); } catch (e) {} }
 
 function showTipOnce() {
-  if (tipSeen()) return;
-  markTipSeen();
+  if (tipShownNow || tipSeen()) return;
+  tipShownNow = true;
   const tip = root.querySelector('.pb-tip');
   tip.hidden = false;
-  setTimeout(() => { tip.hidden = true; }, TIP_MS);
+  tipTimer = setTimeout(() => { tip.hidden = true; tipTimer = 0; markTipSeen(); }, TIP_MS);
+}
+
+function cancelTip() {
+  if (!tipTimer) return;
+  clearTimeout(tipTimer); tipTimer = 0; tipShownNow = false;
+  root.querySelector('.pb-tip').hidden = true;
 }
 
 export function setIslandHud(host, on) {
   host.classList.toggle('port-island', !!on);
   if (on && !root) build(host);
   if (on) showTipOnce();
+  else if (root) cancelTip();
 }
 
 export function updateBasket(pantry) {
-  if (!root) return;
+  if (!root || pantry === lastPantry) return;
+  lastPantry = pantry;
   const key = basketKey(pantry);
   if (key === lastKey) return;
   lastKey = key;

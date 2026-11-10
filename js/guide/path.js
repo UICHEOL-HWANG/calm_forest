@@ -3,7 +3,7 @@ const RING = 8, REACHED = 0.5;
 function segClear(a, b, circles, skip) {
   const dx = b.x - a.x, dz = b.z - a.z, l2 = dx * dx + dz * dz;
   for (let i = 0; i < circles.length; i++) {
-    if (skip && skip.has(i)) continue;
+    if (skip && skip[i]) continue;
     const c = circles[i];
     const t = l2 > 0 ? Math.max(0, Math.min(1, ((c.x - a.x) * dx + (c.z - a.z) * dz) / l2)) : 0;
     const px = a.x + dx * t - c.x, pz = a.z + dz * t - c.z;
@@ -11,12 +11,6 @@ function segClear(a, b, circles, skip) {
   }
   return true;
 }
-
-const inside = (p, circles) => {
-  const s = new Set();
-  circles.forEach((c, i) => { if (Math.hypot(p.x - c.x, p.z - c.z) < c.r) s.add(i); });
-  return s;
-};
 
 export function createNav(solids, walkable = () => true, { pad = 0.6, clear = 0.3, merge = 0.9 } = {}) {
   const circles = solids.map(([c, r]) => ({ x: c.x, z: c.z, r: r + clear }));
@@ -34,14 +28,20 @@ export function createNav(solids, walkable = () => true, { pad = 0.6, clear = 0.
     adj[i].push([j, d]); adj[j].push([i, d]);
   }
 
+  const n = nodes.length;
+  const skip = new Uint8Array(circles.length), dist = new Float64Array(n), toTgt = new Float64Array(n);
+  const prev = new Int32Array(n), done = new Uint8Array(n), path = new Int32Array(n + 1);
+
   function route(me, tgt) {
-    const skip = new Set([...inside(me, circles), ...inside(tgt, circles)]);
+    for (let i = 0; i < circles.length; i++) {
+      const c = circles[i];
+      skip[i] = Math.hypot(me.x - c.x, me.z - c.z) < c.r || Math.hypot(tgt.x - c.x, tgt.z - c.z) < c.r ? 1 : 0;
+    }
     if (segClear(me, tgt, circles, skip)) return tgt;
-    const n = nodes.length, dist = new Float64Array(n).fill(Infinity), prev = new Int32Array(n).fill(-1), done = new Uint8Array(n);
-    const toTgt = new Float64Array(n).fill(Infinity);
     for (let i = 0; i < n; i++) {
-      if (segClear(me, nodes[i], circles, skip)) dist[i] = Math.hypot(nodes[i].x - me.x, nodes[i].z - me.z);
-      if (segClear(nodes[i], tgt, circles, skip)) toTgt[i] = Math.hypot(tgt.x - nodes[i].x, tgt.z - nodes[i].z);
+      dist[i] = segClear(me, nodes[i], circles, skip) ? Math.hypot(nodes[i].x - me.x, nodes[i].z - me.z) : Infinity;
+      toTgt[i] = segClear(nodes[i], tgt, circles, skip) ? Math.hypot(tgt.x - nodes[i].x, tgt.z - nodes[i].z) : Infinity;
+      prev[i] = -1; done[i] = 0;
     }
     let best = -1, bestCost = Infinity;
     for (;;) {
@@ -53,10 +53,13 @@ export function createNav(solids, walkable = () => true, { pad = 0.6, clear = 0.
       for (const [v, w] of adj[u]) if (dist[u] + w < dist[v]) { dist[v] = dist[u] + w; prev[v] = u; }
     }
     if (best < 0) return tgt;
-    const path = [];
-    for (let k = best; k >= 0; k = prev[k]) path.unshift(k);
-    const ahead = path.find(k => Math.hypot(nodes[k].x - me.x, nodes[k].z - me.z) > REACHED);
-    return ahead === undefined ? tgt : { ...tgt, x: nodes[ahead].x, z: nodes[ahead].z };
+    let len = 0;
+    for (let k = best; k >= 0; k = prev[k]) path[len++] = k;
+    for (let i = len - 1; i >= 0; i--) {
+      const k = path[i];
+      if (Math.hypot(nodes[k].x - me.x, nodes[k].z - me.z) > REACHED) return nodes[k];
+    }
+    return tgt;
   }
 
   return { route, nodes: nodes.length };

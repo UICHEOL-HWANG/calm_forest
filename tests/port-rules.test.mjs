@@ -164,3 +164,16 @@ test('sellCatch with nothing to sell returns null', async () => {
   const { sellCatch } = await import('../js/port/rules.js');
   assert.equal(sellCatch({ pantry: { clam: 4, rice: 2 } }), null);
 });
+
+test('hasCatch is true only when there is sea catch to sell', async () => {
+  const { hasCatch } = await import('../js/port/rules.js');
+  assert.equal(hasCatch({ pantry: { clam: 3, rice: 1 } }), false);
+  assert.equal(hasCatch({ pantry: { squid: 1 } }), true);
+  assert.equal(hasCatch({}), false);
+});
+
+test('sellPreview names what will be sold and the coins it brings', async () => {
+  const { sellPreview } = await import('../js/port/rules.js');
+  assert.equal(sellPreview({ pantry: { fish: 3, squid: 3, clam: 2 } }), '🐟3 🦑3 → 🪙45');
+  assert.equal(sellPreview({ pantry: { clam: 2 } }), '');
+});

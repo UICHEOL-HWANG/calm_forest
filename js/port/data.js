@@ -88,4 +88,5 @@ export const PORT_COPY = {
   lightDay: '🗼 등대 · 밤에 불이 켜지면 밤 낚시터가 열려요',
   lightNight: '🗼 등대 · 불이 켜졌어요. 밤 낚시터가 열렸어요',
   sold: '생선을 팔았어요',
+  sellConfirm: p => `🪙 한 번 더 누르면 팔아요 · ${p}`,
 };

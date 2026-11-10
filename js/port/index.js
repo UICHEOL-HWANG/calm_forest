@@ -4,7 +4,7 @@ import { ISLAND, ISLAND_R, ISLAND_DOCK, VILLAGE_DOCK, PIER_END, WALK_R, LAND_Y, 
   BOAT_SPEED, BOAT_TURN, FAST_MULT, BITE_FIRST, BITE_WIN, SEA_SPOTS, PIER_SPOT, SPOT_LEFT, PANTRY_ICO, PORT_COPY,
   QUESTS, SOLIDS, ISLAND_TREES, ISLAND_ROCKS, FENCE, SIGNS, MARKET_PRICE, MARKET_GIVE } from './data.js';
 import { tubBoat, buildPortShops, setPortNight, mat, glow } from './models.js';
-import { rollCatch, addToPantry, acceptQuest, pickItem, claimQuest, boardGate, sellCatch } from './rules.js';
+import { rollCatch, addToPantry, acceptQuest, pickItem, claimQuest, boardGate, sellCatch, hasCatch, sellPreview } from './rules.js';
 import { disarmPortPier, nearPortPier, portPierBoat } from './pier.js';
 import { createGuide } from '../guide/runner.js';
 import { createGuideView } from '../guide/view.js';
@@ -38,7 +38,8 @@ let guide = null, view = null, guideHome = false, pointKey = null;
 export const guideActive = () => !!guide?.active();
 export const guideHides = () => guideActive() && guide.index() < 10;
 const ROD_READY_R = 5;
-const MARKET_R = 3.2, HUT_R = 3.6, LIGHT_R = 3;
+const MARKET_R = 3.2, HUT_R = 2.8, LIGHT_R = 3, SELL_CONFIRM_MS = 4000;
+const sellArm = { until: 0, text: '' };
 const TALK_R = 2.6, PICK_R = 1.5, TALK_CLOSE_R = 3, PIER_END_R = 1.2;
 const portState = () => env.gameState().port;
 
@@ -106,7 +107,12 @@ function buildPort() {
   boat = tubBoat(); group.add(boat);
   buildResidents();
   const signs = new THREE.Group(); signs.position.copy(W(0, 0, LAND_Y)); group.add(signs);
-  for (const sg of SIGNS) signs.add(env.makeSignpost(sg.text, sg.x, sg.z));
+  for (const sg of SIGNS) {
+    const post = env.makeSignpost(sg.text, sg.x, sg.z);
+    signs.add(post);
+    requestAnimationFrame(() => requestAnimationFrame(() => { if (post.userData.solid) env.removeSolid?.(post.userData.solid); }));
+  }
+  (globalThis.requestIdleCallback ?? (f => setTimeout(f, 300)))(buildIslandNav);
   for (const [c, r] of SOLIDS) solids.push(env.solidCircle(PORT.x + c.x, PORT.z + c.z, r));
 }
 
@@ -469,7 +475,7 @@ function islandContext() {
   if (guideHides()) return null;
   const near = (c, r) => Math.hypot(p.x - PORT.x - c.x, p.z - PORT.z - c.z) < r;
   if (near(MARKET_POS, MARKET_R)) return ps.boughtDay !== env.todayStr() ? { nd: 'port_buy', prompt: PORT_COPY.marketInfo } : { nd: null, prompt: PORT_COPY.marketShut };
-  if (near(HUT_POS, HUT_R)) return sellCatch(ps) ? { nd: 'port_sell', prompt: PORT_COPY.hutSell } : { nd: null, prompt: PORT_COPY.hutEmpty };
+  if (near(HUT_POS, HUT_R)) return hasCatch(ps) ? { nd: 'port_sell', prompt: performance.now() < sellArm.until ? sellArm.text : PORT_COPY.hutSell } : { nd: null, prompt: PORT_COPY.hutEmpty };
   if (near(LIGHT_POS, LIGHT_R)) return { nd: null, prompt: env.isNight?.() ? PORT_COPY.lightNight : PORT_COPY.lightDay };
   if (guide?.current()?.id === 'free') boardArmed = true;
   const g = boardGate(boardArmed, Math.hypot(p.x - PORT.x - PIER_END.x, p.z - PORT.z - PIER_END.z), PIER_END_R);
@@ -539,6 +545,12 @@ function buy() {
 }
 
 function sell() {
+  if (performance.now() >= sellArm.until) {
+    const p = sellPreview(portState()); if (!p) return;
+    sellArm.until = performance.now() + SELL_CONFIRM_MS; sellArm.text = PORT_COPY.sellConfirm(p);
+    return;
+  }
+  sellArm.until = 0;
   const r = sellCatch(portState()); if (!r) return;
   const gs = env.gameState(); gs.port = r.port;
   env.earnCoins(r.coins);
@@ -571,6 +583,7 @@ function arrive() {
 
 function arriveIsland() {
   P.phase = 'island';
+  buildIslandNav();
   setIslandHud(env.hudRoot, true);
   boardArmed = false;
   boat.position.copy(W(ISLAND_DOCK.x, ISLAND_DOCK.z)); boat.rotation.y = -Math.PI / 2;
@@ -641,19 +654,39 @@ function flushGuideHome() {
 
 const NO_SOLIDS = [];
 let islandNav = null;
+const ROUTE_STEP = 0.3;
+const nav = { me: { x: 0, z: 0 }, tgt: { x: 0, z: 0 }, out: { x: 0, z: 0 }, last: { x: Infinity, z: Infinity }, lastTgt: null, lx: 0, lz: 0, res: null };
+function buildIslandNav() { islandNav ??= createNav(SOLIDS, islandWalkable); }
 function islandRoute(me, tgt) {
-  islandNav ??= createNav(SOLIDS, islandWalkable);
-  const w = islandNav.route({ x: me.x - PORT.x, z: me.z - PORT.z }, { x: tgt.x - PORT.x, z: tgt.z - PORT.z });
-  return w === tgt ? tgt : { ...tgt, x: w.x + PORT.x, z: w.z + PORT.z };
+  if (!islandNav) return tgt;
+  nav.me.x = me.x - PORT.x; nav.me.z = me.z - PORT.z;
+  if (nav.res && tgt === nav.lastTgt && tgt.x === nav.lx && tgt.z === nav.lz && Math.hypot(nav.me.x - nav.last.x, nav.me.z - nav.last.z) < ROUTE_STEP) return nav.res;
+  nav.tgt.x = tgt.x - PORT.x; nav.tgt.z = tgt.z - PORT.z;
+  const w = islandNav.route(nav.me, nav.tgt);
+  if (w === nav.tgt) nav.res = tgt;
+  else { nav.out.x = w.x + PORT.x; nav.out.z = w.z + PORT.z; nav.res = nav.out; }
+  nav.last.x = nav.me.x; nav.last.z = nav.me.z; nav.lastTgt = tgt; nav.lx = tgt.x; nav.lz = tgt.z;
+  return nav.res;
 }
 const QUEST_DEF = Object.fromEntries(QUESTS.map(q => [q.id, q]));
 const NPC_AT = Object.fromEntries(QUESTS.map(q => [q.id, { x: q.pos[0], z: q.pos[1] }]));
 let qGuide = null, qPick = null, qShown = false;
 
+const qCtx = { state: null, got: 0, npc: null, item: null };
+function nearestItem(id, from) {
+  let best = null, bd = Infinity;
+  for (const it of items) {
+    if (it.id !== id || it.taken || !it.mesh.visible) continue;
+    const d = Math.hypot(it.pos.x - from.x, it.pos.z - from.z);
+    if (d < bd) { bd = d; best = it.pos; }
+  }
+  return best;
+}
 function questCtx(id) {
-  const s = portState().quests[id] ?? {};
-  return { state: s.state, got: s.got ?? 0, npc: npcs[id]?.position,
-    item: nearest(items, it => it.id === id && !it.taken && it.mesh.visible, itemPos, env.player.position) };
+  const s = portState().quests[id];
+  qCtx.state = s?.state ?? null; qCtx.got = s?.got ?? 0; qCtx.npc = npcs[id]?.position ?? null;
+  qCtx.item = nearestItem(id, env.player.position);
+  return qCtx;
 }
 
 function syncQuestGuide() {
@@ -667,6 +700,7 @@ function syncQuestGuide() {
 
 function hideQuestGuide() {
   if (DBG) window.__questGuide = null;
+  qGuide = null; qPick = null;
   if (!qShown) return;
   qShown = false; view?.hide(); setPoint(null);
 }

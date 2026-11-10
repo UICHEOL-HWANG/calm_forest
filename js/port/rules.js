@@ -1,4 +1,4 @@
-import { PANTRY_KEYS, QUESTS, CATCH, SELL_PRICE } from './data.js';
+import { PANTRY_KEYS, PANTRY_ICO, QUESTS, CATCH, SELL_PRICE } from './data.js';
 
 const QUEST_BY_ID = new Map(QUESTS.map(q => [q.id, q]));
 const STATES = new Set(['avail', 'active', 'done']);
@@ -85,4 +85,17 @@ export function sellCatch(port) {
   }
   if (!coins) return null;
   return { port: { ...port, pantry: { ...pantry, ...Object.fromEntries(Object.keys(sold).map(k => [k, 0])) } }, coins, sold };
+}
+
+export function hasCatch(port) {
+  const pantry = port.pantry;
+  if (!pantry) return false;
+  for (const k in SELL_PRICE) if (nat(pantry[k]) > 0) return true;
+  return false;
+}
+
+export function sellPreview(port) {
+  const r = sellCatch(port);
+  if (!r) return '';
+  return `${Object.entries(r.sold).map(([k, n]) => `${PANTRY_ICO[k]}${n}`).join(' ')} → 🪙${r.coins}`;
 }
