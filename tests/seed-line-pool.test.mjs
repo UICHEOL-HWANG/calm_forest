@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sampleTable } from '../tools/seed-line-pool.mjs';
+import { sampleTable, parseArgs } from '../tools/seed-line-pool.mjs';
 
 test('sampleTable 은 칸마다 줄을 표로 만들고 버린 이유를 센다', () => {
   const md = sampleTable([
@@ -11,4 +11,17 @@ test('sampleTable 은 칸마다 줄을 표로 만들고 버린 이유를 센다'
   assert.match(md, /\| _any \| last \| ko \| 마지막이오! \|/);
   assert.match(md, /digit 1/);
   assert.match(md, /moonswing \| intro \| en \| \(실패: parse\)/);
+});
+
+test('parseArgs 는 --sample 이 없으면 sample null, 기본 kind auction', () => {
+  assert.deepEqual(parseArgs([]), { kind: 'auction', sample: null });
+  assert.deepEqual(parseArgs(['--sample', '10']), { kind: 'auction', sample: 10 });
+});
+
+test('parseArgs 는 잘못된 --sample 과 --kind 를 던진다', () => {
+  assert.throws(() => parseArgs(['--sample']), /--sample/);
+  assert.throws(() => parseArgs(['--sample', 'abc']), /--sample/);
+  assert.throws(() => parseArgs(['--sample', '0']), /--sample/);
+  assert.throws(() => parseArgs(['--sample', '--kind', 'auction']), /--sample/);
+  assert.throws(() => parseArgs(['--kind', 'nope']), /--kind/);
 });
