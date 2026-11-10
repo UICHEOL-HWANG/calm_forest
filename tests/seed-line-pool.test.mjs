@@ -1,0 +1,14 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { sampleTable } from '../tools/seed-line-pool.mjs';
+
+test('sampleTable 은 칸마다 줄을 표로 만들고 버린 이유를 센다', () => {
+  const md = sampleTable([
+    { cell: { kind: 'auction', key: '_any', slot: 'last', lang: 'ko' }, lines: ['더 없소?', '마지막이오!'], dropped: { digit: 1 }, failure: null },
+    { cell: { kind: 'auction', key: 'moonswing', slot: 'intro', lang: 'en' }, lines: [], dropped: {}, failure: 'parse' },
+  ]);
+  assert.match(md, /\| _any \| last \| ko \| 더 없소\? \|/);
+  assert.match(md, /\| _any \| last \| ko \| 마지막이오! \|/);
+  assert.match(md, /digit 1/);
+  assert.match(md, /moonswing \| intro \| en \| \(실패: parse\)/);
+});
