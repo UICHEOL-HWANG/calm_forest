@@ -6,7 +6,7 @@
 //     game.js 에 남은 let 에 쓸 때는 `$w.x = …` (읽기는 그냥 x). 도구·증명: tools/refactor/
 // =============================================================
 import {
-  $w, DIG_WINDOW, WEATHER, atCafe, atDream, atMirror, atHalloween, atFarm, atMine, atMist, atMuseum, atObservatory, atMountain, atOrchard, atNeighbor, atRiver, atSea, boat, clock,
+  $w, DIG_WINDOW, WEATHER, atCafe, atRestaurant, atDream, atMirror, atHalloween, atFarm, atMine, atMist, atMuseum, atObservatory, atMountain, atOrchard, atNeighbor, atRiver, atSea, boat, clock,
   currentTool, decorNearRing, dist2D, farmActionFirst, farmHalf, fertTarget, firstHintBanner, gameState,
   houseFloor, indoor, isNight, isOpen, lastDoorPrompt, lastFloorChoiceKey, lastNearHouse, lastZoneHint, mapLocked,
   nearBench, nearBoat, nearBoatShop, nearCafeGuest, nearCoop, nearCosShop, nearHomiStall, nearDecorMesh, nearLightWorkshop, nearDoor, nearDoorFloor,
@@ -501,6 +501,10 @@ export function updateZoneHint() {
     if (hint !== lastZoneHint) { $w.lastZoneHint = hint; ui.setZoneHint?.(hint); }
     return;
   }
+  if (atRestaurant) {
+    if (lastZoneHint !== null) { $w.lastZoneHint = null; ui.setZoneHint?.(null); }
+    return;
+  }
   if (atMuseum) {   // 🏛️ 진열장 앞 명판 — 같은 자리(액션 버튼을 뺏지 않는다)
     hint = museumPlateText();
     if (hint !== lastZoneHint) { $w.lastZoneHint = hint; ui.setZoneHint?.(hint); }
@@ -523,7 +527,7 @@ export function updateZoneHint() {
   if (hint !== lastZoneHint) { $w.lastZoneHint = hint; ui.setZoneHint?.(hint); }
 }
 
-export function inVillage2() { return !indoor && !atFarm && !atMine && !atCafe && !atRiver && !atMist && !atSea && !atMuseum && !atObservatory && !atMountain && !atOrchard && !atNeighbor && !atDream && !atMirror && !atHalloween; }
+export function inVillage2() { return !indoor && !atFarm && !atMine && !atCafe && !atRestaurant && !atRiver && !atMist && !atSea && !atMuseum && !atObservatory && !atMountain && !atOrchard && !atNeighbor && !atDream && !atMirror && !atHalloween; }
 
 // 🛋️🪵 "옮기기" 대상 밑 호박색 링(가구·야외 장식 공용, 지연 생성) — 매 프레임 초반에 숨기고 대상이 있을 때만 켠다
 export function ensureNearRing() {

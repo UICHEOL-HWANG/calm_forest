@@ -70,6 +70,7 @@ export const UNLOCKS = [
   { id: 'ferryman',   kind: 'npc',   when: s => branch(s, 'water', 'bundles') },
   { id: 'sea',        kind: 'place', when: s => branch(s, 'water', 'bundles') },
   { id: 'cove',       kind: 'place', when: s => branch(s, 'water', 'bundles') || branch(s, 'kitchen', 'habitat') },
+  { id: 'restaurant', kind: 'place', when: s => branch(s, 'kitchen', 'habitat') },
   { id: 'port',       kind: 'place', when: s => branch(s, 'kitchen', 'habitat') },
   // ── ⑩ 7장(숲의 기억) 완료 — story.ch 는 끝낸 장 수 ──
   { id: 'observatory', kind: 'place', when: s => (s?.story?.ch || 0) >= 7 },

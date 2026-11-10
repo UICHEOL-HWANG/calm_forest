@@ -10,7 +10,7 @@ const open = (s, opts) => unlockedSet(s, opts);
 test('새 세이브: 올빼미·집터·작업대·텃밭·광산은 열림, 이웃·시설은 닫힘', () => {
   const s = open(fresh());
   for (const id of ['courier', 'house', 'bench', 'farm', 'mine']) assert.ok(s.has(id), `${id} 는 시작부터`);
-  for (const id of ['merchant', 'builder', 'curator', 'farmer', 'angler', 'chef', 'museum', 'cafe', 'river', 'sea'])
+  for (const id of ['merchant', 'builder', 'curator', 'farmer', 'angler', 'chef', 'museum', 'cafe', 'restaurant', 'river', 'sea'])
     assert.ok(!s.has(id), `${id} 는 시작엔 닫힘`);
 });
 
