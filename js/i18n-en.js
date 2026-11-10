@@ -3330,4 +3330,13 @@ export const EN = {
   '3…': '3…',
   '2…': '2…',
   '1…': '1…',
+  '저녁 경매가 열렸어요': 'The evening auction is open',
+  '나루터 옆 무대에서 {0}을 겨뤄요': 'Bid for the {0} at the stage by the ferry',
+  '나루터 옆 무대에서 {0}를 겨뤄요': 'Bid for the {0} at the stage by the ferry',
+  '저녁마다 경매가 열려요': 'An auction opens every evening',
+  '경매품 한 점이 무대에 올라와요': 'One lot goes up on the stage',
+  '버튼으로 값을 불러요': 'Bid with the buttons',
+  '4초 동안 조용하면 낙찰!': "4 quiet seconds and it's sold!",
+  '하루 한 번 참가해요': 'Join once a day',
+  '코인이 모자라면 구경만 해요': 'Short on coins? Just watch',
 };

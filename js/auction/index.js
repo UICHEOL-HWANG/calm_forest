@@ -1,18 +1,24 @@
 import * as THREE from 'three';
 import {
-  $w, _camLook, camera, gameState, heldGroup, isOpen, mgView, nightLevel, npcObjs, obstacles, outdoorMeshes, player,
-  refreshHeldTool, refreshInventoryUI, requestSave, scene, snapCamera, solidCircle, todayStr,
+  $w, _camLook, camera, cameraFree, colliders, gameState, heldGroup, isOpen, mgView, nightLevel, npcObjs, obstacles, outdoorMeshes, player,
+  projectToScreen, refreshHeldTool, refreshInventoryUI, requestSave, scene, snapCamera, solidCircle, todayStr, ui,
 } from '../game.js';
 import { buildNPCFigure, setNpcHidden } from '../spaces/npc.js';
 import { inVillage2 } from '../spaces/doors.js';
 import { NPCS } from '../data/npcs.js';
 import { OUTDOOR } from '../data/catalog.js';
 import { DAY_SPEED } from '../data/world.js';
+import { LAKE, LAKE_R } from '../data/places.js';
+import { walkLimit } from '../world/walk-bounds.js';
+import { IS_DEV_SESSION } from '../config.js';
 import { trackEvent } from '../analytics.js';
 import { logEcon } from '../metrics.js';
 import { t } from '../i18n.js';
-import { AUCTION_STAGE, AUCTION_STAGE_R, AUCTION_SPOTS, AUCTION_BIDDERS } from '../data/auction.js';
-import { lotFor, joinMode, secondsUntilOpen } from './rules.js';
+import { AUCTION_STAGE, AUCTION_STAGE_R, AUCTION_SPOTS, AUCTION_BIDDERS, AUCTION_ENTRY, AUCTION_STAGE_BOX } from '../data/auction.js';
+import { lotFor, joinMode, secondsUntilOpen, auctionOpenAt } from './rules.js';
+import { ONBOARD_COPY, BANNER_FAR, bannerLine, bannerTick, introNeeded } from './onboard.js';
+import { createAuctionGuide } from './guide.js';
+import { createAuctionIntro } from './intro.js';
 import { buildAuctionStage } from './stage.js';
 import { createActors, faceStage } from './actors.js';
 import { createAuctionScene } from './scene.js';
@@ -24,12 +30,14 @@ export { auctionDefault, restoreAuction } from './rules.js';
 
 const X = AUCTION_STAGE.x, Z = AUCTION_STAGE.z;
 const SPOT_R = 2.4;
+const BANNER_EVERY = 0.5;
+const BIG_SOLID = 1.5;
 const SPIN_SPEED = 0.8;
 const CAM_EASE = 2.6;
 const PROMPTS = { closed: '🔨 경매는 저녁에 열려요', done: '🔨 오늘 경매 끝', bid: '🔨 경매 참가', watch: '🔨 경매 참가' };
 
 let stage = null, panel = null, actors = null, run = null;
-let shownDay = '', dayCheck = 0, heldWas = null, hidden = [];
+let shownDay = '', dayCheck = 0, heldWas = null, hidden = [], guide = null, intro = null, bannerCheck = 0;
 const camGoal = new THREE.Vector3(), lookGoal = new THREE.Vector3(), camLook = new THREE.Vector3();
 
 const catalogDef = id => OUTDOOR.find(d => d.id === id);
@@ -59,6 +67,78 @@ function ensurePanel() {
   return panel;
 }
 
+function uiBusy() {
+  return !!ui.anyModalOpen?.() || !!ui.coachActive?.() || document.body.classList.contains('spot-on');
+}
+
+function guideSolids() {
+  const live = colliders.filter(c => !c.off && !c.lock);
+  const big = live.filter(c => c.r === undefined || c.r >= BIG_SOLID);
+  const small = live.filter(c => c.r !== undefined && c.r < BIG_SOLID);
+  return { big: [...big, { x: LAKE.x, z: LAKE.z, r: LAKE_R }, AUCTION_STAGE_BOX], small };
+}
+
+function ensureGuide() {
+  if (guide) return guide;
+  guide = createAuctionGuide({
+    THREE, scene, camera, player, t, track: trackEvent,
+    follow: ONBOARD_COPY.follow, spot: AUCTION_ENTRY, reach: SPOT_R,
+    project: (p, lift) => projectToScreen(p, lift),
+    solids: guideSolids,
+    inside: p => Math.hypot(p.x, p.z) < walkLimit(Math.atan2(p.z, p.x)) - 1,
+    open: () => auctionOpen() && auctionOpenAt(gameState.timeOfDay),
+    inVillage: () => inVillage2(),
+    visible: () => cameraFree() && !uiBusy(),
+  });
+  return guide;
+}
+
+function ensureIntro() {
+  if (intro) return intro;
+  intro = createAuctionIntro({
+    t, track: trackEvent,
+    onDone: () => {
+      gameState.auction = { ...gameState.auction, introSeen: true };
+      requestSave();
+      openAuction();
+    },
+  });
+  return intro;
+}
+
+function showOpenBanner(day) {
+  const lot = lotFor(day);
+  const name = catalogDef(lot.id)?.name || lot.id;
+  ui.showHintBanner?.({
+    ico: ONBOARD_COPY.ico, title: ONBOARD_COPY.title, line: bannerLine(name, t),
+    near: () => true, attention: true,
+    onShow: () => trackEvent('auction_banner', { act: 'shown', item: lot.id }),
+    onTap: () => { trackEvent('auction_banner', { act: 'tap', item: lot.id }); ensureGuide().start(); },
+    onDismiss: reason => { if (reason !== 'tap') trackEvent('auction_banner', { act: 'dismiss', item: lot.id }); },
+  });
+}
+
+function tickBanner(inVillage) {
+  const day = todayStr();
+  const away = Math.hypot(player.position.x - AUCTION_ENTRY.x, player.position.z - AUCTION_ENTRY.z) > BANNER_FAR;
+  const ready = auctionOpen() && inVillage && !mgView && cameraFree() && !uiBusy() && !guide?.active && !intro?.open;
+  const r = bannerTick(gameState.auction, {
+    open: auctionOpenAt(gameState.timeOfDay), day, joined: gameState.auction.lastDate === day, ready, far: away,
+  });
+  if (!r.act) return;
+  gameState.auction = r.state;
+  requestSave();
+  if (r.act === 'show') showOpenBanner(day);
+}
+
+function tickOnboard(dt, inVillage) {
+  guide?.update(dt);
+  bannerCheck += dt;
+  if (bannerCheck < BANNER_EVERY || run || !document.body.classList.contains('playing')) return;
+  bannerCheck = 0;
+  tickBanner(inVillage);
+}
+
 export function initAuction() {
   stage = buildAuctionStage(THREE);
   stage.group.position.set(X, 0, Z);
@@ -69,6 +149,7 @@ export function initAuction() {
   obstacles.push({ x: X, z: Z, r: AUCTION_STAGE_R });
   shownDay = todayStr();
   stage.setItem(lotFor(shownDay).id);
+  if (IS_DEV_SESSION) window.__auctionOnboard = { guide: () => ensureGuide(), intro: () => intro, state: () => gameState.auction };
 }
 
 export function updateAuction(dt, inVillage) {
@@ -84,6 +165,7 @@ export function updateAuction(dt, inVillage) {
   const lotMesh = stage.pedestal.children[0];
   if (lotMesh?.userData.spin) lotMesh.userData.spin.rotation.y += dt * SPIN_SPEED;
   for (const m of outdoorMeshes) if (m.userData.spin) m.userData.spin.rotation.y += dt * SPIN_SPEED;
+  tickOnboard(dt, inVillage);
 }
 
 export function auctionMapSpot() { return { x: X, z: Z + 1 }; }
@@ -99,6 +181,8 @@ export function auctionPrompt() {
 export function openAuction() {
   const { lot, coins, mode } = modeNow(todayStr());
   if (mode === 'hidden') return;
+  if (intro?.open) return;
+  if (introNeeded(gameState.auction, mode)) { ensureIntro().show(); return; }
   if (mode === 'bid' || mode === 'watch') trackEvent('auction_open', { item_id: lot.id, coins });
   ensurePanel().open({ mode, itemId: lot.id, appraisal: lot.appraisal, start: lot.start, coins, secondsToOpen: secondsUntilOpen(gameState.timeOfDay, DAY_SPEED) });
 }

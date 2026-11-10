@@ -20,6 +20,16 @@ test('every auction string has an English translation', () => {
   for (const s of STRINGS) assert.doesNotMatch(t(s), /[가-힣]/, s);
 });
 
+test('every onboarding string has an English translation', async () => {
+  const { ONBOARD_COPY, INTRO_CARDS, bannerLine } = await import('../js/auction/onboard.js');
+  const all = [ONBOARD_COPY.title, ONBOARD_COPY.follow, ...Object.values(ONBOARD_COPY.line), ...INTRO_CARDS.flatMap(c => [c.title, c.sub, c.btn])];
+  for (const s of all) assert.doesNotMatch(t(s), /[가-힣]/, s);
+  for (const name of ['달빛 그네', '등불 아치', '별 풍향계']) assert.doesNotMatch(bannerLine(name, t), /[가-힣]/, name);
+  assert.equal(bannerLine('별 풍향계', t), 'Bid for the Star Vane at the stage by the ferry');
+  assert.equal(t('다음'), 'Next');
+  assert.equal(t('알겠어요'), 'Got it');
+});
+
 test('countdown keeps its numerals', () => {
   for (const s of ['3…', '2…', '1…']) assert.equal(t(s), s);
 });
