@@ -21,11 +21,13 @@
 
 ## 구현 1단계: 포구 섬 + 길 안내 (계획 docs/superpowers/plans/2026-11-10-port-island-stage1.md)
 - [x] 구현 계획서 작성 (섬 = 바다 공간 하위 모드 port.active, 마이그레이션 불필요)
-- [ ] js/guide (단계 데이터·화살표·경유점) + 순수 함수 테스트
-- [ ] js/port (항해·낚시터·섬·의뢰·창고) + 테스트
-- [ ] 저장·복원 정규화, Supabase 마이그레이션
-- [ ] GA4 guide_step·port_trip·port_quest
+- [x] js/guide (단계 데이터·화살표·경유점) + 순수 함수 테스트
+- [x] js/port (항해·낚시터·섬·의뢰·창고) + 테스트
+- [x] 저장·복원 정규화(sanitizePort), Supabase 마이그레이션은 불필요(game_saves jsonb)
+- [x] GA4 guide_step·port_trip·port_quest
 - [ ] 드로우콜 측정, 새 인스턴스 함정 점검
+- [x] 섬 다듬기: 충돌·섬 바구니·의뢰 길 안내·건물 팻말·어부 집 생선 팔기(0f0c5305)
+- [ ] 폰 실측(첫 진입 멈칫·바구니 크기)
 - [ ] 5곳 배포 + 다음 날 BQ 재검증
 
 ## 구현 2단계: 식당 1차
