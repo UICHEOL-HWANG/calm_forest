@@ -25,6 +25,14 @@ test('the hoe stall keeps off the cove sand and the harvest plaza', () => {
   assert.ok(d2(HOMI_STALL, PLAZA) > PLAZA_R + HOMI_STALL.r, 'outside the plaza');
 });
 
+test('the hoe stall prompt never overlaps the sea gate prompt', () => {
+  const doors = read('js/spaces/doors.js');
+  const [, gx, gz, gr] = /dist2D\(\{ x: SEA_GATE\.x - ([\d.]+), z: SEA_GATE\.z \+ ([\d.]+) \}, player\.position\) < ([\d.]+)/.exec(doors).map(Number);
+  const [, sr] = /dist2D\(HOMI_STALL, player\.position\) < ([\d.]+)/.exec(doors).map(Number);
+  const gatePrompt = { x: SEA_GATE.x - gx, z: SEA_GATE.z + gz };
+  assert.ok(d2(HOMI_STALL, gatePrompt) > gr + sr, `prompts overlap: ${d2(HOMI_STALL, gatePrompt).toFixed(2)}`);
+});
+
 test('the stall model shows the three hoe tiers and the four paid skins', () => {
   const g = buildHomiStall(THREE, mat);
   const hoes = [];

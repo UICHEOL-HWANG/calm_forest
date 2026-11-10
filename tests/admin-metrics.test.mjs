@@ -155,6 +155,16 @@ test('동선 재생: 화면의 시설 원은 SQL cf_zone_of 의 마을 원과 �
   assert.deepEqual(ZONE_CIRCLES, rows);
 });
 
+test('구역 원: 바다 관문·경매 무대 원이 게임 좌표를 따라간다', () => {
+  const places = src('js/data/places.js');
+  const [, gx, gz] = /SEA_GATE = new THREE\.Vector3\((-?[\d.]+), 0, (-?[\d.]+)\)/.exec(places).map(Number);
+  const [, ax, az] = /AUCTION_STAGE = \{ x: (-?[\d.]+), z: (-?[\d.]+) \}/.exec(src('js/data/auction.js')).map(Number);
+  const zone = (k) => ZONE_CIRCLES.find((r) => r[0] === k);
+  assert.deepEqual(zone('sea_gate').slice(1, 3), [gx, gz]);
+  const [, cx, cz, r] = zone('auction');
+  assert.ok(cx === ax && Math.abs(cz - (az + 3.2)) <= r, 'auction zone covers the entry spot');
+});
+
 test('동선 재생: 마을 안 점만 이어 그리고, 마을 밖은 끊고 비중을 센다', () => {
   const pts = [[0, 0, 0], [5, 3, 4], [10, 0, 84], [20, 0, 90], [30, -2, -6], [40, -3, -7]];
   const t = trackSegments(pts);
