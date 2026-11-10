@@ -54,18 +54,19 @@ const CSS = `#auction-modal{position:fixed;z-index:40;display:none;left:10px;rig
 #auction-modal .au-item{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:14px;background:#fff}
 #auction-modal .au-ico{display:flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:10px;background:#f4ead6;flex:none;font-size:28px;line-height:1}
 #auction-modal .au-item .nm{font-weight:800;font-size:14px;min-width:0}
-#auction-modal .au-big{text-align:center}
-#auction-modal .au-p{font-size:30px;font-weight:900;letter-spacing:-.02em;color:#2d4a3a;display:inline-block}
+#auction-modal .au-body{display:flex;flex-direction:column;gap:10px}
+#auction-modal .au-big{text-align:center;padding-top:2px}
+#auction-modal .au-p{font-size:30px;font-weight:900;letter-spacing:-.02em;color:#2d4a3a;display:inline-block;line-height:1.15}
 #auction-modal .au-p.bump{animation:au-bump .18s}
 @keyframes au-bump{50%{transform:scale(1.15)}}
-#auction-modal .au-who{font-size:13px;font-weight:700;color:#4a4e57;min-height:1.3em}
+#auction-modal .au-who{font-size:13px;font-weight:700;color:#4a4e57;min-height:1.3em;margin-top:4px}
 #auction-modal .au-tbar{height:9px;border-radius:6px;background:#ece6dc;overflow:hidden}
 #auction-modal .au-tbar i{display:block;height:100%;width:100%;background:#8fd3a0;transition:background .25s}
-#auction-modal .au-call{text-align:center;font-size:14px;font-weight:900;min-height:1.3em;color:#a0521f}
+#auction-modal .au-call{text-align:center;font-size:14px;font-weight:900;min-height:1.3em;line-height:1.3;margin-top:-4px;color:#a0521f}
 #auction-modal .au-call.flash{animation:au-flash .5s}
 @keyframes au-flash{0%{transform:scale(1.3)}100%{transform:none}}
-#auction-modal .au-feed{display:flex;flex-direction:column;gap:3px;min-height:38px}
-#auction-modal .au-feed div{font-size:12px;font-weight:700;padding:3px 8px;border-radius:8px;background:#fff}
+#auction-modal .au-feed{display:flex;flex-direction:column;gap:5px;min-height:44px}
+#auction-modal .au-feed div{font-size:12px;font-weight:700;line-height:1.4;padding:5px 10px;border-radius:8px;background:#fff}
 #auction-modal .au-feed div.new{animation:au-in .25s}
 #auction-modal .au-feed div.me{background:#e5f6e9}
 #auction-modal .au-feed div:nth-child(n+3){display:none}
