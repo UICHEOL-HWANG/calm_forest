@@ -82,11 +82,13 @@ const tick = (w, env = ENV, extra = {}) => runAuraCron(env, { phase: 'tick', fet
 
 test('tick: EXAONE 은 초당 1건 제한이라 호출 시작 사이에 spacingMs 이상 간격을 둔다', async () => {
   const w = world({ orders: Array.from({ length: 4 }, (_, i) => order(`id-${i}`)) });
+  let clock = 0;
   const starts = [];
-  const fetch = (u, i) => { if (String(u).includes('exaone.ai')) starts.push(Date.now()); return w.fetch(u, i); };
-  await tick({ ...w, fetch }, ENV, { spacingMs: 40 });
+  const wait = async ms => { clock += ms; };
+  const fetch = (u, i) => { if (String(u).includes('exaone.ai')) starts.push(clock); return w.fetch(u, i); };
+  await tick({ ...w, fetch }, ENV, { spacingMs: 40, wait });
   assert.equal(starts.length, 4);
-  starts.slice(1).forEach((t, i) => assert.ok(t - starts[i] >= 35, `간격 ${t - starts[i]}ms`));
+  starts.slice(1).forEach((t, i) => assert.ok(t - starts[i] >= 40, `간격 ${t - starts[i]}ms`));
   assert.ok(SPACING_MS >= 1000);
 });
 

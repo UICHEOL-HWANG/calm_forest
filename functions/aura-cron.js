@@ -108,12 +108,12 @@ const asFallback = (o, now) => ({ ...o, status: 'fallback', batch_id: null, reci
 
 const sleep = ms => (ms > 0 ? new Promise(r => setTimeout(r, ms)) : Promise.resolve());
 
-export async function runAuraCron(env, { phase = 'tick', fetch = globalThis.fetch, now = Date.now(), notify = defaultNotify, spacingMs = SPACING_MS } = {}) {
+export async function runAuraCron(env, { phase = 'tick', fetch = globalThis.fetch, now = Date.now(), notify = defaultNotify, spacingMs = SPACING_MS, wait = sleep } = {}) {
   if (!storeReady(env) || !env?.EXAONE_API_KEY) return { skipped: 'not_configured' };
   let gate = Promise.resolve();
   const paced = async fn => {
     const turn = gate;
-    gate = turn.then(() => sleep(spacingMs));
+    gate = turn.then(() => wait(spacingMs));
     await turn;
     return fn();
   };
