@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>auction ui check</title>
+<style>
+:root{--top-inset:0px}
+body{margin:0;font-family:system-ui,'Apple SD Gothic Neo',sans-serif;background:#6f8f6a;min-height:100vh}
+.sheet{display:flex;flex-wrap:wrap;gap:14px;padding:14px;align-items:flex-start}
+.sheet figure{margin:0}
+.sheet figcaption{font:700 12px system-ui;color:#fff;margin-bottom:4px}
+.sheet iframe{border:0;background:#6f8f6a;border-radius:10px;display:block}
+</style></head><body>
+<script type="module">
+import { createAuctionUi } from '../js/auction/ui.js';
+const q = new URLSearchParams(location.search);
+const names = { curator: '큐레이터', stargazer: '별 보는 아이', builder: '목수 아저씨' };
+const thumb = () => 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="46" height="46"><rect width="46" height="46" fill="#f4ead6"/><circle cx="23" cy="23" r="12" fill="#e2b23c"/></svg>');
+const allOk = { 10: true, 30: true, 50: true };
+const feed = [{ who: 'me', inc: 30, price: 260 }, { who: 'curator', inc: 50, price: 230 }, { who: 'builder', inc: 10, price: 180 }];
+const run = o => ({ phase: 'run', price: 260, leader: 'me', t: 6, call: '', feed, canBid: { 10: false, 30: false, 50: false }, result: null, itemId: 'moonswing', ...o });
+const S = {
+  waiting: { open: { mode: 'bid' } },
+  waitwatch: { open: { mode: 'watch' } },
+  closed: { open: { mode: 'closed' } },
+  over: { open: { mode: 'done' } },
+  me: { open: { mode: 'bid' }, join: 'bid', state: run({}) },
+  npc: { open: { mode: 'bid' }, join: 'bid', state: run({ leader: 'curator', price: 310, t: 2.6, call: '3…', canBid: allOk, feed: [{ who: 'curator', inc: 50, price: 310 }, ...feed] }) },
+  extended: { open: { mode: 'bid' }, join: 'bid', state: run({ leader: 'builder', t: 7.9, call: '⏱️ 연장!', canBid: { 10: true, 30: true, 50: false } }) },
+  watching: { open: { mode: 'watch' }, join: 'watch', state: run({ leader: 'stargazer', price: 340, t: 1.4, call: '2…', feed: [{ who: 'stargazer', inc: 10, price: 340 }, ...feed] }) },
+  win: { open: { mode: 'bid' }, join: 'bid', state: { phase: 'done', itemId: 'moonswing', result: { outcome: 'win', price: 430, leader: 'me' } } },
+  lose: { open: { mode: 'bid' }, join: 'bid', state: { phase: 'done', itemId: 'moonswing', result: { outcome: 'lose', price: 450, leader: 'curator' } } },
+  unsold: { open: { mode: 'bid' }, join: 'bid', state: { phase: 'done', itemId: 'moonswing', result: { outcome: 'none', price: 0, leader: null } } },
+  watchdone: { open: { mode: 'watch' }, join: 'watch', state: { phase: 'done', itemId: 'moonswing', result: { outcome: 'watch', price: 380, leader: 'stargazer' } } },
+};
+const s = q.get('s');
+if (s) {
+  const c = S[s];
+  const ui = createAuctionUi({ t: x => x, names, itemName: () => '달빛 그네', itemThumb: thumb, onJoin() {}, onBid() {}, onClose() {} });
+  ui.open({ itemId: 'moonswing', appraisal: 400, start: 200, coins: 900, secondsToOpen: 0, ...c.open });
+  if (c.state) ui.render(c.state);
+} else {
+  const w = q.get('w') || 375, h = q.get('h') || 330;
+  const sheet = document.createElement('div');
+  sheet.className = 'sheet';
+  sheet.innerHTML = Object.keys(S).map(k => `<figure><figcaption>${k}</figcaption><iframe width="${w}" height="${h}" src="?s=${k}"></iframe></figure>`).join('');
+  document.body.appendChild(sheet);
+}
+</script></body></html>
