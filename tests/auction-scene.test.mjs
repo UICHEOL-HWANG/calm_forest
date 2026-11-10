@@ -70,8 +70,8 @@ test('a big frame advances several fixed ticks', () => {
   const f = fakes();
   const s = createAuctionScene(f.deps);
   s.begin('bid');
-  s.update(0.35, 0.35);
-  assert.ok(Math.abs(f.log.ui.at(-1).t - 7.7) < 1e-6, String(f.log.ui.at(-1).t));
+  s.update(0.25, 0.25);
+  assert.ok(Math.abs(f.log.ui.at(-1).t - 7.8) < 1e-6, String(f.log.ui.at(-1).t));
 });
 
 test('a bid over the wallet is ignored', () => {
@@ -106,4 +106,33 @@ test('night level is applied before tension every frame', () => {
   assert.ok(i > 0);
   assert.equal(names[i - 1], 'night');
   assert.equal(f.log.calls[i - 1][1], 0.6);
+});
+
+test('a win the wallet can no longer pay goes unsold', () => {
+  let coins = 820;
+  const f = fakes({ getCoins: () => coins });
+  const s = createAuctionScene(f.deps);
+  s.begin('bid');
+  assert.equal(s.playerBid(50), true);
+  coins = 0;
+  for (let i = 0; i < 200 && s.active(); i++) s.update(0.1, i * 0.1);
+  assert.equal(f.log.done.outcome, 'none');
+  assert.equal(f.log.done.price, 0);
+  assert.equal(coins, 0);
+  assert.deepEqual(f.get().stored, {});
+  assert.equal(f.get().auction.wins, 0);
+  assert.equal(f.log.econ.length, 0);
+  const res = f.log.track.find(([n]) => n === 'auction_result')[1];
+  assert.equal(res.outcome, 'none');
+  assert.equal(res.price, 0);
+});
+
+test('a huge frame is clamped', () => {
+  const f = fakes();
+  const s = createAuctionScene(f.deps);
+  s.begin('bid');
+  s.update(100, 1);
+  assert.equal(s.active(), true);
+  const t = f.log.ui.at(-1).t;
+  assert.ok(Math.abs(t - 7.8) < 1e-6, String(t));
 });

@@ -3,6 +3,8 @@ import { settleWin, markJoined, addWin } from './settle.js';
 import { lotFor, bidderMaxes } from './rules.js';
 import { BID_INCS, TICK } from '../data/auction.js';
 
+const MAX_DT = 0.25;
+
 export function callText(t, extended) {
   if (extended) return '⏱️ 연장!';
   if (t >= 3) return '';
@@ -13,7 +15,7 @@ export function callText(t, extended) {
 
 export function createAuctionScene(d) {
   let run = null, lot = null, acc = 0, feed = [], flashUntil = 0, runId = '', done = null, slamT = 9, bellT = 9;
-  const allowed = inc => canBid(run, inc, d.getCoins()) && run.price + inc <= d.getCoins();
+  const allowed = inc => canBid(run, inc) && run.price + inc <= d.getCoins();
   const emit = () => d.onUi({
     phase: done ? 'done' : 'run', price: run.price, leader: run.leader, t: run.t,
     call: callText(run.t, run.total < flashUntil), feed,
@@ -27,7 +29,7 @@ export function createAuctionScene(d) {
     d.actors.lead(who);
   };
   const finish = () => {
-    const out = outcome(run), price = run.price;
+    let out = outcome(run), price = run.price;
     if (out === 'win') {
       const r = settleWin({ coins: d.getCoins(), outdoorStored: d.getStored() }, lot.id, price);
       if (r.ok) {
@@ -35,16 +37,19 @@ export function createAuctionScene(d) {
         d.setStored(r.outdoorStored);
         d.setAuction(addWin(d.getAuction()));
         d.econ('auction_win', lot.id, -price, r.coins);
+      } else {
+        out = 'none';
+        price = 0;
       }
     }
-    if (run.leader) {
+    if (run.leader && out !== 'none') {
       d.actors.hop(run.leader, true);
       d.actors.burst(run.leader);
       const [x, z] = d.actors.spotOf(run.leader);
       d.stage.focus(x, z);
     }
     slamT = 0; bellT = 0;
-    done = { outcome: out, price, itemId: lot.id, runId, leader: run.leader };
+    done = { outcome: out, price, itemId: lot.id, runId, leader: out === 'none' ? null : run.leader };
     d.track('auction_result', { item_id: lot.id, outcome: out, price, my_bids: run.myBids, run_id: runId });
     d.save();
     emit();
@@ -71,8 +76,9 @@ export function createAuctionScene(d) {
       emit();
       return true;
     },
-    update(dt, t) {
+    update(rawDt, t) {
       if (!run) return;
+      const dt = Math.min(rawDt, MAX_DT);
       slamT += dt; bellT += dt;
       if (!done) {
         acc += dt;
