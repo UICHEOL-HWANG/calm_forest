@@ -32,7 +32,7 @@
 | R1 | 재료 상자에서 하나 꺼낼 때 `port.pantry` 에서 1 차감(🐟 fish, 🍚 rice). 창고가 비면 상자에 빈 상자 표시 | 기획서 3.1 "식재료 창고 확인", 섬 루프를 식당에 잇는 핵심 | 낮음 |
 | R2 | 첫 진입 때 한 번 시작 재료 🐟4 🍚4 를 창고에 넣어 준다(`restaurant.starterGiven`) | 해금이 섬과 같아 섬보다 식당을 먼저 오는 사람이 막히지 않게 | 낮음 |
 | R3 | 영업은 하루 횟수·시간대 제한 없음("저녁 영업"은 이름). 재료량이 코인 상한 역할 | 기획서에 제한 없음 | 중간, 밸런스 조정 |
-| R4 | 썰기는 행동 버튼을 누르고 있는 동안 진행(1.3초), 떼면 멈추고 다시 누르면 이어서 | 기획서 "버튼 누르고 있기" | 낮음 |
+| R4 | **설비별 손놀림(사용자 확정 2026-11-10, Pao Pao 참고)**: 도마는 박자 표시에 맞춰 탭 4번(0.22초보다 빠른 탭은 무시), 팬은 올리면 게이지가 돌고 초록 구간(2.7초 ± 0.5초×DDA)에서 탭하면 뒤집기 성공 → 완벽, 못 뒤집으면 보통(별 −1), 5초에 다 익고 그 뒤 6.5초 안에 꺼내지 않으면 탐. 냄비는 자동 익힘 + 초록일 때 꺼내기 | 사용자가 기획서 "누르고 있기"를 바꿈 | 낮음 |
 | R5 | 손님 = 마을 주민 모형 재사용(실내 인스턴스라 마을에서 숨길 필요 없음) | 기획서 3.3 "손님은 마을 이웃" | 낮음 |
 | R6 | 1차 평판 패널은 탭 2개(⭐ 별 / ℹ️ 정보). 손님 명단 탭은 3단계로 미룸 | 기획서 순서 2 범위는 ★1~★2 | 낮음 |
 | R7 | 실내 원점 `RESTAURANT = (0,0,620)` | 비어 있는 자리(420 부엌 무대·460 공방·480 프롤로그·540 천문대·700 이웃) | 없음 |
@@ -75,10 +75,12 @@
 | 안내 1 | 카페 옆 식당으로 가 보세요 |
 | 안내 2 | 칠판을 눌러 영업을 시작해요 |
 | 안내 3 | 🐟 상자에서 생선을 꺼내요 |
-| 안내 4 | 팬에 올려 두면 알아서 익어요 |
-| 안내 5 | 초록으로 반짝일 때 꺼내요 |
-| 안내 6 | 접시에 담아요 |
-| 안내 7 | 손님에게 가져다줘요 |
+| 안내 4 | 팬에 올려요 |
+| 안내 5 | 게이지가 초록일 때 눌러 뒤집어요 |
+| 안내 6 | 다 익으면 꺼내요 |
+| 안내 7 | 접시에 담아요 |
+| 안내 8 | 손님에게 가져다줘요 |
+| 도마 첫 사용 | 박자에 맞춰 네 번 눌러요 |
 
 - [ ] **Step 2:** 사용자 확정본으로 표를 고친다. 확정 전에는 Task 7·8 의 문구를 넣지 않는다(Task 1~6 은 진행 가능).
 
@@ -99,7 +101,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { STAR, COOK, STARTER_STOCK } from '../js/restaurant/data.js';
-import { defaultRestaurant, sanitizeRestaurant, cookState, serveStars, spawnInterval, serviceAvg, adjustDda,
+import { defaultRestaurant, sanitizeRestaurant, cookState, panState, flipZone, flipOk, chopTap, chopDone, serveStars, spawnInterval, serviceAvg, adjustDda,
   recordServe, starUpReady, applyStarUp, takeIngredient, grantStarter } from '../js/restaurant/rules.js';
 
 test('기본값과 정규화', () => {
@@ -116,14 +118,38 @@ test('기본값과 정규화', () => {
   assert.equal('junk' in s, false);
 });
 
-test('조리 상태는 익힘·완벽·지나침·탐 순서', () => {
-  assert.equal(cookState('pan', 4.9, 1), 'raw');
-  assert.equal(cookState('pan', 5.0, 1), 'perfect');
-  assert.equal(cookState('pan', 5 + 2.6 - 0.01, 1), 'perfect');
-  assert.equal(cookState('pan', 5 + 2.6, 1), 'over');
-  assert.equal(cookState('pan', 5 + 2.6 + 6.5, 1), 'burnt');
-  assert.equal(cookState('pan', 5 + 2.6 * 1.2 - 0.01, 1.2), 'perfect');
+test('냄비 상태는 익힘·완벽·지나침·탐 순서', () => {
   assert.equal(cookState('pot', 6.9, 1), 'raw');
+  assert.equal(cookState('pot', 7.0, 1), 'perfect');
+  assert.equal(cookState('pot', 7 + 3.2 - 0.01, 1), 'perfect');
+  assert.equal(cookState('pot', 7 + 3.2, 1), 'over');
+  assert.equal(cookState('pot', 7 + 3.2 + 8, 1), 'burnt');
+  assert.equal(cookState('pot', 7 + 3.2 * 1.2 - 0.01, 1.2), 'perfect');
+});
+
+test('팬은 다 익음까지 5초, 그 뒤 6.5초에 탄다', () => {
+  assert.equal(panState(4.9), 'raw');
+  assert.equal(panState(5), 'done');
+  assert.equal(panState(11.49), 'done');
+  assert.equal(panState(11.5), 'burnt');
+});
+
+test('뒤집기 초록 구간은 2.7초 ± 0.5초×DDA', () => {
+  assert.deepEqual(flipZone(1), [2.2, 3.2]);
+  assert.equal(flipOk(2.19, 1), false);
+  assert.equal(flipOk(2.2, 1), true);
+  assert.equal(flipOk(3.2, 1), true);
+  assert.equal(flipOk(3.25, 1), false);
+  assert.equal(flipOk(3.25, 1.2), true);
+});
+
+test('도마는 탭 4번, 0.22초보다 빠른 탭은 무시', () => {
+  let c = { taps: 0, last: -1 };
+  c = chopTap(c, 0.0); c = chopTap(c, 0.1); c = chopTap(c, 0.3); c = chopTap(c, 0.6);
+  assert.equal(c.taps, 3);
+  c = chopTap(c, 0.9);
+  assert.equal(c.taps, 4);
+  assert.equal(chopDone(c), true);
 });
 
 test('별점은 5에서 깎고 최소 1', () => {
@@ -219,8 +245,10 @@ export const RESTAURANT = { x: 0, z: 620 };
 export const RESTAURANT_GATE = { x: 12, z: 20.5 };
 export const SERVICE_SEC = 100;
 export const LAST_SPAWN_SEC = 90;
-export const CHOP_SEC = 1.3;
-export const COOK = { pan: { cook: 5, win: 2.6, burn: 6.5 }, pot: { cook: 7, win: 3.2, burn: 8 } };
+export const CHOP_TAPS = 4;
+export const CHOP_GAP = 0.22;
+export const COOK = { pan: { cook: 5, burn: 6.5 }, pot: { cook: 7, win: 3.2, burn: 8 } };
+export const FLIP = { at: 2.7, half: 0.5 };
 export const PATIENCE = [25, 45];
 export const COIN_PER_STAR = 5;
 export const EAT_SEC = 3.5;
@@ -248,7 +276,7 @@ export const STARTER_STOCK = { fish: 4, rice: 4 };
 
 `js/restaurant/rules.js`:
 ```js
-import { COOK, PATIENCE, STAR, STAR_UP, MENU_KEYS, DDA_MIN, DDA_MAX, DDA_EASY, DDA_HARD, DDA_EASY_BELOW, DDA_HARD_FROM, STARTER_STOCK } from './data.js';
+import { COOK, FLIP, CHOP_TAPS, CHOP_GAP, PATIENCE, STAR, STAR_UP, MENU_KEYS, DDA_MIN, DDA_MAX, DDA_EASY, DDA_HARD, DDA_EASY_BELOW, DDA_HARD_FROM, STARTER_STOCK } from './data.js';
 
 const nat = v => (Number.isFinite(v) && v > 0 ? Math.floor(v) : 0);
 const clampDda = v => Math.round(Math.max(DDA_MIN, Math.min(DDA_MAX, v)) * 100) / 100;
@@ -279,6 +307,31 @@ export function cookState(kind, t, win) {
   if (t < k.cook + w) return 'perfect';
   if (t < k.cook + w + k.burn) return 'over';
   return 'burnt';
+}
+
+export function panState(t) {
+  if (t < COOK.pan.cook) return 'raw';
+  if (t < COOK.pan.cook + COOK.pan.burn) return 'done';
+  return 'burnt';
+}
+
+export function flipZone(win) {
+  const r = v => Math.round(v * 100) / 100;
+  return [r(FLIP.at - FLIP.half * win), r(FLIP.at + FLIP.half * win)];
+}
+
+export function flipOk(t, win) {
+  const [a, b] = flipZone(win);
+  return t >= a && t <= b;
+}
+
+export function chopTap(c, now) {
+  if (c.last >= 0 && now - c.last < CHOP_GAP) return c;
+  return { taps: Math.min(CHOP_TAPS, c.taps + 1), last: now };
+}
+
+export function chopDone(c) {
+  return c.taps >= CHOP_TAPS;
 }
 
 export function serveStars(wait, quality, pat) {
@@ -353,8 +406,8 @@ export function grantStarter(rest, port) {
 - Consumes: Task 1 전부.
 - Produces:
   - `createSession({ star, dda, rng })` → 세션 객체 `S` (`time, next, guests, tickets, held, stations{id→{item,t,chop}}, stats, ended`).
-  - `tickSession(S, dt, { pos, actHeld })` → 이벤트 배열 `[{ type: 'spawn'|'seat'|'chopDone'|'staffServed'|'leave'|'end', ... }]`. `S` 는 한 판 동안만 쓰는 임시 상태라 제자리에서 바꾼다(저장하지 않음).
-  - `contextAt(S, pos)` → `{ do, id, ico } | null`, `do` ∈ `take|put|chop|pick|pickCook|plate|trash|serve`.
+  - `tickSession(S, dt, { pos })` → 이벤트 배열 `[{ type: 'spawn'|'seat'|'chopDone'|'staffServed'|'leave'|'end', ... }]`. `S` 는 한 판 동안만 쓰는 임시 상태라 제자리에서 바꾼다(저장하지 않음).
+  - `contextAt(S, pos)` → `{ do, id, ico } | null`, `do` ∈ `take|put|chop|flip|pick|pickCook|plate|trash|serve`.
   - `actAt(S, pos, { take })` → 이벤트 배열. `take(kind)` 콜백이 창고 차감을 맡는다(`true` 면 꺼냄, `false` 면 `{type:'empty', kind}` 이벤트).
   - `finishSession(S)` → `{ served, stars, unserved, late, perfect, takes, burnt, coins, avg }`.
 
@@ -383,9 +436,12 @@ export const HALL = {
 세션 규칙(시뮬 `restaurant-kitchen-sim.html` 의 `spawn/context/act/serve/update/finish` 를 화면 코드 없이 옮긴다):
 - 첫 손님 `S.next = 1.5`. `tickSession` 이 `S.next` 를 줄여 0 이하이고 `S.time < LAST_SPAWN_SEC` 이면 손님을 만든다. `rng()` 를 **메뉴에 먼저, 테이블에 다음** 쓴다(메뉴 `menus[floor(rng()*len)]`, 빈 테이블 `free[floor(rng()*len)]`). 빈 테이블이 없으면 1초 뒤 다시. 다음 간격 `spawnInterval(star, S.time, dda.iv)`.
 - 손님 이동은 문→자리 거리/`guestWalk` 초 뒤 앉음(`seat`, 주문표 `t0` 기록). 먹기 `EAT_SEC` 뒤 `leave`.
-- 설비: 별 단계 `need` 보다 낮으면 그 설비는 없는 것으로 친다. 팬·냄비에 재료가 있으면 `t += dt`. 썰기: 도마에 재료, `actHeld`, 도마 `reach` 안이면 `chop += dt`, `CHOP_SEC` 에서 생선→`fishChop`, 쌀→`riceball`(`chopDone`).
-- 맥락 우선순위: 접시에 담긴 메뉴를 들고 그 메뉴를 기다리는 테이블 `tableReach` 안 → `serve`. 그다음 가장 가까운 설비(`reach` 안)의 규칙은 시뮬 `context()` 그대로.
-- 꺼내기: 팬→`grilled`, 냄비(`fishChop` 만 넣을 수 있음)→`soup`. 완벽이면 `q=1`, 지나침이면 `0.75`, 탐이면 `burnt`(접시에 못 담음, 버리기만).
+- 설비: 별 단계 `need` 보다 낮으면 그 설비는 없는 것으로 친다. 팬·냄비에 재료가 있으면 `t += dt`.
+- 도마: 빈손으로 재료 있는 도마 앞 → `chop`. `actAt` 한 번이 `chopTap(c, S.time)`. `chopDone` 이면 생선→`fishChop`, 쌀→`riceball` 완성품(`chopDone` 이벤트), 그다음 맥락은 `pick`.
+- 팬: 생선을 올리면 `t=0, flipped=null`. `panState(t)==='raw'` 이고 아직 안 뒤집었으면 맥락 `flip`(ico 🍳). `actAt` 이 `flipped = flipOk(t, dda.win)`(`flip` 이벤트 `{ok}`). `done` 이 되면 맥락 `pickCook`. 꺼낸 생선구이 `q = flipped ? 1 : 0.75`, `burnt` 면 `{kind:'burnt'}`.
+- 냄비: `fishChop` 만 넣는다. `cookState('pot', t, dda.win)` 가 `raw` 가 아니면 `pickCook`. 완벽 `q=1`, 지나침 `0.75`, 탐 `burnt`.
+- 맥락 우선순위: 접시에 담긴 메뉴를 들고 그 메뉴를 기다리는 테이블 `tableReach` 안 → `serve`. 그다음 가장 가까운 설비(`reach` 안)의 규칙(시뮬 `context()` 와 같고 위 도마·팬만 다름).
+- 탄 것은 접시에 못 담고 버리기만.
 - 서빙 별점 `serveStars(S.time - t0, q, dda.pat)`, 코인 `stars * COIN_PER_STAR`, 이벤트 `{type:'served', menu, stars, coins, table}`.
 - 서빙 직원(★3+)은 배식대 위 접시를 맞는 테이블로 2초 뒤 옮긴다(`staffServed`).
 - 끝: `S.time >= SERVICE_SEC` 이고 먹는 손님이 없으면 `end` 한 번.
@@ -395,7 +451,7 @@ export const HALL = {
 ```js
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { HALL, SERVICE_SEC, CHOP_SEC } from '../js/restaurant/data.js';
+import { HALL, SERVICE_SEC } from '../js/restaurant/data.js';
 import { createSession, tickSession, contextAt, actAt, finishSession } from '../js/restaurant/session.js';
 
 const at = id => { const s = HALL.stations.find(s => s.id === id); return { x: s.x, z: s.z + 0.9 }; };
@@ -406,7 +462,7 @@ const one = { iv: 1, pat: 1, win: 1 };
 test('★1 첫 손님이 생기고 앉으면 주문표가 생긴다', () => {
   const S = createSession({ star: 1, dda: one, rng: seq(0, 0) });
   const ev = [];
-  for (let i = 0; i < 200; i++) ev.push(...tickSession(S, 0.05, { pos: at('board'), actHeld: false }));
+  for (let i = 0; i < 200; i++) ev.push(...tickSession(S, 0.05, { pos: at('board') }));
   assert.ok(ev.some(e => e.type === 'spawn'));
   assert.ok(ev.some(e => e.type === 'seat'));
   assert.equal(S.tickets.length, 1);
@@ -414,15 +470,18 @@ test('★1 첫 손님이 생기고 앉으면 주문표가 생긴다', () => {
 
 test('주먹밥: 쌀 꺼내기 → 도마 → 누르고 있기 → 접시 → 서빙 5점', () => {
   const S = createSession({ star: 1, dda: one, rng: seq(0.99, 0) });
-  for (let i = 0; i < 200; i++) tickSession(S, 0.05, { pos: at('crate_rice'), actHeld: false });
+  for (let i = 0; i < 200; i++) tickSession(S, 0.05, { pos: at('crate_rice') });
   assert.equal(S.tickets[0].menu, 'riceball');
   assert.equal(contextAt(S, at('crate_rice')).do, 'take');
   actAt(S, at('crate_rice'), { take: yes });
   assert.equal(S.held.kind, 'rice');
   assert.equal(contextAt(S, at('board')).do, 'put');
   actAt(S, at('board'), { take: yes });
-  assert.equal(contextAt(S, at('board')).do, 'chop');
-  for (let t = 0; t < CHOP_SEC + 0.1; t += 0.05) tickSession(S, 0.05, { pos: at('board'), actHeld: true });
+  for (let k = 0; k < 4; k++) {
+    assert.equal(contextAt(S, at('board')).do, 'chop');
+    actAt(S, at('board'), { take: yes });
+    for (let i = 0; i < 6; i++) tickSession(S, 0.05, { pos: at('board') });
+  }
   assert.equal(contextAt(S, at('board')).do, 'pick');
   actAt(S, at('board'), { take: yes });
   actAt(S, at('plates'), { take: yes });
@@ -443,18 +502,26 @@ test('창고가 비면 상자에서 못 꺼낸다', () => {
   assert.ok(ev.some(e => e.type === 'empty' && e.kind === 'fish'));
 });
 
-test('팬: 완벽 구간에 꺼내면 q=1, 늦으면 0.75, 타면 burnt', () => {
-  const run = (wait) => {
+test('팬: 초록에서 뒤집으면 q=1, 안 뒤집으면 0.75, 너무 늦게 꺼내면 burnt', () => {
+  const run = (flipAt, pickAt) => {
     const S = createSession({ star: 1, dda: one, rng: seq(0) });
     actAt(S, at('crate_fish'), { take: yes });
     actAt(S, at('pan0'), { take: yes });
-    for (let t = 0; t < wait; t += 0.05) tickSession(S, 0.05, { pos: at('pan0'), actHeld: false });
+    for (let t = 0; t < pickAt; t += 0.05) {
+      tickSession(S, 0.05, { pos: at('pan0') });
+      if (flipAt !== null && Math.abs(t - flipAt) < 0.025) {
+        assert.equal(contextAt(S, at('pan0')).do, 'flip');
+        actAt(S, at('pan0'), { take: yes });
+      }
+    }
+    assert.equal(contextAt(S, at('pan0')).do, 'pickCook');
     actAt(S, at('pan0'), { take: yes });
     return S.held;
   };
-  assert.equal(run(6).q, 1);
-  assert.equal(run(9).q, 0.75);
-  assert.equal(run(16).kind, 'burnt');
+  assert.equal(run(2.7, 6).q, 1);
+  assert.equal(run(1.0, 6).q, 0.75);
+  assert.equal(run(null, 6).q, 0.75);
+  assert.equal(run(2.7, 12).kind, 'burnt');
 });
 
 test('★1 에서는 냄비가 없다', () => {
@@ -466,7 +533,7 @@ test('아무것도 안 하면 손님 2명이 못 받고 끝난다', () => {
   const S = createSession({ star: 1, dda: one, rng: seq(0.2, 0.7, 0.4) });
   let ended = false;
   for (let i = 0; i < (SERVICE_SEC + 40) / 0.05 && !ended; i++) {
-    if (tickSession(S, 0.05, { pos: at('board'), actHeld: false }).some(e => e.type === 'end')) ended = true;
+    if (tickSession(S, 0.05, { pos: at('board') }).some(e => e.type === 'end')) ended = true;
   }
   assert.ok(ended);
   const r = finishSession(S);
@@ -550,10 +617,10 @@ test('아무것도 안 하면 손님 2명이 못 받고 끝난다', () => {
 
 **Files:**
 - Create: `js/restaurant/index.js`(매 프레임 `tickSession` → 모형·HUD 반영, 행동 버튼 → `actAt`, 창고 차감 `takeIngredient` + 저장), `js/restaurant/hud.js`(위쪽 주문표: 테이블 번호·메뉴 이모지·기다림 막대, 설비 위 진행 링(초록 깜빡임=완벽), 결과 카드, 평판 패널 ⭐/ℹ️).
-- Modify: `js/controls.js` 행동 버튼 `touchstart`/`touchend`·스페이스 `keydown`/`keyup` 으로 `Input.actHeld`(R4). 기존 `doAction` 그대로.
+- 손놀림 HUD(R4): 도마 위 박자 칸 ▢▢▢▢(탭마다 채움, 0.35초 박자로 깜빡여 리듬 안내), 팬 위 게이지(초록 구간 = `flipZone(dda.win)`, 뒤집기 성공 ✨·실패 💨), 냄비 위 진행 링(초록 깜빡임 = 완벽). 입력은 기존 행동 버튼 탭 하나(`doAction`)만 쓴다.
 - 영업 끝: `finishSession` → `adjustDda`, `services+1`, `earnCoins`, `starUpReady` 면 `applyStarUp` + 보상 + 축하 카드, `trackEvent('restaurant_service', { star, served, avg_score, dda })`, 별 올림 시 `trackEvent('restaurant_star_up', { star })`, 저장. 서빙 때마다 `recordServe`.
 - 손님 머리 위: 메뉴 이모지만, 기다림에 따라 😊🙂😟.
-- Test: 배선 테스트에 이벤트 파라미터 ≤5, taxonomy 행, `actHeld` 배선.
+- Test: 배선 테스트에 이벤트 파라미터 ≤5, taxonomy 행.
 
 - [ ] 커밋 `feat(restaurant): service runtime, order tickets, result card and reputation panel`
 
@@ -562,8 +629,8 @@ test('아무것도 안 하면 손님 2명이 못 받고 끝난다', () => {
 ### Task 8: 첫 영업 길 안내
 
 **Files:**
-- Create: `js/restaurant/guide-steps.js`(Task 0 확정 문구 7단계), `createGuide` 재사용(`flow: 'restaurant'`, `guide_step` 재사용).
-- 시작 조건: `isOpen('restaurant') && !restaurant.guideDone` 이고 다른 안내가 돌고 있지 않을 때. 1단계는 마을에서 식당 문까지 경유점 안내, 2~7단계는 칠판→상자→팬→완벽 대기→접시→테이블.
+- Create: `js/restaurant/guide-steps.js`(Task 0 확정 문구 8단계), `createGuide` 재사용(`flow: 'restaurant'`, `guide_step` 재사용).
+- 시작 조건: `isOpen('restaurant') && !restaurant.guideDone` 이고 다른 안내가 돌고 있지 않을 때. 1단계는 마을에서 식당 문까지 경유점 안내, 2~8단계는 칠판→상자→팬에 올리기→초록에서 뒤집기→다 익으면 꺼내기→접시→테이블.
 - 첫 영업은 손님 1명 고정, 첫 메뉴 🐟 생선구이, 인내 1.2배.
 - 검증: 화살표만 따라가는 봇으로 마을 시작점에서 첫 서빙까지 완주.
 
