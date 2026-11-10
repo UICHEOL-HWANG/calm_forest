@@ -591,6 +591,8 @@
   .dc-warn { background: #ffe1dc; }
   .dc-new { display: inline-block; font-style: normal; font-size: 9.5px; font-weight: 900; background: #b9a6ff; color: #fff; padding: 1px 5px; border-radius: 5px; margin-left: 5px; vertical-align: 2px; }
   .dc-season { grid-column: span 2; background: #fde3d3; font-size: 12.5px; font-weight: 700; color: #8a4a2a; padding: 9px 12px; }
+  .rw-row { display: flex; justify-content: center; margin: 6px 0 8px; }
+  .rw-row:empty { display: none; }
   #daily-ok { width: 100%; border: none; border-radius: 16px; padding: 14px; background: var(--mint); color: #24382d; font-weight: 800; font-size: 15px; cursor: pointer; font-family: inherit; box-shadow: var(--shadow); }
   @media (max-width: 380px) {
     #daily-modal .daily-card { padding: 10px; }
@@ -3188,6 +3190,7 @@
       <button class="sh-tab active" data-tab="sell">💰 팔기</button>
       <button class="sh-tab" data-tab="buy">🛍️ 사기</button>
     </div>
+    <div id="sell-ad" class="rw-row"></div>
     <div id="sell-items"></div>
     <div id="buy-items" style="display:none"></div>
     <div class="dm-actions"><button id="shop-close">닫기</button></div>
@@ -4743,8 +4746,10 @@
         b.classList.add('pulse'); clearTimeout(photoPulseT);
         photoPulseT = setTimeout(() => b.classList.remove('pulse'), 2200);
       },
-      showDailyCard(view, onOk) {
+      showDailyCard(view, onOk, adBtn) {
         renderDailyCard($('daily-body'), view);
+        $('daily-ad')?.remove();
+        if (adBtn) { const w = document.createElement('div'); w.id = 'daily-ad'; w.className = 'rw-row'; w.appendChild(adBtn); $('daily-ok').before(w); }
         $('daily-ok').onclick = () => { $('daily-modal').classList.remove('show'); onOk?.(); };
         Input.setAnalog(0, 0);
         $('daily-modal').classList.add('show');
@@ -6456,7 +6461,9 @@
 
     // 🔥 가공 창 — game.js 의 craftPanelData() 가 준 데이터를 그리기만 한다.
     //    상태는 글자가 아니라 기호로(✓ 🔥) — 칸이 3개만 되어도 문구가 두 줄로 깨졌다(시안 실측).
+    let craftStationNow = null;
     function renderCraft(d) {
+      craftStationNow = d.station;
       $('craft-title').textContent = d.title;
       $('craft-ask').textContent = d.ask;
       $('craft-hint').innerHTML = d.hint;
@@ -6479,6 +6486,9 @@
         ? `${ready[0].ico} ${ready[0].name} 받기`
         : `${d.claimAll} (${ready.length})`;
       claim.onclick = () => { const nd = Input.craftClaim(d.station); if (nd) renderCraft(nd); };
+      $('craft-ad')?.remove();
+      const adBtn = ready.length ? null : Input.craftAdButton(d.station, (nd) => { if ($('craft-menu').classList.contains('show') && craftStationNow === nd.station) renderCraft(nd); });
+      if (adBtn) { const w = document.createElement('div'); w.id = 'craft-ad'; w.className = 'rw-row'; w.appendChild(adBtn); claim.after(w); }
 
       const list = $('craft-recipes');
       list.innerHTML = '';
@@ -7137,11 +7147,17 @@
     // 판매 바인딩: 탭=1개, 꾹 누르면(450ms) 전부 — pointer 이벤트로 모바일/데스크톱 공통
     function bindSell(el, k) {
       let timer = null, longFired = false;
-      const doSell = (all) => { const r = Input.sellItem(k, all); if (!r.ok) { ui.toast(r.msg); return; } ui.toast(all ? `🪙 +${r.gain} (${r.qty}개 전부)` : `🪙 +${r.gain}`); renderShop(); };
+      const doSell = (all) => { const r = Input.sellItem(k, all); if (!r.ok) { ui.toast(r.msg); return; } ui.toast(all ? `🪙 +${r.gain} (${r.qty}개 전부)` : `🪙 +${r.gain}`); renderShop(); showSellAd(k, r.gain); };
       el.addEventListener('pointerdown', () => { longFired = false; timer = setTimeout(() => { longFired = true; doSell(true); }, 450); });
       el.addEventListener('pointerup', () => { if (timer) { clearTimeout(timer); timer = null; } if (!longFired) doSell(false); });
       el.addEventListener('pointerleave', () => { if (timer) { clearTimeout(timer); timer = null; } });
       el.addEventListener('contextmenu', (e) => e.preventDefault());
+    }
+    function showSellAd(k, gain) {
+      const box = $('sell-ad');
+      box.replaceChildren();
+      const b = Input.sellAdButton(k, gain, (ok, btn) => { if (!ok) return; if (btn.parentNode === box) box.replaceChildren(); renderShop(); });
+      if (b) box.appendChild(b);
     }
     function renderShop() {
       $('shop-coin').textContent = `🪙 ${lastInv.coins || 0}`;
@@ -7283,6 +7299,7 @@
     $('homi-close').addEventListener('click', () => { $('homi-menu').classList.remove('show'); document.body.classList.remove('menu-open'); });
     function showShopTab(t) {
       shopTab = t;
+      $('sell-ad').replaceChildren();
       [...document.querySelectorAll('#shop-menu .sh-tab')].forEach(b => b.classList.toggle('active', b.dataset.tab === t));   // 좌판 탭만 — .sh-tab 은 꾸미기 가게·캐릭터 창도 쓴다
       $('sell-items').style.display = t === 'sell' ? 'flex' : 'none';
       $('buy-items').style.display = t === 'buy' ? 'flex' : 'none';

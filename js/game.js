@@ -68,6 +68,9 @@ import { createHouseGuide } from './spaces/house-guide.js';   // 🏠 목재 15�
 import { rearmMerchant } from './guide/guide-rules.js';
 import { createGoalGuide } from './guide/goal-guide.js';
 import { createHouseShort } from './guide/house-short.js';
+import { createRewarded } from './ads/rewarded.js';
+import { createFarmRush } from './ads/farm-rush.js';
+import { repeatOpen, rushSlots, sellBonus } from './guide/prepass-rules.js';
 import { sanitizeHouseGuide } from './house-guide-rules.js';
 import { initPlaza, updatePlaza, plazaSpotNow, openPlaza, plazaScatterBlocks, plazaDefault, restorePlaza, refreshPlaza, plazaDecorMesh, plazaMapVisible } from './plaza/index.js';
 import { refreshPond, updatePond, pondScatterBlocks } from './pond/index.js';
@@ -1502,7 +1505,7 @@ function checkDailyBonus() {
       weather: WEATHER, forecast: FORECAST, severe: SEVERE_TOMORROW, forecastInDex: !!gameState.dex.weather?.[FORECAST],
       season: SEASON_INFO.season, seasonLeft: SEASON_INFO.left, fish: sFish, fishOwned: seasonOwned(sFish), seasonNew,
     });
-    ui.showDailyCard?.(view, () => { if (pendingNotices.length) ui.showNotices?.(pendingNotices, 'new'); });
+    ui.showDailyCard?.(view, () => { if (pendingNotices.length) ui.showNotices?.(pendingNotices, 'new'); }, dailyAdButton(coins, d.streak));
     return true;
   }
   ui.toast?.(`🎁 출석 보상 +${coins}🪙`, 1600, { afterDialog: true });                         // 신규 유저: 캐릭터 선택/튜토리얼과 안 겹치게 토스트만
@@ -1586,6 +1589,8 @@ const decorMeshes = [];    // 배치된 가구 메시
 let mode = 'attract';   // 'attract'(로그인 배경) | 'play'(플레이)
 let goalGuide = null;
 let houseShort = null;
+let rewarded = null;
+let farmRush = null;
 const PREPASS_DEV = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) && new URLSearchParams(location.search).get('prepass') === '1';
 let prepassProvider = PREPASS_DEV
   ? { available: () => true, show: async () => ({ result: 'complete', valueMicros: 0 }) }
@@ -1941,11 +1946,48 @@ function craftClaim(station = 'kiln') {
   if (!claimed.length) return craftPanelData(station);
   gameState.craft.slots = rest;
   for (const [k, v] of Object.entries(gained)) gameState.inventory[k] = (gameState.inventory[k] || 0) + v;
-  for (const c of claimed) trackEvent('craft_claim', { item: c.item, qty: c.qty, grade: c.grade, station, waited_days: c.waitedDays });
+  for (const c of claimed) trackEvent('craft_claim', { item: c.item, qty: c.qty, grade: c.grade, station, waited_days: c.waitedDays, ...(c.rushed ? { via: 'ad' } : {}) });
   requestSave(); refreshStations(); refreshInventoryUI();
   const ico = stationDef(station).ico;
   ui.toast?.(ico + ' ' + claimed.map(c => `${craftRecipeOf(c.item).ico}${craftRecipeOf(c.item).name} ${c.qty}`).join(' · '));
   return craftPanelData(station);
+}
+
+function craftRush(station = 'kiln') {
+  const today = todayStr();
+  gameState.craft.slots = rushSlots(gameState.craft.slots, (sl) => stationOf(sl.item) === station && !isReady(sl, today), todayStr(-1));
+  requestSave(); refreshStations();
+  ui.toast?.(`${stationDef(station).ico} ${t('다 됐어요! 받아 가세요')}`);
+}
+
+function craftAdButton(station, onDone) {
+  const d = craftPanelData(station);
+  const waiting = d.slots.some(s => !s.ready);
+  if (!waiting || !repeatOpen(gameState.houseStage) || !rewarded?.offer('craft_rush')) return null;
+  return rewarded.button('craft_rush', ['🎬 ', '광고 보고', ' ', '바로 완성'], () => craftRush(station), (ok) => { if (ok) onDone?.(craftPanelData(station)); });
+}
+
+function sellAdButton(item, gain, onDone) {
+  const bonus = sellBonus(gain);
+  if (!bonus || !repeatOpen(gameState.houseStage) || !rewarded?.offer('sell_bonus')) return null;
+  return rewarded.button('sell_bonus', ['🎬 ', '광고 보고', ' ', `🪙 ${bonus}`, ' ', '웃돈 받기'], () => { giveReward({ coins: bonus }, 'sell_bonus', item); requestSave(); }, (ok) => onDone?.(ok));
+}
+
+function dailyAdButton(coins, streak) {
+  if (!coins || !repeatOpen(gameState.houseStage) || !rewarded?.offer('daily_double')) return null;
+  return rewarded.button('daily_double', ['🎬 ', '광고 보고', ' ', `🪙 ${coins}`, ' ', '더 받기'], () => { giveReward({ coins }, 'daily_double', 'day' + streak); requestSave(); }, (ok, btn) => { if (ok) btn.remove(); });
+}
+
+function farmRushGrant(list) {
+  const live = list.filter(p => plots.includes(p) && p.state === 'growing');
+  for (const p of live) {
+    p.growth = 1; p.state = 'mature'; p.stage = -1;
+    refreshCropStage(p); updatePlotVisual(p);
+    spawnSparkle(p.x, 0.7, p.z, 8);
+  }
+  syncFarmSoil(true); syncFarmCrops(true);
+  if (live.length) ui.toast?.(`🌾 ${t('다 자랐어요! 낫으로 수확하세요')}`);
+  requestSave();
 }
 
 let craftDiffCur = null;   // 🎚️ 이번 가공 판의 난이도 — craftDiff 가 채우고 craftScore·craftSet 이 읽는다
@@ -2118,6 +2160,8 @@ export const Input = {
   toggleBoatView() { boatView = boatView === 'first' ? 'third' : 'first'; if (boat.active) playerAnchor.visible = (boatView === 'third'); boat.group?.userData.fpHide?.forEach(m => { m.visible = boatView === 'third'; }); return boatView; },
   boatViewMode() { return boatView; },
   getShopBuy() { return SHOP_BUY; },                    // 구매 목록
+  sellAdButton(k, gain, onDone) { return sellAdButton(k, gain, onDone); },
+  craftAdButton(station, onDone) { return craftAdButton(station, onDone); },
   sellItem(k, all) { return sellItem(k, all); },        // 자원 판매
   buyShop(id) { return buyShop(id); },                  // 아이템 구매
   getGifts() { return GIFTS; },                         // 선물 종류
@@ -2808,17 +2852,25 @@ export async function enterGame() {
     playReminder: () => Sound.houseGuide(),
     track: trackEvent, save: requestSave,
   });
-  houseShort = createHouseShort({
-    state: () => gameState, player, house: HOUSE_POS, translate: t, track: trackEvent, save: requestSave,
-    clientId, platform: PLATFORM, today: () => todayStr(),
+  rewarded = createRewarded({
     enabled: () => PREPASS_ON || PREPASS_DEV, provider: () => prepassProvider, forceArm: () => (PREPASS_DEV ? 'ad' : null),
+    clientId, platform: PLATFORM, track: trackEvent, translate: t, toast: (m) => ui.toast?.(m, 2400),
+  });
+  houseShort = createHouseShort({
+    state: () => gameState, player, house: HOUSE_POS, translate: t, track: trackEvent, save: requestSave, rewarded,
     inVillage: inVillage2,
     modalOpen: () => !!ui.anyModalOpen?.() || document.body.classList.contains('spot-on') || !!goalGuide?.cinematic || !!houseGuidance?.cinematic,
     project: (pos, lift) => projectToScreen(pos, lift),
     topInset: () => { const c = document.getElementById('coach'); const r = c?.classList.contains('show') ? c.getBoundingClientRect() : null; return r && r.height ? Math.round(r.bottom + 30) : 0; },
     refreshInventory: () => refreshInventoryUI(), toast: (m) => ui.toast?.(m, 2400),
   });
-  if (PREPASS_DEV) window.__houseShort = houseShort;
+  farmRush = createFarmRush({
+    rewarded, state: () => gameState, plots: () => plots, atFarm: () => atFarm, grant: farmRushGrant,
+    modalOpen: () => !!ui.anyModalOpen?.() || document.body.classList.contains('spot-on'),
+    bottomInset: () => { const r = document.getElementById('tool-btn')?.getBoundingClientRect(); return r && r.height ? Math.round(innerHeight - r.top + 16) : 0; },
+    unit: () => (LANG === 'en' ? '' : '칸'),
+  });
+  if (PREPASS_DEV) { window.__houseShort = houseShort; window.__farmRush = farmRush; window.__liveState = () => gameState; window.__dailyAd = () => dailyAdButton(30, 1); window.__craftData = (st) => craftPanelData(st); window.__plots = () => plots; }
   goalGuide = createGoalGuide({
     state: () => gameState, player, camera, scene,
     translate: t, track: trackEvent, save: requestSave,
@@ -6424,7 +6476,7 @@ function animate() {
   updatePond(dt, inVillage2());
   updateShopCue(t);          // 🛒 좌판 안내 스프라이트
   if (mode === 'play') goalGuide?.update(dt);
-  if (mode === 'play') houseShort?.update(dt);
+  if (mode === 'play') { houseShort?.update(dt); farmRush?.update(dt); }
   houseGuidance?.update();   // 🏠 조망샷은 다른 카메라 연출·모달이 비었을 때만 시작
   // 집 터 안내판/마커: 플레이 중 + 미완성일 때만 (로그인 화면에선 숨김)
   const showHouseCue = (mode === 'play' && gameState.houseStage < 3);

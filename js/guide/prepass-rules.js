@@ -2,7 +2,8 @@ import { BUILD_STAGES } from '../house-cost.js';
 import { shortfall } from './story-steps.js';
 
 export const PREPASS_CAPS = Object.freeze({ wood: 10, stone: 6, coal: 1, coins: 40 });
-export const PREPASS_DAILY = 3;
+export const REPEAT_SLOTS = Object.freeze(['farm_rush', 'craft_rush', 'daily_double', 'sell_bonus']);
+const HOUSE_DONE = 3;
 const ARMS = ['ad', 'control'];
 
 export function houseShort(houseStage, inv) {
@@ -21,22 +22,22 @@ export function prepassGrant(list) {
   return out;
 }
 
-export function sanitizePrepass(v) {
-  if (!v || typeof v !== 'object') return { date: null, n: 0, used: {} };
-  const used = {};
-  for (const [k, on] of Object.entries(v.used || {})) if (on === true) used[k] = true;
-  const n = Math.max(0, Math.min(PREPASS_DAILY, Math.floor(Number(v.n) || 0)));
-  return { date: typeof v.date === 'string' ? v.date : null, n, used };
+export function repeatOpen(houseStage) {
+  return (houseStage || 0) >= HOUSE_DONE;
 }
 
-export function prepassCan(s, slot, today) {
-  if (s.used[slot]) return false;
-  return s.date !== today || s.n < PREPASS_DAILY;
+export function sellBonus(gain) {
+  const g = Number(gain);
+  if (!(g > 0)) return 0;
+  return Math.min(PREPASS_CAPS.coins, Math.max(1, Math.round(g * 0.5)));
 }
 
-export function prepassUse(s, slot, today) {
-  const n = s.date === today ? s.n + 1 : 1;
-  return { date: today, n, used: { ...s.used, [slot]: true } };
+export function rushSlots(slots, pick, yesterday) {
+  return (slots || []).map(sl => (pick(sl) ? { ...sl, day: yesterday, rushed: true } : sl));
+}
+
+export function rushTargets(plots) {
+  return (plots || []).filter(p => p.state === 'growing' && p.cropType);
 }
 
 export function prepassArm(clientId, platform) {

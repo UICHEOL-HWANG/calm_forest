@@ -1,6 +1,6 @@
 # 컨텍스트
 
-Last Updated: 2026-11-10 13:50 KST
+Last Updated: 2026-11-11
 
 ## 근거 데이터
 - ml/reports/story_stall_20261110/result.csv: 장별 다음 장까지 걸린 시간, 멈춘 기기의 행동

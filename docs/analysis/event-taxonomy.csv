@@ -67,7 +67,7 @@ cosmetic_buy,economy,economy,2,N,active,11,7,2026-09-28,2026-10-24,coins_after|i
 cosmetic_equip,decor,wardrobe,2,N,active,13,8,2026-09-28,2026-10-24,slot|action|item_id|via,js/spaces/cafe.js:1026,"꾸미기 아이템을 입었을 때 (via=구매 경로, action=on/off)",
 cosmetic_tryon,decor,wardrobe,2,N,active,147,10,2026-10-07,2026-10-24,action|premium|slot|item_id,js/spaces/cafe.js:875,"꾸미기 아이템을 입어봤을 때 (미리보기, premium=유료 여부)",
 craft_blocked,crafting,craft,2,N,not_fired,0,0,,,,js/game.js:1857,"가공 걸기가 막혔을 때 (reason=자리 꽉 참 또는 재료 부족, station=가공대)",
-craft_claim,crafting,craft,1,Y,active,21,4,2026-09-24,2026-10-16,grade|item|qty|station|waited_days|exp_arm,js/game.js:1881,"화덕·발효통에서 완성된 가공품을 수령했을 때 (waited_days=기다린 일수, qty=수량)",
+craft_claim,crafting,craft,1,Y,active,21,4,2026-09-24,2026-10-16,grade|item|qty|station|waited_days|via|exp_arm,js/game.js:1881,"화덕·발효통에서 완성된 가공품을 수령했을 때 (waited_days=기다린 일수, qty=수량, via=ad 면 광고로 앞당긴 것)",
 craft_item,crafting,craft,1,Y,active,243,29,2026-08-04,2026-10-24,item|category|from|exp_arm,js/game.js:5671,시설은 category 로 구분,
 craft_ready_notice,ui,ui,2,N,active,21,6,2026-09-22,2026-10-18,n|max_waited,js/spaces/farm-auto.js:379,접속 시 가공품이 완성돼 있다고 하루 1회 알려줬을 때 (n=완성 개수),
 craft_set,crafting,craft,2,N,active,39,13,2026-09-21,2026-10-24,item|slot_idx|grade|qty|station_seq|station|dda|ease|probe_v|arm,js/game.js:1866,"화덕·발효통에 가공을 걸었을 때 (item=품목, grade=등급, station=가공대)",

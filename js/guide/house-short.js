@@ -1,4 +1,4 @@
-import { houseShort, prepassArm, prepassCan, prepassGrant, prepassUse, sanitizePrepass } from './prepass-rules.js';
+import { houseShort, prepassGrant } from './prepass-rules.js';
 import { fillStepCard, stepSignature } from './step-card.js';
 import { shortParts } from './story-steps.js';
 import { LANG } from '../i18n.js';
@@ -14,22 +14,13 @@ const CSS = `
 #house-short .hs-t{font-weight:800;color:#2f5a3a;font-size:14px}
 #house-short .hs-d{font-size:13px;color:#4a5a4f}
 #house-short .hs-s{margin-top:4px;padding-top:5px;border-top:1px dashed #e3dccb;font-size:12.5px;font-weight:700;color:#7a5a20}
-@property --hs-a{syntax:'<angle>';initial-value:0deg;inherits:false}
-#house-short .hs-ad{pointer-events:auto;align-self:flex-start;position:relative;margin-top:6px;border:2px solid transparent;border-radius:999px;padding:4px 12px;font:inherit;font-weight:800;font-size:12.5px;color:#4b3fa0;cursor:pointer;box-shadow:0 0 10px rgba(167,150,255,.55);background:linear-gradient(#f3f0ff,#f3f0ff) padding-box,conic-gradient(from var(--hs-a),#b9adf2,#fff7c2,#8fd8ff,#ffd1f0,#b9adf2) border-box;animation:hs-spin 2.4s linear infinite,hs-glow 1.6s ease-in-out infinite}
-#house-short .hs-ad::before,#house-short .hs-ad::after{content:'✦';position:absolute;font-size:10px;color:#fff;text-shadow:0 0 4px #c9b8ff,0 0 8px #8fd8ff;animation:hs-twinkle 1.4s ease-in-out infinite}
-#house-short .hs-ad::before{left:-6px;top:-7px}
-#house-short .hs-ad::after{right:-5px;bottom:-7px;animation-delay:.7s}
-#house-short .hs-ad:disabled{opacity:.6;cursor:default}
-@keyframes hs-spin{to{--hs-a:360deg}}
-@keyframes hs-glow{50%{box-shadow:0 0 16px rgba(167,150,255,.85)}}
-@keyframes hs-twinkle{0%,100%{opacity:0;transform:scale(.4) rotate(0)}50%{opacity:1;transform:scale(1.1) rotate(45deg)}}
-@media(prefers-reduced-motion:reduce){#house-short .hs-ad,#house-short .hs-ad::before,#house-short .hs-ad::after{animation:none}}
+#house-short .hs-ad{align-self:flex-start;margin-top:6px}
 `;
 
 export function createHouseShort(deps) {
-  let root = null, card = null, box = null, btn = null, t = TICK, sig = '', busy = false, cur = null;
-  const seen = new Set();
+  let root = null, card = null, box = null, btn = null, t = TICK, sig = '', cur = null;
   const T = (s) => deps.translate(s);
+  const ad = deps.rewarded;
 
   function mount() {
     if (root) return;
@@ -37,45 +28,31 @@ export function createHouseShort(deps) {
     root = document.createElement('div'); root.id = 'house-short';
     card = document.createElement('div'); card.className = 'hs-card';
     box = document.createElement('div'); box.style.display = 'contents';
-    btn = document.createElement('button'); btn.type = 'button'; btn.className = 'hs-ad';
-    btn.addEventListener('click', (e) => { e.stopPropagation(); watch(); });
+    btn = ad.button(() => cur, [], (sh) => grant(sh), () => { sig = ''; });
+    btn.classList.add('hs-ad');
     card.append(box, btn); root.appendChild(card); document.body.appendChild(root);
   }
 
   function hide() { if (root) root.classList.remove('show'); cur = null; }
 
-  const prepass = () => sanitizePrepass(deps.state().hintsSeen?.prepass);
-  const arm = () => deps.forceArm?.() || prepassArm(deps.clientId(), deps.platform);
-
   function adOpen(sh) {
-    return deps.enabled() && arm() === 'ad' && Object.keys(prepassGrant(sh.list)).length > 0 && deps.provider().available() && prepassCan(prepass(), sh.slot, deps.today());
+    return Object.keys(prepassGrant(sh.list)).length > 0 && ad.open();
   }
 
   function adLabel(sh) {
-    btn.replaceChildren();
-    const add = (s) => { const n = document.createElement('span'); n.textContent = s; btn.append(n); };
-    add('🎬 '); add(T('광고 보고')); add(' ');
+    const parts = ['🎬 ', '광고 보고', ' '];
     const give = Object.entries(prepassGrant(sh.list)).map(([k, more]) => ({ k, more }));
-    shortParts(give).forEach((p, i) => { if (i) add(' · '); add(`${p.ico} ${p.more}`); if (LANG !== 'en') add('개'); });
-    add(' '); add(T('받기'));
+    shortParts(give).forEach((p, i) => { if (i) parts.push(' · '); parts.push(`${p.ico} ${p.more}`); if (LANG !== 'en') parts.push('개'); });
+    parts.push(' ', '받기');
+    ad.label(btn, parts);
   }
 
-  async function watch() {
-    if (busy || !cur || !adOpen(cur)) return;
-    busy = true; btn.disabled = true;
-    const sh = cur;
-    let r = null;
-    try { r = await deps.provider().show(sh.slot); } catch (err) { r = { result: 'fail', reason: String(err?.message || err) }; }
-    deps.track('prepass_ad_result', { slot: sh.slot, result: r?.result || 'fail', value_micros: Number.isFinite(r?.valueMicros) ? r.valueMicros : undefined });
-    if (r?.result === 'complete') {
-      const give = prepassGrant(sh.list);
-      const gs = deps.state();
-      for (const [k, n] of Object.entries(give)) gs.inventory[k] = (gs.inventory[k] || 0) + n;
-      gs.hintsSeen = { ...(gs.hintsSeen || {}), prepass: prepassUse(prepass(), sh.slot, deps.today()) };
-      deps.refreshInventory(); deps.save();
-      deps.toast(`🎁 ${Object.entries(give).map(([k, n]) => `${shortParts([{ k, more: n }])[0].ico} ${n}`).join(' · ')}`);
-    } else if (r?.result !== 'skip') deps.toast(T('지금은 광고를 볼 수 없어요'));
-    busy = false; btn.disabled = false; sig = '';
+  function grant(sh) {
+    const give = prepassGrant(sh.list);
+    const gs = deps.state();
+    for (const [k, n] of Object.entries(give)) gs.inventory[k] = (gs.inventory[k] || 0) + n;
+    deps.refreshInventory(); deps.save();
+    deps.toast(`🎁 ${Object.entries(give).map(([k, n]) => `${shortParts([{ k, more: n }])[0].ico} ${n}`).join(' · ')}`);
   }
 
   function update(dt = 1 / 60) {
@@ -91,7 +68,7 @@ export function createHouseShort(deps) {
     cur = sh;
     const sp = deps.project({ x: h.x, y: 0, z: h.z }, 3.2);
     if (!sp) { hide(); return; }
-    if (deps.enabled() && !seen.has(sh.slot)) { seen.add(sh.slot); deps.track('prepass_eligible', { slot: sh.slot, arm: arm() }); }
+    ad.offer(sh.slot);
     const [ico, verb] = VERB[sh.stage];
     const st = { key: sh.slot, ico, name: '', verb, doNow: '재료를 모아 와요', shortList: sh.list };
     const open = adOpen(sh);
@@ -108,5 +85,5 @@ export function createHouseShort(deps) {
     root.classList.add('show');
   }
 
-  return { update, debug: () => ({ cur: cur && cur.slot, sig, arm: arm(), shown: !!root?.classList.contains('show') }) };
+  return { update, debug: () => ({ cur: cur && cur.slot, sig, arm: ad.arm(), shown: !!root?.classList.contains('show') }) };
 }
