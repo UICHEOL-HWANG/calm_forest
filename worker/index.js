@@ -24,6 +24,7 @@ import { onRequestPost as paddleWebhook } from '../functions/api/paddle-webhook.
 import { onRequestGet as dexNotes } from '../functions/api/dex-notes.js';
 import { onRequestGet as dailyQuests } from '../functions/api/daily-quests.js';
 import { onRequestGet as npcTalk } from '../functions/api/npc-talk.js';
+import { onRequestGet as lines } from '../functions/api/lines.js';
 import { onRequestPost as orchardEvents } from '../functions/api/orchard-events.js';
 import { onRequestPost as pushRegister } from '../functions/api/push-register.js';
 import { onRequestPost as gaMp } from '../functions/api/ga-mp.js';
@@ -202,6 +203,11 @@ async function routeApi(pathname, { request, env, ctx }) {
   if (pathname === '/api/npc-talk') {
     if (request.method !== 'GET') return new Response('Method Not Allowed', { status: 405 });
     return await npcTalk({ request, env, waitUntil: ctx.waitUntil.bind(ctx) });
+  }
+
+  if (pathname === '/api/lines') {
+    if (request.method !== 'GET') return new Response('Method Not Allowed', { status: 405 });
+    return await lines({ request, env, waitUntil: ctx.waitUntil.bind(ctx) });
   }
 
   // 🏆 리더보드 — Supabase RPC 프록시(엣지 캐시 5분)
