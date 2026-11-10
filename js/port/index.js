@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { PORT, PORT_PIER } from '../data/places.js';
 import { ISLAND, ISLAND_R, ISLAND_DOCK, VILLAGE_DOCK, PIER_END, WALK_R, LAND_Y, ROUTE, FAST_ROUTE, BUOYS, SEA_BOUNDS, MARKET_POS, HUT_POS, LIGHT_POS,
   BOAT_SPEED, BOAT_TURN, FAST_MULT, BITE_FIRST, BITE_WIN, SEA_SPOTS, PIER_SPOT, SPOT_LEFT, PANTRY_ICO, PORT_COPY,
-  QUESTS, SOLIDS, MARKET_PRICE, MARKET_GIVE } from './data.js';
+  QUESTS, SOLIDS, ISLAND_TREES, ISLAND_ROCKS, FENCE, MARKET_PRICE, MARKET_GIVE } from './data.js';
 import { tubBoat, buildPortShops, setPortNight, mat, glow } from './models.js';
 import { rollCatch, addToPantry, acceptQuest, pickItem, claimQuest, boardGate } from './rules.js';
 import { disarmPortPier, nearPortPier, portPierBoat } from './pier.js';
@@ -56,19 +56,19 @@ function buildIsland() {
   const post = new THREE.CylinderGeometry(0.1, 0.1, 1.3, 6);
   for (const z of [-0.75, 0.75]) for (let i = 0; i < 3; i++) add(post, mat(0x6e4a2c), 21.8 + i * 1.6, 0.05, z);
   add(new THREE.IcosahedronGeometry(0.22, 0), glow(0xffc56b), 21.6, 1.7, 0.85);
-  for (const [x, z] of [[31, 16], [34.5, 18.2], [37.2, 18.9], [29.5, 13.8], [39.5, 19]]) {
+  for (const [x, z] of ISLAND_ROCKS) {
     const r = add(new THREE.DodecahedronGeometry(0.84, 0), mat(0x8d8f8a), x, LAND_Y + 0.24, z); r.scale.y = 0.6; r.rotation.y = x;
   }
   for (const [x, z, r] of [[33.3, 16.2, 1.2], [36.4, 17.6, 1]]) add(new THREE.CircleGeometry(r, 10), mat(0x3f8fb0), x, LAND_Y + 0.03, z).rotation.x = -Math.PI / 2;
   const fp = new THREE.CylinderGeometry(0.06, 0.06, 0.7, 5);
-  for (let i = 0; i <= 6; i++) for (const z of [-6.8, -13.2]) add(fp, mat(0x9b6b3f), 51 + i, LAND_Y + 0.35, z);
-  for (const z of [-6.8, -13.2]) add(new THREE.BoxGeometry(6, 0.06, 0.06), mat(0x9b6b3f), 54, LAND_Y + 0.55, z);
+  for (let x = FENCE.x0; x <= FENCE.x1; x++) for (const z of FENCE.z) add(fp, mat(0x9b6b3f), x, LAND_Y + 0.35, z);
+  for (const z of FENCE.z) add(new THREE.BoxGeometry(FENCE.x1 - FENCE.x0, 0.06, 0.06), mat(0x9b6b3f), (FENCE.x0 + FENCE.x1) / 2, LAND_Y + 0.55, z);
   add(new THREE.BoxGeometry(5.6, 0.08, 5.6), mat(0x8a6040), 54, LAND_Y + 0.04, -10);
   for (let i = 0; i < 4; i++) add(new THREE.CylinderGeometry(0.95 - i * 0.1, 1.05 - i * 0.1, 1.2, 12), mat(i % 2 ? 0xc0432b : 0xf4ece0), LIGHT_POS.x, LAND_Y + 0.6 + i * 1.2, LIGHT_POS.z);
   add(new THREE.CylinderGeometry(0.75, 0.75, 0.15, 12), mat(0x40585f), LIGHT_POS.x, LAND_Y + 4.9, LIGHT_POS.z);
   add(new THREE.IcosahedronGeometry(0.4, 1), glow(0xffd27a), LIGHT_POS.x, LAND_Y + 5.35, LIGHT_POS.z);
   add(new THREE.ConeGeometry(0.75, 0.8, 12), mat(0x40585f), LIGHT_POS.x, LAND_Y + 6.1, LIGHT_POS.z);
-  for (const [x, z, s] of [[44, -16, 1.2], [40, -14, 0.9], [47, 8, 1.3], [51, 4, 1], [38, 6, 0.9], [59, 2, 1.1], [36, -14, 1]]) tree(x, z, s);
+  for (const [x, z, s] of ISLAND_TREES) tree(x, z, s);
 }
 
 function buildBuoys() {

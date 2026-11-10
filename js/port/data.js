@@ -19,7 +19,10 @@ export const SEA_BOUNDS = { x0: -26, x1: 28, z0: -24, z1: 24 };
 export const MARKET_POS = { x: 32, z: -6 };
 export const HUT_POS = { x: 29.6, z: 8 };
 export const LIGHT_POS = { x: 60, z: -9 };
-export const SOLIDS = [[MARKET_POS, 1.6], [HUT_POS, 1.9], [LIGHT_POS, 1.2]];
+export const ISLAND_TREES = [[44, -16, 1.2], [40, -14, 0.9], [47, 8, 1.3], [51, 4, 1], [38, 6, 0.9], [59, 2, 1.1], [36, -14, 1]];
+export const ISLAND_ROCKS = [[31, 16], [34.5, 18.2], [37.2, 18.9], [29.5, 13.8], [39.5, 19]];
+export const FENCE = { x0: 51, x1: 57, z: [-6.8, -13.2] };
+const NPC_SOLID_R = 0.6, TREE_SOLID_R = 0.45, ROCK_SOLID_R = 0.75, RAIL_STEP = 0.5, RAIL_R = 0.3;
 
 export const BOAT_SPEED = 6;
 export const BOAT_TURN = 5;
@@ -48,6 +51,16 @@ export const QUESTS = [
   { id: 'yatai', who: '포장마차 너구리', pos: [34.6, -3.6], title: '어묵 국물용 조개', ask: '국물 낼 조개가 떨어졌네. 남쪽 갯바위에서 4개만 캐 와 줘.', thanks: '덕분에 국물 맛 살겠다! 넉넉히 캐 왔으니 조개 반은 가져가.', item: 'clam', itemName: '조개', need: 4, spots: [[31.5, 13.5], [33.5, 15.2], [35.5, 16.8], [38, 17.5]], reward: { rice: 3, clam: 3 } },
   { id: 'farm', who: '밭 할머니 염소', pos: [49.5, -12], title: '배추 뽑기 도와주기', ask: '아이고 허리야. 배추 3포기만 뽑아다 주겠니?', thanks: '아이고 고마워라. 넉넉히 가져가렴.', item: 'cabbage', itemName: '배추', need: 3, spots: [[52.5, -8.5], [55.5, -8.5], [52.5, -11.5], [55.5, -11.5]], reward: { veg: 5 } },
   { id: 'light', who: '등대지기 부엉이', pos: [57.6, -5.4], title: '등대 기름통 가져다주기', ask: '등불 기름이 다 됐어. 어부네 집 데크에 기름통이 있을 거야. 좀 가져다줄래?', thanks: '이제 배들이 길을 잃지 않겠군. 밤바다에서 잡은 오징어야.', item: 'oil', itemName: '기름통', need: 1, spots: [[32.4, 10.4]], reward: { squid: 3 }, night: true },
+];
+
+const at = (x, z) => ({ x, z });
+const railCircles = FENCE.z.flatMap(z => Array.from({ length: Math.round((FENCE.x1 - FENCE.x0) / RAIL_STEP) + 1 }, (_, i) => [at(FENCE.x0 + i * RAIL_STEP, z), RAIL_R]));
+export const SOLIDS = [
+  [MARKET_POS, 1.6], [HUT_POS, 1.9], [LIGHT_POS, 1.2],
+  ...QUESTS.map(q => [at(q.pos[0], q.pos[1]), NPC_SOLID_R]),
+  ...ISLAND_TREES.map(([x, z, s]) => [at(x, z), TREE_SOLID_R * s]),
+  ...ISLAND_ROCKS.map(([x, z]) => [at(x, z), ROCK_SOLID_R]),
+  ...railCircles,
 ];
 
 export const PORT_COPY = {
