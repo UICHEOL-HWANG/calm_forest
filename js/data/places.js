@@ -12,6 +12,8 @@ export const INT = new THREE.Vector3(0, 0, 52); // 실내 위치(플레이 구�
 
 export const ROOF_Y = 3.4;   // ☀️ 루프탑만 집 한 층 높이만큼 띄운다 — "지붕 위에서 마을을 내려다보는" 높이감(2026-09-17 사용자 피드백).
 
+export const LAKE = new THREE.Vector3(16, 0, 9);
+
 export const LAKE_R = 6;   // 호수 반경(환경 호수와 동일)
 
 export const BENCH = new THREE.Vector3(4, 0, -5);      // 작업대(도구·장식·선물 제작) 위치
