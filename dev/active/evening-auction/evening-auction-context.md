@@ -1,6 +1,6 @@
 # 저녁 경매 — 맥락
 
-Last Updated: 2026-11-10 05:28
+Last Updated: 2026-11-10 (구현 완료, 배포 전)
 
 ## 결정(사용자 확정)
 - 방식: 실시간 호가(A). 봉투 입찰·떨이 기각 — `sims/auction-compare.html`
