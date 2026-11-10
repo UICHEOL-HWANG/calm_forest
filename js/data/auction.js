@@ -1,4 +1,4 @@
-export const AUCTION_STAGE = { x: 32.5, z: -3.5 };
+export const AUCTION_STAGE = { x: 10.5, z: -18 };
 export const AUCTION_STAGE_R = 4.2;
 export const AUCTION_SPOTS = {
   merchant: [1.75, -0.25],

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from '../vendor/three/three.module.js';
 import { buildHomiStall } from '../js/forage/homi-stall-art.js';
+import { PLAZA, PLAZA_R, PLAZA_POLE } from '../js/data/plaza.js';
 
 const read = p => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 const places = read('js/data/places.js');
@@ -16,6 +17,12 @@ const d2 = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 test('the hoe stall stands on dry land in front of the sea gate', () => {
   assert.ok(d2(HOMI_STALL, SEA_COVE) > SEA_COVE.r + HOMI_STALL.r, 'not in the water');
   assert.ok(d2(HOMI_STALL, SEA_GATE) > 2.2 + HOMI_STALL.r, 'does not block the gate');
+});
+
+test('the hoe stall keeps off the cove sand and the harvest plaza', () => {
+  assert.ok(d2(HOMI_STALL, SEA_COVE) > SEA_COVE.r + 1.1 + HOMI_STALL.r, 'off the sand ring');
+  assert.ok(d2(HOMI_STALL, PLAZA_POLE) > 3, 'clear of the plaza pole');
+  assert.ok(d2(HOMI_STALL, PLAZA) > PLAZA_R + HOMI_STALL.r, 'outside the plaza');
 });
 
 test('the stall model shows the three hoe tiers and the four paid skins', () => {

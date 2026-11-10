@@ -301,6 +301,7 @@ import { resolveFirstDay, ensureFirstDay } from './mountain/unlock.js';
 import { UNLOCK_IDS, defaultUnlocks, newlyUnlocked, restoreUnlocks, unlockQuestCtx, unlockedSet, unlocksForSave } from './world/unlocks.js';   // 🔓 마을 해금(순수) — docs/superpowers/specs/2026-10-16-world-unlocks-design.md
 import { BRIDGE_ANG, BRIDGE_COST, ISLE, ISLE_R, bridgeBroken, bridgeFoot, bridgePoint, streamR } from './world/bridge.js';   // 🌉 박물관 섬 개울·다리(순수)
 import { bridgeBrokenNow, bridgeInteract, buildBridge, clampToStream, syncBridge } from './spaces/bridge.js';   // 📦 🌉 무너진 다리(해금 4단계)
+import { clampVillage } from './world/walk-bounds.js';
 import { defaultTree, restoreTree } from './world/tree-board.js';   // 🌳 세계수 판(순수) — docs/superpowers/specs/2026-10-16-world-tree-board-design.md
 import { defaultBloom, restoreBloom } from './world/tree-bloom.js';
 import { WORLD_TREE, buildWorldTree, debugTreeShot, openWorldTree, queueChapterShot, treeShotBusy, treeShotFogPush, updateWorldTree } from './spaces/world-tree.js';   // 📦 🌳 마을 세계수 랜드마크 + 판 진입
@@ -6534,8 +6535,7 @@ function updatePlayer(dt, t) {
     const R = ORCHARD_HALF - 0.8, dx = player.position.x - ORCHARD.x, dz = player.position.z - ORCHARD.z, dd = Math.hypot(dx, dz);
     if (dd > R) { player.position.x = ORCHARD.x + dx / dd * R; player.position.z = ORCHARD.z + dz / dd * R; }
   } else {
-    const maxR = 42, pr = Math.hypot(player.position.x, player.position.z);
-    if (pr > maxR) { player.position.x *= maxR / pr; player.position.z *= maxR / pr; }
+    clampVillage(player.position);
     // 🌊 호수는 못 들어감 — 🌉 부두 위만 허용(데크 밖으로 떨어지지 않게 클램프)
     const dl = dist2D(player.position, LAKE);
     if (dl < LAKE_R + 0.3) {
