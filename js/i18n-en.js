@@ -290,6 +290,7 @@ export const EN = {
   '집 색 하나': 'A new house color',
   // ── 🌾 수확제 광장 ───────────────────────────────────────────
   '수확제 광장': 'Harvest Plaza',
+  '경매 무대': 'Auction Stage',
   '🍂단풍잎': '🍂Maple Leaf',
   '🌾 광장에 보태기': '🌾 Chip in to the Plaza',
   '🍂 수확제 좌판': '🍂 Harvest Stall',

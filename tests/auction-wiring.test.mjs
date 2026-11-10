@@ -99,3 +99,10 @@ test('placed auction decor is solid in the yard', () => {
   assert.ok(line, 'solid list line missing');
   for (const id of ['moonswing', 'lanternarch', 'starvane']) assert.ok(line.includes(`'${id}'`), id);
 });
+
+test('the village map lists the auction stage once the merchant is unlocked', () => {
+  assert.match(game, /\{ ico: '🔨', name: '경매 무대', \.\.\.auctionMapSpot\(\), pri: 1 \}/);
+  assert.match(game, /'경매 무대': 'merchant'/);
+  assert.match(index, /export function auctionMapSpot\(\) \{ return \{ x: X, z: Z \+ 1 \}; \}/);
+  assert.match(read('js/i18n-en.js'), /'경매 무대': 'Auction Stage'/);
+});

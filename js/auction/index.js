@@ -86,6 +86,8 @@ export function updateAuction(dt, inVillage) {
   for (const m of outdoorMeshes) if (m.userData.spin) m.userData.spin.rotation.y += dt * SPIN_SPEED;
 }
 
+export function auctionMapSpot() { return { x: X, z: Z + 1 }; }
+
 export function auctionSpotNow() {
   return !!stage && auctionOpen() && inVillage2() && !mgView && Math.hypot(player.position.x - X, player.position.z - (Z + 3.2)) < SPOT_R;
 }

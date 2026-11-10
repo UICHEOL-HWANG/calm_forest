@@ -67,7 +67,7 @@ import { t, LANG, aiBucket, clientId } from './i18n.js';   // 🌐 i18n — DOM 
 import { createHouseGuide } from './spaces/house-guide.js';   // 🏠 목재 15개 → 집터 조망 + 방향 안내 50:50
 import { sanitizeHouseGuide } from './house-guide-rules.js';
 import { initPlaza, updatePlaza, plazaSpotNow, openPlaza, plazaScatterBlocks, plazaDefault, restorePlaza, refreshPlaza, plazaDecorMesh, plazaMapVisible } from './plaza/index.js';
-import { initAuction, updateAuction, auctionSpotNow, openAuction, auctionScatterBlocks, auctionOutdoorMesh, auctionDefault, restoreAuction } from './auction/index.js';
+import { initAuction, updateAuction, auctionMapSpot, auctionSpotNow, openAuction, auctionScatterBlocks, auctionOutdoorMesh, auctionDefault, restoreAuction } from './auction/index.js';
 import { refreshPond, updatePond, pondScatterBlocks } from './pond/index.js';
 import { onPlay, decorBanner, applySetFx } from './decor-drops/index.js';
 import { updateSetFx } from './decor-drops/fx.js';
@@ -6123,6 +6123,7 @@ const VILLAGE_PLACES = [
   { ico: '🛶', name: '나루터',        x: DOCK_GATE.x,   z: DOCK_GATE.z,   pri: 1, map: 'river' },
   { ico: '🌫️', name: '안개 숲',       x: MIST_GATE.x,   z: MIST_GATE.z,   pri: 1, map: 'mist' },
   { ico: '🌊', name: '바다터',        x: SEA_GATE.x,    z: SEA_GATE.z,    pri: 1, map: 'sea' },
+  { ico: '🔨', name: '경매 무대', ...auctionMapSpot(), pri: 1 },
   { ico: '🌾', name: '수확제 광장', x: 23, z: -4, pri: 1, need: 'plaza' },
   { ico: '🍎', name: '과수원',        x: ORCHARD_GATE.x, z: ORCHARD_GATE.z, pri: 1, map: 'orchard' },
 ];
@@ -6131,7 +6132,7 @@ const VILLAGE_PLACES = [
 const PLACE_UNLOCK = {
   '자유주방': 'kitchen', '상점': 'shop', '시세판': 'market', '닭장': 'coop', '카페': 'cafe', '반딧불이 계곡': 'glade',
   '채집 숲': 'forest', '박물관': 'museum', '천문대': 'observatory', '빛 공방': 'lightWorkshop', '정류장': 'mirror',
-  '이웃 마을 가는 길': 'neighbor', '나루터': 'river', '안개 숲': 'mist', '바다터': 'sea', '과수원': 'orchard',
+  '이웃 마을 가는 길': 'neighbor', '나루터': 'river', '안개 숲': 'mist', '바다터': 'sea', '과수원': 'orchard', '경매 무대': 'merchant',
 };
 
 // 지금 이 세이브 기준의 지명 목록 — 아직 못 가는 곳은 locked 로 내려보내 지도에서 흐리게 그린다.
