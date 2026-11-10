@@ -32,7 +32,10 @@ function moonswing(THREE) {
   for (const sx of [-0.3, 0.3]) beam(g, [sx, 1.76, 0], [sx, 0.56, 0], 0.014, rope);
   put(g, new THREE.BoxGeometry(0.78, 0.06, 0.32), wood, 0, 0.54, 0);
   put(g, new THREE.TorusGeometry(0.17, 0.055, 8, 22, Math.PI * 1.25), glow(0xfff0b0, 0.45), 0, 2.02, 0).rotation.z = 0.95;
-  for (const [x, y] of [[-0.55, 1.6], [0.55, 1.62], [0, 1.58]]) put(g, new THREE.OctahedronGeometry(0.055, 0), glow(0xfff4c8, 0.5), x, y, 0);
+  for (const [x, y] of [[-0.55, 1.6], [0.55, 1.62], [0, 1.58]]) {
+    beam(g, [x, 1.76, 0], [x, y + 0.05, 0], 0.006, rope);
+    put(g, new THREE.OctahedronGeometry(0.055, 0), glow(0xfff4c8, 0.5), x, y, 0);
+  }
   return g;
 }
 
@@ -48,6 +51,19 @@ function lanternarch(THREE) {
   return g;
 }
 
+function starGeometry(THREE, r) {
+  const shape = new THREE.Shape();
+  for (let i = 0; i < 10; i++) {
+    const a = Math.PI / 2 + i * Math.PI / 5, k = i % 2 ? r * 0.45 : r;
+    const x = Math.cos(a) * k, y = Math.sin(a) * k;
+    if (i) shape.lineTo(x, y); else shape.moveTo(x, y);
+  }
+  shape.closePath();
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.07, bevelEnabled: false });
+  geo.translate(0, 0, -0.035);
+  return geo;
+}
+
 function starvane(THREE) {
   const { clay, glow, put } = kit(THREE);
   const g = new THREE.Group();
@@ -56,7 +72,7 @@ function starvane(THREE) {
   const arrow = new THREE.Group(); arrow.position.y = 1.55; g.add(arrow);
   put(arrow, new THREE.BoxGeometry(0.9, 0.04, 0.04), clay(0x5e3d27), 0, 0, 0);
   put(arrow, new THREE.ConeGeometry(0.08, 0.18, 6), clay(0x5e3d27), 0.48, 0, 0).rotation.z = -Math.PI / 2;
-  put(arrow, new THREE.OctahedronGeometry(0.17, 0), glow(0xffd86b, 0.45), -0.45, 0, 0).scale.set(1, 1, 0.4);
+  put(arrow, starGeometry(THREE, 0.36), glow(0xffd23a, 0.5), -0.62, 0, 0);
   put(g, new THREE.SphereGeometry(0.06, 8, 6), clay(0xe0b04a), 0, 1.78, 0);
   g.userData.spin = arrow;
   return g;
