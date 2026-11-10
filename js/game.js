@@ -1964,18 +1964,18 @@ function craftAdButton(station, onDone) {
   const d = craftPanelData(station);
   const waiting = d.slots.some(s => !s.ready);
   if (!waiting || !repeatOpen(gameState.houseStage) || !rewarded?.offer('craft_rush')) return null;
-  return rewarded.button('craft_rush', ['🎬 ', '광고 보고', ' ', '바로 완성'], () => craftRush(station), (ok) => { if (ok) onDone?.(craftPanelData(station)); });
+  return rewarded.button('craft_rush', ['광고 보고', ' ', '바로 완성'], () => craftRush(station), (ok) => { if (ok) onDone?.(craftPanelData(station)); });
 }
 
 function sellAdButton(item, gain, onDone) {
   const bonus = sellBonus(gain);
   if (!bonus || !repeatOpen(gameState.houseStage) || !rewarded?.offer('sell_bonus')) return null;
-  return rewarded.button('sell_bonus', ['🎬 ', '광고 보고', ' ', `🪙 ${bonus}`, ' ', '웃돈 받기'], () => { giveReward({ coins: bonus }, 'sell_bonus', item); requestSave(); }, (ok) => onDone?.(ok));
+  return rewarded.button('sell_bonus', ['광고 보고', ' ', `🪙 ${bonus}`, ' ', '웃돈 받기'], () => { giveReward({ coins: bonus }, 'sell_bonus', item); requestSave(); }, (ok) => onDone?.(ok));
 }
 
 function dailyAdButton(coins, streak) {
   if (!coins || !repeatOpen(gameState.houseStage) || !rewarded?.offer('daily_double')) return null;
-  return rewarded.button('daily_double', ['🎬 ', '광고 보고', ' ', `🪙 ${coins}`, ' ', '더 받기'], () => { giveReward({ coins }, 'daily_double', 'day' + streak); requestSave(); }, (ok, btn) => { if (ok) btn.remove(); });
+  return rewarded.button('daily_double', ['광고 보고', ' ', `🪙 ${coins}`, ' ', '더 받기'], () => { giveReward({ coins }, 'daily_double', 'day' + streak); requestSave(); }, (ok, btn) => { if (ok) btn.remove(); });
 }
 
 function farmRushGrant(list) {

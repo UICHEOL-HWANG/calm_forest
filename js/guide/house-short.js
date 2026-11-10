@@ -40,7 +40,7 @@ export function createHouseShort(deps) {
   }
 
   function adLabel(sh) {
-    const parts = ['🎬 ', '광고 보고', ' '];
+    const parts = ['광고 보고', ' '];
     const give = Object.entries(prepassGrant(sh.list)).map(([k, more]) => ({ k, more }));
     shortParts(give).forEach((p, i) => { if (i) parts.push(' · '); parts.push(`${p.ico} ${p.more}`); if (LANG !== 'en') parts.push('개'); });
     parts.push(' ', '받기');

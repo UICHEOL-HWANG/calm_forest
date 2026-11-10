@@ -29,7 +29,7 @@ export function createFarmRush(deps) {
     if (!n) { hide(); return; }
     if (!ad.offer('farm_rush')) { hide(); return; }
     mount();
-    if (n !== shownN) { shownN = n; ad.label(btn, ['🎬 ', '광고 보고', ' ', `🌱 ${n}`, deps.unit(), ' ', '지금 다 자라게']); }
+    if (n !== shownN) { shownN = n; ad.label(btn, ['광고 보고', ' ', `🌱 ${n}`, deps.unit(), ' ', '지금 다 자라게']); }
     root.style.bottom = `${Math.max(120, deps.bottomInset())}px`;
     root.classList.add('show');
   }

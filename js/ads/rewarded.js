@@ -1,16 +1,16 @@
 import { prepassArm } from '../guide/prepass-rules.js';
 
 const CSS = `
-@property --rw-a{syntax:'<angle>';initial-value:0deg;inherits:false}
-.rw-ad{pointer-events:auto;position:relative;display:inline-block;text-align:center;border:2px solid transparent;border-radius:999px;padding:7px 13px;font:inherit;font-weight:800;font-size:12.5px;line-height:1.1;color:#4b3fa0;cursor:pointer;background:linear-gradient(#f4f1ff,#f4f1ff) padding-box,conic-gradient(from var(--rw-a),#b9adf2,#fff1b8,#9fd9f2,#ffd3ec,#b9adf2) border-box;box-shadow:0 2px 8px -2px rgba(110,90,200,.35);animation:rw-spin 3s linear infinite;transition:transform .18s cubic-bezier(.16,1,.3,1)}
+.rw-ad{pointer-events:auto;position:relative;isolation:isolate;overflow:hidden;display:inline-block;text-align:center;border:0;border-radius:14px;padding:8px 14px 8px 8px;font:inherit;font-weight:700;font-size:13px;line-height:1.2;color:#fbf6e6;cursor:pointer;background:linear-gradient(180deg,#3d6b4a,#2f5a3a);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 6px 14px -6px rgba(31,74,44,.6);transition:transform .2s cubic-bezier(.16,1,.3,1)}
+.rw-ad::after{content:'';position:absolute;top:0;bottom:0;width:36%;left:-60%;background:linear-gradient(100deg,transparent,rgba(255,226,140,.5),transparent);transform:skewX(-18deg);animation:rw-sweep 3.8s cubic-bezier(.45,0,.2,1) infinite;pointer-events:none}
 .rw-ad:active{transform:translateY(1px) scale(.98)}
 .rw-ad:disabled{opacity:.6;cursor:default}
-.rw-ad::before,.rw-ad::after{content:'✦';position:absolute;font-size:9px;color:#fff;text-shadow:0 0 3px #c9b8ff;pointer-events:none;animation:rw-twinkle 1.8s ease-in-out infinite}
-.rw-ad::before{left:-5px;top:-6px}
-.rw-ad::after{right:-4px;bottom:-6px;animation-delay:.9s}
-@keyframes rw-spin{to{--rw-a:360deg}}
-@keyframes rw-twinkle{0%,100%{opacity:0;transform:scale(.4) rotate(0)}50%{opacity:1;transform:scale(1.1) rotate(45deg)}}
-@media(prefers-reduced-motion:reduce){.rw-ad,.rw-ad::before,.rw-ad::after{animation:none}}
+.rw-ad .rw-tag{display:inline-block;vertical-align:1px;margin-right:7px;font-size:10px;font-weight:800;letter-spacing:.04em;padding:3px 6px;border-radius:6px;background:rgba(255,211,107,.18);color:#ffd36b}
+.rw-ad .rw-amt{color:#ffd36b;font-weight:800}
+.rw-ad .rw-spark{position:absolute;right:6px;top:3px;font-size:8px;color:#ffe08a;pointer-events:none;opacity:0;animation:rw-twinkle 3.8s ease-in-out infinite;animation-delay:2.2s}
+@keyframes rw-sweep{0%,60%{left:-60%}88%,100%{left:130%}}
+@keyframes rw-twinkle{0%,100%{opacity:0;transform:scale(.4) rotate(0)}50%{opacity:1;transform:scale(1.15) rotate(45deg)}}
+@media(prefers-reduced-motion:reduce){.rw-ad::after,.rw-ad .rw-spark{animation:none}}
 `;
 
 function ensureStyle() {
@@ -45,12 +45,12 @@ export function createRewarded(deps) {
   }
 
   function label(btn, parts) {
-    btn.replaceChildren(...parts.map(s => {
-      const n = document.createElement('span');
+    const span = (cls, text) => { const n = document.createElement('span'); if (cls) n.className = cls; n.textContent = text; return n; };
+    const words = parts.map(s => {
       const [, lead, core, tail] = /^(\s*)([\s\S]*?)(\s*)$/.exec(s);
-      n.textContent = core ? lead + deps.translate(core) + tail : s;
-      return n;
-    }));
+      return span(/\d/.test(core) ? 'rw-amt' : null, core ? lead + deps.translate(core) + tail : s);
+    });
+    btn.replaceChildren(span('rw-tag', 'AD'), ...words, span('rw-spark', '✦'));
   }
 
   function button(slot, parts, grant, after) {
