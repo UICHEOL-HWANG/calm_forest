@@ -13,10 +13,10 @@ export const AUCTION_POOL = [
   { id: 'starvane', appraisal: 220 },
 ];
 export const AUCTION_BIDDERS = [
-  { id: 'curator', style: 'big', inc: 50 },
-  { id: 'stargazer', style: 'eager', inc: 10 },
-  { id: 'builder', style: 'sniper', inc: 30 },
-];
+  ['curator', 'big', 50],
+  ['stargazer', 'eager', 10],
+  ['builder', 'sniper', 30],
+].map(([id, style, inc]) => ({ id, style, inc }));
 export const BID_INCS = [10, 30, 50];
 export const OPEN_FROM = 0.72;
 export const OPEN_TO = 0.96;
