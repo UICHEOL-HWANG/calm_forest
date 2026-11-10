@@ -16,7 +16,7 @@ export function isLinePoolTick(scheduledTime) {
 
 export async function runLinePool(env, {
   fetch = globalThis.fetch, notify = defaultNotify, spacingMs = LINE_SPACING_MS,
-  maxCalls = CRON_MAX_CALLS, source = 'cron', kinds = LIVE_KINDS,
+  maxCalls = CRON_MAX_CALLS, wait, source = 'cron', kinds = LIVE_KINDS,
 } = {}) {
   if (!storeReady(env) || !env?.EXAONE_API_KEY) return { skipped: 'not_configured' };
   const t0 = Date.now();
@@ -35,7 +35,7 @@ export async function runLinePool(env, {
     }
     const plan = planLineWork(counts, { kinds, maxCalls });
     out.requested = plan.reduce((s, p) => s + p.want, 0);
-    const got = await fillCells(env, plan, { fetch, pace: createPacer(spacingMs), existing, maxCalls });
+    const got = await fillCells(env, plan, { fetch, pace: createPacer(spacingMs), existing, maxCalls, wait });
     out.calls = got.calls;
     out.failed = got.failed;
     out.rate_limited = got.rateLimited > 0;

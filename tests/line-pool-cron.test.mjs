@@ -54,7 +54,7 @@ test('서브리퀘스트 예산: 빈 풀이어도 EXAONE 호출은 CRON_MAX_CALL
 
 test('EXAONE 이 매번 429 를 주면 실행 기록에 rate_limited 가 true', async () => {
   const w = world({ exaone: () => new Response('', { status: 429 }) });
-  const r = await runLinePool(env, { fetch: w.fetch, notify: w.notify, spacingMs: 0 });
+  const r = await runLinePool(env, { fetch: w.fetch, notify: w.notify, spacingMs: 0, wait: async () => {} });
   assert.equal(r.rate_limited, true);
   assert.equal(w.log.runs[0].rate_limited, true);
 });

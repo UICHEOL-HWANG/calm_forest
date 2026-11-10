@@ -103,6 +103,17 @@ test('fillCells 는 429 재시도도 호출 예산을 쓰고 rateLimited 로 센
   assert.equal(r.rateLimited, 2);
 });
 
+test('fillCells 는 다른 칸의 인증 실패로 멈춘 칸을 실패로 세지 않는다', async () => {
+  const a = { kind: 'auction', key: '_any', slot: 'last', lang: 'ko' };
+  const b = { kind: 'auction', key: '_any', slot: 'last', lang: 'en' };
+  let n = 0;
+  const fetch = async () => { n++; return new Response('', { status: n === 1 ? 429 : 401 }); };
+  const r = await fillCells(env, [{ cell: a, want: 5 }, { cell: b, want: 5 }], { fetch, pace: now, maxCalls: 10, limit: 2, wait: async () => {} });
+  assert.equal(r.stopped, 'auth');
+  assert.equal(r.calls, 2);
+  assert.equal(r.failed, 1);
+});
+
 test('fillCells 는 maxCalls 를 넘겨 부르지 않는다', async () => {
   const cell = { kind: 'auction', key: '_any', slot: 'last', lang: 'ko' };
   let n = 0;

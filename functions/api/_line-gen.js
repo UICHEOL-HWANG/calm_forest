@@ -154,7 +154,8 @@ export async function fillCells(env, plan, { fetch = globalThis.fetch, pace, exi
   await mapLimit(plan, limit, async ({ cell, want }) => {
     let last = null;
     for (let a = 0; a <= RETRIES; a++) {
-      if (stopped || calls >= maxCalls) { if (last) break; return; }
+      if (stopped) return;
+      if (calls >= maxCalls) { if (last) break; return; }
       calls++;
       const got = await pace(() => generateCell(env, cell, want, { fetch, seen: seen(cell) }));
       if (!got.failure) {
