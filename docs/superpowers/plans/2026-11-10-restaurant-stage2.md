@@ -454,7 +454,12 @@ import assert from 'node:assert/strict';
 import { HALL, SERVICE_SEC } from '../js/restaurant/data.js';
 import { createSession, tickSession, contextAt, actAt, finishSession } from '../js/restaurant/session.js';
 
-const at = id => { const s = HALL.stations.find(s => s.id === id); return { x: s.x, z: s.z + 0.9 }; };
+const at = id => {
+  const s = HALL.stations.find(s => s.id === id);
+  if (s.x > 6) return { x: s.x - 0.9, z: s.z };
+  if (s.z > 3) return { x: s.x, z: s.z - 0.9 };
+  return { x: s.x, z: s.z + 0.9 };
+};
 const seq = (...v) => { let i = 0; return () => v[i++ % v.length]; };
 const yes = () => true;
 const one = { iv: 1, pat: 1, win: 1 };

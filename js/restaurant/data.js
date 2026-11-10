@@ -29,3 +29,21 @@ export const STAR_UP = {
 export const DDA_MIN = 0.8, DDA_MAX = 1.2, DDA_EASY = 0.08, DDA_HARD = 0.06;
 export const DDA_EASY_BELOW = 3.2, DDA_HARD_FROM = 4.3;
 export const STARTER_STOCK = { fish: 4, rice: 4 };
+export const HALL = {
+  half: { x: 7.2, z: 4.2 },
+  door: { x: -6.3, z: 3.4 },
+  board: { x: -5.2, z: 3.2 },
+  tables: [[-4.7, -2.0], [-1.7, -2.0], [-4.7, 1.5], [-1.7, 1.5]],
+  stations: [
+    { id: 'crate_fish', kind: 'crate', give: 'fish', x: 1.9, z: -3.5 },
+    { id: 'crate_rice', kind: 'crate', give: 'rice', x: 3.05, z: -3.5 },
+    { id: 'board', kind: 'board', x: 4.6, z: -3.5 },
+    { id: 'pan0', kind: 'pan', x: 6.55, z: -2.6, need: 1 },
+    { id: 'pan1', kind: 'pan', x: 6.55, z: -1.45, need: 3 },
+    { id: 'pot', kind: 'pot', x: 6.55, z: -0.3, need: 2 },
+    { id: 'plates', kind: 'plates', x: 6.55, z: 1.2 },
+    { id: 'trash', kind: 'trash', x: 3.4, z: 3.55 },
+    { id: 'pass', kind: 'pass', x: 0.8, z: -0.9 },
+  ],
+  reach: 1.35, tableReach: 1.7, guestWalk: 3,
+};
