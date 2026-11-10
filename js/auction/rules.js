@@ -14,8 +14,8 @@ export function lotFor(day) {
   return { id: item.id, appraisal: item.appraisal, start: r10(item.appraisal * 0.5) };
 }
 
-export function bidderMaxes(day, appraisal) {
-  return Object.fromEntries(AUCTION_BIDDERS.map(b => {
+export function bidderMaxes(day, appraisal, bidders = AUCTION_BIDDERS) {
+  return Object.fromEntries(bidders.map(b => {
     const k = 0.75 + (hashStr(`auction:${day}:${b.id}`) % 66) / 100;
     return [b.id, r10(appraisal * k)];
   }));

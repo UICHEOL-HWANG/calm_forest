@@ -136,3 +136,35 @@ test('a huge frame is clamped', () => {
   const t = f.log.ui.at(-1).t;
   assert.ok(Math.abs(t - 7.8) < 1e-6, String(t));
 });
+
+test('with no unlocked bidders the player takes the lot at the start price plus their bid', () => {
+  const f = fakes({ rng: () => 0, bidders: [] });
+  const s = createAuctionScene(f.deps);
+  s.begin('bid');
+  const start = f.log.ui.at(-1).price;
+  assert.equal(s.playerBid(10), true);
+  for (let i = 0; i < 600 && s.active(); i++) s.update(0.1, i * 0.1);
+  assert.equal(f.log.done.outcome, 'win');
+  assert.equal(f.log.done.price, start + 10);
+  assert.ok(f.log.ui.every(u => u.feed.every(e => e.who === 'me')));
+});
+
+test('watching with no unlocked bidders ends unsold', () => {
+  const f = fakes({ rng: () => 0, bidders: [] });
+  const s = createAuctionScene(f.deps);
+  s.begin('watch');
+  for (let i = 0; i < 600 && s.active(); i++) s.update(0.1, i * 0.1);
+  assert.equal(f.log.done.outcome, 'none');
+  assert.equal(f.log.done.leader, null);
+  assert.equal(f.get().coins, 820);
+});
+
+test('only unlocked bidders show up in the feed', () => {
+  const f = fakes({ rng: () => 0, bidders: [{ id: 'curator', style: 'big', inc: 50 }] });
+  const s = createAuctionScene(f.deps);
+  s.begin('watch');
+  for (let i = 0; i < 600 && s.active(); i++) s.update(0.1, i * 0.1);
+  const who = new Set(f.log.ui.flatMap(u => u.feed.map(e => e.who)));
+  assert.deepEqual([...who], ['curator']);
+  assert.equal(f.log.done.leader, 'curator');
+});

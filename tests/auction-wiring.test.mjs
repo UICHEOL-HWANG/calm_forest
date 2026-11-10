@@ -23,7 +23,7 @@ test('doors shows the auction prompt and the minigame loop dispatches the auctio
 });
 
 test('auction modules stay out of game.js internals', () => {
-  for (const f of ['rules', 'engine', 'settle', 'scene', 'items', 'stage', 'actors', 'ui']) {
+  for (const f of ['rules', 'engine', 'settle', 'scene', 'items', 'stage', 'actors', 'ui', 'layout']) {
     assert.doesNotMatch(readFileSync(`js/auction/${f}.js`, 'utf8'), /from '\.\.\/game\.js'/, f);
   }
 });
@@ -63,4 +63,39 @@ test('every exit tears the run down and restores the player', () => {
 test('copy follows the approved prompts', () => {
   for (const s of ["'🔨 경매 참가'", "'🔨 경매는 저녁에 열려요'", "'🔨 오늘 경매 끝'"]) assert.ok(index.includes(s), s);
   assert.doesNotMatch(index, /—|놀[아다]/);
+});
+
+test('the auction stays shut until the auctioneer has moved in', () => {
+  assert.match(index, /isOpen,/);
+  assert.match(index, /const auctionOpen = \(\) => isOpen\('merchant'\);/);
+  const spot = index.slice(index.indexOf('export function auctionSpotNow('));
+  assert.match(spot.slice(0, spot.indexOf('\n}\n')), /auctionOpen\(\)/);
+  const mode = index.slice(index.indexOf('function modeNow('));
+  assert.match(mode.slice(0, mode.indexOf('\n}\n')), /if \(!auctionOpen\(\)\) return \{[^}]*mode: 'hidden' \}/);
+  const open = index.slice(index.indexOf('export function openAuction('));
+  assert.match(open.slice(0, open.indexOf('\n}\n')), /if \(mode === 'hidden'\) return;/);
+  assert.match(index, /PROMPTS\[modeNow\(todayStr\(\)\)\.mode\] \|\| ''/);
+  assert.match(doors, /inVillage && auctionSpotNow\(\)\) prompt = auctionPrompt\(\)/);
+});
+
+test('only unlocked villagers bid, appear and get hidden', () => {
+  assert.match(index, /const openBidders = \(\) => AUCTION_BIDDERS\.filter\(b => isOpen\(b\.id\)\);/);
+  const run = index.slice(index.indexOf('function startRun('));
+  const body = run.slice(0, run.indexOf('\n}\n'));
+  assert.match(body, /const bidders = openBidders\(\);/);
+  assert.match(body, /new Set\(\['merchant', \.\.\.bidders\.map\(b => b\.id\)\]\)/);
+  assert.match(body, /createActors\(THREE, \{[^}]*bidders \}\)/);
+  assert.match(body, /\n\s+bidders,\n/);
+  assert.doesNotMatch(index, /IS_MOBILE/);
+});
+
+test('reopening a finished auction does not count as an open', () => {
+  const open = index.slice(index.indexOf('export function openAuction('));
+  assert.match(open.slice(0, open.indexOf('\n}\n')), /if \(mode === 'bid' \|\| mode === 'watch'\) trackEvent\('auction_open'/);
+});
+
+test('placed auction decor is solid in the yard', () => {
+  const line = game.split('\n').find(l => l.includes("'harvestscarecrow'].includes(id) ? solidCircle") || l.includes("'starvane'].includes(id) ? solidCircle"));
+  assert.ok(line, 'solid list line missing');
+  for (const id of ['moonswing', 'lanternarch', 'starvane']) assert.ok(line.includes(`'${id}'`), id);
 });

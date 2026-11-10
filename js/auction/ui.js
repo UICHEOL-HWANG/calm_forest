@@ -1,4 +1,5 @@
 import { BID_INCS, COUNT_START } from '../data/auction.js';
+import { auctionLayout } from './layout.js';
 
 export const AUCTION_COPY = Object.freeze({
   title: '🔨 오늘의 경매', ready: '오늘의 경매품이 나왔어요',
@@ -81,10 +82,26 @@ const CSS = `#auction-modal{position:fixed;z-index:40;display:none;left:10px;rig
 #auction-modal .au-res .au-ico{width:54px;height:54px;border-radius:12px;font-size:32px;margin:0 auto}
 #auction-modal .au-res .t{font-size:17px;font-weight:900;margin:4px 0}
 #auction-modal .au-res .d{font-size:13px;color:#4a4e57;min-height:1.2em}
-@media (min-width:768px){#auction-modal{left:auto;right:14px;top:calc(80px + var(--top-inset,0px));bottom:auto;max-height:calc(100vh - 100px - var(--top-inset,0px));overflow-y:auto;width:300px;border-radius:20px;box-shadow:0 8px 32px rgba(30,25,20,.25)}#auction-modal .au-feed{min-height:58px}#auction-modal .au-feed div:nth-child(n+3){display:block;opacity:.55}}`;
+#auction-modal[data-layout=side]{left:auto;right:14px;top:calc(80px + var(--top-inset,0px));bottom:auto;max-height:calc(100vh - 100px - var(--top-inset,0px));overflow-y:auto;width:300px;border-radius:20px;box-shadow:0 8px 32px rgba(30,25,20,.25)}
+#auction-modal[data-layout=side] .au-feed{min-height:58px}
+#auction-modal[data-layout=side] .au-feed div:nth-child(n+3){display:block;opacity:.55}
+#auction-modal[data-layout=side-short]{left:auto;right:calc(8px + env(safe-area-inset-right));top:8px;bottom:auto;max-height:calc(100% - 16px);overflow-y:auto;width:280px;gap:6px;padding:10px 12px;border-radius:16px;box-shadow:0 8px 32px rgba(30,25,20,.25)}
+#auction-modal[data-layout=side-short] .au-head{font-size:14px}
+#auction-modal[data-layout=side-short] .au-item{padding:4px 8px}
+#auction-modal[data-layout=side-short] .au-ico{width:34px;height:34px;font-size:20px}
+#auction-modal[data-layout=side-short] .au-body{gap:6px}
+#auction-modal[data-layout=side-short] .au-p{font-size:24px}
+#auction-modal[data-layout=side-short] .au-who{margin-top:2px}
+#auction-modal[data-layout=side-short] .au-call{margin-top:-2px}
+#auction-modal[data-layout=side-short] .au-feed{min-height:26px}
+#auction-modal[data-layout=side-short] .au-feed div:nth-child(n+2){display:none}
+#auction-modal[data-layout=side-short] .au-btn{min-height:40px;padding:8px}
+#auction-modal[data-layout=side-short] .au-res .au-ico{width:40px;height:40px;font-size:24px}`;
 
 export function createAuctionUi({ t, names, itemName, itemIcon, onJoin, onBid, onClose }) {
   let root = null, body = null, mode = 'bid', view = null, itemId = '', layout = '', lastPrice = null, lastSig = '', lastCall = '';
+
+  const fitLayout = () => { if (root) root.dataset.layout = auctionLayout(window.innerWidth, window.innerHeight); };
 
   const ensure = () => {
     if (root) return;
@@ -106,6 +123,7 @@ export function createAuctionUi({ t, names, itemName, itemIcon, onJoin, onBid, o
       if (el.dataset.act === 'bid' || el.dataset.act === 'watch') { mode = el.dataset.act; onJoin(mode); }
     });
     document.body.appendChild(root);
+    window.addEventListener('resize', fitLayout);
   };
 
   const btn = (act, label, main) => btnHtml(act, label, main, t);
@@ -136,6 +154,7 @@ export function createAuctionUi({ t, names, itemName, itemIcon, onJoin, onBid, o
 
   function open(v) {
     ensure();
+    fitLayout();
     view = v;
     mode = v.mode;
     setItem(v.itemId);

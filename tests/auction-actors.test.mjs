@@ -108,3 +108,17 @@ test('detachPlayer resets the arm pitch and is safe to destructure', () => {
   assert.equal(arms.R.hand.children.length, 0);
   dispose();
 });
+
+test('createActors mounts only the bidders it is given', () => {
+  const parent = new THREE.Group();
+  const a = createActors(THREE, { buildFigure, npcDefs: defs, parent, bidders: [] });
+  assert.equal(parent.children.length, 2);
+  a.raise('curator', 10);
+  a.hop('builder', true);
+  a.update(0.05, 1, 0);
+  a.dispose();
+  const b = createActors(THREE, { buildFigure, npcDefs: defs, parent, bidders: [{ id: 'builder' }] });
+  assert.equal(parent.children.length, 3);
+  b.dispose();
+  assert.equal(parent.children.length, 0);
+});

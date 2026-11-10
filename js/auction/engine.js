@@ -1,10 +1,10 @@
 import { AUCTION_BIDDERS, COUNT_START, COUNT_RESET, RUN_CAP, TICK } from '../data/auction.js';
 
-export function createRun({ start, maxes, wallet, mode }) {
+export function createRun({ start, maxes, wallet, mode, bidders = AUCTION_BIDDERS }) {
   return {
     price: start, leader: null, t: COUNT_START, total: 0, wallet, mode,
     over: false, extended: false, myBids: 0,
-    bidders: AUCTION_BIDDERS.map(b => ({ id: b.id, style: b.style, inc: b.inc, max: maxes[b.id], cool: 0 })),
+    bidders: bidders.map(b => ({ id: b.id, style: b.style, inc: b.inc, max: maxes[b.id], cool: 0 })),
   };
 }
 
@@ -57,7 +57,7 @@ export function step(run, rng) {
 }
 
 export function outcome(run) {
-  if (run.mode === 'watch') return 'watch';
   if (!run.leader) return 'none';
+  if (run.mode === 'watch') return 'watch';
   return run.leader === 'me' ? 'win' : 'lose';
 }

@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRun, canBid, bid, step, outcome } from '../js/auction/engine.js';
+import { AUCTION_BIDDERS } from '../js/data/auction.js';
 
 const maxes = { curator: 400, stargazer: 300, builder: 350 };
 const never = () => 0.999;
@@ -80,4 +81,39 @@ test('step does not mutate its input', () => {
   const snap = JSON.stringify(r);
   step(r, always);
   assert.equal(JSON.stringify(r), snap);
+});
+
+const only = ids => AUCTION_BIDDERS.filter(b => ids.includes(b.id));
+
+test('a run with no unlocked bidders sells to the player at the start price', () => {
+  let r = bid(createRun({ start: 200, maxes: {}, wallet: 820, mode: 'bid', bidders: [] }), 'me', 10);
+  assert.equal(r.bidders.length, 0);
+  for (let i = 0; i < 200 && !r.over; i++) r = step(r, always).run;
+  assert.equal(r.price, 210);
+  assert.equal(outcome(r), 'win');
+});
+
+test('a watched run with no unlocked bidders ends unsold', () => {
+  let r = createRun({ start: 200, maxes: {}, wallet: 0, mode: 'watch', bidders: [] });
+  for (let i = 0; i < 200 && !r.over; i++) r = step(r, always).run;
+  assert.equal(r.leader, null);
+  assert.equal(outcome(r), 'none');
+});
+
+test('only the unlocked bidder can lead', () => {
+  let r = createRun({ start: 200, maxes, wallet: 0, mode: 'watch', bidders: only(['stargazer']) });
+  const who = new Set();
+  for (let i = 0; i < 2000 && !r.over; i++) {
+    const out = step(r, always);
+    r = out.run;
+    for (const e of out.events) if (e.type === 'bid') who.add(e.who);
+  }
+  assert.deepEqual([...who], ['stargazer']);
+  assert.equal(r.leader, 'stargazer');
+  assert.equal(outcome(r), 'watch');
+});
+
+test('all three unlocked bidders match the default list', () => {
+  const a = createRun({ start: 200, maxes, wallet: 820, mode: 'bid', bidders: only(['curator', 'stargazer', 'builder']) });
+  assert.deepEqual(a, run0());
 });

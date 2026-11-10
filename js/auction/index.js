@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {
-  $w, IS_MOBILE, _camLook, camera, gameState, heldGroup, mgView, nightLevel, npcObjs, obstacles, outdoorMeshes, player,
+  $w, _camLook, camera, gameState, heldGroup, isOpen, mgView, nightLevel, npcObjs, obstacles, outdoorMeshes, player,
   refreshHeldTool, refreshInventoryUI, requestSave, scene, snapCamera, solidCircle, todayStr,
 } from '../game.js';
 import { buildNPCFigure, setNpcHidden } from '../spaces/npc.js';
@@ -18,6 +18,7 @@ import { createActors, faceStage } from './actors.js';
 import { createAuctionScene } from './scene.js';
 import { createAuctionUi } from './ui.js';
 import { auctionItemMesh } from './items.js';
+import { auctionCamera } from './layout.js';
 
 export { auctionDefault, restoreAuction } from './rules.js';
 
@@ -25,11 +26,7 @@ const X = AUCTION_STAGE.x, Z = AUCTION_STAGE.z;
 const SPOT_R = 2.4;
 const SPIN_SPEED = 0.8;
 const CAM_EASE = 2.6;
-const CAM_PC = { pos: [0.2, 7.6, 12], look: [0, 0.7, 1.8], shift: [150, 0] };
-const CAM_MOBILE = { pos: [0.1, 13.7, 19.8], look: [0, 0.9, 2.0], shift: [0, 150] };
-const PANEL_MIN_W = 768;
 const PROMPTS = { closed: '🔨 경매는 저녁에 열려요', done: '🔨 오늘 경매 끝', bid: '🔨 경매 참가', watch: '🔨 경매 참가' };
-const CAST = new Set(['merchant', ...AUCTION_BIDDERS.map(b => b.id)]);
 
 let stage = null, panel = null, actors = null, run = null;
 let shownDay = '', dayCheck = 0, heldWas = null, hidden = [];
@@ -37,8 +34,12 @@ const camGoal = new THREE.Vector3(), lookGoal = new THREE.Vector3(), camLook = n
 
 const catalogDef = id => OUTDOOR.find(d => d.id === id);
 
+const auctionOpen = () => isOpen('merchant');
+const openBidders = () => AUCTION_BIDDERS.filter(b => isOpen(b.id));
+
 function modeNow(day) {
   const lot = lotFor(day);
+  if (!auctionOpen()) return { lot, coins: 0, mode: 'hidden' };
   const coins = gameState.inventory.coins || 0;
   const mode = joinMode({ t: gameState.timeOfDay, day, lastDate: gameState.auction?.lastDate, coins, start: lot.start });
   return { lot, coins, mode };
@@ -86,16 +87,17 @@ export function updateAuction(dt, inVillage) {
 }
 
 export function auctionSpotNow() {
-  return !!stage && inVillage2() && !mgView && Math.hypot(player.position.x - X, player.position.z - (Z + 3.2)) < SPOT_R;
+  return !!stage && auctionOpen() && inVillage2() && !mgView && Math.hypot(player.position.x - X, player.position.z - (Z + 3.2)) < SPOT_R;
 }
 
 export function auctionPrompt() {
-  return PROMPTS[modeNow(todayStr()).mode];
+  return PROMPTS[modeNow(todayStr()).mode] || '';
 }
 
 export function openAuction() {
   const { lot, coins, mode } = modeNow(todayStr());
-  if (mode !== 'closed') trackEvent('auction_open', { item_id: lot.id, coins });
+  if (mode === 'hidden') return;
+  if (mode === 'bid' || mode === 'watch') trackEvent('auction_open', { item_id: lot.id, coins });
   ensurePanel().open({ mode, itemId: lot.id, appraisal: lot.appraisal, start: lot.start, coins, secondsToOpen: secondsUntilOpen(gameState.timeOfDay, DAY_SPEED) });
 }
 
@@ -114,9 +116,11 @@ function startRun(mode) {
   player.position.z = Z + mz;
   player.rotation.y = faceStage(mx, mz);
   if (heldGroup) { heldWas = heldGroup.visible; heldGroup.visible = false; }
-  hidden = npcObjs.filter(o => CAST.has(o.def.id)).map(o => ({ o, was: !!o.hidden }));
+  const bidders = openBidders();
+  const cast = new Set(['merchant', ...bidders.map(b => b.id)]);
+  hidden = npcObjs.filter(o => cast.has(o.def.id)).map(o => ({ o, was: !!o.hidden }));
   hidden.forEach(h => setNpcHidden(h.o, true));
-  actors = createActors(THREE, { buildFigure: buildNPCFigure, npcDefs: NPCS, parent: stage.group });
+  actors = createActors(THREE, { buildFigure: buildNPCFigure, npcDefs: NPCS, parent: stage.group, bidders });
   if ($w.playerArms) actors.attachPlayer($w.playerArms);
   camLook.copy(_camLook);
   $w.mgView = { type: 'auction' };
@@ -130,6 +134,7 @@ function startRun(mode) {
     day: () => todayStr(),
     now: () => performance.now() / 1000,
     rng: Math.random,
+    bidders,
     getNight: () => nightLevel,
     stage, actors,
     onUi: s => panel.render(s),
@@ -143,9 +148,8 @@ function startRun(mode) {
 
 let viewKey = '';
 
-function applyViewShift(cam) {
+function applyViewShift(cam, [sx, sy]) {
   const w = window.innerWidth, h = window.innerHeight;
-  const [sx, sy] = w >= PANEL_MIN_W ? CAM_PC.shift : CAM_MOBILE.shift;
   const key = `${w}x${h}x${sx}x${sy}`;
   if (key === viewKey) return;
   viewKey = key;
@@ -153,8 +157,8 @@ function applyViewShift(cam) {
 }
 
 function aimCamera(dt) {
-  const cam = IS_MOBILE ? CAM_MOBILE : CAM_PC;
-  applyViewShift(camera);
+  const cam = auctionCamera(window.innerWidth, window.innerHeight);
+  applyViewShift(camera, cam.shift);
   const k = 1 - Math.exp(-dt * CAM_EASE);
   camGoal.set(X + cam.pos[0], cam.pos[1], Z + cam.pos[2]);
   lookGoal.set(X + cam.look[0], cam.look[1], Z + cam.look[2]);

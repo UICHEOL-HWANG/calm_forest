@@ -66,3 +66,11 @@ test('restoreAuction sanitizes', () => {
   assert.deepEqual(restoreAuction({ lastDate: 3, wins: -2 }), { lastDate: '', wins: 0 });
   assert.deepEqual(restoreAuction({ lastDate: '2026-11-10', wins: 2.7, x: 1 }), { lastDate: '2026-11-10', wins: 2 });
 });
+
+test('bidderMaxes covers only the bidders it is given', () => {
+  const all = bidderMaxes('2026-11-10', 400);
+  const one = bidderMaxes('2026-11-10', 400, AUCTION_BIDDERS.filter(b => b.id === 'builder'));
+  assert.deepEqual(Object.keys(one), ['builder']);
+  assert.equal(one.builder, all.builder);
+  assert.deepEqual(bidderMaxes('2026-11-10', 400, []), {});
+});

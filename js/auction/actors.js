@@ -21,7 +21,7 @@ export function hopHeight(t) { return t < HOP_LEN ? Math.sin(Math.PI * t / HOP_L
 
 export function faceStage(dx, dz) { return Math.atan2(-0.2 - dx, 0.2 - dz); }
 
-export function createActors(THREE, { buildFigure, npcDefs, parent }) {
+export function createActors(THREE, { buildFigure, npcDefs, parent, bidders = AUCTION_BIDDERS }) {
   const owned = new Set();
   const own = (res) => { owned.add(res); return res; };
   const freeTree = (root, seen) => {
@@ -75,7 +75,7 @@ export function createActors(THREE, { buildFigure, npcDefs, parent }) {
     actors.set(id, actor);
   };
   mount('merchant', { withPaddle: false });
-  AUCTION_BIDDERS.forEach((b) => mount(b.id, { withPaddle: true }));
+  bidders.forEach((b) => mount(b.id, { withPaddle: true }));
 
   const me = { raise: 0, raiseUntil: 0, arms: null, paddle: null };
 

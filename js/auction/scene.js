@@ -59,7 +59,7 @@ export function createAuctionScene(d) {
     begin(mode) {
       const day = d.day();
       lot = lotFor(day);
-      run = createRun({ start: lot.start, maxes: bidderMaxes(day, lot.appraisal), wallet: d.getCoins(), mode });
+      run = createRun({ start: lot.start, maxes: bidderMaxes(day, lot.appraisal, d.bidders), wallet: d.getCoins(), mode, bidders: d.bidders });
       acc = 0; feed = []; flashUntil = 0; done = null; slamT = 0; bellT = 0;
       runId = `${day}:${Math.floor(d.rng() * 1e6)}`;
       d.setAuction(markJoined(d.getAuction(), day));
