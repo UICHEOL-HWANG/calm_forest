@@ -1,0 +1,13 @@
+# line-pool tasks
+- [x] Task 0 브랜치·dev docs
+- [ ] Task 1 js/lines/slots.js
+- [ ] Task 2 _exaone.js + 빛 공방 정리
+- [ ] Task 3 _line-gen.js
+- [ ] Task 4 Supabase 테이블·RPC
+- [ ] Task 5 /api/lines
+- [ ] Task 6 주 1회 보충 크론
+- [ ] Task 7 시드 + 샘플 검수 (사용자 승인)
+- [ ] Task 8 대사 줄 배치 시안 + 기본 문구 (사용자 승인)
+- [ ] Task 9 클라이언트 모듈
+- [ ] Task 10 경매 연결 + 트래킹
+- [ ] Task 11 실게임 확인 + 리뷰
