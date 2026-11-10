@@ -7,6 +7,9 @@ export const SHOT_MOBILE = 640;
 export const FIRST_SHOT_DELAY = 2000;
 export const DIRTY_SETTLE = 3000;
 export const SIGNATURE_EVERY = 1000;
+export const COMPILE_TIMEOUT = 8000;
+export const MAX_RETRIES = 3;
+export const BOOK_TONE = Object.freeze({ saturate: 1.55, brightness: 1.16, contrast: 1.08 });
 
 const CAM_HEIGHT = 120;
 const SHADOW_AWAY = 5000;
@@ -42,6 +45,35 @@ export function flipRows(src, w, h) {
   return out;
 }
 
+const clamp255 = v => Math.min(255, Math.max(0, v));
+
+export function saturate([r, g, b], s) {
+  return [
+    clamp255((0.213 + 0.787 * s) * r + (0.715 - 0.715 * s) * g + (0.072 - 0.072 * s) * b),
+    clamp255((0.213 - 0.213 * s) * r + (0.715 + 0.285 * s) * g + (0.072 - 0.072 * s) * b),
+    clamp255((0.213 - 0.213 * s) * r + (0.715 - 0.715 * s) * g + (0.072 + 0.928 * s) * b),
+  ];
+}
+
+export const brightness = (rgb, k) => rgb.map(v => clamp255(v * k));
+
+export const contrast = (rgb, k) => rgb.map(v => clamp255((v - 127.5) * k + 127.5));
+
+export function bookTone(src, tone = BOOK_TONE) {
+  const out = new Uint8ClampedArray(src.length), s = tone.saturate, k = tone.brightness, c = tone.contrast;
+  const m = [0.213 + 0.787 * s, 0.715 - 0.715 * s, 0.072 - 0.072 * s, 0.213 - 0.213 * s, 0.715 + 0.285 * s, 0.072 - 0.072 * s, 0.213 - 0.213 * s, 0.715 - 0.715 * s, 0.072 + 0.928 * s];
+  const lift = 127.5 - 127.5 * c;
+  const step = v => clamp255(clamp255(clamp255(v) * k) * c + lift);
+  for (let i = 0; i < src.length; i += 4) {
+    const r = src[i], g = src[i + 1], b = src[i + 2];
+    out[i] = step(m[0] * r + m[1] * g + m[2] * b);
+    out[i + 1] = step(m[3] * r + m[4] * g + m[5] * b);
+    out[i + 2] = step(m[6] * r + m[7] * g + m[8] * b);
+    out[i + 3] = src[i + 3];
+  }
+  return out;
+}
+
 export function mapSignature({ season, houseStage, unlocks, outdoor }) {
   const u = [...(unlocks || [])].sort().join(',');
   const o = (outdoor || []).map(r => `${r.id}@${(+r.x).toFixed(1)},${(+r.z).toFixed(1)}/${r.rot ?? 0}`).sort().join(';');
@@ -71,10 +103,11 @@ export function collectTransients(scene, extra = []) {
 
 let deps = null, outPass = null, shot = null, shotSig = null;
 let readySince = 0, sigAt = 0, dirtyAt = 0, lastReady = false, phase = 'idle', wanted = false;
+let compileAt = 0, compileToken = 0, fails = 0;
 let stats = { ms: 0, count: 0, error: null };
 
 export function initMapSnapshot(d) { deps = d; }
-export function mapSnapshotInfo() { return { ...stats, has: !!shot, dirty: !!dirtyAt, phase }; }
+export function mapSnapshotInfo() { return { ...stats, has: shot === true, dirty: !!dirtyAt, phase }; }
 
 function noonLights(L) {
   const saved = {
@@ -131,7 +164,7 @@ function renderShot() {
   }
   const canvas = document.createElement('canvas');
   canvas.width = size; canvas.height = size;
-  canvas.getContext('2d').putImageData(new ImageData(flipRows(buf, size, size), size, size), 0, 0);
+  canvas.getContext('2d').putImageData(new ImageData(bookTone(flipRows(buf, size, size)), size, size), 0, 0);
   return canvas;
 }
 
@@ -143,16 +176,19 @@ function takeShot(now) {
     let canvas = null;
     deps.daylight(() => { canvas = renderShot(); });
     stats = { ms: Math.round(performance.now() - t0), count: stats.count + 1, error: null };
-    shot = canvas;
+    shot = true; fails = 0;
     deps.onShot(canvas);
   } catch (e) {
     stats = { ...stats, error: String(e?.message || e) };
-    if (!shot) shot = false;
+    if (shot !== true) shot = false;
+    fails += 1;
+    if (fails <= MAX_RETRIES) shotSig = null;
   }
 }
 
-function prepare() {
-  phase = 'compiling';
+function prepare(now) {
+  phase = 'compiling'; compileAt = now;
+  const token = ++compileToken;
   const { renderer, scene } = deps;
   const rt = new THREE.WebGLRenderTarget(1, 1);
   const prev = renderer.getRenderTarget(), viewport = renderer.getViewport(new THREE.Vector4());
@@ -167,7 +203,7 @@ function prepare() {
     renderer.setRenderTarget(prev);
     renderer.setViewport(viewport);
   }
-  Promise.resolve(job).catch(() => {}).finally(() => { rt.dispose(); phase = 'ready'; });
+  Promise.resolve(job).catch(() => {}).finally(() => { rt.dispose(); if (token === compileToken) phase = 'ready'; });
 }
 
 const due = now => (shot === null ? now - readySince >= FIRST_SHOT_DELAY : wanted || (dirtyAt && now - dirtyAt >= DIRTY_SETTLE));
@@ -182,13 +218,14 @@ export function tickMapSnapshot(ready, now = performance.now()) {
     if (sig === shotSig) dirtyAt = 0;
     else if (!dirtyAt) dirtyAt = now;
   }
+  if (phase === 'compiling' && now - compileAt >= COMPILE_TIMEOUT) { compileToken += 1; phase = 'ready'; }
   if (!due(now)) return;
-  if (phase === 'idle') prepare();
+  if (phase === 'idle') prepare(now);
   else if (phase === 'ready') { phase = 'idle'; wanted = false; takeShot(now); }
 }
 
 export function requestMapSnapshot() {
   if (!deps || !lastReady || shot === null || deps.signature() === shotSig) return;
   wanted = true;
-  if (phase === 'idle') prepare();
+  if (phase === 'idle') prepare(performance.now());
 }

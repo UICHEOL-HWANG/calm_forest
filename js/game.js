@@ -2434,7 +2434,7 @@ export async function bootWorld(uiCallbacks) {
   initMapSnapshot({ renderer, scene, mobile: IS_MOBILE, sunLight, hemiLight, onShot: (c) => ui.setMapSnapshot?.(c),
     transients: () => [player, pet3d, rainLines, seasonDrift?.mesh, fireflies, stars, ...chickens, ...npcObjs.map(o => o.group)],
     signature: () => mapSignature({ season: SEASON, houseStage: gameState.houseStage, unlocks: unlockOpen, outdoor: gameState.outdoor }),
-    daylight: (fn) => { const t0 = timeOfDay, p0 = dayPaused; timeOfDay = 0.5; dayPaused = true; updateDayNight(0); try { fn(); } finally { timeOfDay = t0; dayPaused = p0; updateDayNight(0); } } });
+    daylight: (fn) => { const t0 = timeOfDay, p0 = dayPaused; try { timeOfDay = 0.5; dayPaused = true; updateDayNight(0); fn(); } finally { timeOfDay = t0; dayPaused = p0; updateDayNight(0); } } });
   initInput();
   initSound();
   ui.setTool?.(currentTool, TOOLS, toolPage);

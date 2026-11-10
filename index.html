@@ -3981,8 +3981,7 @@
     let lastMapPos = null;   // 전체 지도의 "현재 위치" 마커 — 마을에 있을 때만 갱신
 
     const MAP_LAND = mapLand(), MAP_SHORE = mapLand(LAND_FRINGE), MAP_WATER = mapWater(), MAP_GROVE = mapGrove();
-    const MAP_FILTER = 'saturate(1.55) brightness(1.16) contrast(1.08)';
-    let mapShot = null;
+    let mapShot = null, miniIsland = null;
 
     function paintIsland(c, px, pr, w, h) {
       const trace = (pts) => { c.beginPath(); pts.forEach(([x, z], i) => { const [a, b] = px(x, z); if (i) c.lineTo(a, b); else c.moveTo(a, b); }); c.closePath(); };
@@ -4013,6 +4012,15 @@
         c.fillStyle = '#7fc4e6'; disc(o, o.r);
       });
       c.restore();
+    }
+
+    function bakeMiniIsland(size) {
+      if (miniIsland && miniIsland.width === size) return miniIsland;
+      const cv = document.createElement('canvas'); cv.width = size; cv.height = size;
+      const c = cv.getContext('2d'), k = size / MAP_VIEW.w;
+      paintIsland(c, (x, z) => [(x - MAP_VIEW.x0) * k, (z - MAP_VIEW.z0) * k], (r) => r * k, size, size);
+      miniIsland = cv;
+      return cv;
     }
 
     function drawWorldMap() {
@@ -5151,11 +5159,9 @@
       // 🗺️ 부팅 때 한 번 받는 지명 목록 — 미니맵 틱은 마을에서만 도니, 실내에서 시작해도 지도가 열리게
       setPlaces(list) { if (list && list.length) lastPlaces = list; },
       setMapSnapshot(img) {
-        const cv = document.createElement('canvas'); cv.width = img.width; cv.height = img.height;
-        const c = cv.getContext('2d');
-        if ('filter' in c) c.filter = MAP_FILTER;
-        c.drawImage(img, 0, 0);
-        mapShot = cv;
+        mapShot = img; miniIsland = null;
+        const need = Math.round(($('minimap')?.clientWidth || 0) * Math.min(window.devicePixelRatio || 1, 2));
+        if (need) bakeMiniIsland(need);
         if ($('worldmap').classList.contains('show')) drawWorldMap();
       },
       // 미니맵 — 캐릭터 대략 위치 + 주요 지형 (레티나 대응)
@@ -5232,7 +5238,7 @@
         lastPlaces = d.places || lastPlaces;
         lastNpcs = d.npcs || lastNpcs;
         lastMapPos = { x: d.x, z: d.z };
-        paintIsland(ctx, px, (r) => r * K, S, S);
+        ctx.drawImage(bakeMiniIsland(need), 0, 0, S, S);
         if (d.target) {
           const [tx, ty] = px(d.target.x, d.target.z), pulse = 1 + 0.18 * Math.sin(performance.now() / 260);
           ctx.fillStyle = 'rgba(255,255,255,0.92)';

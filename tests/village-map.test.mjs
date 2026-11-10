@@ -134,7 +134,7 @@ test('index.html paints both maps from the shared village map module', () => {
   for (const gone of ['WM_LAND', 'WM_WATER', 'WM_GROVE', 'const MAP_VIEW =']) assert.ok(!html.includes(gone), gone);
   assert.equal((html.match(/paintIsland\(/g) || []).length, 3);
   assert.match(html, /paintIsland\(c, px, pr, S, SH\)/);
-  assert.match(html, /paintIsland\(ctx, px, \(r\) => r \* K, S, S\)/);
+  assert.match(html, /paintIsland\(c, \(x, z\) => \[\(x - MAP_VIEW\.x0\) \* k, \(z - MAP_VIEW\.z0\) \* k\], \(r\) => r \* k, size, size\)/);
 });
 
 test('the world map frame is square like MAP_VIEW', () => {

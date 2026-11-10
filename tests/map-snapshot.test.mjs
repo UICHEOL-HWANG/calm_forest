@@ -103,7 +103,7 @@ test('game.js wires the snapshot module in a few lines', () => {
   assert.match(game, /initMapSnapshot\(\{/);
   assert.match(game, /tickMapSnapshot\(place === 'village'/);
   assert.match(game, /ui\.setMapSnapshot\?\.\(/);
-  assert.match(game, /timeOfDay = 0\.5/);
+  assert.match(game, /try \{ timeOfDay = 0\.5; dayPaused = true; updateDayNight\(0\); fn\(\); \} finally \{ timeOfDay = t0; dayPaused = p0; updateDayNight\(0\); \}/);
   assert.doesNotMatch(read('js/world/map-snapshot.js'), /WebGLRenderer\(/);
   assert.doesNotMatch(read('js/world/map-snapshot.js'), /from '\.\.\/game\.js'/);
 });
@@ -121,11 +121,17 @@ test('index.html draws the snapshot clipped to the land outline with the picture
   assert.equal((html.match(/<script type="module"/g) || []).length, 3);
   assert.match(html, /import \{ requestMapSnapshot \} from '\.\/js\/world\/map-snapshot\.js';/);
   assert.match(html, /setMapSnapshot\(img\) \{/);
-  assert.match(html, /saturate\(1\.55\) brightness\(1\.16\) contrast\(1\.08\)/);
-  assert.match(html, /'filter' in c/);
+  assert.doesNotMatch(html, /\b(c|ctx)\.filter\s*=/, 'no canvas filter: iOS WKWebView lacks it');
+  assert.doesNotMatch(html, /MAP_FILTER|saturate\(1\.55\)/);
   assert.match(html, /c\.clip\(\)/);
   assert.match(html, /c\.drawImage\(mapShot, /);
   assert.match(html, /requestMapSnapshot\(\);\s*\n\s*drawWorldMap\(\);/);
+  const mini = html.slice(html.indexOf('setMinimap(d) {'), html.indexOf('setIndoor(on) {'));
+  assert.ok(mini.length > 0);
+  assert.doesNotMatch(mini, /paintIsland\(|\.clip\(\)/, 'the minimap tick never repaints or clips the island');
+  assert.match(mini, /ctx\.drawImage\(bakeMiniIsland\(need\), 0, 0, S, S\);/);
+  assert.match(html, /function bakeMiniIsland\(size\) \{\n\s*if \(miniIsland && miniIsland\.width === size\) return miniIsland;/);
+  assert.match(html, /mapShot = img; miniIsland = null;/);
   const paint = html.slice(html.indexOf('function paintIsland('), html.indexOf('function drawWorldMap('));
   assert.ok(paint.indexOf('MAP_SHORE') < paint.indexOf('drawImage'), 'snapshot goes over the sand fringe');
   assert.ok(paint.indexOf('MAP_LAND') < paint.indexOf('drawImage'), 'clipped to the land outline');
@@ -176,11 +182,10 @@ test('the snapshot waits for play, precompiles, retakes only after a settled cha
   assert.equal(calls.onShot, 0, 'a failed readback keeps the painted map');
   assert.match(S.mapSnapshotInfo().error, /readback/);
   S.tickMapSnapshot(true, 9000);
-  assert.equal(calls.compile, 1, 'no retry loop while nothing changed');
-  fail = false; sig = 'b';
-  S.tickMapSnapshot(true, 10000);
-  S.tickMapSnapshot(true, 10000 + S.DIRTY_SETTLE - 1);
-  assert.equal(calls.compile, 1, 'waits for the change to settle');
+  assert.equal(calls.compile, 1, 'a failed shot waits a stable period before retrying');
+  fail = false;
+  S.tickMapSnapshot(true, 9000 + S.DIRTY_SETTLE - 1);
+  assert.equal(calls.compile, 1, 'still settling');
   S.tickMapSnapshot(true, 10000 + S.DIRTY_SETTLE + S.SIGNATURE_EVERY);
   assert.equal(calls.compile, 2);
   await flush();
@@ -190,6 +195,7 @@ test('the snapshot waits for play, precompiles, retakes only after a settled cha
   assert.equal(calls.onShot, 1);
   assert.equal(seen.width, S.shotSize(true));
   assert.ok(calls.renders >= 2, 'scene and output pass');
+  assert.equal(S.mapSnapshotInfo().has, true);
   assert.equal(S.mapSnapshotInfo().error, null);
   assert.equal(target, null);
   assert.equal(renderer.autoClear, false);
@@ -218,4 +224,85 @@ test('the snapshot waits for play, precompiles, retakes only after a settled cha
   S.tickMapSnapshot(true, 14300);
   assert.equal(calls.shots, 4);
   assert.equal(S.mapSnapshotInfo().error, null);
+});
+
+test('the picture-book tone follows the CSS saturate, brightness and contrast formulae in order', () => {
+  const near = (a, b) => a.forEach((v, i) => assert.ok(Math.abs(v - b[i]) < 1e-6, `${a} vs ${b}`));
+  assert.deepEqual(S.BOOK_TONE, { saturate: 1.55, brightness: 1.16, contrast: 1.08 });
+  near(S.saturate([100, 100, 100], 1.55), [100, 100, 100]);
+  near(S.saturate([200, 100, 50], 1.55), [245.265, 90.265, 12.765]);
+  near(S.saturate([10, 240, 10], 1.55), [0, 255, 0]);
+  near(S.brightness([100, 50, 250], 1.16), [116, 58, 255]);
+  near(S.contrast([127.5, 0, 255], 1.08), [127.5, 0, 255]);
+  near(S.contrast([116, 200, 20], 1.08), [115.08, 205.8, 11.4]);
+  const px = new Uint8ClampedArray([200, 100, 50, 77, 100, 100, 100, 255, 0, 0, 0, 0, 255, 255, 255, 128]);
+  const out = S.bookTone(px);
+  assert.notEqual(out, px);
+  assert.deepEqual([...out], [255, 103, 6, 77, 115, 115, 115, 255, 0, 0, 0, 0, 255, 255, 255, 128]);
+  assert.deepEqual([...px.slice(0, 4)], [200, 100, 50, 77], 'source untouched');
+  const chain = rgb => S.contrast(S.brightness(S.saturate(rgb, 1.55), 1.16), 1.08).map(Math.round);
+  const many = new Uint8ClampedArray(4 * 512).map((_, i) => (i * 37 + (i >> 2) * 11) % 256);
+  const toned = S.bookTone(many);
+  for (let i = 0; i < many.length; i += 4) assert.deepEqual([...toned.slice(i, i + 3)], chain([many[i], many[i + 1], many[i + 2]]), `pixel ${i / 4}`);
+});
+
+test('the shot hands the toned pixels to the UI and drops the raw canvas', async () => {
+  const src = read('js/world/map-snapshot.js');
+  assert.match(src, /bookTone\(flipRows\(/);
+  assert.doesNotMatch(src, /shot = canvas/);
+});
+
+test('a failed retake retries after the next stable period, a few times only', async () => {
+  let sig = 'a', fail = false, shots = 0, target = null;
+  const renderer = {
+    autoClear: false, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1, outputColorSpace: THREE.SRGBColorSpace, shadowMap: { autoUpdate: true, needsUpdate: false },
+    getRenderTarget: () => target, setRenderTarget: t => { target = t; }, getViewport: v => v, setViewport: () => {},
+    clear: () => {}, render: () => {}, readRenderTargetPixels: () => {},
+    extensions: { has: () => true }, compileAsync: () => Promise.resolve(),
+  };
+  const scene = new THREE.Scene();
+  const sun = new THREE.DirectionalLight(), hemi = new THREE.HemisphereLight();
+  scene.add(sun, sun.target, hemi);
+  S.initMapSnapshot({ renderer, scene, mobile: true, sunLight: sun, hemiLight: hemi, onShot: () => {}, transients: () => [], signature: () => sig,
+    daylight: fn => { shots++; if (fail) throw new Error('lost'); fn(); } });
+  const flush = () => new Promise(r => setTimeout(r, 0));
+  let now = 100000;
+  const step = async ms => { now += ms; S.tickMapSnapshot(true, now); await flush(); S.tickMapSnapshot(true, now); };
+  sig = 'b'; fail = true;
+  const before = shots;
+  for (let i = 0; i < 12; i++) await step(S.SIGNATURE_EVERY + S.DIRTY_SETTLE);
+  const tries = shots - before;
+  assert.ok(tries >= 2, `retried after a failure (${tries})`);
+  assert.ok(tries <= S.MAX_RETRIES + 1, `gives up after a few tries (${tries})`);
+  fail = false; sig = 'c';
+  for (let i = 0; i < 3; i++) await step(S.SIGNATURE_EVERY + S.DIRTY_SETTLE);
+  assert.equal(S.mapSnapshotInfo().error, null, 'a real change tries again');
+});
+
+test('a compile that never settles times out and the shot still happens', async () => {
+  let sig = 'x', shots = 0, target = null, pending = 0;
+  const renderer = {
+    autoClear: false, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1, outputColorSpace: THREE.SRGBColorSpace, shadowMap: { autoUpdate: true, needsUpdate: false },
+    getRenderTarget: () => target, setRenderTarget: t => { target = t; }, getViewport: v => v, setViewport: () => {},
+    clear: () => {}, render: () => {}, readRenderTargetPixels: () => {},
+    extensions: { has: () => true }, compileAsync: () => { pending++; return new Promise(() => {}); },
+  };
+  const scene = new THREE.Scene();
+  const sun = new THREE.DirectionalLight(), hemi = new THREE.HemisphereLight();
+  scene.add(sun, sun.target, hemi);
+  S.initMapSnapshot({ renderer, scene, mobile: true, sunLight: sun, hemiLight: hemi, onShot: () => {}, transients: () => [], signature: () => sig,
+    daylight: fn => { shots++; fn(); } });
+  let now = 500000;
+  sig = 'y';
+  S.tickMapSnapshot(true, now);
+  now += S.SIGNATURE_EVERY + S.DIRTY_SETTLE; S.tickMapSnapshot(true, now);
+  S.tickMapSnapshot(true, now + 100);
+  assert.equal(pending, 1);
+  assert.equal(S.mapSnapshotInfo().phase, 'compiling');
+  now += S.COMPILE_TIMEOUT - 1; S.tickMapSnapshot(true, now);
+  assert.equal(shots, 0);
+  now += 2; S.tickMapSnapshot(true, now);
+  S.tickMapSnapshot(true, now + 1);
+  assert.equal(shots, 1, 'timed out compile falls through to the shot');
+  assert.equal(S.mapSnapshotInfo().phase, 'idle');
 });
