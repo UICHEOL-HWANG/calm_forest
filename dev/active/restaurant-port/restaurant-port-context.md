@@ -1,6 +1,6 @@
 # 식당 + 포구 섬 컨텍스트
 
-Last Updated: 2026-11-10 01:30 KST
+Last Updated: 2026-11-10 19:10 KST
 
 ## 핵심 파일
 - 기획: `docs/superpowers/specs/2026-10-31-restaurant-quest-design.md`
@@ -53,3 +53,8 @@ Last Updated: 2026-11-10 01:30 KST
 - 포구 첫 진입 첫 프레임 약 126~390ms(건물 생성 + 광원 수 변화 재컴파일, 측정마다 흔들림), 재진입은 약 30ms
 - 사전 컴파일(부두 근처에서 renderer.compile) 시도: 진입 첫 프레임 391/184ms → 212/126ms 이지만 사전 컴파일 자체가 120~244ms 동기 정지라 이득 없음, 되돌림. 광원 상시 추가도 마을이 늘 비용을 내서 안 함
 - npcPortrait: 임시 렌더러에 forceContextLoss 추가, 초상 씬의 부엉이 광원은 visible=false
+
+
+## 섬 다듬기 (2026-11-10)
+- 계획·결과: island-polish-plan.md. 시안: island-hud-compare.png, island-basket-compare.png, sims/port-basket-compare.html
+- 섬 길 안내는 js/guide/path.js(createNav) + js/port/nav.js(islandWalkable·PIER_WALK). SOLIDS(data.js)가 충돌·길 찾기 단일 출처.
