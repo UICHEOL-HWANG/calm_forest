@@ -4,6 +4,7 @@ import { callExaone, failKind, parseJsonObject, mapLimit, CONCURRENCY, EXAONE_MO
 
 export const PER_CALL = 10;
 export const RETRIES = 2;
+export const RATE_WAIT_MS = 3000;
 const MAX_TOKENS = 4096;
 
 const ITEMS = {
@@ -141,7 +142,7 @@ export async function generateCell(env, cell, want, { fetch = globalThis.fetch, 
   return { lines: ok.slice(0, want), dropped, failure: null };
 }
 
-export async function fillCells(env, plan, { fetch = globalThis.fetch, pace, existing = new Map(), maxCalls = Infinity, limit = CONCURRENCY } = {}) {
+export async function fillCells(env, plan, { fetch = globalThis.fetch, pace, existing = new Map(), maxCalls = Infinity, limit = CONCURRENCY, wait = ms => new Promise(r => setTimeout(r, ms)) } = {}) {
   let calls = 0, failed = 0, stopped = null, firstError = null;
   const seenOf = new Map();
   const seen = cell => {
@@ -161,7 +162,8 @@ export async function fillCells(env, plan, { fetch = globalThis.fetch, pace, exi
         return;
       }
       last = got.failure;
-      if (last === 'rate_limited' || last === 'auth') { stopped ??= last; break; }
+      if (last === 'auth') { stopped ??= last; break; }
+      if (last === 'rate_limited' && a < RETRIES) await wait(RATE_WAIT_MS);
     }
     failed++;
     firstError ??= `${cellId(cell)}: ${last}`;

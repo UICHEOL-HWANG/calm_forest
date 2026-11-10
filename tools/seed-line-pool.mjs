@@ -1,9 +1,9 @@
 import { pathToFileURL } from 'node:url';
 import { cells, SLOTS } from '../js/lines/slots.js';
 import { generateCell } from '../functions/api/_line-gen.js';
-import { createPacer, mapLimit, CONCURRENCY, SPACING_MS } from '../functions/api/_exaone.js';
+import { createPacer, mapLimit, CONCURRENCY } from '../functions/api/_exaone.js';
 import { storeReady } from '../functions/api/_ai-store.js';
-import { runLinePool } from '../functions/line-pool-cron.js';
+import { runLinePool, LINE_SPACING_MS } from '../functions/line-pool-cron.js';
 
 export function sampleTable(results) {
   const rows = ['| key | slot | lang | 문구 |', '|---|---|---|---|'];
@@ -18,7 +18,7 @@ export function sampleTable(results) {
 }
 
 async function sample(env, kind, n) {
-  const pace = createPacer(SPACING_MS);
+  const pace = createPacer(LINE_SPACING_MS);
   const results = await mapLimit(cells(kind), CONCURRENCY, async cell => ({ cell, ...(await pace(() => generateCell(env, cell, n, { seen: new Set() }))) }));
   return sampleTable(results);
 }

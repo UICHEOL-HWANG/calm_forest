@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { isLinePoolTick, runLinePool, CRON_MAX_CALLS } from '../functions/line-pool-cron.js';
+import { isLinePoolTick, runLinePool, CRON_MAX_CALLS, LINE_SPACING_MS } from '../functions/line-pool-cron.js';
 import { CONCURRENCY } from '../functions/api/_exaone.js';
 
 const env = { SUPABASE_URL: 'https://sb', SUPABASE_SERVICE_KEY: 's', EXAONE_API_KEY: 'k' };
@@ -81,4 +81,8 @@ test('line_pool_runs 기록이 비정상 응답이어도 요약은 돌려주고 
   } finally {
     console.error = orig;
   }
+});
+
+test('줄 풀 호출 간격은 2초', () => {
+  assert.equal(LINE_SPACING_MS, 2000);
 });

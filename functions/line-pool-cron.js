@@ -1,12 +1,13 @@
 import { cellId } from '../js/lines/slots.js';
 import { planLineWork, fillCells } from './api/_line-gen.js';
-import { createPacer, SPACING_MS } from './api/_exaone.js';
+import { createPacer } from './api/_exaone.js';
 import { storeHeaders, storeReady } from './api/_ai-store.js';
 
 const defaultNotify = async (...args) => (await import('./notify.js')).notify(...args);
 
 export const LIVE_KINDS = ['auction'];
 export const CRON_MAX_CALLS = 36;
+export const LINE_SPACING_MS = 2000;
 
 export function isLinePoolTick(scheduledTime) {
   const d = new Date(scheduledTime);
@@ -14,7 +15,7 @@ export function isLinePoolTick(scheduledTime) {
 }
 
 export async function runLinePool(env, {
-  fetch = globalThis.fetch, notify = defaultNotify, spacingMs = SPACING_MS,
+  fetch = globalThis.fetch, notify = defaultNotify, spacingMs = LINE_SPACING_MS,
   maxCalls = CRON_MAX_CALLS, source = 'cron', kinds = LIVE_KINDS,
 } = {}) {
   if (!storeReady(env) || !env?.EXAONE_API_KEY) return { skipped: 'not_configured' };

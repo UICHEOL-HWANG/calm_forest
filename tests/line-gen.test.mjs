@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildLineRequest, parseLines, validateLines, planLineWork, generateCell, fillCells, PER_CALL } from '../functions/api/_line-gen.js';
+import { buildLineRequest, parseLines, validateLines, planLineWork, generateCell, fillCells, PER_CALL, RATE_WAIT_MS } from '../functions/api/_line-gen.js';
 import { cells } from '../js/lines/slots.js';
 
 const env = { EXAONE_API_KEY: 'k' };
@@ -65,17 +65,33 @@ test('generateCell 실패 분류', async () => {
   assert.equal((await generateCell(env, cell, 5, { fetch: reply(['3초!']), seen: new Set() })).failure, 'empty');
 });
 
-test('fillCells 는 빈 응답을 RETRIES 번 다시 부르고, 429 면 멈춘다', async () => {
+test('fillCells 는 빈 응답을 RETRIES 번 다시 부르고, 429 는 기다렸다 다시 부르며, 인증 실패면 멈춘다', async () => {
   const cell = { kind: 'auction', key: '_any', slot: 'last', lang: 'ko' };
+  const wait = async () => {};
   let n = 0;
   const flaky = async () => { n++; return n < 3 ? new Response(JSON.stringify({ choices: [{ finish_reason: 'stop', message: { content: 'x' } }] })) : reply(['마지막이오!'])(); };
-  const a = await fillCells(env, [{ cell, want: 5 }], { fetch: flaky, pace: now, maxCalls: 10, limit: 1 });
+  const a = await fillCells(env, [{ cell, want: 5 }], { fetch: flaky, pace: now, maxCalls: 10, limit: 1, wait });
   assert.equal(n, 3);
   assert.deepEqual(a.rows, [{ ...cell, text: '마지막이오!' }]);
 
-  const b = await fillCells(env, [{ cell, want: 5 }, { cell, want: 5 }], { fetch: async () => new Response('', { status: 429 }), pace: now, maxCalls: 10, limit: 1 });
-  assert.equal(b.stopped, 'rate_limited');
-  assert.equal(b.calls, 1);
+  let m = 0;
+  const limited = async () => { m++; return m < 3 ? new Response('', { status: 429 }) : reply(['마지막이오!'])(); };
+  const waits = [];
+  const b = await fillCells(env, [{ cell, want: 5 }], { fetch: limited, pace: now, maxCalls: 10, limit: 1, wait: async ms => { waits.push(ms); } });
+  assert.deepEqual(b.rows, [{ ...cell, text: '마지막이오!' }]);
+  assert.equal(b.stopped, null);
+  assert.equal(b.calls, 3);
+  assert.deepEqual(waits, [RATE_WAIT_MS, RATE_WAIT_MS]);
+
+  const c = await fillCells(env, [{ cell, want: 5 }], { fetch: async () => new Response('', { status: 429 }), pace: now, maxCalls: 10, limit: 1, wait });
+  assert.equal(c.failed, 1);
+  assert.equal(c.stopped, null);
+  assert.equal(c.calls, 3);
+  assert.match(c.firstError, /rate_limited/);
+
+  const d = await fillCells(env, [{ cell, want: 5 }, { cell, want: 5 }], { fetch: async () => new Response('', { status: 401 }), pace: now, maxCalls: 10, limit: 1, wait });
+  assert.equal(d.stopped, 'auth');
+  assert.equal(d.calls, 1);
 });
 
 test('fillCells 는 maxCalls 를 넘겨 부르지 않는다', async () => {
