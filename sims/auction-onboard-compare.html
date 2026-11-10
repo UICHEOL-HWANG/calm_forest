@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>저녁 경매 첫 안내 시안</title>
+<style>
+  :root { --mint:#bfe8c9; --ink:#4a5a4f; --cream:#fff7ec; --panel:rgba(255,255,255,0.72); --shadow:0 6px 18px rgba(90,120,100,0.18); }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; padding:24px; font-family:'Segoe UI', system-ui, 'Apple SD Gothic Neo', sans-serif; color:#24312a; background:#e9efe9; }
+  h1 { font-size:21px; margin:0 0 10px; }
+  .decide { list-style:none; margin:0 0 8px; padding:12px 16px; background:#fff; border-radius:14px; box-shadow:var(--shadow); max-width:980px; }
+  .decide li { font-size:13.5px; line-height:1.5; padding:3px 0; word-break:keep-all; }
+  .decide li b { display:inline-block; min-width:74px; color:#2d4a3a; }
+  .verdict { max-width:980px; margin:14px 0 0; padding:12px 16px; border-radius:14px; background:#fff3cf; color:#5a4300; font-size:13.5px; line-height:1.55; word-break:keep-all; }
+  .verdict b { color:#3d2e00; }
+  .hint-tip { font-size:12px; opacity:.6; margin:8px 0 0; word-break:keep-all; }
+  section.v { margin:34px 0 10px; padding-top:18px; border-top:1px solid #cfdccf; }
+  section.v > h2 { font-size:18px; margin:0 0 4px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .taps { font-size:12px; font-weight:800; padding:3px 10px; border-radius:10px; background:#2d4a3a; color:#fff; }
+  section.v > p { font-size:13px; opacity:.8; margin:0 0 4px; max-width:980px; line-height:1.55; word-break:keep-all; }
+  .pros { font-size:12.5px; margin:2px 0 0; max-width:980px; line-height:1.55; word-break:keep-all; }
+  .pros span { display:inline-block; margin-right:14px; }
+  .lbl { font-size:11.5px; font-weight:800; opacity:.55; margin:16px 0 6px; letter-spacing:.02em; }
+  .board { display:flex; gap:14px; flex-wrap:wrap; align-items:flex-start; }
+  .cell { display:flex; flex-direction:column; gap:6px; }
+  .shot { position:relative; overflow:hidden; border-radius:12px; box-shadow:0 8px 24px rgba(30,50,40,.25); cursor:zoom-in; background:#3f4b43; }
+  .shot.pc { width:320px; }
+  .shot.m { width:200px; }
+  .cap { font-size:12px; line-height:1.45; max-width:320px; word-break:keep-all; }
+  .cell.m .cap { max-width:200px; }
+  .cap b { display:inline-grid; place-items:center; width:18px; height:18px; border-radius:50%; background:#2d4a3a; color:#fff; font-size:11px; margin-right:4px; }
+  .crops { display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start; }
+  .crop { position:relative; overflow:hidden; border-radius:12px; box-shadow:0 6px 18px rgba(30,50,40,.2); }
+  .crop > .cbox { position:absolute; left:0; top:0; overflow:hidden; transform-origin:0 0; }
+  .crop .screen { position:absolute; }
+  .ccap { font-size:11.5px; opacity:.6; margin-top:4px; }
+  table.copy { border-collapse:collapse; background:#fff; border-radius:12px; overflow:hidden; box-shadow:var(--shadow); font-size:13px; max-width:980px; width:100%; }
+  table.copy th, table.copy td { padding:8px 12px; text-align:left; border-bottom:1px solid #edf1ed; vertical-align:top; word-break:keep-all; }
+  table.copy th { background:#f4faf5; font-size:12px; }
+  table.copy td:first-child { white-space:nowrap; font-weight:700; color:#2d4a3a; }
+  table.copy td.use { background:#fbfff9; }
+  .notes { font-size:12.5px; opacity:.75; line-height:1.6; max-width:980px; margin:10px 0 40px; padding-left:18px; word-break:keep-all; }
+  #lb { position:fixed; inset:0; z-index:99; background:rgba(15,25,20,.82); display:none; place-items:center; cursor:zoom-out; }
+  #lb.show { display:grid; }
+  #lb .wrap { position:relative; overflow:hidden; border-radius:12px; }
+
+  .screen { position:absolute; left:0; top:0; transform-origin:0 0; overflow:hidden; font-family:'Segoe UI', system-ui, 'Apple SD Gothic Neo', sans-serif; color:var(--ink); user-select:none; }
+  .screen.pc { width:1024px; height:768px; }
+  .screen.m { width:375px; height:812px; }
+  .bg { position:absolute; inset:0; overflow:hidden; background:#4a564c; }
+  .bg img { position:absolute; display:block; max-width:none; }
+  .pc .bg.village img { left:0; top:0; width:1024px; }
+  .m .bg.village img { left:-232px; top:0; width:840px; }
+  .pc .bg.stage img { left:0; top:0; width:1024px; height:768px; }
+  .m .bg.stage img { left:0; top:0; width:375px; height:812px; -webkit-mask-image:linear-gradient(#000 0, #000 396px, transparent 450px); mask-image:linear-gradient(#000 0, #000 396px, transparent 450px); }
+  .m .bg.stage { background:linear-gradient(#4b574d, #3d4840); }
+
+  .hb { position:absolute; display:flex; gap:10px; align-items:center; text-align:left; background:var(--panel); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); box-shadow:var(--shadow); color:var(--ink); cursor:pointer; }
+  .pc .hb { top:96px; left:50%; transform:translateX(-50%); max-width:360px; border-radius:18px; padding:12px 16px; }
+  .m .hb { top:162px; right:10px; max-width:217px; border-radius:11px; padding:5px 8px; }
+  .hb.attn { animation:hbGlow 2.4s ease-out infinite; }
+  @keyframes hbGlow { 0% { box-shadow:0 0 0 0 rgba(143,214,160,.9); } 50% { box-shadow:0 0 0 14px rgba(143,214,160,0); } 100% { box-shadow:0 0 0 14px rgba(143,214,160,0); } }
+  .hb .hb-ico { font-size:22px; flex:0 0 auto; }
+  .hb .hb-title { font-weight:700; }
+  .hb .hb-line { opacity:.8; margin-top:1px; word-break:keep-all; }
+  .pc .hb .hb-title { font-size:15.5px; }
+  .pc .hb .hb-line { font-size:13.5px; }
+  .m .hb .hb-title { font-size:13px; }
+  .m .hb .hb-line { font-size:12px; }
+  .finger { position:absolute; font-size:30px; filter:drop-shadow(0 3px 4px rgba(0,0,0,.35)); }
+  .pc .finger { left:calc(50% + 130px); top:142px; }
+  .m .finger { left:318px; top:200px; }
+
+  .hgc { position:absolute; aspect-ratio:1; transform:translate(-50%,-50%); pointer-events:none; }
+  .pc .hgc { width:102px; }
+  .m .hgc { width:80px; }
+  .hgc .hg-pointer { position:absolute; left:50%; top:50%; width:100%; height:100%; transform:translate(-50%,-50%) rotate(var(--hg-angle,-48deg)) translateY(-45%); animation:hg-pulse 1.5s ease-in-out infinite; }
+  .hgc .hg-pointer::before { content:''; position:absolute; left:43%; top:1%; width:14%; height:31%; background:#88d7a0; border-radius:6px; box-shadow:0 0 9px #d5ffdc; }
+  .hgc .hg-pointer::after { content:''; position:absolute; left:31%; top:-6%; width:38%; height:28%; background:#a0e9ac; clip-path:polygon(50% 0,100% 100%,50% 78%,0 100%); filter:drop-shadow(0 0 5px #fff); }
+  .hgc .hg-hint { position:absolute; top:110%; left:50%; transform:translateX(-50%); white-space:nowrap; padding:7px 12px; border-radius:14px; background:rgba(255,255,245,.94); color:#365b40; font-size:13px; font-weight:700; box-shadow:0 3px 12px #315b3428; }
+  @keyframes hg-pulse { 50% { transform:translate(-50%,-50%) rotate(var(--hg-angle,-48deg)) translateY(-45%) scale(1.08); } }
+  .ring { position:absolute; border:5px solid rgba(255,249,210,.85); border-radius:50%; transform:translate(-50%,-50%); }
+  .pc .ring { width:170px; height:66px; }
+  .m .ring { width:140px; height:54px; }
+
+  .hm { position:absolute; inset:0; display:grid; place-items:end center; padding:0 12px 22px; background:linear-gradient(rgba(20,40,30,0.1), rgba(20,40,30,0.55)); }
+  .hm .card { position:relative; display:flex; flex-wrap:wrap; align-items:center; background:#fffdf6; border-radius:22px; padding:16px 18px 14px; text-align:left; box-shadow:0 14px 40px rgba(0,0,0,0.28); color:var(--ink); }
+  .pc .hm .card { width:560px; margin-left:116px; }
+  .m .hm .card { width:351px; margin:80px 0 0; }
+  .hm .card::before { content:""; position:absolute; width:20px; height:20px; background:#fffdf6; transform:rotate(45deg); border-radius:4px; }
+  .pc .hm .card::before { left:-9px; bottom:26px; }
+  .m .hm .card::before { left:30px; top:-8px; }
+  .hm .card > * { flex:1 1 100%; }
+  .hm .emo { position:absolute; display:grid; place-items:center; line-height:1; background:linear-gradient(160deg, #e2f3da, #a9d99a); box-shadow:0 10px 24px rgba(0,0,0,0.25), inset 0 0 0 3px rgba(255,255,255,0.6); }
+  .pc .hm .emo { left:-108px; bottom:0; width:92px; height:92px; border-radius:26px; font-size:56px; }
+  .m .hm .emo { left:2px; top:-78px; width:66px; height:66px; border-radius:20px; font-size:40px; }
+  .hm h2 { margin:0 0 6px; font-size:18px; color:#24382d; }
+  .hm p { margin:0 0 12px; font-size:14.5px; color:#44524a; line-height:1.6; white-space:pre-line; word-break:keep-all; }
+  .hm .ok { flex:0 0 auto; margin-left:auto; border:none; padding:10px 18px; border-radius:14px; font-size:14.5px; background:#8fd081; color:#163220; font-weight:800; box-shadow:0 3px 0 #66ad59; font-family:inherit; }
+
+  .e1 { position:absolute; left:0; right:0; bottom:0; display:flex; justify-content:center; padding:0 12px 16px; }
+  .e1 .sheet { width:min(520px, 100%); background:#fff; border-radius:22px; box-shadow:0 -8px 40px rgba(30,50,40,0.3); padding:18px 20px 16px; color:var(--ink); display:grid; grid-template-columns:auto 1fr; gap:4px 14px; align-items:center; }
+  .e1 .ico { font-size:38px; grid-row:span 2; }
+  .e1 .tt { font-size:17px; font-weight:700; word-break:keep-all; }
+  .e1 .sub { opacity:.75; font-size:14px; word-break:keep-all; }
+  .e1 .foot { grid-column:1 / -1; display:flex; justify-content:space-between; align-items:center; margin-top:10px; }
+  .e1 .dots span { display:inline-block; width:7px; height:7px; border-radius:50%; margin:0 3px; background:rgba(0,0,0,0.15); }
+  .e1 .dots span.on { background:#6fd08c; }
+  .e1 .next { border:none; border-radius:14px; padding:12px 28px; background:var(--mint); color:var(--ink); font-weight:700; font-size:15px; box-shadow:var(--shadow); font-family:inherit; }
+
+  .au { position:absolute; display:flex; flex-direction:column; gap:9px; background:#fffaf2; border-radius:20px; box-shadow:0 -8px 40px rgba(30,25,20,.35); padding:12px 14px; color:#2b2b30; }
+  .m .au { left:10px; right:10px; bottom:12px; }
+  .pc .au { right:14px; top:80px; width:300px; box-shadow:0 8px 32px rgba(30,25,20,.25); }
+  .au > * { flex:none; }
+  .au .au-head { font-weight:800; font-size:15px; }
+  .au .au-item { display:flex; align-items:center; gap:10px; padding:6px 10px; border-radius:14px; background:#fff; }
+  .au .au-ico { display:flex; align-items:center; justify-content:center; width:46px; height:46px; border-radius:10px; background:#f4ead6; flex:none; font-size:28px; line-height:1; }
+  .au .au-item .nm { font-weight:800; font-size:14px; min-width:0; }
+  .au .au-body { display:flex; flex-direction:column; gap:10px; }
+  .au .au-btns { display:flex; gap:8px; }
+  .au .au-btn { flex:1; min-height:46px; border:0; border-radius:12px; padding:10px; font-family:inherit; font-weight:800; font-size:15px; color:#2b2b30; background:#efe6d8; white-space:nowrap; }
+  .au .au-btn.main { background:#e2b23c; }
+  .au .au-hint { font-size:13px; font-weight:700; color:#4a4e57; text-align:center; }
+  .au .au-how { display:flex; flex-direction:column; gap:5px; }
+  .au .au-how div { display:flex; gap:7px; align-items:flex-start; font-size:12px; font-weight:700; line-height:1.4; padding:5px 10px; border-radius:8px; background:#e5f6e9; word-break:keep-all; }
+  .au .au-how div span { flex:none; }
+  .au .au-how div b { font-weight:700; white-space:pre-line; }
+
+  @media (max-width: 700px) {
+    body { padding:12px; }
+    h1 { font-size:18px; }
+    .decide { padding:10px 12px; }
+    .decide li b { display:block; min-width:0; }
+    .shot.pc { width:351px; }
+    .shot.m { width:168px; }
+    .cell.pc .cap { max-width:351px; }
+    .cell.m .cap { max-width:168px; }
+    .board { gap:12px 15px; }
+    table.copy { font-size:12px; }
+    table.copy th, table.copy td { padding:7px 8px; }
+    table.copy td:first-child { white-space:normal; }
+  }
+</style>
+</head>
+<body>
+<h1>🔨 저녁 경매 첫 안내 시안 (A · B · C)</h1>
+<ul class="decide">
+  <li><b>여는 때</b>해 질 녘 timeOfDay 0.72(≈ 17시)에 열려요. 경매 창은 0.72~0.96, 실시간 약 2분</li>
+  <li><b>배너</b>게임 속 저녁마다 한 번, 경매가 열리는 순간에 떠요</li>
+  <li><b>배너 조건</b>상인 해금 · 오늘 아직 미참가 · 마을 안 · 무대 근처가 아닐 때만</li>
+  <li><b>배너 탭</b>탭하면 무대까지 화살표 안내가 시작돼요</li>
+  <li><b>화살표</b>무대 약 3칸(3 units) 안에 들어오면 숨겨요</li>
+</ul>
+<div class="verdict" id="verdict"></div>
+<p class="hint-tip">장면을 누르면 실제 크기로 크게 볼 수 있어요. 배너·화살표·창은 게임 CSS(#hint-banner, house-guide 화살표, showHintModal, E1 시트, js/auction/ui.js)를 그대로 옮겼어요.</p>
+
+<section class="v" id="common">
+  <h2>공통 · 배너와 화살표 (실제 크기)</h2>
+  <p>세 시안 모두 ① 배너 → ② 화살표까지 같아요. 다른 건 ③ 규칙을 어디서 알려 주느냐예요.</p>
+  <div class="crops" id="common-crops"></div>
+</section>
+
+<div id="variants"></div>
+
+<section class="v" id="copy">
+  <h2>문구 후보</h2>
+  <p>시안에는 후보 1을 넣었어요.</p>
+  <table class="copy">
+    <thead><tr><th>자리</th><th>후보 1 (시안에 씀)</th><th>후보 2</th></tr></thead>
+    <tbody id="copy-rows"></tbody>
+  </table>
+  <ul class="notes">
+    <li>🔨 은 배너·카드의 그림 칸에 들어가요. 그래서 제목 글자에는 이모지를 다시 붙이지 않았어요.</li>
+    <li>{경매품} 자리에는 그날 경매품 이름과 조사(을/를)가 들어가요. 시안 예시는 "별 풍향계를".</li>
+    <li>두 문장인 안내 2·3은 문장 사이에서 줄을 나눴어요(\n). 안 나누면 모바일에서 "낙찰!", "있어요" 가 혼자 다음 줄로 떨어져요.</li>
+    <li>안내 1~3 줄 앞 아이콘(🌇 🔔 🪙)은 시안에서 붙인 거예요. 문구 검수 대상은 아니에요.</li>
+    <li>A 카드 본문과 E1 시트 제목에 word-break: keep-all 을 더했어요. 지금 게임 CSS 엔 없어서 넣을 때 같이 넣어야 모바일에서 낱글자로 안 끊겨요.</li>
+  </ul>
+</section>
+
+<div id="lb"><div class="wrap"></div></div>
+
+<script>
+const ITEM = { name: '별 풍향계', ico: '⭐' };
+const COPY = [
+  ['배너 제목', '🔨 저녁 경매가 열렸어요', '🔨 오늘의 경매 시작'],
+  ['배너 줄', '광장 무대에서 {경매품}을 겨뤄요', '탭하면 무대까지 안내해요'],
+  ['화살표 힌트', '화살표를 따라가요! (기존 문구 재사용)', '무대로 가요!'],
+  ['안내 제목', '🔨 저녁 경매', '🔨 경매는 이렇게 해요'],
+  ['안내 1', '해 질 녘마다 경매품 하나가 올라와요', '저녁마다 무대에 한 점이 나와요'],
+  ['안내 2', '+10 · +30 · +50으로 불러요. 4초 동안 아무도 안 부르면 낙찰!', '버튼으로 값을 올려요. 4초 조용하면 낙찰이에요'],
+  ['안내 3', '하루 한 번 참가해요. 코인이 모자라면 구경할 수 있어요', '하루 한 번! 코인이 부족하면 구경만 해요'],
+  ['안내 확인 버튼', '알겠어요', '좋아요'],
+];
+const T = {
+  bTitle: '저녁 경매가 열렸어요',
+  bLine: `광장 무대에서 ${ITEM.name}를 겨뤄요`,
+  arrow: '화살표를 따라가요!',
+  gTitle: '저녁 경매',
+  g1: '해 질 녘마다 경매품 하나가 올라와요',
+  g2: '+10 · +30 · +50으로 불러요. 4초 동안 아무도 안 부르면 낙찰!',
+  g2a: '+10 · +30 · +50으로 불러요',
+  g2b: '4초 동안 아무도 안 부르면 낙찰!',
+  g3: '하루 한 번 참가해요. 코인이 모자라면 구경할 수 있어요',
+  g3a: '하루 한 번 참가해요',
+  g3b: '코인이 모자라면 구경할 수 있어요',
+  ok: '알겠어요',
+};
+const GUIDE = [['🌇', T.g1], ['🔔', `${T.g2a}.\n${T.g2b}`], ['🪙', `${T.g3a}.\n${T.g3b}`]];
+const POS = {
+  pc: [512, 622],
+  m: [188, 510],
+};
+
+let PC_STAGE = 'auction-onboard/stage-pc.jpg';
+
+async function cleanPcStage() {
+  const im = new Image();
+  im.src = PC_STAGE;
+  await im.decode();
+  const c = document.createElement('canvas');
+  c.width = im.naturalWidth; c.height = im.naturalHeight;
+  const g = c.getContext('2d');
+  g.drawImage(im, 0, 0);
+  const x = 516, y = 56, w = c.width - x, h = 228, f = 22;
+  const t = document.createElement('canvas');
+  t.width = w; t.height = h;
+  const tg = t.getContext('2d');
+  tg.translate(w, 0); tg.scale(-1, 1);
+  tg.drawImage(im, 0, y, w, h, 0, 0, w, h);
+  tg.setTransform(1, 0, 0, 1, 0, 0);
+  tg.globalCompositeOperation = 'destination-in';
+  const gl = tg.createLinearGradient(0, 0, f, 0);
+  gl.addColorStop(0, 'rgba(0,0,0,0)'); gl.addColorStop(1, '#000');
+  tg.fillStyle = gl; tg.fillRect(0, 0, w, h);
+  const gb = tg.createLinearGradient(0, h - f, 0, h);
+  gb.addColorStop(0, '#000'); gb.addColorStop(1, 'rgba(0,0,0,0)');
+  tg.fillStyle = gb; tg.fillRect(0, 0, w, h);
+  g.drawImage(t, x, y);
+  PC_STAGE = c.toDataURL('image/jpeg', 0.9);
+}
+
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+const scene = (dev, kind) => kind === 'village'
+  ? `<div class="bg village"><img src="auction-onboard/village-orchard.jpg" alt=""></div>`
+  : `<div class="bg stage"><img src="${dev === 'pc' ? PC_STAGE : 'auction-onboard/stage-mobile.jpg'}" alt=""></div>`;
+
+const banner = () => `<div class="hb attn"><span class="hb-ico">🔨</span><div style="min-width:0;"><div class="hb-title">${esc(T.bTitle)}</div><div class="hb-line">${esc(T.bLine)}</div></div></div><div class="finger">👆</div>`;
+
+const compass = dev => {
+  const f = POS[dev];
+  return `<div class="ring" style="left:${f[0]}px;top:${f[1]}px"></div><div class="hgc" style="left:${f[0]}px;top:${f[1] - 22}px;--hg-angle:0rad"><div class="hg-pointer"></div><div class="hg-hint">${esc(T.arrow)}</div></div>`;
+};
+
+const hintCard = () => `<div class="hm"><div class="card"><div class="emo">🔨</div><h2>${esc(T.gTitle)}</h2><p>${esc(GUIDE.map(g => g.join(' ')).join('\n'))}</p><button class="ok">${esc(T.ok)}</button></div></div>`;
+
+const B_CARDS = [
+  { ico: '🔨', tt: T.gTitle, sub: T.g1, next: '다음' },
+  { ico: '🔔', tt: T.g2a, sub: T.g2b, next: '다음' },
+  { ico: '🪙', tt: T.g3a, sub: T.g3b, next: T.ok },
+];
+const e1Sheet = i => {
+  const c = B_CARDS[i];
+  return `<div class="e1"><div class="sheet"><div class="ico">${c.ico}</div><div class="tt">${esc(c.tt)}</div><div class="sub">${esc(c.sub)}</div><div class="foot"><div class="dots">${B_CARDS.map((_, k) => `<span class="${k === i ? 'on' : ''}"></span>`).join('')}</div><button class="next">${esc(c.next)}</button></div></div></div>`;
+};
+
+const auWin = how => `<div class="au"><div class="au-head">🔨 오늘의 경매</div><div class="au-item"><span class="au-ico">${ITEM.ico}</span><div class="nm">${esc(ITEM.name)}</div></div><div class="au-body"><div class="au-hint">오늘의 경매품이 나왔어요</div>${how ? `<div class="au-how">${GUIDE.map(g => `<div><span>${g[0]}</span><b>${esc(g[1])}</b></div>`).join('')}</div>` : ''}<div class="au-btns"><button class="au-btn main">🔔 경매 참가하기</button><button class="au-btn">👀 구경만 하기</button></div><div class="au-btns"><button class="au-btn">닫기</button></div></div></div>`;
+
+const screenHtml = (dev, kind, overlay) => `<div class="screen ${dev}">${scene(dev, kind)}${overlay(dev)}</div>`;
+
+const F1 = { kind: 'village', ov: banner, cap: '17시 해 질 녘에 배너가 떠요. 탭하면 길 안내가 시작돼요' };
+const F2 = { kind: 'village', ov: compass, cap: '화살표가 무대 쪽을 가리켜요. 무대 3칸 안에 들어오면 꺼져요' };
+const F4 = { kind: 'stage', ov: () => auWin(false), cap: '경매 창이 열려요. 바로 참가하거나 구경해요' };
+
+const VARIANTS = [
+  {
+    id: 'A', name: 'A · 한 장 카드', taps: 3,
+    desc: '무대에 처음 닿았을 때(경매가 열려 있을 때만) 기존 안내 카드(firstHint → showHintModal) 한 장으로 규칙 3줄을 보여 주고, 알겠어요를 누르면 경매 창이 열려요.',
+    pros: ['👍 이미 쓰는 틀이라 새로 만들 게 거의 없어요', '👍 규칙이 한 화면에 다 보여요', '⚠️ 모바일에서 본문이 길어져요'],
+    frames: [F1, F2, { kind: 'stage', ov: hintCard, cap: '무대에 처음 닿으면 안내 카드 한 장. 알겠어요를 누르면' }, F4],
+    crops: [['pc', 'stage', hintCard, '.hm .card,.hm .emo', 'PC 카드'], ['m', 'stage', hintCard, '.hm .card,.hm .emo', '모바일 카드']],
+  },
+  {
+    id: 'B', name: 'B · 세 장 넘기기', taps: 5,
+    desc: '무대에 처음 닿으면 E1 시작 안내와 같은 아래 시트 3장(해 질 녘 한 점 / 부르는 법·4초 낙찰 / 하루 한 번·코인 모자라면 구경)을 넘긴 뒤 경매 창이 열려요.',
+    pros: ['👍 한 장에 한 가지라 읽기 쉬워요', '⚠️ 탭이 3번 더 들어요', '⚠️ 2분짜리 경매 창을 넘기는 동안 써 버려요'],
+    frames: [F1, F2, { kind: 'stage', ov: () => e1Sheet(0), cap: '아래 시트 첫 장. 다음 → 다음 → 알겠어요 (아래 실제 크기 3장)' }, { ...F4, cap: '세 장째 알겠어요를 누르면 경매 창이 열려요' }],
+    crops: [0, 1, 2].map(i => ['m', 'stage', () => e1Sheet(i), '.e1 .sheet', `${i + 1} / 3장 (모바일 폭)`]),
+  },
+  {
+    id: 'C', name: 'C · 창 안 안내', taps: 2,
+    desc: '모달을 더 띄우지 않아요. 처음엔 경매 창 대기 화면에 규칙 3줄을 참가·구경 버튼 바로 위에 보여 주고, 한 번 참가하고 나면 이 3줄은 빠져요.',
+    pros: ['👍 참가까지 탭이 가장 적어요', '👍 "코인이 모자라면 구경" 이 구경 버튼 바로 위에 있어요', '⚠️ 처음 한 번은 창이 길어져 모바일 시트가 무대를 더 가려요'],
+    frames: [F1, F2, { kind: 'stage', ov: () => auWin(true), cap: '처음엔 창 안에 안내 3줄. 읽고 바로 참가해요' }, { ...F4, cap: '한 번 참가한 뒤엔 3줄이 빠진 평소 창이에요' }],
+    crops: [['pc', 'stage', () => auWin(true), '.au', 'PC 오른쪽 카드'], ['m', 'stage', () => auWin(true), '.au', '모바일 아래 시트']],
+  },
+];
+
+const VERDICT = '<b>추천: C (창 안 안내).</b> 경매는 해 질 녘 약 2분만 열려서, 배너 → 화살표 → 창으로 곧장 이어지는 쪽이 놓치는 사람이 적어요. 규칙 3줄이 참가·구경 버튼 바로 위에 있어 "코인이 모자라면 구경" 을 고르는 순간에 읽혀요. 참가까지 탭 2번(A 3번, B 5번)이고, 새 모달 없이 창 안에 한 블록만 더하면 돼요. 단점은 처음 한 번 창이 길어지는 것뿐이고, 첫 참가 뒤엔 사라져요.';
+
+const shotCell = (dev, f, n) => `<div class="cell ${dev}"><div class="shot ${dev}" data-w="${dev === 'pc' ? 1024 : 375}" data-h="${dev === 'pc' ? 768 : 812}">${screenHtml(dev, f.kind, f.ov)}</div><div class="cap"><b>${n}</b>${esc(f.cap)}</div></div>`;
+
+const cropCell = ([dev, kind, ov, pick, cap]) => `<div><div class="crop" data-pick="${pick}"><div class="cbox">${screenHtml(dev, kind, ov)}</div></div><div class="ccap">${esc(cap)}</div></div>`;
+
+function render() {
+document.getElementById('verdict').innerHTML = VERDICT;
+document.getElementById('copy-rows').innerHTML = COPY.map(r => `<tr><td>${esc(r[0])}</td><td class="use">${esc(r[1])}</td><td>${esc(r[2])}</td></tr>`).join('');
+document.getElementById('common-crops').innerHTML = [
+  ['pc', 'village', banner, '.hb', 'PC 배너 (화면 위 가운데)'],
+  ['m', 'village', banner, '.hb', '모바일 배너 (오른쪽 칸 아래)'],
+  ['pc', 'village', compass, '.hgc,.ring,.hg-hint,.hg-pointer', 'PC 화살표 + 발밑 고리'],
+  ['m', 'village', compass, '.hgc,.ring,.hg-hint,.hg-pointer', '모바일 화살표'],
+].map(cropCell).join('');
+document.getElementById('variants').innerHTML = VARIANTS.map(v => `
+  <section class="v" id="v${v.id}">
+    <h2>${esc(v.name)} <span class="taps">참가까지 탭 ${v.taps}번</span></h2>
+    <p>${esc(v.desc)}</p>
+    <div class="pros">${v.pros.map(p => `<span>${esc(p)}</span>`).join('')}</div>
+    <div class="lbl">PC 1024×768</div>
+    <div class="board">${v.frames.map((f, i) => shotCell('pc', f, i + 1)).join('')}</div>
+    <div class="lbl">모바일 375×812</div>
+    <div class="board">${v.frames.map((f, i) => shotCell('m', f, i + 1)).join('')}</div>
+    <div class="lbl">③ 안내 실제 크기</div>
+    <div class="crops">${v.crops.map(cropCell).join('')}</div>
+  </section>`).join('');
+}
+
+function measureCrops() {
+  document.querySelectorAll('.crop').forEach(c => {
+    const scr = c.querySelector('.screen');
+    const base = scr.getBoundingClientRect();
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    c.dataset.pick.split(',').forEach(sel => scr.querySelectorAll(sel).forEach(el => {
+      const r = el.getBoundingClientRect();
+      x0 = Math.min(x0, r.left - base.left); y0 = Math.min(y0, r.top - base.top);
+      x1 = Math.max(x1, r.right - base.left); y1 = Math.max(y1, r.bottom - base.top);
+    }));
+    const pad = 18, W = scr.offsetWidth, H = scr.offsetHeight;
+    const x = Math.max(0, Math.floor(x0 - pad)), y = Math.max(0, Math.floor(y0 - pad));
+    const w = Math.min(W, Math.ceil(x1 + pad)) - x, h = Math.min(H, Math.ceil(y1 + pad)) - y;
+    Object.assign(c.dataset, { x, y, w, h });
+    scr.style.left = -x + 'px'; scr.style.top = -y + 'px';
+  });
+}
+
+function layout() {
+  document.querySelectorAll('.shot').forEach(s => {
+    const s0 = s.clientWidth / +s.dataset.w;
+    s.firstElementChild.style.transform = `scale(${s0})`;
+    s.style.height = (+s.dataset.h * s0) + 'px';
+  });
+  document.querySelectorAll('.crop').forEach(c => {
+    const w = +c.dataset.w, h = +c.dataset.h;
+    const avail = c.closest('.crops').clientWidth;
+    const k = Math.min(1, avail / w);
+    const box = c.firstElementChild;
+    box.style.width = w + 'px'; box.style.height = h + 'px'; box.style.transform = `scale(${k})`;
+    c.style.width = (w * k) + 'px'; c.style.height = (h * k) + 'px';
+  });
+}
+
+const lb = document.getElementById('lb');
+document.addEventListener('click', e => {
+  const s = e.target.closest('.shot');
+  if (s) {
+    const w = +s.dataset.w, h = +s.dataset.h;
+    const k = Math.min(1, innerWidth * .94 / w, innerHeight * .94 / h);
+    const wrap = lb.firstElementChild;
+    wrap.innerHTML = '';
+    const scr = s.firstElementChild.cloneNode(true);
+    scr.style.transform = `scale(${k})`;
+    wrap.appendChild(scr);
+    wrap.style.width = (w * k) + 'px'; wrap.style.height = (h * k) + 'px';
+    lb.classList.add('show');
+    return;
+  }
+  if (e.target.closest('#lb')) lb.classList.remove('show');
+});
+
+cleanPcStage().catch(() => {}).then(() => {
+  render();
+  const imgs = [...document.images].map(im => im.complete ? Promise.resolve() : new Promise(r => { im.onload = im.onerror = r; }));
+  return Promise.all([document.fonts.ready, ...imgs]);
+}).then(() => {
+  measureCrops();
+  layout();
+  addEventListener('resize', layout);
+  window.__ready = true;
+});
+</script>
+</body>
+</html>
