@@ -25,8 +25,9 @@ const X = AUCTION_STAGE.x, Z = AUCTION_STAGE.z;
 const SPOT_R = 2.4;
 const SPIN_SPEED = 0.8;
 const CAM_EASE = 2.6;
-const CAM_PC = { pos: [0.2, 6.6, 9.2], look: [0, 1.1, 1.8] };
-const CAM_MOBILE = { pos: [0.1, 9.8, 14.3], look: [0, 0.9, 2.0] };
+const CAM_PC = { pos: [0.2, 7.6, 12], look: [0, 0.7, 1.8], shift: [150, 0] };
+const CAM_MOBILE = { pos: [0.1, 13.7, 19.8], look: [0, 0.9, 2.0], shift: [0, 150] };
+const PANEL_MIN_W = 768;
 const PROMPTS = { closed: '🔨 경매는 저녁에 열려요', done: '🔨 오늘 경매 끝', bid: '🔨 경매 참가', watch: '🔨 경매 참가' };
 const CAST = new Set(['merchant', ...AUCTION_BIDDERS.map(b => b.id)]);
 
@@ -140,8 +141,20 @@ function startRun(mode) {
   run.begin(mode);
 }
 
+let viewKey = '';
+
+function applyViewShift(cam) {
+  const w = window.innerWidth, h = window.innerHeight;
+  const [sx, sy] = w >= PANEL_MIN_W ? CAM_PC.shift : CAM_MOBILE.shift;
+  const key = `${w}x${h}x${sx}x${sy}`;
+  if (key === viewKey) return;
+  viewKey = key;
+  cam.setViewOffset(w, h, sx, sy, w, h);
+}
+
 function aimCamera(dt) {
   const cam = IS_MOBILE ? CAM_MOBILE : CAM_PC;
+  applyViewShift(camera);
   const k = 1 - Math.exp(-dt * CAM_EASE);
   camGoal.set(X + cam.pos[0], cam.pos[1], Z + cam.pos[2]);
   lookGoal.set(X + cam.look[0], cam.look[1], Z + cam.look[2]);
@@ -172,6 +185,7 @@ function teardown() {
   hidden.forEach(h => setNpcHidden(h.o, h.was));
   hidden = [];
   if (stage) { stage.focus(-1.25, -0.05); stage.gavel.rotation.z = 0; stage.bell.rotation.z = 0; }
+  if (viewKey) { camera.clearViewOffset(); viewKey = ''; }
   if (wasRunning) snapCamera();
   if (panel) panel.close();
 }

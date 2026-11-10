@@ -49,6 +49,7 @@ export function waitHtml(v, t) {
 
 const CSS = `#auction-modal{position:fixed;z-index:40;display:none;left:10px;right:10px;bottom:calc(12px + env(safe-area-inset-bottom));flex-direction:column;gap:9px;background:#fffaf2;border-radius:20px;box-shadow:0 -8px 40px rgba(30,25,20,.35);padding:12px 14px;color:#2b2b30;user-select:none;-webkit-tap-highlight-color:transparent;font-family:inherit}
 #auction-modal.show{display:flex}
+#auction-modal>*{flex:none}
 #auction-modal .au-head{font-weight:800;font-size:15px}
 #auction-modal .au-item{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:14px;background:#fff}
 #auction-modal .au-ico{display:flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:10px;background:#f4ead6;flex:none;font-size:28px;line-height:1}
@@ -79,7 +80,7 @@ const CSS = `#auction-modal{position:fixed;z-index:40;display:none;left:10px;rig
 #auction-modal .au-res .au-ico{width:54px;height:54px;border-radius:12px;font-size:32px;margin:0 auto}
 #auction-modal .au-res .t{font-size:17px;font-weight:900;margin:4px 0}
 #auction-modal .au-res .d{font-size:13px;color:#4a4e57;min-height:1.2em}
-@media (min-width:768px){#auction-modal{left:auto;right:14px;top:calc(14px + var(--top-inset,0px));bottom:14px;width:300px;justify-content:center;border-radius:20px;box-shadow:0 8px 32px rgba(30,25,20,.25)}#auction-modal .au-feed{min-height:58px}#auction-modal .au-feed div:nth-child(n+3){display:block;opacity:.55}}`;
+@media (min-width:768px){#auction-modal{left:auto;right:14px;top:calc(80px + var(--top-inset,0px));bottom:auto;max-height:calc(100vh - 100px - var(--top-inset,0px));overflow-y:auto;width:300px;border-radius:20px;box-shadow:0 8px 32px rgba(30,25,20,.25)}#auction-modal .au-feed{min-height:58px}#auction-modal .au-feed div:nth-child(n+3){display:block;opacity:.55}}`;
 
 export function createAuctionUi({ t, names, itemName, itemIcon, onJoin, onBid, onClose }) {
   let root = null, body = null, mode = 'bid', view = null, itemId = '', layout = '', lastPrice = null, lastSig = '', lastCall = '';
