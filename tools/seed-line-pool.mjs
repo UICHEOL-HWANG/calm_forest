@@ -24,13 +24,26 @@ async function sample(env, kind, n) {
 }
 
 export function parseArgs(argv) {
-  const value = name => { const i = argv.indexOf(name); return i < 0 ? undefined : argv[i + 1]; };
-  const kind = argv.includes('--kind') ? value('--kind') : 'auction';
-  if (!Object.hasOwn(SLOTS, kind)) throw new Error(`알 수 없는 --kind: ${kind}`);
-  if (!argv.includes('--sample')) return { kind, sample: null };
-  const raw = value('--sample');
-  if (!/^[1-9]\d*$/.test(raw ?? '')) throw new Error(`--sample 에는 1 이상의 정수가 필요합니다: ${raw}`);
-  return { kind, sample: Number(raw) };
+  let kind = 'auction';
+  let sample = null;
+  let seenKind = false;
+  let seenSample = false;
+  for (let i = 0; i < argv.length; i += 2) {
+    const flag = argv[i];
+    const val = argv[i + 1];
+    if (flag === '--sample' && !seenSample) {
+      if (!/^[1-9]\d{0,3}$/.test(val ?? '')) throw new Error(`--sample 에는 1 이상 9999 이하의 정수가 필요합니다: ${val}`);
+      sample = Number(val);
+      seenSample = true;
+    } else if (flag === '--kind' && !seenKind) {
+      if (!Object.hasOwn(SLOTS, val ?? '')) throw new Error(`알 수 없는 --kind: ${val}`);
+      kind = val;
+      seenKind = true;
+    } else {
+      throw new Error(`허용되지 않는 인자: ${flag}`);
+    }
+  }
+  return { kind, sample };
 }
 
 async function main(argv) {

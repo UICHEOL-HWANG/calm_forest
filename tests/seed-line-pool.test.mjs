@@ -25,3 +25,10 @@ test('parseArgs 는 잘못된 --sample 과 --kind 를 던진다', () => {
   assert.throws(() => parseArgs(['--sample', '--kind', 'auction']), /--sample/);
   assert.throws(() => parseArgs(['--kind', 'nope']), /--kind/);
 });
+
+test('parseArgs 는 = 형태, 오타, 반복, 범위 밖 값을 모두 던진다', () => {
+  for (const argv of [['--sample=abc'], ['--sample=10'], ['--kind=auction'], ['--sampel', '10'], ['--sample', '10', '--sample', '5'], ['--sample', '12345'], ['--dry-run'], ['--kind']]) {
+    assert.throws(() => parseArgs(argv), /--/, argv.join(' '));
+  }
+  assert.deepEqual(parseArgs(['--kind', 'auction', '--sample', '10']), { kind: 'auction', sample: 10 });
+});
