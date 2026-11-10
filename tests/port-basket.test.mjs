@@ -26,3 +26,10 @@ test('basket is styled as the wooden crate and only shows on the island', () => 
   assert.match(html, /body\.port-island #port-basket \{ display: flex; \}/);
   assert.match(html, /body\.port-island #sea-btn \{[^}]*background: var\(--mint\)/);
 });
+
+test('basket tip says the bar is not tools, fits a phone line and avoids banned copy', async () => {
+  const { BASKET_TIP } = await import('../js/port/basket.js');
+  assert.match(BASKET_TIP, /도구/);
+  assert.ok(BASKET_TIP.length <= 22, BASKET_TIP.length);
+  assert.doesNotMatch(BASKET_TIP, /—|놀/);
+});
