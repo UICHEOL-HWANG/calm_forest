@@ -25,7 +25,7 @@ test('안드로이드 첫 실행 판정 — 부팅 전 캐시 유무로 fresh, r
 });
 
 test('카드는 #loading 의 형제(안이면 setLoadWait 가 덮어쓴다)·dev 는 ?survey=1 강제만', () => {
-  assert.match(html, /<div id="loading"[^>]*>[^<]*<\/div>\s*<div id="survey-card"><\/div>/);
+  assert.match(html, /<div id="loading"[^>]*>(?:(?!<div)[\s\S])*?<\/div>\s*<div id="survey-card"><\/div>/);
   assert.match(html, /force: IS_DEV_SESSION && new URLSearchParams\(location\.search\)\.get\('survey'\) === '1'/);
 });
 

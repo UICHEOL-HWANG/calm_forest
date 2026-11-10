@@ -18,7 +18,7 @@ const ROOT = new URL('../', import.meta.url);
 const html = readFileSync(new URL('index.html', ROOT), 'utf8');
 
 /** 정적 마크업의 로딩 문구 — 사전 키와 글자 하나까지 같아야 번역된다. */
-const LOADING_RE = /<div id="loading"[^>]*>([^<]*)<\/div>/;
+const LOADING_RE = /<div id="loading"[^>]*><span class="load-pill">([^<]*)</;
 
 test('로딩 문구가 정적 마크업에 있고 EN 사전에 키로 등록돼 있다', () => {
   const m = html.match(LOADING_RE);
@@ -29,7 +29,7 @@ test('로딩 문구가 정적 마크업에 있고 EN 사전에 키로 등록돼 
 
 test('i18n 부팅이 게임 import 보다 먼저 온다 — 로딩 화면이 게임을 기다리면 안 된다', () => {
   const i18nAt = html.indexOf("from './js/i18n.js'");
-  const gameAt = html.indexOf("from './js/game.js'");
+  const gameAt = html.indexOf("from './js/game-lazy.js'");
   assert.ok(i18nAt >= 0, "index.html 이 './js/i18n.js' 를 import 하지 않는다");
   assert.ok(gameAt >= 0, "index.html 이 './js/game.js' 를 import 하지 않는다");
   assert.ok(i18nAt < gameAt,
@@ -53,7 +53,7 @@ test('부트 스크립트가 로딩 화면을 번역한다', () => {
 });
 
 test('게임은 부트보다 뒤 블록에서 import 된다', () => {
-  const gameBlock = moduleBlocks.findIndex((b) => b.includes("from './js/game.js'"));
+  const gameBlock = moduleBlocks.findIndex((b) => b.includes("from './js/game-lazy.js'"));
   assert.ok(gameBlock > 0,
     'game.js 가 첫 모듈 스크립트에 있다 — 부트가 게임 다운로드를 기다리게 된다');
 });

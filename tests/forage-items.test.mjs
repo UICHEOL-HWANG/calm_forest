@@ -26,7 +26,7 @@ test('sell price table spreads the forage prices', () => {
 });
 
 test('sell icon table spreads the forage icons', () => {
-  const src = read('js/data/places.js');
+  const src = read('js/data/sell-icons.js');
   assert.match(src, /import \{[^}]*FORAGE_ICO[^}]*\} from '\.\.\/forage\/logic\.js'/);
   assert.match(src, /export const SELL_ICO_G = \{[^\n]*\.\.\.FORAGE_ICO/);
 });

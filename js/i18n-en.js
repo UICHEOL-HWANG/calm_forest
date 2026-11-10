@@ -886,7 +886,7 @@ export const EN = {
   '📷 사진 찍기': '📷 Take a photo',
   '☁️ 사진첩': '☁️ Photo Album',
   '💾 저장': '💾 Save',
-  '고요한 숲 불러오는 중… 🌿': 'Loading Calm Forest… 🌿',
+  '고요한 숲 불러오는 중': 'Loading Calm Forest',
   '🌿 고요한 숲': '🌿 Calm Forest',
   '🌙 잠시만요, 마을을 찾는 중이에요': '🌙 One moment — finding your Village',
   '🌙 연결이 오래 걸리네요. 마을은 그대로 있으니 다시 들어와 주세요': '🌙 This is taking a while. Your Village is safe — please come back in.',

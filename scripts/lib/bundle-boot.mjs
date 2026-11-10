@@ -30,14 +30,14 @@ function collectScripts(html, outDir) {
     const [tagText, src, body] = m;
     if (src) {
       scripts.push({ tagText, name: path.basename(src, '.js'), file: path.join(outDir, src), temp: false });
-    } else if (body.includes("'./js/game.js'")) {
+    } else if (body.includes("'./js/game-lazy.js'")) {
       scripts.push({ tagText, name: 'main', file: path.join(outDir, '__boot_main.js'), temp: true, body });
     } else if (body.includes("'./js/i18n.js'")) {
       scripts.push({ tagText, name: 'boot-i18n', file: path.join(outDir, '__boot_i18n.js'), temp: true, body });
     }
   }
   if (!scripts.some(s => s.name === 'main')) {
-    throw new Error('[bundle-boot] index.html 에서 게임 인라인 모듈(./js/game.js import)을 못 찾음');
+    throw new Error('[bundle-boot] index.html 에서 게임 인라인 모듈(./js/game-lazy.js import)을 못 찾음');
   }
   if (!scripts.some(s => s.name === 'boot-i18n')) {
     throw new Error('[bundle-boot] index.html 에서 로딩 화면 번역 모듈(./js/i18n.js import)을 못 찾음');
@@ -74,10 +74,12 @@ export async function bundleBoot(outDir) {
 
   const outputs = Object.keys(result.metafile.outputs).filter(f => f.endsWith('.js'));
   const srcFor = {};
+  const entryOuts = [];
   for (const s of scripts) {
     const out = outputs.find(f => new RegExp(`^${s.name}-[A-Z0-9]+\\.js$`).test(path.basename(f)));
     if (!out) throw new Error(`[bundle-boot] ${s.name} 묶음 출력을 못 찾음`);
     srcFor[s.name] = `./${OUT_SUBDIR}/${path.basename(out)}`;
+    entryOuts.push(out);
   }
 
   for (const s of scripts) {
@@ -94,7 +96,7 @@ export async function bundleBoot(outDir) {
       if (imp.kind === 'import-statement' && !imp.external) visit(imp.path);
     }
   };
-  for (const f of outputs) if (result.metafile.outputs[f].entryPoint) visit(f);
+  for (const f of entryOuts) visit(f);
 
   return { files: outputs, bootFiles: [...staticClosure], entries: srcFor, metafile: result.metafile };
 }

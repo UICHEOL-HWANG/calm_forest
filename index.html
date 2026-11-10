@@ -2494,7 +2494,17 @@
   /* 🔌 저장이 끊겼다는 안내만은 모달(32~35)·미니게임(40)·승부(40)·인트로(55) 위에 선다.
      31 로 두면 요리·조각 미니게임 중에 세션이 죽었을 때 화면 뒤에 깔려, 정작 필요한 순간에 안 보인다. */
   #loading.save-stuck { z-index: 60; }
-  #loading.boot-bg { background: radial-gradient(ellipse 340px 120px at center, rgba(255,247,236,.92) 0, rgba(255,247,236,.7) 45%, rgba(255,247,236,0) 100%), #cfd8c4 url("assets/social/login-bg.webp") center / cover no-repeat; }
+  #loading.boot-bg { color: #fff; font-size: 15px; text-shadow: 0 1px 8px rgba(0,0,0,.25);
+    background: radial-gradient(ellipse at center, rgba(20,35,28,.05), rgba(20,35,28,.38)), #cfd8c4 url("assets/social/login-bg.webp") center / cover no-repeat; }
+  .load-pill { display: inline-flex; align-items: center; gap: 12px; padding: 13px 22px; border-radius: 999px; white-space: nowrap;
+    border: 1px solid rgba(255,255,255,.35); background: rgba(255,255,255,.16); -webkit-backdrop-filter: blur(16px) saturate(1.2); backdrop-filter: blur(16px) saturate(1.2);
+    box-shadow: 0 20px 60px rgba(30,50,40,.35); font-weight: 600; letter-spacing: -.02em; }
+  .load-dots { display: inline-flex; gap: 5px; }
+  .load-dots i { width: 6px; height: 6px; border-radius: 50%; background: #fff; opacity: .35; animation: load-blink 1.2s infinite; }
+  .load-dots i:nth-child(2) { animation-delay: .2s; }
+  .load-dots i:nth-child(3) { animation-delay: .4s; }
+  @keyframes load-blink { 40% { opacity: 1; transform: translateY(-2px); } }
+  @media (prefers-reduced-motion: reduce) { .load-dots i { animation: none; opacity: .8; } }
   body.pre-world::before { content: ""; position: fixed; inset: 0; z-index: 5; pointer-events: none;
     background: #cfd8c4 url("assets/social/login-bg.webp") center / cover no-repeat; transition: opacity .8s ease; }
   body.pre-world.world-ready::before { opacity: 0; }
@@ -3720,7 +3730,7 @@
     </div>
   </div>
 
-  <div id="loading" class="boot-bg">고요한 숲 불러오는 중… 🌿</div>
+  <div id="loading" class="boot-bg"><span class="load-pill">고요한 숲 불러오는 중<span class="load-dots" aria-hidden="true"><i></i><i></i><i></i></span></span></div>
   <div id="survey-card"></div><!-- 🧭 첫 실행 설문(js/install-survey-ui.js) — #loading 안에 넣으면 setLoadWait 가 덮어쓴다 -->
 
   <!-- 🌐 로딩 화면만 먼저 번역한다 — 아래 큰 모듈 스크립트에 맡기면 늦는다.
@@ -3771,25 +3781,23 @@
     import { savePhotoNative, sharePhotoNative, shareUrlNative } from './js/photo-native.js';   // 📱 앱: WebView 는 download·share 를 못 한다
     import { capPlugin } from './js/cap-bridge.js';
     import { bootTenjin, identifyTenjinUser, trackTenjinGameStart } from './js/tenjin-native.js';
-    import { SELL_ICO_G } from './js/data/places.js';
+    import { SELL_ICO_G } from './js/data/sell-icons.js';
     import { FORAGE_KEYS, FORAGE_META } from './js/forage/logic.js';
     import { consumeExit, markExit } from './js/exit-flag.js';   // 🚪 나가기 직후엔 토스·플레이 앱 자동 연결을 건너뛴다 · 🗑️ 계정 삭제 뒤에도
     import { pickText, quoteLine, parseBody, leadEmoji, noticeTone } from './js/notices.js';   // 📮 소식함 — 언어별 본문·답장 원문 인용·'|' 표 파서
     import { isTouchDevice } from './js/touch-sim.js';
     import { PLATFORM, IS_TOSS, IS_ITCH, IS_ANDROID, IS_IOS, IS_NATIVE } from './js/platform.js';   // 🔵 앱인토스 웹뷰 여부(로그인 버튼 전환) · 🎮 itch iframe 여부 · 📱 구글 플레이 앱
-    import { bootWorld, enterGame, requestSave, getGameState, atOrchard, mapLocked, npcAccept, npcClaim, Input, markNoticesSeen, resyncPurchases } from './js/game.js';
+    import { loadGameModules, bootWorld, enterGame, requestSave, getGameState, isAtOrchard, mapLocked, npcAccept, npcClaim, Input, markNoticesSeen, resyncPurchases, initPush, offerPush, playChestReveal, stopChestReveal, initControls, initCafeGuests, initNightVisit, initDuel, openDecorAlbum } from './js/game-lazy.js';
     import { bootReferral, inviteBanner, referralOnPlay, openInviteSheet, referralEnabled } from './js/referral/index.js';   // 🤝 친구 초대
     import { signupGiftOnPlay } from './js/signup-gift/index.js';
     import { nudgeView } from './js/signup-gift/copy.js';
     import { bootAppBanner, mountAppBanner } from './js/app-banner-ui.js';
     import { mountLoginStore } from './js/login-store-ui.js';
     import { createLoginDwell } from './js/login-dwell.js';
-    import { initPush, offerPush } from './js/push-ui.js';   // 🔔 안드로이드 푸시 알림(안내 카드·설정 토글)   // 📲 웹 → 앱 유도 배너(웹 전용)
     import { renderDock } from './js/boat/dock-ui.js';
     import { resultCardHtml } from './js/boat/result-card.js';
     import { BOATS } from './js/boat/boats.js';
     import { RIVER_LEN } from './js/boat/consts.js';
-    import { playChestReveal, stopChestReveal } from './js/boat-chest-reveal.js';   // 🧰 보물상자 개봉 화면(R3)
     import { questPanelView } from './js/quest-panel-view.js';
     import { trackLogin, trackEvent, setGaUser, onTrack, setInstallUserProps, setSurveyUserProps } from './js/analytics.js';
     import { bootMetaPixel, metaFromTrack, metaSignup } from './js/meta-pixel.js';   // 📣 Meta Pixel(웹 전용) — 광고 → 가입 → 결제 여정
@@ -3799,7 +3807,6 @@
     import { skipLoginNow, keepGuestSession } from './js/exp-e2.js';
     import { armDeferredGuest, upgradeGuest } from './js/auth/deferred-guest.js';   // 🧪 E2 처치 — 익명 계정은 첫 입력 뒤에
     import { CONFIG, IS_DEV_SESSION } from './js/config.js';
-    import { initControls } from './js/controls.js';
     import { initMobileHud } from './js/hud/mobile-hud.js';
     import { initHudShell } from './js/hud/hud-shell.js';
     import { createMenuSheet } from './js/hud/menu-sheet.js';
@@ -3808,10 +3815,6 @@
     import { createSpotlight } from './js/hud/spotlight.js';
     import { pillHintKey, spotSteps, treeSteps } from './js/onboarding/spot-steps.js';
     import { Sound, startBGM, toggleBGM, isBGMOn } from './js/sound.js';
-    import { initCafeGuests } from './js/cafe-guests.js';   // ☕ 카페 손님 동적 생성(서버 프록시 경유)
-    import { initNightVisit } from './js/night-visit.js';   // 🦝 밤손님 판정·주민 쪽지(서버 프록시 경유)
-    import { initDuel } from './js/duel/index.js';   // 🐗🦝 밤손님 승부(흔적 조사 → 추격)
-    import { openDecorAlbum } from './js/decor-drops/index.js';
     import { t, LANG, setLang, translateDom, watchDom } from './js/i18n.js';   // 🌐 i18n(한국어 원문 키 사전)
     import { TUNING, isBetaA, betaDay } from './js/tuning.js';
 
@@ -5281,7 +5284,7 @@
         if (!spot || Input.hintSeen('saplingOrchard') || saplingOrchardGuidePending) return;
         saplingOrchardGuidePending = true;
         const showWhenReady = () => {
-          if (Input.hintSeen('saplingOrchard') || !atOrchard) { saplingOrchardGuidePending = false; return; }
+          if (Input.hintSeen('saplingOrchard') || !isAtOrchard()) { saplingOrchardGuidePending = false; return; }
           // 🧭 신규 유저 기본 코치/다른 음영 안내가 끝난 뒤에 띄워 순서대로 보이게 한다.
           if (ui.coachActive?.()) { setTimeout(showWhenReady, 350); return; }
           saplingOrchardGuidePending = false;
@@ -5289,7 +5292,7 @@
           spot.run([{ key: 'sapling_plant', target: TOUCH ? '#action-btn' : '#hotbar', hand: TOUCH ? 'tap' : 'key',
             text: TOUCH ? '빈 흙자리 가까이 가면 씨앗 도구로 바뀌어요. 오른쪽 액션 버튼을 눌러 심어요.' : '빈 흙자리 가까이 가면 씨앗 도구로 바뀌어요. Space 또는 화면을 클릭해 심어요.',
             keys: TOUCH ? [] : ['Space'], done: 'act:sapling_plant' }],
-            { kind: 'sapling_orchard', skip: 'all', blocked: () => !atOrchard });
+            { kind: 'sapling_orchard', skip: 'all', blocked: () => !isAtOrchard() });
         };
         showWhenReady();
       },
@@ -5781,7 +5784,13 @@
     }
     function ensureWorld() {
       if (!worldP) {
-        worldP = bootWorld(ui).then(() => {
+        worldP = loadGameModules().then(() => {
+          setIcon($('season-emoji'), Input.seasonIco());
+          initCafeGuests();
+          initNightVisit();
+          initDuel();
+          return bootWorld(ui);
+        }).then(() => {
           $('loading').style.display = 'none';
           revealWorld();
         });
@@ -7599,7 +7608,6 @@
     $('dex-tab').addEventListener('click', openDex);
     // 🍂 계절 아이콘 — 지금 계절·남은 날·이번 계절 한정 어종
     hydrateIcons();
-    setIcon($('season-emoji'), Input.seasonIco());
     $('season-emoji').addEventListener('click', () => ui.toast(Input.seasonStatus(), 2600));
     $('dex-close').addEventListener('click', () => $('dex-modal').classList.remove('show'));
     $('dex-modal').addEventListener('click', (e) => { if (e.target === $('dex-modal')) $('dex-modal').classList.remove('show'); });
@@ -8157,9 +8165,6 @@
           dev: IS_DEV_SESSION, force: IS_DEV_SESSION && new URLSearchParams(location.search).get('survey') === '1',   // QA: ?dbg&survey=1
         });
       } catch (e) { /* 저장소 없음 — 설문만 빠진다 */ }
-      initCafeGuests();                              // ☕ 카페 손님 생성기 등록(입장 시 서버에 요청)
-      initNightVisit();                              // 🦝 밤손님 판정기 등록(입장 시 밤 경과를 서버가 판정)
-      initDuel();                                    // 🐗🦝 승부 등록(흔적을 조사하면 도둑과 마주 선다)
       if (loginFirstBoot) document.body.classList.add('pre-world');
       else await ensureWorld();                      // ① 씬을 로그인 배경으로 먼저 부팅
       await surveyP;                                 // 🧭 설문에 아직 답하는 중이면 기다린다 — 🤝 초대 코드가 enterPlay 전에 cf_invite 에 있어야 한다
