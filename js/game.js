@@ -67,6 +67,8 @@ import { t, LANG, aiBucket, clientId } from './i18n.js';   // 🌐 i18n — DOM 
 import { createHouseGuide } from './spaces/house-guide.js';   // 🏠 목재 15개 → 집터 조망 + 방향 안내 50:50
 import { sanitizeHouseGuide } from './house-guide-rules.js';
 import { initPlaza, updatePlaza, plazaSpotNow, openPlaza, plazaScatterBlocks, plazaDefault, restorePlaza, refreshPlaza, plazaDecorMesh, plazaMapVisible } from './plaza/index.js';
+import { defaultToolStars, restoreToolStars, restoreForge } from './workbench/rules.js';
+import { forgeView, forgeBegin, forgeAbort, forgeFinish, settleForge } from './workbench/forge.js';
 import { initAuction, updateAuction, auctionMapSpot, auctionSpotNow, openAuction, auctionScatterBlocks, auctionOutdoorMesh, auctionDefault, restoreAuction } from './auction/index.js';
 import { refreshPond, updatePond, pondScatterBlocks } from './pond/index.js';
 import { onPlay, decorBanner, applySetFx } from './decor-drops/index.js';
@@ -1061,6 +1063,8 @@ const gameState = {
               hoe: false, seed: false, sickle: false, shovel: false, hammer: false }, // 🔧 신설 5종
   blueprints: {},                           // 🔨 히든 의뢰로 받은 📜 도면 { sickle: true } — js/tool-blueprints.js
   tier2: {},                                // 🔨 제작한 금빛 도구(2단계) { sickle: true } — tierOf 가 2 를 준다
+  toolStars: defaultToolStars(),
+  forge: null,
   outdoor: [],                              // 야외 장식 [{id,x,z}]
   outdoorStored: {},                        // 🧺 보관한 야외 장식 { id: 개수 } — 작업대에서 값 없이 다시 꺼냄
   gifts: {},                                // 보유 선물 { id: count }
@@ -2074,6 +2078,10 @@ export const Input = {
   craftUpgrade(id) { return craftUpgrade(id); },        // 업그레이드 제작
   getTier2() { return tier2List(); },                   // 🔨 금빛 도구(2단계) 목록 — 도면 상태·비용
   craftTier2(tool) { return craftTier2(tool); },        // 🔨 금빛 도구 제작
+  getForge() { return forgeView(); },
+  forgeBegin(tool) { return forgeBegin(tool); },
+  forgeAbort() { return forgeAbort(); },
+  forgeFinish(score) { return forgeFinish(score); },
   getOutdoor() { return OUTDOOR.filter(o => catalogVisible(o, { stored: gameState.outdoorStored?.[o.id] || 0 })).map(o => ({ ...o, tag: saleTagOf(o) })); },   // 야외 장식 목록(+🏗️ 밭 시설 farm:true) · 🎃 기간 밖 한정품 숨김
   isAtFarm() { return atFarm; },
   selectOutdoor(id) { if (pickedOutdoor) stopOutdoorPlacing(true); placingOutdoor = id; outdoorTarget.pinned = false; buildDecorGhost(id, true); },   // 야외 장식 선택(설치 대기 — 발밑에 🫥미리보기). 들고 있던 장식은 제자리로(안 그러면 새 장식이 "옮김"으로 공짜 설치됨)
@@ -2497,6 +2505,7 @@ export async function enterGame() {
   if (!stationCount('vat')) placeOutdoor(FARM.x + VAT_HOME_LOCAL[0], FARM.z + VAT_HOME_LOCAL[1], true, 'vat', 0);
   refreshStations();
   catchUpCraft();                      // 🔥 자는 사이 다 구워진 게 있으면 알린다
+  settleForge(false);
   prefetchNotices();                   // 📮 안 읽은 소식을 미리 받아 둔다(await 안 함 — 출석 모달을 닫을 때 준비돼 있으면 이어서 띄운다)
   // 테스트: ?house=4|5|6 — 증축 단계 미리보기(?weather= 와 같은 개발용 파라미터)
   const _hq = parseInt(_wq.get('house') || '', 10);
@@ -3013,6 +3022,8 @@ function applySave(saved) {
   // 🔨 도면·금빛 도구 — 아래 upgrades 복원이 손에 든 도구를 다시 만들기(refreshHeldTool) **전에** 채워야 금빛으로 나온다
   gameState.blueprints = sanitizeToolFlags(saved.blueprints);
   gameState.tier2 = sanitizeToolFlags(saved.tier2);
+  gameState.toolStars = restoreToolStars(saved.toolStars);
+  gameState.forge = restoreForge(saved.forge, gameState.toolStars);
   if (saved.upgrades) {
     gameState.upgrades = { ...gameState.upgrades, ...saved.upgrades }; // 도구 업그레이드 복원
     // 🪓 ⚠️ buildPlayer() → setHeldTool() 은 bootWorld 안에서 이미 돌았다(세이브를 읽기 전).
@@ -7136,6 +7147,7 @@ function doSleep() {
 // ☀️ 아침으로 — 💤 자기와 🌙 꿈에서 깨어나기가 같은 결과를 쓴다(js/spaces/dream.js)
 function wakeToMorning() {
   timeOfDay = WAKE_TIME; gameState.timeOfDay = timeOfDay;
+  settleForge(true);
   dayPaused = false;   // ?time= 로 멈춰 둔 시계도 자고 나면 다시 흐른다(0.30 에 고착 방지).
                        // 촬영은 자기 전까지의 고정만 쓰므로 손해가 없고, 검수 때 ?time= 로 밤을 만들 수 있다.
   requestSave();
