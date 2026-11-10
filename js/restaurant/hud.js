@@ -11,6 +11,7 @@ const CSS = `
 #rest-hud .tk u s{display:block;height:100%;background:#6bb35a}
 #rest-hud .tk.mid u s{background:#e9b949}
 #rest-hud .tk.late u s{background:#d9604c}
+html body.rest-hud-on #guide-card{top:calc(env(safe-area-inset-top) + 80px)}
 #rest-hud .st{position:fixed;transform:translate(-50%,-100%);pointer-events:none}
 #rest-hud .dots{display:flex;gap:3px}
 #rest-hud .dots span{width:13px;height:13px;border-radius:3px;border:2px solid #fff8e8;background:rgba(47,94,71,.35)}
@@ -59,6 +60,7 @@ const CSS = `
 }
 `;
 
+const BUBBLE_H = 40;
 const LABEL = { take: '✋ 꺼내기', put: '🫳 내려놓기', chop: '🔪 썰기', flip: '🍳 뒤집기', pick: '✋ 들기', pickCook: '✋ 꺼내기', plate: '🍽️ 담기', trash: '🗑️ 버리기', serve: '🍽️ 내가기' };
 export const contextLabel = c => (c ? LABEL[c.do] : null);
 
@@ -114,6 +116,19 @@ export function mountHud(doc) {
   const stEls = new Map();
   let clockText = '', ticketHtml = '';
 
+  const guideCard = doc.getElementById('guide-card');
+  const bar = root.querySelector('.bar');
+  let bubbleMin = 0, dirty = true;
+  const markDirty = () => { dirty = true; };
+  const measureTop = () => {
+    if (!dirty) return;
+    dirty = false;
+    const el = guideCard && !guideCard.hidden ? guideCard : bar;
+    bubbleMin = el.getBoundingClientRect().bottom + BUBBLE_H;
+  };
+  const watch = guideCard && typeof MutationObserver !== 'undefined' ? new MutationObserver(markDirty) : null;
+  watch?.observe(guideCard, { attributes: true, attributeFilter: ['hidden'], childList: true, characterData: true, subtree: true });
+  addEventListener('resize', markDirty);
   const setHtml = (el, html) => { if (el._html !== html) { el._html = html; el.innerHTML = html; } };
 
   function stEl(id) {
@@ -142,10 +157,13 @@ export function mountHud(doc) {
   return {
     show(on) {
       root.style.display = on ? '' : 'none';
+      doc.body.classList.toggle('rest-hud-on', on);
+      dirty = true;
       if (!on) { sts.innerHTML = ''; stEls.clear(); clockText = ''; ticketHtml = ''; tks.innerHTML = ''; }
     },
     cardOpen: () => card.classList.contains('show'),
     clock(sec) {
+      measureTop();
       const t = `🍽️ ${Math.max(0, Math.ceil(SERVICE_SEC - sec))}`;
       if (t !== clockText) { clockText = t; clock.textContent = t; }
     },
@@ -161,7 +179,7 @@ export function mountHud(doc) {
     station(id, view, x, y) {
       if (!view) { const el = stEls.get(id); if (el && el.style.display !== 'none') el.style.display = 'none'; return; }
       const el = stEl(id);
-      place(el, x, y);
+      place(el, x, view.kind === 'bubble' ? Math.max(y, bubbleMin) : y);
       if (view.kind === 'bubble') setHtml(el, `<div class="bub">${view.ico}<small>${view.mood}</small></div>`);
       else if (view.kind === 'chop') setHtml(el, `<div class="dots">${Array.from({ length: CHOP_TAPS }, (_, i) => `<span class="${i < view.taps ? 'on' : ''}${i === view.taps && view.beat ? ' beat' : ''}"></span>`).join('')}</div>`);
       else gauge(el, view);
@@ -177,6 +195,6 @@ export function mountHud(doc) {
       onClose = onDone;
       card.classList.add('show');
     },
-    destroy() { root.remove(); card.remove(); },
+    destroy() { watch?.disconnect(); removeEventListener('resize', markDirty); root.remove(); card.remove(); },
   };
 }

@@ -11,11 +11,13 @@ const isActive = (S, s) => !s.need || S.star >= s.need;
 const dist = (p, x, z) => Math.hypot(p.x - x, p.z - z);
 const walkTime = tb => Math.hypot(HALL.door.x - tb[0], HALL.door.z - (tb[1] - 1.0)) / HALL.guestWalk;
 
-export function createSession({ star, dda, rng = Math.random }) {
+const FIRST_PAT = 1.2;
+
+export function createSession({ star, dda, rng = Math.random, first = false }) {
   const stations = {};
   for (const s of HALL.stations) stations[s.id] = { item: null, t: 0, chop: FRESH_CHOP(), flipped: null };
   return {
-    star, cfg: STAR[star], dda: { ...dda }, rng, time: 0, next: 1.5, guests: [], tickets: [], gid: 0,
+    star, cfg: STAR[star], dda: first ? { ...dda, pat: dda.pat * FIRST_PAT } : { ...dda }, first, rng, time: 0, next: 1.5, guests: [], tickets: [], gid: 0,
     held: null, stations, staff: null, ended: false,
     stats: { served: 0, stars: [], late: 0, perfect: 0, takes: 0, burnt: 0, coins: 0 },
   };
@@ -28,7 +30,8 @@ function freeTables(S) {
 }
 
 function spawn(S) {
-  const menu = S.cfg.menus[Math.floor(S.rng() * S.cfg.menus.length)];
+  const roll = S.cfg.menus[Math.floor(S.rng() * S.cfg.menus.length)];
+  const menu = S.first ? 'grilled' : roll;
   const free = freeTables(S);
   if (!free.length) return null;
   const table = free[Math.floor(S.rng() * free.length)];
@@ -75,7 +78,7 @@ export function tickSession(S, dt) {
   if (S.ended) return ev;
   S.time += dt;
   S.next -= dt;
-  if (S.next <= 0 && S.time < LAST_SPAWN_SEC) {
+  if (S.next <= 0 && S.time < LAST_SPAWN_SEC && !(S.first && S.gid > 0)) {
     const g = spawn(S);
     S.next = g ? spawnInterval(S.star, S.time, S.dda.iv) : 1;
     if (g) ev.push({ type: 'spawn', id: g.id, table: g.table, menu: g.menu });
@@ -99,7 +102,8 @@ export function tickSession(S, dt) {
       ev.push({ type: 'gone', id: g.id });
     }
   }
-  if (S.time >= SERVICE_SEC && !S.guests.some(g => g.state === 'eat')) {
+  const firstDone = S.first && S.gid > 0 && !S.guests.length;
+  if (firstDone || (S.time >= SERVICE_SEC && !S.guests.some(g => g.state === 'eat'))) {
     S.ended = true;
     ev.push({ type: 'end' });
   }

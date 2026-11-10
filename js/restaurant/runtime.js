@@ -123,6 +123,7 @@ export function createRestaurantRuntime(env) {
       } else if (e.type === 'flip') pop(e.id, e.ok ? '✨' : '💨');
       else if (e.type === 'cooked') pop(e.id, e.kind === 'burnt' ? '💨' : e.q === 1 ? '✨' : '');
       else if (e.type === 'chopDone') pop(e.id, '✔️');
+      else if (e.type === 'chop' && e.taps === 1) env.onChopStart?.();
       else if (e.type === 'empty') env.toast(env.copy.empty);
     }
   }
@@ -140,9 +141,10 @@ export function createRestaurantRuntime(env) {
 
   function finish() {
     const r = finishSession(S);
-    const star0 = before.star;
+    const star0 = before.star, first = S.first;
     clear();
-    const out = settleService(env.rest(), r);
+    const settled = settleService(env.rest(), r);
+    const out = first ? { ...settled, rest: { ...settled.rest, dda: env.rest().dda } } : settled;
     env.setRest(out.rest);
     env.earnCoins(out.bonus);
     env.trackEvent('restaurant_service', { star: star0, served: r.served, avg_score: Math.round(r.avg * 10) / 10, dda: out.rest.dda.iv });
@@ -164,6 +166,7 @@ export function createRestaurantRuntime(env) {
   return {
     running: () => !!S,
     session: () => S,
+    context: () => (S ? contextAt(S, local(env.player.position)) : null),
     refresh,
     prompt() {
       const lp = local(env.player.position);
@@ -179,6 +182,7 @@ export function createRestaurantRuntime(env) {
         return true;
       }
       const take = kind => {
+        if (S.first) return true;
         const res = takeIngredient(env.port(), kind);
         if (res.ok) env.setPort(res.port);
         return res.ok;
