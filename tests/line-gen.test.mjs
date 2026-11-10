@@ -86,3 +86,13 @@ test('fillCells 는 maxCalls 를 넘겨 부르지 않는다', async () => {
   assert.equal(n, 4);
   assert.equal(r.calls, 4);
 });
+
+test('보강한 프롬프트: 하오체 어미·문장부호·고어 금지 지시가 들어간다', () => {
+  const ko = buildLineRequest({ kind: 'auction', key: '_any', slot: 'last', lang: 'ko' }, 10).messages[0].content;
+  assert.match(ko, /~구려/);
+  assert.match(ko, /마침표, 느낌표, 물음표/);
+  assert.match(ko, /더 없소\?/);
+  const en = buildLineRequest({ kind: 'auction', key: '_any', slot: 'last', lang: 'en' }, 10).messages[0].content;
+  assert.match(en, /Never use archaic words/);
+  assert.match(en, /Any more bids\?/);
+});

@@ -20,6 +20,8 @@ export const SLOTS = {
 const VAR_RE = /\{(\w+)\}/g;
 const HAS_VAR = /\{\w+\}/;
 const JOSA = /\}(으로|이|가|을|를|은|는|와|과|로)(?=[\s.,!?…~]|$)/;
+const KO_END = /[.!?…~]$/;
+const ARCHAIC = /\b(hath|thee|thou|thy|doth|huzzah|hark)\b/i;
 const BANNED = [/[—–]/, /놀(다|아|았|자|고|러|이)/];
 
 export function keysFor(kind) {
@@ -55,6 +57,7 @@ export function lineProblem(text, { kind, slot, lang }) {
   if (lineLength(text) > max) return 'length';
   const hangul = /[가-힣]/.test(text);
   if (lang === 'en' ? hangul : !hangul) return 'lang';
+  if (lang === 'en' ? ARCHAIC.test(text) : !KO_END.test(text.trim())) return 'style';
   return null;
 }
 

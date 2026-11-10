@@ -53,3 +53,14 @@ test('fillLine 은 자리표시를 채우고, 남으면 null', () => {
   assert.equal(fillLine('{who}께서 부르셨소!', {}), null);
   assert.equal(fillLine('더 없소?', {}), '더 없소?');
 });
+
+test('style: 한국어는 문장부호로 끝나고, 영어는 고어를 쓰지 않는다', () => {
+  assert.equal(lineProblem('그대가 이 밤의 주인공이구려', cell('sold_me')), 'style');
+  assert.equal(lineProblem('그대가 이 밤의 주인공이구려!', cell('sold_me')), null);
+  assert.equal(lineProblem('더 없소…', cell('last')), null);
+  assert.equal(lineProblem('Hark, who bids?', cell('last', 'en')), 'style');
+  assert.equal(lineProblem('The bell hath rung!', cell('last', 'en')), 'style');
+  assert.equal(lineProblem('Huzzah, sold!', cell('sold_me', 'en')), 'style');
+  assert.equal(lineProblem('Thyme for one more bid?', cell('last', 'en')), null);
+  assert.equal(lineProblem('Any more bids?', cell('last', 'en')), null);
+});

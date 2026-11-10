@@ -37,6 +37,9 @@ function systemPrompt(lang) {
     return [
       'You write lines for calm forest, a cozy low-poly farming village game.',
       `Speaker: ${m.nameEn}. ${m.personaEn}`,
+      'Use warm, lightly old-fashioned English that a child can read. Never use archaic words such as hath, thee, thou, thy, doth, huzzah or hark.',
+      'End every line with a period, exclamation mark or question mark.',
+      'Good examples: "Any more bids?", "Oh, {who}! Splendid!", "It is yours! Congratulations!"',
       'Setting: every evening he runs a small auction on the lantern stage in the village square.',
       'Output exactly one JSON object {"lines": [string, ...]} and nothing else. No explanations, no code fences.',
       'Never write digits; prices and timers are shown separately on screen. Never use an em dash.',
@@ -46,6 +49,9 @@ function systemPrompt(lang) {
   return [
     '너는 calm forest(포근한 저폴리 농사 마을 게임)의 대사 작가다.',
     `화자: ${m.name}. ${m.persona}`,
+    '말끝은 하오체로 맺는다: ~하오, ~이오, ~소, ~구려, ~겠소, ~시오. 어미를 띄어 쓰거나("소식이 오") 받침에 맞지 않게 붙이지("풍향계가오") 않는다.',
+    '문장은 마침표, 느낌표, 물음표 중 하나로 끝낸다.',
+    '좋은 예: "더 없소?", "{who}께서 부르셨소!", "손님 것이오! 축하하오!", "바람이 불면 금빛 별이 빙글 도는 풍향계요."',
     '상황: 마을 광장 등불 무대에서 저녁마다 작은 경매를 연다.',
     '출력은 {"lines": [문자열, ...]} JSON 객체 하나뿐이다. 설명·코드펜스·다른 글자는 쓰지 않는다.',
     '숫자를 쓰지 않는다(가격·남은 시간은 화면이 따로 보여 준다). 줄표(—)를 쓰지 않는다. "놀다"를 쓰지 않는다.',
