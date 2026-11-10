@@ -38,7 +38,7 @@ export async function runLinePool(env, {
     const got = await fillCells(env, plan, { fetch, pace: createPacer(spacingMs), existing, maxCalls });
     out.calls = got.calls;
     out.failed = got.failed;
-    out.rate_limited = got.stopped === 'rate_limited';
+    out.rate_limited = got.rateLimited > 0;
     if (got.rows.length) {
       const ins = await fetch(`${base}/line_pool?on_conflict=kind,key,slot,lang,text`, {
         method: 'POST', headers: storeHeaders(env, 'resolution=ignore-duplicates,return=minimal'), body: JSON.stringify(got.rows), signal: AbortSignal.timeout(10000),

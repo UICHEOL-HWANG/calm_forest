@@ -87,11 +87,20 @@ test('fillCells 는 빈 응답을 RETRIES 번 다시 부르고, 429 는 기다�
   assert.equal(c.failed, 1);
   assert.equal(c.stopped, null);
   assert.equal(c.calls, 3);
+  assert.equal(c.rateLimited, 3);
   assert.match(c.firstError, /rate_limited/);
 
   const d = await fillCells(env, [{ cell, want: 5 }, { cell, want: 5 }], { fetch: async () => new Response('', { status: 401 }), pace: now, maxCalls: 10, limit: 1, wait });
   assert.equal(d.stopped, 'auth');
   assert.equal(d.calls, 1);
+});
+
+test('fillCells 는 429 재시도도 호출 예산을 쓰고 rateLimited 로 센다', async () => {
+  const cell = { kind: 'auction', key: '_any', slot: 'last', lang: 'ko' };
+  const r = await fillCells(env, [{ cell, want: 5 }], { fetch: async () => new Response('', { status: 429 }), pace: now, maxCalls: 2, limit: 1, wait: async () => {} });
+  assert.equal(r.calls, 2);
+  assert.equal(r.failed, 1);
+  assert.equal(r.rateLimited, 2);
 });
 
 test('fillCells 는 maxCalls 를 넘겨 부르지 않는다', async () => {

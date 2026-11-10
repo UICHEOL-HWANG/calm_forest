@@ -11,7 +11,7 @@ export const SLOTS = {
     open: { scope: 'item', max: 30, per: 1, vars: [] },
     raise_npc: { scope: 'any', max: 24, per: 4, vars: ['who'] },
     raise_me: { scope: 'any', max: 24, per: 4, vars: [] },
-    last: { scope: 'any', max: 20, per: 1, vars: [] },
+    last: { scope: 'any', max: 24, per: 1, vars: [] },
     sold_me: { scope: 'any', max: 30, per: 1, vars: [] },
     sold_npc: { scope: 'any', max: 30, per: 1, vars: ['who'] },
   },

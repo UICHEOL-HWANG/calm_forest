@@ -143,7 +143,7 @@ export async function generateCell(env, cell, want, { fetch = globalThis.fetch, 
 }
 
 export async function fillCells(env, plan, { fetch = globalThis.fetch, pace, existing = new Map(), maxCalls = Infinity, limit = CONCURRENCY, wait = ms => new Promise(r => setTimeout(r, ms)) } = {}) {
-  let calls = 0, failed = 0, stopped = null, firstError = null;
+  let calls = 0, failed = 0, rateLimited = 0, stopped = null, firstError = null;
   const seenOf = new Map();
   const seen = cell => {
     const id = cellId(cell);
@@ -154,7 +154,7 @@ export async function fillCells(env, plan, { fetch = globalThis.fetch, pace, exi
   await mapLimit(plan, limit, async ({ cell, want }) => {
     let last = null;
     for (let a = 0; a <= RETRIES; a++) {
-      if (stopped || calls >= maxCalls) return;
+      if (stopped || calls >= maxCalls) { if (last) break; return; }
       calls++;
       const got = await pace(() => generateCell(env, cell, want, { fetch, seen: seen(cell) }));
       if (!got.failure) {
@@ -162,11 +162,12 @@ export async function fillCells(env, plan, { fetch = globalThis.fetch, pace, exi
         return;
       }
       last = got.failure;
+      if (last === 'rate_limited') rateLimited++;
       if (last === 'auth') { stopped ??= last; break; }
       if (last === 'rate_limited' && a < RETRIES) await wait(RATE_WAIT_MS);
     }
     failed++;
     firstError ??= `${cellId(cell)}: ${last}`;
   }, () => stopped !== null || calls >= maxCalls);
-  return { rows, calls, failed, stopped, firstError };
+  return { rows, calls, failed, rateLimited, stopped, firstError };
 }

@@ -36,9 +36,10 @@ test('숫자·금지어·조사·언어·길이를 거른다', () => {
   assert.equal(lineProblem('{who}를 보시오!', cell('raise_npc')), 'josa');
   assert.equal(lineProblem('Going once!', cell('last')), 'lang');
   assert.equal(lineProblem('한 번 더!', cell('last', 'en')), 'lang');
-  assert.equal(lineProblem('가'.repeat(21), cell('last')), 'length');
-  assert.equal(lineProblem('a'.repeat(36), cell('last', 'en')), null);
-  assert.equal(lineProblem('a'.repeat(37), cell('last', 'en')), 'length');
+  assert.equal(lineProblem('가'.repeat(23) + '!', cell('last')), null);
+  assert.equal(lineProblem('가'.repeat(25), cell('last')), 'length');
+  assert.equal(lineProblem('a'.repeat(43), cell('last', 'en')), null);
+  assert.equal(lineProblem('a'.repeat(44), cell('last', 'en')), 'length');
   assert.equal(lineProblem('   ', cell('last')), 'empty');
   assert.equal(lineProblem('좋소', cell('nope')), 'slot');
 });
