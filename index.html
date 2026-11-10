@@ -2018,6 +2018,37 @@
   #cvr-title { font-size: 20px; font-weight: 800; }
   #cvr-sub { font-size: 13px; opacity: .8; text-align: center; }
   #cvr-stats { display: flex; gap: 14px; font-size: 12px; opacity: .85; font-variant-numeric: tabular-nums; flex-wrap: wrap; justify-content: center; }
+  #cv-combo { color: #c4631b; }
+  #cv-gauge { position: relative; height: 12px; border-radius: 6px; background: #efe7d6; margin: 3px 22px 16px 8px; }
+  #cv-gauge .cvg-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 6px; background: linear-gradient(90deg, #ffd76a, #e9a23b); transition: width .15s; }
+  #cv-gauge .cvg-tick { position: absolute; top: -3px; width: 2px; height: 18px; margin-left: -1px; background: #b9ad90; }
+  #cv-gauge .cvg-tick span { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: 800; white-space: nowrap; color: #8a7a55; }
+  #cv-gauge .cvg-tick.hit span { color: #c4631b; }
+  #cv-gem { position: absolute; right: 14px; top: calc(62px + var(--top-inset)); font-size: 13px; font-weight: 800; background: #e3f6ff; color: #2a6a86;
+    border-radius: 10px; padding: 5px 10px; box-shadow: var(--shadow); opacity: 0; transform: translateY(14px) scale(.8); transition: opacity .25s, transform .35s; }
+  #cv-gem.show { opacity: 1; transform: none; }
+  .cvr-two { display: flex; gap: 8px; width: 100%; margin-top: 4px; }
+  .cvr-two button { flex: 1 1 0; border: none; border-radius: 12px; padding: 10px 6px; font-weight: 800; font-size: 14px; line-height: 1.3; cursor: pointer; color: var(--ink); background: #eef2ee; font-family: inherit; }
+  .cvr-two button small { display: block; font-size: 11px; font-weight: 700; opacity: .75; }
+  .cvr-two .cvr-sell { background: #ffe7a6; color: #6a4a00; }
+  .cvr-two .cvr-go { background: var(--mint); }
+  #cvr-wrap { display: none; flex-direction: column; align-items: center; gap: 8px; width: 100%; }
+  #cv-result.wrap #cvr-wrap { display: flex; }
+  #cv-result.wrap #cvr-main { display: none; }
+  #cvr-main { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; }
+  #cvr-wtitle { font-size: 16px; font-weight: 800; }
+  #cvr-papers { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .cvr-paper { width: 60px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; border: none; background: none; padding: 0; cursor: pointer; color: var(--ink); font-family: inherit; }
+  .cvr-paper .sw { width: 50px; height: 50px; border-radius: 12px; box-shadow: var(--shadow); }
+  .cvr-paper.sel .sw { outline: 3px solid #4aa868; outline-offset: 2px; }
+  .sw.p-kraft { background: #c9a074; background-image: repeating-linear-gradient(45deg, rgba(255,255,255,.12) 0 3px, transparent 3px 7px); }
+  .sw.p-floral { background: #f6c9d4; background-image: radial-gradient(circle at 25% 30%, #fff 0 3px, transparent 4px), radial-gradient(circle at 70% 65%, #e88aa3 0 4px, transparent 5px), radial-gradient(circle at 70% 20%, #fff 0 2px, transparent 3px); background-size: 24px 24px; }
+  .sw.p-starry { background: #2f3b6b; background-image: radial-gradient(circle at 30% 30%, #ffe08a 0 1.6px, transparent 2.4px), radial-gradient(circle at 75% 70%, #fff 0 1.2px, transparent 2px); background-size: 16px 16px; }
+  #cvr-wcost { font-size: 12.5px; opacity: .85; }
+  .cv-heart { color: #e6789a; font-weight: 800; }
+  .ck-kept { flex: 0 0 100%; display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; font-size: 11.5px; font-weight: 700; }
+  .ck-kept .chip { font-size: 11.5px; font-weight: 700; padding: 3px 8px; border-radius: 9px; background: #fff4e2; white-space: nowrap; }
+  .ck-item .ck-tag.new { font-weight: 700; }
   /* ☕ 카페 주문판 — 손님 카드가 세로로 쌓이는 목록형(요리 격자와 달리 "주문서" 느낌) */
   #cafe-menu { display: none; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: min(460px, 92vw); flex-direction: column; gap: 10px; max-height: 70dvh; overflow-y: auto; }
   #cafe-menu.show { display: flex; }
@@ -3112,16 +3143,27 @@
   <!-- 🗿 조각 공방 HUD — 3D 무대 위 최소 오버레이(캔버스 탭이 곧 조작이라 판은 안 가림) -->
   <div id="cv-layer">
     <div id="cv-top"><span id="cv-title">🗿 조각</span><button id="cv-quit">그만두기</button></div>
+    <span id="cv-gem">💎 +1</span>
     <div id="cv-bottom">
-      <div id="cv-stats"><span id="cv-prog">다듬기 0%</span><span id="cv-dmg">흠집 ○○○</span></div>
+      <div id="cv-stats"><span id="cv-prog">다듬기 0%</span><span id="cv-dmg">흠집 ○○○</span><span id="cv-combo">콤보 0</span></div>
+      <div id="cv-gauge"><div class="cvg-fill"></div><div class="cvg-tick" data-at="5" style="left:33.3%"><span>5 ×1.1</span></div><div class="cvg-tick" data-at="10" style="left:66.6%"><span>10 ×1.2</span></div><div class="cvg-tick" data-at="15" style="left:100%"><span>15 ×1.3</span></div></div>
       <div id="cv-hint">밝은 칩을 탭·드래그로 깎아내세요 — 어두운 밑그림을 탭하면 흠집!</div>
     </div>
     <div id="cv-result">
-      <div id="cvr-ico">💎</div>
-      <div id="cvr-title">걸작!</div>
-      <div id="cvr-sub"></div>
-      <div id="cvr-stats"></div>
-      <div class="dm-actions" style="justify-content:center"><button id="cvr-close">닫기</button></div>
+      <div id="cvr-main">
+        <div id="cvr-ico">💎</div>
+        <div id="cvr-title">걸작!</div>
+        <div id="cvr-sub"></div>
+        <div id="cvr-stats"></div>
+        <div id="cvr-choice" class="cvr-two"><button id="cvr-sell" class="cvr-sell"></button><button id="cvr-keep" class="cvr-go"></button></div>
+        <div id="cvr-closebar" class="dm-actions" style="justify-content:center"><button id="cvr-close">닫기</button></div>
+      </div>
+      <div id="cvr-wrap">
+        <div id="cvr-wtitle">포장해서 줄까요?</div>
+        <div id="cvr-papers"></div>
+        <div id="cvr-wcost">포장지 🪙15 · ❤️+1 더</div>
+        <div class="cvr-two"><button id="cvr-plain">그냥 간직</button><button id="cvr-wrapgo" class="cvr-go">🎀 포장하기</button></div>
+      </div>
     </div>
   </div>
 
@@ -5033,6 +5075,7 @@
       openKitchen(d) { renderKitchen(d); setKitchenTab('recipe'); Input.setAnalog(0, 0); $('kitchen-menu').classList.add('show'); document.body.classList.add('menu-open'); },
       carveProgress(p) { cvProgress(p); },                 // 🗿 조각 진행(game.js 레이캐스트 판정 → HUD)
       carveDone(res) { cvDone(res); },                     // 🗿 조각 정산(등급·보상 → 결과 카드)
+      carveGem() { cvGem(); },
       // 🏆 랭킹 게시판(마을 소품) → 리더보드 모달
       openLeaderboard() { openLb(); },
       // 상점 메뉴 열기
@@ -7130,11 +7173,14 @@
 
     // ── 🗿 조각 공방 HUD — 판정·연출은 game.js(캔버스 소유), 여기는 진행 표시 + 결과 카드만 ──
     let CV = { active: false };
+    const CV_PAPERS = [['kraft', '크라프트'], ['floral', '꽃무늬'], ['starry', '별밤']];
     function openCarveHud(st) {
-      CV.active = true;
+      CV = { active: true, kept: null, paper: 'floral', gemT: 0 };
       $('cv-title').textContent = `${st.ico} ${st.name}`;
-      $('cv-result').classList.remove('show');
-      cvProgress({ removed: 0, waste: st.waste, dmg: 0 });
+      $('cv-result').classList.remove('show', 'wrap');
+      $('cv-gem').classList.remove('show');
+      $('cv-hint').textContent = st.grain ? '결 따라 길게 그으면 여러 칸이 한 번에 깎여요' : '밝은 칩을 탭·드래그로 깎아내세요 — 어두운 밑그림을 탭하면 흠집!';
+      cvProgress({ removed: 0, waste: st.waste, dmg: 0, combo: 0, best: 0 });
       $('cv-layer').classList.add('show');
       document.body.classList.add('menu-open'); document.body.classList.add('mg-open'); document.body.classList.add('cv-open');   // 마을 UI 걷고 무대에 몰입
       Input.setAnalog(0, 0);
@@ -7142,14 +7188,52 @@
     function cvProgress(p) {
       $('cv-prog').textContent = `다듬기 ${Math.round(p.removed / p.waste * 100)}%`;
       $('cv-dmg').textContent = `흠집 ${'●'.repeat(p.dmg)}${'○'.repeat(Math.max(0, 3 - p.dmg))}`;
+      const combo = p.combo || 0, best = p.best || 0;
+      $('cv-combo').textContent = `콤보 ${combo}`;
+      $('cv-gauge').querySelector('.cvg-fill').style.width = `${Math.min(combo, 15) / 15 * 100}%`;
+      $('cv-gauge').querySelectorAll('.cvg-tick').forEach(t => t.classList.toggle('hit', best >= +t.dataset.at));
+    }
+    function cvGem() {
+      const el = $('cv-gem');
+      el.classList.add('show');
+      clearTimeout(CV.gemT);
+      CV.gemT = setTimeout(() => el.classList.remove('show'), 1800);
     }
     function cvDone(res) {
       if (!CV.active) return;
       $('cvr-ico').textContent = res.tier.ico;
       $('cvr-title').textContent = `${res.tier.name}!`;
-      $('cvr-sub').innerHTML = `${res.ico} ${res.name} 완성 — 보상 🪙 <b>${res.coins}</b>`;
-      $('cvr-stats').innerHTML = `<span>품질 <b>${res.score}</b>점${res.isBest ? ' ⭐신기록!' : ''}</span><span>흠집 <b>${res.dmg}</b></span><span>누적 조각 <b>${res.carved}</b></span>`;
+      $('cvr-sub').innerHTML = res.canKeep ? `<span>${res.ico}</span> <span>${res.name}</span>` : `${res.ico} ${res.name} 완성 — 보상 🪙 <b>${res.coins}</b>`;
+      $('cvr-stats').innerHTML = `<span>품질 <b>${res.score}</b>점${res.isBest ? ' ⭐신기록!' : ''}</span><span>흠집 <b>${res.dmg}</b></span><span>최고 콤보 <b>${res.comboMax}</b></span><span>누적 조각 <b>${res.carved}</b></span>`;
+      $('cvr-sell').innerHTML = `🪙 팔기<small>+${res.coins}</small>`;
+      $('cvr-keep').innerHTML = `🎁 간직하기<small>선물 ❤️+${res.keepLove}</small>`;
+      $('cvr-choice').style.display = res.canKeep ? '' : 'none';
+      $('cvr-closebar').style.display = res.canKeep ? 'none' : '';
+      $('cv-result').classList.remove('wrap');
       $('cv-result').classList.add('show');
+    }
+    function cvRenderPapers() {
+      const box = $('cvr-papers'); box.innerHTML = '';
+      CV_PAPERS.forEach(([id, name]) => {
+        const b = document.createElement('button');
+        b.className = 'cvr-paper' + (CV.paper === id ? ' sel' : '');
+        b.innerHTML = `<span class="sw p-${id}"></span><span>${name}</span>`;
+        b.addEventListener('click', () => { CV.paper = id; cvRenderPapers(); });
+        box.appendChild(b);
+      });
+    }
+    function cvKeep() {
+      const r = Input.carveResolve('keep');
+      if (!r?.ok) { closeCarve(); return; }
+      ui.toast(`🎁 ${r.name}${r.particle} 선물로 간직했어요`, 2400);
+      CV.kept = r.id;
+      cvRenderPapers();
+      $('cv-result').classList.add('wrap');
+    }
+    function cvWrap() {
+      const r = Input.carveWrap(CV.kept, CV.paper);
+      if (!r.ok) { ui.toast(r.msg || '포장할 수 없어요'); return; }
+      closeCarve();
     }
     function closeCarve() {
       CV.active = false;
@@ -7160,6 +7244,10 @@
     }
     $('cv-quit').addEventListener('click', () => Input.carveAbandon());   // 포기해도 낮은 등급으로 정산됨
     $('cvr-close').addEventListener('click', closeCarve);
+    $('cvr-sell').addEventListener('click', () => { Input.carveResolve('sell'); closeCarve(); });
+    $('cvr-keep').addEventListener('click', cvKeep);
+    $('cvr-plain').addEventListener('click', closeCarve);
+    $('cvr-wrapgo').addEventListener('click', cvWrap);
 
     // 로컬 개발 훅 — 콘솔에서 미니게임을 직접 구동(?give 처럼 localhost 전용, 실서비스 노출 안 됨)
     if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) {
@@ -7173,7 +7261,8 @@
       window.__carveStart = (id) => { const st = Input.carveStart(id); if (st.ok) { closeCook(); openCarveHud(st); } return st; };
       window.__carveChip = (n = 1) => Input.carveDebug('chip', n);
       window.__carveScratch = () => Input.carveDebug('scratch');
-      window.__carveState = () => ({ active: CV.active, resultShown: $('cv-result').classList.contains('show'), prog: $('cv-prog').textContent, dmg: $('cv-dmg').textContent });
+      window.__carveDebug = (a, n) => Input.carveDebug(a, n);
+      window.__carveState = () => ({ active: CV.active, resultShown: $('cv-result').classList.contains('show'), wrap: $('cv-result').classList.contains('wrap'), prog: $('cv-prog').textContent, dmg: $('cv-dmg').textContent, combo: $('cv-combo').textContent });
       window.__ui = ui;        // HUD 문구·크기 검증용(캐치 배너·퀘스트 패널을 직접 그려본다)
       window.__state = () => getGameState();   // 의뢰 진행(npcs.<id>.idx)·집 단계 검증용 — 직접 고쳐서 상황을 만든다
     }
