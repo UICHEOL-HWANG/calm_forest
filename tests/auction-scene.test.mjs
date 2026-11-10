@@ -1,0 +1,109 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { createAuctionScene, callText } from '../js/auction/scene.js';
+import { lotFor } from '../js/auction/rules.js';
+
+function fakes(over = {}) {
+  const log = { ui: [], done: null, track: [], econ: [], saved: 0, calls: [] };
+  let coins = 820, stored = {}, auction = { lastDate: '', wins: 0 };
+  const noop = () => {};
+  const stage = {
+    setItem: noop, focus: noop, gavel: { rotation: { z: 0 } }, bell: { rotation: { z: 0 } },
+    setNight: v => log.calls.push(['night', v]),
+    setTension: (on, t) => log.calls.push(['tension', on, t]),
+  };
+  const actors = { raise: noop, hop: noop, lead: noop, update: noop, burst: noop, spotOf: () => [0, 5.9] };
+  const deps = {
+    stage, actors, now: () => 0, rng: () => 0.999, day: () => '2026-11-10',
+    getCoins: () => coins, setCoins: c => { coins = c; }, getStored: () => stored, setStored: s => { stored = s; },
+    getAuction: () => auction, setAuction: a => { auction = a; }, getNight: () => 0.6,
+    onUi: s => log.ui.push(s), onDone: r => { log.done = r; }, track: (n, p) => log.track.push([n, p]),
+    econ: (...a) => log.econ.push(a), save: () => { log.saved++; }, ...over,
+  };
+  return { deps, log, get: () => ({ coins, stored, auction }) };
+}
+
+test('callText', () => {
+  assert.equal(callText(5, false), '');
+  assert.equal(callText(2.5, false), '3…');
+  assert.equal(callText(1.5, false), '2…');
+  assert.equal(callText(0.5, false), '1…');
+  assert.equal(callText(4, true), '⏱️ 연장!');
+});
+
+test('begin records the day and saves before the run', () => {
+  const f = fakes();
+  createAuctionScene(f.deps).begin('bid');
+  assert.equal(f.get().auction.lastDate, '2026-11-10');
+  assert.ok(f.log.saved >= 1);
+  assert.equal(f.log.track[0][0], 'auction_join');
+  assert.equal(f.log.track[0][1].mode, 'bid');
+});
+
+test('player wins when npcs never bid', () => {
+  const f = fakes();
+  const s = createAuctionScene(f.deps);
+  s.begin('bid');
+  assert.equal(s.playerBid(50), true);
+  for (let i = 0; i < 200 && s.active(); i++) s.update(0.1, i * 0.1);
+  assert.equal(f.log.done.outcome, 'win');
+  const price = f.log.done.price;
+  assert.equal(f.get().coins, 820 - price);
+  assert.equal(Object.values(f.get().stored).reduce((a, b) => a + b, 0), 1);
+  assert.equal(f.get().auction.wins, 1);
+  assert.ok(f.log.econ.some(e => e[0] === 'auction_win' && e[2] === -price));
+  assert.ok(f.log.track.some(([n, p]) => n === 'auction_result' && p.outcome === 'win' && p.my_bids === 1));
+});
+
+test('watch mode cannot bid and never charges', () => {
+  const f = fakes({ rng: () => 0 });
+  const s = createAuctionScene(f.deps);
+  s.begin('watch');
+  assert.equal(s.playerBid(10), false);
+  for (let i = 0; i < 600 && s.active(); i++) s.update(0.1, i * 0.1);
+  assert.equal(f.log.done.outcome, 'watch');
+  assert.equal(f.get().coins, 820);
+  assert.equal(f.log.econ.length, 0);
+});
+
+test('a big frame advances several fixed ticks', () => {
+  const f = fakes();
+  const s = createAuctionScene(f.deps);
+  s.begin('bid');
+  s.update(0.35, 0.35);
+  assert.ok(Math.abs(f.log.ui.at(-1).t - 7.7) < 1e-6, String(f.log.ui.at(-1).t));
+});
+
+test('a bid over the wallet is ignored', () => {
+  const start = lotFor('2026-11-10').start;
+  const f = fakes({ getCoins: () => start + 10 });
+  const s = createAuctionScene(f.deps);
+  s.begin('bid');
+  assert.equal(s.playerBid(30), false);
+  assert.equal(s.playerBid(50), false);
+  assert.equal(f.log.ui.at(-1).price, start);
+  assert.equal(s.playerBid(10), true);
+  assert.equal(f.log.ui.at(-1).price, start + 10);
+});
+
+test('the current leader cannot bid again', () => {
+  const f = fakes();
+  const s = createAuctionScene(f.deps);
+  s.begin('bid');
+  assert.equal(s.playerBid(10), true);
+  const price = f.log.ui.at(-1).price;
+  assert.equal(s.playerBid(10), false);
+  assert.equal(f.log.ui.at(-1).price, price);
+});
+
+test('night level is applied before tension every frame', () => {
+  const f = fakes();
+  const s = createAuctionScene(f.deps);
+  s.begin('bid');
+  s.update(0.1, 1);
+  const names = f.log.calls.map(c => c[0]);
+  const i = names.lastIndexOf('tension');
+  assert.ok(i > 0);
+  assert.equal(names[i - 1], 'night');
+  assert.equal(f.log.calls[i - 1][1], 0.6);
+});
