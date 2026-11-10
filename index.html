@@ -2485,6 +2485,8 @@
   .npc-actions .ghost { background: #eef2ee; color: var(--ink); }
   .npc-actions .primary { background: var(--mint); color: var(--ink); }
   .npc-actions button:active { transform: scale(0.95); }
+  .npc-actions.gift-pick { flex-wrap: wrap; justify-content: center; gap: 8px; }
+  .npc-actions.gift-pick button { padding: 9px 12px; white-space: nowrap; }
 
   /* 모바일 전용 "대화하기" 버튼 — NPC 근처에서만 표시 */
   #talk-btn { position: fixed; left: 50%; bottom: calc(310px + env(safe-area-inset-bottom)); transform: translateX(-50%);
@@ -4499,7 +4501,7 @@
           $('npc-qprog').textContent = `${view.progress} / ${view.target}`;
           $('npc-qreward').textContent = '🎁 ' + view.reward;
         }
-        const actions = $('npc-actions'); actions.innerHTML = '';
+        const actions = $('npc-actions'); actions.innerHTML = ''; actions.classList.remove('gift-pick');
         const addBtn = (label, cls, fn) => { const b = document.createElement('button'); b.className = cls; b.textContent = label; b.addEventListener('click', fn); actions.appendChild(b); };
         if (view.mode === 'offer') {
           addBtn('수락하기', 'primary', () => { npcAccept(); ui.toast('📜 퀘스트를 수락했어요!'); closeNpc(); });
@@ -5563,11 +5565,14 @@
     // 선물 주기 선택기 — 보유 선물 버튼으로 교체
     function showGiftPicker(view) {
       const actions = $('npc-actions'); actions.innerHTML = '';
+      actions.classList.add('gift-pick');
       const owned = Input.ownedGifts();
-      Input.getGifts().forEach(g => {
-        const n = owned[g.id] || 0; if (n <= 0) return;
+      const kept = Input.keptGifts().map(k => ({ id: k.id, ico: k.ico + (k.paper ? '🎀' : ''), name: k.name, n: k.n, love: k.love }));
+      const made = Input.getGifts().map(g => ({ id: g.id, ico: g.ico, name: g.name, n: owned[g.id] || 0, love: g.love || 1 }));
+      [...kept, ...made].forEach(g => {
+        const n = g.n; if (n <= 0) return;
         const b = document.createElement('button'); b.className = 'ghost';
-        b.textContent = `${g.ico} ${g.name} ×${n}`;
+        b.innerHTML = `<span>${g.ico}</span> <span>${g.name}</span> <span>×${n}</span> <span class="cv-heart">❤️+${g.love}</span>`;
         b.addEventListener('click', () => {
           const res = Input.giveGift(g.id);
           if (!res.ok) { ui.toast(res.msg || '줄 수 없어요'); return; }
@@ -6262,7 +6267,7 @@
     // ── 작업대 메뉴 (도구 / 야외 / 선물 탭) — 요리는 🍳 자유주방으로 분리 ──
     let cookTab = 'tool';
     // 🌟 bug(반딧불이)가 빠져 있어 촘촘한 포충망·금빛 포충망 비용이 '🪵12 🪵2' 처럼 목재로 보였다(2026-09-24 리뷰)
-    const ico = (k) => ({ fish: '🐟', crop: '🥕', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', seed: '🌰', coins: '🪙', bug: '🌟' })[k] || '🪵';
+    const ico = (k) => ({ fish: '🐟', crop: '🥕', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', seed: '🌰', coins: '🪙', bug: '🌟', star: '⭐', glow: '✨' })[k] || SELL_ICO_G[k] || '🪵';
     function updateCookInv() { $('cook-inv').textContent = `🪵 ${lastInv.wood}  🥕 ${lastInv.crop}  🐟 ${lastInv.fish || 0}  🪨 ${lastInv.stone || 0}  ⚫ ${lastInv.coal || 0}  💎 ${lastInv.gem || 0}`; }
     function renderTools() {
       updateCookInv();
@@ -6348,13 +6353,19 @@
       updateCookInv();
       const owned = Input.ownedGifts();
       const box = $('gift-items'); box.innerHTML = '';
+      const kept = Input.keptGifts();
+      if (kept.length) {
+        const strip = document.createElement('div'); strip.className = 'ck-kept';
+        strip.innerHTML = `<span>간직한 작품</span>` + kept.map(k => `<span class="chip">${k.ico}${k.paper ? '🎀' : ''} ×${k.n}</span>`).join('');
+        box.appendChild(strip);
+      }
       Input.getGifts().forEach(g => {
         const costStr = Object.entries(g.cost).map(([k, n]) => ico(k) + n).join(' ');
         const enough = Object.entries(g.cost).every(([k, n]) => (lastInv[k] || 0) >= n);
         const have = owned[g.id] || 0;
         const el = document.createElement('div');
         el.className = 'ck-item' + (enough ? '' : ' off');
-        el.innerHTML = `<span class="ck-ico">${g.ico}</span><span class="ck-name">${g.name}${have ? ` ×${have}` : ''}</span><span class="ck-buff">주민 선물</span><span class="ck-cost">${costStr}</span>`;
+        el.innerHTML = `<span class="ck-ico">${g.ico}</span><span class="ck-name">${g.name}${have ? ` ×${have}` : ''}</span><span class="ck-buff">주민 선물 <span class="cv-heart">❤️+${g.love || 1}</span></span><span class="ck-cost">${costStr}</span>${g.isNew ? '<span class="ck-tag new">새 선물</span>' : ''}`;
         el.addEventListener('click', () => {
           const res = Input.craftGift(g.id);
           if (!res.ok) { ui.toast(res.msg || '재료가 부족해요'); return; }
@@ -8096,7 +8107,7 @@
       box.appendChild(pantrySection(Input.getPantry()));   // 🍱 찬장을 맨 위로 — 먹으러 여는 일이 가장 잦다
       BAG_CATS.forEach(cat => box.appendChild(bagSection(cat.name, cat.keys.map(k => ({ ...ITEM_META[k], count: lastInv[k] || 0 })))));
       const owned = Input.ownedGifts();
-      box.appendChild(bagSection('🎁 선물', Input.getGifts().map(g => ({ ico: g.ico, name: g.name, count: owned[g.id] || 0 }))));
+      box.appendChild(bagSection('🎁 선물', [...Input.keptGifts().map(k => ({ ico: k.ico + (k.paper ? '🎀' : ''), name: k.name, count: k.n })), ...Input.getGifts().map(g => ({ ico: g.ico, name: g.name, count: owned[g.id] || 0 }))]));
     }
     function openBag() { renderBag(); Input.setAnalog(0, 0); $('bag-menu').classList.add('show'); $('bag-backdrop').classList.add('show'); document.body.classList.add('menu-open'); }
     function closeBag() { $('bag-menu').classList.remove('show'); $('bag-backdrop').classList.remove('show'); document.body.classList.remove('menu-open'); }
