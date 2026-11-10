@@ -1,5 +1,7 @@
 export const AUCTION_STAGE = { x: 10.5, z: -18 };
 export const AUCTION_STAGE_R = 4.2;
+export const AUCTION_ENTRY = { x: AUCTION_STAGE.x, z: AUCTION_STAGE.z + 3.2 };
+export const AUCTION_STAGE_BOX = { x1: AUCTION_STAGE.x - 3.5, z1: AUCTION_STAGE.z - 1.8, x2: AUCTION_STAGE.x + 3.5, z2: AUCTION_STAGE.z + 1.4 };
 export const AUCTION_SPOTS = {
   merchant: [1.75, -0.25],
   curator: [-2.9, 3.3],
