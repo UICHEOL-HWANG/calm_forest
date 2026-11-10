@@ -148,3 +148,19 @@ test('every fishing spot sits clear of the route buoys so the boat can reach its
     for (const b of BUOYS) assert.ok(Math.hypot(s.at[0] - b.x, s.at[1] - b.z) > b.r + 1.5, `spot ${s.at} too close to buoy ${b.x},${b.z}`);
   }
 });
+
+test('sellCatch sells only the sea catch at the hut and leaves restaurant goods', async () => {
+  const { sellCatch } = await import('../js/port/rules.js');
+  const { SELL_PRICE } = await import('../js/port/data.js');
+  const port = { pantry: { fish: 3, bigfish: 1, squid: 2, shrimp: 1, clam: 4, rice: 2, veg: 2 } };
+  const r = sellCatch(port);
+  assert.equal(r.coins, 3 * SELL_PRICE.fish + SELL_PRICE.bigfish + 2 * SELL_PRICE.squid + SELL_PRICE.shrimp);
+  assert.deepEqual(r.sold, { fish: 3, bigfish: 1, squid: 2, shrimp: 1 });
+  assert.deepEqual(r.port.pantry, { fish: 0, bigfish: 0, squid: 0, shrimp: 0, clam: 4, rice: 2, veg: 2 });
+  assert.equal(port.pantry.fish, 3);
+});
+
+test('sellCatch with nothing to sell returns null', async () => {
+  const { sellCatch } = await import('../js/port/rules.js');
+  assert.equal(sellCatch({ pantry: { clam: 4, rice: 2 } }), null);
+});

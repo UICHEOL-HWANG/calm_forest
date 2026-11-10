@@ -2,9 +2,9 @@ import * as THREE from 'three';
 import { PORT, PORT_PIER } from '../data/places.js';
 import { ISLAND, ISLAND_R, ISLAND_DOCK, VILLAGE_DOCK, PIER_END, WALK_R, LAND_Y, ROUTE, FAST_ROUTE, BUOYS, SEA_BOUNDS, MARKET_POS, HUT_POS, LIGHT_POS,
   BOAT_SPEED, BOAT_TURN, FAST_MULT, BITE_FIRST, BITE_WIN, SEA_SPOTS, PIER_SPOT, SPOT_LEFT, PANTRY_ICO, PORT_COPY,
-  QUESTS, SOLIDS, ISLAND_TREES, ISLAND_ROCKS, FENCE, MARKET_PRICE, MARKET_GIVE } from './data.js';
+  QUESTS, SOLIDS, ISLAND_TREES, ISLAND_ROCKS, FENCE, SIGNS, MARKET_PRICE, MARKET_GIVE } from './data.js';
 import { tubBoat, buildPortShops, setPortNight, mat, glow } from './models.js';
-import { rollCatch, addToPantry, acceptQuest, pickItem, claimQuest, boardGate } from './rules.js';
+import { rollCatch, addToPantry, acceptQuest, pickItem, claimQuest, boardGate, sellCatch } from './rules.js';
 import { disarmPortPier, nearPortPier, portPierBoat } from './pier.js';
 import { createGuide } from '../guide/runner.js';
 import { createGuideView } from '../guide/view.js';
@@ -38,6 +38,7 @@ let guide = null, view = null, guideHome = false, pointKey = null;
 export const guideActive = () => !!guide?.active();
 export const guideHides = () => guideActive() && guide.index() < 10;
 const ROD_READY_R = 5;
+const MARKET_R = 3.2, HUT_R = 3.6, LIGHT_R = 3;
 const TALK_R = 2.6, PICK_R = 1.5, TALK_CLOSE_R = 3, PIER_END_R = 1.2;
 const portState = () => env.gameState().port;
 
@@ -104,6 +105,8 @@ function buildPort() {
   hut.position.copy(W(HUT_POS.x, HUT_POS.z, LAND_Y)); hut.rotation.y = 0.5; shops.add(hut);
   boat = tubBoat(); group.add(boat);
   buildResidents();
+  const signs = new THREE.Group(); signs.position.copy(W(0, 0, LAND_Y)); group.add(signs);
+  for (const sg of SIGNS) signs.add(env.makeSignpost(sg.text, sg.x, sg.z));
   for (const [c, r] of SOLIDS) solids.push(env.solidCircle(PORT.x + c.x, PORT.z + c.z, r));
 }
 
@@ -368,7 +371,7 @@ function spotsTick(isNight) {
   }
 }
 
-const ISLAND_BTN = { port_next: '💬', port_talk: '💬', port_pick: '✋', port_buy: '🛒', port_board: '🛶' };
+const ISLAND_BTN = { port_next: '💬', port_talk: '💬', port_pick: '✋', port_buy: '🛒', port_sell: '🪙', port_board: '🛶' };
 
 function btnState() {
   const f = P.fishing;
@@ -406,6 +409,7 @@ export function portAction() {
   if (c.nd === 'port_pick') return pick(c.it);
   if (c.nd === 'port_talk') return talkTo(c.id, c.kind);
   if (c.nd === 'port_buy') return buy();
+  if (c.nd === 'port_sell') return sell();
   if (c.nd === 'port_board') return leaveIsland(false);
 }
 
@@ -461,9 +465,12 @@ function islandContext() {
   if (it) return { nd: 'port_pick', it };
   const q = nearNpc(p);
   const kind = q && talkKind(q, ps.quests[q.id]);
-  if (kind) return { nd: 'port_talk', id: q.id, kind };
+  if (kind) return { nd: 'port_talk', id: q.id, kind, prompt: q.id === 'light' ? (env.isNight?.() ? PORT_COPY.lightNight : PORT_COPY.lightDay) : '' };
   if (guideHides()) return null;
-  if (ps.boughtDay !== env.todayStr() && Math.hypot(p.x - PORT.x - MARKET_POS.x, p.z - PORT.z - MARKET_POS.z) < TALK_R) return { nd: 'port_buy' };
+  const near = (c, r) => Math.hypot(p.x - PORT.x - c.x, p.z - PORT.z - c.z) < r;
+  if (near(MARKET_POS, MARKET_R)) return ps.boughtDay !== env.todayStr() ? { nd: 'port_buy', prompt: PORT_COPY.marketInfo } : { nd: null, prompt: PORT_COPY.marketShut };
+  if (near(HUT_POS, HUT_R)) return sellCatch(ps) ? { nd: 'port_sell', prompt: PORT_COPY.hutSell } : { nd: null, prompt: PORT_COPY.hutEmpty };
+  if (near(LIGHT_POS, LIGHT_R)) return { nd: null, prompt: env.isNight?.() ? PORT_COPY.lightNight : PORT_COPY.lightDay };
   if (guide?.current()?.id === 'free') boardArmed = true;
   const g = boardGate(boardArmed, Math.hypot(p.x - PORT.x - PIER_END.x, p.z - PORT.z - PIER_END.z), PIER_END_R);
   boardArmed = g.armed;
@@ -528,6 +535,15 @@ function buy() {
   gs.port = { ...addToPantry(portState(), MARKET_GIVE), boughtDay: env.todayStr() };
   env.popAt?.(W(MARKET_POS.x, MARKET_POS.z), Object.entries(MARKET_GIVE).map(([k, n]) => `${PANTRY_ICO[k]}+${n}`).join(' '));
   env.ui.toast?.(PORT_COPY.market, 3200);
+  env.requestSave();
+}
+
+function sell() {
+  const r = sellCatch(portState()); if (!r) return;
+  const gs = env.gameState(); gs.port = r.port;
+  env.earnCoins(r.coins);
+  env.popAt?.(W(HUT_POS.x, HUT_POS.z), `🪙+${r.coins}`);
+  env.ui.toast?.(`${PORT_COPY.sold} ${Object.entries(r.sold).map(([k, n]) => `${PANTRY_ICO[k]}${n}`).join(' ')} → 🪙${r.coins}`, 3000);
   env.requestSave();
 }
 

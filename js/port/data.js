@@ -19,6 +19,12 @@ export const SEA_BOUNDS = { x0: -26, x1: 28, z0: -24, z1: 24 };
 export const MARKET_POS = { x: 32, z: -6 };
 export const HUT_POS = { x: 29.6, z: 8 };
 export const LIGHT_POS = { x: 60, z: -9 };
+export const SIGNS = [
+  { text: '🏮 포장마차', x: 29.4, z: -7.6 },
+  { text: '🛖 어부네 집', x: 27.2, z: 5.6 },
+  { text: '🗼 등대', x: 57.2, z: -9.4 },
+  { text: '🥬 염소네 밭', x: 50.2, z: -5.6 },
+];
 export const ISLAND_TREES = [[44, -16, 1.2], [40, -14, 0.9], [47, 8, 1.3], [51, 4, 1], [38, 6, 0.9], [59, 2, 1.1], [36, -14, 1]];
 export const ISLAND_ROCKS = [[31, 16], [34.5, 18.2], [37.2, 18.9], [29.5, 13.8], [39.5, 19]];
 export const FENCE = { x0: 51, x1: 57, z: [-6.8, -13.2] };
@@ -30,6 +36,7 @@ export const FAST_MULT = 2.6;
 export const BITE_FIRST = { delay: 1.4, win: 2.2 };
 export const BITE_WIN = 0.9;
 export const MARKET_PRICE = 30;
+export const SELL_PRICE = { fish: 5, shrimp: 4, squid: 10, bigfish: 15 };
 export const MARKET_GIVE = { rice: 2, veg: 2 };
 
 export const SEA_SPOTS = [
@@ -61,6 +68,7 @@ export const SOLIDS = [
   ...ISLAND_TREES.map(([x, z, s]) => [at(x, z), TREE_SOLID_R * s]),
   ...ISLAND_ROCKS.map(([x, z]) => [at(x, z), ROCK_SOLID_R]),
   ...railCircles,
+  ...SIGNS.map(s => [at(s.x, s.z), 0.3]),
 ];
 
 export const PORT_COPY = {
@@ -73,4 +81,11 @@ export const PORT_COPY = {
   noCoins: '코인이 모자라요',
   market: '코인 30으로 쌀 2·채소 2를 샀어요. 의뢰를 하면 더 많이 받아요.',
   arrive: '🗺️ 이제 마을 부두에서 포구 섬으로 바로 갈 수 있어요',
+  marketInfo: '🏮 포장마차 · 코인 30으로 🍚2 🥬2 (하루 한 번)',
+  marketShut: '🏮 포장마차 · 오늘 장사는 끝났어요',
+  hutSell: '🛖 어부네 집 · 잡은 생선 팔기',
+  hutEmpty: '🛖 어부네 집 · 바다에서 잡은 생선을 사 줘요',
+  lightDay: '🗼 등대 · 밤에 불이 켜지면 밤 낚시터가 열려요',
+  lightNight: '🗼 등대 · 불이 켜졌어요. 밤 낚시터가 열렸어요',
+  sold: '생선을 팔았어요',
 };

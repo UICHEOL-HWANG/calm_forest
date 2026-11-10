@@ -1,4 +1,4 @@
-const RING = 8;
+const RING = 8, REACHED = 0.5;
 
 function segClear(a, b, circles, skip) {
   const dx = b.x - a.x, dz = b.z - a.z, l2 = dx * dx + dz * dz;
@@ -53,9 +53,10 @@ export function createNav(solids, walkable = () => true, { pad = 0.6, clear = 0.
       for (const [v, w] of adj[u]) if (dist[u] + w < dist[v]) { dist[v] = dist[u] + w; prev[v] = u; }
     }
     if (best < 0) return tgt;
-    let first = best;
-    while (prev[first] >= 0) first = prev[first];
-    return { ...tgt, x: nodes[first].x, z: nodes[first].z };
+    const path = [];
+    for (let k = best; k >= 0; k = prev[k]) path.unshift(k);
+    const ahead = path.find(k => Math.hypot(nodes[k].x - me.x, nodes[k].z - me.z) > REACHED);
+    return ahead === undefined ? tgt : { ...tgt, x: nodes[ahead].x, z: nodes[ahead].z };
   }
 
   return { route, nodes: nodes.length };

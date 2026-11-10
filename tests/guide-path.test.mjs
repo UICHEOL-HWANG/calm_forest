@@ -20,3 +20,11 @@ test('a target inside a solid (a resident) is still reachable', () => {
   const w = nav.route({ x: 0, z: 0 }, { x: 5, z: 0 });
   assert.ok(Math.abs(w.z) > 0.8);
 });
+
+test('standing on a path corner points to the next corner, never at your own feet', () => {
+  const wall = Array.from({ length: 13 }, (_, i) => [{ x: 5, z: -3 + i * 0.5 }, 0.3]);
+  const nav = createNav(wall);
+  const first = nav.route({ x: 0, z: 0 }, { x: 10, z: 0 });
+  const next = nav.route({ x: first.x, z: first.z }, { x: 10, z: 0 });
+  assert.ok(Math.hypot(next.x - first.x, next.z - first.z) > 0.5, `${next.x},${next.z}`);
+});

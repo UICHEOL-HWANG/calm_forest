@@ -1,4 +1,4 @@
-import { PANTRY_KEYS, QUESTS, CATCH } from './data.js';
+import { PANTRY_KEYS, QUESTS, CATCH, SELL_PRICE } from './data.js';
 
 const QUEST_BY_ID = new Map(QUESTS.map(q => [q.id, q]));
 const STATES = new Set(['avail', 'active', 'done']);
@@ -73,4 +73,16 @@ export function pantryUnits(port) {
 
 export function boardGate(armed, dist, r) {
   return { armed: armed || dist >= r, can: armed && dist < r };
+}
+
+export function sellCatch(port) {
+  const pantry = port.pantry ?? {}, sold = {};
+  let coins = 0;
+  for (const [k, price] of Object.entries(SELL_PRICE)) {
+    const n = nat(pantry[k]);
+    if (!n) continue;
+    sold[k] = n; coins += n * price;
+  }
+  if (!coins) return null;
+  return { port: { ...port, pantry: { ...pantry, ...Object.fromEntries(Object.keys(sold).map(k => [k, 0])) } }, coins, sold };
 }
