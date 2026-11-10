@@ -110,3 +110,41 @@ test('도착한 자리에선 한 번 반경 밖으로 나가기 전엔 배를 �
   g = boardGate(armed, 0.4, 1.2);
   assert.equal(g.can, true);
 });
+
+test('pushOutOfCircles keeps the boat outside every route buoy', async () => {
+  const { pushOutOfCircles } = await import('../js/port/sail.js');
+  const buoys = [{ x: 0, z: 0, r: 1.4 }, { x: 5, z: 0, r: 1.4 }];
+  const p = pushOutOfCircles({ x: 0.5, z: 0.2 }, buoys);
+  assert.ok(Math.hypot(p.x, p.z) >= 1.4 - 1e-9);
+  assert.deepEqual(pushOutOfCircles({ x: 2.5, z: 0 }, buoys), { x: 2.5, z: 0 });
+});
+
+test('offsetRoute keeps both ends and moves every buoy waypoint sideways by d', async () => {
+  const { offsetRoute } = await import('../js/port/sail.js');
+  const route = [[0, 0], [5, 0], [10, 0]];
+  const out = offsetRoute(route, 1.8);
+  assert.deepEqual(out[0], [0, 0]);
+  assert.deepEqual(out[2], [10, 0]);
+  assert.ok(Math.abs(Math.hypot(out[1][0] - 5, out[1][1]) - 1.8) < 1e-9);
+});
+
+test('fast route never comes within buoy reach of the real buoys', async () => {
+  const { offsetRoute, fastStep, pushOutOfCircles } = await import('../js/port/sail.js');
+  const { ROUTE, FAST_ROUTE, BUOYS } = await import('../js/port/data.js');
+  assert.equal(FAST_ROUTE.length, ROUTE.length);
+  let st = { p: { x: FAST_ROUTE[0][0], z: FAST_ROUTE[0][1] }, wp: 1, done: false };
+  for (let i = 0; i < 2000 && !st.done; i++) {
+    st = fastStep(st.p, FAST_ROUTE, st.wp, 0.1);
+    for (const b of BUOYS) assert.ok(Math.hypot(st.p.x - b.x, st.p.z - b.z) >= b.r, `hit buoy at ${b.x},${b.z}`);
+  }
+  assert.ok(st.done);
+  assert.equal(typeof offsetRoute, 'function');
+  assert.equal(typeof pushOutOfCircles, 'function');
+});
+
+test('every fishing spot sits clear of the route buoys so the boat can reach its centre', async () => {
+  const { SEA_SPOTS, PIER_SPOT, BUOYS } = await import('../js/port/data.js');
+  for (const s of [...SEA_SPOTS, PIER_SPOT]) {
+    for (const b of BUOYS) assert.ok(Math.hypot(s.at[0] - b.x, s.at[1] - b.z) > b.r + 1.5, `spot ${s.at} too close to buoy ${b.x},${b.z}`);
+  }
+});

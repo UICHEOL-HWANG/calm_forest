@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PORT, PORT_PIER } from '../data/places.js';
-import { ISLAND, ISLAND_R, ISLAND_DOCK, VILLAGE_DOCK, PIER_END, WALK_R, LAND_Y, ROUTE, SEA_BOUNDS, MARKET_POS, HUT_POS, LIGHT_POS,
+import { ISLAND, ISLAND_R, ISLAND_DOCK, VILLAGE_DOCK, PIER_END, WALK_R, LAND_Y, ROUTE, FAST_ROUTE, BUOYS, SEA_BOUNDS, MARKET_POS, HUT_POS, LIGHT_POS,
   BOAT_SPEED, BOAT_TURN, FAST_MULT, BITE_FIRST, BITE_WIN, SEA_SPOTS, PIER_SPOT, SPOT_LEFT, PANTRY_ICO, PORT_COPY,
   QUESTS, SOLIDS, MARKET_PRICE, MARKET_GIVE } from './data.js';
 import { tubBoat, buildPortShops, setPortNight, mat, glow } from './models.js';
@@ -12,7 +12,7 @@ import { portGuideSteps } from './guide-steps.js';
 import { buildIslandNPC, beachBuoy, npcPortrait, setNpcNight, ISLAND_NPCS } from './npc-models.js';
 import { showTalk, hideTalk, onTalkTap, talkShown } from '../mirror/talk-box.js';
 import { splitLines } from './card.js';
-import { steer, pushOutOfIsland, fastStep } from './sail.js';
+import { steer, pushOutOfIsland, pushOutOfCircles, fastStep } from './sail.js';
 import { seaHoldRod } from '../spaces/sea.js';
 import { initFishing, castSpot, castLine, twitchRod, hookFish, reelIn, clearFishing, tickFishing, fishingState } from './fishing.js';
 
@@ -250,7 +250,7 @@ export function clampPort(pos) {
   if (!onPier && d > WALK_R) { pos.x = cx + (dx / d) * WALK_R; pos.z = cz + (dz / d) * WALK_R; }
 }
 
-const ROUTE_BACK = [...ROUTE].reverse();
+const ROUTE_BACK = [...FAST_ROUTE].reverse();
 
 const _v = new THREE.Vector3();
 export function portCamera(camera, look, dt) {
@@ -281,7 +281,7 @@ function sailTick(dt) {
   const p = { x: boat.position.x - PORT.x, z: boat.position.z - PORT.z }, ox = p.x, oz = p.z;
   let next = p;
   if (P.fast) {
-    const route = P.dir > 0 ? ROUTE : ROUTE_BACK;
+    const route = P.dir > 0 ? FAST_ROUTE : ROUTE_BACK;
     const st = fastStep(p, route, P.wp ?? 1, BOAT_SPEED * FAST_MULT * dt);
     P.wp = st.wp; next = st.p;
     if (Math.hypot(next.x - ox, next.z - oz) > 1e-6) P.heading = Math.atan2(-(next.x - ox), -(next.z - oz));
@@ -291,6 +291,7 @@ function sailTick(dt) {
     P.heading = s.heading; P.speed = s.speed;
     next = { x: p.x - Math.sin(P.heading) * P.speed * dt, z: p.z - Math.cos(P.heading) * P.speed * dt };
     next = pushOutOfIsland(next, ISLAND, ISLAND_R + 2.2);
+    next = pushOutOfCircles(next, BUOYS);
     next = { x: Math.max(SEA_BOUNDS.x0, Math.min(SEA_BOUNDS.x1, next.x)), z: Math.max(SEA_BOUNDS.z0, Math.min(SEA_BOUNDS.z1, next.z)) };
   }
   P.moved += Math.hypot(next.x - ox, next.z - oz);

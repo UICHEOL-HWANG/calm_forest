@@ -1,3 +1,5 @@
+import { offsetRoute } from './sail.js';
+
 export const PANTRY_KEYS = ['fish', 'bigfish', 'squid', 'shrimp', 'clam', 'rice', 'veg'];
 export const PANTRY_ICO = { fish: '🐟', bigfish: '🐠', squid: '🦑', shrimp: '🦐', clam: '🐚', rice: '🍚', veg: '🥬' };
 
@@ -9,6 +11,10 @@ export const VILLAGE_DOCK = { x: -25.5, z: 0 };
 export const ISLAND_DOCK = { x: 20.6, z: 0 };
 export const PIER_END = { x: 22.6, z: 0 };
 export const ROUTE = [[-25.5, 0], [-18, -4.6], [-7, -0.5], [2, 5.2], [11, 1], [16, -3.6], [20.6, 0]];
+export const BUOY_HIT_R = 1.65;
+export const FAST_SIDE = 2.4;
+export const BUOYS = ROUTE.slice(1, -1).map(([x, z]) => ({ x, z, r: BUOY_HIT_R }));
+export const FAST_ROUTE = offsetRoute(ROUTE, FAST_SIDE);
 export const SEA_BOUNDS = { x0: -26, x1: 28, z0: -24, z1: 24 };
 export const MARKET_POS = { x: 32, z: -6 };
 export const HUT_POS = { x: 29.6, z: 8 };
@@ -24,7 +30,7 @@ export const MARKET_PRICE = 30;
 export const MARKET_GIVE = { rice: 2, veg: 2 };
 
 export const SEA_SPOTS = [
-  { at: [-17, -5], zone: 'near' }, { at: [-8, 6.5], zone: 'near' }, { at: [3, -6], zone: 'near' }, { at: [12, 6], zone: 'near' },
+  { at: [-15.5, -8], zone: 'near' }, { at: [-8, 6.5], zone: 'near' }, { at: [3, -6], zone: 'near' }, { at: [12, 6], zone: 'near' },
   { at: [-6, -17], zone: 'far' }, { at: [9, 18], zone: 'far' }, { at: [20, -16], zone: 'far' },
   { at: [-1, 13], zone: 'night' }, { at: [6, -13], zone: 'night' },
 ];

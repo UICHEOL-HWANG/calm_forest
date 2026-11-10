@@ -134,7 +134,7 @@ test('포구를 떠나면 의뢰 카드를 다시 그리고, 잡은 물고기는
   assert.match(body('leavePort'), /env\.refreshQuestPanel\(\)/);
   assert.match(body('tapFish'), /addToPantry[\s\S]*env\.requestSave\(\)/);
   assert.doesNotMatch(body('sailTick'), /\[\.\.\.ROUTE\]/);
-  assert.match(src, /const ROUTE_BACK = \[\.\.\.ROUTE\]\.reverse\(\);/);
+  assert.match(src, /const ROUTE_BACK = \[\.\.\.FAST_ROUTE\]\.reverse\(\);/);
   assert.doesNotMatch(read('js/guide/view.js'), /new THREE\.Euler/);
   assert.match(read('js/game.js'), /seaGroup\.visible = atSea && !port\.active;/);
 });

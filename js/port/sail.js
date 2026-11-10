@@ -15,6 +15,21 @@ export function pushOutOfIsland(p, island, r) {
   return { x: island.x + (dx / d) * r, z: island.z + (dz / d) * r };
 }
 
+export function pushOutOfCircles(p, circles) {
+  let q = p;
+  for (const c of circles) q = pushOutOfIsland(q, c, c.r);
+  return q;
+}
+
+export function offsetRoute(route, d) {
+  return route.map(([x, z], i) => {
+    if (i === 0 || i === route.length - 1) return [x, z];
+    const [ax, az] = route[i - 1], [bx, bz] = route[i + 1];
+    const tx = bx - ax, tz = bz - az, l = Math.hypot(tx, tz) || 1;
+    return [x - (tz / l) * d, z + (tx / l) * d];
+  });
+}
+
 export function fastStep(p, route, wp, dist) {
   let x = p.x, z = p.z, i = wp, left = dist;
   while (left > 0 && i < route.length) {
