@@ -32,7 +32,7 @@ import { unreadNotices, maxId } from './notices.js';   // 📮 소식함 순수 
 import { NIGHT_MIN, WAKE_TIME, daylightAt, isNightAt } from './daynight.js';
 import { BOAT_LAMP, BOAT_LAMP_POST } from './boat-lamp.js';   // 🏮 등불이 앞 장애물을 안 가리는 배치(순수 기하 규칙)   // 🌞🌙 햇빛 곡선·밤 판정·기상 시각(순수 규칙)
 import { boatDefaults, restoreBoat } from './boat/save.js';
-import { TUNING, rewardBoostMult, isMapLocked, mapOpenDay, betaDay, lockLine, openLine } from './tuning.js';   // 🧪 [베타 A/B] 보상 부스트 + 2차 맵 계단식 (난이도는 difficulty.js 로 옮겼다)
+import { PREPASS_ON, TUNING, rewardBoostMult, isMapLocked, mapOpenDay, betaDay, lockLine, openLine } from './tuning.js';   // 🧪 [베타 A/B] 보상 부스트 + 2차 맵 계단식 (난이도는 difficulty.js 로 옮겼다)
 import { easeFor, nextDda, ddaOutcome, defaultDifficulty, mergeDifficulty, PROBE_SCHEME } from './difficulty.js';   // 🎚️ 미니게임 난이도 — probe 지터 + 유저별 DDA
 import { spotToolStep, spotWant, spotKeep, SPOT_REASON, IDLE as SPOT_IDLE } from './spot-tool-auto.js';
 import { treeFallPose, TREE_FALL_IMPACT, TREE_FALL_PIVOT } from './tree-fall.js';   // 🌳 벌목 쓰러짐(기우뚱 쿵 바운스)
@@ -67,6 +67,7 @@ import { t, LANG, aiBucket, clientId } from './i18n.js';   // 🌐 i18n — DOM 
 import { createHouseGuide } from './spaces/house-guide.js';   // 🏠 목재 15개 → 집터 조망 + 방향 안내 50:50
 import { rearmMerchant } from './guide/guide-rules.js';
 import { createGoalGuide } from './guide/goal-guide.js';
+import { createHouseShort } from './guide/house-short.js';
 import { sanitizeHouseGuide } from './house-guide-rules.js';
 import { initPlaza, updatePlaza, plazaSpotNow, openPlaza, plazaScatterBlocks, plazaDefault, restorePlaza, refreshPlaza, plazaDecorMesh, plazaMapVisible } from './plaza/index.js';
 import { refreshPond, updatePond, pondScatterBlocks } from './pond/index.js';
@@ -173,7 +174,7 @@ import {
 } from './spaces/forest.js';   // 📦 🍄 채집 숲 — 새 동사: 줍기 (도구 없이, 시간이 지나면 다시 돋음)
 import {
   museumDims, MUSEUM_LIGHT, _museumNear, buildCafeHall, cafeCookDone, cafeView, closeCosPreview,
-  closeMuseumView, enterCafe, enterMuseum, exitCafe, exitMuseum, josa, museumFloor, museumFloorItems, museumGoFloor,
+  cafeOrders, closeMuseumView, enterCafe, enterMuseum, exitCafe, exitMuseum, josa, museumFloor, museumFloorItems, museumGoFloor,
   museumPlateText, museumStairs, museumView, museumViewFrame, openCosPreview, openMuseumView, playerPhase, setCosTab,
   museumGateColliders, museumGateGroup, refreshCafeGuests, refreshMuseumGate, serveCafeGuest, spawnCafeGate, spawnCosmeticShop, updateCafeGuests,
   updateCafeInteract, updateMuseumView,
@@ -1584,12 +1585,19 @@ const decorMeshes = [];    // 배치된 가구 메시
 
 let mode = 'attract';   // 'attract'(로그인 배경) | 'play'(플레이)
 let goalGuide = null;
+let houseShort = null;
+const PREPASS_DEV = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) && new URLSearchParams(location.search).get('prepass') === '1';
+let prepassProvider = PREPASS_DEV
+  ? { available: () => true, show: async () => ({ result: 'complete', valueMicros: 0 }) }
+  : { available: () => false, show: async () => ({ result: 'unavailable' }) };
+export function setPrepassProvider(p) { if (!PREPASS_DEV && p?.available && p?.show) prepassProvider = p; }
 const museumDoor = { x: MUSEUM_GATE.x, z: MUSEUM_GATE.z + 3.0 };
 function museumGoal() {
   const curator = npcObjs.find(o => o.def.id === 'curator' && !o.hidden);
   return curator ? curator.group.position : museumDoor;
 }
 export function guideBoardTab(id) { goalGuide?.boardTab(id); }
+export function guideBoardHint(tab) { return goalGuide?.boardHint(tab) || null; }
 let houseGuidance = null;   // 🏠 집터 안내 실험(부팅 후 시작)
 let dayPaused = false;  // 낮/밤 자동 순환 정지 여부 — ?time= 로 시간대를 고정하는 스토어 촬영용
 const npcObjs = [];     // 런타임 NPC 객체들
@@ -2800,6 +2808,17 @@ export async function enterGame() {
     playReminder: () => Sound.houseGuide(),
     track: trackEvent, save: requestSave,
   });
+  houseShort = createHouseShort({
+    state: () => gameState, player, house: HOUSE_POS, translate: t, track: trackEvent, save: requestSave,
+    clientId, platform: PLATFORM, today: () => todayStr(),
+    enabled: () => PREPASS_ON || PREPASS_DEV, provider: () => prepassProvider, forceArm: () => (PREPASS_DEV ? 'ad' : null),
+    inVillage: inVillage2,
+    modalOpen: () => !!ui.anyModalOpen?.() || document.body.classList.contains('spot-on') || !!goalGuide?.cinematic || !!houseGuidance?.cinematic,
+    project: (pos, lift) => projectToScreen(pos, lift),
+    topInset: () => { const c = document.getElementById('coach'); const r = c?.classList.contains('show') ? c.getBoundingClientRect() : null; return r && r.height ? Math.round(r.bottom + 30) : 0; },
+    refreshInventory: () => refreshInventoryUI(), toast: (m) => ui.toast?.(m, 2400),
+  });
+  if (PREPASS_DEV) window.__houseShort = houseShort;
   goalGuide = createGoalGuide({
     state: () => gameState, player, camera, scene,
     translate: t, track: trackEvent, save: requestSave,
@@ -2816,6 +2835,15 @@ export async function enterGame() {
     npcSpots: () => npcObjs.filter(o => !o.hidden).map(o => o.group.position),
     solids: () => colliders.filter(c => ('r' in c ? c.r >= 1.0 : true)),
     mineGate: MINE_GATE, worldTree: WORLD_TREE,
+    storySnap: () => {
+      const c = curStory()[Number(gameState.story?.ch) || 0];
+      const rule = c ? (c.rule || c.id) : null;
+      if (rule !== 'branchWater' && rule !== 'tasteGated') return null;
+      return { rule, tree: gameState.tree, inv: gameState.inventory, atCafe, orders: rule === 'tasteGated' && atCafe ? cafeOrders() : [], cooked: gameState.kitchen?.cooked || 0, served: gameState.cafe?.served || 0 };
+    },
+    cafeGate: { x: CAFE_GATE.x, z: CAFE_GATE.z + 1.3 },
+    atCafe: () => atCafe,
+    cafeGuestAt: (i) => { const g = cafeGuestObjs.find(o => o.order?.i === i); return g ? { x: CAFE.x + g.group.position.x, z: CAFE.z + g.group.position.z } : null; },
     villageSpots: () => {
       const foot = bridgeFoot();
       const offIsle = dist2D(player.position, ISLE) > ISLE_R + 0.5 && dist2D(player.position, foot) > 2.5;
@@ -6396,6 +6424,7 @@ function animate() {
   updatePond(dt, inVillage2());
   updateShopCue(t);          // 🛒 좌판 안내 스프라이트
   if (mode === 'play') goalGuide?.update(dt);
+  if (mode === 'play') houseShort?.update(dt);
   houseGuidance?.update();   // 🏠 조망샷은 다른 카메라 연출·모달이 비었을 때만 시작
   // 집 터 안내판/마커: 플레이 중 + 미완성일 때만 (로그인 화면에선 숨김)
   const showHouseCue = (mode === 'play' && gameState.houseStage < 3);

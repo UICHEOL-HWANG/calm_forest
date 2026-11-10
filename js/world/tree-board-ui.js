@@ -6,6 +6,8 @@
 //  ▶ 영어 모드는 MutationObserver 가 텍스트 노드 단위로 번역한다 — 한국어 문구와 숫자를 한 노드에 섞지 않는다.
 // =============================================================
 
+import { fillStepCard } from '../guide/step-card.js';
+
 const $ = (id) => document.getElementById(id);
 
 function el(tag, cls, text) {
@@ -42,6 +44,12 @@ export function openTreeBoard(view, acts) {
   m.classList.add('show');
 }
 
+function guideCard(g) {
+  const card = el('div', 'tb-guide');
+  fillStepCard(card, g, { t: 'tb-guide-t', d: 'tb-guide-d', s: 'tb-guide-s' });
+  return card;
+}
+
 export function renderTreeBoard(view) {
   if (!$('tree-modal')) return;
   $('tb-life-num').textContent = `${view.life}%`;
@@ -51,6 +59,8 @@ export function renderTreeBoard(view) {
   for (const b of view.branches) {
     const t = el('button', `tb-tab tb-${b.status}${b.id === view.cur.id ? ' active' : ''}`);
     t.type = 'button';
+    t.dataset.branch = b.id;
+    if (view.guide?.target === 'tab' && view.guide.tab === b.id) t.classList.add('tb-guide-on');
     t.append(el('i', 'tb-dot'), el('span', 'tb-ico', b.ico));
     t.title = b.name;
     t.setAttribute('aria-label', b.name);
@@ -72,6 +82,7 @@ export function renderTreeBoard(view) {
   }
   lead.textContent = c.lead;
   body.appendChild(lead);
+  if (view.guide?.target === 'tab') body.appendChild(guideCard(view.guide));
 
   // ── 🏡 빈터 꾸미기 ──
   const hab = el('section', 'tb-sec');
@@ -82,7 +93,7 @@ export function renderTreeBoard(view) {
 
   const plot = el('div', 'tb-plot');
   c.tiles.forEach((tile, i) => {
-    const b = el('button', tile ? `tb-tile on${i === view.fresh ? ' fresh' : ''}` : 'tb-tile');
+    const b = el('button', tile ? `tb-tile on${i === view.fresh ? ' fresh' : ''}${view.guide?.target === 'tiles' ? ' tb-guide-on' : ''}` : 'tb-tile');
     b.type = 'button';
     if (tile) {
       b.append(el('span', 'tb-tile-ico', tile.ico), el('span', 'tb-tile-name', tile.name));
@@ -110,12 +121,14 @@ export function renderTreeBoard(view) {
     if (c.advice.clear) hab.appendChild(el('p', 'tb-advice-note', '지금 칸으로는 모자라요. 놓인 칸을 눌러 빼고 추천대로 다시 놓아요'));
   }
   hab.appendChild(el('p', 'tb-hint', '눌러서 놓기 · 놓인 칸을 누르면 빼기'));
+  if (view.guide && view.guide.target !== 'tab') hab.appendChild(guideCard(view.guide));
 
   const decos = el('div', 'tb-decos');
   for (const d of c.decor) {
     const b = el('button', 'tb-deco');
     b.type = 'button';
     b.dataset.deco = d.id;
+    if (view.guide?.target === 'deco' && view.guide.deco === d.id) b.classList.add('tb-guide-on');
     b.disabled = !d.can;
     const txt = el('span', 'tb-deco-txt');
     txt.append(el('b', null, d.name), el('small', null, `${d.tagsText} · ${d.costText}`));

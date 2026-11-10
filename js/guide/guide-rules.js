@@ -15,11 +15,11 @@ export const GOALS = {
   exit: { ico: '🚪', label: '나가는 문', title: '🚪 마을로 나가기' },
 };
 
-export const VILLAGE_KEYS = new Set(['tree', 'cave', 'farmBranch', 'wall', 'roof', 'farm', 'cosShop', 'bridge', 'museum']);
+export const VILLAGE_KEYS = new Set(['tree', 'cave', 'farmBranch', 'wall', 'roof', 'farm', 'cosShop', 'bridge', 'museum', 'story_worldTree', 'story_cafeDoor']);
 
 const TUT_KEYS = { chop: 'tree', mine: 'cave', house2: 'wall', harvest: 'farm', build: 'roof', dress: 'cosShop', bridge: 'bridge', curator: 'museum' };
 
-export const ARRIVE = { tree: 2.3, cave: 1.6, stone: 2.2, farmBranch: 4.2, coal: 2.2, miner: 1.5, lift: 1.8, wall: 2.4, roof: 2.4, farm: 1.6, cosShop: 1.8, bridge: 1.8, museum: 2.0, exit: 1.5 };
+export const ARRIVE = { tree: 2.3, cave: 1.6, stone: 2.2, farmBranch: 4.2, coal: 2.2, miner: 1.5, lift: 1.8, wall: 2.4, roof: 2.4, farm: 1.6, cosShop: 1.8, bridge: 1.8, museum: 2.0, exit: 1.5, story_worldTree: 4.2, story_cafeDoor: 1.6, story_cafeGuest: 2.0 };
 
 export const CINE_SUB = '다음 목적지';
 export const MERCHANT_WOOD = 5;
@@ -54,6 +54,34 @@ export function edgeAnchor(me, tgt, w, h, pad) {
 const asCircle = (s) => ('r' in s ? { x: s.x, z: s.z, r: s.r }
   : { x: (s.x1 + s.x2) / 2, z: (s.z1 + s.z2) / 2, r: Math.hypot(s.x2 - s.x1, s.z2 - s.z1) / 2 });
 
+const inBox = (s, p, m) => p.x >= Math.min(s.x1, s.x2) - m && p.x <= Math.max(s.x1, s.x2) + m && p.z >= Math.min(s.z1, s.z2) - m && p.z <= Math.max(s.z1, s.z2) + m;
+
+function segBoxEntry(a, b, s, m) {
+  let t0 = 0, t1 = 1;
+  for (const [p, q, lo, hi] of [[a.x, b.x, Math.min(s.x1, s.x2) - m, Math.max(s.x1, s.x2) + m], [a.z, b.z, Math.min(s.z1, s.z2) - m, Math.max(s.z1, s.z2) + m]]) {
+    const d = q - p;
+    if (Math.abs(d) < 1e-9) { if (p < lo || p > hi) return null; continue; }
+    let ta = (lo - p) / d, tb = (hi - p) / d;
+    if (ta > tb) [ta, tb] = [tb, ta];
+    t0 = Math.max(t0, ta); t1 = Math.min(t1, tb);
+    if (t0 > t1) return null;
+  }
+  return t0;
+}
+
+function aroundBox(from, to, s, pad) {
+  const xs = [Math.min(s.x1, s.x2) - pad, Math.max(s.x1, s.x2) + pad], zs = [Math.min(s.z1, s.z2) - pad, Math.max(s.z1, s.z2) + pad];
+  let best = null;
+  for (const x of xs) for (const z of zs) {
+    const c = { x, z };
+    if (Math.hypot(c.x - from.x, c.z - from.z) < 0.5 || segBoxEntry(from, c, s, 0.05) !== null) continue;
+    const blocked = segBoxEntry(c, to, s, 0.05) !== null ? 1000 : 0;
+    const cost = Math.hypot(c.x - from.x, c.z - from.z) + Math.hypot(to.x - c.x, to.z - c.z) + blocked;
+    if (!best || cost < best.cost) best = { c, cost };
+  }
+  return best ? best.c : to;
+}
+
 export function detourPoint(from, to, solids, pad = 0.8) {
   const dx = to.x - from.x, dz = to.z - from.z, len = Math.hypot(dx, dz);
   if (len < 1e-6) return to;
@@ -61,6 +89,12 @@ export function detourPoint(from, to, solids, pad = 0.8) {
   let hit = null;
   for (const s of solids) {
     if (s.off) continue;
+    if (!('r' in s)) {
+      if (inBox(s, to, 0.3) || inBox(s, from, 0)) continue;
+      const te = segBoxEntry(from, to, s, 0.3);
+      if (te !== null && (!hit || te * len < hit.t)) hit = { t: te * len, box: s };
+      continue;
+    }
     const c = asCircle(s);
     if (Math.hypot(to.x - c.x, to.z - c.z) <= c.r + 0.5 || Math.hypot(from.x - c.x, from.z - c.z) <= c.r) continue;
     const t = (c.x - from.x) * ux + (c.z - from.z) * uz;
@@ -70,6 +104,7 @@ export function detourPoint(from, to, solids, pad = 0.8) {
     if (!hit || t < hit.t) hit = { t, c, side };
   }
   if (!hit) return to;
+  if (hit.box) return aroundBox(from, to, hit.box, Math.min(pad, 0.6));
   const sign = hit.side >= 0 ? -1 : 1, off = hit.c.r + pad;
   return { x: hit.c.x + nx * off * sign, z: hit.c.z + nz * off * sign };
 }

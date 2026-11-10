@@ -11,7 +11,7 @@
 import {
   Input, camera, cameraFree, defaultCamPose, setCameraRig, dist2D, gameState, giveReward, isOpen, obstacles, player, refreshInventoryUI, requestSave,
   habitatCtx, rewardText, scene, solidCircle, spawnConfetti, spawnSparkle, syncUnlocks, todayStr, ui, unlocksOn,
-  holdPlaceReveal, keepPlaceReveal, releasePlaceReveal, startReturnWalk, syncStory, guideBoardTab,
+  holdPlaceReveal, keepPlaceReveal, releasePlaceReveal, startReturnWalk, syncStory, guideBoardTab, guideBoardHint,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다
 import { trackEvent } from '../analytics.js';
 import { freshBranchTab } from '../guide/guide-rules.js';
@@ -115,6 +115,7 @@ function boardView() {
   const b = tree.branches[def.id];
   const free = b.tiles.some(x => !x);
   return {
+    guide: guideBoardHint(def.id),
     fresh: freshTile,
     life: lifeOf(gameState.treeBloom, tree),
     branches: BRANCHES.map(x => ({ id: x.id, ico: x.ico, name: x.name, short: x.short, status: tabStatus(tree, x.id) })),

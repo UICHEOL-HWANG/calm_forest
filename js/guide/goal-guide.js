@@ -2,11 +2,14 @@ import * as THREE from 'three';
 import { createShotRig } from '../world/tree-shot.js';
 import { regionFrame } from '../world/region-cine.js';
 import { ARRIVE, CINE_SUB, GOALS, detourPoint, edgeAnchor, exitFirst, guideEventParams, minerGoal, tutGoal } from './guide-rules.js';
+import { storyStep } from './story-steps.js';
+import { fillStepCard, stepSignature } from './step-card.js';
 
 const CINE_HOLD = 1.6;
 const CINE_DELAY = 0.6;
 const NPC_CLEAR = 5;
 const RESOLVE_SEC = 0.25;
+const STORY_SEC = 0.5;
 const BAR = 'clamp(48px,9vh,90px)';
 
 const CSS = `
@@ -30,13 +33,18 @@ const CSS = `
 #goal-arrow .ga-edge{position:absolute;transform:translate(-50%,-50%);gap:8px}
 #goal-arrow .ga-ar{position:relative;flex:none;width:30px;height:30px;border-radius:50%;background:#bfe8c9;box-shadow:0 0 0 3px #fff7ec}
 #goal-arrow .ga-ar::after{content:'';position:absolute;left:8px;top:8px;width:14px;height:14px;background:#4a5a4f;clip-path:polygon(0 0,45% 0,100% 50%,45% 100%,0 100%,55% 50%)}
+#goal-arrow .ga-card{position:absolute;transform:translate(-50%,-100%);display:none;flex-direction:column;gap:2px;background:rgba(255,253,246,.97);border-radius:16px;box-shadow:0 4px 14px rgba(30,60,40,.28);padding:8px 12px;min-width:180px;max-width:min(260px,calc(100vw - 24px))}
+#goal-arrow .gk-t{font-weight:800;color:#2f5a3a;font-size:14px}
+#goal-arrow .gk-d{font-size:13px;color:#4a5a4f}
+#goal-arrow .gk-s{margin-top:4px;padding-top:5px;border-top:1px dashed #e3dccb;font-size:12.5px;color:#7a5a20}
 @keyframes ga-bob{to{transform:translateY(5px)}}
 @media(prefers-reduced-motion:reduce){#goal-arrow .ga-dn{animation:none}}
 `;
 
 export function createGoalGuide(deps) {
   let goal = null, cine = null, overlay = null, arrow = null, ring = null, keyHandler = null, waitT = 0;
-  let cached = null, cacheT = 0, wpCache = null, wpT = 0, edgeHalf = 96;
+  let cached = null, cacheT = 0, wpCache = null, wpT = 0, edgeHalf = 96, storyMemo = null, storyT = STORY_SEC;
+  const boardSeen = new Set();
   const last = {};
   const v = new THREE.Vector3(), right = new THREE.Vector3(), fwd = new THREE.Vector3();
 
@@ -44,7 +52,7 @@ export function createGoalGuide(deps) {
     if (arrow) return;
     const st = document.createElement('style'); st.id = 'goal-guide-style'; st.textContent = CSS; document.head.appendChild(st);
     arrow = document.createElement('div'); arrow.id = 'goal-arrow';
-    arrow.innerHTML = '<div class="ga-pin"><div class="ga-chip"></div><div class="ga-dn"></div></div><div class="ga-edge ga-chip"><span class="ga-ar"></span><span class="ga-txt"></span></div>';
+    arrow.innerHTML = '<div class="ga-pin"><div class="ga-chip"></div><div class="ga-dn"></div></div><div class="ga-edge ga-chip"><span class="ga-ar"></span><span class="ga-txt"></span></div><div class="ga-card"></div>';
     document.body.appendChild(arrow);
     overlay = document.createElement('div'); overlay.id = 'goal-cine-modal';
     overlay.innerHTML = '<div class="gc-bar gc-top"></div><div class="gc-bar gc-bot"></div><div class="gc-skip"></div><div class="gc-cap"><div class="gc-sub"></div><div class="gc-main"></div></div>';
@@ -89,6 +97,7 @@ export function createGoalGuide(deps) {
       return null;
     }
     if (key === 'farmBranch') return inV ? { at: deps.worldTree, g: GOALS.farmBranch } : null;
+    if (key.startsWith('story_')) return storyTarget(key, inV);
     const spot = deps.villageSpots()[key];
     if (spot) return inV ? { at: spot.at, via: spot.via || null, g: GOALS[key] } : null;
     if (!inMine) return null;
@@ -96,6 +105,16 @@ export function createGoalGuide(deps) {
     const spots = deps.mineSpots();
     if (key === 'miner') return { at: spots.miner, g: GOALS.miner };
     if (key === 'lift') return { at: spots.lift, g: GOALS.lift };
+    return null;
+  }
+
+  function storyTarget(key, inV) {
+    const st = goal?.story;
+    if (!st) return null;
+    const g = { ico: st.ico, label: st.label || '', title: st.title };
+    if (key === 'story_worldTree') return inV ? { at: deps.worldTree, g } : null;
+    if (key === 'story_cafeDoor') return inV ? { at: deps.cafeGate, g } : null;
+    if (key === 'story_cafeGuest') { const at = deps.atCafe() ? deps.cafeGuestAt(st.guest) : null; return at ? { at, g } : null; }
     return null;
   }
 
@@ -111,11 +130,13 @@ export function createGoalGuide(deps) {
       const g = minerGoal(gs.delve, gs.inventory);
       if (g) return { flow: 'mine', step: `stage${gs.delve.stage}`, ...g };
     }
+    if (storyMemo && storyMemo.where !== 'board') return { flow: 'story', step: storyMemo.rule, key: `story_${storyMemo.where}`, story: storyMemo, cine: false };
     return null;
   }
 
   function setGoal(w) {
     const same = goal && w && goal.flow === w.flow && goal.key === w.key && goal.step === w.step;
+    if (same && w.story) goal.story = w.story;
     if (same || (!goal && !w)) return;
     goal = w ? { ...w, arrived: false, cineKey: `guideCine_${w.key}` } : null;
     waitT = 0; cached = null; wpCache = null;
@@ -202,9 +223,11 @@ export function createGoalGuide(deps) {
     goal.near = !r.exit && dist < (ARRIVE[goal.key] || 1.5);
     if (goal.near || (r.exit && dist < ARRIVE.exit)) {
       if (goal.near && !goal.arrived) { goal.arrived = true; stepEvent('arrive'); }
+      if (goal.near && goal.story) { drawCard(at); return; }
       hideArrow();
       return;
     }
+    put(arrow.querySelector('.ga-card'), 'cd', 'display', 'none');
     const W = innerWidth, H = innerHeight;
     const top = Math.max(110, deps.topInset()), bottom = Math.max(deps.touch() ? 190 : 96, deps.bottomInset?.() || 0), side = 72, pinSide = 44;
     const text = `${g.ico} ${T(g.label)} ${Math.round(dist)}m`;
@@ -233,7 +256,24 @@ export function createGoalGuide(deps) {
     arrow.classList.add('show');
   }
 
+  function drawCard(at) {
+    const st = goal.story, card = arrow.querySelector('.ga-card');
+    const sp = deps.project(v.set(at.x, 0, at.z), 2.4);
+    put(arrow.querySelector('.ga-pin'), 'pd', 'display', 'none'); put(arrow.querySelector('.ga-edge'), 'ed', 'display', 'none');
+    if (!sp) { put(card, 'cd', 'display', 'none'); return; }
+    const half = Math.min(130, innerWidth / 2 - 12);
+    put(card, 'cd', 'display', 'flex');
+    put(card, 'cl', 'left', Math.round(Math.min(innerWidth - half, Math.max(half, sp.x))) + 'px');
+    put(card, 'ct', 'top', Math.round(Math.max(Math.max(110, deps.topInset()) + 90, sp.y)) + 'px');
+    const sig = stepSignature(st);
+    if (last.csig !== sig) { last.csig = sig; fillStepCard(card, st, { t: 'gk-t', d: 'gk-d', s: 'gk-s' }, T); }
+    ring.visible = false;
+    arrow.classList.add('show');
+  }
+
   function update(dt = 1 / 60) {
+    storyT += dt;
+    if (storyT >= STORY_SEC) { storyT = 0; const snap = deps.storySnap?.(); storyMemo = snap ? storyStep({ ...snap, boardOpen: false }) : null; }
     if (cine) return;
     setGoal(wanted());
     if (!goal) { hideArrow(); return; }
@@ -257,13 +297,21 @@ export function createGoalGuide(deps) {
     mark('guideFarmTab');
   }
 
+  function boardHint(tab) {
+    const snap = deps.storySnap?.();
+    const st = snap ? storyStep({ ...snap, boardOpen: true, boardTab: tab }) : null;
+    if (!st || st.where !== 'board') return null;
+    if (!boardSeen.has(st.key)) { boardSeen.add(st.key); deps.track('guide_step', guideEventParams('story', st.key, 'start', { step: st.rule })); }
+    return st;
+  }
+
   function debug() {
     const r = goal && resolve(goal.key);
     const p = deps.player.position;
     const to = r?.via || r?.at;
     const wp = to ? detourPoint({ x: p.x, z: p.z }, { x: to.x, z: to.z }, deps.solids()) : null;
-    return { goal: goal && { flow: goal.flow, key: goal.key, step: goal.step, arrived: goal.arrived, near: !!goal.near }, at: r?.at ? { x: r.at.x, z: r.at.z } : null, wp, cine: !!cine, exit: !!r?.exit };
+    return { goal: goal && { flow: goal.flow, key: goal.key, step: goal.step, arrived: goal.arrived, near: !!goal.near }, at: r?.at ? { x: r.at.x, z: r.at.z } : null, wp, cine: !!cine, exit: !!r?.exit, story: storyMemo && storyMemo.key };
   }
 
-  return { update, boardTab, skip, debug, get cinematic() { return !!cine; } };
+  return { update, boardTab, boardHint, skip, debug, get cinematic() { return !!cine; } };
 }

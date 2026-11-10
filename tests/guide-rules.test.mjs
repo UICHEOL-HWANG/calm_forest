@@ -131,3 +131,36 @@ test('마을 목적지인데 다른 공간 안이면 그 공간의 나가는 문
   assert.equal(exitFirst('coal', null, { exitAt: door }), null);
   assert.equal(exitFirst('lift', null, { exitAt: door }), null);
 });
+
+test('이야기 안내 목적지도 도착 반경이 상호작용 거리보다 작다', async () => {
+  const { ARRIVE, VILLAGE_KEYS } = await import('../js/guide/guide-rules.js');
+  const INTERACT = { story_worldTree: 2.4 + 2.3, story_cafeDoor: 2.2, story_cafeGuest: 2.4 };
+  for (const [k, r] of Object.entries(INTERACT)) assert.ok(ARRIVE[k] <= r - 0.15, `${k} ${ARRIVE[k]} vs ${r}`);
+  assert.ok(VILLAGE_KEYS.has('story_worldTree') && VILLAGE_KEYS.has('story_cafeDoor') && !VILLAGE_KEYS.has('story_cafeGuest'));
+});
+
+test('문이 건물 바로 뒤에 있으면 건물을 돌아가는 경유점을 준다', () => {
+  const box = { x1: 1.4, z1: 10.8, x2: 6.6, z2: 14.8 };
+  const wp = detourPoint({ x: 4, z: 6 }, { x: 4, z: 15.3 }, [box]);
+  assert.ok(wp.x < 1.4 || wp.x > 6.6, JSON.stringify(wp));
+  assert.deepEqual(detourPoint({ x: 4, z: 6 }, { x: 4, z: 12 }, [box]), { x: 4, z: 12 });
+});
+
+test('경유점을 따라 걸으면 건물을 뚫지 않고 몇 걸음 안에 문에 닿는다', () => {
+  const box = { x1: 1.4, z1: 10.8, x2: 6.6, z2: 14.8 };
+  const door = { x: 4, z: 15.3 };
+  const crosses = (a, b) => {
+    for (let i = 1; i < 50; i++) {
+      const x = a.x + (b.x - a.x) * i / 50, z = a.z + (b.z - a.z) * i / 50;
+      if (x > box.x1 && x < box.x2 && z > box.z1 && z < box.z2) return true;
+    }
+    return false;
+  };
+  let at = { x: 4, z: 6 }, hops = 0;
+  while (Math.hypot(at.x - door.x, at.z - door.z) > 1e-6 && hops < 5) {
+    const wp = detourPoint(at, door, [box]);
+    assert.ok(!crosses(at, wp), `${JSON.stringify(at)} → ${JSON.stringify(wp)}`);
+    at = wp; hops++;
+  }
+  assert.ok(hops <= 3, `hops ${hops}`);
+});
