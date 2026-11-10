@@ -39,6 +39,7 @@ import { runNpcGenCron } from '../functions/npc-gen-cron.js';
 import { runAiPregen } from '../functions/ai-pregen-cron.js';
 import { runPush, isPushTick } from '../functions/push-cron.js';
 import { runAuraCron } from '../functions/aura-cron.js';
+import { runLinePool, isLinePoolTick } from '../functions/line-pool-cron.js';
 import { onRequestGet as cardnewsImg } from '../functions/cardnews-img.js';
 import { onRequestGet as rssFeed } from '../functions/rss.js';
 import { onRequestGet as newsPages } from '../functions/news.js';
@@ -130,6 +131,12 @@ export default {
       }
       ctx.waitUntil(runAiPregen(env).then(r => {
         console.log(JSON.stringify({ message: 'ai-pregen cron', cron: event.cron, ...r }));
+      }));
+      return;
+    }
+    if (event.cron === '0,30 18-21 * * *' && isLinePoolTick(event.scheduledTime)) {
+      ctx.waitUntil(runLinePool(env).then(r => {
+        console.log(JSON.stringify({ message: 'line-pool cron', cron: event.cron, ...r }));
       }));
       return;
     }
