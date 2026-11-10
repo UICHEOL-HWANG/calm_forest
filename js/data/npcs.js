@@ -11,6 +11,11 @@ export const GIFTS = [
   { id: 'fishset', name: '생선 묶음',   ico: '🐟', cost: { fish: 3 } },
   { id: 'woodtoy', name: '목각 인형',   ico: '🪆', cost: { wood: 6 } },
   { id: 'necklace', name: '보석 목걸이', ico: '📿', cost: { gem: 1 }, love: 2 },   // 💎 최상급 선물 — 친밀도 +2(채굴)
+  { id: 'honeypot', name: '꿀단지', ico: '🍯', cost: { honey: 2, wood: 2 }, love: 1, isNew: true },
+  { id: 'firefly_lamp', name: '반딧불 등', ico: '🏮', cost: { bug: 2, wood: 3 }, love: 1, isNew: true },
+  { id: 'apple_pie', name: '사과 파이', ico: '🥧', cost: { flour: 1, apple: 2 }, love: 1, isNew: true },
+  { id: 'chestnut_bag', name: '군밤 봉지', ico: '🌰', cost: { roast_chestnut: 3 }, love: 1, isNew: true },
+  { id: 'star_jar', name: '별빛 유리병', ico: '🫙', cost: { star: 2, glow: 1 }, love: 2, isNew: true },
 ];
 
 //   베타 피드백: "방랑 상인이 씨앗뿌리기 0/3 이라는데 어쩌라는 건지 모르겠어요."
