@@ -75,5 +75,25 @@ test('index gates the banner and shows the intro before the first window', () =>
   assert.match(index, /introSeen: true/);
   const busy = index.slice(index.indexOf('function uiBusy('));
   for (const k of ['anyModalOpen', 'coachActive', "'spot-on'"]) assert.ok(busy.slice(0, busy.indexOf('\n}\n')).includes(k), k);
-  assert.match(index, /onTap: \(\) => \{ trackEvent\('auction_banner', \{ act: 'tap'/);
+  assert.match(index, /onTap: \(\) => \{\s+trackEvent\('auction_banner', \{ act: 'tap'/);
+});
+
+test('the guide leaves other hint banners alone', () => {
+  assert.doesNotMatch(read('js/auction/guide.js'), /#hint-banner/);
+});
+
+test('the guide reads both screen points before it writes styles', () => {
+  const src = read('js/auction/guide.js');
+  const upd = src.slice(src.indexOf('function update('));
+  assert.ok(upd.indexOf('deps.project(spotAt, 1.4)') < upd.indexOf('compass.style.left'));
+  assert.doesNotMatch(src, /querySelector\('\.ag-dist'\)\.textContent/);
+});
+
+test('onboarding cleans up when play stops and only opens the panel at the spot', () => {
+  const src = read('js/auction/index.js');
+  assert.match(src, /if \(!playing && guide\?\.active\) guide\.cancel\('left'\);/);
+  assert.match(src, /if \(intro\?\.open && \(!playing \|\| !auctionSpotNow\(\)\)\) intro\.cancel\(\);/);
+  assert.match(src, /if \(auctionSpotNow\(\)\) openAuction\(\);/);
+  assert.match(src, /if \(bannerLive\(day\)\) ensureGuide\(\)\.start\(\);/);
+  assert.match(read('js/auction/intro.js'), /act: 'cancel'/);
 });

@@ -100,10 +100,15 @@ function ensureIntro() {
     onDone: () => {
       gameState.auction = { ...gameState.auction, introSeen: true };
       requestSave();
-      openAuction();
+      if (auctionSpotNow()) openAuction();
     },
   });
   return intro;
+}
+
+function bannerLive(day) {
+  return auctionOpen() && auctionOpenAt(gameState.timeOfDay) && inVillage2() && !mgView && gameState.auction.lastDate !== day
+    && document.body.classList.contains('playing');
 }
 
 function showOpenBanner(day) {
@@ -113,7 +118,10 @@ function showOpenBanner(day) {
     ico: ONBOARD_COPY.ico, title: ONBOARD_COPY.title, line: bannerLine(name, t),
     near: () => true, attention: true,
     onShow: () => trackEvent('auction_banner', { act: 'shown', item: lot.id }),
-    onTap: () => { trackEvent('auction_banner', { act: 'tap', item: lot.id }); ensureGuide().start(); },
+    onTap: () => {
+      trackEvent('auction_banner', { act: 'tap', item: lot.id });
+      if (bannerLive(day)) ensureGuide().start();
+    },
     onDismiss: reason => { if (reason !== 'tap') trackEvent('auction_banner', { act: 'dismiss', item: lot.id }); },
   });
 }
@@ -132,9 +140,12 @@ function tickBanner(inVillage) {
 }
 
 function tickOnboard(dt, inVillage) {
+  const playing = document.body.classList.contains('playing');
+  if (!playing && guide?.active) guide.cancel('left');
+  if (intro?.open && (!playing || !auctionSpotNow())) intro.cancel();
   guide?.update(dt);
   bannerCheck += dt;
-  if (bannerCheck < BANNER_EVERY || run || !document.body.classList.contains('playing')) return;
+  if (bannerCheck < BANNER_EVERY || run || !playing) return;
   bannerCheck = 0;
   tickBanner(inVillage);
 }

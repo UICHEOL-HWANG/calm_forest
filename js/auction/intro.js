@@ -72,5 +72,13 @@ export function createAuctionIntro({ t, track, onDone }) {
     window.addEventListener('keydown', onKey);
   }
 
-  return { show, get open() { return step >= 0; } };
+  function cancel() {
+    if (step < 0) return;
+    track('auction_intro', { step: step + 1, act: 'cancel' });
+    step = -1;
+    window.removeEventListener('keydown', onKey);
+    root.classList.remove('show');
+  }
+
+  return { show, cancel, get open() { return step >= 0; } };
 }

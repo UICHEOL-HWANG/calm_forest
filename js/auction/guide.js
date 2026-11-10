@@ -40,12 +40,12 @@ const CSS = `#auction-guide-compass{position:fixed;z-index:25;width:clamp(80px,1
 #auction-guide-edge.show{display:flex}
 #auction-guide-edge .ag-disc{width:46px;height:46px;border-radius:50%;background:rgba(255,250,235,.95);box-shadow:0 3px 10px rgba(80,50,0,.3);display:grid;place-items:center}
 #auction-guide-edge .ag-head{width:24px;height:26px;background:#f2c14e;clip-path:polygon(50% 0,100% 100%,50% 76%,0 100%);transform:rotate(var(--ag-angle,0rad))}
-body.auction-guide #hint-banner{display:none!important}
 @media(prefers-reduced-motion:reduce){#auction-guide-compass .ag-pointer,#auction-guide-mark .ag-tri{animation:none}}`;
 
 export function createAuctionGuide(deps) {
-  let active = false, route = [], point = null, replanAt = 0, compass = null, mark = null, edge = null, ring = null, clock = 0;
+  let active = false, route = [], point = null, replanAt = 0, compass = null, mark = null, edge = null, ring = null, clock = 0, markDist = null, edgeDist = null, shownLabel = '';
   const v = { right: new deps.THREE.Vector3(), up: new deps.THREE.Vector3(), d: new deps.THREE.Vector3() };
+  const spotAt = { x: deps.spot.x, y: 0, z: deps.spot.z };
 
   function mount() {
     if (compass) return;
@@ -63,6 +63,8 @@ export function createAuctionGuide(deps) {
     edge = document.createElement('div');
     edge.id = 'auction-guide-edge';
     edge.innerHTML = '<div class="ag-disc"><div class="ag-head"></div></div><div class="ag-dist"></div>';
+    markDist = mark.querySelector('.ag-dist');
+    edgeDist = edge.querySelector('.ag-dist');
     document.body.append(compass, mark, edge);
     const THREE = deps.THREE;
     ring = new THREE.Mesh(
@@ -123,15 +125,19 @@ export function createAuctionGuide(deps) {
     return Math.atan2(v.d.dot(v.right), v.d.dot(v.up));
   }
 
-  function drawTarget(meters) {
-    const w = window.innerWidth, h = window.innerHeight;
-    const label = distLabel(meters);
-    const at = deps.project({ x: deps.spot.x, y: 0, z: deps.spot.z }, 1.4);
+  function setLabel(label) {
+    if (label === shownLabel) return;
+    shownLabel = label;
+    markDist.textContent = label;
+    edgeDist.textContent = label;
+  }
+
+  function drawTarget(meters, at, w, h) {
+    setLabel(distLabel(meters));
     if (onScreen(at, w, h, 30)) {
       edge.classList.remove('show');
       mark.style.left = at.x + 'px';
       mark.style.top = at.y + 'px';
-      mark.querySelector('.ag-dist').textContent = label;
       mark.classList.add('show');
       return;
     }
@@ -145,7 +151,6 @@ export function createAuctionGuide(deps) {
     edge.style.left = p.x + 'px';
     edge.style.top = p.y + 'px';
     edge.style.setProperty('--ag-angle', p.angle + 'rad');
-    edge.querySelector('.ag-dist').textContent = label;
     edge.classList.add('show');
   }
 
@@ -165,13 +170,15 @@ export function createAuctionGuide(deps) {
     if (!deps.visible() || document.hidden) { hide(); return; }
     const feet = deps.project(deps.player.position, 0);
     if (!feet) { hide(); return; }
+    const at = deps.project(spotAt, 1.4);
+    const w = window.innerWidth, h = window.innerHeight;
     compass.style.left = feet.x + 'px';
     compass.style.top = (feet.y - 22) + 'px';
     compass.style.setProperty('--ag-angle', angleTo(point) + 'rad');
     compass.style.display = 'block';
     ring.visible = true;
     ring.material.opacity = 0.6 + 0.3 * Math.sin(clock * 4);
-    drawTarget(pathLength(here, route));
+    drawTarget(pathLength(here, route), at, w, h);
   }
 
   return {
