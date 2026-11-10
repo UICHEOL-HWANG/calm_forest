@@ -30,7 +30,10 @@
 - [ ] 폰 실측(첫 진입 멈칫·바구니 크기)
 - [ ] 5곳 배포 + 다음 날 BQ 재검증
 
-## 구현 2단계: 식당 1차
+## 구현 2단계: 식당 1차 (계획 docs/superpowers/plans/2026-11-10-restaurant-stage2.md)
+- [x] 자리 A 카페 옆 (12, 20.5)·외관 R1 비스트로 확정 (sims/restaurant-site-compare.html, sims/restaurant-look-compare.html)
+- [x] 구현 계획서 작성 (Task 0~9, 결정 R1~R8)
+- [ ] Task 0 문구 선검수
 - [ ] js/restaurant (영업·설비·별점·평판·DDA) + 테스트
 - [ ] 첫 영업 길 안내
 - [ ] GA4 restaurant_service·restaurant_star_up
