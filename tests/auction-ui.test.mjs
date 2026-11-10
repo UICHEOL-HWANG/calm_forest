@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { whoLine, resultLine, feedLine, barColor } from '../js/auction/ui.js';
+import { readFileSync } from 'node:fs';
+import { whoLine, resultLine, feedLine, barColor, itemVisual, callLine, waitHtml } from '../js/auction/ui.js';
 
 const names = { curator: '큐레이터', stargazer: '별 보는 아이', builder: '목수 아저씨' };
 const t = s => s;
@@ -41,4 +42,36 @@ test('barColor', () => {
   assert.equal(barColor(6), '#8fd3a0');
   assert.equal(barColor(3), '#f2c14e');
   assert.equal(barColor(1), '#e8774a');
+});
+
+test('itemVisual shows the catalog icon, not an image', () => {
+  const html = itemVisual('🌙');
+  assert.match(html, /<span class="au-ico"[^>]*>🌙<\/span>/);
+  assert.doesNotMatch(html, /<img/);
+  assert.equal(itemVisual('<b>'), '<span class="au-ico" aria-hidden="true">&lt;b&gt;</span>');
+});
+
+test('callLine routes the countdown and extension through t', () => {
+  const up = s => `<${s}>`;
+  assert.equal(callLine('⏱️ 연장!', up), '<⏱️ 연장!>');
+  assert.equal(callLine('3…', up), '<3…>');
+  assert.equal(callLine('', up), '');
+});
+
+test('the waiting view can be closed without joining', () => {
+  for (const mode of ['bid', 'watch']) {
+    const html = waitHtml({ mode, start: 200 }, t);
+    assert.match(html, /data-act="close"[^>]*>닫기</, mode);
+    assert.match(html, /data-act="watch"/, mode);
+  }
+  assert.match(waitHtml({ mode: 'bid', start: 200 }, t), /data-act="bid"/);
+  assert.doesNotMatch(waitHtml({ mode: 'watch', start: 200 }, t), /data-act="bid"/);
+  assert.match(waitHtml({ mode: 'watch', start: 200 }, t), /시작가 🪙200/);
+});
+
+test('the window takes an icon getter, not a thumbnail renderer', () => {
+  const src = readFileSync(new URL('../js/auction/ui.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(src, /itemThumb|<img/);
+  assert.match(src, /createAuctionUi\(\{[^}]*itemIcon/);
+  assert.match(src, /call\.textContent = callLine\(state\.call, t\)/);
 });

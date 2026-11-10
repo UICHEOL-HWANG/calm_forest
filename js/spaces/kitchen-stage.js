@@ -15,6 +15,7 @@ import { Sound } from '../sound.js';
 import * as THREE from 'three';
 import { greyFood, ingredientModel, releaseFood, setFoodOpacity, setFoodTint } from '../cook-ingredient-art.js';   // 🍲 재료는 이모지 대신 3D 모형(2026-09-29)
 import { BOARD_TOP, CUT_X, CUT_Z, KNIFE_UP, chopNote, clearChops, startChop, updateChops } from './kitchen-chop.js';   // 🔪 M2 통통통
+import { updateAuctionScene } from '../auction/index.js';
 
 export function spawnWorkbench() {
   const g = new THREE.Group(); g.position.copy(BENCH);
@@ -451,6 +452,7 @@ export function mgPotHit(step, judge, key) {
 // 매 프레임 — 무대 연출(카메라 고정·거품·김·불·칼/국자 트윈·조각 물리)
 export function updateMgScene(dt, t) {
   if (!mgView) return;
+  if (mgView.type === 'auction') { updateAuctionScene(dt, t); return; }
   if (mgView.type === 'carve') { updateCarveScene(dt, t); return; }  // 🗿 조각 공방 무대는 전용 루프
   if (mgView.type === 'station') return;                             // 🔥🫙 가공 시설은 선 자리 그대로를 비춘다(부엌 소품 없음)
   if (!kset) return;

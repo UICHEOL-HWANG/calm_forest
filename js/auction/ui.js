@@ -29,11 +29,29 @@ export function resultLine(r, itemName, names, t) {
 
 export function barColor(t) { return t > 4 ? '#8fd3a0' : t > 2 ? '#f2c14e' : '#e8774a'; }
 
+export function callLine(call, t) { return call ? t(call) : ''; }
+
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+export function itemVisual(icon) { return `<span class="au-ico" aria-hidden="true">${esc(icon)}</span>`; }
+
+const btnHtml = (act, label, main, t) => `<button class="au-btn${main ? ' main' : ''}" data-act="${act}">${esc(t(label))}</button>`;
+
+export function waitHtml(v, t) {
+  const watchOnly = v.mode === 'watch';
+  const hint = watchOnly ? fill(t(AUCTION_COPY.startsAt), v.start) : t(AUCTION_COPY.ready);
+  const close = btnHtml('close', AUCTION_COPY.close, false, t);
+  const rows = watchOnly
+    ? `<div class="au-btns">${btnHtml('watch', AUCTION_COPY.watch, true, t)}${close}</div>`
+    : `<div class="au-btns">${btnHtml('bid', AUCTION_COPY.join, true, t)}${btnHtml('watch', AUCTION_COPY.watch, false, t)}</div><div class="au-btns">${close}</div>`;
+  return `<div class="au-hint">${esc(hint)}</div>${rows}`;
+}
+
 const CSS = `#auction-modal{position:fixed;z-index:40;display:none;left:10px;right:10px;bottom:calc(12px + env(safe-area-inset-bottom));flex-direction:column;gap:9px;background:#fffaf2;border-radius:20px;box-shadow:0 -8px 40px rgba(30,25,20,.35);padding:12px 14px;color:#2b2b30;user-select:none;-webkit-tap-highlight-color:transparent;font-family:inherit}
 #auction-modal.show{display:flex}
 #auction-modal .au-head{font-weight:800;font-size:15px}
 #auction-modal .au-item{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:14px;background:#fff}
-#auction-modal .au-item img{width:46px;height:46px;border-radius:10px;background:#f4ead6;flex:none}
+#auction-modal .au-ico{display:flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:10px;background:#f4ead6;flex:none;font-size:28px;line-height:1}
 #auction-modal .au-item .nm{font-weight:800;font-size:14px;min-width:0}
 #auction-modal .au-big{text-align:center}
 #auction-modal .au-p{font-size:30px;font-weight:900;letter-spacing:-.02em;color:#2d4a3a;display:inline-block}
@@ -58,14 +76,12 @@ const CSS = `#auction-modal{position:fixed;z-index:40;display:none;left:10px;rig
 #auction-modal .au-btn:active:not(:disabled){transform:scale(.96)}
 #auction-modal .au-hint{font-size:13px;font-weight:700;color:#4a4e57;text-align:center}
 #auction-modal .au-res{text-align:center}
-#auction-modal .au-res img{width:54px;height:54px;border-radius:12px}
+#auction-modal .au-res .au-ico{width:54px;height:54px;border-radius:12px;font-size:32px;margin:0 auto}
 #auction-modal .au-res .t{font-size:17px;font-weight:900;margin:4px 0}
 #auction-modal .au-res .d{font-size:13px;color:#4a4e57;min-height:1.2em}
 @media (min-width:768px){#auction-modal{left:auto;right:14px;top:calc(14px + var(--top-inset,0px));bottom:14px;width:300px;justify-content:center;border-radius:20px;box-shadow:0 8px 32px rgba(30,25,20,.25)}#auction-modal .au-feed{min-height:58px}#auction-modal .au-feed div:nth-child(n+3){display:block;opacity:.55}}`;
 
-const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-
-export function createAuctionUi({ t, names, itemName, itemThumb, onJoin, onBid, onClose }) {
+export function createAuctionUi({ t, names, itemName, itemIcon, onJoin, onBid, onClose }) {
   let root = null, body = null, mode = 'bid', view = null, itemId = '', layout = '', lastPrice = null, lastSig = '', lastCall = '';
 
   const ensure = () => {
@@ -90,25 +106,21 @@ export function createAuctionUi({ t, names, itemName, itemThumb, onJoin, onBid, 
     document.body.appendChild(root);
   };
 
-  const btn = (act, label, main) => `<button class="au-btn${main ? ' main' : ''}" data-act="${act}">${esc(t(label))}</button>`;
+  const btn = (act, label, main) => btnHtml(act, label, main, t);
   const setBody = (name, html) => { layout = name; body.innerHTML = html; lastPrice = null; lastSig = ''; lastCall = ''; };
   const setItem = id => {
     itemId = id;
-    root.querySelector('.au-item').innerHTML = `<img src="${esc(itemThumb(id))}" alt=""><div class="nm">${esc(t(itemName(id)))}</div>`;
+    root.querySelector('.au-item').innerHTML = `${itemVisual(itemIcon(id))}<div class="nm">${esc(t(itemName(id)))}</div>`;
   };
 
-  const drawWaiting = v => {
-    const hint = v.mode === 'watch' ? fill(t(AUCTION_COPY.startsAt), v.start) : t(AUCTION_COPY.ready);
-    const btns = v.mode === 'watch' ? btn('watch', AUCTION_COPY.watch, true) : btn('bid', AUCTION_COPY.join, true) + btn('watch', AUCTION_COPY.watch, false);
-    setBody('wait', `<div class="au-hint">${esc(hint)}</div><div class="au-btns">${btns}</div>`);
-  };
+  const drawWaiting = v => setBody('wait', waitHtml(v, t));
   const drawRun = () => {
     const incs = mode === 'watch' ? '' : `<div class="au-btns">${BID_INCS.map((n, i) => `<button class="au-btn${i === BID_INCS.length - 1 ? ' main' : ''}" data-inc="${n}">+${n}</button>`).join('')}</div>`;
     setBody('run', `<div class="au-big"><div class="au-p"></div><div class="au-who"></div></div><div class="au-tbar"><i></i></div><div class="au-call"></div><div class="au-feed"></div>${incs}`);
   };
   const drawResult = r => {
     const line = resultLine(r, itemName(itemId), names, t);
-    const img = r.outcome === 'win' ? `<img src="${esc(itemThumb(itemId))}" alt="">` : '';
+    const img = r.outcome === 'win' ? itemVisual(itemIcon(itemId)) : '';
     setBody('done', `<div class="au-res">${img}<div class="t">${esc(line.title)}</div><div class="d">${esc(line.sub)}</div></div><div class="au-btns">${btn('close', AUCTION_COPY.close, true)}</div>`);
   };
 
@@ -154,7 +166,7 @@ export function createAuctionUi({ t, names, itemName, itemThumb, onJoin, onBid, 
     const call = body.querySelector('.au-call');
     if (state.call !== lastCall) {
       lastCall = state.call;
-      call.textContent = state.call;
+      call.textContent = callLine(state.call, t);
       if (state.call.startsWith('⏱️')) { call.classList.remove('flash'); void call.offsetWidth; call.classList.add('flash'); }
     }
     syncFeed(state.feed);

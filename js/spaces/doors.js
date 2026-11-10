@@ -17,6 +17,7 @@ import {
 import { mudflat, mudflatHint, nearMudflatExit, MUDFLAT_COPY } from './mudflat.js';
 import { dive, diveHint, nearDiveExit, DIVE_COPY } from './dive.js';
 import { plazaSpot } from '../plaza/index.js';
+import { auctionSpotNow, auctionPrompt } from '../auction/index.js';
 import { delvePrompt, delveFloorNow } from './delve.js';
 import { trackEvent } from '../analytics.js';
 import { decorBanner } from '../decor-drops/index.js';
@@ -405,6 +406,7 @@ export function updateDoorInteract() {
   else if (nearStation) prompt = stationLabel(nearStation);
   else if (nearShop) prompt = '🛒 상점';
   else if (nearRank) { prompt = '🏆 이번 주 랭킹'; firstHintBanner('rank', '🏆', '랭킹 게시판', '이번 주 숲의 기록 5부문, 매주 리셋'); }
+  else if (inVillage && auctionSpotNow()) prompt = auctionPrompt();
   else if (plazaHere === 'box') prompt = '🌾 광장에 보태기';
   else if (plazaHere === 'stall') prompt = '🍂 수확제 좌판';
   else if (plazaHere === 'plaque') prompt = '🌾 광장 명판 보기';

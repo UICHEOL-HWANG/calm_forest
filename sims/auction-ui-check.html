@@ -13,7 +13,6 @@ body{margin:0;font-family:system-ui,'Apple SD Gothic Neo',sans-serif;background:
 import { createAuctionUi } from '../js/auction/ui.js';
 const q = new URLSearchParams(location.search);
 const names = { curator: '큐레이터', stargazer: '별 보는 아이', builder: '목수 아저씨' };
-const thumb = () => 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="46" height="46"><rect width="46" height="46" fill="#f4ead6"/><circle cx="23" cy="23" r="12" fill="#e2b23c"/></svg>');
 const allOk = { 10: true, 30: true, 50: true };
 const feed = [{ who: 'me', inc: 30, price: 260 }, { who: 'curator', inc: 50, price: 230 }, { who: 'builder', inc: 10, price: 180 }];
 const run = o => ({ phase: 'run', price: 260, leader: 'me', t: 6, call: '', feed, canBid: { 10: false, 30: false, 50: false }, result: null, itemId: 'moonswing', ...o });
@@ -34,7 +33,7 @@ const S = {
 const s = q.get('s');
 if (s) {
   const c = S[s];
-  const ui = createAuctionUi({ t: x => x, names, itemName: () => '달빛 그네', itemThumb: thumb, onJoin() {}, onBid() {}, onClose() {} });
+  const ui = createAuctionUi({ t: x => x, names, itemName: () => '달빛 그네', itemIcon: () => '🌙', onJoin() {}, onBid() {}, onClose() {} });
   ui.open({ itemId: 'moonswing', appraisal: 400, start: 200, coins: 900, secondsToOpen: 0, ...c.open });
   if (c.state) ui.render(c.state);
 } else {
