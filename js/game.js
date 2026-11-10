@@ -302,6 +302,7 @@ import { UNLOCK_IDS, defaultUnlocks, newlyUnlocked, restoreUnlocks, unlockQuestC
 import { BRIDGE_ANG, BRIDGE_COST, ISLE, ISLE_R, bridgeBroken, bridgeFoot, bridgePoint, streamR } from './world/bridge.js';   // 🌉 박물관 섬 개울·다리(순수)
 import { bridgeBrokenNow, bridgeInteract, buildBridge, clampToStream, syncBridge } from './spaces/bridge.js';   // 📦 🌉 무너진 다리(해금 4단계)
 import { clampVillage } from './world/walk-bounds.js';
+import { initMapSnapshot, mapSignature, tickMapSnapshot } from './world/map-snapshot.js';
 import { defaultTree, restoreTree } from './world/tree-board.js';   // 🌳 세계수 판(순수) — docs/superpowers/specs/2026-10-16-world-tree-board-design.md
 import { defaultBloom, restoreBloom } from './world/tree-bloom.js';
 import { WORLD_TREE, buildWorldTree, debugTreeShot, openWorldTree, queueChapterShot, treeShotBusy, treeShotFogPush, updateWorldTree } from './spaces/world-tree.js';   // 📦 🌳 마을 세계수 랜드마크 + 판 진입
@@ -2430,6 +2431,10 @@ export async function bootWorld(uiCallbacks) {
   buildInterior();          // 집 실내 방(꾸미기 공간)
   buildNPCs();              // 마을 주민들
   initPostProcessing();
+  initMapSnapshot({ renderer, scene, mobile: IS_MOBILE, sunLight, hemiLight, onShot: (c) => ui.setMapSnapshot?.(c),
+    transients: () => [player, pet3d, rainLines, seasonDrift?.mesh, fireflies, stars, ...chickens, ...npcObjs.map(o => o.group)],
+    signature: () => mapSignature({ season: SEASON, houseStage: gameState.houseStage, unlocks: unlockOpen, outdoor: gameState.outdoor }),
+    daylight: (fn) => { const t0 = timeOfDay, p0 = dayPaused; timeOfDay = 0.5; dayPaused = true; updateDayNight(0); try { fn(); } finally { timeOfDay = t0; dayPaused = p0; updateDayNight(0); } } });
   initInput();
   initSound();
   ui.setTool?.(currentTool, TOOLS, toolPage);
@@ -6266,6 +6271,7 @@ function animate() {
       lastMini = t;
       const place = indoor ? 'house' : atFarm ? 'farm' : atOrchard ? 'orchard' : atMine ? 'mine' : atCafe ? 'cafe' : atMuseum ? 'museum' : atObservatory ? 'observatory' : atMountain ? 'mountain' : atNeighbor ? 'neighbor' : atMirror ? 'mirror' : atDream ? 'dream' : atRiver ? 'river' : atMist ? 'mist' : atSea ? 'sea' : atHalloween ? 'halloween' : 'village';
       const md = { place, x: player.position.x, z: player.position.z, yaw: player.rotation.y, camYaw: userCamOn() ? camUser.yaw : 0 };
+      tickMapSnapshot(place === 'village' && !mgView && !duelActive && !intro && !placingDecor && !sleeping && !extView);
       if (!camTourAsked && userCamAdjustable()) camTourAsked = !!ui.camTour?.();
       if (place === 'village') {
         md.places = villagePlaces();   // 🗺️ 미니맵 아이콘 + 전체 지도 라벨의 출처

@@ -3773,6 +3773,7 @@
     import { bootTenjin, identifyTenjinUser, trackTenjinGameStart } from './js/tenjin-native.js';
     import { SELL_ICO_G } from './js/data/places.js';
     import { MAP_VIEW, LAND_FRINGE, mapLand, mapWater, mapGrove } from './js/world/village-map.js';
+    import { requestMapSnapshot } from './js/world/map-snapshot.js';
     import { FORAGE_KEYS, FORAGE_META } from './js/forage/logic.js';
     import { consumeExit, markExit } from './js/exit-flag.js';   // 🚪 나가기 직후엔 토스·플레이 앱 자동 연결을 건너뛴다 · 🗑️ 계정 삭제 뒤에도
     import { pickText, quoteLine, parseBody, leadEmoji, noticeTone } from './js/notices.js';   // 📮 소식함 — 언어별 본문·답장 원문 인용·'|' 표 파서
@@ -3980,14 +3981,26 @@
     let lastMapPos = null;   // 전체 지도의 "현재 위치" 마커 — 마을에 있을 때만 갱신
 
     const MAP_LAND = mapLand(), MAP_SHORE = mapLand(LAND_FRINGE), MAP_WATER = mapWater(), MAP_GROVE = mapGrove();
+    const MAP_FILTER = 'saturate(1.55) brightness(1.16) contrast(1.08)';
+    let mapShot = null;
 
     function paintIsland(c, px, pr, w, h) {
-      const outline = (pts) => { c.beginPath(); pts.forEach(([x, z], i) => { const [a, b] = px(x, z); if (i) c.lineTo(a, b); else c.moveTo(a, b); }); c.closePath(); c.fill(); };
+      const trace = (pts) => { c.beginPath(); pts.forEach(([x, z], i) => { const [a, b] = px(x, z); if (i) c.lineTo(a, b); else c.moveTo(a, b); }); c.closePath(); };
+      const outline = (pts) => { trace(pts); c.fill(); };
       const disc = (o, r) => { const [a, b] = px(o.x, o.z); c.beginPath(); c.arc(a, b, pr(r), 0, Math.PI * 2); c.fill(); };
       const ring = (o, half) => { const [a, b] = px(o.x, o.z); c.beginPath(); c.arc(a, b, pr(o.r), 0, Math.PI * 2); c.lineWidth = pr(half * 2); c.stroke(); };
       c.save();
       c.fillStyle = '#8fc9e2'; c.fillRect(0, 0, w, h);
       c.fillStyle = '#f0e0b8'; outline(MAP_SHORE);
+      if (mapShot) {
+        const [a, b] = px(MAP_VIEW.x0, MAP_VIEW.z0);
+        c.save(); trace(MAP_LAND); c.clip();
+        c.drawImage(mapShot, a, b, pr(MAP_VIEW.w), pr(MAP_VIEW.h));
+        c.restore();
+        c.lineWidth = Math.max(1, w / 260); c.strokeStyle = 'rgba(255,255,255,0.75)'; trace(MAP_LAND); c.stroke();
+        c.restore();
+        return;
+      }
       c.fillStyle = '#a8d88a'; outline(MAP_LAND);
       c.fillStyle = '#7cc06e'; MAP_GROVE.forEach(g => disc(g, g.r));
       MAP_WATER.forEach(o => {
@@ -4161,6 +4174,7 @@
       if (!lastPlaces || lastPlace !== 'village') { ui.toast?.('🗺️ 마을 지도는 밖에서 볼 수 있어요 · 여기선 미니맵만'); return; }
       $('worldmap').classList.add('show');
       Input.setAnalog(0, 0);   // 다른 모달과 같은 규칙 — 열 때 조이스틱을 놓는다(안 그러면 뒤에서 계속 걷는다)
+      requestMapSnapshot();
       drawWorldMap();
     }
     function closeWorldMap() { $('worldmap').classList.remove('show'); }
@@ -5136,6 +5150,14 @@
       },
       // 🗺️ 부팅 때 한 번 받는 지명 목록 — 미니맵 틱은 마을에서만 도니, 실내에서 시작해도 지도가 열리게
       setPlaces(list) { if (list && list.length) lastPlaces = list; },
+      setMapSnapshot(img) {
+        const cv = document.createElement('canvas'); cv.width = img.width; cv.height = img.height;
+        const c = cv.getContext('2d');
+        if ('filter' in c) c.filter = MAP_FILTER;
+        c.drawImage(img, 0, 0);
+        mapShot = cv;
+        if ($('worldmap').classList.contains('show')) drawWorldMap();
+      },
       // 미니맵 — 캐릭터 대략 위치 + 주요 지형 (레티나 대응)
       setMinimap(d) {
         lastPlace = d.place || 'village';
