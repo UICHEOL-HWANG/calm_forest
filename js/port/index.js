@@ -14,6 +14,7 @@ import { showTalk, hideTalk, onTalkTap, talkShown } from '../mirror/talk-box.js'
 import { splitLines } from './card.js';
 import { steer, pushOutOfIsland, pushOutOfCircles, fastStep } from './sail.js';
 import { seaHoldRod } from '../spaces/sea.js';
+import { setIslandHud, updateBasket } from './basket.js';
 import { initFishing, castSpot, castLine, twitchRod, hookFish, reelIn, clearFishing, tickFishing, fishingState } from './fishing.js';
 
 export const port = { active: false };
@@ -227,6 +228,7 @@ export function leavePort() {
   port.active = false;
   P.fishing = null;
   clearFishing();
+  setIslandHud(env.hudRoot, false);
   closeTalk();
   for (const c of solids) c.off = true;
   setChips(null);
@@ -370,11 +372,12 @@ function btnState() {
   const f = P.fishing;
   if (f) return f.state === 'bite' ? ['낚아채기!', 'hook', false] : ['낚아채기', 'wait', false];
   if (P.phase === 'sail' && !P.fast && nearSpot(3.4)) return ['🎣 던지기', '', false];
-  if (P.phase === 'island') return [ISLAND_BTN[env.$w.nearDoor] ?? '🏝️', ISLAND_BTN[env.$w.nearDoor] ? '' : 'wait', false];
+  if (P.phase === 'island') return ISLAND_BTN[env.$w.nearDoor] ? [ISLAND_BTN[env.$w.nearDoor], '', false] : ['', 'idle', false];
   return ['', 'idle', false];
 }
 
 function hudTick() {
+  if (P.phase === 'island') updateBasket(portState().pantry);
   const st = btnState(), key = st.join('|');
   if (key !== btnKey) { btnKey = key; env.ui.setSeaBtn?.(...st); }
 }
@@ -529,6 +532,7 @@ function buy() {
 function leaveIsland(fast) {
   if (!port.active || P.phase !== 'island') return;
   closeTalk(); setChips(null);
+  setIslandHud(env.hudRoot, false);
   boat.position.copy(W(ISLAND_DOCK.x, ISLAND_DOCK.z));
   Object.assign(P, { phase: 'sail', dir: -1, fast, wp: 1, speed: 0, heading: Math.PI / 2 });
   boat.rotation.y = P.heading;
@@ -549,6 +553,7 @@ function arrive() {
 
 function arriveIsland() {
   P.phase = 'island';
+  setIslandHud(env.hudRoot, true);
   boardArmed = false;
   boat.position.copy(W(ISLAND_DOCK.x, ISLAND_DOCK.z)); boat.rotation.y = -Math.PI / 2;
   env.player.position.copy(W(PIER_END.x, PIER_END.z, LAND_Y));

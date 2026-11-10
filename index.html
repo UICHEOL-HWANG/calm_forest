@@ -389,6 +389,21 @@
   #sea-btn.door { background: rgba(150,120,255,0.88); }
   #sea-btn.wait { background: rgba(60,130,180,0.6); }
   #sea-btn.idle { visibility: hidden; }
+  body.port-island #sea-btn { left: auto; right: 28px; bottom: calc(96px + env(safe-area-inset-bottom)); transform: none; width: 88px; height: 88px; border: 0; background: var(--mint); color: #2f3a2c; font-size: 36px; box-shadow: var(--shadow); }
+  body.port-island #sea-btn.press { transform: scale(0.93); }
+  body.is-touch.port-island #sea-btn { left: auto; right: max(20px, calc(env(safe-area-inset-right) + 8px)); bottom: calc(14px + env(safe-area-inset-bottom)); width: 88px; height: 88px; }
+  #port-basket { display: none; position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 24; gap: 6px; padding: 9px 12px 10px; border-radius: 14px; background: linear-gradient(#c99a5e, #b3834b); border: 3px solid #7e5531; box-shadow: inset 0 2px 0 rgba(255,255,255,.25), 0 6px 14px rgba(0,0,0,.28); pointer-events: none; }
+  body.port-island #port-basket { display: flex; }
+  #port-basket .pb-tag { position: absolute; left: 50%; top: -15px; transform: translateX(-50%); padding: 2px 12px; border-radius: 9px; background: #7e5531; color: #fff4dc; font-size: 12px; font-weight: 800; white-space: nowrap; }
+  #port-basket .pb-slot { position: relative; width: 52px; height: 52px; border-radius: 10px; background: #f6ead2; box-shadow: inset 0 -3px 0 #e2cfa9; display: flex; align-items: center; justify-content: center; }
+  #port-basket .pb-slot i { font-style: normal; font-size: 28px; line-height: 1; }
+  #port-basket .pb-slot em { position: absolute; right: -5px; bottom: -6px; min-width: 22px; height: 22px; padding: 0 5px; box-sizing: border-box; border-radius: 11px; background: #5a3a1e; color: #fff4dc; font-weight: 900; font-size: 12px; line-height: 18px; text-align: center; border: 2px solid #f6ead2; font-style: normal; }
+  #port-basket .pb-slot.zero { opacity: .4; filter: grayscale(.6); }
+  @media (max-width: 600px) {
+    #port-basket { gap: 4px; padding: 7px 8px 8px; }
+    #port-basket .pb-slot { width: 38px; height: 38px; }
+    #port-basket .pb-slot i { font-size: 21px; }
+  }
   @keyframes seaBtnPulse { from { box-shadow: 0 0 0 0 rgba(150,255,120,0.6); } to { box-shadow: 0 0 0 16px rgba(150,255,120,0); } }
   #sea-vig { position: fixed; inset: 0; pointer-events: none; z-index: 11; }
   #sea-edge { font-size: 12px; font-weight: 700; color: #fff; background: rgba(200,60,40,0.8); padding: 3px 10px; border-radius: 999px; }
