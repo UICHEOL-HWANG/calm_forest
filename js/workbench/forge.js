@@ -7,6 +7,8 @@ import { STAR_TOOLS, STAR_EFFECT, forgeCheck, forgeStart, forgeCancel, forgeScor
 import { FORGE_COPY, doneToast } from './copy.js';
 
 const LOCAL_HOST = /^(localhost|127\.0\.0\.1|\[::1\])$/;
+const TOAST_AFTER_SLEEP_MS = 3200;
+const TOAST_AFTER_BOOT_MS = 2600;
 
 function upgradeOf(tool) { return UPGRADES.find(u => u.id === tool); }
 
@@ -70,7 +72,8 @@ export function settleForge(slept = false) {
   if (done.tool === 'hammer') updateHouseSign();
   trackEvent('forge_done', { tool: done.tool, star: done.star });
   const u = upgradeOf(done.tool);
-  ui.toast?.(doneToast(u?.ico || '🔨', u?.name || done.tool, done.star), 2800, { afterDialog: true });
+  const msg = doneToast(u?.ico || '🔨', u?.name || done.tool, done.star);
+  setTimeout(() => ui.toast?.(msg, 2800, { afterDialog: true }), slept ? TOAST_AFTER_SLEEP_MS : TOAST_AFTER_BOOT_MS);
   requestSave();
   return done;
 }
