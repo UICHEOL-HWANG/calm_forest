@@ -60,6 +60,9 @@ export function mountHud(doc) {
   let onClose = null;
   card.querySelector('button').addEventListener('click', () => { card.classList.remove('show'); const f = onClose; onClose = null; f?.(); });
   const stEls = new Map();
+  let clockText = '', ticketHtml = '';
+
+  const setHtml = (el, html) => { if (el._html !== html) { el._html = html; el.innerHTML = html; } };
 
   function stEl(id) {
     let el = stEls.get(id);
@@ -67,31 +70,55 @@ export function mountHud(doc) {
     return el;
   }
 
+  function place(el, x, y) {
+    const l = `${Math.round(x)}px`, t = `${Math.round(y)}px`;
+    if (el.style.left !== l) el.style.left = l;
+    if (el.style.top !== t) el.style.top = t;
+    if (el.style.display) el.style.display = '';
+  }
+
+  function gauge(el, view) {
+    const [a, b] = view.zone || [0, 0];
+    const cls = view.state === 'burnt' ? ' burn' : view.state === 'done' ? ' done' : view.perfect ? ' perfect' : '';
+    const zone = view.zone ? `<em style="left:${(a * 100).toFixed(1)}%;width:${((b - a) * 100).toFixed(1)}%"></em>` : '';
+    setHtml(el, `<div class="gauge${cls}">${zone}<s></s></div>`);
+    const needle = el.querySelector('s');
+    const left = `${Math.min(100, view.p * 100).toFixed(1)}%`;
+    if (needle.style.left !== left) needle.style.left = left;
+  }
+
   return {
-    show(on) { root.style.display = on ? '' : 'none'; if (!on) { sts.innerHTML = ''; stEls.clear(); } },
-    clock(sec) { clock.textContent = `🍽️ ${Math.max(0, Math.ceil(SERVICE_SEC - sec))}`; },
+    show(on) {
+      root.style.display = on ? '' : 'none';
+      if (!on) { sts.innerHTML = ''; stEls.clear(); clockText = ''; ticketHtml = ''; tks.innerHTML = ''; }
+    },
+    cardOpen: () => card.classList.contains('show'),
+    clock(sec) {
+      const t = `🍽️ ${Math.max(0, Math.ceil(SERVICE_SEC - sec))}`;
+      if (t !== clockText) { clockText = t; clock.textContent = t; }
+    },
     tickets(list, now, pat) {
-      tks.innerHTML = list.map(t => {
+      const html = list.map(t => {
         const w = now - t.t0, a = PATIENCE[0] * pat, b = PATIENCE[1] * pat;
         const cls = w < a ? '' : w < b ? ' mid' : ' late';
-        const left = Math.max(0, 1 - w / b);
-        return `<div class="tk${cls}"><b>${t.table + 1}</b><i>${MENU[t.menu].ico}</i><u><s style="width:${(left * 100).toFixed(0)}%"></s></u></div>`;
+        const left = Math.round(Math.max(0, 1 - w / b) * 20) * 5;
+        return `<div class="tk${cls}"><b>${t.table + 1}</b><i>${MENU[t.menu].ico}</i><u><s style="width:${left}%"></s></u></div>`;
       }).join('');
+      if (html !== ticketHtml) { ticketHtml = html; tks.innerHTML = html; }
     },
     station(id, view, x, y) {
-      if (!view) { const el = stEls.get(id); if (el) el.style.display = 'none'; return; }
+      if (!view) { const el = stEls.get(id); if (el && el.style.display !== 'none') el.style.display = 'none'; return; }
       const el = stEl(id);
-      el.style.display = ''; el.style.left = `${x}px`; el.style.top = `${y}px`;
-      if (view.kind === 'bubble') {
-        el.innerHTML = `<div class="bub">${view.ico}<small>${view.mood}</small></div>`;
-      } else if (view.kind === 'chop') {
-        el.innerHTML = `<div class="dots">${Array.from({ length: CHOP_TAPS }, (_, i) => `<span class="${i < view.taps ? 'on' : ''}${i === view.taps && view.beat ? ' beat' : ''}"></span>`).join('')}</div>`;
-      } else {
-        const [a, b] = view.zone || [0, 0];
-        const cls = view.state === 'burnt' ? ' burn' : view.state === 'done' ? ' done' : view.perfect ? ' perfect' : '';
-        const zone = view.zone ? `<em style="left:${a * 100}%;width:${(b - a) * 100}%"></em>` : '';
-        el.innerHTML = `<div class="gauge${cls}">${zone}<s style="left:${Math.min(100, view.p * 100).toFixed(1)}%"></s></div>`;
-      }
+      place(el, x, y);
+      if (view.kind === 'bubble') setHtml(el, `<div class="bub">${view.ico}<small>${view.mood}</small></div>`);
+      else if (view.kind === 'chop') setHtml(el, `<div class="dots">${Array.from({ length: CHOP_TAPS }, (_, i) => `<span class="${i < view.taps ? 'on' : ''}${i === view.taps && view.beat ? ' beat' : ''}"></span>`).join('')}</div>`);
+      else gauge(el, view);
+    },
+    remove(id) {
+      const el = stEls.get(id);
+      if (!el) return;
+      el.remove();
+      stEls.delete(id);
     },
     result({ title, lines, goals, onDone }) {
       card.querySelector('h3').textContent = title;

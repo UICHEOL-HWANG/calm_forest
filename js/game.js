@@ -3389,8 +3389,8 @@ function buildWorld() {
     const x = Math.cos(a) * r, z = Math.sin(a) * r;
     if (dist2D({ x, z }, SEA_COVE) < SEA_COVE.r + 0.5) continue;  // 🌊 후미 물 위 제외
     if (dist2D({ x, z }, SHOP_POS) < 3.2) continue;
-    if (dist2D({ x, z }, HOMI_STALL) < 2.4) continue;
-    if (dist2D({ x, z }, RESTAURANT_GATE) < 5) continue;               // 🏪 가게 바닥은 두께 0.09 라 풀(높이 0.7)이 마루를 뚫고 올라온다
+    if (dist2D({ x, z }, HOMI_STALL) < 2.4) continue;               // 🏪 가게 바닥은 두께 0.09 라 풀(높이 0.7)이 마루를 뚫고 올라온다
+    if (dist2D({ x, z }, RESTAURANT_GATE) < 5) continue;
     if (dist2D({ x, z }, LIGHT_WORKSHOP) < 3.2) continue;            // 🏮 빛 공방 받침도 같은 이유
     if (plazaScatterBlocks(x, z, 0.5)) continue;
     if (pondScatterBlocks(x, z, 0.5)) continue;
@@ -5029,8 +5029,8 @@ function buildEnvironment() {
   lockFrom('coop'); buildCoopSite(); lockTo();   // 🐔 닭장 터 표지(남쪽 필드)
   lockFrom('glade'); buildGlade(); lockTo();      // 🌟 반딧불이 계곡(남쪽 숲) — 밤 콘텐츠
   lockFrom('lightWorkshop'); buildLightWorkshop(); lockTo();   // 🏮 빛 공방(계곡 연못가 오두막 + 주인)
-  lockFrom('cafe'); spawnCafeGate(); lockTo();
-  lockFrom('restaurant'); spawnRestaurantGate(); lockTo();   // ☕ 카페 건물(마을 남쪽) — 처음부터 있음
+  lockFrom('cafe'); spawnCafeGate(); lockTo();   // ☕ 카페 건물(마을 남쪽) — 처음부터 있음
+  lockFrom('restaurant'); spawnRestaurantGate(); lockTo();
   spawnCosmeticShop();  // 🏪 꾸미기 가게(마을 서쪽) — 처음부터 있음
   refreshMuseumGate(); // 🏛️ 박물관(마을 서쪽) — 처음부터 있음. 층은 수집률로 자란다
   buildBridge();       // 🌉 박물관 섬을 두른 개울 + 다리(해금 켜짐·새 세이브면 무너진 채 시작 — js/spaces/bridge.js)
@@ -5039,8 +5039,8 @@ function buildEnvironment() {
   buildWorldTree();   // 🌳 마을 북쪽 세계수(판 진척만큼 잎·꽃) — js/spaces/world-tree.js
   lockFrom('neighbor'); spawnNeighborGate(); lockTo();
   spawnHalloweenGate();    // 🏡 이웃 마을 가는 길(마을 남쪽, 🍄숲·🌟계곡 사이) — 처음부터 있음
-  buildCafeHall();
-  buildRestaurantHall();   // ☕ 카페 홀(별도 공간)
+  buildCafeHall();   // ☕ 카페 홀(별도 공간)
+  buildRestaurantHall();
   lockFrom('forest'); buildForest(); lockTo();     // 🍄 채집 숲(남서쪽) — 줍기
   lockFrom('river'); buildDockGate(); lockTo();   // 🛶 나루터(마을 북쪽 12시) — 처음부터 있음
   buildRiverSpace(); // 🛶 강(별도 공간) — 나룻배 러너
@@ -7170,8 +7170,8 @@ function updateDayNight(dt) {
   // 별 하늘(밤에 페이드인 + 반짝임)
   if (stars) stars.material.opacity = Math.max(0, nightAmt - 0.35) * 1.5 * (0.8 + Math.sin(t * 3.3) * 0.2);
   // 집 창문 따뜻한 불빛
-  houseWindows.forEach(m => { m.emissiveIntensity = nightAmt * 2.1 * (m.userData.nightScale ?? 1); });
-  updateRestaurantNight(nightAmt);   // nightScale: 통유리 집은 약하게
+  houseWindows.forEach(m => { m.emissiveIntensity = nightAmt * 2.1 * (m.userData.nightScale ?? 1); });   // nightScale: 통유리 집은 약하게
+  updateRestaurantNight(nightAmt);
   for (const anim of houseAddonAnims) anim(t);   // 🧩 굴뚝 연기 등 움직이는 구성품
   // 🔥 화덕 불꽃 — 세로로 늘 때 가로가 눌리고(부피 보존 인상), 두 겹이 반대로 비틀린다
   for (const f of kilnFlames) {

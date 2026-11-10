@@ -1,6 +1,6 @@
 import { paintKit, bake } from './paint-merge.js';
 
-const GLOW_DAY = 0.45, GLOW_NIGHT = 1.6, LIGHT_NIGHT = 6;
+const GLOW_DAY = 0.45, GLOW_NIGHT = 1.8;
 
 function kit(THREE) {
   const K = paintKit(THREE);
@@ -132,25 +132,14 @@ function front(THREE, K, g, { W, F }) {
 
 export function buildBistro(THREE) {
   const K = kit(THREE);
-  let F = 0;
   const g = new THREE.Group();
-  g.add(...bake(THREE, scratch => {
-    const dims = shell(K, scratch);
-    front(THREE, K, scratch, dims);
-    F = dims.F;
-  }, { intensity: GLOW_DAY }));
-  [[0, 1.8, F + 1.4, 9], [0, 2.1, F - 0.6, 6]].forEach(([x, y, z, d]) => {
-    const l = new THREE.PointLight(0xffb066, 0, d, 1.6);
-    l.position.set(x, y, z);
-    g.add(l);
-  });
+  g.add(...bake(THREE, scratch => front(THREE, K, scratch, shell(K, scratch)), { intensity: GLOW_DAY }));
   return g;
 }
 
 export function setBistroEvening(g, level) {
   const k = Math.max(0, Math.min(1, level));
   g.traverse(o => {
-    if (o.isLight) o.intensity = k * LIGHT_NIGHT;
-    else if (o.isMesh && o.userData.glow) o.material.emissiveIntensity = GLOW_DAY + (GLOW_NIGHT - GLOW_DAY) * k;
+    if (o.isMesh && o.userData.glow) o.material.emissiveIntensity = GLOW_DAY + (GLOW_NIGHT - GLOW_DAY) * k;
   });
 }

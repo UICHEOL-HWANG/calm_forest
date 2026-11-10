@@ -135,7 +135,7 @@ function stationContext(S, s) {
   switch (s.kind) {
     case 'crate': return h ? null : c('take', '✋');
     case 'board':
-      if (h && !h.plated && RAW.has(h.kind) && !st.item) return c('put', '🫳');
+      if (h && !h.plated && (h.kind === 'rice' || (h.kind === 'fish' && S.cfg.pot)) && !st.item) return c('put', '🫳');
       if (!h && st.item && chopDone(st.chop)) return c('pick', '✋');
       if (!h && st.item) return c('chop', '🔪');
       return null;

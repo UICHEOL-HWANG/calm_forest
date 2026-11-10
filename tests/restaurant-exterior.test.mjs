@@ -12,13 +12,12 @@ test('외관 모듈은 three 를 직접 import 하지 않는다', () => {
   assert.doesNotMatch(src, /from 'three'/);
 });
 
-test('비스트로는 합친 메시 2개(몸체·발광)와 조명 2개', () => {
+test('비스트로는 합친 메시 2개(몸체·발광)이고 조명은 없다', () => {
   const g = buildBistro(THREE);
   const ms = meshes(g);
   assert.equal(ms.length, 2);
   assert.ok(ms.some(m => m.userData.glow === true));
-  assert.equal(lights(g).length, 2);
-  assert.ok(lights(g).every(l => l.intensity === 0));
+  assert.equal(lights(g).length, 0);
 });
 
 test('크기와 정면 방향', () => {
@@ -29,13 +28,12 @@ test('크기와 정면 방향', () => {
   assert.ok(box.max.z > -box.min.z + 1.5, 'front terrace on +z');
 });
 
-test('저녁 점등은 발광 세기와 조명을 올린다', () => {
+test('저녁 점등은 발광 세기를 올리고 낮엔 되돌린다', () => {
   const g = buildBistro(THREE);
   const glow = meshes(g).find(m => m.userData.glow);
   const day = glow.material.emissiveIntensity;
   setBistroEvening(g, 1);
   assert.ok(glow.material.emissiveIntensity > day);
-  assert.ok(lights(g).every(l => l.intensity > 0));
   setBistroEvening(g, 0);
   assert.equal(glow.material.emissiveIntensity, day);
 });

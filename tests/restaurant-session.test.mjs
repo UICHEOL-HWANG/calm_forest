@@ -171,3 +171,12 @@ test('설비 게이지: 도마 칸, 팬 초록 구간, 냄비 완벽', () => {
   assert.ok(Math.abs(v.p - 0.2) < 1e-6);
   assert.equal(stationView(S2, 'pot'), null);
 });
+
+test('★1 도마는 쌀만 받는다(냄비가 없어 손질한 생선을 쓸 데가 없다)', () => {
+  const S = createSession({ star: 1, dda: one, rng: seq(0) });
+  actAt(S, at('crate_fish'), { take: yes });
+  assert.equal(contextAt(S, at('board')), null);
+  const S2 = createSession({ star: 2, dda: one, rng: seq(0) });
+  actAt(S2, at('crate_fish'), { take: yes });
+  assert.equal(contextAt(S2, at('board')).do, 'put');
+});

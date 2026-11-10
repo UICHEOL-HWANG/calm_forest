@@ -100,7 +100,7 @@ test('js/spaces/restaurant.js 는 입퇴장 함수를 내보낸다', () => {
 
 test('마을 배치·실내·프레임·행동·밤 점등이 연결돼 있다', () => {
   assert.match(SRC, /lockFrom\('restaurant'\); spawnRestaurantGate\(\); lockTo\(\);/);
-  assert.match(SRC, /buildCafeHall\(\);\n  buildRestaurantHall\(\);/);
+  assert.match(SRC, /buildCafeHall\(\);[^\n]*\n  buildRestaurantHall\(\);/);
   assert.match(SRC, /if \(atRestaurant\) tickRestaurant\(dt\);/);
   assert.match(SRC, /if \(atRestaurant\) \{\n    restaurantAction\(\);\n    return;\n  \}/);
   assert.match(SRC, /updateRestaurantNight\(nightAmt\);/);

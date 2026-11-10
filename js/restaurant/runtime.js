@@ -83,7 +83,7 @@ export function createRestaurantRuntime(env) {
       if (alive.has(id)) continue;
       hall.group.remove(m);
       env.releaseGuest(m);
-      hud.station(`g${id}`, null);
+      hud.remove(`g${id}`);
       guests.delete(id);
     }
   }
@@ -117,6 +117,7 @@ export function createRestaurantRuntime(env) {
     for (const e of events) {
       if (e.type === 'served' || e.type === 'staffServed') {
         env.setRest(recordServe(env.rest(), e.menu, e.stars));
+        env.earnCoins(e.coins);
         const [tx, tz] = HALL.tables[e.table];
         env.popAt(world(tx, 1.6, tz).clone(), '⭐'.repeat(e.stars));
       } else if (e.type === 'flip') pop(e.id, e.ok ? '✨' : '💨');
@@ -143,7 +144,7 @@ export function createRestaurantRuntime(env) {
     clear();
     const out = settleService(env.rest(), r);
     env.setRest(out.rest);
-    env.earnCoins(r.coins + out.bonus);
+    env.earnCoins(out.bonus);
     env.trackEvent('restaurant_service', { star: star0, served: r.served, avg_score: Math.round(r.avg * 10) / 10, dda: out.rest.dda.iv });
     if (out.starUp) env.trackEvent('restaurant_star_up', { star: out.rest.star });
     env.requestSave();
@@ -173,6 +174,7 @@ export function createRestaurantRuntime(env) {
     },
     action() {
       const lp = local(env.player.position);
+      if (hud.cardOpen()) return true;
       if (!S) {
         if (!nearBoard(lp)) return false;
         start();
