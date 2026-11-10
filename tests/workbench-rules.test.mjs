@@ -155,11 +155,12 @@ test('restoreToolStars keeps only known tools and valid stars', () => {
     { rod: 2, water: 1, pot: 0, net: 3, hammer: 0 });
 });
 
-test('restoreForge validates and finishes an interrupted hammer run at zero', () => {
+test('restoreForge validates and keeps an unplayed hammer run open for a refund', () => {
   const stars = { ...defaultToolStars(), rod: 1 };
   const ok = { tool: 'rod', star: 2, day: '2026-11-11', coins: 240, score: 8 };
   assert.deepEqual(restoreForge(ok, stars), ok);
-  assert.deepEqual(restoreForge({ ...ok, score: null }, stars), { ...ok, score: 0 });
+  assert.deepEqual(restoreForge({ ...ok, score: null }, stars), { ...ok, score: null });
+  assert.equal(restoreForge({ ...ok, score: undefined }, stars).score, null);
   assert.equal(restoreForge(undefined, stars), null);
   assert.equal(restoreForge({ ...ok, tool: 'axe' }, stars), null);
   assert.equal(restoreForge({ ...ok, star: 1 }, stars), null);

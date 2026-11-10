@@ -39,7 +39,7 @@ export function isAdv(crop) { return !!(crop && crop.adv); }
  *   고급: MATURE/waters 로 "물 waters번이면 익는다" · 비료 없으면 ×0.5 · 큰 물조리개 ×1.75(기존 비율)
  */
 export function growthPerWater(crop, upgraded, fert, star = 0) {
-  if (!isAdv(crop)) return upgraded ? 0.7 : 0.4;
+  if (!isAdv(crop)) return upgraded ? 0.7 * waterMult(star) / waterMult(0) : 0.4;
   let g = (MATURE + 1e-6) / crop.waters;
   if (upgraded) g *= waterMult(star);
   if (!fert) g *= 0.5;

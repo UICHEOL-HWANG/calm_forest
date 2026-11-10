@@ -19,10 +19,12 @@ test('water stars raise advanced crop growth per water', () => {
   assert.equal(growthPerWater(wheat, true, false, 2), base * 2.25 * 0.5);
 });
 
-test('basic crops keep the old 0.4 and 0.7', () => {
+test('basic crops keep 0.4 and 0.7 at star 0 and scale with the water star', () => {
   const carrot = { id: 'carrot' };
-  assert.equal(growthPerWater(carrot, true, false, 3), 0.7);
+  assert.equal(growthPerWater(carrot, true, false, 0), 0.7);
   assert.equal(growthPerWater(carrot, false, false, 3), 0.4);
+  assert.ok(Math.abs(growthPerWater(carrot, true, false, 3) - 1.0) < 1e-9);
+  assert.ok(growthPerWater(carrot, true, false, 1) > 0.7);
 });
 
 test('hammer stars cut building and expansion wood, never coins', () => {

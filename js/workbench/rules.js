@@ -124,6 +124,6 @@ export function restoreForge(saved, stars = defaultToolStars()) {
   if (typeof saved.day !== 'string' || !DAY_RE.test(saved.day)) return null;
   const cost = starCost(saved.tool, saved.star);
   const coins = Number.isFinite(saved.coins) ? Math.max(0, Math.floor(saved.coins)) : cost.coins;
-  const score = Number.isFinite(saved.score) ? Math.max(0, Math.min(MAX_SCORE, Math.floor(saved.score))) : 0;
+  const score = Number.isFinite(saved.score) ? Math.max(0, Math.min(MAX_SCORE, Math.floor(saved.score))) : null;
   return { tool: saved.tool, star: saved.star, day: saved.day, coins, score };
 }

@@ -2464,8 +2464,8 @@
     paint-order: stroke fill; -webkit-text-stroke: 5px #fffaf0; text-shadow: 0 3px 6px rgba(80,50,0,.35); }
   #forge-modal .fg-pop.g { color: #2e7d4a; }
   #forge-modal .fg-pop.m { color: #a8483a; }
-  #forge-modal .fg-pop.show { animation: fgPop .6s ease-out forwards; }
-  @keyframes fgPop { 0% { opacity: 0; transform: translate(-50%, 6px) scale(.9); } 25% { opacity: 1; transform: translate(-50%, 0) scale(1.06); } 100% { opacity: 0; transform: translate(-50%, -10px) scale(1); } }
+  #forge-modal .fg-pop.show { animation: fgPop .75s ease-out forwards; }
+  @keyframes fgPop { 0% { opacity: 0; transform: translate(-50%, 6px) scale(.9); } 25% { opacity: 1; transform: translate(-50%, 0) scale(1.06); } 70% { opacity: 1; transform: translate(-50%, -4px) scale(1); } 100% { opacity: 0; transform: translate(-50%, -10px) scale(1); } }
   #forge-modal .fg-anvil { position: relative; width: 128px; height: 70px; margin-top: auto; margin-bottom: 96px; pointer-events: none; }
   #forge-modal .fg-anvil.hit { animation: fgShake .18s ease-out; }
   @keyframes fgShake { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(3px); } }
@@ -7349,6 +7349,7 @@
       });
     }
     function cvKeep() {
+      if (CV.kept) return;
       const r = Input.carveResolve('keep');
       if (!r?.ok) { closeCarve(); return; }
       ui.toast(`🎁 ${r.name}${r.particle} 선물로 간직했어요`, 2400);

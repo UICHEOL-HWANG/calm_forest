@@ -125,6 +125,7 @@ export function createForgeGame(host, { onAbort, onFinish, onClose, onHit } = {}
   const close = () => {
     stop();
     window.removeEventListener('keydown', onKey, true);
+    document.removeEventListener('visibilitychange', onVisibility);
     host.removeEventListener('pointerdown', onPointer);
     host.classList.remove('show');
     host.innerHTML = '';
@@ -175,11 +176,18 @@ export function createForgeGame(host, { onAbort, onFinish, onClose, onHit } = {}
   }
 
   function onKey(e) {
-    if (!cur) return;
+    if (!cur || finished) return;
     if (e.key === ' ' || e.code === 'Space' || e.key === 'Enter') {
       e.preventDefault(); e.stopImmediatePropagation();
-      if (!finished) strike();
+      if (!e.repeat) strike();
     }
+  }
+
+  let hiddenAt = 0;
+  function onVisibility() {
+    if (!cur || finished) return;
+    if (document.hidden) { hiddenAt = performance.now(); cancelAnimationFrame(raf); return; }
+    if (hiddenAt) { t0 += performance.now() - hiddenAt; hiddenAt = 0; raf = requestAnimationFrame(tick); }
   }
 
   return {
@@ -198,6 +206,8 @@ export function createForgeGame(host, { onAbort, onFinish, onClose, onHit } = {}
       });
       host.addEventListener('pointerdown', onPointer);
       window.addEventListener('keydown', onKey, true);
+      document.addEventListener('visibilitychange', onVisibility);
+      hiddenAt = 0;
       t0 = performance.now();
       raf = requestAnimationFrame(tick);
     },

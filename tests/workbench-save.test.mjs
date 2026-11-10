@@ -47,3 +47,11 @@ test('forge events stay small', () => {
 test('no new module script tag in index.html', () => {
   assert.equal((INDEX.match(/<script type="module"/g) || []).length, 3);
 });
+
+test('a hammer run cut off by a reload is refunded on load', () => {
+  assert.match(GAME, /gameState\.forge = restoreForge\(saved\.forge, gameState\.toolStars\);\n  if \(gameState\.forge\?\.score === null\) Object\.assign\(gameState, forgeCancel\(gameState\)\);/);
+  const stars = defaultToolStars();
+  const fresh = { tool: 'rod', star: 1, day: '2026-11-11', coins: 120, score: null };
+  const restored = restoreForge(fresh, stars);
+  assert.equal(restored.score, null);
+});

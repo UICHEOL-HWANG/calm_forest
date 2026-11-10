@@ -6,7 +6,7 @@ export const WRAP_PAPERS = Object.freeze([
   Object.freeze({ id: 'starry', name: '별밤' }),
 ]);
 export const KEEP_TIERS = Object.freeze(['master', 'fine', 'decent', 'rough']);
-const KEPT_RE = /^cv:([a-z]+):([a-z]+)(?::([a-z]+))?$/;
+const KEPT_RE = /^cv:([a-z0-9_]+):([a-z]+)(?::([a-z]+))?$/;
 
 export function keptGiftId(design, tier, paper = null) {
   return paper ? `cv:${design}:${tier}:${paper}` : `cv:${design}:${tier}`;

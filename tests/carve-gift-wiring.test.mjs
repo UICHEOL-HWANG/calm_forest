@@ -46,3 +46,13 @@ test('carve HUD has combo gauge ticks at 5, 10, 15 and the keep and wrap buttons
   for (const id of ['cvr-sell', 'cvr-keep', 'cvr-plain', 'cvr-wrapgo', 'cv-combo', 'cv-gem']) assert.match(html, new RegExp(`id="${id}"`));
   assert.match(html, /<button id="cvr-plain">그냥 간직<\/button><button id="cvr-wrapgo" class="cvr-go">🎀 포장하기<\/button>/);
 });
+
+test('carving pays at finish, keeping takes the coins back and saves, combo only counts on a finished piece', () => {
+  const src = readFileSync(new URL('../js/spaces/carving.js', import.meta.url), 'utf8');
+  assert.match(src, /carvePayout\(d\.pay, tier\.mult, kind === 'done' \? best : 0\)/);
+  assert.match(src, /  payCarve\(d, coins\);\n  if \(canKeep\) carvePending = \{ d, tier, coins \};/);
+  const keep = src.slice(src.indexOf('export function carveResolve('), src.indexOf('export function carveWrap('));
+  assert.match(keep, /gameState\.inventory\.coins = Math\.max\(0, \(gameState\.inventory\.coins \|\| 0\) - p\.coins\)/);
+  assert.match(keep, /requestSave\(\)/);
+  assert.match(src.slice(src.indexOf('export function carveWrap(')), /requestSave\(\)/);
+});

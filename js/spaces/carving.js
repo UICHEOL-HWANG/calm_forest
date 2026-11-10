@@ -7,7 +7,7 @@
 // =============================================================
 import {
   $w, RES_LABEL, camera, clayMat, dateHash, gameState, mgView, pointer, raycaster, refreshInventoryUI, renderer,
-  scene, snapCamera, spawnConfetti, spawnFloatText, spawnSparkle, todayStr, ui, woodMat,
+  requestSave, scene, snapCamera, spawnConfetti, spawnFloatText, spawnSparkle, todayStr, ui, woodMat,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
 import { onPlay, decorBanner } from '../decor-drops/index.js';
@@ -392,11 +392,11 @@ export function carveFinish(kind) {
   if (isBest) st.best[d.id] = score;
   if (!st.done.includes(d.id)) st.done.push(d.id);        // 시도 자체가 오늘 주문 소진(재도전 파밍 방지)
   const best = carve.combo.best;
-  const coins = carvePayout(d.pay, tier.mult, best);
+  const coins = carvePayout(d.pay, tier.mult, kind === 'done' ? best : 0);
   const canKeep = kind === 'done';
   if (kind === 'done') st.carvedToday = (st.carvedToday || 0) + 1;   // 🦉 의뢰는 오늘 완성 수를 읽는다(망치거나 포기한 건 "완성" 이 아니다)
+  payCarve(d, coins);
   if (canKeep) carvePending = { d, tier, coins };
-  else payCarve(d, coins);
   revealCarve(tier, kind === 'done');
   trackEvent(kind === 'abandon' ? 'carve_abandon' : 'carve_result', {   // [GA4] 결과 지표 — 주방 스키마와 같은 결
     order: d.id, quality: tier.id, score, dmg: carve.dmg,
@@ -422,12 +422,13 @@ export function carveResolve(how = 'sell') {
   const p = carvePending;
   if (!p) return { ok: false };
   carvePending = null;
-  if (how !== 'keep') {
-    payCarve(p.d, p.coins);
-    return { ok: true, how: 'sell', coins: p.coins };
-  }
+  if (how !== 'keep') return { ok: true, how: 'sell', coins: p.coins };
   const id = keptGiftId(p.d.id, p.tier.id);
+  gameState.inventory.coins = Math.max(0, (gameState.inventory.coins || 0) - p.coins);
+  logEcon('carve_keep', p.d.id, -p.coins, gameState.inventory.coins);
+  refreshInventoryUI();
   gameState.gifts = addGift(gameState.gifts, id);
+  requestSave();
   Sound.blip();
   trackEvent('carve_keep', { design: p.d.id, tier: p.tier.id });
   return { ok: true, how: 'keep', id, ico: p.d.ico, name: p.d.name, particle: objParticle(p.d.name), love: keepLove(p.tier.id) };
@@ -442,6 +443,7 @@ export function carveWrap(id, paper) {
   gameState.gifts = next;
   gameState.inventory.coins -= WRAP_COST;
   refreshInventoryUI();
+  requestSave();
   Sound.blip();
   logEcon('gift_wrap', paper, -WRAP_COST, gameState.inventory.coins);
   trackEvent('gift_wrap', { paper, item: kept.design });
