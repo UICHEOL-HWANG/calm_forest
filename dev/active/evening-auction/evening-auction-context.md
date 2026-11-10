@@ -31,4 +31,32 @@ Last Updated: 2026-11-10 05:28
 - `js/animal-faces.js` 는 three 만 import(시안에서 직접 사용)
 
 ## 확정 문구
-(Task 0 승인 후 여기에 붙인다)
+2026-11-10 사용자 승인. 기본은 후보 2, 사용자가 4줄을 고쳤다(★). 경매품 이름은 후보 2 에 안이 없어 후보 1 유지.
+
+| 자리 | 한국어 | 영어 |
+|---|---|---|
+| 무대 앞 안내(열림) | 🔨 경매 참가 | 🔨 Join the auction |
+| 무대 앞 안내(닫힘) ★ | 🔨 경매는 저녁에 열려요 | 🔨 Opens in the evening |
+| 무대 앞 안내(오늘 끝) | 🔨 오늘 경매 끝 | 🔨 Done for today |
+| 창 제목 | 🔨 오늘의 경매 | 🔨 Today's Auction |
+| 대기 안내 | 오늘의 경매품이 나왔어요 | Today's lot is up |
+| 참가 버튼 | 🔔 경매 참가하기 | 🔔 Join |
+| 구경 버튼 ★ | 👀 구경만 하기 | 👀 Just watch |
+| 구경 이유 | 시작가 🪙{0} | Starts at 🪙{0} |
+| 첫 줄 | 시작가예요 | Starting price |
+| 1등(나) | 🙋 지금 1등 | 🙋 You're leading |
+| 1등(주민) | {0} 1등 | {0} is leading |
+| 시간 연장 | ⏱️ 연장! | ⏱️ Extended! |
+| 카운트 | 3… / 2… / 1… | 3… / 2… / 1… |
+| 낙찰 | {0} 낙찰! | {0} is yours! |
+| 낙찰 부가 ★ | 🧺 보관함에 넣었어요 | Added to storage 🧺 |
+| 패찰 | {0}에게 낙찰 | {0} won it |
+| 유찰 | 유찰됐어요 | No bids this time |
+| 끝 버튼 ★ | 닫기 | Close |
+| 내 기록 이름 | 🙋 내 입찰 | 🙋 Me |
+| 경매품 이름 | 달빛 그네 · 등불 아치 · 별 풍향계 | Moon Swing · Lantern Arch · Star Vane |
+| 경매품 설명 | 경매에서 산 {이름} | Won at the auction |
+
+- 낙찰·패찰의 {0}: 낙찰은 경매품 이름, 패찰은 주민 이름.
+- "구경만하기"는 띄어쓰기만 "구경만 하기"로 맞췄다.
+- 모바일 폭 실측은 Task 10.
