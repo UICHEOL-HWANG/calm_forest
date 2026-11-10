@@ -10,6 +10,8 @@
 //     120코인을 쓰고도 손에 든 도끼가 나무 자루 그대로였다는 뜻이다.
 // =============================================================
 
+import { hammerRate } from './workbench/rules.js';
+
 /** 도구 id → gameState.upgrades 키. 여기 없는 도구는 아직 업그레이드가 없다(항상 0단계). */
 //   🍲 pot(큰 냄비)은 요리 버프라 손에 드는 도구가 아니다 — 일부러 넣지 않는다.
 export const TOOL_UPGRADE = {
@@ -77,7 +79,7 @@ export const HAMMER_EXPAND_RATE = 0.7;
  *    목재만 줄여야 그 리밸런스를 되돌리지 않으면서 망치가 증축까지 이어진다.
  */
 export function expandWoodOf(state = {}, wood) {
-  return state.upgrades?.hammer ? Math.ceil(wood * HAMMER_EXPAND_RATE) : wood;
+  return state.upgrades?.hammer ? Math.ceil(wood * hammerRate(state)) : wood;
 }
 
 /**

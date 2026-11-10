@@ -20,6 +20,7 @@ import { updateHouseSign } from '../spaces/house.js';
 import { BLUEPRINTS, blueprintOfTool, tier2Status } from '../tool-blueprints.js';
 import { FREE_PREFIX, freeDishOf, freePotCheck, freePotReady, freePotTotal, isFreeId, loadFreePot } from '../free-pot/dish.js';
 import { INGREDIENTS } from '../free-pot/rules.js';
+import { potMult } from '../workbench/rules.js';
 
 //    게임업계식 등급 컷: 점수 구간 → 등급/배율. 잘할수록 같은 재료로 더 오래 가는 버프.
 export const COOK_TIERS = [
@@ -86,7 +87,7 @@ export function pantryView() {
   };
 }
 
-export function buffDur(r, tier) { return Math.round(r.dur * tier.mult * (gameState.upgrades.pot ? 1.5 : 1)); }
+export function buffDur(r, tier) { return Math.round(r.dur * tier.mult * potMult(gameState)); }
 
 // 🍽️ 완성한 요리를 어떻게 할지 — 'eat'(바로 먹어 버프) | 'store'(🧺 찬장에 보관)
 //    결과 화면을 그냥 닫아도 'eat' 으로 마무리된다(만든 음식을 잃지 않게).

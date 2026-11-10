@@ -38,6 +38,7 @@ import { DIG_HIT_AT, DIG_RESTORE, digHit, expireDig, setPlotDug, trySeed, tryWat
 import { refreshCovers } from '../spaces/weather.js';
 import { e1OnHarvest } from '../spaces/e1-start.js';   // 🧪 E1 — 첫 수확이 처치 대기를 끝낸다
 import { sickleReach } from '../tool-tiers.js';
+import { starOf } from '../workbench/rules.js';
 import * as THREE from 'three';
 
 export const FARM_AUTO_R = 1.8;
@@ -219,7 +220,7 @@ export function workerApply(rec, task, tally) {
     case 'water': {
       if (!p || p.state !== 'growing') return false;
       const hive = inRadiusOf(recs, 'beehive', p.x, p.z), well = inRadiusOf(recs, 'well', p.x, p.z);
-      p.growth = Math.min(1, p.growth + growthPerWater(p.cropType, !!gameState.upgrades.water, !!p.fert) * (hive ? HIVE_GROWTH_MUL : 1));
+      p.growth = Math.min(1, p.growth + growthPerWater(p.cropType, !!gameState.upgrades.water, !!p.fert, starOf(gameState, 'water')) * (hive ? HIVE_GROWTH_MUL : 1));
       p.wetUntil = clock.elapsedTime + WET_TIME * (well ? WELL_WET_MUL : 1); p.watered = true; p.needSince = 0;
       if (p.growth < MATURE && weedRoll(p.cropType, Math.random())) p.weed = true;
       refreshCropStage(p); bump('water'); return true;
@@ -620,7 +621,7 @@ export function petApply(task) {
       if (p.state !== 'growing') return false;
       const recs = farmBuildingRecs();
       const hive = inRadiusOf(recs, 'beehive', p.x, p.z), well = inRadiusOf(recs, 'well', p.x, p.z);
-      p.growth = Math.min(1, p.growth + growthPerWater(p.cropType, !!gameState.upgrades.water, !!p.fert) * (hive ? HIVE_GROWTH_MUL : 1));
+      p.growth = Math.min(1, p.growth + growthPerWater(p.cropType, !!gameState.upgrades.water, !!p.fert, starOf(gameState, 'water')) * (hive ? HIVE_GROWTH_MUL : 1));
       p.wetUntil = clock.elapsedTime + WET_TIME * (well ? WELL_WET_MUL : 1);
       p.watered = true; p.needSince = 0;
       if (p.growth < MATURE && weedRoll(p.cropType, Math.random())) p.weed = true;

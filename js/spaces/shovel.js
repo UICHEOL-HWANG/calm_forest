@@ -22,6 +22,7 @@ import { traceObjs } from '../spaces/night-visit.js';
 import { plantSeed } from '../spaces/orchard-actions.js';
 import { outdoorZone } from '../spaces/outdoor-decor.js';
 import { digIsOneShot } from '../tool-tiers.js';
+import { starOf } from '../workbench/rules.js';
 import * as THREE from 'three';
 
 export const DIG_ANIM_DUR = 0.6;
@@ -250,7 +251,7 @@ export function tryWater(plot = plots.find(p => p.state === 'growing' && dist2D(
   // 🏗️ 🐝벌통 반경(성장 +10%) · 💧우물 반경(흙이 40% 오래 촉촉) — 반경·배율은 js/farm-building.js 표가 유일한 출처
   const recs = farmBuildingRecs();
   const hiveNear = inRadiusOf(recs, 'beehive', plot.x, plot.z), wellNear = inRadiusOf(recs, 'well', plot.x, plot.z);
-  plot.growth = Math.min(1, plot.growth + growthPerWater(plot.cropType, !!gameState.upgrades.water, !!plot.fert) * (hiveNear ? HIVE_GROWTH_MUL : 1)); // 기존 0.4/0.7 · 고급은 js/farm-crops.js
+  plot.growth = Math.min(1, plot.growth + growthPerWater(plot.cropType, !!gameState.upgrades.water, !!plot.fert, starOf(gameState, 'water')) * (hiveNear ? HIVE_GROWTH_MUL : 1)); // 기존 0.4/0.7 · 고급은 js/farm-crops.js
   plot.wetUntil = clock.elapsedTime + WET_TIME * (wellNear ? WELL_WET_MUL : 1); plot.watered = true;
   if (plot.growth < MATURE && weedRoll(plot.cropType, Math.random())) {   // 🌿 고급 작물만 — 물 준 뒤 잡초가 돋는다(다 익은 뒤엔 안 돋음)
     plot.weed = true;

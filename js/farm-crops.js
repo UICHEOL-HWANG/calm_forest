@@ -10,6 +10,8 @@
 //  ▶ 테스트: npm test (tests/farm-crops.test.mjs)
 // =============================================================
 
+import { waterMult } from './workbench/rules.js';
+
 /** 익는 성장도 — 기존 refreshCropStage 의 0.8 그대로 */
 export const MATURE = 0.8;
 
@@ -36,10 +38,10 @@ export function isAdv(crop) { return !!(crop && crop.adv); }
  *   기존: 0.4 / 큰 물조리개 0.7 (그대로)
  *   고급: MATURE/waters 로 "물 waters번이면 익는다" · 비료 없으면 ×0.5 · 큰 물조리개 ×1.75(기존 비율)
  */
-export function growthPerWater(crop, upgraded, fert) {
+export function growthPerWater(crop, upgraded, fert, star = 0) {
   if (!isAdv(crop)) return upgraded ? 0.7 : 0.4;
   let g = (MATURE + 1e-6) / crop.waters;
-  if (upgraded) g *= 1.75;
+  if (upgraded) g *= waterMult(star);
   if (!fert) g *= 0.5;
   return g;
 }
