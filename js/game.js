@@ -230,8 +230,9 @@ import {
   stationCamDist, updateMgScene,
 } from './spaces/kitchen-stage.js';   // 📦 🍳 작업대·자유주방·가공 클로즈업 무대 (구역 머리말 — 분리 2단계)
 import {
-  applyCarveCamera, carveAbandon, carveDebug, carveSceneEnd, carveStart, workshopView, wset,
+  applyCarveCamera, carveAbandon, carveDebug, carveResolve, carveSceneEnd, carveStart, carveTick, carveWrap, keptGiftsView, workshopView, wset,
 } from './spaces/carving.js';   // 📦 🗿 조각 공방 — 깎기 미니게임 (구역 머리말 — 분리 2단계)
+import { restoreGifts } from './spaces/carve-gift.js';
 import {
   intro, introEnd, introLook, introStart, updateIntro,
 } from './spaces/prologue.js';   // 📦 🎬 프롤로그 컷신 (구역 머리말 — 분리 2단계)
@@ -2053,6 +2054,9 @@ export const Input = {
   carveAbandon() { carveAbandon(); },                   // 🗿 그만두기(낮은 등급으로 강제 완성)
   carveSceneEnd() { carveSceneEnd(); },                 // 🗿 무대 종료(결과 닫기 → 마을 카메라 복귀)
   carveDebug(a, n) { return carveDebug(a, n); },        // 🗿 로컬 검증 훅(localhost 전용, 실서비스 no-op)
+  carveResolve(how) { return carveResolve(how); },
+  carveWrap(id, paper) { return carveWrap(id, paper); },
+  keptGifts() { return keptGiftsView(); },
   mgSceneStart(type, icos, n, dishIco) { mgSceneStart(type, icos, n, dishIco); }, // 🍳 클로즈업 조리 무대 입장(카메라 전환)
   mgSceneEnd() { mgSceneEnd(); },                       // 🍳 무대 종료(마을 카메라 복귀)
   getStory() { return storyView(); },                   // 📖 메인 퀘스트 현황(칩·모달 렌더용)
@@ -3041,7 +3045,7 @@ function applySave(saved) {
     gameState.outdoorStored = {};
     for (const [k, v] of Object.entries(saved.outdoorStored)) if (OUTDOOR.some(d => d.id === k) && Number.isFinite(v) && v > 0) gameState.outdoorStored[k] = Math.floor(v);
   }
-  if (saved.gifts) gameState.gifts = { ...saved.gifts };             // 보유 선물 복원
+  if (saved.gifts) gameState.gifts = restoreGifts(saved.gifts);             // 보유 선물 복원
   gameState.plaza = restorePlaza(saved.plaza);   // 🌾 광장(옛 세이브=기본값)
   gameState.auction = restoreAuction(saved.auction);
   gameState.neighbors = restoreNeighbors(saved.neighbors);   // 🏡 이웃 마을(옛 세이브=기본값)
@@ -5494,6 +5498,7 @@ function updateCarveScene(dt, t) {
     if (f.life <= 0) { f.m.parent?.remove(f.m); f.m.geometry.dispose(); wset.debris.splice(i, 1); }
   }
   wset.light.intensity = 1.15 + 0.05 * Math.sin(t * 9);
+  carveTick();
 }
 
 // =============================================================
