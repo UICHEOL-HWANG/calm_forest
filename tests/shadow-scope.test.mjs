@@ -93,7 +93,7 @@ const MEASURED_SHADOWLESS = { indoor: 'INT', atFarm: 'FARM' };
 // receiveShadow 메시는 지면 원반(buildOrchardGround)과 오솔길 띠(buildOrchardPaths) 둘인데
 // 지면이 더 넓어 최근접점을 정한다: CircleGeometry(ORCHARD_HALF + 16 = 36) @ (0,160)
 // → z 최소 124, 상자 클램프 18 을 빼서 106m. js/shadow-scope.js 주석에 산출 과정을 적어 뒀다.
-const NEAREST_RECEIVER_M = { atMine: 218.5, atMist: 217.5, atCafe: 290.8, atRestaurant: 620, atSea: 292, atHalloween: 358, atRiver: 376,
+const NEAREST_RECEIVER_M = { atMine: 218.5, atMist: 217.5, atCafe: 290.8, atRestaurant: 615.8, atSea: 292, atHalloween: 358, atRiver: 376,
                              atMuseum: 330, atObservatory: 510, indoor: 27, atFarm: 18, atOrchard: 106, atNeighbor: 648, atDream: 392, atMirror: 612, atMountain: 909 };
 // 마을 땅 안의 구역: 그림자가 실제로 보인다. 절대 끄면 안 된다.
 const VILLAGE_SPACES = ['GLADE', 'FOREST', 'DOCK_POND'];
