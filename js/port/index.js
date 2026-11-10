@@ -8,6 +8,8 @@ import { rollCatch, addToPantry, acceptQuest, pickItem, claimQuest, boardGate } 
 import { disarmPortPier, nearPortPier, portPierBoat } from './pier.js';
 import { createGuide } from '../guide/runner.js';
 import { createGuideView } from '../guide/view.js';
+import { createNav } from '../guide/path.js';
+import { islandWalkable, PIER_WALK } from './nav.js';
 import { portGuideSteps } from './guide-steps.js';
 import { buildIslandNPC, beachBuoy, npcPortrait, setNpcNight, ISLAND_NPCS } from './npc-models.js';
 import { showTalk, hideTalk, onTalkTap, talkShown } from '../mirror/talk-box.js';
@@ -15,6 +17,7 @@ import { splitLines } from './card.js';
 import { steer, pushOutOfIsland, pushOutOfCircles, fastStep } from './sail.js';
 import { seaHoldRod } from '../spaces/sea.js';
 import { setIslandHud, updateBasket } from './basket.js';
+import { pickQuestGuide, questSteps, askSteps } from './quest-guide.js';
 import { initFishing, castSpot, castLine, twitchRod, hookFish, reelIn, clearFishing, tickFishing, fishingState } from './fishing.js';
 
 export const port = { active: false };
@@ -29,7 +32,6 @@ const GUIDE_AT = {
   islandDock: W(ISLAND_DOCK.x, ISLAND_DOCK.z),
   pierEndIsland: W(PIER_END.x, PIER_END.z, LAND_Y),
   villageDock: W(VILLAGE_DOCK.x, VILLAGE_DOCK.z),
-  solids: SOLIDS.map(([c, r]) => [W(c.x, c.z), r]),
 };
 const ZONE_COL = { near: 0xbfe6ff, far: 0x9fd0ff, night: 0xffd27a, pier: 0xbfe6ff };
 let guide = null, view = null, guideHome = false, pointKey = null;
@@ -248,7 +250,7 @@ export function clampPort(pos) {
   const cx = PORT.x + ISLAND.x, cz = PORT.z + ISLAND.z;
   const dx = pos.x - cx, dz = pos.z - cz, d = Math.hypot(dx, dz);
   const lx = pos.x - PORT.x, lz = pos.z - PORT.z;
-  const onPier = lx >= 21.9 && lx <= 26.5 && Math.abs(lz) <= 0.75;
+  const onPier = lx >= PIER_WALK.x0 && lx <= PIER_WALK.x1 && Math.abs(lz) <= PIER_WALK.halfZ;
   if (!onPier && d > WALK_R) { pos.x = cx + (dx / d) * WALK_R; pos.z = cz + (dz / d) * WALK_R; }
 }
 
@@ -622,14 +624,59 @@ function flushGuideHome() {
 }
 
 const NO_SOLIDS = [];
+let islandNav = null;
+function islandRoute(me, tgt) {
+  islandNav ??= createNav(SOLIDS, islandWalkable);
+  const w = islandNav.route({ x: me.x - PORT.x, z: me.z - PORT.z }, { x: tgt.x - PORT.x, z: tgt.z - PORT.z });
+  return w === tgt ? tgt : { ...tgt, x: w.x + PORT.x, z: w.z + PORT.z };
+}
+const QUEST_DEF = Object.fromEntries(QUESTS.map(q => [q.id, q]));
+const NPC_AT = Object.fromEntries(QUESTS.map(q => [q.id, { x: q.pos[0], z: q.pos[1] }]));
+let qGuide = null, qPick = null, qShown = false;
+
+function questCtx(id) {
+  const s = portState().quests[id] ?? {};
+  return { state: s.state, got: s.got ?? 0, npc: npcs[id]?.position,
+    item: nearest(items, it => it.id === id && !it.taken && it.mesh.visible, itemPos, env.player.position) };
+}
+
+function syncQuestGuide() {
+  const me = { x: env.player.position.x - PORT.x, z: env.player.position.z - PORT.z };
+  const pick = pickQuestGuide(portState().quests, !!env.isNight?.(), me, NPC_AT, qPick);
+  if (pick?.id === qPick?.id && pick?.mode === qPick?.mode) return;
+  qPick = pick;
+  qGuide = pick ? createGuide({ flow: `port_${pick.mode}_${pick.id}`, steps: (pick.mode === 'run' ? questSteps : askSteps)(QUEST_DEF[pick.id]),
+    now: () => performance.now(), onStep: e => env.trackEvent('guide_step', e) }) : null;
+}
+
+function hideQuestGuide() {
+  if (DBG) window.__questGuide = null;
+  if (!qShown) return;
+  qShown = false; view?.hide(); setPoint(null);
+}
+
+function updateQuestGuide(visible) {
+  if (!visible || !port.active || P.phase !== 'island' || !portState()) return hideQuestGuide();
+  if (qGuide) qGuide.tick(questCtx(qPick.id));
+  syncQuestGuide();
+  const step = qGuide?.current();
+  if (!step) return hideQuestGuide();
+  view ??= createGuideView({ scene: env.scene, camera: env.camera, root: env.hudRoot });
+  const ctx = questCtx(qPick.id), nd = env.$w.nearDoor;
+  view.show(step, qGuide.index(), qGuide.total, ctx, env.player.position, islandRoute, LAND_Y);
+  setPoint(step.expect?.includes(nd) ? (talkShown() ? 'talk' : 'btn') : null);
+  qShown = true;
+  if (DBG) { const t = step.target(ctx), w = t && islandRoute(env.player.position, t); window.__questGuide = { quest: qPick.id, mode: qPick.mode, step: step.id, target: t ? { x: t.x, z: t.z } : null, via: w ? { x: w.x, z: w.z } : null }; }
+}
+
 export function updatePortGuide(visible) {
-  if (!guide) return;
+  if (!guide) return updateQuestGuide(visible);
   const ctx = guideCtx();
   guide.tick(ctx);
   if (!guide) return;
   const step = guide.current(), island = port.active && P.phase === 'island';
   const me = port.active && P.phase === 'sail' ? boat.position : env.player.position;
-  const sol = island ? GUIDE_AT.solids : NO_SOLIDS;
+  const sol = island ? islandRoute : NO_SOLIDS;
   const nd = env.$w.nearDoor, want = !!step?.expect?.includes(nd) && !(nd === 'port_fish' && P.fishing?.state !== 'bite');
   if (!visible) { view.hide(); setPoint(null); }
   else {

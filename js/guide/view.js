@@ -31,7 +31,7 @@ export function createGuideView({ scene, camera, root }) {
     ring.scale.setScalar(1 + Math.sin(performance.now() / 200) * 0.12);
     chev.visible = d > 2.5;
     if (chev.visible) {
-      const wp = step.via?.(ctx) ?? waypoint(me, tgt, solids), ang = Math.atan2(wp.x - me.x, wp.z - me.z);
+      const wp = step.via?.(ctx) ?? (typeof solids === 'function' ? solids(me, tgt) : waypoint(me, tgt, solids)), ang = Math.atan2(wp.x - me.x, wp.z - me.z);
       chev.position.set(me.x + Math.sin(ang) * 1.9, groundY + 0.12, me.z + Math.cos(ang) * 1.9);
       chev.rotation.set(-Math.PI / 2, 0, ang + Math.PI);
     }

@@ -293,7 +293,7 @@ page_view,ga4_auto,ga4,3,N,auto,4710,731,2026-07-27,2026-10-24,campaign_id,,GA4 
 perf_sample,system,ops,3,N,active,23,15,2026-09-25,2026-10-24,frames|gpu|fps_p10|sample_sec|dpr|long_frame_pct|mem_gb|cores|screen_w|shadow|screen_h|fps_avg|night|pt_lights|q_lvl,js/game.js:6162,"플레이 중 주기적으로 측정한 성능 샘플 (fps_avg, fps_p10, gpu, 화면 크기, 메모리, 밤 여부, 셰이더 점광원 수, 화질 단계)",
 port_trip,content,port_island,2,N,not_fired,0,0,,,via|caught|quests|sec,js/port/index.js:498,"포구 섬 배 여행을 마치고 마을 부두로 돌아왔을 때 (via=sail·fast, caught=잡은 물고기 수, quests=끝낸 의뢰 수, sec=여행 초)",
 port_quest,content,port_island,2,N,not_fired,0,0,,,quest_id|act,js/port/index.js:438,"포구 섬 주민 의뢰를 받거나 끝냈을 때 (quest_id=fisher·yatai·farm·light, act=accept·done)",
-guide_step,onboarding,port_island,2,N,not_fired,0,0,,,flow|step|ms,js/port/index.js:521,"첫 방문 길 안내의 한 단계를 끝냈을 때 (flow=port, step=끝낸 단계 번호 1~12, ms=그 단계에 머문 밀리초)",
+guide_step,onboarding,port_island,2,N,not_fired,0,0,,,flow|step|ms,js/port/index.js:521,"길 안내의 한 단계를 끝냈을 때 (flow=port 첫 방문 12단계 | port_ask_<의뢰id> 주민에게 말 걸기 1단계 | port_run_<의뢰id> 물건 모으기·돌려주기 2단계, step=끝낸 단계 번호, ms=그 단계에 머문 밀리초)",
 quality_step,system,ops,3,N,active,0,0,,,q_lvl,js/game.js,"느린 모바일에서 자동으로 화질 단계를 내림 (1=해상도 1.0, 2=블룸 끔)",
 pest_clear,farming,farm,2,N,not_fired,0,0,,,,js/game.js:7393,공정 수행,
 pest_counter,content,cave_delve,2,N,not_fired,0,0,,,,js/spaces/delve.js:219,"광산 박쥐를 맨손 잡기로 대응했을 때 (pest=해충, method=대응 방법, ok=성공)",

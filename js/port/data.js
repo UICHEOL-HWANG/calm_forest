@@ -47,10 +47,10 @@ export const CATCH = {
 };
 
 export const QUESTS = [
-  { id: 'fisher', who: '수달 어부', pos: [31.2, 11.6], title: '떠내려간 부표 찾기', ask: '그물 부표가 동쪽 해변으로 떠내려갔어. 3개만 주워 줄래?', thanks: '고마워! 오늘 잡은 생선 나눠 줄게.', item: 'buoy', itemName: '부표', need: 3, spots: [[50, 17], [58, 12], [62, 4]], reward: { fish: 5, shrimp: 2 } },
-  { id: 'yatai', who: '포장마차 너구리', pos: [34.6, -3.6], title: '어묵 국물용 조개', ask: '국물 낼 조개가 떨어졌네. 남쪽 갯바위에서 4개만 캐 와 줘.', thanks: '덕분에 국물 맛 살겠다! 넉넉히 캐 왔으니 조개 반은 가져가.', item: 'clam', itemName: '조개', need: 4, spots: [[31.5, 13.5], [33.5, 15.2], [35.5, 16.8], [38, 17.5]], reward: { rice: 3, clam: 3 } },
-  { id: 'farm', who: '밭 할머니 염소', pos: [49.5, -12], title: '배추 뽑기 도와주기', ask: '아이고 허리야. 배추 3포기만 뽑아다 주겠니?', thanks: '아이고 고마워라. 넉넉히 가져가렴.', item: 'cabbage', itemName: '배추', need: 3, spots: [[52.5, -8.5], [55.5, -8.5], [52.5, -11.5], [55.5, -11.5]], reward: { veg: 5 } },
-  { id: 'light', who: '등대지기 부엉이', pos: [57.6, -5.4], title: '등대 기름통 가져다주기', ask: '등불 기름이 다 됐어. 어부네 집 데크에 기름통이 있을 거야. 좀 가져다줄래?', thanks: '이제 배들이 길을 잃지 않겠군. 밤바다에서 잡은 오징어야.', item: 'oil', itemName: '기름통', need: 1, spots: [[32.4, 10.4]], reward: { squid: 3 }, night: true },
+  { id: 'fisher', hint: '해변에 떠내려온 부표를 주워 오세요', who: '수달 어부', pos: [31.2, 11.6], title: '떠내려간 부표 찾기', ask: '그물 부표가 동쪽 해변으로 떠내려갔어. 3개만 주워 줄래?', thanks: '고마워! 오늘 잡은 생선 나눠 줄게.', item: 'buoy', itemName: '부표', need: 3, spots: [[50, 17], [58, 12], [62, 4]], reward: { fish: 5, shrimp: 2 } },
+  { id: 'yatai', hint: '남쪽 갯바위에서 조개를 캐 오세요', who: '포장마차 너구리', pos: [34.6, -3.6], title: '어묵 국물용 조개', ask: '국물 낼 조개가 떨어졌네. 남쪽 갯바위에서 4개만 캐 와 줘.', thanks: '덕분에 국물 맛 살겠다! 넉넉히 캐 왔으니 조개 반은 가져가.', item: 'clam', itemName: '조개', need: 4, spots: [[31.5, 13.5], [33.5, 15.2], [35.5, 16.8], [38, 17.5]], reward: { rice: 3, clam: 3 } },
+  { id: 'farm', hint: '울타리 밭에서 배추를 뽑아 오세요', who: '밭 할머니 염소', pos: [49.5, -12], title: '배추 뽑기 도와주기', ask: '아이고 허리야. 배추 3포기만 뽑아다 주겠니?', thanks: '아이고 고마워라. 넉넉히 가져가렴.', item: 'cabbage', itemName: '배추', need: 3, spots: [[52.5, -8.5], [55.5, -8.5], [52.5, -11.5], [55.5, -11.5]], reward: { veg: 5 } },
+  { id: 'light', hint: '어부네 집 데크에서 기름통을 가져오세요', who: '등대지기 부엉이', pos: [57.6, -5.4], title: '등대 기름통 가져다주기', ask: '등불 기름이 다 됐어. 어부네 집 데크에 기름통이 있을 거야. 좀 가져다줄래?', thanks: '이제 배들이 길을 잃지 않겠군. 밤바다에서 잡은 오징어야.', item: 'oil', itemName: '기름통', need: 1, spots: [[32.4, 10.4]], reward: { squid: 3 }, night: true },
 ];
 
 const at = (x, z) => ({ x, z });
