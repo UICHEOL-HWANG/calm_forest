@@ -747,15 +747,29 @@ function seaPose(dt, t, tens) {
   const tgt = st === 'fight' && seaMG.fmesh ? seaMG.fmesh.position
             : st === 'cast' ? _seaCastTo : seaBuoy.visible ? seaBuoy.position : null;
   const yaw = tgt ? Math.atan2(SEA.x + tgt.x - player.position.x, SEA.z + tgt.z - player.position.z) : player.rotation.y;
-  _seaV.set(Math.sin(yaw) * Math.cos(p.elev), Math.sin(p.elev), Math.cos(yaw) * Math.cos(p.elev));
+  aimSeaRod(yaw, p.elev, 0.08 + tens * 0.55 + (p.tip || 0) + Math.sin(t * 40) * seaMG.shiver * 0.2);
+  seaMG.shiver = Math.max(0, seaMG.shiver - dt * 1.2);
+}
+
+function aimSeaRod(yaw, elev, tip) {
+  _seaV.set(Math.sin(yaw) * Math.cos(elev), Math.sin(elev), Math.cos(yaw) * Math.cos(elev));
   const bz = rodBendAxis(_seaV, { x: Math.sin(yaw), y: 0, z: Math.cos(yaw) });
   _seaBZ.set(bz.x, bz.y, bz.z); _seaBX.crossVectors(_seaV, _seaBZ);
   _seaQ2.setFromRotationMatrix(_seaBM.makeBasis(_seaBX, _seaV, _seaBZ));
   handAnchor.updateWorldMatrix(true, false);
   handAnchor.getWorldQuaternion(_seaQ1);
   seaRodMesh.quaternion.copy(_seaQ1.invert()).multiply(_seaQ2);
-  seaRodMesh.userData.sea.tip.rotation.set(0.08 + tens * 0.55 + (p.tip || 0) + Math.sin(t * 40) * seaMG.shiver * 0.2, 0, 0);
-  seaMG.shiver = Math.max(0, seaMG.shiver - dt * 1.2);
+  seaRodMesh.userData.sea.tip.rotation.set(tip, 0, 0);
+}
+
+export function seaRodRest(yaw, elev = PUMP_IDLE, tip = 0.08) {
+  if (!playerArms || !seaRodMesh) return;
+  playerAnchor.rotation.set(0, 0, 0); playerAnchor.scale.set(1, 1, 1);
+  playerArms.R.pivot.rotation.set(-0.6, 0.1, 0.08);
+  playerArms.L.pivot.rotation.set(-0.55, -0.45, 0.3);
+  $w.armWristK = 0;
+  poseHeldTool(0);
+  aimSeaRod(yaw, elev, tip);
 }
 
 function seaUpdateLine(dt, t, tens) {

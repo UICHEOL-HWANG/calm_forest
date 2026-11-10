@@ -13,7 +13,7 @@ import { buildIslandNPC, beachBuoy, npcPortrait, setNpcNight, ISLAND_NPCS } from
 import { showTalk, hideTalk, onTalkTap, talkShown } from '../mirror/talk-box.js';
 import { splitLines } from './card.js';
 import { steer, pushOutOfIsland, fastStep } from './sail.js';
-import { seaHoldRod } from '../spaces/sea.js';
+import { seaHoldRod, seaRodRest } from '../spaces/sea.js';
 
 export const port = { active: false };
 const env = {};
@@ -322,6 +322,14 @@ function fishTick(dt) {
   else if (f.state === 'bite' && f.t > f.win) { env.popAt?.(f.spot.pos, '💨'); P.fishing = null; }
 }
 
+function rodTick() {
+  const f = P.fishing, me = env.player;
+  if (!f) return seaRodRest(me.rotation.y);
+  const yaw = Math.atan2(f.spot.pos.x - me.position.x, f.spot.pos.z - me.position.z);
+  const bite = f.state === 'bite';
+  seaRodRest(yaw, bite ? 0.85 + Math.sin(P.t * 30) * 0.06 : 0.45, bite ? 0.5 : 0.12);
+}
+
 function spotsTick(isNight) {
   for (const s of P.spots) {
     s.mesh.visible = s.left > 0 && (s.zone !== 'night' || isNight);
@@ -354,7 +362,7 @@ export function updatePort(dt) {
   spotsTick(isNight);
   if (port.active && P.phase === 'island') residentsTick();
   fishTick(dt);
-  if (P.phase === 'sail') sailTick(dt);
+  if (P.phase === 'sail') { sailTick(dt); if (port.active && P.phase === 'sail') rodTick(); }
   if (port.active) hudTick();
 }
 
