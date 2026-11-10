@@ -16,16 +16,11 @@ import * as THREE from 'three';
 import { greyFood, ingredientModel, releaseFood, setFoodOpacity, setFoodTint } from '../cook-ingredient-art.js';   // 🍲 재료는 이모지 대신 3D 모형(2026-09-29)
 import { BOARD_TOP, CUT_X, CUT_Z, KNIFE_UP, chopNote, clearChops, startChop, updateChops } from './kitchen-chop.js';   // 🔪 M2 통통통
 import { updateAuctionScene } from '../auction/index.js';
+import { buildCraftCart } from './exterior-art.js';
 
 export function spawnWorkbench() {
   const g = new THREE.Group(); g.position.copy(BENCH);
-  const top = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.16, 0.9), woodMat(2, 1)); top.position.y = 0.7; top.castShadow = true; g.add(top);
-  [[-0.6, -0.35], [0.6, -0.35], [-0.6, 0.35], [0.6, 0.35]].forEach(([x, z]) => {
-    const l = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.7, 0.12), clayMat(0x6b4a34)); l.position.set(x, 0.35, z); g.add(l);
-  });
-  const vise = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.2, 0.22), clayMat(0x8b8b93)); vise.position.set(-0.35, 0.88, 0); vise.castShadow = true; g.add(vise); // 바이스(공구 느낌)
-  const hammer = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.05, 0.1), woodMat(1, 1)); hammer.position.set(0.4, 0.81, 0.12); hammer.rotation.y = 0.5; g.add(hammer); // 놓인 망치 자루
-  const head = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, 0.16), clayMat(0x6e6e76)); head.position.set(0.52, 0.83, 0.05); head.rotation.y = 0.5; g.add(head);
+  g.add(buildCraftCart(THREE, { woodMap: woodMat(1, 1).map }));
   g.add(makeSignpost('🔧 작업대', 1.2, 0.7));   // 팻말 — 요리는 옆 🍳 자유주방으로 분리됨
   scene.add(g);
   obstacles.push({ x: BENCH.x, z: BENCH.z, r: 1.4 }); // 작업대 위엔 밭 금지

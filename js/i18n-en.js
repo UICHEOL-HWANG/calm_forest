@@ -2247,10 +2247,6 @@ export const EN = {
   '…누군가 이쪽을 보고 있어요': '…Someone is watching',
 
   // ── game.js — 시세판·밤손님·퀘스트·프롬프트 (4800~) ──
-  '📊 시세판': '📊 Price Board',
-  '{0} 비싸요  +{1}%': '{0} High  +{1}%',
-  '{0} 싸요  {1}%': '{0} Low  {1}%',
-  '가격은 매일 자정에 바뀌어요': 'Prices change every midnight',
   '팔 게 없어요': 'Nothing to sell',
   '이미 보유한 도구예요': 'You already own this tool',
   '코인이 부족해요': 'Not enough Coins',
