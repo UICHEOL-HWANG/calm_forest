@@ -1,5 +1,5 @@
 # context · admob-rewarded
-Last Updated: 2026-11-10
+Last Updated: 2026-11-10 (Play 선언 검토 제출됨)
 
 브랜치 feat/admob-rewarded (base feat/capacitor-app b42c1df1), 워크트리 .claude/worktrees/competent-lewin-309744
 
