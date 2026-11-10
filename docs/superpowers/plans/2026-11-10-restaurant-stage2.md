@@ -152,13 +152,13 @@ test('도마는 탭 4번, 0.22초보다 빠른 탭은 무시', () => {
   assert.equal(chopDone(c), true);
 });
 
-test('별점은 5에서 깎고 최소 1', () => {
+test('별점은 5에서 깎는다(최저 2)', () => {
   assert.equal(serveStars(10, 1, 1), 5);
   assert.equal(serveStars(30, 1, 1), 4);
   assert.equal(serveStars(50, 1, 1), 3);
   assert.equal(serveStars(50, 0.75, 1), 2);
   assert.equal(serveStars(30, 1, 1.25), 5);
-  assert.equal(serveStars(999, 0, 1), 1);
+  assert.equal(serveStars(999, 0, 1), 2);
 });
 
 test('손님 간격은 영업 처음→끝으로 줄고 DDA 배율을 곱한다', () => {
