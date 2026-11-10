@@ -751,6 +751,8 @@ function seaPose(dt, t, tens) {
   seaMG.shiver = Math.max(0, seaMG.shiver - dt * 1.2);
 }
 
+const _seaQ0 = new THREE.Quaternion();
+
 function aimSeaRod(yaw, elev, tip) {
   _seaV.set(Math.sin(yaw) * Math.cos(elev), Math.sin(elev), Math.cos(yaw) * Math.cos(elev));
   const bz = rodBendAxis(_seaV, { x: Math.sin(yaw), y: 0, z: Math.cos(yaw) });
@@ -762,14 +764,24 @@ function aimSeaRod(yaw, elev, tip) {
   seaRodMesh.userData.sea.tip.rotation.set(tip, 0, 0);
 }
 
-export function seaRodRest(yaw, elev = PUMP_IDLE, tip = 0.08) {
+export function seaRodRest(yaw, pose = {}) {
   if (!playerArms || !seaRodMesh) return;
-  playerAnchor.rotation.set(0, 0, 0); playerAnchor.scale.set(1, 1, 1);
-  playerArms.R.pivot.rotation.set(-0.6, 0.1, 0.08);
-  playerArms.L.pivot.rotation.set(-0.55, -0.45, 0.3);
+  const { elev = PUMP_IDLE, tip = 0.08, armUp = 0, lean = 0, side = 0, armR = null, armL = null, stow = 0 } = pose;
+  const k = 1 - stow;
+  playerAnchor.rotation.set(lean * k, 0, 0); playerAnchor.scale.set(1, 1, 1);
+  const r = armR ?? [-0.6 - armUp, 0.1, 0.08], l = armL ?? [-0.55 - armUp, -0.45, 0.3];
+  playerArms.R.pivot.rotation.set(r[0] * k, r[1] * k, r[2] * k);
+  playerArms.L.pivot.rotation.set(l[0] * k, l[1] * k, l[2] * k);
   $w.armWristK = 0;
-  poseHeldTool(0);
-  aimSeaRod(yaw, elev, tip);
+  poseHeldTool(stow);
+  aimSeaRod(yaw + side, elev, tip);
+  if (stow > 0) seaRodMesh.quaternion.slerp(_seaQ0, stow);
+}
+
+export function seaRodTip(out) {
+  if (!seaRodMesh) return null;
+  seaRodMesh.updateWorldMatrix(true, true);
+  return seaRodMesh.userData.sea.tipEnd.getWorldPosition(out);
 }
 
 function seaUpdateLine(dt, t, tens) {

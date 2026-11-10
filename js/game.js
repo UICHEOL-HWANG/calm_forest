@@ -16,6 +16,7 @@
 // =============================================================
 
 import * as THREE from 'three';
+import { buildReelRod } from './reel-rod-model.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -4603,35 +4604,8 @@ function toolMesh(id, tier = 0, skin = null) {
     gem(0, 0.10, 0.9);
     g.scale.setScalar(1.25);
   } else if (id === 'reel') {
-    // 🌊 대물 릴대 — sims/arm-sim.html 검수 v2. 민대와 실루엣이 확실히 다르게:
-    //   짧고 굵은 보트 로드 + 윈치급 오버사이즈 드럼 릴 + 굵은 가이드 링 + 밝은 팁.
-    const NAVY = 0x2e4a66, KNOB = 0xd94f4f, ROPE = 0xe8d9a8;
-    const rknob = new THREE.Mesh(new THREE.SphereGeometry(0.05, 7, 6), clayMat(GRIP)); rknob.position.y = -0.08; g.add(rknob);
-    const rear = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.046, 0.22, 7), clayMat(GRIP)); rear.position.y = 0.04; g.add(rear);
-    const reel = new THREE.Group(); reel.position.set(0.1, 0.24, 0); g.add(reel);
-    const spool = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.105, 0.075, 12), clayMat(STEEL));
-    spool.rotation.z = Math.PI / 2; reel.add(spool);
-    [-1, 1].forEach(sx => {
-      const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.02, 12), clayMat(EDGE));
-      rim.rotation.z = Math.PI / 2; rim.position.x = sx * 0.04; reel.add(rim);
-    });
-    const wound = new THREE.Mesh(new THREE.TorusGeometry(0.085, 0.022, 6, 12), clayMat(ROPE));
-    wound.rotation.y = Math.PI / 2; reel.add(wound);
-    const crank = new THREE.Group(); crank.position.x = 0.065; reel.add(crank);
-    const armC = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.11, 0.018), clayMat(EDGE)); armC.position.y = 0.048; crank.add(armC);
-    const kn = new THREE.Mesh(new THREE.SphereGeometry(0.03, 7, 6), clayMat(KNOB)); kn.position.y = 0.105; crank.add(kn);
-    const blank = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.048, 0.52, 7), clayMat(NAVY)); blank.position.y = 0.56; g.add(blank);
-    [[0.52, 0.04], [0.7, 0.032]].forEach(([y, r]) => {
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.013, 5, 10), clayMat(EDGE));
-      ring.rotation.x = Math.PI / 2; ring.position.set(0.03 + r, y, 0); g.add(ring);
-    });
-    const rtip = new THREE.Group(); rtip.position.y = 0.8; g.add(rtip);
-    const tipRod = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.026, 0.2, 6), clayMat(EDGE));
-    tipRod.position.y = 0.09; rtip.add(tipRod);
-    rtip.rotation.z = 0.34;
-    const tipEnd = new THREE.Group(); tipEnd.position.y = 0.19; rtip.add(tipEnd);   // 낚싯줄 시작점
-    g.scale.setScalar(1.25);   // 대물 장비 — 카메라 클로즈업(0.45)에서도 또렷하게
-    g.userData.sea = { crank, tip: rtip, tipEnd };
+    g.userData.sea = buildReelRod(g);
+    g.scale.setScalar(1.25);
   } else if (id === 'net') {
     // 🦋 포충망 — 긴 손잡이 + 테 + 반투명 망(밤에 실루엣이 또렷하게 보이도록 밝은 색)
     const nk = up ? 1.22 : 1;   // 촘촘한 = 테가 커지고 망이 덜 비친다(잡을 확률↑)

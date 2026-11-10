@@ -388,6 +388,7 @@
   #sea-btn.stop { background: rgba(200,80,60,0.9); border-color: #ffd0c4; }
   #sea-btn.door { background: rgba(150,120,255,0.88); }
   #sea-btn.wait { background: rgba(60,130,180,0.6); }
+  #sea-btn.idle { visibility: hidden; }
   @keyframes seaBtnPulse { from { box-shadow: 0 0 0 0 rgba(150,255,120,0.6); } to { box-shadow: 0 0 0 16px rgba(150,255,120,0); } }
   #sea-vig { position: fixed; inset: 0; pointer-events: none; z-index: 11; }
   #sea-edge { font-size: 12px; font-weight: 700; color: #fff; background: rgba(200,60,40,0.8); padding: 3px 10px; border-radius: 999px; }
@@ -1478,7 +1479,10 @@
   #guide-mark span, #guide-edge span { display: block; font-size: 12px; font-weight: 800; color: #fff; text-shadow: 0 1px 2px #000; white-space: nowrap; }
   @keyframes guide-bob { to { transform: translate(-50%, -125%); } }
   #guide-edge { position: fixed; z-index: 6; width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%; background: #ffc94a; color: #2f2414; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 21px; box-shadow: 0 2px 8px rgba(0,0,0,.4); pointer-events: none; }
-  #guide-edge i { font-style: normal; display: block; }
+  #guide-edge i { font-style: normal; display: block; width: 20px; height: 20px; line-height: 0; }
+  #guide-edge i svg, #guide-mark b svg { display: block; width: 100%; height: 100%; }
+  #guide-mark b { display: block; width: 30px; height: 24px; margin: 0 auto; filter: drop-shadow(0 1px 1.5px rgba(0,0,0,.45)); }
+  body.is-touch #guide-mark b { width: 26px; height: 21px; }
   #guide-edge span { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 2px; }
   #action-btn.point, #sea-btn.point { overflow: visible; }
   #action-btn.point::after, #sea-btn.point::after { content: '👆'; position: absolute; right: -6px; bottom: -14px; font-size: 28px; pointer-events: none; animation: guide-tap .6s infinite alternate; }
@@ -5097,7 +5101,7 @@
         const b = $('sea-btn');
         if (b.textContent !== label) b.textContent = label;
         const c = cls || '';
-        if (b.dataset.cls !== c) { b.classList.remove('go', 'hook', 'stop', 'door', 'wait'); if (c) b.classList.add(c); b.dataset.cls = c; }
+        if (b.dataset.cls !== c) { b.classList.remove('go', 'hook', 'stop', 'door', 'wait', 'idle'); if (c) b.classList.add(c); b.dataset.cls = c; }
       },
       setSeaRings(list) {
         const { cx, cy, w } = this.seaAnchor();

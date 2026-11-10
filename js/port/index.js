@@ -13,7 +13,8 @@ import { buildIslandNPC, beachBuoy, npcPortrait, setNpcNight, ISLAND_NPCS } from
 import { showTalk, hideTalk, onTalkTap, talkShown } from '../mirror/talk-box.js';
 import { splitLines } from './card.js';
 import { steer, pushOutOfIsland, fastStep } from './sail.js';
-import { seaHoldRod, seaRodRest } from '../spaces/sea.js';
+import { seaHoldRod } from '../spaces/sea.js';
+import { initFishing, castSpot, castLine, twitchRod, hookFish, reelIn, clearFishing, tickFishing, fishingState } from './fishing.js';
 
 export const port = { active: false };
 const env = {};
@@ -33,6 +34,7 @@ const ZONE_COL = { near: 0xbfe6ff, far: 0x9fd0ff, night: 0xffd27a, pier: 0xbfe6f
 let guide = null, view = null, guideHome = false, pointKey = null;
 export const guideActive = () => !!guide?.active();
 export const guideHides = () => guideActive() && guide.index() < 10;
+const ROD_READY_R = 5;
 const TALK_R = 2.6, PICK_R = 1.5, TALK_CLOSE_R = 3, PIER_END_R = 1.2;
 const portState = () => env.gameState().port;
 
@@ -91,6 +93,7 @@ function buildPort() {
   const sea = new THREE.Mesh(new THREE.PlaneGeometry(300, 180), new THREE.MeshLambertMaterial({ color: 0x4fb3c9 }));
   sea.rotation.x = -Math.PI / 2; sea.position.copy(W(20, 0, -0.02)); group.add(sea);
   buildIsland();
+  initFishing(group);
   buildBuoys();
   shops = new THREE.Group(); group.add(shops);
   const { market, hut } = buildPortShops();
@@ -223,6 +226,7 @@ export function leavePort() {
   env.player.position.y = 0;
   port.active = false;
   P.fishing = null;
+  clearFishing();
   closeTalk();
   for (const c of solids) c.off = true;
   setChips(null);
@@ -253,6 +257,12 @@ export function portCamera(camera, look, dt) {
   const tall = camera.aspect < 1, low = !tall && innerHeight < 500;
   const fov = tall ? 60 : low ? 30 : 36;
   if (camera.fov !== fov) { camera.fov = fov; camera.updateProjectionMatrix(); }
+  if (DBG && window.__portCam) {
+    const c = window.__portCam, p = env.player.position;
+    camera.position.set(p.x + Math.sin(c.yaw) * c.dist, p.y + c.h, p.z + Math.cos(c.yaw) * c.dist);
+    camera.lookAt(p.x, p.y + 0.8, p.z);
+    return;
+  }
   const t = P.phase === 'sail' ? boat.position : env.player.position;
   const off = P.phase === 'island' ? (low ? [17, 11.5] : [20, 13]) : (low ? [14, 9.8] : [16.5, 11.5]);
   look.lerp(_v.set(t.x, 0, t.z), Math.min(1, dt * 4));
@@ -300,34 +310,47 @@ function nearSpot(r) {
 function startFish(spot) {
   if (!spot) return;
   const first = P.trip.caught === 0 && guideActive();
-  P.fishing = { spot, t: 0, bite: first ? BITE_FIRST.delay : 1.2 + Math.random() * 1.6, win: first ? BITE_FIRST.win : BITE_WIN, state: 'wait' };
+  P.fishing = { spot, t: 0, bite: first ? BITE_FIRST.delay : 1.2 + Math.random() * 1.6, win: first ? BITE_FIRST.win : BITE_WIN, state: 'cast' };
+  castLine(spot.pos, env.player.position, env.player.rotation.y);
+}
+
+function aimAt(pos) {
+  const me = env.player.position;
+  return Math.atan2(pos.x - me.x, pos.z - me.z);
 }
 
 function tapFish() {
   const f = P.fishing; if (!f) return;
-  if (f.state === 'bite') {
-    const kind = rollCatch(f.spot.zone, Math.random());
-    const gs = env.gameState(); gs.port = addToPantry(gs.port, { [kind]: 1 });
-    P.trip.caught++; f.spot.left--; if (!f.spot.left) f.spot.mesh.visible = false;
-    env.popAt?.(f.spot.pos, PANTRY_ICO[kind]);
-    env.requestSave();
-  }
-  P.fishing = null;
+  if (f.state === 'wait') return twitchRod();
+  if (f.state !== 'bite') return;
+  const kind = rollCatch(f.spot.zone, Math.random());
+  const gs = env.gameState(); gs.port = addToPantry(gs.port, { [kind]: 1 });
+  P.trip.caught++; f.spot.left--;
+  env.requestSave();
+  f.state = 'lift';
+  hookFish(kind, boat.position, at => env.popAt?.(at, PANTRY_ICO[kind]));
+}
+
+function stopFish() {
+  const f = P.fishing; if (!f || f.state === 'lift' || f.state === 'reel') return;
+  f.state = 'reel'; reelIn();
 }
 
 function fishTick(dt) {
   const f = P.fishing; if (!f) return;
   f.t += dt;
-  if (f.state === 'wait' && f.t > f.bite) { f.state = 'bite'; f.t = 0; env.popAt?.(f.spot.pos, '❗'); }
-  else if (f.state === 'bite' && f.t > f.win) { env.popAt?.(f.spot.pos, '💨'); P.fishing = null; }
+  const view = fishingState();
+  if (f.state === 'cast' && view === 'wait') { f.state = 'wait'; f.t = 0; }
+  else if (f.state === 'wait' && f.t > f.bite) { f.state = 'bite'; f.t = 0; env.popAt?.(f.spot.pos, '❗'); }
+  else if (f.state === 'bite' && f.t > f.win) { env.popAt?.(f.spot.pos, '💨'); stopFish(); }
+  else if ((f.state === 'lift' || f.state === 'reel') && !view) P.fishing = null;
+  if ((f.state === 'wait' || f.state === 'bite') && Math.hypot(...Object.values(inputVec())) > 0.5) stopFish();
 }
 
-function rodTick() {
-  const f = P.fishing, me = env.player;
-  if (!f) return seaRodRest(me.rotation.y);
-  const yaw = Math.atan2(f.spot.pos.x - me.position.x, f.spot.pos.z - me.position.z);
-  const bite = f.state === 'bite';
-  seaRodRest(yaw, bite ? 0.85 + Math.sin(P.t * 30) * 0.06 : 0.45, bite ? 0.5 : 0.12);
+function rodTick(dt) {
+  const f = P.fishing, aim = f ? aimAt(castSpot()) : null;
+  if (aim != null) env.player.rotation.y = aim;
+  tickFishing(dt, P.t, { yaw: env.player.rotation.y, bite: f?.state === 'bite', aimYaw: aim, ready: !!f || (!P.fast && !!nearSpot(ROD_READY_R)) });
 }
 
 function spotsTick(isNight) {
@@ -347,7 +370,7 @@ function btnState() {
   if (f) return f.state === 'bite' ? ['낚아채기!', 'hook', false] : ['낚아채기', 'wait', false];
   if (P.phase === 'sail' && !P.fast && nearSpot(3.4)) return ['🎣 던지기', '', false];
   if (P.phase === 'island') return [ISLAND_BTN[env.$w.nearDoor] ?? '🏝️', ISLAND_BTN[env.$w.nearDoor] ? '' : 'wait', false];
-  return ['⛵', 'wait', false];
+  return ['', 'idle', false];
 }
 
 function hudTick() {
@@ -362,7 +385,7 @@ export function updatePort(dt) {
   spotsTick(isNight);
   if (port.active && P.phase === 'island') residentsTick();
   fishTick(dt);
-  if (P.phase === 'sail') { sailTick(dt); if (port.active && P.phase === 'sail') rodTick(); }
+  if (P.phase === 'sail') { sailTick(dt); if (port.active && P.phase === 'sail') rodTick(dt); }
   if (port.active) hudTick();
 }
 

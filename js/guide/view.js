@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { waypoint, edgeArrow } from './route.js';
 
+const DOWN_SVG = '<svg viewBox="0 0 30 24"><path d="M3 3h24L15 21z" fill="#ffc94a" stroke="#7a5310" stroke-width="2" stroke-linejoin="round"/></svg>';
+const RIGHT_SVG = '<svg viewBox="0 0 20 20"><path d="M2 7.5h8.5V3.5L18 10l-7.5 6.5v-4H2z" fill="#2f2414" stroke="#2f2414" stroke-width="1" stroke-linejoin="round"/></svg>';
+
 export function createGuideView({ scene, camera, root }) {
   const gold = 0xffc94a;
   const ring = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.15, 28), new THREE.MeshBasicMaterial({ color: gold, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false }));
@@ -37,8 +40,8 @@ export function createGuideView({ scene, camera, root }) {
     const e = edgeArrow({ x: (v.x + 1) / 2 * r.width, y: (1 - v.y) / 2 * r.height, inFront: v.z < 1 }, r.width, r.height);
     const label = `${Math.round(d)}m`;
     mark.hidden = !e.inside; edge.hidden = e.inside;
-    if (e.inside) { markAt = place(mark, e.x, e.y, markAt); markKey = html(mark, d > 3 ? label : '', markKey, `⬇️<span>${d > 3 ? label : ''}</span>`); }
-    else { edgeAt = place(edge, e.x, e.y, edgeAt); edgeKey = html(edge, `${Math.round(e.deg)}|${label}`, edgeKey, `<i style="transform:rotate(${e.deg}deg)">➜</i><span>${label}</span>`); }
+    if (e.inside) { markAt = place(mark, e.x, e.y, markAt); markKey = html(mark, d > 3 ? label : '', markKey, `<b>${DOWN_SVG}</b><span>${d > 3 ? label : ''}</span>`); }
+    else { edgeAt = place(edge, e.x, e.y, edgeAt); edgeKey = html(edge, `${Math.round(e.deg)}|${label}`, edgeKey, `<i style="transform:rotate(${e.deg}deg)">${RIGHT_SVG}</i><span>${label}</span>`); }
   }
   hide();
   return { show, hide };
