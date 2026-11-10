@@ -33,7 +33,11 @@
 ## 구현 2단계: 식당 1차 (계획 docs/superpowers/plans/2026-11-10-restaurant-stage2.md)
 - [x] 자리 A 카페 옆 (12, 20.5)·외관 R1 비스트로 확정 (sims/restaurant-site-compare.html, sims/restaurant-look-compare.html)
 - [x] 구현 계획서 작성 (Task 0~9, 결정 R1~R8)
-- [ ] Task 0 문구 선검수
-- [ ] js/restaurant (영업·설비·별점·평판·DDA) + 테스트
-- [ ] 첫 영업 길 안내
-- [ ] GA4 restaurant_service·restaurant_star_up
+- [ ] Task 0 문구 선검수 (후보표 dev/active/restaurant-port/restaurant-copy.md, 사용자 확정 대기)
+- [x] Task 1 순수 규칙(3e83d747) · Task 2 영업 상태 기계 + 손놀림(도마 탭 4번·팬 뒤집기, e867e865)
+- [x] Task 3 공간 플래그·저장·잠금 배선(9c7a5b86)
+- [x] Task 4 비스트로 외관(e6960e4e) · Task 6 실내 모형(295e50fb)
+- [x] Task 5·7 문·진입·영업 런타임·HUD(b46233ed). 브라우저 봇 한 판: 7명 ★5.0 🪙175, 창고 차감·DDA 0.94·결과 카드 확인
+- [ ] Task 8 첫 영업 길 안내 (문구 확정 뒤)
+- [ ] Task 9 전체 테스트·코드 리뷰 반영·폰 실측
+- [x] GA4 restaurant_service·restaurant_star_up (taxonomy 행 추가)
