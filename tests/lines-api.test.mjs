@@ -47,6 +47,7 @@ test('캐시 미스면 RPC 로 뽑아 캐시하고 line_picks 를 남긴다', as
   const body = await res.json();
   assert.equal(body.lines._any.last[0].text, '더 없소?');
   assert.equal(body.src, 'partial');
+  assert.equal(res.headers.get('Cache-Control'), 'public, max-age=300');
   assert.deepEqual(calls[0].body, { p_kind: 'auction', p_keys: ['_any'], p_lang: 'ko', p_seed: '2026-11-10:auction', p_n: 4 });
   const picks = calls.find(c => c.url.includes('/line_picks'));
   assert.deepEqual(picks.body, [{ date: '2026-11-10', kind: 'auction', key: '_any', slot: 'last', lang: 'ko', line_id: 7 }]);
@@ -70,4 +71,32 @@ test('worker 에 /api/lines 라우트가 있고 config 에 LINES_API 가 있다'
   assert.match(worker, /pathname === '\/api\/lines'/);
   const config = readFileSync(new URL('../js/config.js', import.meta.url), 'utf8');
   assert.match(config, /LINES_API: `\$\{API_BASE\}\/api\/lines`/);
+});
+
+test('line_picks 저장이 500 이어도 줄은 돌려주고 오류를 로그한다', async () => {
+  const later = [], logged = [];
+  const orig = console.error;
+  console.error = (...a) => logged.push(a.join(' '));
+  try {
+    const fetch = async url => url.endsWith('/rpc/line_pick_many')
+      ? new Response(JSON.stringify([{ key: '_any', slot: 'last', id: 7, text: '더 없소?' }]))
+      : new Response('boom', { status: 500 });
+    const req = new Request('https://x/api/lines?kind=auction&key=_any&lang=ko&date=2026-11-10');
+    const res = await onRequestGet({ request: req, env, waitUntil: p => later.push(p) }, { fetch, cache: memCache(), now: NOW });
+    await Promise.all(later);
+    assert.equal(res.status, 200);
+    assert.equal((await res.json()).lines._any.last[0].text, '더 없소?');
+    assert.ok(logged.some(m => m.includes('line_picks failed')));
+  } finally {
+    console.error = orig;
+  }
+});
+
+test('모든 슬롯이 찬 응답은 12시간 캐시한다', async () => {
+  const rows = [{ key: 'moonswing', slot: 'intro', id: 1, text: 'a' }, { key: 'moonswing', slot: 'open', id: 2, text: 'b' }];
+  const fetch = async url => url.endsWith('/rpc/line_pick_many') ? new Response(JSON.stringify(rows)) : new Response('', { status: 201 });
+  const req = new Request('https://x/api/lines?kind=auction&key=moonswing&lang=ko&date=2026-11-10');
+  const res = await onRequestGet({ request: req, env, waitUntil: () => {} }, { fetch, cache: memCache(), now: NOW });
+  assert.equal((await res.json()).src, 'pool');
+  assert.equal(res.headers.get('Cache-Control'), 'public, max-age=43200');
 });

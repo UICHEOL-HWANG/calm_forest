@@ -2,6 +2,7 @@ import { SLOTS, LINE_LANGS, keysFor, slotsFor } from '../../js/lines/slots.js';
 import { storeHeaders, storeReady } from './_ai-store.js';
 
 const CACHE_TTL = 60 * 60 * 12;
+const PARTIAL_TTL = 300;
 const MAX_KEYS = 4;
 const PICK_N = Math.max(...Object.values(SLOTS).flatMap(k => Object.values(k).map(s => s.per)));
 
@@ -69,13 +70,14 @@ export async function onRequestGet({ request, env, waitUntil }, { fetch = global
     const rows = await res.json();
     if (!Array.isArray(rows) || !rows.length) return empty('empty-pool');
     const lines = shapeLines(rows, q.kind, q.keys);
-    const out = json({ date: q.date, src: srcOf(lines, q.kind, q.keys), lines }, headers);
+    const src = srcOf(lines, q.kind, q.keys);
+    const out = json({ date: q.date, src, lines }, src === 'pool' ? headers : { ...headers, 'Cache-Control': `public, max-age=${PARTIAL_TTL}` });
     const picks = Object.entries(lines).flatMap(([key, slots]) => Object.entries(slots).flatMap(([slot, list]) =>
       list.map(l => ({ date: q.date, kind: q.kind, key, slot, lang: q.lang, line_id: l.id }))));
     if (cache) waitUntil(cache.put(cacheKey, out.clone()));
     waitUntil(fetch(`${env.SUPABASE_URL}/rest/v1/line_picks?on_conflict=date,kind,key,slot,lang,line_id`, {
       method: 'POST', headers: storeHeaders(env, 'resolution=ignore-duplicates,return=minimal'), body: JSON.stringify(picks),
-    }).catch(e => console.error(JSON.stringify({ message: 'line_picks failed', error: e.message }))));
+    }).then(r => { if (!r.ok) console.error(JSON.stringify({ message: 'line_picks failed', status: r.status })); }).catch(e => console.error(JSON.stringify({ message: 'line_picks failed', error: e.message }))));
     return out;
   } catch (e) {
     console.error(JSON.stringify({ message: 'lines failed', kind: q.kind, keys: q.keys, lang: q.lang, error: e.message }));
