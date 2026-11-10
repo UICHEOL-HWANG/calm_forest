@@ -75,3 +75,36 @@ test('hop twice plays two arcs then rests', () => {
   assert.equal(arcs, 2);
   a.dispose();
 });
+
+test('dispose frees every figure geometry and material exactly once', () => {
+  const counts = new Map();
+  const spy = (r) => { const orig = r.dispose.bind(r); r.dispose = () => { counts.set(r, (counts.get(r) || 0) + 1); orig(); }; return r; };
+  const sharedMat = spy(new THREE.MeshStandardMaterial());
+  const figure = () => {
+    const group = new THREE.Group();
+    group.add(new THREE.Mesh(spy(new THREE.SphereGeometry(0.5, 6, 4)), sharedMat));
+    group.add(new THREE.Mesh(spy(new THREE.SphereGeometry(0.3, 6, 4)), [spy(new THREE.MeshStandardMaterial()), sharedMat]));
+    return { group };
+  };
+  const parent = new THREE.Group();
+  const a = createActors(THREE, { buildFigure: figure, npcDefs: defs, parent });
+  a.attachPlayer(makeArms());
+  a.dispose();
+  assert.ok(counts.size >= 9);
+  for (const n of counts.values()) assert.equal(n, 1);
+});
+
+test('detachPlayer resets the arm pitch and is safe to destructure', () => {
+  const parent = new THREE.Group();
+  const { attachPlayer, detachPlayer, raise, update, dispose } = createActors(THREE, { buildFigure, npcDefs: defs, parent });
+  const arms = makeArms();
+  arms.R.pivot.rotation.y = 0.3;
+  attachPlayer(arms);
+  raise('me', 10);
+  for (let i = 0; i < 40; i++) update(0.05, 1, i * 0.05);
+  detachPlayer();
+  assert.equal(arms.R.pivot.rotation.x, 0);
+  assert.equal(arms.R.pivot.rotation.y, 0.3);
+  assert.equal(arms.R.hand.children.length, 0);
+  dispose();
+});

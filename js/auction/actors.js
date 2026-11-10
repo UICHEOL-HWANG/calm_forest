@@ -22,8 +22,16 @@ export function hopHeight(t) { return t < HOP_LEN ? Math.sin(Math.PI * t / HOP_L
 export function faceStage(dx, dz) { return Math.atan2(-0.2 - dx, 0.2 - dz); }
 
 export function createActors(THREE, { buildFigure, npcDefs, parent }) {
-  const owned = [];
-  const own = (res) => { owned.push(res); return res; };
+  const owned = new Set();
+  const own = (res) => { owned.add(res); return res; };
+  const freeTree = (root, seen) => {
+    root.traverse((o) => {
+      if (o.geometry && !seen.has(o.geometry)) { seen.add(o.geometry); o.geometry.dispose(); }
+      for (const m of [].concat(o.material || [])) {
+        if (!seen.has(m)) { seen.add(m); m.dispose(); }
+      }
+    });
+  };
   const clay = (c) => own(new THREE.MeshStandardMaterial({ color: c, roughness: 0.95, metalness: 0 }));
   const part = (group, geo, mat, x, y, z) => {
     const m = new THREE.Mesh(own(geo), mat);
@@ -115,6 +123,38 @@ export function createActors(THREE, { buildFigure, npcDefs, parent }) {
 
   const approach = (cur, want, dt) => cur + (want - cur) * (1 - Math.exp(-dt * 14));
 
+  const detachPlayer = () => {
+    if (me.arms) me.arms.R.pivot.rotation.x = 0;
+    if (me.paddle) {
+      if (me.paddle.parent) me.paddle.parent.remove(me.paddle);
+      const seen = new Set();
+      freeTree(me.paddle, seen);
+      seen.forEach((r) => owned.delete(r));
+    }
+    me.paddle = null;
+    me.arms = null;
+  };
+
+  const attachPlayer = (arms) => {
+    if (me.arms) detachPlayer();
+    me.arms = arms;
+    me.paddle = buildPaddle(BEAR_RIM, 0.95);
+    me.paddle.rotation.x = Math.PI;
+    arms.R.hand.add(me.paddle);
+  };
+
+  const dispose = () => {
+    detachPlayer();
+    const seen = new Set();
+    actors.forEach((a) => { parent.remove(a.root); freeTree(a.root, seen); });
+    actors.clear();
+    parent.remove(ring);
+    confetti.forEach(dropConfetti);
+    confetti.length = 0;
+    owned.forEach((r) => { if (!seen.has(r)) { seen.add(r); r.dispose(); } });
+    owned.clear();
+  };
+
   return {
     raise(id, until) {
       if (id === 'me') me.raiseUntil = until;
@@ -174,28 +214,9 @@ export function createActors(THREE, { buildFigure, npcDefs, parent }) {
       updateRing(dt);
       updateConfetti(dt);
     },
-    attachPlayer(arms) {
-      if (me.arms) this.detachPlayer();
-      me.arms = arms;
-      me.paddle = buildPaddle(BEAR_RIM, 0.95);
-      me.paddle.rotation.x = Math.PI;
-      arms.R.hand.add(me.paddle);
-    },
-    detachPlayer() {
-      if (me.paddle && me.paddle.parent) me.paddle.parent.remove(me.paddle);
-      me.paddle = null;
-      me.arms = null;
-    },
+    attachPlayer,
+    detachPlayer,
     spotOf,
-    dispose() {
-      this.detachPlayer();
-      actors.forEach((a) => parent.remove(a.root));
-      actors.clear();
-      parent.remove(ring);
-      confetti.forEach(dropConfetti);
-      confetti.length = 0;
-      owned.forEach((r) => r.dispose());
-      owned.length = 0;
-    },
+    dispose,
   };
 }
