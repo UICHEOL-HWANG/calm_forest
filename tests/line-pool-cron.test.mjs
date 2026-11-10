@@ -6,13 +6,13 @@ import { CONCURRENCY } from '../functions/api/_exaone.js';
 
 const env = { SUPABASE_URL: 'https://sb', SUPABASE_SERVICE_KEY: 's', EXAONE_API_KEY: 'k' };
 
-function world({ counts = [], existing = [], exaone }) {
+function world({ counts = [], existing = [], exaone, runsStatus = 201 }) {
   const log = { inserts: [], runs: [], mails: [], exaone: 0 };
   const fetch = async (url, init = {}) => {
     if (url.endsWith('/rpc/line_pool_counts')) return new Response(JSON.stringify(counts));
     if (url.includes('/line_pool?select=')) return new Response(JSON.stringify(existing));
     if (url.includes('/line_pool?on_conflict')) { log.inserts.push(JSON.parse(init.body)); return new Response('', { status: 201 }); }
-    if (url.endsWith('/line_pool_runs')) { log.runs.push(JSON.parse(init.body)); return new Response('', { status: 201 }); }
+    if (url.endsWith('/line_pool_runs')) { log.runs.push(JSON.parse(init.body)); return new Response('', { status: runsStatus }); }
     if (url.includes('exaone')) { log.exaone++; return exaone(log.exaone); }
     throw new Error(`unexpected ${url}`);
   };
@@ -67,4 +67,18 @@ test('worker 는 빛 공방 틱 중 UTC 일요일 21:30 을 문구 풀로 보낸
   const lp = src.indexOf('isLinePoolTick(event.scheduledTime)');
   const aura = src.indexOf('runAuraCron(env, { phase })');
   assert.ok(lp > 0 && lp < aura);
+});
+
+test('line_pool_runs 기록이 비정상 응답이어도 요약은 돌려주고 오류를 남긴다', async () => {
+  const w = world({ runsStatus: 500, exaone: () => ok(['a']) });
+  const errors = [];
+  const orig = console.error;
+  console.error = (...a) => { errors.push(a.join(' ')); };
+  try {
+    const r = await runLinePool(env, { fetch: w.fetch, notify: w.notify, spacingMs: 0 });
+    assert.equal(typeof r.calls, 'number');
+    assert.ok(errors.some(m => m.includes('line_pool_runs failed')));
+  } finally {
+    console.error = orig;
+  }
 });

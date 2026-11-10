@@ -40,7 +40,7 @@ export async function runLinePool(env, {
     out.rate_limited = got.stopped === 'rate_limited';
     if (got.rows.length) {
       const ins = await fetch(`${base}/line_pool?on_conflict=kind,key,slot,lang,text`, {
-        method: 'POST', headers: storeHeaders(env, 'resolution=ignore-duplicates,return=minimal'), body: JSON.stringify(got.rows),
+        method: 'POST', headers: storeHeaders(env, 'resolution=ignore-duplicates,return=minimal'), body: JSON.stringify(got.rows), signal: AbortSignal.timeout(10000),
       });
       if (!ins.ok) throw new Error(`insert ${ins.status}: ${(await ins.text()).slice(0, 200)}`);
       out.inserted = got.rows.length;
@@ -52,8 +52,8 @@ export async function runLinePool(env, {
   }
   out.duration_ms = Date.now() - t0;
   await fetch(`${base}/line_pool_runs`, {
-    method: 'POST', headers: storeHeaders(env, 'return=minimal'), body: JSON.stringify({ source, ...out }),
-  }).catch(e => console.error(JSON.stringify({ message: 'line_pool_runs failed', error: e.message })));
+    method: 'POST', headers: storeHeaders(env, 'return=minimal'), body: JSON.stringify({ source, ...out }), signal: AbortSignal.timeout(10000),
+  }).then(r => { if (!r.ok) console.error(JSON.stringify({ message: 'line_pool_runs failed', status: r.status })); }).catch(e => console.error(JSON.stringify({ message: 'line_pool_runs failed', error: e.message })));
   if (out.error) await notify(env, `🔴 문구 풀 ${source} 실패`, `적재 ${out.inserted} · 호출 ${out.calls} · 실패 ${out.failed}\n오류: ${out.error}`);
   return out;
 }
