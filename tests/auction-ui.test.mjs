@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { whoLine, resultLine, feedLine, barColor, itemVisual, callLine, waitHtml } from '../js/auction/ui.js';
+import { whoLine, resultLine, feedLine, barColor, itemVisual, callLine, waitHtml, sayHtml, itemHtml } from '../js/auction/ui.js';
 
 const names = { curator: '큐레이터', stargazer: '별 보는 아이', builder: '목수 아저씨' };
 const t = s => s;
@@ -74,4 +74,15 @@ test('the window takes an icon getter, not a thumbnail renderer', () => {
   assert.doesNotMatch(src, /itemThumb|<img/);
   assert.match(src, /createAuctionUi\(\{[^}]*itemIcon/);
   assert.match(src, /call\.textContent = callLine\(state\.call, t\)/);
+});
+
+test('sayHtml 은 상인 이모지와 대사를 이스케이프해 담고, 빈 대사면 빈 문자열', () => {
+  assert.equal(sayHtml(''), '');
+  assert.match(sayHtml('<b>좋소</b>'), /🧙/);
+  assert.match(sayHtml('<b>좋소</b>'), /&lt;b&gt;좋소&lt;\/b&gt;/);
+});
+
+test('itemHtml 은 소개가 있을 때만 .ds 를 넣는다', () => {
+  assert.match(itemHtml('🌙', '달빛 그네', '빛나는 그네요.'), /<div class="ds">빛나는 그네요\.<\/div>/);
+  assert.doesNotMatch(itemHtml('🌙', '달빛 그네', ''), /class="ds"/);
 });

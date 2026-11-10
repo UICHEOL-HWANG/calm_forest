@@ -10,10 +10,10 @@ import { OUTDOOR } from '../data/catalog.js';
 import { DAY_SPEED } from '../data/world.js';
 import { LAKE, LAKE_R } from '../data/places.js';
 import { walkLimit } from '../world/walk-bounds.js';
-import { IS_DEV_SESSION } from '../config.js';
+import { IS_DEV_SESSION, CONFIG } from '../config.js';
 import { trackEvent } from '../analytics.js';
 import { logEcon } from '../metrics.js';
-import { t } from '../i18n.js';
+import { t, getLang } from '../i18n.js';
 import { AUCTION_STAGE, AUCTION_STAGE_R, AUCTION_SPOTS, AUCTION_BIDDERS, AUCTION_ENTRY, AUCTION_STAGE_BOX } from '../data/auction.js';
 import { lotFor, joinMode, secondsUntilOpen, auctionOpenAt } from './rules.js';
 import { ONBOARD_COPY, BANNER_FAR, bannerLine, bannerTick, introNeeded } from './onboard.js';
@@ -25,6 +25,8 @@ import { createAuctionScene } from './scene.js';
 import { createAuctionUi } from './ui.js';
 import { auctionItemMesh } from './items.js';
 import { auctionCamera } from './layout.js';
+import { ANY, SLOTS } from '../lines/slots.js';
+import { createLineClient } from '../lines/client.js';
 
 export { auctionDefault, restoreAuction } from './rules.js';
 
@@ -35,6 +37,10 @@ const BIG_SOLID = 1.5;
 const SPIN_SPEED = 0.8;
 const CAM_EASE = 2.6;
 const PROMPTS = { closed: '🔨 경매는 저녁에 열려요', done: '🔨 오늘 경매 끝', bid: '🔨 경매 참가', watch: '🔨 경매 참가' };
+const lines = createLineClient({ api: CONFIG.LINES_API, lang: getLang(), t });
+const lineKeys = id => [id, ANY];
+const linesFor = (id, day) => lines.peek('auction', lineKeys(id), day);
+const lineKeyOf = (id, slot) => (SLOTS.auction[slot]?.scope === 'item' ? id : ANY);
 
 let stage = null, panel = null, actors = null, run = null;
 let shownDay = '', dayCheck = 0, heldWas = null, hidden = [], guide = null, intro = null, bannerCheck = 0;
@@ -63,6 +69,11 @@ function ensurePanel() {
     onJoin: mode => join(mode),
     onBid: inc => run?.playerBid(inc),
     onClose: () => teardown(),
+    sayText: say => {
+      const day = todayStr(), id = lotFor(day).id;
+      return lines.line(linesFor(id, day), 'auction', lineKeyOf(id, say.slot), say.slot, say.i, { who: say.who ? t(names[say.who]) : undefined });
+    },
+    introText: id => lines.line(linesFor(id, todayStr()), 'auction', id, 'intro', 0),
   });
   return panel;
 }
@@ -172,6 +183,10 @@ export function updateAuction(dt, inVillage) {
     dayCheck = 0;
     const day = todayStr();
     if (day !== shownDay) { shownDay = day; stage.setItem(lotFor(day).id); }
+    if (inVillage) {
+      const m = modeNow(day);
+      if (m.mode === 'bid' || m.mode === 'watch') lines.load('auction', lineKeys(m.lot.id), day);
+    }
   }
   const lotMesh = stage.pedestal.children[0];
   if (lotMesh?.userData.spin) lotMesh.userData.spin.rotation.y += dt * SPIN_SPEED;
@@ -190,12 +205,17 @@ export function auctionPrompt() {
 }
 
 export function openAuction() {
-  const { lot, coins, mode } = modeNow(todayStr());
+  const day = todayStr();
+  const { lot, coins, mode } = modeNow(day);
   if (mode === 'hidden') return;
   if (intro?.open) return;
   if (introNeeded(gameState.auction, mode)) { ensureIntro().show(); return; }
-  if (mode === 'bid' || mode === 'watch') trackEvent('auction_open', { item_id: lot.id, coins });
   ensurePanel().open({ mode, itemId: lot.id, appraisal: lot.appraisal, start: lot.start, coins, secondsToOpen: secondsUntilOpen(gameState.timeOfDay, DAY_SPEED) });
+  if (mode !== 'bid' && mode !== 'watch') return;
+  lines.load('auction', lineKeys(lot.id), day).then(got => {
+    panel?.refreshItem();
+    trackEvent('auction_open', { item_id: lot.id, coins, line_src: got.src });
+  });
 }
 
 function join(mode) {

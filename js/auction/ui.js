@@ -36,6 +36,15 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 
 export function itemVisual(icon) { return `<span class="au-ico" aria-hidden="true">${esc(icon)}</span>`; }
 
+export function sayHtml(text) {
+  return text ? `<span class="au-say-ico" aria-hidden="true">🧙</span><span>${esc(text)}</span>` : '';
+}
+
+export function itemHtml(icon, name, intro) {
+  const ds = intro ? `<div class="ds">${esc(intro)}</div>` : '';
+  return `${itemVisual(icon)}<div class="txt"><div class="nm">${esc(name)}</div>${ds}</div>`;
+}
+
 const btnHtml = (act, label, main, t) => `<button class="au-btn${main ? ' main' : ''}" data-act="${act}">${esc(t(label))}</button>`;
 
 export function waitHtml(v, t) {
@@ -96,10 +105,18 @@ const CSS = `#auction-modal{position:fixed;z-index:40;display:none;left:10px;rig
 #auction-modal[data-layout=side-short] .au-feed{min-height:26px}
 #auction-modal[data-layout=side-short] .au-feed div:nth-child(n+2){display:none}
 #auction-modal[data-layout=side-short] .au-btn{min-height:40px;padding:8px}
-#auction-modal[data-layout=side-short] .au-res .au-ico{width:40px;height:40px;font-size:24px}`;
+#auction-modal[data-layout=side-short] .au-res .au-ico{width:40px;height:40px;font-size:24px}
+#auction-modal .au-item .txt{min-width:0}
+#auction-modal .au-item .ds{font-size:12px;color:#5b5f68;line-height:1.35;margin-top:2px}
+#auction-modal .au-say{display:none;align-items:center;gap:6px;font-size:13px;font-weight:800;color:#5a3f8a;background:#f1eafb;border-radius:12px;padding:6px 10px;line-height:1.35}
+#auction-modal .au-say.on{display:flex}
+#auction-modal .au-say.pop{animation:au-in .25s}
+#auction-modal .au-say-ico{flex:none;font-size:16px}
+#auction-modal[data-layout=side-short] .au-item .ds{display:none}
+#auction-modal[data-layout=side-short] .au-say{font-size:12px;padding:4px 8px}`;
 
-export function createAuctionUi({ t, names, itemName, itemIcon, onJoin, onBid, onClose }) {
-  let root = null, body = null, mode = 'bid', view = null, itemId = '', layout = '', lastPrice = null, lastSig = '', lastCall = '';
+export function createAuctionUi({ t, names, itemName, itemIcon, onJoin, onBid, onClose, sayText = () => '', introText = () => '' }) {
+  let root = null, body = null, sayEl = null, mode = 'bid', view = null, itemId = '', layout = '', lastPrice = null, lastSig = '', lastCall = '', lastSay = '';
 
   const fitLayout = () => { if (root) root.dataset.layout = auctionLayout(window.innerWidth, window.innerHeight); };
 
@@ -113,8 +130,9 @@ export function createAuctionUi({ t, names, itemName, itemIcon, onJoin, onBid, o
     }
     root = document.createElement('div');
     root.id = 'auction-modal';
-    root.innerHTML = '<div class="au-head"></div><div class="au-item"></div><div class="au-body"></div>';
+    root.innerHTML = '<div class="au-head"></div><div class="au-item"></div><div class="au-say"></div><div class="au-body"></div>';
     body = root.querySelector('.au-body');
+    sayEl = root.querySelector('.au-say');
     root.addEventListener('click', e => {
       const el = e.target.closest('[data-act],[data-inc]');
       if (!el || el.disabled) return;
@@ -130,7 +148,15 @@ export function createAuctionUi({ t, names, itemName, itemIcon, onJoin, onBid, o
   const setBody = (name, html) => { layout = name; body.innerHTML = html; lastPrice = null; lastSig = ''; lastCall = ''; };
   const setItem = id => {
     itemId = id;
-    root.querySelector('.au-item').innerHTML = `${itemVisual(itemIcon(id))}<div class="nm">${esc(t(itemName(id)))}</div>`;
+    root.querySelector('.au-item').innerHTML = itemHtml(itemIcon(id), t(itemName(id)), introText(id));
+  };
+  const showSay = say => {
+    const text = say ? sayText(say) : '';
+    if (text === lastSay) return;
+    lastSay = text;
+    sayEl.innerHTML = sayHtml(text);
+    sayEl.classList.toggle('on', !!text);
+    if (text) { sayEl.classList.remove('pop'); void sayEl.offsetWidth; sayEl.classList.add('pop'); }
   };
 
   const drawWaiting = v => setBody('wait', waitHtml(v, t));
@@ -158,6 +184,7 @@ export function createAuctionUi({ t, names, itemName, itemIcon, onJoin, onBid, o
     view = v;
     mode = v.mode;
     setItem(v.itemId);
+    showSay(null);
     root.querySelector('.au-head').textContent = t(AUCTION_COPY.title);
     if (v.mode === 'closed') setBody('closed', `<div class="au-hint">${esc(t(AUCTION_COPY.closed))}</div><div class="au-btns">${btn('close', AUCTION_COPY.close, true)}</div>`);
     else if (v.mode === 'done') setBody('over', `<div class="au-hint">${esc(t(AUCTION_COPY.over))}</div><div class="au-btns">${btn('close', AUCTION_COPY.close, true)}</div>`);
@@ -168,6 +195,7 @@ export function createAuctionUi({ t, names, itemName, itemIcon, onJoin, onBid, o
 
   function render(state) {
     if (!root || !view) return;
+    showSay(state.say);
     if (state.itemId && state.itemId !== itemId) setItem(state.itemId);
     if (state.phase === 'done') {
       if (layout !== 'done') drawResult(state.result);
@@ -200,5 +228,5 @@ export function createAuctionUi({ t, names, itemName, itemIcon, onJoin, onBid, o
     document.body.classList.remove('menu-open', 'mg-open');
   }
 
-  return { open, render, close, isOpen: () => !!root && root.classList.contains('show') };
+  return { open, render, close, refreshItem: () => { if (root && itemId) setItem(itemId); }, isOpen: () => !!root && root.classList.contains('show') };
 }

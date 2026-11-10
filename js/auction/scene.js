@@ -15,13 +15,16 @@ export function callText(t, extended) {
 
 export function createAuctionScene(d) {
   let run = null, lot = null, acc = 0, feed = [], flashUntil = 0, runId = '', done = null, slamT = 9, bellT = 9;
+  let say = null, sayN = { raise_npc: 0, raise_me: 0 }, wasTense = false;
   const allowed = inc => canBid(run, inc) && run.price + inc <= d.getCoins();
   const emit = () => d.onUi({
     phase: done ? 'done' : 'run', price: run.price, leader: run.leader, t: run.t,
     call: callText(run.t, run.total < flashUntil), feed,
-    canBid: Object.fromEntries(BID_INCS.map(n => [n, allowed(n)])), result: done, itemId: lot.id,
+    canBid: Object.fromEntries(BID_INCS.map(n => [n, allowed(n)])), result: done, itemId: lot.id, say,
   });
   const onBid = (who, inc, extended) => {
+    const slot = who === 'me' ? 'raise_me' : 'raise_npc';
+    say = who === 'me' ? { slot, i: sayN[slot]++ } : { slot, who, i: sayN[slot]++ };
     feed = [{ who, inc, price: run.price }, ...feed].slice(0, 3);
     if (extended) flashUntil = run.total + 0.8;
     d.actors.raise(who, d.now() + 1.0);
@@ -48,6 +51,9 @@ export function createAuctionScene(d) {
       const [x, z] = d.actors.spotOf(run.leader);
       d.stage.focus(x, z);
     }
+    say = out === 'win' ? { slot: 'sold_me', i: 0 }
+      : run.leader && out !== 'none' && run.leader !== 'me' ? { slot: 'sold_npc', who: run.leader, i: 0 }
+      : null;
     slamT = 0; bellT = 0;
     done = { outcome: out, price, itemId: lot.id, runId, leader: out === 'none' ? null : run.leader };
     d.track('auction_result', { item_id: lot.id, outcome: out, price, my_bids: run.myBids, run_id: runId });
@@ -61,6 +67,7 @@ export function createAuctionScene(d) {
       lot = lotFor(day);
       run = createRun({ start: lot.start, maxes: bidderMaxes(day, lot.appraisal, d.bidders), wallet: d.getCoins(), mode, bidders: d.bidders });
       acc = 0; feed = []; flashUntil = 0; done = null; slamT = 0; bellT = 0;
+      say = { slot: 'open', i: 0 }; sayN = { raise_npc: 0, raise_me: 0 }; wasTense = false;
       runId = `${day}:${Math.floor(d.rng() * 1e6)}`;
       d.setAuction(markJoined(d.getAuction(), day));
       d.save();
@@ -91,9 +98,11 @@ export function createAuctionScene(d) {
             if (e.type === 'sold') finish();
           }
         }
-        if (!done) emit();
       }
       const tense = !done && run.t < 3;
+      if (tense && !wasTense) say = { slot: 'last', i: 0 };
+      wasTense = tense;
+      if (!done) emit();
       d.stage.setNight(d.getNight());
       d.stage.setTension(tense, t);
       d.stage.gavel.rotation.z = slamT < 0.14 ? 1.3 - 1.4 * (slamT / 0.14)

@@ -91,7 +91,8 @@ test('only unlocked villagers bid, appear and get hidden', () => {
 
 test('reopening a finished auction does not count as an open', () => {
   const open = index.slice(index.indexOf('export function openAuction('));
-  assert.match(open.slice(0, open.indexOf('\n}\n')), /if \(mode === 'bid' \|\| mode === 'watch'\) trackEvent\('auction_open'/);
+  const body = open.slice(0, open.indexOf('\n}\n'));
+  assert.match(body, /if \(mode !== 'bid' && mode !== 'watch'\) return;[\s\S]*trackEvent\('auction_open'/);
 });
 
 test('placed auction decor is solid in the yard', () => {
@@ -105,4 +106,14 @@ test('the village map lists the auction stage once the merchant is unlocked', ()
   assert.match(game, /'경매 무대': 'merchant'/);
   assert.match(index, /export function auctionMapSpot\(\) \{ return \{ x: X, z: Z \+ 1 \}; \}/);
   assert.match(read('js/i18n-en.js'), /'경매 무대': 'Auction Stage'/);
+});
+
+test('경매는 문구 풀을 받아 상인 대사와 소개를 채우고 auction_open 에 line_src 를 싣는다', () => {
+  assert.match(index, /import \{ createLineClient \} from '\.\.\/lines\/client\.js'/);
+  assert.match(index, /CONFIG\.LINES_API/);
+  assert.match(index, /sayText:/);
+  assert.match(index, /introText:/);
+  assert.match(index, /trackEvent\('auction_open', \{ item_id: lot\.id, coins, line_src: got\.src \}\)/);
+  const csv = readFileSync(new URL('../docs/analysis/event-taxonomy.csv', import.meta.url), 'utf8');
+  assert.match(csv, /^auction_open,.*,item_id\|coins\|line_src,/m);
 });

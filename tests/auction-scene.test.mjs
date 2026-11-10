@@ -168,3 +168,32 @@ test('only unlocked bidders show up in the feed', () => {
   assert.deepEqual([...who], ['curator']);
   assert.equal(f.log.done.leader, 'curator');
 });
+
+test('say: 시작 → 내 입찰 → 막판 → 낙찰 순으로 상인 대사 자리가 바뀐다', () => {
+  const f = fakes();
+  const s = createAuctionScene(f.deps);
+  s.begin('bid');
+  assert.deepEqual(f.log.ui.at(-1).say, { slot: 'open', i: 0 });
+  s.playerBid(50);
+  assert.deepEqual(f.log.ui.at(-1).say, { slot: 'raise_me', i: 0 });
+  let sawLast = false;
+  for (let i = 0; i < 200 && s.active(); i++) {
+    s.update(0.1, i * 0.1);
+    if (f.log.ui.at(-1).say?.slot === 'last') sawLast = true;
+  }
+  assert.ok(sawLast);
+  assert.deepEqual(f.log.ui.at(-1).say, { slot: 'sold_me', i: 0 });
+});
+
+test('say: 주민 입찰은 raise_npc 와 who, 주민 낙찰은 sold_npc', () => {
+  const f = fakes({ rng: () => 0 });
+  const s = createAuctionScene(f.deps);
+  s.begin('watch');
+  s.update(0.1, 0);
+  const first = f.log.ui.find(u => u.say?.slot === 'raise_npc');
+  assert.ok(first.say.who);
+  for (let i = 0; i < 600 && s.active(); i++) s.update(0.1, i * 0.1);
+  const end = f.log.ui.at(-1).say;
+  assert.equal(end.slot, 'sold_npc');
+  assert.equal(end.who, f.log.done.leader);
+});
