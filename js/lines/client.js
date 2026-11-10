@@ -2,27 +2,29 @@ import { ANY, fillLine } from './slots.js';
 import { FALLBACK } from './fallback.js';
 
 export const LOAD_TIMEOUT_MS = 3000;
+export const RETRY_MS = 60000;
 
-export function createLineClient({ api, lang, t = s => s, fetch = globalThis.fetch }) {
+export function createLineClient({ api, lang, t = s => s, fetch = globalThis.fetch, now = Date.now }) {
   const store = new Map(), loading = new Map();
   const keyOf = (kind, keys, date) => `${kind}|${date}|${keys.join(',')}`;
 
   async function fetchLines(kind, keys, date) {
+    if (!api) return { src: 'fallback', lines: {} };
     try {
-      if (!api) throw new Error('off');
       const q = `kind=${encodeURIComponent(kind)}&key=${encodeURIComponent(keys.join(','))}&lang=${encodeURIComponent(lang)}&date=${encodeURIComponent(date)}`;
       const r = await fetch(`${api}?${q}`, { signal: AbortSignal.timeout(LOAD_TIMEOUT_MS) });
       if (!r.ok) throw new Error(`http ${r.status}`);
       const j = await r.json();
       return { src: j?.src || 'fallback', lines: j?.lines || {} };
     } catch {
-      return { src: 'fallback', lines: {} };
+      return { src: 'fallback', lines: {}, retryAt: now() + RETRY_MS };
     }
   }
 
   function load(kind, keys, date) {
     const k = keyOf(kind, keys, date);
-    if (store.has(k)) return Promise.resolve(store.get(k));
+    const cached = store.get(k);
+    if (cached && !(cached.retryAt && now() >= cached.retryAt)) return Promise.resolve(cached);
     if (!loading.has(k)) {
       loading.set(k, fetchLines(kind, keys, date).then(got => { store.set(k, got); loading.delete(k); return got; }));
     }

@@ -3350,7 +3350,7 @@ export const EN = {
   '손님께서 부르셨소!': 'The guest bids!',
   '좋은 배짱이오!': 'Bold move!',
   '오, 손님! 좋소!': 'Oh, splendid, guest!',
-  '손님 차례가 왔소!': 'Your turn paid off!',
+  '손님 차례가 왔소!': 'Your turn has come!',
   '더 없소?': 'Any more bids?',
   '손님 것이오! 축하하오!': 'It is yours! Congratulations!',
   '{who}의 것이 되었소!': 'It goes to {who}!',

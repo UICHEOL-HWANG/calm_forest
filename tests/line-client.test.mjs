@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createLineClient, LOAD_TIMEOUT_MS } from '../js/lines/client.js';
+import { createLineClient, LOAD_TIMEOUT_MS, RETRY_MS } from '../js/lines/client.js';
 import { FALLBACK } from '../js/lines/fallback.js';
 import { AUCTION_ITEMS, ANY, slotsFor, lineProblem } from '../js/lines/slots.js';
 
@@ -52,4 +52,38 @@ test('line 은 풀 문구를 i 로 돌려 쓰고, 자리표시가 남으면 기�
 test('기본 문구는 t 로 번역해 채운다', () => {
   const c = createLineClient({ api: '', lang: 'en', t: s => (s === FALLBACK.auction[ANY].sold_npc[0] ? 'It goes to {who}!' : s) });
   assert.equal(c.line(null, 'auction', ANY, 'sold_npc', 0, { who: 'Carpenter' }), 'It goes to Carpenter!');
+});
+
+test('실패한 불러오기는 1분 뒤에 다시 시도한다', async () => {
+  let n = 0, clock = 1000, ok = false;
+  const c = createLineClient({ api: '/api/lines', lang: 'ko', now: () => clock, fetch: async (...a) => { n++; return ok ? okFetch(...a) : new Response('', { status: 500 }); } });
+  assert.equal(RETRY_MS, 60000);
+  assert.equal((await c.load('auction', [ANY], '2026-11-10')).src, 'fallback');
+  assert.equal(n, 1);
+  clock += RETRY_MS - 1;
+  assert.equal((await c.load('auction', [ANY], '2026-11-10')).src, 'fallback');
+  assert.equal(n, 1);
+  assert.equal(c.peek('auction', [ANY], '2026-11-10').src, 'fallback');
+  ok = true;
+  clock += 1;
+  assert.equal((await c.load('auction', [ANY], '2026-11-10')).src, 'pool');
+  assert.equal(n, 2);
+});
+
+test('성공한 불러오기는 1분이 지나도 다시 부르지 않는다', async () => {
+  let n = 0, clock = 0;
+  const c = createLineClient({ api: '/api/lines', lang: 'ko', now: () => clock, fetch: async (...a) => { n++; return okFetch(...a); } });
+  await c.load('auction', [ANY], '2026-11-10');
+  clock += RETRY_MS * 5;
+  await c.load('auction', [ANY], '2026-11-10');
+  assert.equal(n, 1);
+});
+
+test('api 가 비면 다시 시도하지 않는다', async () => {
+  let n = 0, clock = 0;
+  const c = createLineClient({ api: '', lang: 'ko', now: () => clock, fetch: async () => { n++; return okFetch(); } });
+  await c.load('auction', [ANY], '2026-11-10');
+  clock += RETRY_MS * 5;
+  assert.equal((await c.load('auction', [ANY], '2026-11-10')).src, 'fallback');
+  assert.equal(n, 0);
 });
