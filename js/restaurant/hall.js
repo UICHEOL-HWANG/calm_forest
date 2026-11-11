@@ -9,7 +9,33 @@ const C = {
   chalk: 0x2b2f2c, chalkFrame: 0x8a6a48, plate: 0xffffff, bin: 0x6d7a6a, fish: 0x5b8fb0, rice: 0xf4efe4,
 };
 
-function room(K, g) {
+function easel(K, g, THREE) {
+  const { put, box, cyl, ball, tag } = K;
+  const e = new THREE.Group();
+  e.position.set(HALL.board.x, 0, HALL.board.z);
+  g.add(e);
+  const lean = -0.14;
+  for (const s of [-1, 1]) {
+    put(e, box(0.08, 1.75, 0.08), tag(C.chalkFrame), [s * 0.55, 0.86, 0.02], [lean, 0, 0]);
+    put(e, box(0.07, 1.6, 0.07), tag(C.tableLeg), [s * 0.5, 0.78, -0.42], [0.28, 0, 0]);
+  }
+  put(e, box(1.1, 0.06, 0.12), tag(C.chalkFrame), [0, 0.5, 0.1], [lean, 0, 0]);
+  put(e, box(1.04, 1.0, 0.05), tag(C.chalkFrame), [0, 1.12, 0], [lean, 0, 0]);
+  put(e, box(0.92, 0.88, 0.04), tag(C.chalk), [0, 1.12, 0.03], [lean, 0, 0]);
+  put(e, box(0.62, 0.05, 0.01), tag(C.rice), [0, 1.44, 0.1], [lean, 0, 0]);
+  const dish = [[C.fish, 1.22], [C.rice, 1.04], [0xe8a85a, 0.86]];
+  for (const [c, y] of dish) {
+    const z = 0.08 + (y - 1.12) * 0.14;
+    put(e, ball(0.06, 0), tag(c), [-0.28, y, z], [0, 0, 0], [1.3, 1, 0.5]);
+    put(e, box(0.38, 0.035, 0.01), tag(C.rice), [0.08, y, z + 0.01], [lean, 0, 0]);
+  }
+  put(e, box(0.9, 0.24, 0.06), tag(C.green), [0, 1.74, -0.05], [lean, 0, 0]);
+  put(e, cyl(0.02, 0.02, 0.18, 6), tag(C.chalkFrame), [0.44, 1.95, -0.06]);
+  put(e, cyl(0.03, 0.13, 0.16, 10), tag(0xe2b54a), [0.44, 2.08, -0.06]);
+  put(e, ball(0.035, 0), tag(0xe2b54a), [0.44, 2.18, -0.06]);
+}
+
+function room(K, g, THREE) {
   const { put, box, ball, tag } = K;
   const hx = HALL.half.x, hz = HALL.half.z, split = 0.8;
   put(g, box(hx * 2 + 0.8, 0.4, hz * 2 + 0.8), tag(0xd8c7a0), [0, -0.2, 0]);
@@ -38,11 +64,7 @@ function room(K, g) {
     put(g, K.cyl(0.26, 0.2, 0.42, 10), tag(C.pot), [x, 0.21, z]);
     put(g, ball(0.38, 0), tag(C.leaf), [x, 0.68, z]);
   }
-  const b = HALL.board;
-  put(g, box(0.9, 1.1, 0.06), tag(C.chalk), [b.x, 0.95, b.z], [-0.12, 0, 0]);
-  put(g, box(1.0, 1.2, 0.04), tag(C.chalkFrame), [b.x, 0.95, b.z - 0.03], [-0.12, 0, 0]);
-  for (const s of [-1, 1]) put(g, box(0.06, 0.9, 0.06), tag(C.chalkFrame), [b.x + s * 0.42, 0.42, b.z - 0.12], [0.2, 0, 0]);
-  [1.25, 1.05, 0.85].forEach((y, i) => put(g, box(0.6 - i * 0.12, 0.04, 0.01), tag(C.rice), [b.x, y, b.z + 0.04 - (y - 0.95) * 0.12], [-0.12, 0, 0]));
+  easel(K, g, THREE);
 }
 
 function counter(K, g) {
@@ -89,7 +111,7 @@ function table(K, g) {
 export function buildHall(THREE) {
   const K = paintKit(THREE);
   const group = new THREE.Group();
-  group.add(...bake(THREE, s => room(K, s)));
+  group.add(...bake(THREE, s => room(K, s, THREE)));
   const stations = {};
   for (const s of HALL.stations) {
     const g = new THREE.Group();

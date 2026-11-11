@@ -92,7 +92,7 @@ import { restoreStage } from './orchard-onboard.js';
 import { defaultDelve, sanitizeDelve } from './delve/rules.js';
 import { defaultPort, sanitizePort } from './port/rules.js';
 import { defaultRestaurant, sanitizeRestaurant } from './restaurant/rules.js';
-import { RESTAURANT, RESTAURANT_GATE, HALL } from './restaurant/data.js';
+import { RESTAURANT, RESTAURANT_GATE, HALL, REST_LIGHT } from './restaurant/data.js';
 import { enterRestaurant, exitRestaurant, spawnRestaurantGate, buildRestaurantHall, restaurantAction, tickRestaurant, updateRestaurantNight, updateRestaurantGuide, maybeStartRestaurantGuide, restaurantGuideActive } from './spaces/restaurant.js';
 import { restoreStage as restoreCosStage } from './cos-onboard.js';
 import { cosQuestActive, maybeOfferCosQuest, noteCosQuestVisit, updateCosQuestBubble } from './spaces/cos-quest.js';
@@ -2775,6 +2775,8 @@ export async function enterGame() {
     window.__museumView = { open: openMuseumView, close: closeMuseumView, state: () => museumView && { ...museumView.frame, visible: museumView.group.visible, meshChildren: museumView.mesh.children.length, look: _camLook.toArray().map(v => +v.toFixed(2)), pos: museumView.group.position.toArray().map(v => +v.toFixed(2)), cam: camera.position.toArray().map(v => +v.toFixed(2)) }, items: () => museumFloorItems().map((it, i) => ({ i, ico: it.ico, name: it.name, cat: it.cat, id: it.id, has: !!gameState.dex[it.cat]?.[it.id] })) };
     window.__museumLight = MUSEUM_LIGHT;              // 🏛️ 전시실 조명 검수(값을 바꿔 보며 비교)
     window.__camIn = camOffsetIndoor;                 // 실내 카메라 각도 검수(값을 바꿔 보며 비교)
+    window.__camRest = camOffsetRest;
+    window.__restLight = REST_LIGHT;
     window.__camUser = { get: () => ({ ...camUser, pitch: effectivePitch(camUser), adjustable: userCamAdjustable() }), set: (s) => setCamUser(s), pos: () => camera.position.toArray().map(v => +v.toFixed(2)) };   // 🎥 플레이어 카메라 검수
     window.__floor = () => interiorFloor;             // 실내 바닥 재질 검수
     window.__decor = (id, x, z, rot = 0, f = null) => placeDecor(id, INT.x + x, INT.z + z, true, rot, true, f);   // 가구 무료 배치(검수용) — f 는 층
@@ -6568,6 +6570,7 @@ function updatePlayer(dt, t) {
 
   // 🎒 도구 수납 — ✋맨손이면 등으로, 아니면 손으로. 툭 사라지지 않게 0.25초쯤 걸려 옮긴다
   const stowWant = (toolPage === 'none' && !placingDecor) ? 1 : 0;   // 가구를 고른 동안은 손에 들어 보이게
+  if (heldGroup && heldGroup.visible === atRestaurant) heldGroup.visible = !atRestaurant;
   if (toolStow !== stowWant) toolStow = Math.max(0, Math.min(1, toolStow + (stowWant ? dt * 4 : -dt * 4)));
 
   // 액션 제스처: 도구질 = 백스윙 → 휙 내려침 → 팔로스루 / 맨손 줍기 = 허리를 접었다 편다
@@ -6697,6 +6700,7 @@ const camOffsetIndoor = new THREE.Vector3(0, 17, 10);   // 🏠 실내 전용 �
 //   낮춰(≈29°) 마을이 프레임 안에 들어오게 하면서도, camOffset(마을 시점)보다 더 위에서 내려다봐
 //   "지붕 위에서 마을을 내려다보는" 높이감은 유지한다.
 const camOffsetRoof = new THREE.Vector3(0, 10, 18);
+const camOffsetRest = new THREE.Vector3(0, 11, 9);
 // 🎥 플레이어 카메라 — 마을·야외 공간의 기본 추적에서만 camOffset 대신 쓴다(js/camera-user.js).
 //   실내·루프탑·동굴·카페·박물관·천문대·바다·나룻배·이웃 실내, 그리고 연출 샷(액션샷·세리머니·조망·외관·cameraRig)은 손대지 않는다
 //   — 벽 있는 방은 눕히거나 멀리 빼면 벽 너머 허공이 보이고, 연출 샷은 구도가 정해져 있다.
@@ -6975,7 +6979,7 @@ function refreshBuildingFade() {
 const _obsFocus = new THREE.Vector3(), camFocus = () => atObservatory ? observatoryCamFocus(player.position, _obsFocus) : player.position;   // 🔭 작은 원형 홀 — 방 중심 쪽으로 당겨 잡는다
 function snapCamera() {
   const f = camFocus();
-  _camTarget.copy(f).add(indoor && curFloorDef().elevated ? camOffsetRoof : indoor || atMuseum || atObservatory ? camOffsetIndoor : followOffset());   // 🎥 마을·야외는 플레이어 줌·기울기   // 🏛️/🔭 실내 공간도 실내 각도(≈60°) · ☀️ 루프탑만 완만한 피치
+  _camTarget.copy(f).add(indoor && curFloorDef().elevated ? camOffsetRoof : indoor || atMuseum || atObservatory ? camOffsetIndoor : atRestaurant ? camOffsetRest : followOffset());   // 🎥 마을·야외는 플레이어 줌·기울기   // 🏛️/🔭 실내 공간도 실내 각도(≈60°) · ☀️ 루프탑만 완만한 피치
   camera.position.copy(_camTarget);
   _camLook.set(f.x, f.y + 1.2, f.z);   // ☀️ 루프탑처럼 발밑이 0이 아닐 때도 눈높이를 따라간다
   camera.lookAt(_camLook);
@@ -7074,7 +7078,7 @@ function updateCamera(dt) {
   const zoom = atSea ? (seaAct ? seaBase + (seaPhone - seaBase) * phoneT : 0.86)
              : clock.elapsedTime < momentUntil ? 0.58 : 1;
   const lookAhead = seaAct ? (pk - 1) * 1.6 : 0;                    // 폰 세로에서 최대 2.1 앞(−z)
-  _camOff.copy((indoor && curFloorDef().elevated) || neighborIndoorElevated() ? camOffsetRoof : (indoor || neighborIndoorFrame()) ? camOffsetIndoor : followOffset()).multiplyScalar(zoom);   // 🎥 이벤트 줌(0.58)은 플레이어 줌 위에 곱해진다   // ☀️ 루프탑만 완만한 피치(마을이 보이게)
+  _camOff.copy((indoor && curFloorDef().elevated) || neighborIndoorElevated() ? camOffsetRoof : (indoor || neighborIndoorFrame()) ? camOffsetIndoor : atRestaurant ? camOffsetRest : followOffset()).multiplyScalar(zoom);   // 🎥 이벤트 줌(0.58)은 플레이어 줌 위에 곱해진다   // ☀️ 루프탑만 완만한 피치(마을이 보이게)
   const f = camFocus();
   _camTarget.copy(f).add(_camOff);
   if (userCamOn() && _camTarget.y < f.y + CAM_MIN_H) _camTarget.y = f.y + CAM_MIN_H;   // 🎥 낮은 피치에서 땅을 뚫지 않게
@@ -7270,10 +7274,14 @@ function updateDayNight(dt) {
     scene.fog.color.setHex(0xe8d6b8); scene.fog.near = 26; scene.fog.far = 70;
   }
   if (atRestaurant) {
-    hemiLight.intensity = 0.55; ambient.intensity = 0.62; sunLight.intensity = 0.3;
-    ambient.color.setHex(0xffe6c8);
-    if (playerLight) playerLight.intensity = 0.5;
-    scene.fog.color.setHex(0xe8d6b8); scene.fog.near = 26; scene.fog.far = 70;
+    hemiLight.intensity = REST_LIGHT.hemi; ambient.intensity = REST_LIGHT.amb; sunLight.intensity = REST_LIGHT.sun;
+    ambient.color.setHex(REST_LIGHT.tint);
+    sunLight.color.setHex(REST_LIGHT.sunTint);
+    sunLight.position.set(RESTAURANT.x + 6, 16, RESTAURANT.z + 10);
+    sunLight.target.position.set(RESTAURANT.x, 0.8, RESTAURANT.z);
+    sunLight.target.updateMatrixWorld();
+    if (playerLight) playerLight.intensity = REST_LIGHT.player;
+    scene.fog.color.setHex(REST_LIGHT.fog); scene.fog.near = REST_LIGHT.near; scene.fog.far = REST_LIGHT.far;
   }
   // 🌫️ 안개 숲: 시간대 무관 어둑 + 짙은 안개(정화한 날은 맑고 환하게)
   if (atMist) {

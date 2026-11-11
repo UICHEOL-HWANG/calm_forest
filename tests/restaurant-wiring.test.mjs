@@ -56,7 +56,8 @@ test('미니맵, 클램프, 카메라, 조명, 비료가 식당을 안다', () =
   assert.match(SRC, /atRestaurant\) \{[^\n]*\n[^\n]*RESTAURANT\.x - HALL\.half\.x \+ 0\.7/);
   assert.match(SRC, /HALL\.half\.z - 0\.7/);
   assert.match(SRC, /return !indoor && !atMine && !atCafe && !atRestaurant/);
-  assert.match(SRC, /if \(atRestaurant\) \{[\s\S]{0,400}scene\.fog\.color\.setHex\(0xe8d6b8\)/);
+  assert.match(SRC, /if \(atRestaurant\) \{[\s\S]{0,500}sunLight\.color\.setHex\(REST_LIGHT\.sunTint\)[\s\S]{0,200}sunLight\.position\.set\(RESTAURANT\.x/);
+  assert.match(SRC, /atRestaurant \? camOffsetRest : followOffset\(\)\)\.multiplyScalar\(zoom\)/);
   assert.match(SRC, /if \(indoor \|\| atMine \|\| atCafe \|\| atRestaurant \|\|/);
 });
 

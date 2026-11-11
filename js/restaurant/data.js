@@ -1,5 +1,6 @@
 export const RESTAURANT = { x: 0, z: 620 };
 export const RESTAURANT_GATE = { x: 12, z: 20.5 };
+export const REST_LIGHT = { hemi: 0.7, amb: 0.5, sun: 0.85, tint: 0xffeedd, sunTint: 0xfff2e0, player: 0.4, fog: 0xe8d6b8, near: 26, far: 70 };
 export const SERVICE_SEC = 100;
 export const LAST_SPAWN_SEC = 90;
 export const CHOP_TAPS = 4;
@@ -32,7 +33,7 @@ export const STARTER_STOCK = { fish: 4, rice: 4 };
 export const HALL = {
   half: { x: 7.2, z: 4.2 },
   door: { x: -6.3, z: 3.4 },
-  board: { x: -5.2, z: 3.2 },
+  board: { x: -3.2, z: -3.7 },
   tables: [[-4.7, -2.0], [-1.7, -2.0], [-4.7, 1.5], [-1.7, 1.5]],
   stations: [
     { id: 'crate_fish', kind: 'crate', give: 'fish', x: 1.9, z: -3.5 },

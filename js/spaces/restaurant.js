@@ -66,6 +66,7 @@ function hallSolids() {
       : solidBox(wx(s.x - 0.55), wz(s.z - 0.5), wx(s.x + 0.55), wz(s.z + 0.5));
     stationSolids.push({ s, c });
   }
+  solidBox(wx(HALL.board.x - 0.62), wz(HALL.board.z - 0.5), wx(HALL.board.x + 0.62), wz(HALL.board.z + 0.35));
   solidBox(wx(0.55), wz(-1.7), wx(1.05), wz(-0.1));
   solidBox(wx(0.65), wz(-4.2), wx(0.95), wz(-1.7));
   solidBox(wx(0.65), wz(0.3), wx(0.95), wz(1.7));
@@ -138,6 +139,7 @@ export function buildRestaurantHall() {
 
 export function enterRestaurant() {
   $w.atRestaurant = true;
+  document.body.classList.add('at-restaurant');
   setFogExempt(player, true);
   const g = grantStarter(gameState.restaurant, gameState.port);
   if (g.given) {
@@ -158,6 +160,7 @@ export function enterRestaurant() {
 export function exitRestaurant() {
   runtime?.abort();
   $w.atRestaurant = false;
+  document.body.classList.remove('at-restaurant');
   setFogExempt(player, false);
   player.position.set(RESTAURANT_DOOR.x, 0, RESTAURANT_DOOR.z + 0.8);
   player.rotation.y = 0;
@@ -195,7 +198,7 @@ const W = (x, z) => ({ x: RESTAURANT.x + x, y: 0, z: RESTAURANT.z + z });
 const STAND = 0.9;
 const standAt = s => (s.x > HALL.half.x - 1.2 ? W(s.x - STAND, s.z) : s.z < 0 ? W(s.x, s.z + STAND) : W(s.x, s.z - STAND));
 const STATION_AT = Object.fromEntries(HALL.stations.map(s => [s.id, standAt(s)]));
-const GUIDE_AT = { door: { ...RESTAURANT_DOOR, y: 0 }, board: W(HALL.board.x, HALL.board.z - STAND), crate: STATION_AT.crate_fish, pan: STATION_AT.pan0, plates: STATION_AT.plates, trash: STATION_AT.trash };
+const GUIDE_AT = { door: { ...RESTAURANT_DOOR, y: 0 }, board: W(HALL.board.x, HALL.board.z + STAND + 0.1), crate: STATION_AT.crate_fish, pan: STATION_AT.pan0, plates: STATION_AT.plates, trash: STATION_AT.trash };
 const GUIDE_STEPS = restaurantGuideSteps();
 const TABLE_AT = HALL.tables.map(([x, z]) => W(x, z - 0.9));
 const NAV_R = 35, NAV_MIN_R = 0.5, NAV_STEP = 0.3;

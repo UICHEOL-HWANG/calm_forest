@@ -9,7 +9,7 @@ export function restaurantGuideSteps() {
     { id: 'start', text: '칠판을 눌러 영업을 시작해요', target: at('board'), done: reached(2) },
     { id: 'fish', text: '🐟 상자에서 생선을 꺼내요', target: at('crate'), done: reached(3) },
     { id: 'pan', text: '팬에 올려요', target: at('pan'), done: reached(4) },
-    { id: 'flip', text: '게이지가 초록일 때 눌러 뒤집어요', target: at('pan'), done: reached(5) },
+    { id: 'flip', text: '막대가 초록 칸일 때 눌러 뒤집어요', target: at('pan'), done: reached(5) },
     { id: 'take', text: '다 익으면 꺼내요', target: at('pan'), done: reached(6) },
     { id: 'plate', text: '접시에 담아요', target: at('plates'), done: reached(7) },
     { id: 'serve', text: '손님에게 가져다줘요', target: at('table'), done: reached(8) },

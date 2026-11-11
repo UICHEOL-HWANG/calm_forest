@@ -172,8 +172,8 @@ test('휠: 줌 / Shift+휠: 기울기, ctrl+휠(브라우저 확대)은 건드�
 
 test('game.js 배선: 기본 추적·snap 모두 플레이어 오프셋, 이벤트 줌은 그 위에 곱', () => {
   const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
-  assert.match(src, /camOffsetIndoor : followOffset\(\)\)\.multiplyScalar\(zoom\)/);
-  assert.match(src, /camOffsetIndoor : followOffset\(\)\);/);   // snapCamera
+  assert.match(src, /camOffsetIndoor : atRestaurant \? camOffsetRest : followOffset\(\)\)\.multiplyScalar\(zoom\)/);
+  assert.match(src, /camOffsetIndoor : atRestaurant \? camOffsetRest : followOffset\(\)\);/);   // snapCamera
   assert.match(src, /trackEvent\('camera_adjust'/);
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(html, /id="cam-reset-btn"[^>]*hidden/);

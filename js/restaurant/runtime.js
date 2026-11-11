@@ -1,8 +1,9 @@
-import { HALL, STAR, RESTAURANT, MENU, PATIENCE } from './data.js';
+import { HALL, STAR, RESTAURANT, PATIENCE } from './data.js';
 import { createSession, tickSession, contextAt, actAt, finishSession, stationView } from './session.js';
 import { recordServe, takeIngredient, settleService } from './rules.js';
 import { showForStar, itemMesh, itemHeight } from './hall.js';
-import { mountHud, contextLabel, goalRows, resultView } from './hud.js';
+import { mountHud, contextLabel, goalRows, resultView, menuView } from './hud.js';
+import { nextStep } from './next-step.js';
 
 const BOARD_R = 1.6;
 const START_PROMPT = '🍽️ 저녁 영업 시작';
@@ -13,6 +14,10 @@ export function createRestaurantRuntime(env) {
   const items = new Map(), guests = new Map();
   const v = new THREE.Vector3();
   let S = null, held = null, before = null;
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.78, 0.92, 32), new THREE.MeshBasicMaterial({ color: 0xffc94a, transparent: true, opacity: 0.85, depthWrite: false }));
+  ring.rotation.x = -Math.PI / 2;
+  ring.visible = false;
+  hall.group.add(ring);
 
   const local = p => ({ x: p.x - RESTAURANT.x, z: p.z - RESTAURANT.z });
   const world = (x, y, z) => v.set(RESTAURANT.x + x, y, RESTAURANT.z + z);
@@ -88,9 +93,32 @@ export function createRestaurantRuntime(env) {
     }
   }
 
+  function nextPoint(nx) {
+    if (nx.at === 'table') {
+      const [tx, tz] = HALL.tables[nx.table];
+      return { x: tx, z: tz - 1.0, y: 3.0, floor: false };
+    }
+    const s = stationPos(nx.at);
+    return s ? { x: s.x, z: s.z, y: 1.9, floor: true } : null;
+  }
+
+  function drawNext() {
+    const nx = S.first ? null : nextStep(S);
+    hud.next(nx);
+    const pt = nx && nextPoint(nx);
+    if (!pt) { ring.visible = false; hud.arrow(null); return nx; }
+    ring.visible = pt.floor;
+    ring.position.set(pt.x, 0.04, pt.z);
+    ring.material.opacity = 0.55 + Math.sin(S.time * 5) * 0.3;
+    const p = env.project(world(pt.x, pt.y, pt.z));
+    if (p.on) hud.arrow(p.x, p.y); else hud.arrow(null);
+    return nx;
+  }
+
   function drawHud() {
     hud.clock(S.time);
-    hud.tickets(S.tickets, S.time, S.dda.pat);
+    const nx = drawNext();
+    hud.tickets(S.tickets, S.time, S.dda.pat, nx?.ticket ?? null);
     for (const s of HALL.stations) {
       const view = stationView(S, s.id);
       const p = view ? env.project(world(s.x, 1.55, s.z)) : null;
@@ -103,7 +131,7 @@ export function createRestaurantRuntime(env) {
       waiting.add(t.id);
       const w = S.time - t.t0, a = PATIENCE[0] * S.dda.pat, b = PATIENCE[1] * S.dda.pat;
       const p = env.project(world(m.position.x, 2.2, m.position.z));
-      hud.station(`g${t.id}`, p.on ? { kind: 'bubble', ico: MENU[t.menu].ico, mood: w < a ? '😊' : w < b ? '🙂' : '😟' } : null, p.x, p.y);
+      hud.station(`g${t.id}`, p.on ? { kind: 'bubble', n: t.table + 1, mood: w < a ? '' : w < b ? 'mid' : 'late' } : null, p.x, p.y);
     }
     for (const g of S.guests) if (!waiting.has(g.id)) hud.station(`g${g.id}`, null);
   }
@@ -136,6 +164,7 @@ export function createRestaurantRuntime(env) {
     for (const m of guests.values()) { hall.group.remove(m); env.releaseGuest(m); }
     guests.clear();
     hud.show(false);
+    ring.visible = false;
     S = null;
   }
 
@@ -175,10 +204,10 @@ export function createRestaurantRuntime(env) {
     },
     action() {
       const lp = local(env.player.position);
-      if (hud.cardOpen()) return true;
+      if (hud.cardOpen()) { hud.confirmMenu(); return true; }
       if (!S) {
         if (!nearBoard(lp)) return false;
-        start();
+        hud.menu(menuView(env.rest().star, !!env.sessionOpts?.().first), start);
         return true;
       }
       const take = kind => {
@@ -196,6 +225,6 @@ export function createRestaurantRuntime(env) {
       syncItems(); syncHeld(); syncGuests(); drawHud();
       if (S.ended) finish();
     },
-    abort() { if (S) clear(); },
+    abort() { hud.closeCard(); if (S) clear(); },
   };
 }
