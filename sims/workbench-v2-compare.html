@@ -1,0 +1,811 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>작업대 개편 시안</title>
+<style>
+  :root { --cream:#fff7ec; --mint:#bfe8c9; --ink:#4a5a4f; --panel:rgba(255,255,255,0.72); --shadow:0 6px 18px rgba(90,120,100,0.18); --gold:#e8b53a; --lack:#d05a4a; --up:#2fa564; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; padding:24px; font-family:'Segoe UI', system-ui, 'Apple SD Gothic Neo', sans-serif; color:#24312a; background:#e9efe9; }
+  .wrap { max-width:1232px; margin:0 auto; }
+  h1 { font-size:21px; margin:0 0 8px; }
+  .lead { font-size:13.5px; line-height:1.6; max-width:900px; margin:0 0 6px; word-break:keep-all; opacity:.85; }
+  .toc { display:flex; flex-wrap:wrap; gap:6px; margin:10px 0 0; }
+  .toc a { font-size:12.5px; font-weight:700; text-decoration:none; color:#2d4a3a; background:#fff; padding:5px 11px; border-radius:10px; box-shadow:var(--shadow); }
+  section.s { margin:30px 0 0; padding-top:18px; border-top:1px solid #cfdccf; }
+  section.s > h2 { font-size:18px; margin:0 0 4px; }
+  section.s > p { font-size:13px; opacity:.8; margin:0 0 12px; max-width:900px; line-height:1.55; word-break:keep-all; }
+  .grid3 { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:18px; align-items:start; }
+  .var { background:#f7faf7; border-radius:16px; padding:12px; box-shadow:0 2px 10px rgba(40,70,50,.08); min-width:0; }
+  .var.pick { outline:3px solid #2d4a3a; outline-offset:-3px; }
+  .vh { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:0 0 4px; }
+  .vh b { font-size:14.5px; }
+  .vtag { font-size:11.5px; font-weight:800; padding:2px 9px; border-radius:9px; background:#2d4a3a; color:#fff; }
+  .vdesc { font-size:12.5px; line-height:1.5; margin:0 0 10px; word-break:keep-all; opacity:.82; }
+  .why { font-size:12px; line-height:1.5; margin:10px 0 0; padding:8px 10px; border-radius:10px; background:#fff3cf; color:#5a4300; word-break:keep-all; }
+  .stage { position:relative; border-radius:14px; overflow:hidden; padding:16px 8px; display:flex; flex-direction:column; align-items:center; gap:12px; background:linear-gradient(170deg, #cfe9d6 0%, #a9d6a8 55%, #8dc08e 100%); }
+  .stage.shop { background:linear-gradient(180deg, #e3d3b4 0%, #d8c39d 58%, #8a6a4a 58.2%, #7a5b3e 100%); }
+  .slbl { align-self:flex-start; margin-left:6px; font-size:11px; font-weight:800; color:#fff; background:rgba(45,74,58,.7); padding:2px 8px; border-radius:8px; }
+
+  .gp { width:min(360px, 100%); background:var(--panel); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); border-radius:18px; box-shadow:var(--shadow); padding:12px 16px; color:var(--ink); display:flex; flex-direction:column; gap:10px; user-select:none; }
+  .dm-head { font-weight:700; font-size:14px; }
+  .dm-hint { font-size:12px; opacity:.7; text-align:center; word-break:keep-all; }
+  .dm-actions { display:flex; gap:8px; justify-content:flex-end; }
+  .dm-actions button, .btn { border:none; border-radius:10px; padding:8px 14px; font-weight:600; font-size:13px; cursor:pointer; background:#eef2ee; color:var(--ink); font-family:inherit; }
+  .btn.go { background:var(--mint); font-weight:800; }
+  .btn.gold { background:#ffe7a6; font-weight:800; color:#6a4a00; }
+  .btn.wide { width:100%; padding:10px 14px; font-size:13.5px; }
+  .btn[disabled] { opacity:.45; }
+  .ck-tabs { display:flex; gap:6px; justify-content:center; flex-wrap:wrap; }
+  .ck-tab { border:none; border-radius:10px; padding:6px 16px; font-weight:700; font-size:13px; background:#eef2ee; color:var(--ink); font-family:inherit; }
+  .ck-tab.active { background:var(--mint); }
+  .ck-inv { font-size:12px; opacity:.75; text-align:center; }
+  .items { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-content:flex-start; }
+  .ck-item { position:relative; display:flex; flex-direction:column; align-items:center; gap:3px; width:92px; padding:10px 6px; border-radius:12px; background:rgba(255,255,255,0.62); box-shadow:var(--shadow); text-align:center; }
+  .ck-item.off { opacity:.4; }
+  .ck-item.sel { outline:2px solid #6fbf86; outline-offset:-2px; background:#f1fbf3; }
+  .ck-item .ck-ico { font-size:24px; }
+  .ck-item .ck-name { font-size:12px; font-weight:700; word-break:keep-all; }
+  .ck-item .ck-buff { font-size:10px; opacity:.8; line-height:1.2; word-break:keep-all; }
+  .ck-item .ck-cost { font-size:10.5px; opacity:.75; }
+  .ck-item .ck-tag { font-size:9.5px; line-height:1.15; color:#c4631b; font-weight:700; }
+  .kt-row { display:flex; align-items:center; gap:10px; padding:9px 11px; border-radius:12px; background:rgba(255,255,255,0.62); box-shadow:var(--shadow); }
+  .kt-row.off { opacity:.45; }
+  .kt-ico { font-size:26px; flex:0 0 auto; }
+  .kt-body { flex:1 1 auto; min-width:0; }
+  .kt-name { font-size:13.5px; font-weight:700; word-break:keep-all; }
+  .kt-desc { font-size:11.5px; opacity:.78; margin-top:1px; word-break:keep-all; }
+  .kt-cost { font-size:11px; opacity:.85; margin-top:2px; }
+  .lack { color:var(--lack); font-weight:700; }
+  .list { display:flex; flex-direction:column; gap:8px; }
+
+  .stars { display:inline-flex; gap:1px; font-size:12px; letter-spacing:0; vertical-align:middle; }
+  .stars i { font-style:normal; color:#d7d2c2; }
+  .stars i.on { color:var(--gold); text-shadow:0 1px 0 rgba(150,100,0,.25); }
+  .stars i.next { color:var(--gold); opacity:.45; }
+  .badge-st { position:absolute; top:4px; right:5px; font-size:9.5px; }
+  .chev { display:inline-block; width:7px; height:7px; border-top:2px solid currentColor; border-right:2px solid currentColor; transform:rotate(45deg); margin:0 6px 1px 3px; opacity:.6; }
+  .now { opacity:.65; }
+  .nxt { color:var(--up); font-weight:800; }
+  .chips { display:flex; flex-wrap:wrap; gap:5px; }
+  .chip { font-size:11.5px; font-weight:700; padding:3px 8px; border-radius:9px; background:#eef2ee; color:var(--ink); white-space:nowrap; }
+  .chip.lack { background:#fbe3df; color:var(--lack); }
+  .chip.ok { background:#e2f4e6; }
+  .tagnew { font-size:9.5px; font-weight:800; color:#fff; background:#e07b39; padding:1px 6px; border-radius:7px; }
+  .tagmoon { font-size:10.5px; font-weight:800; color:#4b4f8a; background:#e7e8fb; padding:2px 7px; border-radius:8px; white-space:nowrap; }
+
+  .upc { background:rgba(255,255,255,.85); border-radius:14px; box-shadow:var(--shadow); padding:11px 12px; display:flex; flex-direction:column; gap:8px; }
+  .upc-top { display:flex; gap:10px; align-items:center; }
+  .upc-ico { font-size:32px; width:44px; height:44px; display:grid; place-items:center; border-radius:12px; background:#fff7e0; flex:0 0 auto; }
+  .upc-name { font-size:14px; font-weight:800; }
+  .upc-eff { font-size:12.5px; line-height:1.45; word-break:keep-all; }
+  .upc-note { font-size:11px; opacity:.65; word-break:keep-all; }
+
+  .rowbtn { flex:0 0 auto; display:flex; flex-direction:column; align-items:stretch; gap:3px; width:82px; }
+  .rowbtn .btn { padding:7px 6px; font-size:12px; }
+  .rowbtn .kt-cost { text-align:center; margin:0; font-size:10.5px; }
+
+  .toolpick { display:flex; gap:6px; justify-content:center; flex-wrap:wrap; }
+  .tp { width:46px; height:46px; border-radius:12px; display:grid; place-items:center; font-size:22px; background:rgba(255,255,255,.62); box-shadow:var(--shadow); position:relative; }
+  .tp.sel { background:var(--mint); }
+  .tp small { position:absolute; bottom:-2px; left:0; right:0; text-align:center; font-size:8.5px; color:#b07a00; font-weight:800; }
+  .ladder { position:relative; display:grid; grid-template-columns:repeat(4, 1fr); gap:0; padding:6px 0 2px; }
+  .ladder::before { content:''; position:absolute; left:12.5%; right:12.5%; top:22px; height:4px; border-radius:2px; background:linear-gradient(90deg, var(--gold) 0 33.3%, #e3dfd2 33.3% 100%); }
+  .rung { position:relative; display:flex; flex-direction:column; align-items:center; gap:3px; text-align:center; }
+  .node { width:32px; height:32px; border-radius:50%; display:grid; place-items:center; font-size:12px; font-weight:800; background:#f1eee5; color:#a49a80; border:2px solid #e3dfd2; z-index:1; }
+  .rung.done .node { background:var(--gold); color:#fff; border-color:#d9a21f; }
+  .rung.next .node { background:#fff; color:#b07a00; border:2px dashed var(--gold); }
+  .rung b { font-size:11.5px; }
+  .rung span { font-size:10.5px; opacity:.75; line-height:1.25; word-break:keep-all; }
+  .rung.next b { color:var(--up); }
+
+  .hud { position:relative; width:100%; min-height:330px; border-radius:12px; overflow:hidden; background:linear-gradient(180deg, #e3d3b4 0%, #d8c39d 52%, #8a6a4a 52.3%, #6f5236 100%); display:flex; flex-direction:column; align-items:center; }
+  .cv-top { margin-top:10px; display:flex; align-items:center; gap:10px; background:rgba(255,252,244,0.93); border-radius:14px; box-shadow:var(--shadow); padding:7px 8px 7px 12px; color:var(--ink); max-width:calc(100% - 16px); }
+  .cv-title { font-weight:800; font-size:14px; white-space:nowrap; }
+  .cv-quit { border:none; border-radius:10px; padding:6px 10px; font-weight:600; font-size:12px; background:#f5e0dc; color:#a2503f; font-family:inherit; white-space:nowrap; }
+  .cv-bottom { position:absolute; left:8px; right:8px; bottom:8px; background:rgba(255,252,244,0.93); border-radius:16px; box-shadow:var(--shadow); padding:9px 12px; display:flex; flex-direction:column; gap:5px; text-align:center; color:var(--ink); }
+  .cv-stats { display:flex; justify-content:center; gap:14px; font-size:13.5px; font-weight:800; font-variant-numeric:tabular-nums; flex-wrap:wrap; }
+  .cv-dmg { color:#a2503f; }
+  .cv-hint { font-size:11.5px; opacity:.75; word-break:keep-all; }
+
+  .anvil { position:relative; width:128px; height:70px; margin-top:auto; margin-bottom:96px; }
+  .anvil .top { position:absolute; left:6px; right:0; top:18px; height:20px; background:linear-gradient(#7d8790, #5b646c); border-radius:4px 14px 4px 4px; }
+  .anvil .horn { position:absolute; left:-14px; top:20px; width:26px; height:12px; background:#6c757d; border-radius:0 0 0 14px; }
+  .anvil .waist { position:absolute; left:40px; width:46px; top:38px; height:16px; background:#535b62; }
+  .anvil .foot { position:absolute; left:24px; width:80px; top:54px; height:14px; background:#5b646c; border-radius:3px; }
+  .anvil .tool { position:absolute; left:42px; top:-16px; font-size:30px; transform:rotate(-20deg); }
+  .hammer { position:absolute; font-size:34px; }
+  .strikes { display:flex; justify-content:center; gap:7px; }
+  .sk { width:15px; height:15px; border-radius:50%; background:#e7e1d2; border:2px solid #d8d0bc; }
+  .sk.p { background:var(--gold); border-color:#c99316; }
+  .sk.g { background:#8fd3a2; border-color:#5fb27a; }
+  .sk.m { background:#e6a79a; border-color:#c97d6d; }
+  .pop { position:absolute; font-weight:900; font-size:22px; color:#fff; text-shadow:0 2px 0 rgba(120,80,0,.45), 0 0 12px rgba(255,210,90,.8); letter-spacing:.5px; }
+  .pop.g { text-shadow:0 2px 0 rgba(30,90,50,.45), 0 0 12px rgba(120,220,150,.8); }
+
+  .bar { position:relative; width:min(280px, 88%); height:22px; border-radius:11px; background:#efe7d6; box-shadow:inset 0 2px 4px rgba(0,0,0,.15); overflow:hidden; }
+  .bar .good { position:absolute; left:34%; width:32%; top:0; bottom:0; background:#bfe8c9; }
+  .bar .perf { position:absolute; left:45%; width:10%; top:0; bottom:0; background:#ffd76a; }
+  .bar .mk { position:absolute; top:-3px; width:6px; height:28px; border-radius:3px; background:#3c4a40; box-shadow:0 0 0 2px #fff; animation:sweep 1.6s ease-in-out infinite alternate; }
+  @keyframes sweep { from { left:4%; } to { left:94%; } }
+
+  .ringwrap { position:absolute; left:50%; top:52%; width:150px; height:150px; transform:translate(-50%, -62%); }
+  .target { position:absolute; inset:45px; border-radius:50%; border:4px solid #ffd76a; box-shadow:0 0 0 6px rgba(255,215,106,.25), inset 0 0 0 3px rgba(255,255,255,.6); }
+  .shrink { position:absolute; inset:0; border-radius:50%; border:4px solid rgba(255,255,255,.95); animation:shrink 1.2s linear infinite; }
+  @keyframes shrink { from { transform:scale(1); opacity:.9; } to { transform:scale(.4); opacity:.3; } }
+  .ringcount { position:absolute; right:12px; top:62px; font-size:12px; font-weight:800; background:rgba(255,252,244,.93); padding:4px 9px; border-radius:10px; color:var(--ink); }
+
+  .lane { position:absolute; left:8px; right:8px; bottom:118px; height:54px; border-radius:14px; background:rgba(255,252,244,.9); box-shadow:var(--shadow); overflow:hidden; }
+  .lane .hit { position:absolute; left:42px; top:6px; bottom:6px; width:42px; border-radius:12px; border:3px solid var(--gold); background:rgba(255,215,106,.25); }
+  .lane .beat { position:absolute; top:50%; width:4px; height:18px; margin-top:-9px; border-radius:2px; background:#d8cfb8; }
+  .lane .note { position:absolute; top:50%; width:32px; height:32px; margin-top:-16px; border-radius:50%; display:grid; place-items:center; font-size:14px; line-height:1; background:#fff; box-shadow:0 2px 6px rgba(80,60,20,.25); }
+  .lane .note.done { opacity:.25; }
+  .lane .anv { position:absolute; left:6px; top:50%; transform:translateY(-50%); font-size:24px; }
+
+  .rcard { width:min(330px, 100%); background:rgba(255,252,244,0.97); border-radius:20px; box-shadow:var(--shadow); padding:16px 14px; display:flex; flex-direction:column; align-items:center; gap:7px; color:var(--ink); text-align:center; }
+  .r-ico { font-size:44px; line-height:1; }
+  .r-title { font-size:18px; font-weight:800; word-break:keep-all; }
+  .r-sub { font-size:12.5px; opacity:.8; word-break:keep-all; line-height:1.45; }
+  .r-big { font-size:15px; font-weight:800; color:#8a6400; }
+  .meter { width:100%; display:grid; grid-template-columns:repeat(4, 1fr); gap:4px; }
+  .meter div { font-size:10.5px; font-weight:800; padding:5px 0; border-radius:8px; background:#efe9da; color:#9a8f72; }
+  .meter div.on { background:var(--gold); color:#fff; }
+  .rcpt { width:100%; border-radius:12px; background:#fff; padding:8px 10px; font-size:12.5px; display:flex; flex-direction:column; gap:4px; }
+  .rcpt div { display:flex; justify-content:space-between; gap:8px; }
+  .rcpt .tot { border-top:1px dashed #d8d0bc; padding-top:5px; font-weight:800; }
+  .rcpt .minus { color:var(--up); font-weight:800; }
+
+  .block { position:relative; margin-top:12px; padding:6px; border-radius:6px; background:#6b5a45; box-shadow:0 8px 18px rgba(50,30,10,.35); }
+  .cg { display:grid; grid-template-columns:repeat(12, var(--cs, 22px)); grid-auto-rows:var(--cs, 22px); gap:1px; position:relative; }
+  .c { border-radius:2px; position:relative; }
+  .c.w { background:#d9a066; }
+  .c.k { background:#b0763f; box-shadow:inset 0 0 0 1px rgba(80,40,10,.25); }
+  .c.x { background:transparent; }
+  .grain-h .c.w { background-image:repeating-linear-gradient(0deg, rgba(120,70,25,.0) 0 3px, rgba(120,70,25,.28) 3px 4px, rgba(120,70,25,0) 4px 7px); }
+  .grain-h .c.k { background-image:repeating-linear-gradient(0deg, rgba(60,30,8,0) 0 3px, rgba(60,30,8,.22) 3px 4px, rgba(60,30,8,0) 4px 7px); }
+  .c.sw { background:#ffe3a3 !important; box-shadow:0 0 0 2px #fff, 0 0 10px rgba(255,220,120,.9); }
+  .c.pv { box-shadow:inset 0 0 0 2px #fff; background:#e9bb84 !important; }
+  .c.gemfound { background:#9fe6ff !important; box-shadow:0 0 0 2px #fff, 0 0 16px 4px rgba(120,220,255,.9); }
+  .c.gemfound::after { content:'💎'; position:absolute; inset:0; display:grid; place-items:center; font-size:14px; }
+  .flowlines { position:absolute; inset:6px; pointer-events:none; background:repeating-radial-gradient(ellipse 260% 30% at 30% 120%, rgba(90,50,15,0) 0 8px, rgba(90,50,15,.28) 8px 9px, rgba(90,50,15,0) 9px 16px); mix-blend-mode:multiply; border-radius:3px; }
+  .toastw { position:absolute; left:50%; transform:translateX(-50%); top:56px; white-space:nowrap; font-size:12.5px; font-weight:800; background:rgba(60,70,64,.92); color:#fff; padding:7px 12px; border-radius:12px; box-shadow:var(--shadow); z-index:2; }
+  .combo-pill { color:#c4631b; }
+  .combo-pill em { font-style:normal; font-size:11px; color:#fff; background:#e07b39; border-radius:7px; padding:1px 6px; margin-left:3px; }
+  .cgauge { position:relative; height:12px; border-radius:6px; background:#efe7d6; margin:2px 18px 14px 4px; }
+  .cgauge .fill { position:absolute; left:0; top:0; bottom:0; border-radius:6px; background:linear-gradient(90deg, #ffd76a, #e9a23b); }
+  .cgauge .tick { position:absolute; top:-3px; width:2px; height:18px; background:#b9ad90; }
+  .cgauge .tick span { position:absolute; top:18px; left:50%; transform:translateX(-50%); font-size:10px; font-weight:800; white-space:nowrap; color:#8a7a55; }
+  .cgauge .tick.hit span { color:#c4631b; }
+  .bigcombo { position:absolute; right:10px; top:58px; text-align:center; line-height:1; color:#fff; text-shadow:0 2px 0 rgba(150,80,20,.6), 0 0 10px rgba(255,180,90,.9); z-index:2; }
+  .bigcombo b { display:block; font-size:34px; font-weight:900; }
+  .bigcombo span { font-size:12px; font-weight:900; }
+  .grainbadge { position:absolute; left:10px; top:58px; font-size:11px; font-weight:800; background:rgba(255,252,244,.93); color:var(--ink); border-radius:10px; padding:5px 8px; display:flex; align-items:center; gap:6px; z-index:2; }
+  .grainbadge i { display:inline-block; width:18px; height:10px; background:repeating-linear-gradient(0deg, #b0763f 0 2px, transparent 2px 4px); border-radius:2px; }
+  .ebubble { position:absolute; font-size:15px; background:#fff; border-radius:12px; padding:3px 7px; box-shadow:0 2px 8px rgba(0,0,0,.2); }
+  .gemfly { position:absolute; right:14px; top:14px; font-size:12px; font-weight:800; background:#e3f6ff; color:#2a6a86; border-radius:10px; padding:5px 9px; box-shadow:var(--shadow); }
+
+  .two { display:flex; gap:8px; width:100%; }
+  .two .btn { flex:1 1 0; padding:10px 6px; font-size:13px; line-height:1.3; }
+  .two .btn small { display:block; font-size:11px; font-weight:700; opacity:.75; }
+  .papers { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+  .paper { width:58px; display:flex; flex-direction:column; align-items:center; gap:4px; font-size:11px; font-weight:700; }
+  .sw { width:50px; height:50px; border-radius:12px; box-shadow:var(--shadow); position:relative; }
+  .paper.sel .sw { outline:3px solid #4aa868; outline-offset:2px; }
+  .pk { background:#c9a074; background-image:repeating-linear-gradient(45deg, rgba(255,255,255,.12) 0 3px, transparent 3px 7px); }
+  .pf { background:#f6c9d4; background-image:radial-gradient(circle at 25% 30%, #fff 0 3px, transparent 4px), radial-gradient(circle at 70% 65%, #e88aa3 0 4px, transparent 5px), radial-gradient(circle at 70% 20%, #fff 0 2px, transparent 3px); background-size:24px 24px; }
+  .ps { background:#2f3b6b; background-image:radial-gradient(circle at 30% 30%, #ffe08a 0 1.6px, transparent 2.4px), radial-gradient(circle at 75% 70%, #fff 0 1.2px, transparent 2px); background-size:16px 16px; }
+  .pn { background:#f2efe7; display:grid; place-items:center; font-size:11px; color:#9a8f72; }
+  .giftbox { position:relative; width:84px; height:70px; margin:12px auto 4px; border-radius:10px; box-shadow:0 6px 14px rgba(80,60,40,.25); }
+  .giftbox::before { content:''; position:absolute; left:50%; top:0; bottom:0; width:12px; margin-left:-6px; background:#e2565f; }
+  .giftbox::after { content:''; position:absolute; left:0; right:0; top:50%; height:12px; margin-top:-6px; background:#e2565f; }
+  .giftbox .bow { position:absolute; left:50%; top:-14px; transform:translateX(-50%); width:34px; height:18px; z-index:1; }
+  .giftbox .bow::before, .giftbox .bow::after { content:''; position:absolute; top:0; width:16px; height:16px; border-radius:50% 50% 50% 0; background:#e2565f; }
+  .giftbox .bow::before { left:0; transform:rotate(-30deg); }
+  .giftbox .bow::after { right:0; transform:scaleX(-1) rotate(-30deg); }
+  .choice { flex:1 1 0; min-width:0; border-radius:14px; background:rgba(255,255,255,.75); box-shadow:var(--shadow); padding:10px 8px; display:flex; flex-direction:column; align-items:center; gap:5px; text-align:center; }
+  .choice.sel { background:#fff; outline:3px solid #4aa868; outline-offset:-3px; }
+  .choice .ci { font-size:28px; }
+  .choice .cn { font-size:13px; font-weight:800; word-break:keep-all; }
+  .choice .cv { font-size:12px; font-weight:700; word-break:keep-all; }
+  .dots { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; }
+  .dots i { width:20px; height:20px; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+  .dots i.sel { outline:2px solid #4aa868; outline-offset:1px; }
+  .seg { display:flex; background:#eef2ee; border-radius:12px; padding:3px; width:100%; }
+  .seg button { flex:1 1 0; border:none; background:transparent; border-radius:10px; padding:8px 4px; font-weight:800; font-size:13px; color:var(--ink); font-family:inherit; }
+  .seg button.on { background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.12); }
+  .heart { color:#e6789a; font-weight:800; }
+
+  .kept { display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:center; font-size:11.5px; font-weight:700; }
+  .kept .chip { background:#fff4e2; }
+  .ghead { font-size:11.5px; font-weight:800; opacity:.6; margin:2px 2px -2px; }
+  .gcards { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; }
+  .gc { position:relative; border-radius:12px; background:rgba(255,255,255,.62); box-shadow:var(--shadow); padding:8px 9px; display:flex; gap:8px; align-items:center; min-width:0; }
+  .gc.off { opacity:.55; }
+  .gc .gi { font-size:24px; flex:0 0 auto; }
+  .gc .gb { min-width:0; }
+  .gc .gn { font-size:12px; font-weight:800; word-break:keep-all; }
+  .gc .gm { font-size:10.5px; opacity:.85; }
+  .gc .tagnew { position:absolute; top:-6px; right:6px; }
+  .filt { display:flex; gap:6px; justify-content:center; flex-wrap:wrap; }
+  .filt span { font-size:11.5px; font-weight:800; padding:4px 10px; border-radius:10px; background:#eef2ee; }
+  .filt span.on { background:#2d4a3a; color:#fff; }
+
+  table.t { border-collapse:collapse; background:#fff; border-radius:12px; overflow:hidden; box-shadow:var(--shadow); font-size:12.5px; width:100%; }
+  table.t th, table.t td { padding:7px 10px; text-align:left; border-bottom:1px solid #edf1ed; vertical-align:top; word-break:keep-all; }
+  table.t th { background:#f4faf5; font-size:12px; white-space:nowrap; }
+  table.t td.k { font-weight:700; color:#2d4a3a; }
+  table.t td code { font-size:11px; background:#f1f4f1; padding:1px 4px; border-radius:4px; word-break:break-all; }
+  .tscroll { overflow-x:auto; -webkit-overflow-scrolling:touch; border-radius:12px; box-shadow:var(--shadow); }
+  .tscroll table.t { box-shadow:none; }
+  .tsec { font-size:14px; font-weight:800; margin:18px 0 8px; }
+  .twocol { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  .note { font-size:12.5px; line-height:1.6; opacity:.8; margin:8px 0 0; padding-left:18px; word-break:keep-all; }
+
+  @media (max-width:900px) {
+    body { padding:16px; }
+    .grid3 { grid-template-columns:minmax(0, 1fr); }
+    .twocol { grid-template-columns:minmax(0, 1fr); }
+  }
+  @media (max-width:520px) {
+    .ck-tab { padding:6px 11px; font-size:12px; }
+    .ck-item { width:84px; }
+    .gp { padding:12px 13px; }
+    .stage { padding:14px 6px; }
+    .var { padding:10px; }
+    .cg { --cs:21px; }
+    .codecol { display:none; }
+    .tp { width:40px; height:40px; font-size:19px; }
+    .toolpick { gap:5px; }
+    table.t { font-size:12px; }
+    table.t th, table.t td { padding:6px 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🔧 작업대 개편 v2 시안 (A/B/C)</h1>
+  <p class="lead">확정된 규칙(결 따라 깎기와 콤보, 별 강화와 망치 타이밍, 작품 선물과 포장지, 새 선물 5종)을 화면 다섯 곳에 세 가지 방식으로 그렸어요. 게임 작업대 창(#cook-menu)과 조각 HUD(#cv-*)의 색·모서리·글꼴·탭 모양을 그대로 옮겼어요. 진한 테두리 카드가 추천안이에요.</p>
+  <div class="toc"><a href="#sa">(a) 도구 탭 강화 카드</a><a href="#sb">(b) 망치 타이밍</a><a href="#sc">(c) 조각 HUD</a><a href="#sd">(d) 팔기·간직·포장</a><a href="#se">(e) 선물 탭 10종</a><a href="#nums">제안 수치</a><a href="#copy">문구 후보</a></div>
+
+  <section class="s" id="sa">
+    <h2>(a) 작업대 도구 탭 · 별 강화 카드</h2>
+    <p>예시 상태: 튼튼한 낚싯대 ★1 보유, 큰 물조리개는 ★2를 맡겨 둔 밤, 큰 냄비는 ★3 완성, 강철 도끼는 아직 1단계 도구가 없어요.</p>
+    <div class="grid3">
+      <div class="var pick">
+        <div class="vh"><b>A · 격자 + 펼침 카드</b><span class="vtag">추천</span></div>
+        <p class="vdesc">지금 격자 칸은 그대로 두고, 칸 오른쪽 위에 별을 달아요. 칸을 누르면 위에 강화 카드가 펼쳐져요.</p>
+        <div class="stage">
+          <div class="gp">
+            <div class="dm-head">🔧 작업대</div>
+            <div class="ck-tabs"><button class="ck-tab active">🔧 도구</button><button class="ck-tab">🌷 야외</button><button class="ck-tab">🎁 선물</button><button class="ck-tab">🗿 조각</button></div>
+            <span class="ck-inv">🪵 42  🥕 18  🐟 9  🪨 12  ⚫ 5  💎 1</span>
+            <div class="upc">
+              <div class="upc-top">
+                <div class="upc-ico">🎣</div>
+                <div>
+                  <div class="upc-name">튼튼한 낚싯대 <span class="stars"><i class="on">★</i><i class="next">★</i><i>★</i></span></div>
+                  <div class="upc-eff">입질 여유 <span class="now">3.0초</span><i class="chev"></i><span class="nxt">3.4초</span></div>
+                </div>
+              </div>
+              <div class="chips"><span class="chip ok">🪙 240</span><span class="chip ok">🪨 10</span><span class="chip ok">🐟 8</span></div>
+              <button class="btn go wide">🔨 ★2로 강화하기</button>
+              <div class="upc-note">망치질 5번 · 내일 아침 완성 · 그동안도 쓸 수 있어요</div>
+            </div>
+            <div class="items">
+              <div class="ck-item sel"><span class="badge-st stars"><i class="on">★</i></span><span class="ck-ico">🎣</span><span class="ck-name">튼튼한 낚싯대</span><span class="ck-buff">입질 여유 3.0초</span></div>
+              <div class="ck-item"><span class="badge-st stars"><i class="on">★</i></span><span class="ck-ico">💧</span><span class="ck-name">큰 물조리개</span><span class="tagmoon">🌙 ★2 내일</span></div>
+              <div class="ck-item"><span class="badge-st stars"><i class="on">★</i><i class="on">★</i><i class="on">★</i></span><span class="ck-ico">🍲</span><span class="ck-name">큰 냄비</span><span class="ck-buff">버프 2배 · ★3</span></div>
+              <div class="ck-item"><span class="ck-ico">🦋</span><span class="ck-name">촘촘한 포충망</span><span class="ck-buff">포획 +18%</span></div>
+              <div class="ck-item"><span class="ck-ico">🔨</span><span class="ck-name">묵직한 망치</span><span class="ck-buff">목재 30% 덜</span></div>
+              <div class="ck-item off"><span class="ck-ico">🪓</span><span class="ck-name">강철 도끼</span><span class="ck-cost">🪵20 🥕3</span></div>
+            </div>
+            <div class="dm-hint">도구를 누르면 <b>별 강화</b>를 볼 수 있어요</div>
+            <div class="dm-actions"><button>닫기</button></div>
+          </div>
+        </div>
+        <div class="why">지금 격자와 같은 문법이라 배울 게 없고, 카드 하나에 지금과 다음 효과를 숫자로 나란히 보여 줘요.</div>
+      </div>
+
+      <div class="var">
+        <div class="vh"><b>B · 한 줄 목록</b></div>
+        <p class="vdesc">자유주방 레시피처럼 도구 한 줄에 별, 다음 효과, 비용, 버튼을 모두 넣어요. 누를 필요 없이 한눈에 비교해요.</p>
+        <div class="stage">
+          <div class="gp">
+            <div class="dm-head">🔧 작업대</div>
+            <div class="ck-tabs"><button class="ck-tab active">🔧 도구</button><button class="ck-tab">🌷 야외</button><button class="ck-tab">🎁 선물</button><button class="ck-tab">🗿 조각</button></div>
+            <span class="ck-inv">🪵 42  🥕 18  🐟 9  🪨 12  ⚫ 5  💎 1</span>
+            <div class="list">
+              <div class="kt-row">
+                <span class="kt-ico">🎣</span>
+                <div class="kt-body"><div class="kt-name">튼튼한 낚싯대 <span class="stars"><i class="on">★</i><i class="next">★</i><i>★</i></span></div><div class="kt-desc">입질 여유 3.0초<i class="chev"></i><span class="nxt">3.4초</span></div><div class="kt-cost">🪙240 🪨10 🐟8</div></div>
+                <div class="rowbtn"><button class="btn go">★2 강화</button></div>
+              </div>
+              <div class="kt-row">
+                <span class="kt-ico">💧</span>
+                <div class="kt-body"><div class="kt-name">큰 물조리개 <span class="stars"><i class="on">★</i><i class="next">★</i><i>★</i></span></div><div class="kt-desc">자고 나면 ★2가 돼요</div></div>
+                <div class="rowbtn"><span class="tagmoon" style="text-align:center">🌙 내일 아침</span></div>
+              </div>
+              <div class="kt-row">
+                <span class="kt-ico">🦋</span>
+                <div class="kt-body"><div class="kt-name">촘촘한 포충망 <span class="stars"><i class="next">★</i><i>★</i><i>★</i></span></div><div class="kt-desc">포획 +18%<i class="chev"></i><span class="nxt">+24%</span></div><div class="kt-cost">🪙120 🪵10 <span class="lack">🌟0/2</span></div></div>
+                <div class="rowbtn"><button class="btn" disabled>★1 강화</button></div>
+              </div>
+              <div class="kt-row">
+                <span class="kt-ico">🍲</span>
+                <div class="kt-body"><div class="kt-name">큰 냄비 <span class="stars"><i class="on">★</i><i class="on">★</i><i class="on">★</i></span></div><div class="kt-desc">요리 버프 2배 · 최고 별이에요</div></div>
+                <div class="rowbtn"><span class="chip ok" style="text-align:center">✅ 완성</span></div>
+              </div>
+              <div class="kt-row off">
+                <span class="kt-ico">🪓</span>
+                <div class="kt-body"><div class="kt-name">강철 도끼</div><div class="kt-desc">먼저 만들어야 별을 달 수 있어요</div><div class="kt-cost">🪵20 🥕3</div></div>
+                <div class="rowbtn"><button class="btn">만들기</button></div>
+              </div>
+            </div>
+            <div class="dm-actions"><button>닫기</button></div>
+          </div>
+        </div>
+        <div class="why">비교는 가장 빠르지만 도구 10줄이 길게 이어져 모바일에서 스크롤이 많아요.</div>
+      </div>
+
+      <div class="var">
+        <div class="vh"><b>C · 별 사다리</b></div>
+        <p class="vdesc">위에 도구 아이콘만 고르고, 아래에 지금·★1·★2·★3 사다리를 그려 각 별의 값을 미리 보여 줘요.</p>
+        <div class="stage">
+          <div class="gp">
+            <div class="dm-head">🔧 작업대</div>
+            <div class="ck-tabs"><button class="ck-tab active">🔧 도구</button><button class="ck-tab">🌷 야외</button><button class="ck-tab">🎁 선물</button><button class="ck-tab">🗿 조각</button></div>
+            <div class="toolpick">
+              <div class="tp sel">🎣<small>★</small></div><div class="tp">💧<small>🌙</small></div><div class="tp">🍲<small>★★★</small></div><div class="tp">🦋</div><div class="tp">🔨</div><div class="tp" style="opacity:.4">🪓</div>
+            </div>
+            <div class="upc">
+              <div class="upc-name" style="text-align:center">🎣 튼튼한 낚싯대 · 입질 여유</div>
+              <div class="ladder">
+                <div class="rung done"><div class="node">1단</div><b>2.6초</b><span>지금 도구</span></div>
+                <div class="rung done"><div class="node">★1</div><b>3.0초</b><span>보유</span></div>
+                <div class="rung next"><div class="node">★2</div><b>3.4초</b><span>다음</span></div>
+                <div class="rung"><div class="node">★3</div><b>3.8초</b><span>최고</span></div>
+              </div>
+              <div class="chips" style="justify-content:center"><span class="chip ok">🪙 240</span><span class="chip ok">🪨 10</span><span class="chip ok">🐟 8</span></div>
+              <button class="btn go wide">🔨 ★2 강화 · 망치질 5번</button>
+            </div>
+            <div class="dm-hint">맡기면 <b>내일 아침</b> 완성, 그동안도 지금 별로 쓸 수 있어요</div>
+            <div class="dm-actions"><button>닫기</button></div>
+          </div>
+        </div>
+        <div class="why">★3까지의 목표가 보여 동기가 크지만, 덮개·금빛 도구 같은 다른 항목을 둘 자리가 따로 필요해요.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="s" id="sb">
+    <h2>(b) 망치 타이밍 미니게임 · 결과 카드</h2>
+    <p>박자 0.8초 간격으로 5번 쳐요. 완벽 2점, 좋아요 1점, 빗나감 0점, 10점 만점. 실패는 없고 점수만큼 코인을 돌려받아요. 예시: ★2 강화(🪙240), 8점.</p>
+    <div class="grid3">
+      <div class="var">
+        <div class="vh"><b>A · 가로 막대와 표식</b></div>
+        <p class="vdesc">표식이 막대 위를 오가고, 금색 칸에 들어왔을 때 탭해요. 가장 읽기 쉬운 타이밍 표현이에요.</p>
+        <div class="stage shop" style="padding:10px 8px">
+          <span class="slbl">미니게임</span>
+          <div class="hud">
+            <div class="cv-top"><span class="cv-title">🔨 낚싯대 ★2 강화</span><button class="cv-quit">그만두기</button></div>
+            <span class="pop g" style="left:50%;top:80px;transform:translateX(-50%)">좋아요!</span>
+            <div class="anvil" style="margin-bottom:104px"><div class="horn"></div><div class="top"></div><div class="waist"></div><div class="foot"></div><div class="tool">🎣</div></div>
+            <span class="hammer" style="left:calc(50% + 34px);top:96px;transform:rotate(-35deg)">🔨</span>
+            <div class="cv-bottom">
+              <div style="display:flex;justify-content:center"><div class="bar"><div class="good"></div><div class="perf"></div><div class="mk"></div></div></div>
+              <div class="strikes"><i class="sk p"></i><i class="sk g"></i><i class="sk p"></i><i class="sk"></i><i class="sk"></i></div>
+              <div class="cv-hint">표식이 금색 칸에 오면 탭해요 · 3/5</div>
+            </div>
+          </div>
+          <span class="slbl">결과</span>
+          <div class="rcard">
+            <div class="r-ico">🎣</div>
+            <div class="r-title">좋은 망치질이에요!</div>
+            <div class="strikes"><i class="sk p"></i><i class="sk g"></i><i class="sk p"></i><i class="sk p"></i><i class="sk m"></i></div>
+            <div class="r-sub">완벽 3 · 좋아요 1 · 빗나감 1 · <b>8점</b></div>
+            <div class="r-big">🪙 48 돌려받았어요</div>
+            <div class="r-sub">🌙 내일 아침 ★2가 돼요. 그동안도 쓸 수 있어요</div>
+            <button class="btn go wide">좋아요</button>
+          </div>
+        </div>
+        <div class="why">막대는 눈이 HUD 아래로 내려가 있어 모루와 망치를 보지 않게 돼요.</div>
+      </div>
+
+      <div class="var pick">
+        <div class="vh"><b>B · 줄어드는 고리</b><span class="vtag">추천</span></div>
+        <p class="vdesc">모루 위 금색 원으로 흰 고리가 좁혀 들어와요. 두 원이 겹칠 때 탭하면 망치가 내려쳐요.</p>
+        <div class="stage shop" style="padding:10px 8px">
+          <span class="slbl">미니게임</span>
+          <div class="hud">
+            <div class="cv-top"><span class="cv-title">🔨 낚싯대 ★2 강화</span><button class="cv-quit">그만두기</button></div>
+            <span class="ringcount">3/5</span>
+            <div class="ringwrap"><div class="target"></div><div class="shrink"></div></div>
+            <span class="pop" style="left:50%;top:74px;transform:translateX(-50%)">완벽!</span>
+            <div class="anvil"><div class="horn"></div><div class="top"></div><div class="waist"></div><div class="foot"></div><div class="tool">🎣</div></div>
+            <div class="cv-bottom">
+              <div class="strikes"><i class="sk p"></i><i class="sk g"></i><i class="sk p"></i><i class="sk"></i><i class="sk"></i></div>
+              <div class="cv-hint">고리가 금색 원에 닿을 때 탭해요</div>
+            </div>
+          </div>
+          <span class="slbl">결과</span>
+          <div class="rcard">
+            <div class="r-ico">🎣</div>
+            <div class="r-title">좋은 망치질이에요!</div>
+            <div class="strikes"><i class="sk p"></i><i class="sk g"></i><i class="sk p"></i><i class="sk p"></i><i class="sk m"></i></div>
+            <div class="meter"><div>0~4점<br>0%</div><div>5~7점<br>10%</div><div class="on">8~9점<br>20%</div><div>10점<br>30%</div></div>
+            <div class="r-big">🪙 48 돌려받았어요</div>
+            <div class="r-sub">🌙 내일 아침 ★2가 돼요. 그동안도 쓸 수 있어요</div>
+            <button class="btn go wide">좋아요</button>
+          </div>
+        </div>
+        <div class="why">고리가 닿는 곳과 망치가 떨어지는 곳이 같아서 시선이 모루 한 점에 머물고, 환급 칸이 다음 목표를 보여 줘요.</div>
+      </div>
+
+      <div class="var">
+        <div class="vh"><b>C · 모루 박자 줄</b></div>
+        <p class="vdesc">망치 음표 5개가 오른쪽에서 흘러와 왼쪽 모루 칸에 닿을 때 탭해요. 리듬게임처럼 다음 박자가 미리 보여요.</p>
+        <div class="stage shop" style="padding:10px 8px">
+          <span class="slbl">미니게임</span>
+          <div class="hud">
+            <div class="cv-top"><span class="cv-title">🔨 낚싯대 ★2 강화</span><button class="cv-quit">그만두기</button></div>
+            <div class="anvil" style="margin-bottom:186px;transform:scale(.85)"><div class="horn"></div><div class="top"></div><div class="waist"></div><div class="foot"></div><div class="tool">🎣</div></div>
+            <span class="pop g" style="left:34px;bottom:176px;font-size:17px">좋아요!</span>
+            <div class="lane">
+              <span class="anv">🪨</span>
+              <div class="hit"></div>
+              <span class="beat" style="left:150px"></span><span class="beat" style="left:210px"></span><span class="beat" style="left:270px"></span>
+              <span class="note" style="left:105px">🔨</span><span class="note" style="left:165px">🔨</span><span class="note" style="left:225px">🔨</span>
+            </div>
+            <div class="cv-bottom">
+              <div class="strikes"><i class="sk p"></i><i class="sk g"></i><i class="sk"></i><i class="sk"></i><i class="sk"></i></div>
+              <div class="cv-hint">망치가 모루 칸에 닿을 때 탭해요</div>
+            </div>
+          </div>
+          <span class="slbl">결과</span>
+          <div class="rcard">
+            <div class="r-ico">🎣</div>
+            <div class="r-title">★2 강화를 맡겼어요</div>
+            <div class="rcpt">
+              <div><span>강화 비용</span><span>🪙 240</span></div>
+              <div><span>망치질 8점 · 20%</span><span class="minus">돌려받음 🪙 48</span></div>
+              <div class="tot"><span>실제로 낸 코인</span><span>🪙 192</span></div>
+            </div>
+            <div class="r-sub">🌙 내일 아침 완성 · 그동안도 쓸 수 있어요</div>
+            <button class="btn go wide">좋아요</button>
+          </div>
+        </div>
+        <div class="why">박자감은 가장 좋지만 화면 아래 줄이 커서 세로 폰에서 모루가 작아지고, 5번짜리엔 과해요.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="s" id="sc">
+    <h2>(c) 조각 HUD · 나뭇결, 콤보, 숨은 보석</h2>
+    <p>목각 물고기(가로 결). 결 방향으로 그으면 같은 줄 여백이 2칸 더 깎이고 밑그림 칸에서 멈춰요. 예시: 다듬기 62%, 콤보 7, 방금 숨은 보석을 찾은 순간.</p>
+    <div class="grid3">
+      <div class="var">
+        <div class="vh"><b>A · 칸마다 결 무늬 + 콤보 숫자</b></div>
+        <p class="vdesc">여백 칸마다 가는 가로줄 결을 넣고, 콤보는 다듬기·흠집 옆 숫자로만 보여요. 결로 쓸린 칸은 잠깐 밝게 빛나요.</p>
+        <div class="stage shop" style="padding:10px 8px">
+          <div class="hud" style="min-height:420px">
+            <div class="cv-top"><span class="cv-title">🐟 목각 물고기</span><button class="cv-quit">그만두기</button></div>
+            <span class="toastw">💎 숨은 보석을 찾았어요!</span>
+            <div class="block grain-h" style="margin-top:34px"><div class="cg" data-v="a"></div></div>
+            <div class="cv-bottom">
+              <div class="cv-stats"><span>다듬기 62%</span><span class="cv-dmg">흠집 ●○○</span><span class="combo-pill">콤보 7<em>×1.1</em></span></div>
+              <div class="cv-hint">결 따라 길게 그으면 한 번에 여러 칸 깎여요</div>
+            </div>
+          </div>
+        </div>
+        <div class="why">익숙하지만 결 무늬가 칸 단위로 끊겨 "한 줄로 이어진다"는 느낌이 약해요.</div>
+      </div>
+
+      <div class="var pick">
+        <div class="vh"><b>B · 통나무 결 + 콤보 게이지</b><span class="vtag">추천</span></div>
+        <p class="vdesc">블록 전체에 이어진 나뭇결을 겹쳐 그려 방향이 한눈에 보여요. 콤보는 5·10·15 눈금 게이지로, 보석은 위 칸으로 날아가 +1이 돼요.</p>
+        <div class="stage shop" style="padding:10px 8px">
+          <div class="hud" style="min-height:420px">
+            <div class="cv-top"><span class="cv-title">🐟 목각 물고기</span><button class="cv-quit">그만두기</button></div>
+            <span class="gemfly">💎 +1</span>
+            <div class="block" style="margin-top:34px"><div class="cg" data-v="b"></div><div class="flowlines"></div></div>
+            <div class="cv-bottom">
+              <div class="cv-stats"><span>다듬기 62%</span><span class="cv-dmg">흠집 ●○○</span><span class="combo-pill">콤보 7</span></div>
+              <div class="cgauge"><div class="fill" style="width:46.7%"></div><div class="tick hit" style="left:33.3%"><span>5 ×1.1</span></div><div class="tick" style="left:66.6%"><span>10 ×1.2</span></div><div class="tick" style="left:99%"><span>15 ×1.3</span></div></div>
+              <div class="cv-hint">결 따라 그으면 여러 칸이 한 번에 깎여요</div>
+            </div>
+          </div>
+        </div>
+        <div class="why">결 방향이 블록 전체로 이어져 "이쪽으로 그으면 된다"가 첫눈에 읽히고, 게이지가 다음 보너스까지 남은 거리를 알려 줘요.</div>
+      </div>
+
+      <div class="var">
+        <div class="vh"><b>C · 큰 콤보 숫자 + 쓸림 미리보기</b></div>
+        <p class="vdesc">블록 옆에 큰 콤보 숫자를 띄우고, 손가락을 대면 결 방향으로 같이 깎일 칸을 흰 테두리로 미리 보여 줘요. 보석은 그 자리에서 터지고 이모지 말풍선이 떠요.</p>
+        <div class="stage shop" style="padding:10px 8px">
+          <div class="hud" style="min-height:420px">
+            <div class="cv-top"><span class="cv-title">🐟 목각 물고기</span><button class="cv-quit">그만두기</button></div>
+            <span class="grainbadge"><i></i>가로 결</span>
+            <span class="bigcombo"><b>7</b><span>콤보</span></span>
+            <div class="block grain-h" style="margin-top:34px"><div class="cg" data-v="c"></div><span class="ebubble" style="right:16px;bottom:52px">💎✨</span></div>
+            <div class="cv-bottom">
+              <div class="cv-stats"><span>다듬기 62%</span><span class="cv-dmg">흠집 ●○○</span><span>💎 1</span></div>
+              <div class="cv-hint">흰 테두리 칸이 같이 깎여요</div>
+            </div>
+          </div>
+        </div>
+        <div class="why">미리보기는 친절하지만 손가락이 칸을 가려 모바일에선 거의 안 보이고, 큰 숫자가 블록과 겹쳐요.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="s" id="sd">
+    <h2>(d) 다 깎은 뒤 · 팔기와 간직하기, 포장지</h2>
+    <p>걸작 목각 물고기. 팔면 🪙47(26 × 걸작 1.5 × 콤보 1.2), 간직하면 선물 ❤️+2(걸작), 포장하면 ❤️+1 더(🪙15).</p>
+    <div class="grid3">
+      <div class="var pick">
+        <div class="vh"><b>A · 결과 카드 두 버튼, 이어서 포장</b><span class="vtag">추천</span></div>
+        <p class="vdesc">결과 카드에 팔기·간직 두 버튼만 두고, 간직을 눌렀을 때만 포장지 창이 이어져요.</p>
+        <div class="stage shop" style="padding:10px 8px">
+          <span class="slbl">1단계</span>
+          <div class="rcard">
+            <div class="r-ico">💎</div>
+            <div class="r-title">걸작!</div>
+            <div class="r-sub">🐟 목각 물고기 · 흠집 없음 · 최고 콤보 12</div>
+            <div class="two"><button class="btn gold">🪙 팔기<small>+47</small></button><button class="btn go">🎁 간직하기<small>선물 ❤️+2</small></button></div>
+          </div>
+          <span class="slbl">2단계 (간직했을 때)</span>
+          <div class="rcard">
+            <div class="r-title" style="font-size:16px">포장해서 줄까요?</div>
+            <div class="papers">
+              <div class="paper"><div class="sw pk"></div>크라프트</div>
+              <div class="paper sel"><div class="sw pf"></div>꽃무늬</div>
+              <div class="paper"><div class="sw ps"></div>별밤</div>
+            </div>
+            <div class="r-sub">포장지 🪙15 · 받는 주민 <span class="heart">❤️+1</span> 더</div>
+            <div class="two"><button class="btn">그냥 간직</button><button class="btn go">🎀 포장하기</button></div>
+          </div>
+        </div>
+        <div class="why">파는 사람은 지금처럼 한 번에 끝나고, 선물하려는 사람만 한 단계 더 봐요. 기존 결과 카드를 그대로 써요.</div>
+      </div>
+
+      <div class="var">
+        <div class="vh"><b>B · 나란한 두 장 카드</b></div>
+        <p class="vdesc">결과 아래 팔기·선물 카드 두 장을 나란히 두고, 선물 카드 안에서 포장지 색을 바로 골라요.</p>
+        <div class="stage shop" style="padding:10px 8px">
+          <div class="rcard">
+            <div class="r-title">💎 걸작!</div>
+            <div class="r-sub">🐟 목각 물고기 · 흠집 없음 · 최고 콤보 12</div>
+            <div class="two">
+              <div class="choice"><span class="ci">🪙</span><span class="cn">팔기</span><span class="cv">코인 +47</span></div>
+              <div class="choice sel"><span class="ci">🎁</span><span class="cn">선물로 간직</span><span class="cv heart">❤️+3</span>
+                <div class="dots"><i class="pk"></i><i class="pf sel"></i><i class="ps"></i><i class="pn" style="font-size:9px">없음</i></div>
+                <span class="cv" style="font-size:10.5px;opacity:.75">포장 🪙15 · ❤️+1</span>
+              </div>
+            </div>
+            <button class="btn go wide">🎀 포장해서 간직하기</button>
+          </div>
+        </div>
+        <div class="why">한 화면에서 끝나지만 색 점이 작아 손가락으로 고르기 어렵고, 파는 사람도 확정 버튼을 한 번 더 눌러야 해요.</div>
+      </div>
+
+      <div class="var">
+        <div class="vh"><b>C · 팔기|선물 전환 + 상자 미리보기</b></div>
+        <p class="vdesc">위쪽 전환 버튼으로 팔기와 선물을 바꾸고, 선물 쪽은 고른 포장지로 싼 상자를 크게 보여 줘요.</p>
+        <div class="stage shop" style="padding:10px 8px">
+          <div class="rcard">
+            <div class="r-title">💎 걸작!</div>
+            <div class="seg"><button>🪙 팔기 +47</button><button class="on">🎁 선물</button></div>
+            <div class="giftbox pf"><div class="bow"></div></div>
+            <div class="r-sub">🐟 목각 물고기 선물 · <span class="heart">❤️+3</span></div>
+            <div class="papers">
+              <div class="paper"><div class="sw pn">없음</div>🪙0</div>
+              <div class="paper"><div class="sw pk"></div>🪙15</div>
+              <div class="paper sel"><div class="sw pf"></div>🪙15</div>
+              <div class="paper"><div class="sw ps"></div>🪙15</div>
+            </div>
+            <button class="btn go wide">🎀 이대로 간직하기</button>
+          </div>
+        </div>
+        <div class="why">상자 미리보기가 가장 설레지만 카드가 길어 모바일 결과 창이 화면을 거의 다 덮어요.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="s" id="se">
+    <h2>(e) 작업대 선물 탭 · 10종 (기존 5 + 새 5)</h2>
+    <p>예시 인벤: 🥕18 🐟9 🪵42 💎1 🍯1 🌟3 🌾밀가루1 🍎4 🌰군밤0 ⭐별조각2 ✨정령빛1 · 간직한 작품 2개.</p>
+    <div class="grid3">
+      <div class="var pick">
+        <div class="vh"><b>A · 지금 격자 + 새 표시</b><span class="vtag">추천</span></div>
+        <p class="vdesc">지금 선물 격자에 새 5종을 이어 붙이고 "새 선물" 표시와 ❤️ 값을 적어요. 간직한 작품은 맨 위 한 줄로.</p>
+        <div class="stage">
+          <div class="gp">
+            <div class="dm-head">🔧 작업대</div>
+            <div class="ck-tabs"><button class="ck-tab">🔧 도구</button><button class="ck-tab">🌷 야외</button><button class="ck-tab active">🎁 선물</button><button class="ck-tab">🗿 조각</button></div>
+            <div class="kept">간직한 작품 <span class="chip">🐟🎀 ×1</span><span class="chip">⭐ ×1</span></div>
+            <div class="items" id="giftA"></div>
+            <div class="dm-hint">만든 선물은 주민과 <b>대화</b>해서 줘요</div>
+            <div class="dm-actions"><button>닫기</button></div>
+          </div>
+        </div>
+        <div class="why">지금 화면에 칸만 늘어 배울 게 없고, 4줄이라 작업대 창 높이 안에서 조금만 스크롤하면 돼요.</div>
+      </div>
+
+      <div class="var">
+        <div class="vh"><b>B · 묶음 목록</b></div>
+        <p class="vdesc">간직한 작품, 늘 만드는 선물, 새 선물 세 묶음으로 나누고 한 줄에 재료·❤️·만들기를 넣어요.</p>
+        <div class="stage">
+          <div class="gp">
+            <div class="dm-head">🔧 작업대</div>
+            <div class="ck-tabs"><button class="ck-tab">🔧 도구</button><button class="ck-tab">🌷 야외</button><button class="ck-tab active">🎁 선물</button><button class="ck-tab">🗿 조각</button></div>
+            <div class="list" id="giftB"></div>
+            <div class="dm-actions"><button>닫기</button></div>
+          </div>
+        </div>
+        <div class="why">정리는 깔끔하지만 12줄이라 가장 길고, 다른 탭(격자)과 모양이 달라져요.</div>
+      </div>
+
+      <div class="var">
+        <div class="vh"><b>C · 거름 버튼 + 2열 카드</b></div>
+        <p class="vdesc">위에 전체·만들 수 있음·❤️+2 거름 버튼을 두고, 2열 카드에 모자란 재료를 빨갛게 보여 줘요.</p>
+        <div class="stage">
+          <div class="gp">
+            <div class="dm-head">🔧 작업대</div>
+            <div class="ck-tabs"><button class="ck-tab">🔧 도구</button><button class="ck-tab">🌷 야외</button><button class="ck-tab active">🎁 선물</button><button class="ck-tab">🗿 조각</button></div>
+            <div class="filt"><span class="on">전체 10</span><span>만들 수 있음 8</span><span>❤️+2</span><span>간직한 작품 2</span></div>
+            <div class="gcards" id="giftC"></div>
+            <div class="dm-actions"><button>닫기</button></div>
+          </div>
+        </div>
+        <div class="why">무엇이 모자란지 바로 보이지만 거름 버튼이 탭 줄 아래 또 한 줄이라 위가 무거워요.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="s" id="nums">
+    <h2>제안 수치</h2>
+    <p>효과는 모두 지금 코드의 숫자를 한 칸씩 키우는 방식이에요(반복 노동 완화, 보상량은 안 늘림). 별은 1단계 도구가 있어야 달 수 있고, 금빛 도구(외형)와는 따로예요.</p>
+    <div class="tsec">1. 도구 별 효과</div>
+    <div class="tscroll"><table class="t">
+      <tr><th>도구</th><th>지금(1단계)</th><th>★1</th><th>★2</th><th>★3</th><th class="codecol">코드 위치</th></tr>
+      <tr><td class="k">🎣 튼튼한 낚싯대</td><td>입질 여유 2.6초</td><td>3.0초</td><td>3.4초</td><td>3.8초</td><td class="codecol"><code>fishing.js:121 biteEnd</code></td></tr>
+      <tr><td class="k">💧 큰 물조리개</td><td>고급 작물 물 한 번 성장 ×1.75</td><td>×2.0</td><td>×2.25</td><td>×2.5</td><td class="codecol"><code>farm-crops.js growthPerWater</code></td></tr>
+      <tr><td class="k">🍲 큰 냄비</td><td>요리 버프 시간 ×1.5</td><td>×1.65</td><td>×1.8</td><td>×2.0</td><td class="codecol"><code>cooking.js:89 buffDur</code></td></tr>
+      <tr><td class="k">🦋 촘촘한 포충망</td><td>반딧불이 포획 +18%p</td><td>+24%p</td><td>+30%p</td><td>+36%p (상한 98%)</td><td class="codecol"><code>glade.js:166</code></td></tr>
+      <tr><td class="k">🔨 묵직한 망치</td><td>건축·증축 목재 ×0.7</td><td>×0.65</td><td>×0.6</td><td>×0.55 (코인은 그대로)</td><td class="codecol"><code>tool-tiers.js HAMMER_EXPAND_RATE</code></td></tr>
+    </table></div>
+    <div class="tsec">2. 별 강화 비용 · 환급 · 완성</div>
+    <div class="twocol">
+      <div class="tscroll"><table class="t">
+        <tr><th>단계</th><th>코인</th><th>공통 재료</th><th>도구 재료</th></tr>
+        <tr><td class="k">★1</td><td>🪙120</td><td>🪵10</td><td>×4 (포충망 🌟2)</td></tr>
+        <tr><td class="k">★2</td><td>🪙240</td><td>🪨10</td><td>×8 (포충망 🌟4)</td></tr>
+        <tr><td class="k">★3</td><td>🪙400</td><td>💎1</td><td>×12 (포충망 🌟6)</td></tr>
+        <tr><td colspan="4">도구 재료: 🎣🐟 · 💧🥕 · 🍲⚫ · 🦋🌟 · 🔨⚫. 도구 하나 ★3까지 🪙760, 다섯 개 🪙3,800 (금빛 9종 🪙1,900의 두 배 싱크).</td></tr>
+      </table></div>
+      <div class="tscroll"><table class="t">
+        <tr><th>항목</th><th>값</th></tr>
+        <tr><td class="k">망치질</td><td>5번, 0.8초 간격. 완벽 ±70ms 2점, 좋아요 ±150ms 1점, 빗나감 0점 (10점 만점)</td></tr>
+        <tr><td class="k">코인 환급</td><td>10점 30% · 8~9점 20% · 5~7점 10% · 0~4점 0%. 실패 없음, 한 번만 침. ★2를 8점이면 🪙48</td></tr>
+        <tr><td class="k">완성</td><td>자고 일어나거나 날짜가 바뀐 뒤 첫 접속. 모루는 한 번에 도구 하나</td></tr>
+        <tr><td class="k">기다리는 동안</td><td>도구는 지금 별 그대로 씀. 맡긴 단계는 취소 불가</td></tr>
+      </table></div>
+    </div>
+    <div class="tsec">3. 조각 · 결, 콤보, 숨은 보석</div>
+    <div class="tscroll"><table class="t">
+      <tr><th>항목</th><th>값</th></tr>
+      <tr><td class="k">결</td><td>나무 도안만. 물고기·버섯은 가로, 하트·아기 나무는 세로. 결 방향 긋기는 지나간 칸에서 같은 줄 앞으로 여백 최대 2칸 더, 밑그림 칸·가장자리에서 멈춤. 결을 거스르면 지금처럼 한 칸씩</td></tr>
+      <tr><td class="k">돌 도안</td><td>결 없음 (대신 보석 확률이 높음)</td></tr>
+      <tr><td class="k">콤보</td><td>흠집 없이 여백을 1칸 이상 깎은 긋기마다 +1. 흠집이 나거나 3초 쉬면 0</td></tr>
+      <tr><td class="k">콤보 보너스</td><td>그 판 최고 콤보 5 이상 코인 ×1.1, 10 이상 ×1.2, 15 이상 ×1.3 (티어 배수 뒤에 곱함)</td></tr>
+      <tr><td class="k">숨은 보석 칸</td><td>판마다 나무 10%, 돌 25% 확률로 여백 칸 하나. 4초마다 살짝 반짝. 깎으면 💎+1. 하루 3주문이면 평균 약 0.5개</td></tr>
+    </table></div>
+    <div class="tsec">4. 작품 선물 · 포장지</div>
+    <div class="tscroll"><table class="t">
+      <tr><th>항목</th><th>값</th></tr>
+      <tr><td class="k">간직하기</td><td>판매 코인 대신 작품 선물 1개. 주면 ❤️+1, 걸작은 ❤️+2. 오늘 주문 소진·최고 점수 기록은 팔 때와 같음</td></tr>
+      <tr><td class="k">포장지</td><td>🪙15 한 장, 크라프트·꽃무늬·별밤 세 가지 (색만 다름). 포장하면 ❤️+1 더. 걸작 + 포장 = ❤️+3이 최고</td></tr>
+    </table></div>
+    <div class="tsec">5. 선물 레시피 10종</div>
+    <div class="tscroll"><table class="t">
+      <tr><th></th><th>이름</th><th>재료 (실제 키)</th><th>❤️</th><th>구분</th></tr>
+      <tr><td>💐</td><td class="k">꽃다발</td><td>🥕2 (crop)</td><td>+1</td><td>기존</td></tr>
+      <tr><td>🧺</td><td class="k">과일 바구니</td><td>🥕4 (crop)</td><td>+1</td><td>기존</td></tr>
+      <tr><td>🐟</td><td class="k">생선 묶음</td><td>🐟3 (fish)</td><td>+1</td><td>기존</td></tr>
+      <tr><td>🪆</td><td class="k">목각 인형</td><td>🪵6 (wood)</td><td>+1</td><td>기존</td></tr>
+      <tr><td>📿</td><td class="k">보석 목걸이</td><td>💎1 (gem)</td><td>+2</td><td>기존</td></tr>
+      <tr><td>🍯</td><td class="k">꿀단지</td><td>🍯2 🪵2 (honey, wood)</td><td>+1</td><td>새</td></tr>
+      <tr><td>🏮</td><td class="k">반딧불 등</td><td>🌟2 🪵3 (bug, wood)</td><td>+1</td><td>새</td></tr>
+      <tr><td>🥧</td><td class="k">사과 파이</td><td>🌾밀가루1 🍎2 (flour, apple)</td><td>+1</td><td>새</td></tr>
+      <tr><td>🌰</td><td class="k">군밤 봉지</td><td>🌰군밤3 (roast_chestnut)</td><td>+1</td><td>새</td></tr>
+      <tr><td>🫙</td><td class="k">별빛 유리병</td><td>⭐별조각2 ✨정령빛1 (star, glow)</td><td>+2</td><td>새</td></tr>
+    </table></div>
+    <ul class="note">
+      <li>새 재료 키를 쓰면 <code>outdoor-decor.js craftGift</code>의 부족 문구(지금 물고기·작물 말고는 전부 "목재")와 <code>index.html ico()</code> 표(꿀·밀가루·사과·군밤·별조각·정령빛 없음)를 RES_LABEL 기준으로 넓혀야 해요.</li>
+      <li>새 저장 키(별 단계, 모루 작업, 작품 선물, 포장 여부)는 구버전이 버리므로 5곳 동시 배포가 필요해요.</li>
+    </ul>
+  </section>
+
+  <section class="s" id="copy">
+    <h2>문구 후보 (해요체, 짧게)</h2>
+    <p>후보 1은 담백하게, 후보 2는 조금 더 다정하게 썼어요. 엠대시·금지어·화살표 이모지 없음. 월드 말풍선은 이모지만.</p>
+    <div class="tscroll"><table class="t" id="copyT">
+      <tr><th>자리</th><th>후보 1</th><th>후보 2</th></tr>
+    </table></div>
+  </section>
+</div>
+<script>
+const FISH = ['............','....####....','...######...','##.########.','############','##.########.','...######...','....####....','............'];
+const cutA = (r, c) => c < 7 || (r === 0 && c < 10) || (r === 8 && c < 9);
+function buildGrid(el) {
+  const v = el.dataset.v;
+  const html = [];
+  for (let r = 0; r < 9; r++) for (let c = 0; c < 12; c++) {
+    const keep = FISH[r][c] === '#';
+    let cls = keep ? 'k' : (cutA(r, c) ? 'x' : 'w');
+    if (!keep && r === 1 && c >= 8 && c <= 10) cls = v === 'c' ? 'w pv' : (v === 'a' ? 'w sw' : 'x');
+    if (!keep && r === 7 && c === 10) cls = v === 'b' ? 'x' : 'w gemfound';
+    html.push(`<span class="c ${cls}"></span>`);
+  }
+  el.innerHTML = html.join('');
+}
+document.querySelectorAll('.cg').forEach(buildGrid);
+
+const GIFTS = [
+  { ico: '💐', name: '꽃다발', cost: [['🥕', 2, 18]], love: 1 },
+  { ico: '🧺', name: '과일 바구니', cost: [['🥕', 4, 18]], love: 1 },
+  { ico: '🐟', name: '생선 묶음', cost: [['🐟', 3, 9]], love: 1 },
+  { ico: '🪆', name: '목각 인형', cost: [['🪵', 6, 42]], love: 1 },
+  { ico: '📿', name: '보석 목걸이', cost: [['💎', 1, 1]], love: 2 },
+  { ico: '🍯', name: '꿀단지', cost: [['🍯', 2, 1], ['🪵', 2, 42]], love: 1, isNew: true },
+  { ico: '🏮', name: '반딧불 등', cost: [['🌟', 2, 3], ['🪵', 3, 42]], love: 1, isNew: true },
+  { ico: '🥧', name: '사과 파이', cost: [['🌾', 1, 1], ['🍎', 2, 4]], love: 1, isNew: true },
+  { ico: '🌰', name: '군밤 봉지', cost: [['🌰', 3, 0]], love: 1, isNew: true },
+  { ico: '🫙', name: '별빛 유리병', cost: [['⭐', 2, 2], ['✨', 1, 1]], love: 2, isNew: true },
+];
+const ok = g => g.cost.every(([, n, h]) => h >= n);
+const costTxt = (g, lackOnly) => g.cost.map(([i, n, h]) => h >= n ? `${i}${n}` : `<span class="lack">${i}${lackOnly ? `${h}/${n}` : n}</span>`).join(' ');
+document.getElementById('giftA').innerHTML = GIFTS.map(g => `<div class="ck-item${ok(g) ? '' : ' off'}"><span class="ck-ico">${g.ico}</span><span class="ck-name">${g.name}</span><span class="ck-buff">주민 선물 <span class="heart">❤️+${g.love}</span></span><span class="ck-cost">${g.cost.map(([i, n]) => i + n).join(' ')}</span>${g.isNew ? '<span class="ck-tag">새 선물</span>' : ''}</div>`).join('');
+const rowB = g => `<div class="kt-row${ok(g) ? '' : ' off'}"><span class="kt-ico">${g.ico}</span><div class="kt-body"><div class="kt-name">${g.name} <span class="heart" style="font-size:11.5px">❤️+${g.love}</span></div><div class="kt-cost">${costTxt(g, true)}</div></div><button class="btn${ok(g) ? ' go' : ''}" style="padding:7px 10px;font-size:12px">만들기</button></div>`;
+document.getElementById('giftB').innerHTML =
+  `<div class="ghead">간직한 작품</div><div class="kt-row"><span class="kt-ico">🎁</span><div class="kt-body"><div class="kt-name">목각 물고기 · 포장됨 <span class="heart" style="font-size:11.5px">❤️+3</span></div><div class="kt-desc">돌 별 장식 ❤️+1 하나 더</div></div></div>` +
+  `<div class="ghead">늘 만드는 선물</div>` + GIFTS.filter(g => !g.isNew).map(rowB).join('') +
+  `<div class="ghead">새 선물</div>` + GIFTS.filter(g => g.isNew).map(rowB).join('');
+document.getElementById('giftC').innerHTML = GIFTS.map(g => `<div class="gc${ok(g) ? '' : ' off'}">${g.isNew ? '<span class="tagnew">새</span>' : ''}<span class="gi">${g.ico}</span><div class="gb"><div class="gn">${g.name}</div><div class="gm">${costTxt(g, true)} · <span class="heart">❤️+${g.love}</span></div></div></div>`).join('');
+
+const COPY = [
+  ['도구 탭 · 강화 버튼', '★2로 강화하기', '★2로 다듬기'],
+  ['도구 탭 · 강화 안내', '망치질 5번 · 내일 아침 완성', '망치질 5번이면 내일 아침 완성돼요'],
+  ['도구 탭 · 기다리는 표시', '🌙 ★2 내일', '🌙 밤사이 다듬는 중'],
+  ['도구 탭 · 최고 단계', '최고 별이에요', '더 다듬을 곳이 없어요'],
+  ['도구 탭 · 1단계 없음', '먼저 만들어야 별을 달 수 있어요', '도구부터 만들어 주세요'],
+  ['도구 탭 · 모루 사용 중', '모루에 다른 도구가 있어요', '모루가 비면 다시 맡겨 주세요'],
+  ['망치 · 제목', '🔨 낚싯대 ★2 강화', '🔨 낚싯대 다듬기'],
+  ['망치 · 안내', '고리가 금색 원에 닿을 때 탭해요', '박자에 맞춰 톡 쳐 주세요'],
+  ['망치 · 판정 3종', '완벽! / 좋아요! / 빗나감', '딱 맞아요! / 좋아요! / 앗'],
+  ['망치 · 결과 제목', '좋은 망치질이에요!', '손맛이 좋았어요!'],
+  ['망치 · 환급 줄', '🪙 48 돌려받았어요', '잘 쳐서 🪙 48 아꼈어요'],
+  ['망치 · 완성 예고', '🌙 내일 아침 ★2가 돼요. 그동안도 쓸 수 있어요', '🌙 자고 나면 ★2예요. 그동안도 써도 돼요'],
+  ['아침 토스트 · 완성', '🎣 튼튼한 낚싯대가 ★2가 됐어요', '🎣 밤사이 낚싯대가 ★2로 다듬어졌어요'],
+  ['조각 · 결 안내', '결 따라 길게 그으면 여러 칸이 한 번에 깎여요', '나뭇결 따라 쓱 그어 보세요'],
+  ['조각 · 콤보 표시', '콤보 7', '연속 7'],
+  ['조각 · 콤보 보너스 토스트', '콤보 10! 보상 ×1.2', '콤보 10! 코인이 더 붙어요'],
+  ['조각 · 콤보 끊김', '콤보가 끊겼어요', '흠집이 나서 콤보가 멈췄어요'],
+  ['조각 · 보석 토스트', '💎 숨은 보석을 찾았어요!', '💎 나무 속에 보석이 있었어요!'],
+  ['조각 · 보석 말풍선 (월드)', '💎✨', '💎❗'],
+  ['결과 · 팔기 버튼', '🪙 팔기 +47', '🪙 코인으로 받기 +47'],
+  ['결과 · 간직 버튼', '🎁 간직하기 · 선물 ❤️+2', '🎁 선물로 두기 · ❤️+2'],
+  ['포장 · 제목', '포장해서 줄까요?', '예쁘게 싸 볼까요?'],
+  ['포장 · 비용 줄', '포장지 🪙15 · ❤️+1 더', '🪙15면 마음이 ❤️+1 더 전해져요'],
+  ['포장 · 버튼 2개', '🎀 포장하기 / 그냥 간직', '🎀 포장할래요 / 이대로 둘래요'],
+  ['포장지 이름 3종', '크라프트 / 꽃무늬 / 별밤', '종이 / 꽃밭 / 밤하늘'],
+  ['간직 토스트', '🎁 목각 물고기를 선물로 간직했어요', '🎁 목각 물고기, 줄 사람을 떠올려 봐요'],
+  ['선물 탭 · 새 표시', '새 선물', '새로 나왔어요'],
+  ['선물 탭 · 간직한 작품 줄', '간직한 작품', '내가 깎은 선물'],
+  ['선물 주기 · 말풍선 (월드)', '🎁❤️❤️❤️', '🎀😊❤️'],
+];
+document.getElementById('copyT').insertAdjacentHTML('beforeend', COPY.map(([k, a, b]) => `<tr><td class="k">${k}</td><td>${a}</td><td>${b}</td></tr>`).join(''));
+</script>
+</body>
+</html>
