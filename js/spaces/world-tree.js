@@ -11,7 +11,7 @@
 import {
   Input, camera, cameraFree, defaultCamPose, setCameraRig, dist2D, gameState, giveReward, isOpen, obstacles, player, refreshInventoryUI, requestSave,
   habitatCtx, rewardText, scene, solidCircle, spawnConfetti, spawnSparkle, syncUnlocks, todayStr, ui, unlocksOn,
-  holdPlaceReveal, keepPlaceReveal, releasePlaceReveal, startReturnWalk, syncStory, guideBoardTab, guideBoardHint,
+  holdPlaceReveal, keepPlaceReveal, releasePlaceReveal, startReturnWalk, syncStory, guideBoardTab, guideBoardHint, guideShortAd,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다
 import { trackEvent } from '../analytics.js';
 import { freshBranchTab } from '../guide/guide-rules.js';
@@ -203,6 +203,7 @@ const ACTIONS = {
   care() { careAction(); },
   stage() { stageAction(); },
   observe(guestId) { observeAction(guestId); },
+  adButton: (g) => (g.shortList?.length ? guideShortAd(`branch_${g.branch}`, g.shortList, (ok) => { if (ok) rerender(); }) : null),
   onClose() {},
 };
 function rerender() { if (treeBoardOpen()) renderTreeBoard(boardView()); freshTile = -1; }

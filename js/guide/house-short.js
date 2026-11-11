@@ -1,4 +1,4 @@
-import { houseShort, prepassGrant } from './prepass-rules.js';
+import { houseShort, prepassGrant, shortAdParts, nearestShortSpot } from './prepass-rules.js';
 import { fillStepCard, stepSignature } from './step-card.js';
 import { shortParts } from './story-steps.js';
 import { LANG } from '../i18n.js';
@@ -40,11 +40,7 @@ export function createHouseShort(deps) {
   }
 
   function adLabel(sh) {
-    const parts = ['광고 보고', ' '];
-    const give = Object.entries(prepassGrant(sh.list)).map(([k, more]) => ({ k, more }));
-    shortParts(give).forEach((p, i) => { if (i) parts.push(' · '); parts.push(`${p.ico} ${p.more}`); if (LANG !== 'en') parts.push('개'); });
-    parts.push(' ', '받기');
-    ad.label(btn, parts);
+    ad.label(btn, shortAdParts(prepassGrant(sh.list), LANG));
   }
 
   function grant(sh) {
@@ -60,16 +56,17 @@ export function createHouseShort(deps) {
     if (t < TICK) return;
     t = 0;
     const gs = deps.state();
-    const p = deps.player.position, h = deps.house;
-    const near = deps.inVillage() && !deps.modalOpen() && Math.hypot(p.x - h.x, p.z - h.z) < NEAR;
-    const sh = near ? houseShort(gs.houseStage, gs.inventory) : null;
-    if (!sh) { hide(); return; }
+    const p = deps.player.position;
+    const spots = deps.spots ? deps.spots() : [{ id: 'house', at: deps.house, active: deps.inVillage, short: () => houseShort(gs.houseStage, gs.inventory) }];
+    const hit = deps.modalOpen() ? null : nearestShortSpot(spots, p, NEAR);
+    if (!hit) { hide(); return; }
+    const sh = hit.sh, h = hit.spot.at;
     mount();
     cur = sh;
-    const sp = deps.project({ x: h.x, y: 0, z: h.z }, 3.2);
+    const sp = deps.project({ x: h.x, y: 0, z: h.z }, hit.spot.lift ?? 3.2);
     if (!sp) { hide(); return; }
     ad.offer(sh.slot);
-    const [ico, verb] = VERB[sh.stage];
+    const [ico, verb] = sh.stage ? VERB[sh.stage] : [sh.ico, sh.verb];
     const st = { key: sh.slot, ico, name: '', verb, doNow: '재료를 모아 와요', shortList: sh.list };
     const open = adOpen(sh);
     const s = `${stepSignature(st)}|${open}`;

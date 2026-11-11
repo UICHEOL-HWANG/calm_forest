@@ -1,7 +1,10 @@
 import { BUILD_STAGES } from '../house-cost.js';
-import { shortfall } from './story-steps.js';
+import { shortfall, shortParts } from './story-steps.js';
+import { BRIDGE_COST } from '../world/bridge.js';
+import { farmStageInfo } from '../farm-stage.js';
 
 export const PREPASS_CAPS = Object.freeze({ wood: 10, stone: 6, coal: 1, coins: 40 });
+export const CAFE_CAPS = Object.freeze({ crop: 3, forage: 3, fish: 2, egg: 2 });
 export const REPEAT_SLOTS = Object.freeze(['farm_rush', 'craft_rush', 'daily_double', 'sell_bonus']);
 const HOUSE_DONE = 3;
 const ARMS = ['ad', 'control'];
@@ -13,10 +16,10 @@ export function houseShort(houseStage, inv) {
   return list.length ? { slot: `house${next.stage}`, stage: next.stage, list } : null;
 }
 
-export function prepassGrant(list) {
+export function prepassGrant(list, caps = PREPASS_CAPS) {
   const out = {};
   for (const r of list || []) {
-    const cap = PREPASS_CAPS[r.k];
+    const cap = caps[r.k];
     if (cap && r.more > 0) out[r.k] = Math.min(r.more, cap);
   }
   return out;
@@ -51,4 +54,40 @@ export function prepassArm(clientId, platform) {
   hash = Math.imul(hash, 0x7feb352d);
   hash ^= hash >>> 15;
   return ARMS[(hash >>> 0) & 1];
+}
+
+export function bridgeShort(inv) {
+  const list = shortfall(BRIDGE_COST, inv);
+  return list.length ? { slot: 'bridge', ico: '🌉', verb: '다리 고치기', list } : null;
+}
+
+export function farmStageShort(stage, inv) {
+  const info = farmStageInfo(stage, inv);
+  if (info.maxed) return null;
+  const list = shortfall(info.next.cost, inv);
+  return list.length ? { slot: `farm${info.next.stage}`, ico: '📐', verb: '밭 넓히기', list } : null;
+}
+
+export function shortAdParts(give, lang) {
+  const parts = ['광고 보고', ' '];
+  shortParts(Object.entries(give).map(([k, more]) => ({ k, more }))).forEach((p, i) => {
+    if (i) parts.push(' · ');
+    parts.push(`${p.ico} ${p.more}`);
+    if (lang !== 'en') parts.push('개');
+  });
+  parts.push(' ', '받기');
+  return parts;
+}
+
+export function nearestShortSpot(spots, pos, near) {
+  let best = null, bd = near;
+  for (const sp of spots || []) {
+    if (sp.active && !sp.active()) continue;
+    const d = Math.hypot(sp.at.x - pos.x, sp.at.z - pos.z);
+    if (d >= bd) continue;
+    const sh = sp.short();
+    if (!sh) continue;
+    best = { spot: sp, sh }; bd = d;
+  }
+  return best;
 }

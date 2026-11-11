@@ -48,3 +48,21 @@ test('판매 웃돈 광고는 받은 뒤 버튼을 넘겨 상점이 지울 수 �
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(html, /Input\.sellAdButton\(k, gain, \(ok\) => \{ if \(!ok\) return; box\.replaceChildren\(\); renderShop\(\); \}\)/);
 });
+
+test('부족 줄 광고 버튼: 세계수 판·카페 손님 카드가 같은 shortAdButton 을 쓴다', async () => {
+  const { readFileSync } = await import('node:fs');
+  const read = p => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
+  const game = read('js/game.js');
+  const fn = game.slice(game.indexOf('function shortAdButton('), game.indexOf('function dailyAdButton('));
+  assert.match(fn, /const give = prepassGrant\(list, caps\);/);
+  assert.match(fn, /rewarded\?\.offer\(slot\)/);
+  assert.match(fn, /shortAdParts\(give, LANG\)/);
+  assert.match(game, /export function guideShortAd\(slot, list, onDone, caps\) \{ return shortAdButton\(slot, list, onDone, caps\); \}/);
+  const wt = read('js/spaces/world-tree.js');
+  assert.match(wt, /adButton: \(g\) => \(g\.shortList\?\.length \? guideShortAd\(`branch_\$\{g\.branch\}`, g\.shortList, \(ok\) => \{ if \(ok\) rerender\(\); \}\) : null\)/);
+  assert.match(read('js/world/tree-board-ui.js'), /const b = actions\?\.adButton\?\.\(g\);\n  if \(b\) card\.append\(b\);/);
+  const gg = read('js/guide/goal-guide.js');
+  assert.match(gg, /st\.key === 'cafe_short' \? deps\.adButton\?\.\('cafe_order', st\.shortList\) : null/);
+  assert.match(gg, /#goal-arrow \.ga-card \.rw-ad\{pointer-events:auto/);
+  assert.match(game, /adButton: \(slot, list\) => shortAdButton\(slot, list, null, CAFE_CAPS\),/);
+});

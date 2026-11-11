@@ -74,7 +74,7 @@ import { createHouseShort } from './guide/house-short.js';
 import { createRewarded } from './ads/rewarded.js';
 import { rewardedAvailable, showRewarded } from './ads/admob.js';
 import { createFarmRush } from './ads/farm-rush.js';
-import { repeatOpen, rushSlots, sellBonus } from './guide/prepass-rules.js';
+import { repeatOpen, rushSlots, sellBonus, houseShort as houseShortOf, bridgeShort, farmStageShort, prepassGrant, shortAdParts, CAFE_CAPS } from './guide/prepass-rules.js';
 import { sanitizeHouseGuide } from './house-guide-rules.js';
 import { initPlaza, updatePlaza, plazaSpotNow, openPlaza, plazaScatterBlocks, plazaDefault, restorePlaza, refreshPlaza, plazaDecorMesh, plazaMapVisible } from './plaza/index.js';
 import { defaultToolStars, restoreToolStars, restoreForge, forgeCancel } from './workbench/rules.js';
@@ -2002,6 +2002,13 @@ function sellAdButton(item, gain, onDone) {
   return rewarded.button('sell_bonus', ['광고 보고', ' ', `🪙 ${bonus}`, ' ', '웃돈 받기'], () => { giveReward({ coins: bonus }, 'sell_bonus', item); requestSave(); }, (ok, btn) => onDone?.(ok, btn));
 }
 
+function shortAdButton(slot, list, onDone, caps) {
+  const give = prepassGrant(list, caps);
+  if (!Object.keys(give).length || !rewarded?.offer(slot)) return null;
+  return rewarded.button(slot, shortAdParts(give, LANG), () => { giveReward(give, slot, slot); requestSave(); }, (ok, btn) => { if (ok) btn.remove(); onDone?.(ok, btn); });
+}
+export function guideShortAd(slot, list, onDone, caps) { return shortAdButton(slot, list, onDone, caps); }
+
 function dailyAdButton(coins, streak) {
   if (!coins || !repeatOpen(gameState.houseStage) || !rewarded?.offer('daily_double')) return null;
   return rewarded.button('daily_double', ['광고 보고', ' ', `🪙 ${coins}`, ' ', '더 받기'], () => { giveReward({ coins }, 'daily_double', 'day' + streak); requestSave(); }, (ok, btn) => { if (ok) btn.remove(); });
@@ -2905,6 +2912,11 @@ export async function enterGame() {
   houseShort = guideRevamp ? createHouseShort({
     state: () => gameState, player, house: HOUSE_POS, translate: t, track: trackEvent, save: requestSave, rewarded,
     inVillage: inVillage2,
+    spots: () => [
+      { id: 'house', at: HOUSE_POS, active: inVillage2, short: () => houseShortOf(gameState.houseStage, gameState.inventory) },
+      { id: 'bridge', at: bridgeFoot(), lift: 2.4, active: () => inVillage2() && unlocksOn() && isOpen('bridgeRepair') && bridgeBrokenNow(), short: () => bridgeShort(gameState.inventory) },
+      { id: 'farm', at: surveyDeskWorld(), lift: 2.4, active: () => atFarm, short: () => farmStageShort(gameState.farm.stage, gameState.inventory) },
+    ],
     modalOpen: () => !!ui.anyModalOpen?.() || document.body.classList.contains('spot-on') || !!goalGuide?.cinematic || !!houseGuidance?.cinematic,
     project: (pos, lift) => projectToScreen(pos, lift),
     topInset: () => { const c = document.getElementById('coach'); const r = c?.classList.contains('show') ? c.getBoundingClientRect() : null; return r && r.height ? Math.round(r.bottom + 30) : 0; },
@@ -2919,6 +2931,7 @@ export async function enterGame() {
   if (PREPASS_DEV) { window.__houseShort = houseShort; window.__farmRush = farmRush; window.__liveState = () => gameState; window.__dailyAd = () => dailyAdButton(30, 1); window.__craftData = (st) => craftPanelData(st); window.__plots = () => plots; }
   goalGuide = guideRevamp ? createGoalGuide({
     state: () => gameState, player, camera, scene,
+    adButton: (slot, list) => shortAdButton(slot, list, null, CAFE_CAPS),
     translate: t, track: trackEvent, save: requestSave,
     cameraFree, setCameraRig, defaultCamPose,
     inVillage: inVillage2, atMine: () => atMine && !delveFloorNow(),

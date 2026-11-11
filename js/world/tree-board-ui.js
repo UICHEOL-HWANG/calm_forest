@@ -47,6 +47,8 @@ export function openTreeBoard(view, acts) {
 function guideCard(g) {
   const card = el('div', 'tb-guide');
   fillStepCard(card, g, { t: 'tb-guide-t', d: 'tb-guide-d', s: 'tb-guide-s' });
+  const b = actions?.adButton?.(g);
+  if (b) card.append(b);
   return card;
 }
 

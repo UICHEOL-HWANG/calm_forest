@@ -456,7 +456,7 @@ worker_offline,system,ops,3,N,dormant,14,1,2026-09-14,2026-09-28,wage|water|harv
 worker_promote,farming,farm_worker,2,N,dormant,4,1,2026-09-15,2026-09-16,works|job|grade,js/spaces/farm-auto.js:294,성장 곡선,
 worker_wage,farming,farm_worker,2,N,dormant,6,1,2026-09-15,2026-09-28,workers|paid|resting,js/spaces/farm-auto.js:338,"하루 한 번 일꾼 월급을 정산했을 때 (paid=지급액, workers=일꾼 수, resting=쉬는 일꾼)",
 zone_enter,ui,ui,1,N,active,1813,75,2026-08-12,2026-10-24,zone|weather|night,js/spaces/doors.js:489,밤 콘텐츠 유입,
-prepass_eligible,monetization,prepass,2,N,not_fired,0,0,,,slot|arm,js/guide/house-short.js:90,"광고 자리 조건을 처음 만난 순간 (slot=house1·house2·house3, arm=ad·control). 두 무리 모두 기록",
+prepass_eligible,monetization,prepass,2,N,not_fired,0,0,,,slot|arm,js/guide/house-short.js:90,"광고 자리 조건을 처음 만난 순간 (slot=house1~3·bridge·farm2~·branch_<가지>·cafe_order·farm_rush·craft_rush·daily_double·sell_bonus, arm=ad·control). 두 무리 모두 기록",
 prepass_ad_result,monetization,prepass,2,N,not_fired,0,0,,,slot|result|value_micros,js/guide/house-short.js:68,"보상형 광고 결과 (result=complete·skip·fail·nofill·unavailable, value_micros=애드몹 추정 수익)",
 enter_restaurant,crafting,restaurant,2,N,not_fired,0,0,,,,js/spaces/restaurant.js:145,식당 안으로 들어갔을 때,
 exit_restaurant,crafting,restaurant,2,N,not_fired,0,0,,,,js/spaces/restaurant.js:156,식당에서 마을로 나왔을 때 (영업 중이면 결과 없이 끝),
