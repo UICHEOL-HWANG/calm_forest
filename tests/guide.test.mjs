@@ -23,6 +23,7 @@ export const GUIDE_IMAGES = [
   // 새 세이브·새 기능(2026-10-18)
   '31_tree_board.jpg', '32_bridge.jpg', '33_mountain_sled.jpg', '34_hut_cafe.jpg',
   '35_dream.jpg', '36_observatory.jpg', '37_mirror.jpg', '38_pond.jpg',
+  '39_mudflat.jpg', '40_dive.jpg', '41_dock.jpg',
 ];
 
 test('guide/img 에 필요한 이미지가 전부 있다', () => {
@@ -30,15 +31,15 @@ test('guide/img 에 필요한 이미지가 전부 있다', () => {
   for (const name of GUIDE_IMAGES) assert.ok(existsSync(new URL(name, IMG_DIR)), `${name} 없음`);
 });
 
-// 2부 사진 5장을 더하며 총량 한도 3MB → 4MB(2026-09-28, 사용자 승인)
-test('이미지 장당 160KB 이하 · 총량 4MB 이하', () => {
+// 2026-10-28 물가 장 사진 3장으로 4MB → 4.5MB. 기기 전용 사진은 display:none + lazy 라 그 기기에서만 받는다
+test('이미지 장당 160KB 이하 · 총량 4.5MB 이하', () => {
   let total = 0;
   for (const name of readdirSync(IMG_DIR)) {
     const size = statSync(new URL(name, IMG_DIR)).size;
     total += size;
     assert.ok(size <= 160 * 1024, `${name} 가 ${Math.round(size / 1024)}KB — 160KB 초과`);
   }
-  assert.ok(total <= 4 * 1024 * 1024, `총량 ${Math.round(total / 1024)}KB — 4MB 초과`);
+  assert.ok(total <= 4.5 * 1024 * 1024, `총량 ${Math.round(total / 1024)}KB — 4.5MB 초과`);
 });
 
 const HTML = () => readFileSync(new URL('guide/guide.html', ROOT), 'utf8');
@@ -51,8 +52,8 @@ for (const [lang, read] of BOTH) test(`[${lang}] fragment 에 문서 껍데기·
   assert.doesNotMatch(h, /<(!doctype|html|head|body|script|style|link)\b/i);
 });
 
-// 1부(sec-01..21, 2026-10-18 세계수 장 추가) + 2부 간지(sec-22) + 2부 9장(sec-23..31) — docs: dev/archive/app-link-guide
-const SECTION_COUNT = 31;
+// 1부(sec-01..21) + 2부 간지(sec-22) + 2부 10장(sec-23..32, 2026-10-28 물가 장) — docs: dev/active/guide-device
+const SECTION_COUNT = 32;
 for (const [lang, read] of BOTH) test(`[${lang}] 섹션 ${SECTION_COUNT}개 · id sec-01..sec-${SECTION_COUNT} · 각각 eyebrow + h2[data-chip]`, () => {
   const h = read();
   const secs = [...h.matchAll(/<section class="gd-sec" id="(sec-\d\d)">/g)].map(m => m[1]);
@@ -93,7 +94,7 @@ test('[en] 이미지 목록이 한국어판과 순서까지 같다 · 한글 없
 // 🪏 삽(빈 밭 메우기) — docs/superpowers/specs/2026-09-08-shovel-untill-design.md §5 안내서 갱신
 test('삽 안내 — 도구 표·밭 없애기 단락·FAQ·도감 종수', () => {
   const h = HTML();
-  assert.match(h, /🪏 삽 <span class="kbd">6<\/span>/, '도구 표에 삽(6) 이 없다');
+  assert.match(h, /🪏 삽 <span class="kbd" data-dev="pc">6<\/span>/, '도구 표에 삽(6) 이 없다');
   assert.match(h, /<b>🪏 밭 없애기<\/b>/, '농사 섹션에 "밭 없애기" 단락이 없다');
   assert.match(h, /6초 안에/, '6초 유예 안내가 없다');
   assert.match(h, /<td>밭을 없애고 싶어요<\/td>/, 'FAQ 에 "밭을 없애고 싶어요" 가 없다');
@@ -104,4 +105,55 @@ test('삽 안내 — 도구 표·밭 없애기 단락·FAQ·도감 종수', () =
   assert.match(HTML_EN(), /minerals 4 ·/);
   assert.match(HTML_EN(), /<td>Special Exhibition<\/td><td>Dishes · minerals \(15\)<\/td>/);
   assert.match(h, /땅속에서 3/, '도감 카드에 「땅속에서」 3종이 없다');
+});
+
+const devBlocks = (h) => [...h.matchAll(/data-dev="([^"]*)"/g)].map(m => m[1]);
+for (const [lang, read] of BOTH) test(`[${lang}] 기기 전용 블록은 pc·touch 둘 중 하나 · 조작법 장에 둘 다 있다`, () => {
+  const h = read();
+  const devs = devBlocks(h);
+  for (const d of devs) assert.ok(d === 'pc' || d === 'touch', `data-dev="${d}"`);
+  const sec03 = h.split('id="sec-03"')[1].split('<section ')[0];
+  assert.match(sec03, /data-dev="pc"/);
+  assert.match(sec03, /data-dev="touch"/);
+});
+
+test('[en] 기기 전용 블록 순서가 한국어판과 같다', () => {
+  assert.deepEqual(devBlocks(HTML_EN()), devBlocks(HTML()));
+});
+
+test('PC 블록 밖에는 키보드 키 표기가 없다', () => {
+  const VOID = new Set(['img', 'br', 'hr', 'input']);
+  for (const [lang, read] of BOTH) {
+    const h = read().replace(/<!--[\s\S]*?-->/g, '');
+    const stack = [];
+    for (const m of h.matchAll(/<(\/?)(\w+)\b([^>]*)>/g)) {
+      const [, close, tag, attrs] = m;
+      if (VOID.has(tag)) continue;
+      if (close) { stack.pop(); continue; }
+      const pc = /data-dev="pc"/.test(attrs) || stack.at(-1) === true;
+      if (/class="kbd"/.test(attrs)) assert.ok(pc, `[${lang}] 공통 문단에 kbd: ${h.slice(m.index - 60, m.index + 40)}`);
+      stack.push(pc);
+    }
+    assert.equal(stack.length, 0, `[${lang}] 태그 짝이 안 맞는다`);
+  }
+});
+
+test('게임 안 로더: is-touch 로 dev-touch/dev-pc 를 붙이고 칩은 보이는 섹션만', () => {
+  const src = readFileSync(new URL('index.html', ROOT), 'utf8');
+  assert.match(src, /classList\.contains\('is-touch'\) \? 'gd dev-touch' : 'gd dev-pc'/);
+  assert.match(src, /filter\(s => !s\.dataset\.dev \|\| root\.classList\.contains\('dev-' \+ s\.dataset\.dev\)\)/);
+  const css = readFileSync(new URL('guide/guide.css', ROOT), 'utf8');
+  assert.match(css, /\.gd\.dev-pc \[data-dev="touch"\], \.gd\.dev-touch \[data-dev="pc"\] \{ display: none !important; \}/);
+});
+
+for (const [lang, read] of BOTH) test(`[${lang}] 오른쪽 목차용 1부·2부 표지가 sec-01·sec-22 에 있다`, () => {
+  const h = read();
+  const parts = [...h.matchAll(/<section class="gd-sec" id="(sec-\d\d)">[\s\S]*?<div class="gd-eyebrow"( data-part="[^"]+")?>/g)].filter(m => m[2]).map(m => m[1]);
+  assert.deepEqual(parts, ['sec-01', 'sec-22']);
+});
+
+test('오른쪽 목차: 게임 안 패널과 공개 페이지 둘 다 만들고, 좁은 화면에선 숨긴다', () => {
+  assert.match(readFileSync(new URL('index.html', ROOT), 'utf8'), /toc\.className = 'gd-toc'/);
+  assert.match(readFileSync(new URL('scripts/lib/guide-page.mjs', ROOT), 'utf8'), /toc\.className = 'gd-toc'/);
+  assert.match(readFileSync(new URL('guide/guide.css', ROOT), 'utf8'), /@media \(max-width: 1099px\) \{ \.gd-toc \{ display: none; \} \}/);
 });
