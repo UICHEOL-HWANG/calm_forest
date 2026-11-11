@@ -65,6 +65,7 @@ test('장소 카드: 반경 안에서 부족한 곳 중 가장 가까운 한 곳
 test('카페 주문 상한: 요리 재료만, 한 번에 최대 주문 하나 분량', async () => {
   const { CAFE_CAPS, prepassGrant: grant } = await import('../js/guide/prepass-rules.js');
   assert.deepEqual(grant([{ k: 'crop', more: 5 }, { k: 'fish', more: 1 }], CAFE_CAPS), { crop: 3, fish: 1 });
-  assert.deepEqual(grant([{ k: 'flour', more: 2 }, { k: 'juice', more: 1 }], CAFE_CAPS), {});
+  assert.deepEqual(grant([{ k: 'flour', more: 3 }, { k: 'juice', more: 1 }], CAFE_CAPS), { flour: 2, juice: 1 });
+  assert.deepEqual(grant([{ k: 'gem', more: 1 }], CAFE_CAPS), {});
   assert.deepEqual(grant([{ k: 'crop', more: 2 }]), {});
 });

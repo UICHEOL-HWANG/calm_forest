@@ -2,8 +2,8 @@ import { decorOf, habitatDone, recommendDecor } from '../world/tree-board.js';
 
 export const STORY_GUIDE_RULES = Object.freeze(['branchWater', 'tasteGated']);
 
-const ICO = { wood: '🪵', stone: '🪨', coal: '⚫', crop: '🥕', fish: '🐟', forage: '🍄', flour: '🌾', egg: '🥚', coins: '🪙' };
-const FROM = { wood: '나무에서', stone: '동굴에서', coal: '동굴에서', crop: '텃밭에서', fish: '호수에서', forage: '숲에서', flour: '방앗간에서', egg: '닭장에서', coins: '팔아서' };
+const ICO = { wood: '🪵', stone: '🪨', coal: '⚫', crop: '🥕', fish: '🐟', forage: '🍄', flour: '🌾', egg: '🥚', juice: '🍷', coins: '🪙' };
+const FROM = { wood: '나무에서', stone: '동굴에서', coal: '동굴에서', crop: '텃밭에서', fish: '호수에서', forage: '숲에서', flour: '방앗간에서', egg: '닭장에서', juice: '발효통에서', coins: '팔아서' };
 const BRANCH = { water: ['💧', '물의 가지'], farm: ['🌾', '밭의 가지'], kitchen: ['🍳', '부엌의 가지'] };
 const TASTE_BRANCHES = ['farm', 'kitchen'];
 

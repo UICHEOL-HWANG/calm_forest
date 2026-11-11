@@ -3421,6 +3421,7 @@ export const EN = {
   '숲에서': 'from the forest',
   '방앗간에서': 'from the mill',
   '닭장에서': 'from the coop',
+  '발효통에서': 'from the vat',
   '팔아서': 'by selling',
   '밭의 가지': 'Farm Branch',
   '부엌의 가지': 'Kitchen Branch',

@@ -4,7 +4,7 @@ import { BRIDGE_COST } from '../world/bridge.js';
 import { farmStageInfo } from '../farm-stage.js';
 
 export const PREPASS_CAPS = Object.freeze({ wood: 10, stone: 6, coal: 1, coins: 40 });
-export const CAFE_CAPS = Object.freeze({ crop: 3, forage: 3, fish: 2, egg: 2 });
+export const CAFE_CAPS = Object.freeze({ crop: 3, forage: 3, fish: 2, egg: 2, flour: 2, juice: 1 });
 export const REPEAT_SLOTS = Object.freeze(['farm_rush', 'craft_rush', 'daily_double', 'sell_bonus']);
 const HOUSE_DONE = 3;
 const ARMS = ['ad', 'control'];
