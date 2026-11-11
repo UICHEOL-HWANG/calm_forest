@@ -18,6 +18,8 @@ import { SHOP } from '../data/places.js';
 import { returnStart } from '../world/return-path.js';   // 🚶 귀환 걷기 출발점(물 회피, 순수)
 import { welcomeOffer } from '../first-loop.js';
 import { BUILD_STAGES } from '../house-cost.js';
+import { e6Decision } from '../exp-e6-boot.js';
+import { guideRevampOn } from '../exp-e6.js';
 import { storyReworld } from '../story/rules.js';
 import { logEcon } from '../metrics.js';
 import { activeQuestList, pickGated, questIdFor } from '../quests.js';
@@ -641,6 +643,7 @@ export function stepNpcToward(o, target, speed, dt) {
 }
 
 const MERCHANT_WALK_SEC = 8;
+const guideRevamp = guideRevampOn(e6Decision());
 
 function placeNearPlayer(o) {
   for (const r of [1.4, 2, 2.6, 3.4, 4.2]) {
@@ -662,7 +665,7 @@ export function updateMerchantVisit(dt) {
     if (gameState.hintsSeen.merchantVisit) return;
     if (!inVillage2()) return;   // 마을(실외) 밖(텃밭·동굴·카페·강·바다·안개숲·실내)에선 발동 금지
     if (ui.anyModalOpen?.()) return;
-    const offer = welcomeOffer(gameState.inventory, { reworld: storyReworld(gameState, unlocksOn()), houseWood: gameState.houseStage === 0 ? BUILD_STAGES[0].cost.wood : 0 });   // 🔓 첫 수확으로도 돌아온다(E1 처치는 당근부터 거둔다)
+    const offer = welcomeOffer(gameState.inventory, { reworld: storyReworld(gameState, unlocksOn()), houseWood: gameState.houseStage === 0 && guideRevamp ? BUILD_STAGES[0].cost.wood : 0 });   // 🔓 첫 수확으로도 돌아온다(E1 처치는 당근부터 거둔다)
     if (!offer) return;
     gameState.hintsSeen.merchantVisit = true;            // 즉시 소진(세이브에 남아 재발동 없음)
     gameState.hintsSeen.merchantArrived = true;

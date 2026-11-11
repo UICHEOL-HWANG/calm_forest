@@ -30,4 +30,5 @@ Last Updated: 2026-11-10 18:40 KST
   - 텃밭 farm_rush(js/ads/farm-rush.js, 자라는 칸 즉시 익힘) · 화덕 craft_rush(어제로 돌림, craft_claim via=ad) · 판매 sell_bonus(절반, 코인 40 상한) · 출석 daily_double(같은 코인 한 번 더)
   - 횟수 제한 없음(사용자 결정). 이유가 있을 때만 뜸: 자라는 칸·굽는 칸·방금 판매·오늘 출석
   - 확인: ?prepass=1 봇으로 네 자리 지급 확인, npm test 4605 통과, 코드 리뷰 중간 3건 반영
-- [ ] 안내 개편(묶음 1)도 대조군 실험 스위치: 신규만, 광고와 다른 소금
+- [x] 안내 개편 E6 스위치: 신규만 8:2, exp_guide 속성, 사전등록 e6-guide-prereg.md (11/11)
+- [ ] E6 배포 → 메타 광고 시작 순서 지키기, 다음 날 BQ 에서 exp_guide 들어오는지 확인

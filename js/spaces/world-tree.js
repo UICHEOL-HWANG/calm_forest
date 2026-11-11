@@ -15,6 +15,8 @@ import {
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다
 import { trackEvent } from '../analytics.js';
 import { freshBranchTab } from '../guide/guide-rules.js';
+import { e6Decision } from '../exp-e6-boot.js';
+import { guideRevampOn } from '../exp-e6.js';
 import { Sound } from '../sound.js';
 import { TAG_LABEL } from '../habitat.js';
 import {
@@ -142,7 +144,7 @@ function boardView() {
         };
       }),
       bloom: bloomView(def.id),
-      advice: adviceOf(tree, def.id),
+      advice: guideRevampOn(e6Decision()) ? adviceOf(tree, def.id) : null,
     },
   };
 }

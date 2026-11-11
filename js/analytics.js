@@ -19,6 +19,8 @@ import { e3Decision } from './exp-e3-boot.js';
 import { e3UserProps } from './exp-e3.js';
 import { e5Decision } from './exp-e5-boot.js';
 import { e5UserProps } from './exp-e5.js';
+import { e6Decision } from './exp-e6-boot.js';
+import { e6UserProps } from './exp-e6.js';
 import { installUserProps } from './install-referrer.js';            // 📲 안드로이드 설치 채널(Play Install Referrer)
 import { cachedInstallAttribution } from './install-referrer-boot.js';
 import { readSurvey, surveyUserProps } from './install-survey.js';           // 🧭 첫 실행 설문 → heard_from
@@ -36,7 +38,7 @@ let abVariant = null;   // 마지막으로 set 한 ab_variant — 설치 채널 
 //   (platform·lang·ab_variant·🧪 exp_entry·📲 install_*·🧭 heard_from·🧪 exp_arm)
 function allUserProps(extra = {}) {
   return { platform: PLATFORM, lang: LANG, ab_variant: abVariant ?? assignVariant(), ...e2UserProps(e2Decision()),
-    ...e3UserProps(e3Decision()), ...e5UserProps(e5Decision()), ...installProps(), ...(expArm ? { exp_arm: expArm } : {}), ...extra };
+    ...e3UserProps(e3Decision()), ...e5UserProps(e5Decision()), ...e6UserProps(e6Decision()), ...installProps(), ...(expArm ? { exp_arm: expArm } : {}), ...extra };
 }
 function installProps() {
   let props = {};

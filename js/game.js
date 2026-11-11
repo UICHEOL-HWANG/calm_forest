@@ -67,6 +67,8 @@ import { t, LANG, aiBucket, clientId } from './i18n.js';   // 🌐 i18n — DOM 
 import { createHouseGuide } from './spaces/house-guide.js';   // 🏠 목재 15개 → 집터 조망 + 방향 안내 50:50
 import { rearmMerchant } from './guide/guide-rules.js';
 import { createGoalGuide } from './guide/goal-guide.js';
+import { e6Decision } from './exp-e6-boot.js';
+import { guideRevampOn } from './exp-e6.js';
 import { createHouseShort } from './guide/house-short.js';
 import { createRewarded } from './ads/rewarded.js';
 import { createFarmRush } from './ads/farm-rush.js';
@@ -1588,6 +1590,7 @@ const decorMeshes = [];    // 배치된 가구 메시
 
 let mode = 'attract';   // 'attract'(로그인 배경) | 'play'(플레이)
 let goalGuide = null;
+const guideRevamp = guideRevampOn(e6Decision());
 let houseShort = null;
 let rewarded = null;
 let farmRush = null;
@@ -2856,14 +2859,14 @@ export async function enterGame() {
     enabled: () => PREPASS_ON || PREPASS_DEV, provider: () => prepassProvider, forceArm: () => (PREPASS_DEV ? 'ad' : null),
     clientId, platform: PLATFORM, track: trackEvent, translate: t, toast: (m) => ui.toast?.(m, 2400),
   });
-  houseShort = createHouseShort({
+  houseShort = guideRevamp ? createHouseShort({
     state: () => gameState, player, house: HOUSE_POS, translate: t, track: trackEvent, save: requestSave, rewarded,
     inVillage: inVillage2,
     modalOpen: () => !!ui.anyModalOpen?.() || document.body.classList.contains('spot-on') || !!goalGuide?.cinematic || !!houseGuidance?.cinematic,
     project: (pos, lift) => projectToScreen(pos, lift),
     topInset: () => { const c = document.getElementById('coach'); const r = c?.classList.contains('show') ? c.getBoundingClientRect() : null; return r && r.height ? Math.round(r.bottom + 30) : 0; },
     refreshInventory: () => refreshInventoryUI(), toast: (m) => ui.toast?.(m, 2400),
-  });
+  }) : null;
   farmRush = createFarmRush({
     rewarded, state: () => gameState, plots: () => plots, atFarm: () => atFarm, grant: farmRushGrant,
     modalOpen: () => !!ui.anyModalOpen?.() || document.body.classList.contains('spot-on'),
@@ -2871,7 +2874,7 @@ export async function enterGame() {
     unit: () => (LANG === 'en' ? '' : '칸'),
   });
   if (PREPASS_DEV) { window.__houseShort = houseShort; window.__farmRush = farmRush; window.__liveState = () => gameState; window.__dailyAd = () => dailyAdButton(30, 1); window.__craftData = (st) => craftPanelData(st); window.__plots = () => plots; }
-  goalGuide = createGoalGuide({
+  goalGuide = guideRevamp ? createGoalGuide({
     state: () => gameState, player, camera, scene,
     translate: t, track: trackEvent, save: requestSave,
     cameraFree, setCameraRig, defaultCamPose,
@@ -2915,7 +2918,7 @@ export async function enterGame() {
       return null;
     },
     farmBranchDue: () => unlocksOn() && !gameState.unlocks?.legacy && habitatDone(gameState.tree, 'water') && !habitatDone(gameState.tree, 'farm'),
-  });
+  }) : null;
   if (_wq.has('dbg')) window.__guide = goalGuide;
   houseGuidance.onInventory();          // 로컬 강제 시안(?houseguide=)만 부팅 보유량으로 시험; 실제 배정은 플레이 중 15개 도달
   movedOnce = false;

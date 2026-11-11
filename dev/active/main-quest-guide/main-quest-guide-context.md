@@ -1,6 +1,6 @@
 # 컨텍스트
 
-Last Updated: 2026-11-11
+Last Updated: 2026-11-11 (E6)
 
 ## 근거 데이터
 - ml/reports/story_stall_20261110/result.csv: 장별 다음 장까지 걸린 시간, 멈춘 기기의 행동
@@ -24,6 +24,11 @@ Last Updated: 2026-11-11
 - 단계 판정은 세이브 상태 기반
 - 광고는 재료 부족 줄 옆에만, 하루 전체 3회
 - 안내 묶음 1 배포 → 1주 기준선 → 광고 실험(효과 분리)
+
+## E6 실험(11/11)
+- 신규 기기 8:2(old 20%) 홀드아웃, 사전등록 e6-guide-prereg.md
+- 꺼지는 곳: game.js goalGuide·houseShort 생성, world-tree.js advice, npc.js 목재 지키기
+- QA: `?dbg&e6=old` / `?dbg&e6=new`
 
 ## 미확인
 - 8장 47시간 멈춤 원인
