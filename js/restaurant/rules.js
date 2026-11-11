@@ -1,4 +1,4 @@
-import { COOK, FLIP, CHOP_TAPS, CHOP_GAP, PATIENCE, STAR, STAR_UP, MENU_KEYS, DDA_MIN, DDA_MAX, DDA_EASY, DDA_HARD, DDA_EASY_BELOW, DDA_HARD_FROM, STARTER_STOCK } from './data.js';
+import { COOK, FLIP, CHOP_TAPS, CHOP_GAP, PATIENCE, STAR, STAR_UP, MENU, MENU_KEYS, DDA_MIN, DDA_MAX, DDA_EASY, DDA_HARD, DDA_EASY_BELOW, DDA_HARD_FROM, STARTER_STOCK } from './data.js';
 
 const nat = v => (Number.isFinite(v) && v > 0 ? Math.floor(v) : 0);
 const clampDda = v => Math.round(Math.max(DDA_MIN, Math.min(DDA_MAX, v)) * 100) / 100;
@@ -115,4 +115,11 @@ export function settleService(rest, result) {
   const { dir, dda } = adjustDda(rest.dda, result);
   const up = applyStarUp({ ...rest, dda, services: rest.services + 1 });
   return { rest: up.rest, bonus: up.coins, starUp: up.rest.star !== rest.star, dir };
+}
+
+export function stockStatus(menus, pantry) {
+  const kinds = [...new Set(menus.map(m => MENU[m].from))];
+  const short = kinds.map(k => ({ k, n: nat(pantry?.[k]) })).filter(r => r.n < 1);
+  const none = short.length === kinds.length;
+  return { short, none, partial: short.length > 0 && !none };
 }

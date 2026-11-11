@@ -1,4 +1,4 @@
-import { HALL, SERVICE_SEC, LAST_SPAWN_SEC, STAR, EAT_SEC, COIN_PER_STAR, PATIENCE, COOK } from './data.js';
+import { HALL, SERVICE_SEC, LAST_SPAWN_SEC, STAR, EAT_SEC, COIN_PER_STAR, PATIENCE, COOK, MENU } from './data.js';
 import { cookState, panState, flipOk, flipZone, chopTap, chopDone, serveStars, spawnInterval, serviceAvg } from './rules.js';
 
 const DISH = new Set(['grilled', 'riceball', 'soup']);
@@ -13,11 +13,11 @@ const walkTime = tb => Math.hypot(HALL.door.x - tb[0], HALL.door.z - (tb[1] - 1.
 
 const FIRST_PAT = 1.2;
 
-export function createSession({ star, dda, rng = Math.random, first = false }) {
+export function createSession({ star, dda, rng = Math.random, first = false, stock = null }) {
   const stations = {};
   for (const s of HALL.stations) stations[s.id] = { item: null, t: 0, chop: FRESH_CHOP(), flipped: null };
   return {
-    star, cfg: STAR[star], dda: first ? { ...dda, pat: dda.pat * FIRST_PAT } : { ...dda }, first, rng, time: 0, next: 1.5, guests: [], tickets: [], gid: 0,
+    star, cfg: STAR[star], dda: first ? { ...dda, pat: dda.pat * FIRST_PAT } : { ...dda }, first, rng, stock, time: 0, next: 1.5, guests: [], tickets: [], gid: 0,
     held: null, stations, staff: null, ended: false,
     stats: { served: 0, stars: [], late: 0, perfect: 0, takes: 0, burnt: 0, coins: 0 },
   };
@@ -29,9 +29,17 @@ function freeTables(S) {
   return out;
 }
 
+function inStock(S, menu) {
+  if (!S.stock) return true;
+  const kind = MENU[menu].from;
+  const waiting = S.guests.filter(g => g.state !== 'leave' && g.state !== 'eat' && MENU[g.menu].from === kind).length;
+  return S.stock(kind) - waiting > 0;
+}
+
 function spawn(S) {
-  const roll = S.cfg.menus[Math.floor(S.rng() * S.cfg.menus.length)];
-  const menu = S.first ? 'grilled' : roll;
+  const menus = S.first ? ['grilled'] : S.cfg.menus.filter(m => inStock(S, m));
+  if (!menus.length) return null;
+  const menu = menus[Math.floor(S.rng() * menus.length)];
   const free = freeTables(S);
   if (!free.length) return null;
   const table = free[Math.floor(S.rng() * free.length)];

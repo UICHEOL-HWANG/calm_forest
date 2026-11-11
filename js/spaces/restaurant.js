@@ -1,8 +1,14 @@
 import * as THREE from 'three';
 import {
-  $w, camera, gameState, makeSignpost, obstacles, player, refreshInventoryUI, requestSave, scene,
+  $w, camera, cameraFree, colliders, gameState, makeSignpost, obstacles, player, projectToScreen, refreshInventoryUI, requestSave, scene,
   setFogExempt, setSpaceVisible, snapCamera, solidBox, solidCircle, spawnFloatText, ui,
 } from '../game.js';
+import { createAuctionGuide } from '../auction/guide.js';
+import { PORT_PIER } from '../data/places.js';
+import { walkLimit } from '../world/walk-bounds.js';
+import { inVillage2 } from './doors.js';
+import { t } from '../i18n.js';
+import { STOCK_COPY } from '../restaurant/hud.js';
 import { trackEvent } from '../analytics.js';
 import { logEcon } from '../metrics.js';
 import { NPCS } from '../data/npcs.js';
@@ -137,6 +143,7 @@ export function buildRestaurantHall() {
     sessionOpts: () => (restaurantGuideActive() ? { first: true } : {}),
     onChopStart: () => { if (chopHinted) return; chopHinted = true; ui.toast?.(RESTAURANT_COPY.chop); },
     onFinish: () => syncSolids(),
+    onStockGuide: () => { exitRestaurant(); ensureStockGuide().start(); },
   });
   runtime.refresh();
   syncSolids();
@@ -288,7 +295,28 @@ function wantPoint(step) {
   return step.id === 'serve' ? c.do === 'serve' : c.id === STEP_STATION[step.id];
 }
 
+let stockGuide = null, stockGuideAt = 0;
+function ensureStockGuide() {
+  stockGuide ??= createAuctionGuide({
+    name: 'restaurant-stock', THREE, scene, camera, player, t, track: trackEvent,
+    follow: STOCK_COPY.follow, spot: { x: PORT_PIER.ax, z: PORT_PIER.az }, reach: 1.6,
+    project: (p, lift) => projectToScreen(p, lift),
+    solids: () => { const live = colliders.filter(c => !c.off && !c.lock); return { big: live.filter(c => c.r === undefined || c.r >= 0.6), small: live.filter(c => c.r !== undefined && c.r < 0.6) }; },
+    inside: p => Math.hypot(p.x, p.z) < walkLimit(Math.atan2(p.z, p.x)) - 1,
+    open: () => true,
+    inVillage: () => inVillage2(),
+    visible: () => cameraFree() && !ui.anyModalOpen?.(),
+  });
+  return stockGuide;
+}
+function tickStockGuide() {
+  const now = performance.now(), dt = stockGuideAt ? Math.min(0.1, (now - stockGuideAt) / 1000) : 0;
+  stockGuideAt = now;
+  stockGuide?.update(dt);
+}
+
 export function updateRestaurantGuide(visible) {
+  tickStockGuide();
   if (!guide) return;
   const ctx = guideCtx();
   guide.tick(ctx);

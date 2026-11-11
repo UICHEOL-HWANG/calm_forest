@@ -43,6 +43,7 @@ const CSS = `#auction-guide-compass{position:fixed;z-index:25;width:clamp(80px,1
 @media(prefers-reduced-motion:reduce){#auction-guide-compass .ag-pointer,#auction-guide-mark .ag-tri{animation:none}}`;
 
 export function createAuctionGuide(deps) {
+  const P = `${deps.name || 'auction'}-guide`;
   let active = false, route = [], point = null, replanAt = 0, compass = null, mark = null, edge = null, ring = null, clock = 0, markDist = null, edgeDist = null, shownLabel = '';
   const v = { right: new deps.THREE.Vector3(), up: new deps.THREE.Vector3(), d: new deps.THREE.Vector3() };
   const spotAt = { x: deps.spot.x, y: 0, z: deps.spot.z };
@@ -50,18 +51,18 @@ export function createAuctionGuide(deps) {
   function mount() {
     if (compass) return;
     const style = document.createElement('style');
-    style.id = 'auction-guide-style';
-    style.textContent = CSS;
+    style.id = `${P}-style`;
+    style.textContent = CSS.replaceAll('auction-guide', P);
     document.head.appendChild(style);
     compass = document.createElement('div');
-    compass.id = 'auction-guide-compass';
+    compass.id = `${P}-compass`;
     compass.innerHTML = '<div class="ag-pointer"></div><div class="ag-hint"></div>';
     compass.querySelector('.ag-hint').textContent = deps.t(deps.follow);
     mark = document.createElement('div');
-    mark.id = 'auction-guide-mark';
+    mark.id = `${P}-mark`;
     mark.innerHTML = '<div class="ag-dist"></div><div class="ag-tri"></div>';
     edge = document.createElement('div');
-    edge.id = 'auction-guide-edge';
+    edge.id = `${P}-edge`;
     edge.innerHTML = '<div class="ag-disc"><div class="ag-head"></div></div><div class="ag-dist"></div>';
     markDist = mark.querySelector('.ag-dist');
     edgeDist = edge.querySelector('.ag-dist');
@@ -104,8 +105,8 @@ export function createAuctionGuide(deps) {
     active = true;
     clock = 0;
     replan();
-    document.body.classList.add('auction-guide');
-    deps.track('guide_step', { guide: 'auction', step: 1, act: 'start' });
+    document.body.classList.add(P);
+    deps.track('guide_step', { guide: deps.name || 'auction', step: 1, act: 'start' });
   }
 
   function stop(act, reason) {
@@ -114,8 +115,8 @@ export function createAuctionGuide(deps) {
     route = [];
     point = null;
     hide();
-    document.body.classList.remove('auction-guide');
-    deps.track('guide_step', reason ? { guide: 'auction', step: 1, act, reason } : { guide: 'auction', step: 1, act });
+    document.body.classList.remove(P);
+    deps.track('guide_step', reason ? { guide: deps.name || 'auction', step: 1, act, reason } : { guide: deps.name || 'auction', step: 1, act });
   }
 
   function angleTo(target) {

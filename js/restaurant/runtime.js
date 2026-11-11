@@ -187,7 +187,7 @@ export function createRestaurantRuntime(env) {
     const r = env.rest();
     before = r;
     refresh();
-    S = createSession({ star: r.star, dda: r.dda, ...(env.sessionOpts?.() || {}) });
+    S = createSession({ star: r.star, dda: r.dda, stock: k => Math.max(0, Math.floor(env.port()?.pantry?.[k] || 0)), ...(env.sessionOpts?.() || {}) });
     hud.show(true);
     env.onStart?.();
   }
@@ -207,7 +207,8 @@ export function createRestaurantRuntime(env) {
       if (hud.cardOpen()) { hud.confirmMenu(); return true; }
       if (!S) {
         if (!nearBoard(lp)) return false;
-        hud.menu(menuView(env.rest().star, !!env.sessionOpts?.().first), start);
+        const first = !!env.sessionOpts?.().first;
+        hud.menu(menuView(env.rest().star, first, env.port()?.pantry), start, env.onStockGuide);
         return true;
       }
       const take = kind => {

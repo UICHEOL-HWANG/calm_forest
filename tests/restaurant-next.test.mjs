@@ -107,8 +107,9 @@ test('오늘의 메뉴 카드는 별 단계 메뉴만, 순서 아이콘은 서�
   assert.deepEqual(v1.rows[0][1], ['🐟', '🍳', '🍽️']);
   assert.equal(menuView(2).rows.length, 3);
   assert.deepEqual(menuView(1, true).rows.map(r => r[0]), ['🐟 생선구이']);
-  const h = menuHtml(v1);
+  const h = menuHtml(menuView(1, false, { fish: 2, rice: 2 }));
   assert.match(h, /오늘의 메뉴/);
+  assert.doesNotMatch(h, /재고가 부족해요/);
   assert.match(h, /🔔 영업 시작/);
   assert.doesNotMatch(h, /—/);
   const n = nextHtml({ steps: ['🐟', '🍳', '🍽️', '🙋'], i: 1, text: '🍳 팬에 올려요' });

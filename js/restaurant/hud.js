@@ -1,5 +1,6 @@
 import { MENU, STAR, STAR_UP, SERVICE_SEC, CHOP_TAPS, PATIENCE } from './data.js';
 import { RECIPE } from './next-step.js';
+import { stockStatus } from './rules.js';
 
 const CSS = `
 #rest-hud{position:fixed;left:0;right:0;top:0;pointer-events:none;z-index:30;font-family:inherit}
@@ -73,6 +74,11 @@ body.is-touch #rest-hud .steps i{width:24px;height:24px;font-size:13px}
 #rest-card .tip{margin:6px 16px 0;background:#f3ece0;border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.6;letter-spacing:.03em;word-break:keep-all;word-spacing:.1em;color:#6b5d4c}
 #rest-card button{display:block;width:100%;border:0;border-radius:14px;padding:12px;font:inherit;font-size:15.5px;font-weight:800;background:#2f5e47;color:#fff8e8;cursor:pointer;pointer-events:auto}
 #rest-card button:active{transform:scale(.97)}
+#rest-card .stock{margin:8px 16px 0;background:#fff1d6;border:1px solid #e8c88a;border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.7;word-break:keep-all;color:#6b4a14}
+#rest-card .stock b{display:block;font-size:13.5px;color:#8a5a10}
+#rest-card .stock .ask{margin-top:4px;font-weight:800;color:#4a3a20}
+#rest-card .foot:has(button+button){display:flex;gap:8px}
+#rest-card button[data-act="later"]{background:#efe6d6;color:#5a4a34;flex:0 0 34%}
 @keyframes rc-pop{from{transform:scale(.86) translateY(14px);opacity:0}}
 @keyframes rc-grow{from{width:0}}
 @media (max-height:480px){
@@ -120,14 +126,31 @@ export function nextHtml(v) {
 const DISH_NAME = { grilled: '🐟 생선구이', riceball: '🍙 주먹밥', soup: '🍲 생선국' };
 export const MENU_COPY = { kicker: '칠판', title: '오늘의 메뉴', tips: ['🍳 막대가 초록 칸일 때 뒤집어요', '🔪 박자에 맞춰 네 번 눌러요'], start: '🔔 영업 시작' };
 
-export function menuView(star, first = false) {
+export const STOCK_COPY = {
+  title: '⚠️ 재고가 부족해요',
+  items: { fish: { ico: '🐟', name: '생선', where: '포구 섬에서 낚아 와요' }, rice: { ico: '🍚', name: '쌀', where: '포구 섬 시장에서 사 와요' } },
+  partial: '있는 재료로 만드는 메뉴만 주문이 들어와요',
+  ask: '섬에 가서 식자재를 받아 와야 해요. 안내받으시겠어요?',
+  guide: '🧭 안내 받기',
+  later: '다음에',
+  follow: '화살표를 따라 포구 부두로 가요',
+};
+
+export function menuView(star, first = false, pantry = undefined) {
   const menus = first ? ['grilled'] : STAR[star].menus;
-  return { rows: menus.map(k => [DISH_NAME[k], RECIPE[k].slice(0, -1)]) };
+  return { rows: menus.map(k => [DISH_NAME[k], RECIPE[k].slice(0, -1)]), stock: first ? null : stockStatus(menus, pantry) };
+}
+
+function stockHtml(st) {
+  if (!st?.short.length) return '';
+  const lines = st.short.map(({ k, n }) => { const it = STOCK_COPY.items[k]; return `<div>${it.ico} <span>${it.name}</span> ${n} · <span>${it.where}</span></div>`; }).join('');
+  const tail = st.none ? `<div class="ask">${STOCK_COPY.ask}</div>` : `<div>${STOCK_COPY.partial}</div>`;
+  return `<div class="stock"><b>${STOCK_COPY.title}</b>${lines}${tail}</div>`;
 }
 
 export function menuHtml(v) {
   const rows = v.rows.map(([name, icos]) => `<div class="mr"><span>${name}</span><div class="steps">${icos.map((ico, k) => `${k ? '<em></em>' : ''}<i>${ico}</i>`).join('')}</div></div>`).join('');
-  return `<div class="head"><div class="kick">${MENU_COPY.kicker}</div><h3>${MENU_COPY.title}</h3></div><div><div class="menu">${rows}</div><div class="tip">${MENU_COPY.tips.map(t => `<div>${t}</div>`).join('')}</div><div class="foot"><button type="button">${MENU_COPY.start}</button></div></div>`;
+  return `<div class="head"><div class="kick">${MENU_COPY.kicker}</div><h3>${MENU_COPY.title}</h3></div><div><div class="menu">${rows}</div><div class="tip">${MENU_COPY.tips.map(t => `<div>${t}</div>`).join('')}</div>${stockHtml(v.stock)}<div class="foot">${v.stock?.none ? `<button type="button" data-act="later">${STOCK_COPY.later}</button><button type="button" data-act="guide">${STOCK_COPY.guide}</button>` : `<button type="button">${MENU_COPY.start}</button>`}</div></div>`;
 }
 
 export function goalRows(rest) {
@@ -151,7 +174,7 @@ export function mountHud(doc) {
   doc.body.appendChild(card);
   const clock = root.querySelector('.clock'), tks = root.querySelector('.tks'), sts = root.querySelector('.sts');
   const arrowEl = root.querySelector('.arrow'), nextEl = root.querySelector('.next');
-  let onClose = null, cardMode = null, openedAt = 0;
+  let onClose = null, onGuide = null, cardMode = null, openedAt = 0, menuNone = false;
   const CONFIRM_GAP = 350;
   const closeCard = run => {
     card.classList.remove('show');
@@ -159,7 +182,10 @@ export function mountHud(doc) {
     if (run) f?.();
   };
   card.addEventListener('click', e => {
-    if (e.target.closest('button')) closeCard(true);
+    const b = e.target.closest('button');
+    if (b?.dataset.act === 'guide') { closeCard(false); onGuide?.(); return; }
+    if (b?.dataset.act === 'later') { closeCard(false); return; }
+    if (b) closeCard(true);
     else if (cardMode === 'menu' && !e.target.closest('.box')) closeCard(false);
   });
   const stEls = new Map();
@@ -253,12 +279,13 @@ export function mountHud(doc) {
       onClose = onDone; cardMode = 'result';
       card.classList.add('show');
     },
-    menu(view, onStart) {
+    menu(view, onStart, guide) {
       card.querySelector('.box').innerHTML = menuHtml(view);
-      onClose = onStart; cardMode = 'menu'; openedAt = performance.now();
+      menuNone = !!view.stock?.none;
+      onClose = menuNone ? null : onStart; onGuide = guide; cardMode = 'menu'; openedAt = performance.now();
       card.classList.add('show');
     },
-    confirmMenu() { if (cardMode === 'menu' && performance.now() - openedAt > CONFIRM_GAP) closeCard(true); },
+    confirmMenu() { if (cardMode === 'menu' && performance.now() - openedAt > CONFIRM_GAP) closeCard(!menuNone); },
     closeCard() { if (cardMode) closeCard(false); },
     destroy() { watch?.disconnect(); removeEventListener('resize', markDirty); root.remove(); card.remove(); },
   };
