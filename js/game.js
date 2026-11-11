@@ -74,6 +74,7 @@ import { createHouseShort } from './guide/house-short.js';
 import { createRewarded } from './ads/rewarded.js';
 import { rewardedAvailable, showRewarded } from './ads/admob.js';
 import { createTossRewarded } from './ads/toss-rewarded.js';
+import { warmShaders } from './render/shader-warm.js';
 import { createFarmRush } from './ads/farm-rush.js';
 import { repeatOpen, rushSlots, sellBonus, houseShort as houseShortOf, bridgeShort, farmStageShort, prepassGrant, shortAdParts, CAFE_CAPS } from './guide/prepass-rules.js';
 import { sanitizeHouseGuide } from './house-guide-rules.js';
@@ -2543,6 +2544,7 @@ export async function bootWorld(uiCallbacks) {
   player.visible = false;   // 로그인 중엔 캐릭터 숨김(카메라 자동 오빗)
   mode = 'attract';
   animate();
+  setTimeout(() => warmShaders(renderer, scene, camera), 0);
 }
 
 // ② 로그인 완료 후 실제 플레이 시작 (저장 로드 + 로깅 + 조작 on)
@@ -2895,6 +2897,7 @@ export async function enterGame() {
   if (_wq.get('mudflatdebug') === '1') { window.__mudflat = mudflatDebug; window.__mudflatCam = setMudflatCam; }   // 테스트: ?sea=1 — 바다터 바로 입장
   if (_wq.get('seadebug') === '1') window.__sea = { mg: seaMG, action: seaAction };   // 테스트: 상태 점검용(연출 검수)
   mode = 'play';
+  setTimeout(() => warmShaders(renderer, scene, camera), 0);
   houseGuidance = createHouseGuide({
     state: () => gameState, player, camera, house: HOUSE_POS,
     clientId, platform: PLATFORM, dev: IS_DEV_SESSION, translate: t,

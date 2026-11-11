@@ -81,7 +81,9 @@ const save = (storage, key, value) => { try { storage?.setItem(key, value); } ca
 
 /** → 답({answer, code}) | null(안 물음·건너뜀·늦음). 어떤 실패도 부팅을 막지 않는다 */
 export async function bootInstallSurvey({ platform, storage, doc, root, t, track, setUserProps,
-  referrerP = null, fresh = false, dev = false, force = false, waitMs = REFERRER_WAIT_MS }) {
+  referrerP = null, fresh = false, dev = false, force = false, waitMs = REFERRER_WAIT_MS, onDecide = null }) {
+  let decided = false;
+  const decide = (v) => { if (decided) return; decided = true; try { onDecide?.(v); } catch { return; } };
   try {
     const stored = readSurvey(storage);
     let referrer = null;
@@ -101,6 +103,7 @@ export async function bootInstallSurvey({ platform, storage, doc, root, t, track
     }
     if (!shouldAskSurvey({ platform, stored, referrer, fresh, dev, force })) return null;
     if (!root) return null;
+    decide(true);
     track('install_survey', { action: 'shown' });
     const result = await openSurvey({ doc, root, t }).done;
     if (!result.answer) {
@@ -117,6 +120,8 @@ export async function bootInstallSurvey({ platform, storage, doc, root, t, track
   } catch (e) {
     console.warn('[install-survey] skipped', e?.message || e);
     return null;
+  } finally {
+    decide(false);
   }
 }
 

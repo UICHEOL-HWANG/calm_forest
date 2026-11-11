@@ -197,3 +197,30 @@ test('친구 초대 — 초대 링크를 통째로 붙여 넣어도 코드를 �
   input.value = 'https://calmforest.cloud/?invite=abcd2345'; root.querySelector('.sv-ok').click();
   assert.deepEqual(await s.done, { answer: 'friend', code: 'ABCD2345' });
 });
+
+test('bootInstallSurvey — 물을지 정해지는 순간 onDecide 로 알린다(물으면 true, 안 물으면 false)', async () => {
+  const asked = bootEnv();
+  const seen = [];
+  const p = bootInstallSurvey({ ...asked.args, onDecide: (v) => seen.push(v) });
+  assert.deepEqual(seen, [true], '카드를 띄우기 직전에 알린다');
+  btn(asked.root, 'search').click();
+  await p;
+  assert.deepEqual(seen, [true]);
+
+  const answered = bootEnv({ store: { [SURVEY_STORE_KEY]: JSON.stringify({ answer: 'x', ts: 1 }) } });
+  const seen2 = [];
+  await bootInstallSurvey({ ...answered.args, onDecide: (v) => seen2.push(v) });
+  assert.deepEqual(seen2, [false]);
+
+  const late = bootEnv({ args: { platform: 'android', fresh: true, referrerP: new Promise(() => {}), waitMs: 5 } });
+  const seen3 = [];
+  await bootInstallSurvey({ ...late.args, onDecide: (v) => seen3.push(v) });
+  assert.deepEqual(seen3, [false]);
+});
+
+test('index.html 은 설문을 띄웠으면 답을 받은 뒤에 월드를 부팅한다', async () => {
+  const { readFileSync } = await import('node:fs');
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /onDecide: \(v\) => surveyDecide\(v\),/);
+  assert.match(html, /if \(await surveyDecided\) await surveyP;\n\s*if \(loginFirstBoot\) document\.body\.classList\.add\('pre-world'\);\n\s*else await ensureWorld\(\);/);
+});
