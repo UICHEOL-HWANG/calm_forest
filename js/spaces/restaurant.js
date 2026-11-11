@@ -16,6 +16,7 @@ import { restaurantGuideSteps, guideStage, shownStep, villageVia, hallVia } from
 import { createGuide } from '../guide/runner.js';
 import { createGuideView } from '../guide/view.js';
 import { createNav } from '../guide/path.js';
+import { STOP_SOLIDS } from '../restaurant/nav-solids.js';
 import { CAFE_GATE } from '../data/places.js';
 
 export const RESTAURANT_DOOR = { x: RESTAURANT_GATE.x, z: RESTAURANT_GATE.z + 3.1 };
@@ -245,7 +246,7 @@ const NAV_PAD = 1.3, NAV_CLEAR = 0.3;
 const CAFE_SOLIDS = [[{ x: CAFE_GATE.x, z: CAFE_GATE.z - 1.2 }, 4.2], [{ x: CAFE_GATE.x + 3.05, z: CAFE_GATE.z + 0.95 }, 1.2]];
 function buildVillageNav() {
   const near = obstacles.filter(o => o.r >= NAV_MIN_R && Math.hypot(o.x - RESTAURANT_DOOR.x, o.z - RESTAURANT_DOOR.z) < NAV_R);
-  return createNav([...near.map(o => [{ x: o.x, z: o.z }, o.r]), ...CAFE_SOLIDS], () => true, { pad: NAV_PAD, clear: NAV_CLEAR });
+  return createNav([...near.map(o => [{ x: o.x, z: o.z }, o.r]), ...CAFE_SOLIDS, ...STOP_SOLIDS], () => true, { pad: NAV_PAD, clear: NAV_CLEAR });
 }
 function escapeCafe(me) {
   for (const [c, r] of CAFE_SOLIDS) {
