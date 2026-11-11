@@ -38,11 +38,17 @@ test('뒤로 밀리면 그 단계 안내, 탄 것은 버리기 안내', () => {
   assert.equal(shownStep(s, 3, 5).id, 'pan');
 });
 
-test('식당은 반딧불이 계곡 남서쪽 잔디에 문을 북쪽(마을 쪽)으로 두고 선다', () => {
-  assert.deepEqual(RESTAURANT_GATE, { x: -3, z: 38.5 });
-  assert.equal(RESTAURANT_FACE, -1);
-  assert.deepEqual(restaurantLocal(0, 3.1), { x: -3, z: 35.4 });
-  assert.deepEqual(restaurantLocal(2, 0), { x: -5, z: 38.5 });
+test('식당은 반딧불이 계곡 남서쪽 잔디에, 다른 건물처럼 문을 카메라 쪽(남)으로 두고 선다', () => {
+  assert.deepEqual(RESTAURANT_GATE, { x: -5, z: 35.5 });
+  assert.equal(RESTAURANT_FACE, 1);
+  assert.deepEqual(restaurantLocal(0, 3.1), { x: -5, z: 38.6 });
+  assert.deepEqual(restaurantLocal(2, 0), { x: -3, z: 35.5 });
+});
+
+test('식당 건물·테라스는 마을 걷기 경계 안이고 계곡 나무와 겹치지 않는다', () => {
+  const corners = [[-3.9, -3.0], [3.9, -3.0], [-3.9, 4.9], [3.9, 4.9]].map(([x, z]) => restaurantLocal(x, z));
+  for (const c of corners) assert.ok(Math.hypot(c.x, c.z) < 41.5, JSON.stringify(c));
+  for (const [x, z] of [[3.4, 34.6], [0, 30.9], [8.5, 34.5]]) assert.ok(!restaurantScatterBlocks(x, z, 1.3), `${x},${z}`);
 });
 
 test('식당 뒤쪽에서는 옆으로 돌아가는 경유점', () => {
