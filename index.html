@@ -2200,6 +2200,41 @@
   .market-banner { width: 100%; text-align: center; font-size: 12px; background: rgba(255,232,176,0.55); border-radius: 10px; padding: 7px 10px; color: var(--ink); }
   .ck-buff .up { color: #2fa564; font-weight: 700; }
   .ck-buff .down { color: #d05a4a; font-weight: 700; }
+  #sell-items { flex-direction: column; flex-wrap: nowrap; align-items: stretch; justify-content: flex-start; }
+  #sell-items .market-banner { text-align: left; }
+  #sell-items .up { color: #2f9a5e; font-weight: 800; }
+  #sell-items .down { color: #c9574a; font-weight: 800; }
+  .sl-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; }
+  .sl-cell { position: relative; aspect-ratio: 1; border: none; border-radius: 14px; background: rgba(255,255,255,0.75); color: var(--ink); font: inherit;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 0; cursor: pointer; transition: transform .1s; }
+  .sl-cell:active { transform: scale(0.95); }
+  .sl-cell.hot { background: #fff6dc; }
+  .sl-cell.sel { background: #fff; box-shadow: 0 0 0 2.5px var(--ink) inset; }
+  .sl-cell .sl-ico { font-size: 28px; line-height: 1; }
+  .sl-cell .sl-nm { font-size: 11px; font-weight: 700; white-space: nowrap; max-width: 92%; overflow: hidden; text-overflow: ellipsis; }
+  .sl-cell .sl-cnt { position: absolute; right: 6px; bottom: 4px; font-size: 11px; font-weight: 800; opacity: .7; font-variant-numeric: tabular-nums; }
+  .sl-cell .sl-tr { position: absolute; left: 6px; top: 4px; font-size: 11px; }
+  .sl-empty { text-align: center; padding: 26px 8px; font-size: 13px; opacity: .7; line-height: 1.5; }
+  #sell-sheet { border-radius: 16px; background: #fff; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 -2px 10px rgba(90,120,100,0.12); }
+  #sell-sheet[hidden] { display: none; }
+  .ss-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .ss-top .ss-ico { font-size: 30px; line-height: 1; }
+  .ss-top .ss-nm { font-size: 14px; font-weight: 800; }
+  .ss-top .ss-sub { font-size: 11.5px; opacity: .75; font-variant-numeric: tabular-nums; }
+  .ss-top .ss-sub .up, .ss-top .ss-sub .down { margin-left: 3px; }
+  .ss-row { display: flex; align-items: center; gap: 6px; }
+  .ss-step { display: flex; align-items: center; background: #eef2ee; border-radius: 10px; }
+  .ss-step button { border: none; background: none; font: inherit; font-size: 17px; font-weight: 800; width: 34px; height: 34px; color: var(--ink); cursor: pointer; touch-action: none; }
+  .ss-step button:disabled { opacity: .3; cursor: default; }
+  .ss-step .ss-q { min-width: 32px; text-align: center; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .ss-max { border: none; border-radius: 10px; padding: 8px 11px; font: inherit; font-size: 12.5px; font-weight: 800; background: #eef2ee; color: var(--ink); cursor: pointer; }
+  .ss-max.on { background: var(--ink); color: #fff; }
+  .ss-go { margin-left: auto; border: none; border-radius: 12px; padding: 9px 14px; font: inherit; font-size: 13.5px; font-weight: 800; background: var(--mint); color: #24382d; cursor: pointer; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ss-go:active, .ss-max:active { transform: scale(0.96); }
+  #shop-menu .dm-actions { justify-content: center; }
+  #shop-menu .dm-actions #shop-close { min-width: min(220px, 70%); padding: 11px 22px; font-size: 15px; font-weight: 800; border-radius: 14px;
+    background: #fff; color: var(--ink); border: 1.5px solid rgba(74,90,79,0.3); box-shadow: 0 3px 10px rgba(90,120,100,0.18); }
+  #shop-menu .dm-actions #shop-close:active { transform: scale(0.97); }
   /* 📊 시세판 모달(전광판) */
   #market-modal { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
   #market-modal.show { display: grid; }
@@ -2669,6 +2704,7 @@
     #mist-choice button { font-size: 13px; padding: 10px 12px; }
     /* 모바일: 코치는 컨텍스트 슬롯(162px) — 토스트는 실측한 카드 높이 아래 */
     body.coaching #toast { top: calc(162px + var(--top-inset) + var(--coach-h, 110px) + 16px); }
+    .sl-grid { grid-template-columns: repeat(4, 1fr); }
   }
   /* ── 세로가 아주 짧은 화면(폰 가로·분할 화면) — 좌측 상단 한 자리를 두고 다투는 것들 ──
      📖 스토리 칩은 읽을거리고 📜 퀘스트 패널은 지금 할 일이다. 자리가 하나뿐이면 할 일이 이긴다
@@ -2729,6 +2765,14 @@
       flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y;
     }
     #sell-items, #buy-items, #dm-items, #kt-items { align-content: flex-start; }
+    .sl-grid { grid-template-columns: repeat(6, 1fr); gap: 6px; }
+    .sl-cell .sl-ico { font-size: 24px; }
+    #sell-sheet { flex-direction: row; align-items: center; padding: 6px 10px; gap: 8px; }
+    .ss-top .ss-ico { font-size: 24px; }
+    .ss-top .ss-sub { display: none; }
+    .ss-row { flex: 1 1 auto; }
+    #shop-menu .dm-actions #shop-close { padding: 8px 22px; font-size: 14px; }
+    body:has(#shop-menu.show) #hotbar { display: none; }
     #decor-menu .dm-hint, #cafe-menu .dm-hint, #kitchen-menu .dm-hint { font-size: 11px; line-height: 1.35; max-height: 2.8em; overflow-y: auto; }
     /* 🎀 꾸미기 — 프리뷰 + 목록 가로 배치는 유지, 높이는 창이 정한다(목록 42dvh 상한을 풀어 남는 자리를 다 쓴다) */
     #cos-menu { width: min(600px, 92vw); }
@@ -3190,6 +3234,7 @@
       <button class="sh-tab" data-tab="buy">🛍️ 사기</button>
     </div>
     <div id="sell-items"></div>
+    <div id="sell-sheet" hidden></div>
     <div id="buy-items" style="display:none"></div>
     <div class="dm-actions"><button id="shop-close">닫기</button></div>
   </div>
@@ -3782,6 +3827,7 @@
     import { capPlugin } from './js/cap-bridge.js';
     import { bootTenjin, identifyTenjinUser, trackTenjinGameStart } from './js/tenjin-native.js';
     import { SELL_ICO_G } from './js/data/sell-icons.js';
+    import { sellList, clampQty, itemName } from './js/shop/sell-rules.js';
     import { FORAGE_KEYS, FORAGE_META } from './js/forage/logic.js';
     import { consumeExit, markExit } from './js/exit-flag.js';   // 🚪 나가기 직후엔 토스·플레이 앱 자동 연결을 건너뛴다 · 🗑️ 계정 삭제 뒤에도
     import { pickText, quoteLine, parseBody, leadEmoji, noticeTone } from './js/notices.js';   // 📮 소식함 — 언어별 본문·답장 원문 인용·'|' 표 파서
@@ -7168,37 +7214,85 @@
 
     // ── 상점 메뉴 (팔기 / 사기) ──
     let shopTab = 'sell';
-    // 판매 바인딩: 탭=1개, 꾹 누르면(450ms) 전부 — pointer 이벤트로 모바일/데스크톱 공통
-    function bindSell(el, k) {
-      let timer = null, longFired = false;
-      const doSell = (all) => { const r = Input.sellItem(k, all); if (!r.ok) { ui.toast(r.msg); return; } ui.toast(all ? `🪙 +${r.gain} (${r.qty}개 전부)` : `🪙 +${r.gain}`); renderShop(); };
-      el.addEventListener('pointerdown', () => { longFired = false; timer = setTimeout(() => { longFired = true; doSell(true); }, 450); });
-      el.addEventListener('pointerup', () => { if (timer) { clearTimeout(timer); timer = null; } if (!longFired) doSell(false); });
-      el.addEventListener('pointerleave', () => { if (timer) { clearTimeout(timer); timer = null; } });
-      el.addEventListener('contextmenu', (e) => e.preventDefault());
+    let sellSel = null, sellQ = 1;
+    const trendHtml = d => (d > 0 ? `<span class="up">▲${d}%</span>` : d < 0 ? `<span class="down">▼${-d}%</span>` : '');
+    function holdRepeat(btn, step) {
+      let wait = null, rep = null;
+      const stop = () => { clearTimeout(wait); clearInterval(rep); wait = rep = null; window.removeEventListener('pointerup', stop); };
+      btn.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0) return;
+        e.preventDefault(); stop();
+        if (!step()) return;
+        window.addEventListener('pointerup', stop);
+        wait = setTimeout(() => { rep = setInterval(() => { if (!step()) stop(); }, 70); }, 380);
+      });
+      ['pointerleave', 'pointercancel'].forEach(ev => btn.addEventListener(ev, stop));
+      btn.addEventListener('click', (e) => { if (e.detail === 0) step(); });
+      btn.addEventListener('contextmenu', (e) => e.preventDefault());
+    }
+    function renderSellSheet(it) {
+      const sheet = $('sell-sheet');
+      if (!it || shopTab !== 'sell') { sheet.hidden = true; sheet.innerHTML = ''; return; }
+      sellQ = clampQty(sellQ, it.have);
+      sheet.hidden = false;
+      sheet.innerHTML = `<div class="ss-top"><span class="ss-ico">${SELL_ICO_G[it.k] || '📦'}</span><span><div class="ss-nm">${it.name}</div><div class="ss-sub"><span>개당 🪙${it.price}</span>${trendHtml(it.rate)} · <span>${it.have}개 있어요</span></div></span></div>
+        <div class="ss-row"><div class="ss-step"><button class="ss-dec" aria-label="-1">−</button><span class="ss-q"></span><button class="ss-inc" aria-label="+1">+</button></div>
+        <button class="ss-max">전부</button><button class="ss-go"></button></div>`;
+      const dec = sheet.querySelector('.ss-dec'), inc = sheet.querySelector('.ss-inc'), max = sheet.querySelector('.ss-max'), go = sheet.querySelector('.ss-go');
+      const paint = () => {
+        sheet.querySelector('.ss-q').textContent = sellQ;
+        dec.disabled = sellQ <= 1;
+        inc.disabled = sellQ >= it.have;
+        max.classList.toggle('on', sellQ === it.have);
+        go.textContent = `팔기 🪙${it.price * sellQ}`;
+      };
+      const bump = (n) => { if (!dec.isConnected) return false; const q = clampQty(sellQ + n, lastInv[it.k] || 0); if (q === sellQ) return false; sellQ = q; paint(); return true; };
+      holdRepeat(dec, () => bump(-1));
+      holdRepeat(inc, () => bump(1));
+      max.addEventListener('click', () => { sellQ = it.have; paint(); });
+      go.addEventListener('click', () => {
+        const r = Input.sellItem(it.k, sellQ);
+        if (!r.ok) { ui.toast(r.msg); return; }
+        ui.toast(r.qty === it.have ? `🪙 +${r.gain} (${r.qty}개 전부)` : `🪙 +${r.gain} (${r.qty}개)`);
+        sellQ = 1;
+        renderShop();
+      });
+      paint();
     }
     function renderShop() {
       $('shop-coin').textContent = `🪙 ${lastInv.coins || 0}`;
       if (shopTab === 'sell') {
-        const price = Input.getSellPrice(); const rates = Input.getPriceRates(); const box = $('sell-items'); box.innerHTML = '';
-        // 📊 오늘의 시세 배너 — 가장 비싼/싼 품목 하이라이트(매일 바뀜 → 팔 타이밍 전략)
-        const ks = Object.keys(price);
-        const hi = ks.reduce((a, b) => (rates[a] >= rates[b] ? a : b));
-        const lo = ks.reduce((a, b) => (rates[a] <= rates[b] ? a : b));
-        const banner = document.createElement('div');
-        banner.className = 'market-banner';
-        banner.innerHTML = `📊 <b>오늘의 시세</b> · ${SELL_ICO_G[hi] || '📦'} 비싸요 <b>+${rates[hi] - 100}%</b> · ${SELL_ICO_G[lo] || '📦'} 싸요 <b>${rates[lo] - 100}%</b>. 내일 또 바뀌어요`;
-        box.appendChild(banner);
-        ks.forEach(k => {
-          const have = lastInv[k] || 0;
-          const d = rates[k] - 100;   // 등락 %(0=기본가)
-          const trend = d > 0 ? ` <span class="up">📈+${d}%</span>` : d < 0 ? ` <span class="down">📉${d}%</span>` : '';
-          const el = document.createElement('div');
-          el.className = 'ck-item' + (have > 0 ? '' : ' off');
-          el.innerHTML = `<span class="ck-ico">${SELL_ICO_G[k] || '📦'}</span><span class="ck-name">${FORAGE_META[k] ? `<b>${FORAGE_META[k].name}</b> ` : ''}보유 ${have}</span><span class="ck-buff">개당 🪙${price[k]}${trend}</span><span class="ck-cost">탭 1개 · 꾹 전부</span>`;
-          bindSell(el, k);   // 탭=1개, 롱프레스=전부 (모바일·데스크톱 공통)
-          box.appendChild(el);
+        const market = Input.getMarket().items; const box = $('sell-items'); const keepTop = box.scrollTop; box.innerHTML = '';
+        const list = sellList(market, lastInv);
+        const top = market[0];
+        if (top && top.rate > 0) {
+          const banner = document.createElement('div');
+          banner.className = 'market-banner';
+          banner.innerHTML = `📊 <span>오늘 가장 비싼 건</span> ${SELL_ICO_G[top.k] || '📦'} <b>${itemName(top.label)}</b> ${trendHtml(top.rate)}`;
+          box.appendChild(banner);
+        }
+        if (!list.length) {
+          sellSel = null;
+          const empty = document.createElement('div');
+          empty.className = 'sl-empty';
+          empty.innerHTML = '<div>팔 수 있는 게 없어요</div><div>작물·목재·물고기를 모아 오세요</div>';
+          box.appendChild(empty);
+          renderSellSheet(null);
+          return;
+        }
+        if (!list.some(i => i.k === sellSel)) { sellSel = list[0].k; sellQ = 1; }
+        const grid = document.createElement('div');
+        grid.className = 'sl-grid';
+        list.forEach((it, n) => {
+          const el = document.createElement('button');
+          el.className = 'sl-cell' + (it.k === sellSel ? ' sel' : '') + (n === 0 && it.rate > 0 ? ' hot' : '');
+          el.innerHTML = `<span class="sl-tr">${it.rate > 0 ? '<span class="up">▲</span>' : it.rate < 0 ? '<span class="down">▼</span>' : ''}</span><span class="sl-ico">${SELL_ICO_G[it.k] || '📦'}</span><span class="sl-nm">${it.name}</span><span class="sl-cnt">${it.have}</span>`;
+          el.addEventListener('click', () => { if (sellSel !== it.k) { sellSel = it.k; sellQ = 1; } renderShop(); });
+          grid.appendChild(el);
         });
+        box.appendChild(grid);
+        box.scrollTop = keepTop;
+        renderSellSheet(list.find(i => i.k === sellSel));
       } else {
         const box = $('buy-items'); box.innerHTML = '';
         const owned = Input.ownedUpgrades(), homiTier = Input.homiTier();
@@ -7320,6 +7414,7 @@
       [...document.querySelectorAll('#shop-menu .sh-tab')].forEach(b => b.classList.toggle('active', b.dataset.tab === t));   // 좌판 탭만 — .sh-tab 은 꾸미기 가게·캐릭터 창도 쓴다
       $('sell-items').style.display = t === 'sell' ? 'flex' : 'none';
       $('buy-items').style.display = t === 'buy' ? 'flex' : 'none';
+      if (t !== 'sell') renderSellSheet(null);
       renderShop();
     }
     document.querySelectorAll('#shop-menu .sh-tab').forEach(b => b.addEventListener('click', () => showShopTab(b.dataset.tab)));

@@ -2101,7 +2101,8 @@ export const Input = {
   toggleBoatView() { boatView = boatView === 'first' ? 'third' : 'first'; if (boat.active) playerAnchor.visible = (boatView === 'third'); boat.group?.userData.fpHide?.forEach(m => { m.visible = boatView === 'third'; }); return boatView; },
   boatViewMode() { return boatView; },
   getShopBuy() { return SHOP_BUY; },                    // 구매 목록
-  sellItem(k, all) { return sellItem(k, all); },        // 자원 판매
+  sellItem(k, req) { return sellItem(k, req); },        // 자원 판매
+  getMarket() { return marketData(); },
   buyShop(id) { return buyShop(id); },                  // 아이템 구매
   getGifts() { return GIFTS; },                         // 선물 종류
   ownedGifts() { return { ...gameState.gifts }; },      // 보유 선물 수

@@ -18,6 +18,7 @@ import { CONFIG } from '../config.js';
 import { PLATFORM } from '../platform.js';
 import { findItem } from '../cosmetics/catalog.js';
 import { HOMI_SKIN_OF } from '../cosmetics/homi-skin-rules.js';
+import { sellQty } from '../shop/sell-rules.js';
 import { storeOpen } from '../shop/paddle.js';
 import { premiumRowMode } from '../shop/premium-row.js';
 import { BUNDLES, bundleCardMode } from '../shop/bundles.js';
@@ -115,10 +116,10 @@ export function marketData() {
 }
 
 // 판매: 보유 자원 → 코인
-export function sellItem(k, all) {
+export function sellItem(k, req) {
   const have = gameState.inventory[k] || 0;
   if (have <= 0) return { ok: false, msg: '팔 게 없어요' };
-  const qty = all ? have : 1;
+  const qty = sellQty(have, req);
   gameState.inventory[k] -= qty;
   const bm = rewardBoostMult(authState.variant, authState.createdAt);   // 🧪 [베타 A군] 판매 부스트
   const gain = Math.round(priceOf(k) * qty * bm);

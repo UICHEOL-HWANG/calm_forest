@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<base href="../">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>상점 팔기 탭 시안</title>
+<style>
+  :root { --cream:#fff7ec; --mint:#bfe8c9; --ink:#4a5a4f; --panel:rgba(255,255,255,0.82); --shadow:0 6px 18px rgba(90,120,100,0.18); --up:#2f9a5e; --down:#c9574a; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:24px; font-family:'Segoe UI', system-ui, 'Apple SD Gothic Neo', sans-serif; color:var(--ink); background:linear-gradient(170deg,#cfe7d6,#a9cdb3) fixed; min-height:100vh; }
+  h1 { font-size:18px; margin:0 0 4px; }
+  .lead { font-size:13px; opacity:.75; margin:0 0 20px; }
+  .opt { display:grid; grid-template-columns:max-content max-content; gap:22px; align-items:start; margin-bottom:34px; }
+  .opt-head { grid-column:1 / -1; }
+  .opt-head h2 { font-size:15px; margin:0 0 4px; }
+  .opt-head p { font-size:12px; margin:0; opacity:.78; max-width:840px; line-height:1.5; }
+  .opt.now h2 { color:#a0574a; }
+  .label { font-size:11px; font-weight:700; opacity:.55; margin:0 0 6px; }
+
+  .te{position:relative;display:inline-block;width:1.2em;height:1.2em;vertical-align:-.22em;line-height:1;flex:none}
+  .te>svg,.te>img{width:100%;height:100%;display:block;pointer-events:none}
+  .te-t{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+  .panel { background:var(--panel); backdrop-filter:blur(8px); border-radius:18px; box-shadow:var(--shadow); padding:12px 16px; display:flex; flex-direction:column; gap:10px; overflow:hidden; }
+  .panel.pc { width:460px; height:600px; }
+  .panel.m { width:345px; height:560px; padding:10px 12px; gap:8px; }
+  .dm-head { font-weight:700; font-size:14px; display:flex; align-items:center; gap:6px; }
+  .dm-head .coin { font-weight:700; opacity:.8; }
+  .tabs { display:flex; gap:6px; justify-content:center; }
+  .sh-tab { border:none; border-radius:10px; padding:6px 16px; font:inherit; font-size:13px; font-weight:700; background:#eef2ee; color:var(--ink); }
+  .sh-tab.active { background:var(--mint); }
+  .scroll { flex:1 1 auto; min-height:0; overflow-y:auto; }
+  .actions { display:flex; justify-content:flex-end; }
+  .actions button { border:none; border-radius:12px; padding:8px 18px; font:inherit; font-weight:700; background:#fff; color:var(--ink); box-shadow:var(--shadow); }
+
+  .now .grid { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; }
+  .now .banner { width:100%; text-align:center; font-size:12px; background:rgba(255,232,176,0.55); border-radius:10px; padding:7px 10px; }
+  .now .ck { display:flex; flex-direction:column; align-items:center; gap:3px; width:92px; padding:10px 6px; border-radius:12px; background:rgba(255,255,255,0.62); box-shadow:var(--shadow); text-align:center; }
+  .m .now-wrap .ck { width:84px; }
+  .now .ck.off { opacity:.4; }
+  .now .ico { font-size:24px; }
+  .now .nm { font-size:12px; font-weight:700; }
+  .now .bf { font-size:10px; opacity:.8; line-height:1.2; }
+  .now .cs { font-size:10.5px; opacity:.75; }
+  .up { color:var(--up); font-weight:700; }
+  .down { color:var(--down); font-weight:700; }
+
+  .hint { font-size:11.5px; text-align:center; opacity:.62; }
+  .market { display:flex; align-items:center; gap:8px; font-size:12px; background:rgba(255,232,176,0.55); border-radius:10px; padding:7px 10px; }
+  .market b { font-weight:800; }
+
+  .a-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; padding-top:6px; }
+  .m .a-grid { grid-template-columns:repeat(3, 1fr); }
+  .a-card { position:relative; display:flex; flex-direction:column; align-items:center; gap:2px; padding:10px 4px 8px; border-radius:14px; background:rgba(255,255,255,0.75); box-shadow:0 2px 6px rgba(90,120,100,0.12); }
+  .a-card .ico { font-size:28px; margin-bottom:2px; }
+  .a-card .nm { font-size:12.5px; font-weight:800; white-space:nowrap; }
+  .a-card .have { font-size:11px; opacity:.6; font-variant-numeric:tabular-nums; }
+  .a-card .pr { font-size:12px; font-weight:700; font-variant-numeric:tabular-nums; margin-top:2px; }
+  .a-card .pr small { font-size:10.5px; margin-left:2px; }
+  .a-card.hot { background:#fff6dc; box-shadow:0 0 0 2px #f2c14e inset; }
+  .a-card .tag { position:absolute; top:-6px; left:50%; transform:translateX(-50%); background:#f2c14e; color:#5b3d05; font-size:9.5px; font-weight:800; padding:1px 7px; border-radius:8px; white-space:nowrap; }
+  .fold { margin-top:12px; font-size:12px; text-align:center; padding:9px; border-radius:12px; background:rgba(255,255,255,0.45); opacity:.85; }
+
+  .chips { display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; flex:0 0 auto; }
+  .chip { flex:0 0 auto; border:none; border-radius:999px; padding:5px 11px; font:inherit; font-size:12px; font-weight:700; background:rgba(255,255,255,0.6); color:var(--ink); white-space:nowrap; }
+  .chip.on { background:var(--ink); color:#fff; }
+  .chip small { opacity:.65; margin-left:3px; font-weight:600; }
+  .b-list { display:flex; flex-direction:column; gap:6px; }
+  .b-row { display:grid; grid-template-columns:36px 1fr auto; align-items:center; gap:10px; padding:8px 10px; border-radius:14px; background:rgba(255,255,255,0.75); }
+  .m .b-row { gap:8px; padding:7px 8px; grid-template-columns:32px 1fr auto; }
+  .b-row .ico { font-size:28px; text-align:center; }
+  .m .b-row .ico { font-size:25px; }
+  .b-row .info { min-width:0; display:flex; flex-direction:column; gap:1px; }
+  .b-row .nm { font-size:13.5px; font-weight:800; white-space:nowrap; }
+  .b-row .nm .have { font-size:11.5px; font-weight:600; opacity:.55; margin-left:4px; font-variant-numeric:tabular-nums; }
+  .b-row .pr { font-size:11.5px; font-variant-numeric:tabular-nums; opacity:.85; }
+  .b-row .pr .up, .b-row .pr .down { margin-left:3px; }
+  .b-row .btns { display:flex; gap:5px; }
+  .b-row button { border:none; border-radius:10px; font:inherit; font-weight:800; font-size:12px; padding:7px 9px; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .b-row .one { background:#eef2ee; color:var(--ink); }
+  .b-row .all { background:var(--mint); color:#24382d; min-width:74px; }
+  .m .b-row .all { min-width:66px; padding:7px 7px; }
+  .b-row.hot { background:#fff6dc; box-shadow:0 0 0 1.5px #f2c14e inset; }
+  .b-row .hotmark { font-size:10px; font-weight:800; color:#8a5a06; background:#f8de8f; border-radius:6px; padding:0 5px; margin-left:5px; vertical-align:1px; }
+
+  .c-grid { display:grid; grid-template-columns:repeat(5, 1fr); gap:7px; }
+  .m .c-grid { grid-template-columns:repeat(4, 1fr); }
+  .c-cell { position:relative; aspect-ratio:1; border-radius:14px; background:rgba(255,255,255,0.75); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; }
+  .c-cell .ico { font-size:28px; }
+  .c-cell .nm { font-size:11px; font-weight:700; white-space:nowrap; }
+  .c-cell .cnt { position:absolute; right:6px; bottom:4px; font-size:11px; font-weight:800; font-variant-numeric:tabular-nums; opacity:.7; }
+  .c-cell .arrow { position:absolute; left:6px; top:4px; font-size:11px; font-weight:800; }
+  .c-cell.sel { box-shadow:0 0 0 2.5px var(--ink) inset; background:#fff; }
+  .c-cell.hot { background:#fff6dc; }
+  .sheet { flex:0 0 auto; border-radius:16px; background:#fff; padding:10px 12px; display:flex; flex-direction:column; gap:8px; box-shadow:0 -2px 10px rgba(90,120,100,0.12); }
+  .sheet .top { display:flex; align-items:center; gap:8px; }
+  .sheet .top .ico { font-size:30px; }
+  .sheet .top .nm { font-size:14px; font-weight:800; }
+  .sheet .top .sub { font-size:11.5px; opacity:.7; font-variant-numeric:tabular-nums; }
+  .sheet .row { display:flex; align-items:center; gap:6px; }
+  .step { display:flex; align-items:center; background:#eef2ee; border-radius:10px; }
+  .step button { border:none; background:none; font:inherit; font-size:16px; font-weight:800; width:32px; height:32px; color:var(--ink); }
+  .step span { min-width:30px; text-align:center; font-weight:800; font-variant-numeric:tabular-nums; }
+  .sheet .max { border:none; border-radius:10px; padding:7px 10px; font:inherit; font-size:12px; font-weight:800; background:#eef2ee; color:var(--ink); }
+  .sheet .go { margin-left:auto; border:none; border-radius:12px; padding:9px 14px; font:inherit; font-size:13px; font-weight:800; background:var(--mint); color:#24382d; font-variant-numeric:tabular-nums; }
+</style>
+</head>
+<body>
+<h1>🛒 상점 · 팔기 탭 시안</h1>
+<p class="lead">같은 가방(목재 44 · 돌 15 · 작물 6 · 바지락 8 · 꼬막 2 · 달걀 4 · 사과 5 · 밀가루 2 · 물고기 3)과 같은 오늘 시세로 그렸어요. 왼쪽 PC 460px, 오른쪽 모바일 345px.</p>
+<div id="root"></div>
+
+<script type="module">
+import { ICON_BY_EMOJI } from './js/icons/toss-icons.js';
+import { ICON_ALL } from './js/icons/toss-icons-all.js';
+import { createEmojiConverter } from './js/icons/emoji-dom.js';
+
+const ITEMS = [
+  ['wood','목재','🪵',2,-15,'forest',44],['stone','돌','🪨',3,-25,'forest',15],['coal','석탄','⚫',6,14,'forest',0],['gem','보석','💎',40,25,'forest',0],['crystal','수정','🔮',25,29,'forest',0],['bug','반딧불이','🌟',14,-6,'forest',0],['forage','채집물','🍄',7,5,'forest',0],
+  ['crop','작물','🥕',5,-20,'farm',6],['wheat','밀','🌾',15,9,'farm',0],['corn','옥수수','🌽',20,-8,'farm',0],['grape','포도','🍇',30,12,'farm',0],['egg','달걀','🥚',6,-11,'farm',4],['honey','꿀','🍯',12,3,'farm',0],['apple','사과','🍎',8,18,'farm',5],['pear','배','🍐',10,-4,'farm',0],['peach','복숭아','🍑',13,7,'farm',0],['persimmon','감','🍊',16,-9,'farm',0],['chestnut','밤','🌰',20,11,'farm',0],
+  ['fish','물고기','🐟',8,-5,'sea',3],['mf_clam','바지락','🐚',2,22,'sea',8],['mf_crab','칠게','🦀',1,-12,'sea',0],['mf_cockle','꼬막','🐚',3,30,'sea',2],['mf_razor','맛조개','🐚',4,-3,'sea',0],['mf_scallop','가리비','🐚',6,10,'sea',0],['dv_conch','소라','🐚',2,-7,'sea',0],['dv_abalone','전복','🦪',5,4,'sea',0],['dv_pearl','진주','💎',18,-2,'sea',0],
+  ['charcoal','숯','⚫',9,-9,'craft',0],['flour','밀가루','🌾',18,24,'craft',2],['brick','벽돌','🧱',12,7,'craft',0],['bread','빵','🥐',26,-2,'craft',0],['juice','포도즙','🍷',40,-21,'craft',0],['apple_jam','사과잼','🥫',12,-3,'craft',0],['roast_chestnut','군밤','🌰',30,11,'craft',0],['gotgam','곶감','🍡',24,-6,'craft',0],
+].map(([k,name,ico,base,rate,cat,have]) => ({ k, name, ico, rate, cat, have, price: Math.max(1, Math.round(base * (100 + rate) / 100)) }));
+
+const CATS = [['all','전체'],['farm','농사'],['sea','바다'],['forest','숲·광물'],['craft','가공품']];
+const owned = ITEMS.filter(i => i.have > 0);
+const hiAll = ITEMS.reduce((a, b) => (a.rate >= b.rate ? a : b));
+const hiOwned = owned.reduce((a, b) => (a.rate >= b.rate ? a : b));
+const rateTxt = r => (r > 0 ? `<span class="up">▲${r}%</span>` : r < 0 ? `<span class="down">▼${-r}%</span>` : '');
+
+const shell = (size, body) => `<div class="panel ${size}">
+  <div class="dm-head">🛒 상점 <span class="coin">🪙 80</span></div>
+  <div class="tabs"><button class="sh-tab active">💰 팔기</button><button class="sh-tab">🛍️ 사기</button></div>
+  ${body}
+  <div class="actions"><button>닫기</button></div>
+</div>`;
+
+function now() {
+  const lo = ITEMS.reduce((a, b) => (a.rate <= b.rate ? a : b));
+  const cards = ITEMS.map(i => {
+    const tr = i.rate > 0 ? ` <span class="up">📈+${i.rate}%</span>` : i.rate < 0 ? ` <span class="down">📉${i.rate}%</span>` : '';
+    const nm = i.k.startsWith('mf_') || i.k.startsWith('dv_') ? `<b>${i.name}</b> ` : '';
+    return `<div class="ck${i.have ? '' : ' off'}"><span class="ico">${i.ico}</span><span class="nm">${nm}보유 ${i.have}</span><span class="bf">개당 🪙${i.price}${tr}</span><span class="cs">탭 1개 · 꾹 전부</span></div>`;
+  }).join('');
+  return `<div class="scroll now-wrap"><div class="grid"><div class="banner">📊 <b>오늘의 시세</b> · ${hiAll.ico} 비싸요 <b>+${hiAll.rate}%</b> · ${lo.ico} 싸요 <b>${lo.rate}%</b>. 내일 또 바뀌어요</div>${cards}</div></div>`;
+}
+
+function optA() {
+  const list = [...owned].sort((a, b) => b.rate - a.rate);
+  const cards = list.map(i => `<div class="a-card${i === hiOwned ? ' hot' : ''}">${i === hiOwned ? '<span class="tag">오늘 비싸요</span>' : ''}<span class="ico">${i.ico}</span><span class="nm">${i.name}</span><span class="have">${i.have}개</span><span class="pr">🪙${i.price}<small>${rateTxt(i.rate)}</small></span></div>`).join('');
+  return `<div class="hint">탭하면 1개, 꾹 누르면 전부 팔아요</div>
+  <div class="scroll"><div class="a-grid">${cards}</div><div class="fold">가방에 없는 품목 시세 보기 (${ITEMS.length - owned.length}) ▾</div></div>`;
+}
+
+function optB() {
+  const counts = Object.fromEntries(CATS.map(([c]) => [c, c === 'all' ? owned.length : owned.filter(i => i.cat === c).length]));
+  const chips = CATS.map(([c, l], n) => `<button class="chip${n === 0 ? ' on' : ''}">${l}<small>${counts[c]}</small></button>`).join('');
+  const list = [...owned].sort((a, b) => b.rate - a.rate);
+  const rows = list.map(i => `<div class="b-row${i === hiOwned ? ' hot' : ''}"><span class="ico">${i.ico}</span>
+    <span class="info"><span class="nm">${i.name}<span class="have">${i.have}개</span>${i === hiOwned ? '<span class="hotmark">오늘 최고</span>' : ''}</span><span class="pr">개당 🪙${i.price}${rateTxt(i.rate)}</span></span>
+    <span class="btns"><button class="one">1개</button><button class="all">전부 🪙${i.price * i.have}</button></span></div>`).join('');
+  return `<div class="market">📊 <span>오늘 가장 비싼 건 ${hiAll.ico} <b>${hiAll.name} ▲${hiAll.rate}%</b></span></div>
+  <div class="chips">${chips}</div>
+  <div class="scroll"><div class="b-list">${rows}</div></div>`;
+}
+
+function optC() {
+  const list = [...owned].sort((a, b) => b.rate - a.rate);
+  const sel = owned.find(i => i.k === 'wood');
+  const cells = list.map(i => `<div class="c-cell${i === sel ? ' sel' : ''}${i === hiOwned ? ' hot' : ''}"><span class="arrow">${i.rate > 0 ? '<span class="up">▲</span>' : i.rate < 0 ? '<span class="down">▼</span>' : ''}</span><span class="ico">${i.ico}</span><span class="nm">${i.name}</span><span class="cnt">${i.have}</span></div>`).join('');
+  const q = 10;
+  return `<div class="market">📊 <span>오늘 가장 비싼 건 ${hiAll.ico} <b>${hiAll.name} ▲${hiAll.rate}%</b></span></div>
+  <div class="scroll"><div class="c-grid">${cells}</div></div>
+  <div class="sheet"><div class="top"><span class="ico">${sel.ico}</span><span><div class="nm">${sel.name}</div><div class="sub">개당 🪙${sel.price} ${rateTxt(sel.rate)} · ${sel.have}개 있어요</div></span></div>
+  <div class="row"><div class="step"><button>−</button><span>${q}</span><button>+</button></div><button class="max">전부</button><button class="go">팔기 🪙${sel.price * q}</button></div></div>`;
+}
+
+const OPTS = [
+  ['now', '지금 (재현)', '품목 38개를 전부 깔고 30개 가까이가 흐린 0개 카드. 갯벌 채집물만 이름이 있어 🐚 다섯 종이 구분 안 됨. "탭 1개 · 꾹 전부"가 카드마다 반복.', now],
+  ['a', 'A안 · 가진 것만, 이름 붙인 카드', '조작은 지금 그대로(탭 1개 · 꾹 전부). 가방에 있는 품목만 보여 주고 이름·개수·시세를 카드에 정리. 안 가진 품목 시세는 접어 둠. 바뀌는 폭이 가장 작아요.', optA],
+  ['b', 'B안 · 목록 + [1개] [전부] 버튼', '꾹 누르기 같은 숨은 조작을 없애고 버튼으로. "전부" 버튼에 받을 코인을 미리 보여 줘서 실수 판매가 줄어요. 분류 칩으로 바다·농사를 나눠 봐요. 품목이 늘어도 한 줄씩이라 정돈돼 보여요.', optB],
+  ['c', 'C안 · 골라서 수량 정해 팔기', '칸을 고르면 아래 판매대에서 수량(−/+ · 전부)을 정하고 팔기. 목재 44개 중 10개만 파는 식의 조절이 쉬워요. 대신 한 번 팔 때 탭이 2~3번 들어요.', optC],
+];
+
+document.getElementById('root').innerHTML = OPTS.map(([id, title, desc, fn]) => `<section class="opt ${id}" id="opt-${id}">
+  <div class="opt-head"><h2>${title}</h2><p>${desc}</p></div>
+  <div><div class="label">PC</div>${shell('pc', fn())}</div>
+  <div><div class="label">모바일</div>${shell('m', fn())}</div>
+</section>`).join('');
+
+createEmojiConverter({ ...ICON_ALL, ...ICON_BY_EMOJI }).convert(document.body);
+</script>
+</body>
+</html>
