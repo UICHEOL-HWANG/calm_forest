@@ -102,10 +102,11 @@ test('첫 방문 안내: 시작·매 프레임·숨김·귀항 순서가 연결�
   for (const f of ['js/guide/view.js', 'js/port/guide-steps.js']) assert.doesNotMatch(read(f), /^\s*\/\/|\/\*/m);
 });
 
-test('guide_step 이벤트는 분류표에 flow|step|ms 로 있다', () => {
+test('guide_step 이벤트는 분류표에 flow·step·ms 를 담는다', () => {
   const row = read('docs/analysis/event-taxonomy.csv').split('\n').find(l => l.startsWith('guide_step,'));
   assert.ok(row);
-  assert.match(row, /,flow\|step\|ms,/);
+  const params = row.split(',')[10].split('|');
+  for (const k of ['flow', 'step', 'ms']) assert.ok(params.includes(k), k);
 });
 
 test('통배 부두 데크는 물 충돌 원 밖 뭍에서 시작해 걸어서 오를 수 있다', () => {
