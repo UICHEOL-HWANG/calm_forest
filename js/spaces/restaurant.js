@@ -7,7 +7,7 @@ import { trackEvent } from '../analytics.js';
 import { logEcon } from '../metrics.js';
 import { NPCS } from '../data/npcs.js';
 import { buildNPCFigure } from './npc.js';
-import { RESTAURANT, RESTAURANT_GATE, RESTAURANT_FACE, HALL, STAR, restaurantLocal, restaurantBox } from '../restaurant/data.js';
+import { RESTAURANT, RESTAURANT_GATE, RESTAURANT_FACE, RESTAURANT_SIGN, HALL, STAR, restaurantLocal, restaurantBox } from '../restaurant/data.js';
 import { buildBistro, setBistroEvening } from '../restaurant/exterior.js';
 import { buildHall } from '../restaurant/hall.js';
 import { grantStarter, panState } from '../restaurant/rules.js';
@@ -48,7 +48,7 @@ export function spawnRestaurantGate() {
   g.rotation.y = OUT_HEADING;
   exterior = buildBistro(THREE);
   g.add(exterior);
-  g.add(makeSignpost(RESTAURANT_COPY.sign, -4.3, 3.0));
+  g.add(makeSignpost(RESTAURANT_COPY.sign, RESTAURANT_SIGN.x, RESTAURANT_SIGN.z));
   scene.add(g);
   obstacles.push({ x, z, r: 3.4 });
   const box = (x1, z1, x2, z2) => { const b = restaurantBox(x1, z1, x2, z2); solidBox(b.x1, b.z1, b.x2, b.z2); };

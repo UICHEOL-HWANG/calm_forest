@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { restaurantGuideSteps, guideStage, shownStep, villageVia, hallVia } from '../js/restaurant/guide-steps.js';
 import { createGuide } from '../js/guide/runner.js';
 import { createSession, tickSession, actAt } from '../js/restaurant/session.js';
-import { HALL, RESTAURANT_GATE, RESTAURANT_FACE, restaurantLocal, restaurantScatterBlocks } from '../js/restaurant/data.js';
+import { HALL, RESTAURANT_GATE, RESTAURANT_FACE, RESTAURANT_SIGN, restaurantLocal, restaurantScatterBlocks } from '../js/restaurant/data.js';
 
 const base = { inside: true, running: true, served: 0, held: null, pan: null };
 
@@ -104,4 +104,20 @@ test('가이드 러너로 8단계 끝까지', () => {
   ];
   for (const c of seq) g.tick({ ...c, stage: guideStage(c) });
   assert.ok(done);
+});
+
+test('식당 팻말은 옆으로 돌아 들어오는 길을 막지 않는다', () => {
+  const door = restaurantLocal(0, 3.1);
+  const sign = restaurantLocal(RESTAURANT_SIGN.x, RESTAURANT_SIGN.z);
+  const segDist = (a, b, p) => {
+    const dx = b.x - a.x, dz = b.z - a.z, t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.z - a.z) * dz) / (dx * dx + dz * dz)));
+    return Math.hypot(a.x + dx * t - p.x, a.z + dz * t - p.z);
+  };
+  for (const side of [-1, 1]) {
+    const lane = restaurantLocal(side * 4.7, 0);
+    const corner = villageVia(restaurantLocal(side * 4.7, -1), door);
+    const front = villageVia(corner, door);
+    assert.ok(segDist(lane, corner, sign) > 0.7, `lane ${side}`);
+    assert.ok(segDist(corner, front, sign) > 0.7, `front ${side}`);
+  }
 });

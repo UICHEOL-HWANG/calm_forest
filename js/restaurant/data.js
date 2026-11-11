@@ -1,6 +1,7 @@
 export const RESTAURANT = { x: 0, z: 620 };
 export const RESTAURANT_GATE = { x: -5, z: 35.5 };
 export const RESTAURANT_FACE = 1;
+export const RESTAURANT_SIGN = { x: -5.6, z: 4.6 };
 export const restaurantLocal = (lx, lz) => ({ x: RESTAURANT_GATE.x + RESTAURANT_FACE * lx, z: RESTAURANT_GATE.z + RESTAURANT_FACE * lz });
 export const toRestaurantLocal = (x, z) => ({ x: (x - RESTAURANT_GATE.x) * RESTAURANT_FACE, z: (z - RESTAURANT_GATE.z) * RESTAURANT_FACE });
 export function restaurantBox(x1, z1, x2, z2) {
