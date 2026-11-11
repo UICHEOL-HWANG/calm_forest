@@ -324,7 +324,7 @@ import { UNLOCK_IDS, defaultUnlocks, newlyUnlocked, restoreUnlocks, unlockQuestC
 import { BRIDGE_ANG, BRIDGE_COST, ISLE, ISLE_R, bridgeBroken, bridgeFoot, bridgePoint, streamR } from './world/bridge.js';   // 🌉 박물관 섬 개울·다리(순수)
 import { bridgeBrokenNow, bridgeInteract, buildBridge, clampToStream, syncBridge } from './spaces/bridge.js';   // 📦 🌉 무너진 다리(해금 4단계)
 import { clampVillage } from './world/walk-bounds.js';
-import { initMapSnapshot, mapSignature, tickMapSnapshot } from './world/map-snapshot.js';
+import { initMapSnapshot, mapSignature, tickMapSnapshot, shootMapNow } from './world/map-snapshot.js';
 import { defaultTree, habitatDone, restoreTree } from './world/tree-board.js';   // 🌳 세계수 판(순수) — docs/superpowers/specs/2026-10-16-world-tree-board-design.md
 import { defaultBloom, restoreBloom } from './world/tree-bloom.js';
 import { WORLD_TREE, buildWorldTree, debugTreeShot, openWorldTree, queueChapterShot, treeShotBusy, treeShotFogPush, updateWorldTree } from './spaces/world-tree.js';   // 📦 🌳 마을 세계수 랜드마크 + 판 진입
@@ -2895,7 +2895,7 @@ export async function enterGame() {
     window.__outdoor = (id, x, z, rot = 0) => placeOutdoor(x, z, true, id, rot);
     window.__goFloor = goFloor;                       // 🪜 실내 층 이동(검수용) — goFloor 는 모듈 지역 함수라 여기서만 노출
   }
-  await warmBeforeReveal({ warm: () => warmShaders(renderer, scene, camera), veil: revealVeil(), hold: (v) => { holdRender = v; } });
+  await warmBeforeReveal({ warm: async () => { await warmShaders(renderer, scene, camera); await shootMapNow(); }, veil: revealVeil(), hold: (v) => { holdRender = v; } });
   // 테스트: ?river=1 — 나루터(강 공간)에서 시작. ?time=0.8 과 조합하면 밤 물길 확인
   if (_wq.get('river') === '1') setTimeout(() => enterRiver(), 60);
   // 테스트: ?mist=1 — 안개 낀 숲에서 시작. ?weather=fog 와 조합하면 🌟황금 정령 확인

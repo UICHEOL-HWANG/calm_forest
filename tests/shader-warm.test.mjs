@@ -31,5 +31,5 @@ test('game.js 는 월드 부팅 끝과 플레이 시작 직전에 셰이더를 �
   const game = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
   const boot = game.slice(game.indexOf('export async function bootWorld('), game.indexOf('export async function enterGame('));
   assert.match(boot, /setTimeout\(\(\) => warmShaders\(renderer, scene, camera\), 0\);/);
-  assert.match(game, /warm: \(\) => warmShaders\(renderer, scene, camera\)/);
+  assert.match(game, /await warmShaders\(renderer, scene, camera\); await shootMapNow\(\);/);
 });
