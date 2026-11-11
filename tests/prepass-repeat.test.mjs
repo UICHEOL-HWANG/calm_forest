@@ -39,3 +39,12 @@ test('광고로 앞당긴 가공은 받을 때 rushed 로 구분되고 세이브
   assert.equal(sanitizeSlots([{ item: 'charcoal', qty: 3, grade: 1, day: '2026-11-11' }])[0].rushed, undefined);
   assert.equal(claimAll(slots, '2026-11-11').claimed[0].rushed, true);
 });
+
+test('판매 웃돈 광고는 받은 뒤 버튼을 넘겨 상점이 지울 수 있다(한 판매에 한 번)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const game = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  const fn = game.slice(game.indexOf('function sellAdButton('), game.indexOf('function dailyAdButton('));
+  assert.match(fn, /\(ok, btn\) => onDone\?\.\(ok, btn\)/);
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /Input\.sellAdButton\(k, gain, \(ok\) => \{ if \(!ok\) return; box\.replaceChildren\(\); renderShop\(\); \}\)/);
+});

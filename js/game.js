@@ -1999,7 +1999,7 @@ function craftAdButton(station, onDone) {
 function sellAdButton(item, gain, onDone) {
   const bonus = sellBonus(gain);
   if (!bonus || !repeatOpen(gameState.houseStage) || !rewarded?.offer('sell_bonus')) return null;
-  return rewarded.button('sell_bonus', ['광고 보고', ' ', `🪙 ${bonus}`, ' ', '웃돈 받기'], () => { giveReward({ coins: bonus }, 'sell_bonus', item); requestSave(); }, (ok) => onDone?.(ok));
+  return rewarded.button('sell_bonus', ['광고 보고', ' ', `🪙 ${bonus}`, ' ', '웃돈 받기'], () => { giveReward({ coins: bonus }, 'sell_bonus', item); requestSave(); }, (ok, btn) => onDone?.(ok, btn));
 }
 
 function dailyAdButton(coins, streak) {

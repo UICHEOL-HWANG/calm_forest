@@ -7544,7 +7544,7 @@
     function showSellAd(k, gain) {
       const box = $('sell-ad');
       box.replaceChildren();
-      const b = Input.sellAdButton(k, gain, (ok, btn) => { if (!ok) return; if (btn.parentNode === box) box.replaceChildren(); renderShop(); });
+      const b = Input.sellAdButton(k, gain, (ok) => { if (!ok) return; box.replaceChildren(); renderShop(); });
       if (b) box.appendChild(b);
     }
     function renderShop() {
