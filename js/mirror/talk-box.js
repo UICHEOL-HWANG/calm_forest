@@ -10,11 +10,11 @@ import { toneOf, applyTone } from '../ui/npc-tone.js';
 let el = null, openedAt = 0;
 const $ = (id) => document.getElementById(id);
 
-/** 박스를 띄운다 — face: 이모지, color: 주민 색(CSS 색, 이름·테두리 그림자·얼굴 바탕이 따라감), next: 닫는 법 안내 */
-export function showTalk({ face, color, name, line, next }) {
+/** 박스를 띄운다 — face: 이모지, color: 주민 색(CSS 색, 이름·테두리 그림자·얼굴 바탕이 따라감), portrait: 얼굴 칸 CSS 배경(초상화), next: 닫는 법 안내 */
+export function showTalk({ face, color, portrait = '', name, line, next }) {
   el ??= $('mirror-talk');
   if (!el) return;
-  $('mt-face').textContent = face; applyTone(el, toneOf(color));
+  $('mt-face').textContent = face; $('mt-face').style.background = portrait; applyTone(el, toneOf(color));
   $('mt-name').textContent = name; $('mt-line').textContent = line; $('mt-next').textContent = next;
   el.classList.add('show');
   openedAt = performance.now();

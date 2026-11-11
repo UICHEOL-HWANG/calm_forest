@@ -487,7 +487,7 @@ function islandContext() {
 function showLine() {
   const def = ISLAND_NPCS[talk.id];
   const badge = '#' + def.badge.toString(16).padStart(6, '0');
-  showTalk({ face: '', color: `url(${npcPortrait(talk.id)}) center / 100% no-repeat, ${badge}44`, name: def.name, line: talk.lines[0], next: env.isTouch() ? '▶ 탭' : '▶ Space · 클릭' });
+  showTalk({ face: '', color: badge, portrait: `url(${npcPortrait(talk.id)}) center / 100% no-repeat, ${badge}44`, name: def.name, line: talk.lines[0], next: env.isTouch() ? '▶ 탭' : '▶ Space · 클릭' });
 }
 
 function talkTo(id, kind) {
