@@ -121,3 +121,21 @@ test('식당 팻말은 옆으로 돌아 들어오는 길을 막지 않는다', (
     assert.ok(segDist(corner, front, sign) > 0.7, `front ${side}`);
   }
 });
+
+test('옆에서 오면 테라스 탁자·기둥을 지나지 않고 앞으로 돌아 들어간다', () => {
+  const door = restaurantLocal(0, 3.1);
+  const props = [[-2, 3.85, 0.75], [2, 3.85, 0.75], [-3.25, 4.5, 0.15], [3.25, 4.5, 0.15], [-3.35, 2.2, 0.35], [3.35, 2.2, 0.35]].map(([x, z, r]) => ({ ...restaurantLocal(x, z), r }));
+  const segDist = (a, b, p) => {
+    const dx = b.x - a.x, dz = b.z - a.z, t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.z - a.z) * dz) / (dx * dx + dz * dz)));
+    return Math.hypot(a.x + dx * t - p.x, a.z + dz * t - p.z);
+  };
+  for (const start of [[-4.7, 0], [-5.2, 3.9], [4.7, 1], [5, 3.6], [-6, -4]]) {
+    let me = restaurantLocal(...start);
+    for (let i = 0; i < 4; i++) {
+      const next = villageVia(me, door);
+      if (!next) break;
+      for (const p of props) assert.ok(segDist(me, next, p) > p.r + 0.35, `${start} -> ${JSON.stringify(next)} hits ${JSON.stringify(p)}`);
+      me = next;
+    }
+  }
+});

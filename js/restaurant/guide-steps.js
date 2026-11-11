@@ -36,7 +36,7 @@ export function shownStep(steps, index, stage) {
   return steps[Math.min(index, stage)] ?? null;
 }
 
-const BOX = { x0: -3.8, x1: 3.8, z0: -3.2, z1: 2.8 };
+const BOX = { x0: -3.8, x1: 3.8, z0: -3.2, z1: 4.8 };
 
 function segHitsBox(a, b, box) {
   let t0 = 0, t1 = 1;
@@ -50,7 +50,7 @@ function segHitsBox(a, b, box) {
   return true;
 }
 
-const LANE_HALF = 1.1, APPROACH = 2.8, CORNER_Z = 2.2;
+const LANE_HALF = 1.1, APPROACH = 2.8, CORNER_Z = 1.0;
 
 export function villageVia(me, door) {
   const m = toRestaurantLocal(me.x, me.z), d = toRestaurantLocal(door.x, door.z);
