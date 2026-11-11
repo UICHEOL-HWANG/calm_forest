@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
 test('세로 폰에서 길 안내 카드는 아래 안내 줄 위에 뜬다(의뢰 패널을 덮지 않게)', () => {
-  assert.match(html, /@media \(orientation: portrait\) \{\n\s*body\.is-touch #guide-card \{ top: auto; bottom: calc\(196px \+ env\(safe-area-inset-bottom\)\); font-size: 12\.5px; padding: 3px 12px; \}\n\s*\}/);
+  assert.match(html, /@media \(orientation: portrait\) \{\n\s*body\.is-touch #guide-card \{ top: auto; bottom: calc\(280px \+ env\(safe-area-inset-bottom\)\); font-size: 12\.5px; padding: 3px 12px; \}\n\s*\}/);
 });
 
 test('아래 안내가 떠 있으면 그 위로 비켜 선다', () => {
