@@ -38,4 +38,4 @@ Last Updated: 2026-11-10 18:40 KST
 - [x] 전체 테스트 4615/0, 작업 트리 깨끗, js/b 번들은 배포 때 생성(커밋본 없음)
 - [ ] 푸시 + 5곳 배포(사용자 승인 후): 로컬 커밋 1c8d8051~389030a9, main+capacitor 둘 다
 - [ ] 배포 뒤 진행된 계정으로 바람 슉 실청취(목표 안내·세계수 지역/장·집터 연출 시작 때)
-- [ ] feat/admob-rewarded 병합 + setPrepassProvider 연결(없으면 광고 버튼 안 뜸)
+- [x] feat/admob-rewarded 병합 + setPrepassProvider 연결(2026-11-11 release/merge-1111 → main 257cdd22, 미푸시). 애드몹 모듈은 js/ads/admob.js 로 이름 바꿈(js/ads/rewarded.js 는 안내 버튼). available 이 불리언이라 `{ available: () => rewardedAvailable, show: showRewarded }` 로 감쌈. tests/admob-prepass-wiring.test.mjs
