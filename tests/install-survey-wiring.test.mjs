@@ -7,12 +7,13 @@ import { SURVEY_OPTIONS } from '../js/install-survey.js';
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 const html = read('index.html');
 
-test('로딩과 병렬로 시작하고, 인증 직전에만 기다린다', () => {
+test('설문을 띄웠으면 답을 받은 뒤 월드를 부팅하고, 안 띄웠으면 기다리지 않는다', () => {
   const start = html.indexOf('surveyP = bootInstallSurvey({');
+  const gate = html.indexOf('if (await surveyDecided) await surveyP;');
   const world = html.indexOf('else await ensureWorld();');
-  const wait = html.indexOf('await surveyP;');
+  const wait = html.lastIndexOf('await surveyP;');
   const auth = html.indexOf('const res = await initAuth(');
-  assert.ok(start > 0 && start < world, 'bootWorld 전에 시작(기다리지 않고)');
+  assert.ok(start > 0 && start < gate && gate < world, '월드 부팅이 설문 탭을 막지 않게 — 물을 때만 답을 먼저 받는다');
   assert.ok(world < wait && wait < auth, 'bootWorld 뒤·initAuth 전에 대기 — 초대 코드가 enterPlay 전에 보관돼야 한다');
   assert.doesNotMatch(html, /await bootInstallSurvey/);
   assert.doesNotMatch(html, /await bootInstallReferrer/, 'Play 귀속도 여전히 기다리지 않는다');

@@ -1474,6 +1474,9 @@
   #guide-card small { color: #9a6a12; margin-right: 6px; font-size: 12px; }
   #guide-card[hidden], #guide-mark[hidden], #guide-edge[hidden] { display: none; }
   body:has(#mirror-talk.show) #guide-card { display: none; }
+  @media (orientation: portrait) {
+    body.is-touch #guide-card { top: auto; bottom: calc(196px + env(safe-area-inset-bottom)); font-size: 12.5px; padding: 3px 12px; }
+  }
   #guide-mark { position: fixed; z-index: 6; transform: translate(-50%, -100%); font-size: 30px; line-height: 1; text-align: center; pointer-events: none; filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); animation: guide-bob .8s infinite alternate ease-in-out; }
   #guide-mark span, #guide-edge span { display: block; font-size: 12px; font-weight: 800; color: #fff; text-shadow: 0 1px 2px #000; white-space: nowrap; }
   @keyframes guide-bob { to { transform: translate(-50%, -125%); } }
@@ -4142,13 +4145,22 @@
     //   고정 px 로 띄우면 폰트 크기·줄바꿈(손님 대사가 길어질 때)에 따라 겹치므로 실제 높이를 잰다.
     //   CSS 기본값은 문 프롬프트와 같은 높이라, 혼자 뜰 땐 그 자리에 그대로 표시된다.
     const PROMPT_GAP = 10;
+    function placeGuideCard() {
+      const card = $('guide-card');
+      if (!card) return;
+      const portraitTouch = document.body.classList.contains('is-touch') && matchMedia('(orientation: portrait)').matches;
+      const rows = portraitTouch ? ['door-prompt', 'fish-prompt', 'zone-prompt'].map($).filter(e => e && e.classList.contains('show')) : [];
+      const top = rows.length ? Math.min(...rows.map(e => e.getBoundingClientRect().top)) : null;
+      card.style.bottom = top == null ? '' : Math.round(window.innerHeight - top + PROMPT_GAP) + 'px';
+    }
     function layoutPrompts() {
       const zone = $('zone-prompt');
-      if (!zone.classList.contains('show')) { zone.style.bottom = ''; return; }
+      if (!zone.classList.contains('show')) { zone.style.bottom = ''; placeGuideCard(); return; }
       const below = ['door-prompt', 'fish-prompt'].map($).filter(e => e && e.classList.contains('show'));
-      if (!below.length) { zone.style.bottom = ''; return; }   // 혼자면 CSS 기본 위치
+      if (!below.length) { zone.style.bottom = ''; placeGuideCard(); return; }   // 혼자면 CSS 기본 위치
       const top = Math.min(...below.map(e => e.getBoundingClientRect().top));
       zone.style.bottom = Math.round(window.innerHeight - top + PROMPT_GAP) + 'px';
+      placeGuideCard();
     }
     window.addEventListener('resize', layoutPrompts);   // 회전·주소창 변화 대응
 
@@ -8542,6 +8554,8 @@
       // 🧭 첫 실행 설문 — 로딩(bootWorld)과 병렬로 띄운다. 기다리지 않고 시작만, 인증 직전에만 기다린다(답이 느린 사람만 대기)
       let syncSurvey = () => {};
       let surveyP = Promise.resolve(null);
+      let surveyDecide = () => {};
+      const surveyDecided = new Promise(r => { surveyDecide = r; });
       try {
         const storage = localStorage;
         syncSurvey = (auth) => syncInstallSurvey({ auth, storage, insert: insertInstallSurvey, platform: PLATFORM }).catch(() => {});
@@ -8549,8 +8563,10 @@
           platform: PLATFORM, storage, doc: document, root: $('survey-card'), t, track: trackEvent, setUserProps: setSurveyUserProps,
           referrerP, fresh: referrerFresh,
           dev: IS_DEV_SESSION, force: IS_DEV_SESSION && new URLSearchParams(location.search).get('survey') === '1',   // QA: ?dbg&survey=1
+          onDecide: (v) => surveyDecide(v),
         });
-      } catch (e) { /* 저장소 없음 — 설문만 빠진다 */ }
+      } catch (e) { surveyDecide(false); }
+      if (await surveyDecided) await surveyP;
       if (loginFirstBoot) document.body.classList.add('pre-world');
       else await ensureWorld();                      // ① 씬을 로그인 배경으로 먼저 부팅
       await surveyP;                                 // 🧭 설문에 아직 답하는 중이면 기다린다 — 🤝 초대 코드가 enterPlay 전에 cf_invite 에 있어야 한다
