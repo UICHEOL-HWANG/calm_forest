@@ -443,6 +443,7 @@ export const EN = {
   '✅ 여기라면 찾아올 거예요': "✅ They'll come to a spot like this",
   '호랑나비': 'Swallowtail',
   '참새': 'Sparrow',
+  '희귀 손님이 찾아왔어요': 'A rare visitor has arrived',
   '고슴도치': 'Hedgehog',
   '청개구리': 'Tree Frog',
   '꽃이 많은 곳': 'Somewhere full of flowers',

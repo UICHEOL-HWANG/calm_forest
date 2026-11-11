@@ -6,7 +6,7 @@
 //     game.js 에 남은 let 에 쓸 때는 `$w.x = …` (읽기는 그냥 x). 도구·증명: tools/refactor/
 // =============================================================
 import {
-  $w, atFarm, dexDiscover, farmGroup, farmHalf, firstHint, gameState, habitatCells, habitatCtx, habitatEnvAt,
+  $w, atFarm, camera, colliders, dexDiscover, farmGroup, farmHalf, firstHint, gameState, habitatCells, habitatCtx, habitatEnvAt,
   nearDoor, player, playerInYard, plots, roundRect, setSpaceVisible, snapCamera, ui,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
@@ -14,7 +14,10 @@ import { decorBanner } from '../decor-drops/index.js';
 import { FARM, FARM_GATE } from '../data/places.js';
 import { CELL as FARM_CELL } from '../farm-building.js';
 import { animateBubble, makeRing, onTop } from '../bubble-fx.js';
-import { createVisitors } from '../farm-visitors.js';
+import { createVisitors, edgeSpot } from '../farm-visitors.js';
+import { createArriveFx } from '../visitor-arrive.js';
+import { edgeArrow } from '../guide/route.js';
+import { t } from '../i18n.js';
 import { matchVisitors, visitorOf } from '../habitat.js';
 import { Sound } from '../sound.js';
 import { e1Pending } from './e1-start.js';   // 🧪 E1 처치 대기 중엔 첫 안내·방문객을 첫 수확 뒤로
@@ -62,8 +65,61 @@ const VBUBBLE = { w: 0.85, h: 0.85, y: 1.35 };
 const VALERT_R = 5;   // 살펴보기 반경(CATCH_R 2.5)의 두 배 — 다가가는 동안 눈에 띄게
 
 /** 매 프레임 — 🔍 말풍선 연출(모든 방문객 공통: 참새·나비 같은 히든 손님 전부) */
+const ARRIVE_COPY = '희귀 손님이 찾아왔어요';
+const EDGE_SEC = 6;
+const arrive = createArriveFx(THREE);
+let edgeWatch = null, edgeEl = null;
+const edgeV = new THREE.Vector3();
+
+function edgeChip() {
+  if (edgeEl) return edgeEl;
+  edgeEl = document.createElement('div');
+  edgeEl.id = 'visitor-edge';
+  edgeEl.style.cssText = 'position:fixed;z-index:6;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:#ffc94a;display:none;align-items:center;justify-content:center;font-size:20px;box-shadow:0 2px 8px rgba(0,0,0,.35);pointer-events:none';
+  edgeEl.innerHTML = '<span></span><i style="position:absolute;inset:0;display:flex;align-items:center;justify-content:flex-end;padding-right:2px;font-style:normal;font-size:12px;color:#5a3c00">▶</i>';
+  document.body.appendChild(edgeEl);
+  return edgeEl;
+}
+
+function hideEdge() { if (edgeEl) edgeEl.style.display = 'none'; }
+
+function updateEdge(dt) {
+  if (!edgeWatch) return;
+  edgeWatch.left -= dt;
+  const still = visitors?.live.some(v => v.mesh === edgeWatch.mesh) && edgeWatch.mesh.userData.lookBubble?.visible !== false;
+  if (edgeWatch.left <= 0 || !still) { edgeWatch = null; hideEdge(); return; }
+  edgeV.set(edgeWatch.x, 1, edgeWatch.z).project(camera);
+  const w = innerWidth, h = innerHeight;
+  const e = edgeArrow({ x: (edgeV.x + 1) / 2 * w, y: (1 - edgeV.y) / 2 * h, inFront: edgeV.z < 1 }, w, h);
+  const el = edgeChip();
+  if (e.inside) { el.style.display = 'none'; return; }
+  el.querySelector('span').textContent = edgeWatch.ico;
+  el.querySelector('i').style.transform = `rotate(${Math.round(e.deg)}deg)`;
+  el.style.left = `${Math.round(e.x)}px`; el.style.top = `${Math.round(e.y)}px`;
+  el.style.display = 'flex';
+}
+
+function blockedSpot(p, taken) {
+  if (plots.some(pl => Math.abs(pl.x - p.x) < FARM_CELL * 0.75 && Math.abs(pl.z - p.z) < FARM_CELL * 0.75)) return true;
+  if (taken.some(q => Math.hypot(q.x - p.x, q.z - p.z) < 1.5)) return true;
+  return colliders.some(c => !c.off && (c.r !== undefined
+    ? Math.hypot(c.x - p.x, c.z - p.z) < c.r + 0.6
+    : p.x > c.x1 - 0.6 && p.x < c.x2 + 0.6 && p.z > c.z1 - 0.6 && p.z < c.z2 + 0.6));
+}
+
+function onArrive(id, mesh, at) {
+  arrive.spawn(farmGroup, { x: at.x - FARM.x, z: at.z - FARM.z });
+  const v = visitorOf(id);
+  if (gameState.dex.visitor?.[id]) { Sound.starGood?.(2); return; }
+  Sound.starUnlock?.();
+  ui.showHintBanner?.({ ico: '✨', title: t(ARRIVE_COPY), line: `${v.ico} ${t(v.name)}`, attention: true });
+  edgeWatch = { mesh, x: at.x, z: at.z, ico: v.ico, left: EDGE_SEC };
+}
+
 export function updateVisitorBubbles(dt, time) {
   if (!atFarm || !visitors) return;
+  arrive.update(dt);
+  updateEdge(dt);
   for (const v of visitors.live) {
     const bubble = v.mesh.userData.lookBubble, ring = v.mesh.userData.lookRing;
     if (!bubble || !ring) continue;
@@ -102,7 +158,8 @@ export function startVisitors() {
     ctx: habitatCtx,
     playerPos: () => player.position,
     groundAt: visitorGroundY,
-    onSpawn: (id) => trackEvent('visitor_spawn', { visitor: id, farm_stage: gameState.farm.stage }),   // [GA4] 퍼널 3단
+    place: (c, taken) => edgeSpot(c, { center: FARM, half: farmHalf(), blocked: p => blockedSpot(p, taken) }),
+    onSpawn: (id, mesh, at) => { trackEvent('visitor_spawn', { visitor: id, farm_stage: gameState.farm.stage }); onArrive(id, mesh, at); },   // [GA4] 퍼널 3단
     onDiscover: (id, mesh) => {
       if (mesh?.userData.lookBubble) mesh.userData.lookBubble.visible = false;   // 살펴봤다 — 말풍선을 거둔다
       Sound.blip();
@@ -128,6 +185,7 @@ export function enterFarm() {
 
 export function exitFarm() {
   visitors?.clear(); visitors = null;   // 🦋 ⚠️ setSpaceVisible 이 farmGroup 을 정리하기 전에 메시를 빼야 한다
+  arrive.clear(); edgeWatch = null; hideEdge();
   $w.atFarm = false;
   player.position.set(FARM_GATE.x, 0, FARM_GATE.z + 2);
   $w.nearDoor = null; ui.setDoorPrompt?.(null); snapCamera(); setSpaceVisible();
