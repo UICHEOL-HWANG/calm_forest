@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>auction stage check</title>
+<style>html,body{margin:0;height:100%;background:#111;overflow:hidden}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"../vendor/three/three.module.js","three/addons/":"../vendor/three/addons/"}}</script>
+</head><body>
+<script type="module">
+import * as THREE from 'three';
+import { buildAuctionStage } from '../js/auction/stage.js';
+const q = new URLSearchParams(location.search);
+const night = Number(q.get('night') || 0);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(night ? 0x20244a : 0x9fd0f0);
+const hemi = new THREE.HemisphereLight(night ? 0x8090c0 : 0xffffff, 0x4a5a3a, night ? 0.6 : 1.1);
+const sun = new THREE.DirectionalLight(night ? 0x9fb4ff : 0xffe0b0, night ? 0.5 : 1.6);
+sun.position.set(-10, 12, 9); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12, near: 1, far: 40 });
+scene.add(hemi, sun);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.MeshStandardMaterial({ color: night ? 0x3a5a40 : 0x86b862 }));
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+const s = buildAuctionStage(THREE);
+s.setItem(q.get('item') || 'moonswing');
+s.setNight(night);
+if (q.get('tension')) s.setTension(true, 0.1);
+if (q.get('far')) s.focus(0.4, 5.9);
+scene.add(s.group);
+const r = new THREE.WebGLRenderer({ antialias: true });
+r.setSize(innerWidth, innerHeight); r.shadowMap.enabled = true;
+document.body.appendChild(r.domElement);
+const cam = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 100);
+cam.position.set(0, 9, 17); cam.lookAt(0, 1.8, 0);
+r.render(scene, cam);
+</script></body></html>

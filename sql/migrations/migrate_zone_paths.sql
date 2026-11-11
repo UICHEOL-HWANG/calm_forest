@@ -24,8 +24,8 @@ as $$
         ('market', 11, 2.5, 4.5), ('lake', 16, 9, 7), ('farm_gate', 0, 7, 3),
         ('coop', -4.5, 11.5, 3), ('cafe_gate', 4, 14, 3), ('glade', 7, 26, 7),
         ('light_workshop', 16.5, 33.5, 4), ('forest', -18, 23, 9), ('mine_gate', -14, 3, 3),
-        ('museum_gate', -26, 5, 3.5), ('observatory_gate', 25, 22, 3.5), ('dock', 0, -18, 6),
-        ('sea_gate', 14.5, -12.5, 3), ('mountain_gate', -15, -32, 5), ('mist_gate', -21, -20, 3),
+        ('museum_gate', -26, 5, 3.5), ('observatory_gate', 25, 22, 3.5), ('dock', 0, -18, 6), ('auction', 10.5, -15, 4.5),
+        ('sea_gate', 19.5, -12.5, 3), ('mountain_gate', -15, -32, 5), ('mist_gate', -21, -20, 3),
         ('orchard_gate', 33, 7, 3)
       ) v(k, cx, cz, r)
       where (x - v.cx) ^ 2 + (z - v.cz) ^ 2 <= v.r ^ 2

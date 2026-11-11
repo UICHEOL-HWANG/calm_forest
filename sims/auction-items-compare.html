@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>경매품 시안 비교</title>
+<style>
+  :root { --ink:#24312a; --soft:#5b6b60; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:16px; font-family:'Segoe UI', system-ui, 'Apple SD Gothic Neo', sans-serif; color:var(--ink); background:#e9efe9; }
+  h1 { font-size:19px; margin:0 0 4px; }
+  .lead { font-size:13px; color:var(--soft); margin:0 0 14px; line-height:1.55; max-width:1060px; }
+  .rows { display:flex; flex-direction:column; gap:18px; max-width:1060px; }
+  .row h2 { font-size:15px; margin:0 0 2px; }
+  .row p { font-size:12px; color:var(--soft); margin:0 0 7px; line-height:1.5; }
+  .pair { display:grid; grid-template-columns:minmax(0, 1fr); gap:8px; }
+  .pair > * { min-width:0; }
+  @media (min-width:700px) { .pair { grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); } }
+  .frame { position:relative; width:100%; aspect-ratio:1.9 / 1; overflow:hidden; border-radius:12px; box-shadow:0 8px 24px rgba(30,50,40,.2); }
+  .frame canvas { display:block; width:100%; height:100%; max-width:100%; }
+  .tag { position:absolute; top:7px; left:9px; font-size:11px; font-weight:800; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.45); }
+  .names span { position:absolute; transform:translate(-50%, 0); white-space:nowrap; font-size:12px; font-weight:800; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.5); pointer-events:none; }
+  @media (max-width:480px) { body { padding:12px; } .names span { font-size:11px; } }
+  #stats { display:none; }
+</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<h1>경매품 3종 · 세 갈래 시안</h1>
+<p class="lead">달빛 그네, 등불 아치, 별 풍향계를 세 가지 방향으로 다시 다듬었어요. 줄마다 왼쪽은 낮, 오른쪽은 밤이에요. 붙인 장식 대신 달·등불·별이 물건의 모양 자체가 되도록 했어요.</p>
+<div class="rows" id="rows"></div>
+<pre id="stats"></pre>
+
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { buildVariant, COMPARE_IDS } from './auction-items-compare/variants.js';
+
+const NAMES = ['달빛 그네', '등불 아치', '별 풍향계'];
+const ROWS = [
+  { key: 'A', title: 'A 형태 승격', note: '부품을 줄이고 달·등불·별이 뼈대가 되게. 나무 한 톤과 따뜻한 빛 한 색.' },
+  { key: 'B', title: 'B 자연물', note: '통나무·버들가지·그루터기로 마을 손작업 느낌. 흙빛 팔레트에 잎 조금.' },
+  { key: 'C', title: 'C 무대 세트', note: '경매 무대와 같은 짙은 나무·빨강·금색, 무대 등불 그대로.' },
+];
+const SETS = {
+  day: { label: '낮', sky: 0xbfe3f5, hemi: [0xffffff, 0x8a9a7a, 1.0], sun: [0xfff0d0, 1.6], ground: 0x9bc27a, bloom: 0.35 },
+  night: { label: '밤', sky: 0x181c3c, hemi: [0x8090c0, 0x202030, 0.55], sun: [0x9fb4ff, 0.45], ground: 0x3a4a5a, bloom: 0.55 },
+};
+const GAP = 1.95, FOV = 30, TALL = 2.45, FILL = 0.7, LOOK_Y = 1.12;
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text) e.textContent = text;
+  return e;
+}
+
+function makeFrame(parent, setKey) {
+  const frame = el('div', 'frame');
+  frame.append(el('canvas'), el('div', 'tag', SETS[setKey].label));
+  const names = el('div', 'names');
+  NAMES.forEach(n => names.append(el('span', '', n)));
+  frame.append(names);
+  parent.append(frame);
+  return frame;
+}
+
+function build(frame, variant, setKey) {
+  const s = SETS[setKey];
+  const canvas = frame.querySelector('canvas');
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(s.sky);
+  scene.add(new THREE.HemisphereLight(s.hemi[0], s.hemi[1], s.hemi[2]));
+  const sun = new THREE.DirectionalLight(s.sun[0], s.sun[1]);
+  sun.position.set(-5, 8, 6);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(1024, 1024);
+  Object.assign(sun.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6, near: 1, far: 30 });
+  scene.add(sun);
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(9, 40), new THREE.MeshStandardMaterial({ color: s.ground, roughness: 1 }));
+  ground.rotation.x = -Math.PI / 2;
+  ground.receiveShadow = true;
+  scene.add(ground);
+  const items = COMPARE_IDS.map((id, i) => {
+    const m = buildVariant(THREE, variant, id);
+    m.position.x = (i - 1) * GAP;
+    m.rotation.y = -0.45;
+    scene.add(m);
+    return m;
+  });
+  const camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 60);
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  const composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+  composer.addPass(new UnrealBloomPass(new THREE.Vector2(1, 1), s.bloom, 0.9, 0.85));
+  composer.addPass(new OutputPass());
+  const labels = [...frame.querySelectorAll('.names span')];
+  const size = { w: 0, h: 0 };
+  function fit() {
+    const w = Math.max(1, frame.clientWidth), h = Math.max(1, frame.clientHeight);
+    if (w === size.w && h === size.h) return;
+    size.w = w; size.h = h;
+    renderer.setSize(w, h, false);
+    composer.setSize(w, h);
+    camera.aspect = w / h;
+    const tan = Math.tan(THREE.MathUtils.degToRad(FOV / 2));
+    const needH = TALL / FILL, needW = GAP * 2 + 2.3;
+    const dist = Math.max(needH / (2 * tan), needW / (2 * tan * camera.aspect));
+    camera.position.set(0, LOOK_Y + 0.35, dist);
+    camera.lookAt(0, LOOK_Y, 0);
+    camera.updateProjectionMatrix();
+    camera.updateMatrixWorld();
+    labels.forEach((lab, i) => {
+      const v = new THREE.Vector3(items[i].position.x, -0.05, 0.3).project(camera);
+      lab.style.left = `${(v.x * 0.5 + 0.5) * w}px`;
+      lab.style.top = `${(-v.y * 0.5 + 0.5) * h}px`;
+    });
+  }
+  function draw(t) {
+    fit();
+    for (const m of items) if (m.userData.spin) m.userData.spin.rotation.y = t * 0.8;
+    composer.render();
+  }
+  return { draw, items };
+}
+
+const views = [];
+const rowsEl = document.getElementById('rows');
+for (const row of ROWS) {
+  const wrap = el('section', 'row');
+  wrap.append(el('h2', '', row.title), el('p', '', row.note));
+  const pair = el('div', 'pair');
+  wrap.append(pair);
+  rowsEl.append(wrap);
+  for (const setKey of ['day', 'night']) views.push({ row: row.key, set: setKey, ...build(makeFrame(pair, setKey), row.key, setKey) });
+}
+
+const stats = views.filter(v => v.set === 'day').flatMap(v => v.items.map((m, i) => {
+  const local = buildVariant(THREE, v.row, COMPARE_IDS[i]);
+  local.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(local);
+  let meshes = 0, maxEmissive = 0;
+  local.traverse(o => { if (o.isMesh) { meshes += 1; if (o.material.emissive && o.material.emissive.getHex()) maxEmissive = Math.max(maxEmissive, o.material.emissiveIntensity); } });
+  return `${v.row} ${COMPARE_IDS[i]} meshes=${meshes} minY=${box.min.y.toFixed(3)} maxY=${box.max.y.toFixed(3)} w=${(box.max.x - box.min.x).toFixed(2)} d=${(box.max.z - box.min.z).toFixed(2)} emis=${maxEmissive} spin=${!!local.userData.spin}`;
+}));
+document.getElementById('stats').textContent = [`viewport=${innerWidth} frame=${document.querySelector('.frame').clientWidth}`, ...stats].join('\n');
+
+let clock = 0.6;
+function frame(t = clock) {
+  clock = t;
+  for (const v of views) v.draw(t);
+}
+window.__cmp = { frame, stats };
+let last = performance.now();
+function loop(now) {
+  frame(clock + (now - last) / 1000);
+  last = now;
+  requestAnimationFrame(loop);
+}
+frame();
+if (!new URLSearchParams(location.search).has('still')) requestAnimationFrame(loop);
+window.addEventListener('resize', () => frame());
+</script>
+</body>
+</html>

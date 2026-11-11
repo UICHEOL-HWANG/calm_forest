@@ -1,0 +1,232 @@
+import { BID_INCS, COUNT_START } from '../data/auction.js';
+import { auctionLayout } from './layout.js';
+
+export const AUCTION_COPY = Object.freeze({
+  title: '🔨 오늘의 경매', ready: '오늘의 경매품이 나왔어요',
+  join: '🔔 경매 참가하기', watch: '👀 구경만 하기', startsAt: '시작가 🪙{0}',
+  first: '시작가예요', leadMe: '🙋 지금 1등', leadOther: '{0} 1등', mine: '🙋 내 입찰',
+  win: '{0} 낙찰!', stored: '🧺 보관함에 넣었어요', lose: '{0}에게 낙찰', unsold: '유찰됐어요',
+  closed: '🔨 경매는 저녁에 열려요', over: '🔨 오늘 경매 끝', close: '닫기',
+});
+
+const fill = (s, v) => s.replace('{0}', v);
+
+export function whoLine(leader, names, t) {
+  if (!leader) return t(AUCTION_COPY.first);
+  if (leader === 'me') return t(AUCTION_COPY.leadMe);
+  return fill(t(AUCTION_COPY.leadOther), t(names[leader]));
+}
+
+export function feedLine(f, names, t) {
+  const who = f.who === 'me' ? t(AUCTION_COPY.mine) : t(names[f.who]);
+  return `${who} +${f.inc} → 🪙${f.price}`;
+}
+
+export function resultLine(r, itemName, names, t) {
+  if (r.outcome === 'win') return { title: fill(t(AUCTION_COPY.win), t(itemName)), sub: t(AUCTION_COPY.stored) };
+  if (r.outcome === 'none' || !r.leader) return { title: t(AUCTION_COPY.unsold), sub: '' };
+  return { title: fill(t(AUCTION_COPY.lose), t(names[r.leader])), sub: `🪙${r.price}` };
+}
+
+export function barColor(t) { return t > 4 ? '#8fd3a0' : t > 2 ? '#f2c14e' : '#e8774a'; }
+
+export function callLine(call, t) { return call ? t(call) : ''; }
+
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+export function itemVisual(icon) { return `<span class="au-ico" aria-hidden="true">${esc(icon)}</span>`; }
+
+export function sayHtml(text) {
+  return text ? `<span class="au-say-ico" aria-hidden="true">🧙</span><span>${esc(text)}</span>` : '';
+}
+
+export function itemHtml(icon, name, intro) {
+  const ds = intro ? `<div class="ds">${esc(intro)}</div>` : '';
+  return `${itemVisual(icon)}<div class="txt"><div class="nm">${esc(name)}</div>${ds}</div>`;
+}
+
+const btnHtml = (act, label, main, t) => `<button class="au-btn${main ? ' main' : ''}" data-act="${act}">${esc(t(label))}</button>`;
+
+export function waitHtml(v, t) {
+  const watchOnly = v.mode === 'watch';
+  const hint = watchOnly ? fill(t(AUCTION_COPY.startsAt), v.start) : t(AUCTION_COPY.ready);
+  const close = btnHtml('close', AUCTION_COPY.close, false, t);
+  const rows = watchOnly
+    ? `<div class="au-btns">${btnHtml('watch', AUCTION_COPY.watch, true, t)}${close}</div>`
+    : `<div class="au-btns">${btnHtml('bid', AUCTION_COPY.join, true, t)}${btnHtml('watch', AUCTION_COPY.watch, false, t)}</div><div class="au-btns">${close}</div>`;
+  return `<div class="au-hint">${esc(hint)}</div>${rows}`;
+}
+
+const CSS = `#auction-modal{position:fixed;z-index:40;display:none;left:10px;right:10px;bottom:calc(12px + env(safe-area-inset-bottom));flex-direction:column;gap:9px;background:#fffaf2;border-radius:20px;box-shadow:0 -8px 40px rgba(30,25,20,.35);padding:12px 14px;color:#2b2b30;user-select:none;-webkit-tap-highlight-color:transparent;font-family:inherit}
+#auction-modal.show{display:flex}
+#auction-modal>*{flex:none}
+#auction-modal .au-head{font-weight:800;font-size:15px}
+#auction-modal .au-item{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:14px;background:#fff}
+#auction-modal .au-ico{display:flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:10px;background:#f4ead6;flex:none;font-size:28px;line-height:1}
+#auction-modal .au-item .nm{font-weight:800;font-size:14px;min-width:0}
+#auction-modal .au-body{display:flex;flex-direction:column;gap:10px}
+#auction-modal .au-big{text-align:center;padding-top:2px}
+#auction-modal .au-p{font-size:30px;font-weight:900;letter-spacing:-.02em;color:#2d4a3a;display:inline-block;line-height:1.15}
+#auction-modal .au-p.bump{animation:au-bump .18s}
+@keyframes au-bump{50%{transform:scale(1.15)}}
+#auction-modal .au-who{font-size:13px;font-weight:700;color:#4a4e57;min-height:1.3em;margin-top:4px}
+#auction-modal .au-tbar{height:9px;border-radius:6px;background:#ece6dc;overflow:hidden}
+#auction-modal .au-tbar i{display:block;height:100%;width:100%;background:#8fd3a0;transition:background .25s}
+#auction-modal .au-call{text-align:center;font-size:14px;font-weight:900;min-height:1.3em;line-height:1.3;margin-top:-4px;color:#a0521f}
+#auction-modal .au-call.flash{animation:au-flash .5s}
+@keyframes au-flash{0%{transform:scale(1.3)}100%{transform:none}}
+#auction-modal .au-feed{display:flex;flex-direction:column;gap:5px;min-height:44px}
+#auction-modal .au-feed div{font-size:12px;font-weight:700;line-height:1.4;padding:5px 10px;border-radius:8px;background:#fff}
+#auction-modal .au-feed div.new{animation:au-in .25s}
+#auction-modal .au-feed div.me{background:#e5f6e9}
+#auction-modal .au-feed div:nth-child(n+3){display:none}
+@keyframes au-in{from{transform:translateY(-6px);opacity:0}}
+#auction-modal .au-btns{display:flex;gap:8px}
+#auction-modal .au-btn{flex:1;min-height:46px;border:0;border-radius:12px;padding:10px;font-family:inherit;font-weight:800;font-size:15px;color:#2b2b30;background:#efe6d8;cursor:pointer;white-space:nowrap}
+#auction-modal .au-btn.main{background:#e2b23c}
+#auction-modal .au-btn:disabled{background:#e6e1d8;color:#8a8f99;cursor:default}
+#auction-modal .au-btn:active:not(:disabled){transform:scale(.96)}
+#auction-modal .au-hint{font-size:13px;font-weight:700;color:#4a4e57;text-align:center}
+#auction-modal .au-res{text-align:center}
+#auction-modal .au-res .au-ico{width:54px;height:54px;border-radius:12px;font-size:32px;margin:0 auto}
+#auction-modal .au-res .t{font-size:17px;font-weight:900;margin:4px 0}
+#auction-modal .au-res .d{font-size:13px;color:#4a4e57;min-height:1.2em}
+#auction-modal[data-layout=side]{left:auto;right:14px;top:calc(80px + var(--top-inset,0px));bottom:auto;max-height:calc(100vh - 100px - var(--top-inset,0px));overflow-y:auto;width:300px;border-radius:20px;box-shadow:0 8px 32px rgba(30,25,20,.25)}
+#auction-modal[data-layout=side] .au-feed{min-height:58px}
+#auction-modal[data-layout=side] .au-feed div:nth-child(n+3){display:block;opacity:.55}
+#auction-modal[data-layout=side-short]{left:auto;right:calc(8px + env(safe-area-inset-right));top:8px;bottom:auto;max-height:calc(100% - 16px);overflow-y:auto;width:280px;gap:6px;padding:10px 12px;border-radius:16px;box-shadow:0 8px 32px rgba(30,25,20,.25)}
+#auction-modal[data-layout=side-short] .au-head{font-size:14px}
+#auction-modal[data-layout=side-short] .au-item{padding:4px 8px}
+#auction-modal[data-layout=side-short] .au-ico{width:34px;height:34px;font-size:20px}
+#auction-modal[data-layout=side-short] .au-body{gap:6px}
+#auction-modal[data-layout=side-short] .au-p{font-size:24px}
+#auction-modal[data-layout=side-short] .au-who{margin-top:2px}
+#auction-modal[data-layout=side-short] .au-call{margin-top:-2px}
+#auction-modal[data-layout=side-short] .au-feed{min-height:26px}
+#auction-modal[data-layout=side-short] .au-feed div:nth-child(n+2){display:none}
+#auction-modal[data-layout=side-short] .au-btn{min-height:40px;padding:8px}
+#auction-modal[data-layout=side-short] .au-res .au-ico{width:40px;height:40px;font-size:24px}
+#auction-modal .au-item .txt{min-width:0}
+#auction-modal .au-item .ds{font-size:12px;color:#5b5f68;line-height:1.35;margin-top:2px}
+#auction-modal .au-say{display:none;align-items:center;gap:6px;font-size:13px;font-weight:800;color:#5a3f8a;background:#f1eafb;border-radius:12px;padding:6px 10px;line-height:1.35}
+#auction-modal .au-say.on{display:flex}
+#auction-modal .au-say.pop{animation:au-in .25s}
+#auction-modal .au-say-ico{flex:none;font-size:16px}
+#auction-modal[data-layout=side-short] .au-item .ds{display:none}
+#auction-modal[data-layout=side-short] .au-say{font-size:12px;padding:4px 8px}`;
+
+export function createAuctionUi({ t, names, itemName, itemIcon, onJoin, onBid, onClose, sayText = () => '', introText = () => '' }) {
+  let root = null, body = null, sayEl = null, mode = 'bid', view = null, itemId = '', layout = '', lastPrice = null, lastSig = '', lastCall = '', lastSay = '';
+
+  const fitLayout = () => { if (root) root.dataset.layout = auctionLayout(window.innerWidth, window.innerHeight); };
+
+  const ensure = () => {
+    if (root) return;
+    if (!document.getElementById('auction-style')) {
+      const style = document.createElement('style');
+      style.id = 'auction-style';
+      style.textContent = CSS;
+      document.head.appendChild(style);
+    }
+    root = document.createElement('div');
+    root.id = 'auction-modal';
+    root.innerHTML = '<div class="au-head"></div><div class="au-item"></div><div class="au-say"></div><div class="au-body"></div>';
+    body = root.querySelector('.au-body');
+    sayEl = root.querySelector('.au-say');
+    root.addEventListener('click', e => {
+      const el = e.target.closest('[data-act],[data-inc]');
+      if (!el || el.disabled) return;
+      if (el.dataset.inc) { onBid(+el.dataset.inc); return; }
+      if (el.dataset.act === 'close') { close(); onClose(); return; }
+      if (el.dataset.act === 'bid' || el.dataset.act === 'watch') { mode = el.dataset.act; onJoin(mode); }
+    });
+    document.body.appendChild(root);
+    window.addEventListener('resize', fitLayout);
+  };
+
+  const btn = (act, label, main) => btnHtml(act, label, main, t);
+  const setBody = (name, html) => { layout = name; body.innerHTML = html; lastPrice = null; lastSig = ''; lastCall = ''; };
+  const setItem = id => {
+    itemId = id;
+    root.querySelector('.au-item').innerHTML = itemHtml(itemIcon(id), t(itemName(id)), introText(id));
+  };
+  const showSay = say => {
+    const text = say ? sayText(say) : '';
+    if (text === lastSay) return;
+    lastSay = text;
+    sayEl.innerHTML = sayHtml(text);
+    sayEl.classList.toggle('on', !!text);
+    if (text) { sayEl.classList.remove('pop'); void sayEl.offsetWidth; sayEl.classList.add('pop'); }
+  };
+
+  const drawWaiting = v => setBody('wait', waitHtml(v, t));
+  const drawRun = () => {
+    const incs = mode === 'watch' ? '' : `<div class="au-btns">${BID_INCS.map((n, i) => `<button class="au-btn${i === BID_INCS.length - 1 ? ' main' : ''}" data-inc="${n}">+${n}</button>`).join('')}</div>`;
+    setBody('run', `<div class="au-big"><div class="au-p"></div><div class="au-who"></div></div><div class="au-tbar"><i></i></div><div class="au-call"></div><div class="au-feed"></div>${incs}`);
+  };
+  const drawResult = r => {
+    const line = resultLine(r, itemName(itemId), names, t);
+    const img = r.outcome === 'win' ? itemVisual(itemIcon(itemId)) : '';
+    setBody('done', `<div class="au-res">${img}<div class="t">${esc(line.title)}</div><div class="d">${esc(line.sub)}</div></div><div class="au-btns">${btn('close', AUCTION_COPY.close, true)}</div>`);
+  };
+
+  const syncFeed = feed => {
+    const sig = feed.map(f => `${f.who}${f.inc}${f.price}`).join('|');
+    if (sig === lastSig) return;
+    const fresh = lastSig === '' ? 0 : 1;
+    lastSig = sig;
+    body.querySelector('.au-feed').innerHTML = feed.map((f, i) => `<div class="${f.who === 'me' ? 'me' : ''}${i < fresh ? ' new' : ''}">${esc(feedLine(f, names, t))}</div>`).join('');
+  };
+
+  function open(v) {
+    ensure();
+    fitLayout();
+    view = v;
+    mode = v.mode;
+    setItem(v.itemId);
+    showSay(null);
+    root.querySelector('.au-head').textContent = t(AUCTION_COPY.title);
+    if (v.mode === 'closed') setBody('closed', `<div class="au-hint">${esc(t(AUCTION_COPY.closed))}</div><div class="au-btns">${btn('close', AUCTION_COPY.close, true)}</div>`);
+    else if (v.mode === 'done') setBody('over', `<div class="au-hint">${esc(t(AUCTION_COPY.over))}</div><div class="au-btns">${btn('close', AUCTION_COPY.close, true)}</div>`);
+    else drawWaiting(v);
+    root.classList.add('show');
+    document.body.classList.add('menu-open', 'mg-open');
+  }
+
+  function render(state) {
+    if (!root || !view) return;
+    showSay(state.say);
+    if (state.itemId && state.itemId !== itemId) setItem(state.itemId);
+    if (state.phase === 'done') {
+      if (layout !== 'done') drawResult(state.result);
+      return;
+    }
+    if (layout !== 'run') drawRun();
+    const p = body.querySelector('.au-p');
+    if (lastPrice !== state.price) {
+      p.textContent = `🪙${state.price}`;
+      if (lastPrice !== null) { p.classList.remove('bump'); void p.offsetWidth; p.classList.add('bump'); }
+      lastPrice = state.price;
+    }
+    body.querySelector('.au-who').textContent = whoLine(state.leader, names, t);
+    const bar = body.querySelector('.au-tbar i');
+    bar.style.width = `${Math.max(0, Math.min(1, state.t / COUNT_START)) * 100}%`;
+    bar.style.background = barColor(state.t);
+    const call = body.querySelector('.au-call');
+    if (state.call !== lastCall) {
+      lastCall = state.call;
+      call.textContent = callLine(state.call, t);
+      if (state.call.startsWith('⏱️')) { call.classList.remove('flash'); void call.offsetWidth; call.classList.add('flash'); }
+    }
+    syncFeed(state.feed);
+    body.querySelectorAll('[data-inc]').forEach(b => { b.disabled = !state.canBid[b.dataset.inc]; });
+  }
+
+  function close() {
+    if (!root) return;
+    root.classList.remove('show');
+    document.body.classList.remove('menu-open', 'mg-open');
+  }
+
+  return { open, render, close, refreshItem: () => { if (root && itemId) setItem(itemId); }, isOpen: () => !!root && root.classList.contains('show') };
+}

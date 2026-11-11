@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>auction camera check</title>
+<style>:root{--top-inset:0px}html,body{margin:0;height:100%;overflow:hidden;background:#222;font-family:system-ui,'Apple SD Gothic Neo',sans-serif}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"../vendor/three/three.module.js","three/addons/":"../vendor/three/addons/"}}</script>
+</head><body>
+<script type="module">
+import * as THREE from 'three';
+import { buildAuctionStage } from '../js/auction/stage.js';
+import { createActors } from '../js/auction/actors.js';
+import { createAuctionUi } from '../js/auction/ui.js';
+import { auctionCamera } from '../js/auction/layout.js';
+import { VILLAGERS, buildVillager, buildBear } from './auction-stage/models.js';
+const q = new URLSearchParams(location.search);
+const CAM = auctionCamera(innerWidth, innerHeight);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x9fd0f0);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x4a5a3a, 1.1));
+const sun = new THREE.DirectionalLight(0xffe0b0, 1.6);
+sun.position.set(-10, 12, 9);
+scene.add(sun);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshStandardMaterial({ color: 0x86b862 }));
+ground.rotation.x = -Math.PI / 2;
+scene.add(ground);
+const stage = buildAuctionStage(THREE);
+stage.setItem('moonswing');
+scene.add(stage.group);
+const defs = Object.entries(VILLAGERS).map(([id, d]) => ({ id: id === 'star' ? 'stargazer' : id, color: d.color }));
+const buildFigure = def => ({ group: buildVillager(def.id === 'stargazer' ? 'star' : def.id).fig });
+const actors = createActors(THREE, { buildFigure, npcDefs: defs, parent: stage.group });
+const bear = buildBear();
+const [bx, bz] = actors.spotOf('me');
+bear.root.position.set(bx, 0, bz);
+bear.root.rotation.y = Math.PI;
+stage.group.add(bear.root);
+actors.attachPlayer({ R: bear.armR });
+for (let i = 0; i < 40; i++) actors.update(0.05, 1, i * 0.05);
+const r = new THREE.WebGLRenderer({ antialias: true });
+r.setSize(innerWidth, innerHeight);
+document.body.appendChild(r.domElement);
+const cam = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 200);
+cam.position.set(...CAM.pos);
+cam.lookAt(...CAM.look);
+cam.setViewOffset(innerWidth, innerHeight, CAM.shift[0], CAM.shift[1], innerWidth, innerHeight);
+r.render(scene, cam);
+const names = { curator: '큐레이터', stargazer: '별 보는 아이', builder: '목수 아저씨' };
+const feed = [{ who: 'curator', inc: 50, price: 310 }, { who: 'me', inc: 30, price: 260 }, { who: 'builder', inc: 10, price: 180 }];
+const ui = createAuctionUi({ t: x => x, names, itemName: () => '달빛 그네', itemIcon: () => '🌙', onJoin() {}, onBid() {}, onClose() {} });
+ui.open({ itemId: 'moonswing', appraisal: 400, start: 200, coins: 900, secondsToOpen: 0, mode: 'bid' });
+ui.render({ phase: 'run', price: 310, leader: 'curator', t: 2.6, call: '3…', feed, canBid: { 10: true, 30: true, 50: true }, result: null, itemId: 'moonswing' });
+window.__ready = 1;
+</script></body></html>

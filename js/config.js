@@ -91,6 +91,7 @@ export const CONFIG = {
   //    빈 문자열로 두면 밤손님 기능이 꺼집니다(아무 일도 일어나지 않음).
   NIGHT_VISIT_API: `${API_BASE}/api/night-visit`,
   NIGHT_NOTE_API: `${API_BASE}/api/night-note`,   // 사건 다음날 주민 쪽지(Gemini, 날짜 캐시)
+  LINES_API: `${API_BASE}/api/lines`,
 
   // ── 📸 사진첩(OCI Object Storage) 엔드포인트 ─────────────────
   //    사진 원본은 오라클 버킷에 — 서버 프록시(functions/api/photo*.js) 경유.

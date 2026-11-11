@@ -31,6 +31,7 @@ import { updateHouseSign } from '../spaces/house.js';
 import { state as authState } from '../supabase-client.js';
 import { rewardBoostMult } from '../tuning.js';
 import * as THREE from 'three';
+import { buildPriceBoard } from './exterior-art.js';
 
 // 상점 좌판(절차적)
 export function spawnShop() {
@@ -67,38 +68,13 @@ export function spawnShop() {
 
 export function spawnMarketBoard() {
   const g = new THREE.Group(); g.position.copy(MARKET);
-  for (const x of [-0.8, 0.8]) {
-    const p = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.075, 2.1, 6), woodMat(1, 1));
-    p.position.set(x, 1.05, -0.12); p.castShadow = true; g.add(p);   // 판 뒤에서 받침(정면에서 판을 안 가로지르게 — 랭킹 게시판과 동일)
-  }
-  // 보드 캔버스 — 한글 "시세판" 크게 + 오늘의 최고/최저 등락(멀리서도 읽히게)
-  const cv = document.createElement('canvas'); cv.width = 512; cv.height = 320;
-  const c = cv.getContext('2d');
-  c.fillStyle = '#6a4c32'; c.fillRect(0, 0, 512, 320);                    // 나무 프레임
-  c.fillStyle = '#f7f0dc'; c.fillRect(18, 18, 476, 284);                  // 종이판
-  c.fillStyle = '#8a6a48';                                                 // 코너 못 장식
-  [[34, 34], [478, 34], [34, 286], [478, 286]].forEach(([x, y]) => { c.beginPath(); c.arc(x, y, 8, 0, 7); c.fill(); });
-  c.textAlign = 'center';
-  c.fillStyle = '#4a3b28'; c.font = 'bold 74px sans-serif';
-  c.fillText(t('📊 시세판'), 256, 96);                                     // 한글 제목 큼직하게
-  c.strokeStyle = '#d9cdb0'; c.lineWidth = 4;
-  c.beginPath(); c.moveTo(50, 122); c.lineTo(462, 122); c.stroke();       // 구분선
   const ks = Object.keys(SELL_PRICE);
   const hi = ks.reduce((a, b) => (priceRate(a) >= priceRate(b) ? a : b));
   const lo = ks.reduce((a, b) => (priceRate(a) <= priceRate(b) ? a : b));
   const pct = (k) => Math.round(priceRate(k) * 100) - 100;
-  c.font = 'bold 48px sans-serif';
-  c.fillStyle = '#2fa564'; c.fillText(t(`${SELL_ICO_G[hi]} 비싸요  +${pct(hi)}%`), 256, 186);
-  c.fillStyle = '#d05a4a'; c.fillText(t(`${SELL_ICO_G[lo]} 싸요  ${pct(lo)}%`), 256, 248);
-  c.fillStyle = '#8a7a5f'; c.font = '26px sans-serif';
-  c.fillText(t('가격은 매일 자정에 바뀌어요'), 256, 292);
-  const tex = new THREE.CanvasTexture(cv);
-  // 재질 배열: +z 앞면만 시세판 텍스처, 나머지는 나무 톤(옆면 스트레치 방지)
-  const woodSide = new THREE.MeshStandardMaterial({ color: 0x9a7248, roughness: 0.9 });
-  const front = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85 });
-  const board = new THREE.Mesh(new THREE.BoxGeometry(1.9, 1.15, 0.08),
-    [woodSide, woodSide, woodSide, woodSide, front, woodSide]);
-  board.position.y = 1.45; board.castShadow = true; g.add(board);
+  const data = { hiIcon: SELL_ICO_G[hi], hiPct: pct(hi), loIcon: SELL_ICO_G[lo], loPct: pct(lo) };
+  const makeCanvas = (w, h) => { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; return cv; };
+  g.add(buildPriceBoard(THREE, data, { woodMap: woodMat(1, 1).map, makeCanvas }));
   scene.add(g);   // 회전 없음 — 게임 카메라(남쪽에서 북쪽을 봄)를 향해 앞면(+z) 표시
   obstacles.push({ x: MARKET.x, z: MARKET.z, r: 0.9 });
   solidCircle(MARKET.x, MARKET.z, 0.8);   // 🚧 전광판 (시세 상호작용 2.0 확보)

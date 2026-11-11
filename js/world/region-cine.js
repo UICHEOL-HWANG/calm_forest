@@ -7,7 +7,7 @@ export const ORB_LIFT = 9;
 
 export const REGIONS = {
   'water:habitat':   { id: 'dock',    npc: 'angler', place: 'river',   at: { x: 0, z: -15 },      fx: 'water',   sub: '💧 물의 가지',   main: '나루터에 물이 다시 흘러요' },
-  'water:bundles':   { id: 'sea',     npc: 'ferryman', place: 'sea',     at: { x: 14.5, z: -12.5 }, fx: 'water',   sub: '💧 물의 가지',   main: '바다로 가는 길이 열렸어요' },
+  'water:bundles':   { id: 'sea',     npc: 'ferryman', place: 'sea',     at: { x: 19.5, z: -12.5 }, fx: 'water',   sub: '💧 물의 가지',   main: '바다로 가는 길이 열렸어요' },
   'farm:habitat':    { id: 'coop',    npc: 'farmer', place: 'coop',    at: { x: -4.5, z: 11.5 },  fx: 'farm',    sub: '🌾 밭의 가지',   main: '닭장에 다시 활기가 돌아요' },
   'kitchen:habitat': { id: 'kitchen', npc: 'chef', place: 'kitchen', at: { x: 7.4, z: -6.4 },   fx: 'kitchen', sub: '🍳 부엌의 가지', main: '부엌에 불이 켜졌어요' },
   'forest:habitat':  { id: 'forest',  npc: 'forager', place: 'forest',  at: { x: -18, z: 23 },     fx: 'forest',  sub: '🌲 숲의 가지',   main: '숲길이 다시 열렸어요' },

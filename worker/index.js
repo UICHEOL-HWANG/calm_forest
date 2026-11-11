@@ -24,6 +24,7 @@ import { onRequestPost as paddleWebhook } from '../functions/api/paddle-webhook.
 import { onRequestGet as dexNotes } from '../functions/api/dex-notes.js';
 import { onRequestGet as dailyQuests } from '../functions/api/daily-quests.js';
 import { onRequestGet as npcTalk } from '../functions/api/npc-talk.js';
+import { onRequestGet as lines } from '../functions/api/lines.js';
 import { onRequestPost as orchardEvents } from '../functions/api/orchard-events.js';
 import { onRequestPost as pushRegister } from '../functions/api/push-register.js';
 import { onRequestPost as gaMp } from '../functions/api/ga-mp.js';
@@ -38,6 +39,7 @@ import { runNpcGenCron } from '../functions/npc-gen-cron.js';
 import { runAiPregen } from '../functions/ai-pregen-cron.js';
 import { runPush, isPushTick } from '../functions/push-cron.js';
 import { runAuraCron } from '../functions/aura-cron.js';
+import { runLinePool, isLinePoolTick } from '../functions/line-pool-cron.js';
 import { onRequestGet as cardnewsImg } from '../functions/cardnews-img.js';
 import { onRequestGet as rssFeed } from '../functions/rss.js';
 import { onRequestGet as newsPages } from '../functions/news.js';
@@ -132,6 +134,12 @@ export default {
       }));
       return;
     }
+    if (event.cron === '0,30 18-21 * * *' && isLinePoolTick(event.scheduledTime)) {
+      ctx.waitUntil(runLinePool(env).then(r => {
+        console.log(JSON.stringify({ message: 'line-pool cron', cron: event.cron, ...r }));
+      }));
+      return;
+    }
     if (event.cron === '0,30 18-21 * * *' || event.cron === '0 22 * * *') {   // 🏮 빛 공방 — KST 03:00~06:30 틱 · 07:00 마감
       const phase = event.cron === '0 22 * * *' ? 'final' : 'tick';
       ctx.waitUntil(runAuraCron(env, { phase }).then(r => {
@@ -202,6 +210,11 @@ async function routeApi(pathname, { request, env, ctx }) {
   if (pathname === '/api/npc-talk') {
     if (request.method !== 'GET') return new Response('Method Not Allowed', { status: 405 });
     return await npcTalk({ request, env, waitUntil: ctx.waitUntil.bind(ctx) });
+  }
+
+  if (pathname === '/api/lines') {
+    if (request.method !== 'GET') return new Response('Method Not Allowed', { status: 405 });
+    return await lines({ request, env, waitUntil: ctx.waitUntil.bind(ctx) });
   }
 
   // 🏆 리더보드 — Supabase RPC 프록시(엣지 캐시 5분)

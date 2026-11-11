@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>auction actors check</title>
+<style>html,body{margin:0;height:100%;background:#111;overflow:hidden}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"../vendor/three/three.module.js","three/addons/":"../vendor/three/addons/"}}</script>
+</head><body>
+<script type="module">
+import * as THREE from 'three';
+import { buildAuctionStage } from '../js/auction/stage.js';
+import { createActors } from '../js/auction/actors.js';
+import { AUCTION_SPOTS } from '../js/data/auction.js';
+import { VILLAGERS, buildVillager, buildBear } from './auction-stage/models.js';
+const q = new URLSearchParams(location.search);
+const night = Number(q.get('night') || 0);
+const up = (q.get('up') || '').split(',').filter(Boolean);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(night ? 0x20244a : 0x9fd0f0);
+const hemi = new THREE.HemisphereLight(night ? 0x8090c0 : 0xffffff, 0x4a5a3a, night ? 0.6 : 1.1);
+const sun = new THREE.DirectionalLight(night ? 0x9fb4ff : 0xffe0b0, night ? 0.5 : 1.6);
+sun.position.set(-10, 12, 9); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12, near: 1, far: 40 });
+scene.add(hemi, sun);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.MeshStandardMaterial({ color: night ? 0x3a5a40 : 0x86b862 }));
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+const stage = buildAuctionStage(THREE);
+stage.setItem(q.get('item') || 'moonswing');
+stage.setNight(night);
+scene.add(stage.group);
+const defs = Object.entries(VILLAGERS).map(([id, d]) => ({ id: id === 'star' ? 'stargazer' : id, color: d.color }));
+const buildFigure = (def) => ({ group: buildVillager(def.id === 'stargazer' ? 'star' : def.id).fig });
+const actors = createActors(THREE, { buildFigure, npcDefs: defs, parent: stage.group });
+const bear = buildBear();
+const [bx, bz] = actors.spotOf('me');
+bear.root.position.set(bx, 0, bz);
+bear.root.rotation.y = Math.PI;
+stage.group.add(bear.root);
+actors.attachPlayer({ R: bear.armR });
+const now = 1;
+up.forEach((id) => actors.raise(id, 99));
+if (q.get('lead')) actors.lead(q.get('lead'));
+if (q.get('burst')) actors.burst(q.get('burst'));
+for (let i = 0; i < 40; i++) actors.update(0.05, now, i * 0.05);
+const r = new THREE.WebGLRenderer({ antialias: true });
+r.setSize(innerWidth, innerHeight); r.shadowMap.enabled = true;
+document.body.appendChild(r.domElement);
+const cam = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 100);
+cam.position.set(0, 6.5, 14); cam.lookAt(0, 1.2, 2);
+r.render(scene, cam);
+window.__ready = Object.keys(AUCTION_SPOTS).length;
+</script></body></html>

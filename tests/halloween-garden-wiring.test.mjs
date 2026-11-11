@@ -14,9 +14,9 @@ test('플래그 선언과 공간 판정 목록', () => {
   assert.match(read('js/shadow-scope.js'), /'atHalloween'/);
 });
 
-test('클램프 — 기본 else(반경 42) 앞에 정원 분기가 있다', () => {
+test('클램프 — 기본 else(걷기 한계) 앞에 정원 분기가 있다', () => {
   const i = SRC.indexOf('} else if (atHalloween) { clampToHalloween(player.position);');
-  const e = SRC.indexOf('const maxR = 42');
+  const e = SRC.indexOf('clampVillage(player.position);');
   assert.ok(i > 0 && e > 0 && i < e);
   assert.match(SRC, /if \(atHalloween\) clampToHalloween\(player\.position\);\n  if \(atMirror\) clampToMirror/);
 });
