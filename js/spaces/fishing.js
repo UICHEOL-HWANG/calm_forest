@@ -17,6 +17,7 @@ import { FISH_KINDS } from '../data/catalog.js';
 import { DOCK_POND, DOCK_POND_R, LAKE_R, SEA_GATE } from '../data/places.js';
 import { CHOP_WOOD, TOOLS, TREE_RESPAWN_SEC } from '../data/tools.js';
 import { rollKind } from '../dex-gates.js';
+import { rodBiteSec } from '../workbench/rules.js';
 import { petFishBonus } from '../pet/rules.js';
 import { fallDirAway } from '../tree-fall.js';
 import { Sound } from '../sound.js';
@@ -118,7 +119,7 @@ export function updateFishing() {
   if (fishState === 'wait') {
     bobber.position.y = 0.32 + Math.sin(now * 3) * 0.04; // 잔잔히 떠 있음
     if (now >= biteAt) {
-      $w.fishState = 'bite'; $w.biteEnd = now + (gameState.upgrades.rod ? 2.6 : 1.4) * fishDiff.ease; // 튼튼한 낚싯대: 입질 여유↑ · 🎚️ probe × DDA
+      $w.fishState = 'bite'; $w.biteEnd = now + (gameState.upgrades.rod ? rodBiteSec(gameState) : 1.4) * fishDiff.ease; // 튼튼한 낚싯대: 입질 여유↑ · 🎚️ probe × DDA
       ui.setFishPrompt?.('❗ 물었어요! 지금 낚아채요!');
       Sound.blip(); spawnWater(castPos.x, castPos.z);
     }

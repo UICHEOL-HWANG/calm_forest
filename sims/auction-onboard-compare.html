@@ -185,7 +185,7 @@
 const ITEM = { name: '별 풍향계', ico: '⭐' };
 const COPY = [
   ['배너 제목', '🔨 저녁 경매가 열렸어요', '🔨 오늘의 경매 시작'],
-  ['배너 줄', '광장 무대에서 {경매품}을 겨뤄요', '탭하면 무대까지 안내해요'],
+  ['배너 줄', '나루터 옆 무대에서 {경매품}을 겨뤄요', '탭하면 무대까지 안내해요'],
   ['화살표 힌트', '화살표를 따라가요! (기존 문구 재사용)', '무대로 가요!'],
   ['안내 제목', '🔨 저녁 경매', '🔨 경매는 이렇게 해요'],
   ['안내 1', '해 질 녘마다 경매품 하나가 올라와요', '저녁마다 무대에 한 점이 나와요'],
@@ -195,7 +195,7 @@ const COPY = [
 ];
 const T = {
   bTitle: '저녁 경매가 열렸어요',
-  bLine: `광장 무대에서 ${ITEM.name}를 겨뤄요`,
+  bLine: `나루터 옆 무대에서 ${ITEM.name}를 겨뤄요`,
   arrow: '화살표를 따라가요!',
   gTitle: '저녁 경매',
   g1: '해 질 녘마다 경매품 하나가 올라와요',
@@ -256,14 +256,22 @@ const compass = dev => {
 
 const hintCard = () => `<div class="hm"><div class="card"><div class="emo">🔨</div><h2>${esc(T.gTitle)}</h2><p>${esc(GUIDE.map(g => g.join(' ')).join('\n'))}</p><button class="ok">${esc(T.ok)}</button></div></div>`;
 
-const B_CARDS = [
-  { ico: '🔨', tt: T.gTitle, sub: T.g1, next: '다음' },
-  { ico: '🔔', tt: T.g2a, sub: T.g2b, next: '다음' },
-  { ico: '🪙', tt: T.g3a, sub: T.g3b, next: T.ok },
-];
-const e1Sheet = i => {
-  const c = B_CARDS[i];
-  return `<div class="e1"><div class="sheet"><div class="ico">${c.ico}</div><div class="tt">${esc(c.tt)}</div><div class="sub">${esc(c.sub)}</div><div class="foot"><div class="dots">${B_CARDS.map((_, k) => `<span class="${k === i ? 'on' : ''}"></span>`).join('')}</div><button class="next">${esc(c.next)}</button></div></div></div>`;
+const B_SETS = {
+  1: [
+    { ico: '🔨', tt: '저녁마다 경매가 열려요', sub: '경매품 한 점이 무대에 올라와요', next: '다음' },
+    { ico: '🔔', tt: '버튼으로 값을 불러요', sub: '4초 동안 조용하면 낙찰!', next: '다음' },
+    { ico: '🪙', tt: '하루 한 번 참가해요', sub: '코인이 모자라면 구경만 해요', next: '알겠어요' },
+  ],
+  2: [
+    { ico: '🔨', tt: '저녁엔 경매!', sub: '무대에 한 점이 올라와요', next: '다음' },
+    { ico: '🔔', tt: '값을 불러요', sub: '4초 조용하면 낙찰', next: '다음' },
+    { ico: '🪙', tt: '하루 한 번', sub: '코인이 모자라면 구경해요', next: '좋아요' },
+  ],
+};
+let B_CARDS = B_SETS[1];
+const e1Sheet = (i, set = 1) => {
+  const c = B_SETS[set][i];
+  return `<div class="e1"><div class="sheet"><div class="ico">${c.ico}</div><div class="tt">${esc(c.tt)}</div><div class="sub">${esc(c.sub)}</div><div class="foot"><div class="dots">${B_SETS[set].map((_, k) => `<span class="${k === i ? 'on' : ''}"></span>`).join('')}</div><button class="next">${esc(c.next)}</button></div></div></div>`;
 };
 
 const auWin = how => `<div class="au"><div class="au-head">🔨 오늘의 경매</div><div class="au-item"><span class="au-ico">${ITEM.ico}</span><div class="nm">${esc(ITEM.name)}</div></div><div class="au-body"><div class="au-hint">오늘의 경매품이 나왔어요</div>${how ? `<div class="au-how">${GUIDE.map(g => `<div><span>${g[0]}</span><b>${esc(g[1])}</b></div>`).join('')}</div>` : ''}<div class="au-btns"><button class="au-btn main">🔔 경매 참가하기</button><button class="au-btn">👀 구경만 하기</button></div><div class="au-btns"><button class="au-btn">닫기</button></div></div></div>`;
@@ -287,7 +295,8 @@ const VARIANTS = [
     desc: '무대에 처음 닿으면 E1 시작 안내와 같은 아래 시트 3장(해 질 녘 한 점 / 부르는 법·4초 낙찰 / 하루 한 번·코인 모자라면 구경)을 넘긴 뒤 경매 창이 열려요.',
     pros: ['👍 한 장에 한 가지라 읽기 쉬워요', '⚠️ 탭이 3번 더 들어요', '⚠️ 2분짜리 경매 창을 넘기는 동안 써 버려요'],
     frames: [F1, F2, { kind: 'stage', ov: () => e1Sheet(0), cap: '아래 시트 첫 장. 다음 → 다음 → 알겠어요 (아래 실제 크기 3장)' }, { ...F4, cap: '세 장째 알겠어요를 누르면 경매 창이 열려요' }],
-    crops: [0, 1, 2].map(i => ['m', 'stage', () => e1Sheet(i), '.e1 .sheet', `${i + 1} / 3장 (모바일 폭)`]),
+    crops: [0, 1, 2].map(i => ['m', 'stage', () => e1Sheet(i, 1), '.e1 .sheet', `문구 후보 1 · ${i + 1} / 3장 (모바일 폭)`])
+      .concat([0, 1, 2].map(i => ['m', 'stage', () => e1Sheet(i, 2), '.e1 .sheet', `문구 후보 2 · ${i + 1} / 3장 (모바일 폭)`])),
   },
   {
     id: 'C', name: 'C · 창 안 안내', taps: 2,

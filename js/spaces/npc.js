@@ -25,6 +25,7 @@ import { logEcon } from '../metrics.js';
 import { activeQuestList, pickGated, questIdFor } from '../quests.js';
 import { quizOffer } from './ferry-quiz-run.js';   // 🦆 사공 퀴즈
 import { onboardView, wheatStatus } from '../orchard-onboard.js';
+import { starOf } from '../workbench/rules.js';
 import { cosOnboardView } from '../cos-onboard.js';
 import { minerCard, jobCard } from '../delve/miner-card.js';
 import { delveJobProgress } from './delve.js';
@@ -786,7 +787,7 @@ export let npcPromptFarm = false;
 let wheatSig = '';
 function orchardWheat() {
   if (gameState.progress?.orchardQuest !== 'grow') return undefined;
-  return wheatStatus(plots, clock.elapsedTime, { upgraded: !!gameState.upgrades?.water, rain: RAIN_DAY });
+  return wheatStatus(plots, clock.elapsedTime, { upgraded: !!gameState.upgrades?.water, rain: RAIN_DAY, star: starOf(gameState, 'water') });
 }
 
 export function updateNPCInteract() {

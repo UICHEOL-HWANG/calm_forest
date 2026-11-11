@@ -61,7 +61,7 @@ function growHow(status) {
 
 const WHEAT_ORDER = ['ready', 'weed', 'dry', 'rain', 'wet', 'wilted'];
 
-export function wheatStatus(plots, now, { upgraded, rain }) {
+export function wheatStatus(plots, now, { upgraded, rain, star = 0 }) {
   const kinds = (plots || []).filter(p => p?.cropType?.id === 'wheat').map(p => {
     if (p.state === 'mature') return { kind: 'ready' };
     if (p.state === 'wilted') return { kind: 'wilted' };
@@ -69,7 +69,7 @@ export function wheatStatus(plots, now, { upgraded, rain }) {
     if (p.weed) return { kind: 'weed' };
     if (rain) return { kind: 'rain' };
     if (now < (p.wetUntil || 0)) return { kind: 'wet' };
-    const step = growthPerWater(p.cropType, upgraded, !!p.fert);
+    const step = growthPerWater(p.cropType, upgraded, !!p.fert, star);
     return { kind: 'dry', watersLeft: Math.max(1, Math.ceil((MATURE - (p.growth || 0)) / step)) };
   }).filter(Boolean);
   for (const k of WHEAT_ORDER) {

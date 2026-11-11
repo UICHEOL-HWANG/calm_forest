@@ -6,7 +6,7 @@
 //     game.js 에 남은 let 에 쓸 때는 `$w.x = …` (읽기는 그냥 x). 도구·증명: tools/refactor/
 // =============================================================
 import {
-  $w, atCafe, atDream, atMirror, atHalloween, atFarm, atMine, atMist, atMuseum, atObservatory, atMountain, atNeighbor, atRiver, atSea, camera, decorNearRing, decorRot, farmBuildingRecs,
+  $w, RES_LABEL, atCafe, atDream, atMirror, atHalloween, atFarm, atMine, atMist, atMuseum, atObservatory, atMountain, atNeighbor, atRiver, atSea, camera, decorNearRing, decorRot, farmBuildingRecs,
   gameState, giveReward, houseWindows, indoor, markHabitatDirty, nearDoor, nearNPC, obstacles, outdoorMeshes,
   outdoorTarget, pickedOutdoor, placingOutdoor, player, plots, pointer, questEvent, raycaster, refreshInventoryUI,
   removeSolid, requestSave, rewardText, scene, spawnFloatText, spawnSparkle, ui,
@@ -14,6 +14,8 @@ import {
 import { trackEvent } from '../analytics.js';
 import { OUTDOOR } from '../data/catalog.js';
 import { GIFTS } from '../data/npcs.js';
+import { CARVE_DESIGNS } from './carving.js';
+import { addGift, giftLove, parseKeptGift, takeGift } from './carve-gift.js';
 import { CELL as FARM_CELL, FARM_BUILDINGS, buildingCells, rotatedFp, storageTotal } from '../farm-building.js';
 import { OUTDOOR_TAP_REACH, outdoorDistance } from '../outdoor-move.js';
 import { Sound } from '../sound.js';
@@ -124,14 +126,10 @@ export function storeOutdoor() {
 // 선물 제작(보유 수 +1)
 export function craftGift(id) {
   const g = GIFTS.find(x => x.id === id); if (!g) return { ok: false };
-  for (const k in g.cost) {
-    if ((gameState.inventory[k] || 0) < g.cost[k]) {
-      const label = k === 'fish' ? '물고기' : k === 'crop' ? '작물' : '목재';
-      return { ok: false, msg: `${label}이(가) 부족해요` };
-    }
-  }
+  const lack = Object.keys(g.cost).find(k => (gameState.inventory[k] || 0) < g.cost[k]);
+  if (lack) return { ok: false, msg: `${RES_LABEL[lack] || lack}이(가) 부족해요` };
   for (const k in g.cost) gameState.inventory[k] -= g.cost[k];
-  gameState.gifts[id] = (gameState.gifts[id] || 0) + 1;
+  gameState.gifts = addGift(gameState.gifts, id);
   refreshInventoryUI();
   Sound.blip();
   spawnFloatText(player.position.x, 1.4, player.position.z, `${g.ico} ${g.name}!`, '#c9682a');
@@ -155,15 +153,18 @@ export function addAffinity(id, amount = 1) {
 export function giveGift(giftId) {
   const o = nearNPC; if (!o) return { ok: false, msg: '가까운 주민이 없어요' };
   if ((gameState.gifts[giftId] || 0) <= 0) return { ok: false, msg: '그 선물이 없어요' };
-  const g = GIFTS.find(x => x.id === giftId);
-  gameState.gifts[giftId] -= 1;
+  const kept = parseKeptGift(giftId);
+  const g = kept ? CARVE_DESIGNS.find(d => d.id === kept.design) : GIFTS.find(x => x.id === giftId);
+  if (!g) return { ok: false, msg: '그 선물이 없어요' };
+  const love = giftLove(giftId, GIFTS);
+  gameState.gifts = takeGift(gameState.gifts, giftId);
   const id = o.def.id;
   refreshInventoryUI();
   Sound.harvest();
-  spawnFloatText(o.group.position.x, 2.2, o.group.position.z, g.love > 1 ? '❤️❤️' : '❤️', '#e6789a');
-  spawnSparkle(o.group.position.x, 1.4, o.group.position.z, 14);
-  const reward = addAffinity(id, g.love || 1);              // 📿 보석 목걸이 등은 친밀도 +2
+  spawnFloatText(o.group.position.x, 2.2, o.group.position.z, (kept?.paper ? '🎁' : '') + '❤️'.repeat(love), '#e6789a');
+  spawnSparkle(o.group.position.x, 1.4, o.group.position.z, kept?.paper ? 22 : 14);
+  const reward = addAffinity(id, love);
   questEvent('gift');                                  // 🦉 의뢰(주민에게 선물)
   trackEvent('gift_give', { npc: id, gift: giftId });  // [GA4]
-  return { ok: true, npc: o.def.name, ico: g.ico, affinity: gameState.affinity[id], reward: reward ? rewardText(reward) : null };
+  return { ok: true, npc: o.def.name, ico: g.ico + (kept?.paper ? '🎀' : ''), love, affinity: gameState.affinity[id], reward: reward ? rewardText(reward) : null };
 }

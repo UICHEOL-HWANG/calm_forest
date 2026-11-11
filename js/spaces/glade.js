@@ -17,6 +17,7 @@ import { BUG_KINDS, CAFE_GATE, GLADE, GLADE_R, LIGHT_WORKSHOP, LIGHT_WORKSHOP_PO
 import { PAL } from '../data/world.js';
 import { NIGHT_MIN } from '../daynight.js';
 import { rollKind } from '../dex-gates.js';
+import { netBonus } from '../workbench/rules.js';
 import { Sound } from '../sound.js';
 import * as THREE from 'three';
 
@@ -163,7 +164,7 @@ export function tryNet() {
   const bright = 0.5 + 0.5 * Math.sin(u.phase);
   // 성공률: 반짝일 때 크게 유리 + 촘촘한 포충망(영구 업그레이드) 보정
   const base = bright > 0.6 ? 0.9 : 0.35;
-  const chance = Math.min(0.98, base + (gameState.upgrades.net ? 0.18 : 0));
+  const chance = Math.min(0.98, base + netBonus(gameState));
   const ok = Math.random() < chance;
   trackEvent('firefly_swing', { kind: kind.id, bright: Math.round(bright * 100), lit: bright > 0.6, upgraded: !!gameState.upgrades.net, caught: ok }); // [GA4] 타이밍 성공률 분석
   if (!ok) {                                   // 실패 — 반딧불이가 휙 도망

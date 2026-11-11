@@ -75,6 +75,8 @@ import { createFarmRush } from './ads/farm-rush.js';
 import { repeatOpen, rushSlots, sellBonus } from './guide/prepass-rules.js';
 import { sanitizeHouseGuide } from './house-guide-rules.js';
 import { initPlaza, updatePlaza, plazaSpotNow, openPlaza, plazaScatterBlocks, plazaDefault, restorePlaza, refreshPlaza, plazaDecorMesh, plazaMapVisible } from './plaza/index.js';
+import { defaultToolStars, restoreToolStars, restoreForge, forgeCancel } from './workbench/rules.js';
+import { forgeView, forgeBegin, forgeAbort, forgeFinish, settleForge } from './workbench/forge.js';
 import { initAuction, updateAuction, auctionMapSpot, auctionSpotNow, openAuction, auctionScatterBlocks, auctionOutdoorMesh, auctionDefault, restoreAuction } from './auction/index.js';
 import { refreshPond, updatePond, pondScatterBlocks } from './pond/index.js';
 import { onPlay, decorBanner, applySetFx } from './decor-drops/index.js';
@@ -236,8 +238,9 @@ import {
   stationCamDist, updateMgScene,
 } from './spaces/kitchen-stage.js';   // 📦 🍳 작업대·자유주방·가공 클로즈업 무대 (구역 머리말 — 분리 2단계)
 import {
-  applyCarveCamera, carveAbandon, carveDebug, carveSceneEnd, carveStart, workshopView, wset,
+  applyCarveCamera, carveAbandon, carveDebug, carveResolve, carveSceneEnd, carveStart, carveTick, carveWrap, keptGiftsView, workshopView, wset,
 } from './spaces/carving.js';   // 📦 🗿 조각 공방 — 깎기 미니게임 (구역 머리말 — 분리 2단계)
+import { restoreGifts } from './spaces/carve-gift.js';
 import {
   intro, introEnd, introLook, introStart, updateIntro,
 } from './spaces/prologue.js';   // 📦 🎬 프롤로그 컷신 (구역 머리말 — 분리 2단계)
@@ -1069,6 +1072,8 @@ const gameState = {
               hoe: false, seed: false, sickle: false, shovel: false, hammer: false }, // 🔧 신설 5종
   blueprints: {},                           // 🔨 히든 의뢰로 받은 📜 도면 { sickle: true } — js/tool-blueprints.js
   tier2: {},                                // 🔨 제작한 금빛 도구(2단계) { sickle: true } — tierOf 가 2 를 준다
+  toolStars: defaultToolStars(),
+  forge: null,
   outdoor: [],                              // 야외 장식 [{id,x,z}]
   outdoorStored: {},                        // 🧺 보관한 야외 장식 { id: 개수 } — 작업대에서 값 없이 다시 꺼냄
   gifts: {},                                // 보유 선물 { id: count }
@@ -2111,6 +2116,9 @@ export const Input = {
   carveAbandon() { carveAbandon(); },                   // 🗿 그만두기(낮은 등급으로 강제 완성)
   carveSceneEnd() { carveSceneEnd(); },                 // 🗿 무대 종료(결과 닫기 → 마을 카메라 복귀)
   carveDebug(a, n) { return carveDebug(a, n); },        // 🗿 로컬 검증 훅(localhost 전용, 실서비스 no-op)
+  carveResolve(how) { return carveResolve(how); },
+  carveWrap(id, paper) { return carveWrap(id, paper); },
+  keptGifts() { return keptGiftsView(); },
   mgSceneStart(type, icos, n, dishIco) { mgSceneStart(type, icos, n, dishIco); }, // 🍳 클로즈업 조리 무대 입장(카메라 전환)
   mgSceneEnd() { mgSceneEnd(); },                       // 🍳 무대 종료(마을 카메라 복귀)
   getStory() { return storyView(); },                   // 📖 메인 퀘스트 현황(칩·모달 렌더용)
@@ -2136,6 +2144,10 @@ export const Input = {
   craftUpgrade(id) { return craftUpgrade(id); },        // 업그레이드 제작
   getTier2() { return tier2List(); },                   // 🔨 금빛 도구(2단계) 목록 — 도면 상태·비용
   craftTier2(tool) { return craftTier2(tool); },        // 🔨 금빛 도구 제작
+  getForge() { return forgeView(); },
+  forgeBegin(tool) { return forgeBegin(tool); },
+  forgeAbort() { return forgeAbort(); },
+  forgeFinish(score) { return forgeFinish(score); },
   getOutdoor() { return OUTDOOR.filter(o => catalogVisible(o, { stored: gameState.outdoorStored?.[o.id] || 0 })).map(o => ({ ...o, tag: saleTagOf(o) })); },   // 야외 장식 목록(+🏗️ 밭 시설 farm:true) · 🎃 기간 밖 한정품 숨김
   isAtFarm() { return atFarm; },
   selectOutdoor(id) { if (pickedOutdoor) stopOutdoorPlacing(true); placingOutdoor = id; outdoorTarget.pinned = false; buildDecorGhost(id, true); },   // 야외 장식 선택(설치 대기 — 발밑에 🫥미리보기). 들고 있던 장식은 제자리로(안 그러면 새 장식이 "옮김"으로 공짜 설치됨)
@@ -2562,6 +2574,7 @@ export async function enterGame() {
   if (!stationCount('vat')) placeOutdoor(FARM.x + VAT_HOME_LOCAL[0], FARM.z + VAT_HOME_LOCAL[1], true, 'vat', 0);
   refreshStations();
   catchUpCraft();                      // 🔥 자는 사이 다 구워진 게 있으면 알린다
+  settleForge(false);
   prefetchNotices();                   // 📮 안 읽은 소식을 미리 받아 둔다(await 안 함 — 출석 모달을 닫을 때 준비돼 있으면 이어서 띄운다)
   // 테스트: ?house=4|5|6 — 증축 단계 미리보기(?weather= 와 같은 개발용 파라미터)
   const _hq = parseInt(_wq.get('house') || '', 10);
@@ -3143,6 +3156,9 @@ function applySave(saved) {
   // 🔨 도면·금빛 도구 — 아래 upgrades 복원이 손에 든 도구를 다시 만들기(refreshHeldTool) **전에** 채워야 금빛으로 나온다
   gameState.blueprints = sanitizeToolFlags(saved.blueprints);
   gameState.tier2 = sanitizeToolFlags(saved.tier2);
+  gameState.toolStars = restoreToolStars(saved.toolStars);
+  gameState.forge = restoreForge(saved.forge, gameState.toolStars);
+  if (gameState.forge?.score === null) Object.assign(gameState, forgeCancel(gameState));
   if (saved.upgrades) {
     gameState.upgrades = { ...gameState.upgrades, ...saved.upgrades }; // 도구 업그레이드 복원
     // 🪓 ⚠️ buildPlayer() → setHeldTool() 은 bootWorld 안에서 이미 돌았다(세이브를 읽기 전).
@@ -3160,7 +3176,7 @@ function applySave(saved) {
     gameState.outdoorStored = {};
     for (const [k, v] of Object.entries(saved.outdoorStored)) if (OUTDOOR.some(d => d.id === k) && Number.isFinite(v) && v > 0) gameState.outdoorStored[k] = Math.floor(v);
   }
-  if (saved.gifts) gameState.gifts = { ...saved.gifts };             // 보유 선물 복원
+  if (saved.gifts) gameState.gifts = restoreGifts(saved.gifts);             // 보유 선물 복원
   gameState.plaza = restorePlaza(saved.plaza);   // 🌾 광장(옛 세이브=기본값)
   gameState.auction = restoreAuction(saved.auction);
   gameState.neighbors = restoreNeighbors(saved.neighbors);   // 🏡 이웃 마을(옛 세이브=기본값)
@@ -5613,6 +5629,7 @@ function updateCarveScene(dt, t) {
     if (f.life <= 0) { f.m.parent?.remove(f.m); f.m.geometry.dispose(); wset.debris.splice(i, 1); }
   }
   wset.light.intensity = 1.15 + 0.05 * Math.sin(t * 9);
+  carveTick();
 }
 
 // =============================================================
@@ -7268,6 +7285,7 @@ function doSleep() {
 // ☀️ 아침으로 — 💤 자기와 🌙 꿈에서 깨어나기가 같은 결과를 쓴다(js/spaces/dream.js)
 function wakeToMorning() {
   timeOfDay = WAKE_TIME; gameState.timeOfDay = timeOfDay;
+  settleForge(true);
   dayPaused = false;   // ?time= 로 멈춰 둔 시계도 자고 나면 다시 흐른다(0.30 에 고착 방지).
                        // 촬영은 자기 전까지의 고정만 쓰므로 손해가 없고, 검수 때 ?time= 로 밤을 만들 수 있다.
   requestSave();

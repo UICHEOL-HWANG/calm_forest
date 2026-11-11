@@ -560,7 +560,7 @@
   #gift-box-modal #gift-box-ok[hidden] { display: none; }
   @keyframes giftWobble { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(-8deg); } 40% { transform: rotate(7deg); } 60% { transform: rotate(-4deg); } 80% { transform: rotate(2deg); } }
   @keyframes giftPop { 0% { transform: scale(.4); } 70% { transform: scale(1.15); } 100% { transform: scale(1); } }
-  #toast.panel { display: flex; align-items: center; gap: 8px; background: rgba(28,44,35,.92); color: #fff; border-radius: 22px; padding: 8px 16px 8px 12px; box-shadow: 0 10px 24px rgba(0,0,0,.3); width: max-content; max-width: min(560px, 92vw); line-height: 1.35; }
+  #toast.panel { display: flex; align-items: center; gap: 8px; background: rgba(28,44,35,.92); color: #fff; border-radius: 22px; padding: 8px 16px 8px 12px; box-shadow: 0 10px 24px rgba(0,0,0,.3); width: max-content; max-width: min(560px, 92vw); line-height: 1.5; word-break: keep-all; text-wrap: balance; }
   #toast .tst-ic { font-size: 1.2em; flex: none; }
   #toast .tst-tx { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
   #toast .tst-tx b { font-weight: 800; }
@@ -1575,9 +1575,11 @@
     #cook-menu { --menu-bottom: calc(58px + env(safe-area-inset-bottom)); gap: 6px; padding: 9px 12px; }
     #cook-menu .dm-head { font-size: 13px; }
     #cook-menu .ck-tab { padding: 4px 11px; font-size: 12px; }
-    #cook-menu .ck-item { width: 78px; padding: 7px 5px; }
-    #cook-menu .ck-item .ck-ico { font-size: 21px; }
-    #cook-menu #cook-hint { min-height: 2.6em; }   /* 뒤쪽 #cook-hint 규칙과 명시도를 맞춰야 이긴다 */
+    #cook-menu .wb-cell .wb-ico { font-size: 22px; }
+    #cook-menu #wb-banner { padding: 5px 9px; font-size: 11.5px; }
+    #cook-menu .dm-actions #cook-close { padding: 7px 22px; font-size: 14px; }
+    #cook-menu #wb-sheet { padding: 10px; gap: 7px; }
+    #cook-menu .wb-big { font-size: 30px; width: 48px; height: 48px; }
   }
   .ck-tabs { display: flex; gap: 6px; justify-content: center; }
   .ck-tab { border: none; border-radius: 10px; padding: 6px 16px; font-weight: 700; font-size: 13px; cursor: pointer; background: #eef2ee; color: var(--ink); }
@@ -1585,16 +1587,75 @@
   .ck-inv { font-size: 12px; opacity: .75; text-align: center; }
   /* 목록만 스크롤 — 제목·탭·안내·닫기는 항상 보이게 고정(창 전체를 스크롤하면 닫기가 화면 밖으로 나간다).
      머리말·꼬리말은 flex-shrink 를 막아야 자리를 뺏기지 않는다(도감 모달과 같은 방식) */
-  #cook-menu > *:not(#tool-items):not(#out-items):not(#gift-items):not(#carve-items) { flex: 0 0 auto; }
-  /* 목록은 고정된 창 높이의 남는 자리를 전부 먹고(flex:1), 넘치면 목록만 스크롤한다 */
-  #tool-items, #out-items, #gift-items, #carve-items { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
-    flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y;
-    align-content: flex-start; padding: 2px 0; }
-  /* 안내문도 탭마다 줄 수가 달라 창을 흔든다 — 두 줄 자리를 늘 비워 둔다.
-     ⚠️ display:flex 를 주면 안 된다 — 안내문은 네 탭 모두 <b> 를 품은 한 줄이라
-        flex 가 <b> 와 앞뒤 글을 **별개 item** 으로 쪼개면서 사이 공백까지 버린다
-        ("영구 도구 강화" → "영구도구 강화"). 높이만 잡으면 목적은 이미 달성된다. */
-  #cook-hint { min-height: 2.9em; }
+  #cook-menu > *:not(.wb-body) { flex: 0 0 auto; }
+  #cook-menu .dm-head { display: flex; align-items: center; gap: 8px; }
+  #cook-menu .dm-actions { justify-content: center; }
+  #cook-menu .dm-actions #cook-close { min-width: min(220px, 70%); padding: 11px 22px; font-size: 15px; font-weight: 800; border-radius: 14px;
+    background: #fff; color: var(--ink); border: 1.5px solid rgba(74,90,79,0.3); box-shadow: 0 3px 10px rgba(90,120,100,0.18); }
+  #cook-menu .dm-actions #cook-close:active { transform: scale(0.97); }
+  .wb-coin { font-size: 13px; font-weight: 700; opacity: .8; font-variant-numeric: tabular-nums; }
+  .wb-inv { display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; }
+  .wb-inv > span { font-size: 11.5px; font-weight: 700; padding: 2px 7px; border-radius: 8px; background: rgba(255,255,255,.6); font-variant-numeric: tabular-nums; }
+  #wb-banner { font-size: 12px; background: rgba(255,232,176,0.55); border-radius: 10px; padding: 7px 10px; word-break: keep-all; }
+  #wb-banner[hidden] { display: none; }
+  .wb-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+  #wb-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y;
+    display: flex; flex-direction: column; gap: 7px; padding: 2px; }
+  .wb-sec { font-size: 11.5px; font-weight: 800; opacity: .6; margin: 2px 2px -2px; }
+  .wb-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; }
+  .wb-cell { position: relative; aspect-ratio: 1; border: none; border-radius: 14px; background: rgba(255,255,255,0.75); color: var(--ink); font: inherit;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 0; cursor: pointer; transition: transform .1s; }
+  .wb-cell:active { transform: scale(0.95); }
+  .wb-cell.sel { background: #fff; box-shadow: 0 0 0 2.5px var(--ink) inset; }
+  .wb-cell.dim .wb-ico, .wb-cell.dim .wb-nm { opacity: .42; }
+  .wb-cell.done { background: #e3f3e6; }
+  .wb-cell.done.sel { background: #f1fbf3; }
+  .wb-cell .wb-ico { font-size: 28px; line-height: 1; }
+  .wb-cell .wb-nm { font-size: 11px; font-weight: 700; white-space: nowrap; max-width: 92%; overflow: hidden; text-overflow: ellipsis; }
+  .wb-cell .wb-cnt { position: absolute; right: 6px; bottom: 4px; font-size: 11px; font-weight: 800; opacity: .7; font-variant-numeric: tabular-nums; }
+  .wb-cell .wb-st { position: absolute; left: 5px; top: 3px; line-height: 1; }
+  .wb-cell .wb-st .fg-stars { font-size: 9.5px; }
+  .wb-cell .wb-tag { position: absolute; right: 5px; top: 4px; font-size: 9.5px; font-weight: 800; color: #fff; background: #e07a3a; border-radius: 6px; padding: 1px 4px; line-height: 1.3; }
+  .wb-cell .wb-tag.t-done { background: #5cae73; }
+  .wb-cell .wb-tag.t-moon, .wb-cell .wb-tag.t-lock { background: #6a6fb8; }
+  #wb-sheet { flex: 0 0 auto; border-radius: 16px; background: #fff; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 -2px 10px rgba(90,120,100,0.12); }
+  #wb-sheet:empty { display: none; }
+  .wb-top { display: flex; align-items: center; gap: 9px; min-width: 0; }
+  .wb-big { font-size: 30px; line-height: 1; flex: 0 0 auto; }
+  .wb-txt { min-width: 0; }
+  .wb-name { font-size: 14px; font-weight: 800; }
+  .wb-sub { font-size: 12px; opacity: .8; line-height: 1.4; word-break: keep-all; }
+  .wb-sub .now { opacity: .75; }
+  .wb-sub .nxt { color: #2f9a5e; font-weight: 800; }
+  .wb-sub .chev { display: inline-block; width: 7px; height: 7px; border-top: 2px solid currentColor; border-right: 2px solid currentColor; transform: rotate(45deg); margin: 0 6px 1px 3px; opacity: .6; }
+  .wb-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .wb-chip { font-size: 11.5px; font-weight: 800; padding: 4px 8px; border-radius: 9px; background: #e2f4e6; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .wb-chip.lack { background: #fbe3df; color: #c9574a; }
+  .wb-note { font-size: 11px; opacity: .65; word-break: keep-all; }
+  .wb-sale { display: flex; gap: 6px; flex-wrap: wrap; font-size: 11px; font-weight: 700; color: #c4631b; }
+  .wb-note.moon { opacity: 1; font-weight: 700; color: #4b4f8a; background: #e7e8fb; padding: 6px 9px; border-radius: 10px; }
+  .wb-go { border: none; border-radius: 12px; padding: 10px 16px; font: inherit; font-size: 13.5px; font-weight: 800; background: var(--mint); color: #24382d; cursor: pointer; white-space: nowrap; }
+  .wb-go:active { transform: scale(0.96); }
+  .wb-go[disabled] { opacity: .45; cursor: default; transform: none; }
+  @media (min-width: 700px) {
+    #cook-menu { width: min(760px, 94vw); }
+    .wb-body { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 10px; }
+    .wb-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    #wb-sheet { justify-content: flex-start; gap: 10px; padding: 14px; overflow-y: auto; min-height: 0; }
+    #wb-sheet:empty { display: flex; }
+    .wb-top { flex-direction: column; text-align: center; gap: 6px; }
+    .wb-big { font-size: 44px; width: 72px; height: 72px; display: grid; place-items: center; border-radius: 18px; background: #fff7e0; }
+    .wb-chips { justify-content: center; }
+    .wb-go { margin-top: auto; width: 100%; padding: 11px; }
+  }
+  @media (min-width: 700px) and (max-height: 640px) {
+    .wb-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+    .wb-body { grid-template-columns: minmax(0, 1fr) 220px; }
+    #wb-sheet { padding: 10px 10px 0; gap: 6px; }
+    .wb-top { flex-direction: row; text-align: left; gap: 8px; }
+    .wb-chips { justify-content: flex-start; }
+    .wb-go { position: sticky; bottom: 0; margin-bottom: 10px; box-shadow: 0 -6px 8px #fff; }
+  }
   /* 🍳 자유주방 메뉴판 — 레시피 카드(미니게임 종류·최고 점수 표시) */
   #kitchen-menu { display: none; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: min(460px, 92vw); max-height: 66dvh; overflow-y: auto; flex-direction: column; gap: 10px; }
   #kitchen-menu.show { display: flex; }
@@ -2020,6 +2081,34 @@
   #cvr-title { font-size: 20px; font-weight: 800; }
   #cvr-sub { font-size: 13px; opacity: .8; text-align: center; }
   #cvr-stats { display: flex; gap: 14px; font-size: 12px; opacity: .85; font-variant-numeric: tabular-nums; flex-wrap: wrap; justify-content: center; }
+  #cv-combo { color: #c4631b; }
+  #cv-gauge { position: relative; height: 12px; border-radius: 6px; background: #efe7d6; margin: 3px 22px 16px 8px; }
+  #cv-gauge .cvg-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 6px; background: linear-gradient(90deg, #ffd76a, #e9a23b); transition: width .15s; }
+  #cv-gauge .cvg-tick { position: absolute; top: -3px; width: 2px; height: 18px; margin-left: -1px; background: #b9ad90; }
+  #cv-gauge .cvg-tick span { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: 800; white-space: nowrap; color: #8a7a55; }
+  #cv-gauge .cvg-tick.hit span { color: #c4631b; }
+  #cv-gem { position: absolute; right: 14px; top: calc(62px + var(--top-inset)); font-size: 13px; font-weight: 800; background: #e3f6ff; color: #2a6a86;
+    border-radius: 10px; padding: 5px 10px; box-shadow: var(--shadow); opacity: 0; transform: translateY(14px) scale(.8); transition: opacity .25s, transform .35s; }
+  #cv-gem.show { opacity: 1; transform: none; }
+  .cvr-two { display: flex; gap: 8px; width: 100%; margin-top: 4px; }
+  .cvr-two button { flex: 1 1 0; border: none; border-radius: 12px; padding: 10px 6px; font-weight: 800; font-size: 14px; line-height: 1.3; cursor: pointer; color: var(--ink); background: #eef2ee; font-family: inherit; }
+  .cvr-two button small { display: block; font-size: 11px; font-weight: 700; opacity: .75; }
+  .cvr-two .cvr-sell { background: #ffe7a6; color: #6a4a00; }
+  .cvr-two .cvr-go { background: var(--mint); }
+  #cvr-wrap { display: none; flex-direction: column; align-items: center; gap: 8px; width: 100%; }
+  #cv-result.wrap #cvr-wrap { display: flex; }
+  #cv-result.wrap #cvr-main { display: none; }
+  #cvr-main { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; }
+  #cvr-wtitle { font-size: 16px; font-weight: 800; }
+  #cvr-papers { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .cvr-paper { width: 60px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; border: none; background: none; padding: 0; cursor: pointer; color: var(--ink); font-family: inherit; }
+  .cvr-paper .sw { width: 50px; height: 50px; border-radius: 12px; box-shadow: var(--shadow); }
+  .cvr-paper.sel .sw { outline: 3px solid #4aa868; outline-offset: 2px; }
+  .sw.p-kraft { background: #c9a074; background-image: repeating-linear-gradient(45deg, rgba(255,255,255,.12) 0 3px, transparent 3px 7px); }
+  .sw.p-floral { background: #f6c9d4; background-image: radial-gradient(circle at 25% 30%, #fff 0 3px, transparent 4px), radial-gradient(circle at 70% 65%, #e88aa3 0 4px, transparent 5px), radial-gradient(circle at 70% 20%, #fff 0 2px, transparent 3px); background-size: 24px 24px; }
+  .sw.p-starry { background: #2f3b6b; background-image: radial-gradient(circle at 30% 30%, #ffe08a 0 1.6px, transparent 2.4px), radial-gradient(circle at 75% 70%, #fff 0 1.2px, transparent 2px); background-size: 16px 16px; }
+  #cvr-wcost { font-size: 12.5px; opacity: .85; }
+  .cv-heart { color: #e6789a; font-weight: 800; }
   /* ☕ 카페 주문판 — 손님 카드가 세로로 쌓이는 목록형(요리 격자와 달리 "주문서" 느낌) */
   #cafe-menu { display: none; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: min(460px, 92vw); flex-direction: column; gap: 10px; max-height: 70dvh; overflow-y: auto; }
   #cafe-menu.show { display: flex; }
@@ -2439,6 +2528,61 @@
   .ck-item .ck-buff { font-size: 10px; opacity: .8; line-height: 1.2; }
   .ck-item .ck-cost { font-size: 10.5px; opacity: .75; }
   .ck-item .ck-tag { font-size: 9.5px; line-height: 1.15; color: #c4631b; }
+  .fg-stars { display: inline-flex; gap: 1px; font-size: 12px; vertical-align: middle; }
+  .fg-stars i { font-style: normal; color: #d7d2c2; }
+  .fg-stars i.on { color: #e8b53a; text-shadow: 0 1px 0 rgba(150,100,0,.25); }
+  .fg-stars i.next { color: #e8b53a; opacity: .45; }
+  #forge-modal { position: fixed; inset: 0; z-index: 45; display: none; align-items: center; justify-content: center; background: rgba(40,50,44,.38);
+    -webkit-user-select: none; user-select: none; touch-action: manipulation; padding-top: var(--top-inset); }
+  #forge-modal.show { display: flex; }
+  #forge-modal .fg-panel { position: relative; width: min(380px, 94vw); height: min(460px, calc(100dvh - 32px - var(--top-inset)));
+    border-radius: 18px; overflow: hidden; box-shadow: var(--shadow); display: flex; flex-direction: column; align-items: center; color: var(--ink);
+    background: linear-gradient(180deg, #e3d3b4 0%, #d8c39d 52%, #8a6a4a 52.3%, #6f5236 100%); cursor: pointer; }
+  #forge-modal .fg-top { margin-top: 10px; display: flex; align-items: center; gap: 10px; background: rgba(255,252,244,0.93); border-radius: 14px;
+    box-shadow: var(--shadow); padding: 7px 8px 7px 12px; max-width: calc(100% - 16px); }
+  #forge-modal .fg-title { font-weight: 800; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #forge-modal .fg-quit { border: none; border-radius: 10px; padding: 6px 10px; font-weight: 600; font-size: 12px; cursor: pointer; background: #f5e0dc; color: #a2503f; font-family: inherit; white-space: nowrap; }
+  #forge-modal .fg-quit[hidden] { display: none; }
+  #forge-modal .fg-count { position: absolute; right: 12px; top: 62px; font-size: 12px; font-weight: 800; background: rgba(255,252,244,.93); padding: 4px 9px; border-radius: 10px; font-variant-numeric: tabular-nums; }
+  #forge-modal .fg-ring { position: absolute; left: 50%; top: 48%; width: 150px; height: 150px; transform: translate(-50%, -62%); pointer-events: none; }
+  #forge-modal .fg-target { position: absolute; inset: 45px; border-radius: 50%; border: 4px solid #ffd76a; box-shadow: 0 0 0 6px rgba(255,215,106,.25), inset 0 0 0 3px rgba(255,255,255,.6); }
+  #forge-modal .fg-shrink { position: absolute; inset: 45px; border-radius: 50%; border: 4px solid rgba(255,255,255,.95); opacity: 0; will-change: transform; }
+  #forge-modal .fg-pop { position: absolute; left: 50%; top: 82px; transform: translateX(-50%); font-weight: 900; font-size: 26px; color: #a86d00; opacity: 0; pointer-events: none; white-space: nowrap;
+    paint-order: stroke fill; -webkit-text-stroke: 5px #fffaf0; text-shadow: 0 3px 6px rgba(80,50,0,.35); }
+  #forge-modal .fg-pop.g { color: #2e7d4a; }
+  #forge-modal .fg-pop.m { color: #a8483a; }
+  #forge-modal .fg-pop.show { animation: fgPop .75s ease-out forwards; }
+  @keyframes fgPop { 0% { opacity: 0; transform: translate(-50%, 6px) scale(.9); } 25% { opacity: 1; transform: translate(-50%, 0) scale(1.06); } 70% { opacity: 1; transform: translate(-50%, -4px) scale(1); } 100% { opacity: 0; transform: translate(-50%, -10px) scale(1); } }
+  #forge-modal .fg-anvil { position: relative; width: 128px; height: 70px; margin-top: auto; margin-bottom: 96px; pointer-events: none; }
+  #forge-modal .fg-anvil.hit { animation: fgShake .18s ease-out; }
+  @keyframes fgShake { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(3px); } }
+  #forge-modal .fg-anvil .top { position: absolute; left: 6px; right: 0; top: 18px; height: 20px; background: linear-gradient(#7d8790, #5b646c); border-radius: 4px 14px 4px 4px; }
+  #forge-modal .fg-anvil .horn { position: absolute; left: -14px; top: 20px; width: 26px; height: 12px; background: #6c757d; border-radius: 0 0 0 14px; }
+  #forge-modal .fg-anvil .waist { position: absolute; left: 40px; width: 46px; top: 38px; height: 16px; background: #535b62; }
+  #forge-modal .fg-anvil .foot { position: absolute; left: 24px; width: 80px; top: 54px; height: 14px; background: #5b646c; border-radius: 3px; }
+  #forge-modal .fg-tool { position: absolute; left: 42px; top: -16px; font-size: 30px; transform: rotate(-20deg); }
+  #forge-modal .fg-hammer { position: absolute; right: -26px; top: -62px; font-size: 34px; transform: rotate(-35deg); transform-origin: 80% 80%; }
+  #forge-modal .fg-hammer.hit { animation: fgSwing .22s ease-out; }
+  @keyframes fgSwing { 0% { transform: rotate(-35deg); } 45% { transform: translate(-12px, 16px) rotate(25deg); } 100% { transform: rotate(-35deg); } }
+  #forge-modal .fg-bottom { position: absolute; left: 8px; right: 8px; bottom: 8px; background: rgba(255,252,244,0.93); border-radius: 16px; box-shadow: var(--shadow);
+    padding: 9px 12px; display: flex; flex-direction: column; gap: 5px; text-align: center; }
+  #forge-modal .fg-hint { font-size: 11.5px; opacity: .75; word-break: keep-all; }
+  #forge-modal .fg-strikes { display: flex; justify-content: center; gap: 7px; }
+  #forge-modal .sk { width: 15px; height: 15px; border-radius: 50%; background: #e7e1d2; border: 2px solid #d8d0bc; }
+  #forge-modal .sk.p { background: #e8b53a; border-color: #c99316; }
+  #forge-modal .sk.g { background: #8fd3a2; border-color: #5fb27a; }
+  #forge-modal .sk.m { background: #e6a79a; border-color: #c97d6d; }
+  #forge-modal .fg-result { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(330px, 88vw); display: none;
+    background: rgba(255,252,244,0.97); border-radius: 20px; box-shadow: var(--shadow); padding: 16px 14px; flex-direction: column; align-items: center; gap: 7px; text-align: center; color: var(--ink); cursor: default; }
+  #forge-modal .fg-result.show { display: flex; }
+  #forge-modal .r-ico { font-size: 44px; line-height: 1; }
+  #forge-modal .r-title { font-size: 18px; font-weight: 800; word-break: keep-all; }
+  #forge-modal .r-big { font-size: 15px; font-weight: 800; color: #8a6400; }
+  #forge-modal .r-sub { font-size: 12.5px; opacity: .8; word-break: keep-all; line-height: 1.45; }
+  #forge-modal .fg-meter { width: 100%; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+  #forge-modal .fg-meter div { font-size: 10.5px; font-weight: 800; padding: 5px 0; border-radius: 8px; background: #efe9da; color: #9a8f72; }
+  #forge-modal .fg-meter div.on { background: #e8b53a; color: #fff; }
+  #forge-modal .fg-ok { width: 100%; border: none; border-radius: 10px; padding: 10px 14px; font-weight: 800; font-size: 13.5px; cursor: pointer; background: var(--mint); color: var(--ink); font-family: inherit; }
   /* 활성 버프 HUD — 우측 상단 인벤토리 아래 */
   #buffs { position: fixed; top: calc(84px + var(--top-inset)); right: 16px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; pointer-events: none; }
   #buffs .buff { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.72); border-radius: 12px; padding: 5px 10px; font-size: 12px; font-weight: 600; box-shadow: var(--shadow);
@@ -2504,6 +2648,8 @@
   .npc-actions .ghost { background: #eef2ee; color: var(--ink); }
   .npc-actions .primary { background: var(--mint); color: var(--ink); }
   .npc-actions button:active { transform: scale(0.95); }
+  .npc-actions.gift-pick { flex-wrap: wrap; justify-content: center; gap: 8px; }
+  .npc-actions.gift-pick button { padding: 9px 12px; white-space: nowrap; }
 
   /* 모바일 전용 "대화하기" 버튼 — NPC 근처에서만 표시 */
   #talk-btn { position: fixed; left: 50%; bottom: calc(310px + env(safe-area-inset-bottom)); transform: translateX(-50%);
@@ -2667,6 +2813,7 @@
     .sh-row button { padding: 6px 9px; font-size: 11.5px; }
     /* 작업대는 바닥값만 낮춘다 — 최대 높이는 --menu-bottom 을 물고 자동으로 다시 계산된다 */
     #cook-menu { --menu-bottom: calc(78px + env(safe-area-inset-bottom)); width: 94vw; }
+    .wb-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     /* 🍳 미니게임: 좁은 화면 — 카드 폭 확장, 큰 탭 버튼 유지(엄지 존) */
     #mg-card { width: 94vw; padding: 11px 12px calc(11px + env(safe-area-inset-bottom)); gap: 8px; margin-bottom: 6px; }
     #mg-title { font-size: 14px; }
@@ -2989,21 +3136,19 @@
 
   <!-- 작업대 메뉴 (도구 / 야외 / 선물 탭) — 요리는 🍳 자유주방으로 분리 -->
   <div id="cook-menu" class="panel">
-    <div class="dm-head">🔧 작업대</div>
+    <div class="dm-head">🔧 작업대 <span id="cook-coin" class="wb-coin"></span></div>
     <div class="ck-tabs">
       <button class="ck-tab active" data-tab="tool">🔧 도구</button>
       <button class="ck-tab" data-tab="out">🌷 야외</button>
       <button class="ck-tab" data-tab="gift">🎁 선물</button>
       <button class="ck-tab" data-tab="carve">🗿 조각</button>
     </div>
-    <span id="cook-inv" class="ck-inv"></span>
-    <div id="tool-items"></div>
-    <div id="out-items" style="display:none"></div>
-    <div id="gift-items" style="display:none"></div>
-    <div id="carve-items" style="display:none"></div>
-    <div class="dm-hint" id="cook-hint"></div>
+    <div id="cook-inv" class="wb-inv"></div>
+    <div id="wb-banner" hidden></div>
+    <div class="wb-body"><div id="wb-list"></div><div id="wb-sheet"></div></div>
     <div class="dm-actions"><button id="cook-close">닫기</button></div>
   </div>
+  <div id="forge-modal"></div>
 
   <!-- 🍳 자유주방 메뉴판 — 요리를 고르면 미니게임 시작 -->
   <div id="kitchen-menu" class="panel">
@@ -3181,16 +3326,27 @@
   <!-- 🗿 조각 공방 HUD — 3D 무대 위 최소 오버레이(캔버스 탭이 곧 조작이라 판은 안 가림) -->
   <div id="cv-layer">
     <div id="cv-top"><span id="cv-title">🗿 조각</span><button id="cv-quit">그만두기</button></div>
+    <span id="cv-gem">💎 +1</span>
     <div id="cv-bottom">
-      <div id="cv-stats"><span id="cv-prog">다듬기 0%</span><span id="cv-dmg">흠집 ○○○</span></div>
+      <div id="cv-stats"><span id="cv-prog">다듬기 0%</span><span id="cv-dmg">흠집 ○○○</span><span id="cv-combo">콤보 0</span></div>
+      <div id="cv-gauge"><div class="cvg-fill"></div><div class="cvg-tick" data-at="5" style="left:33.3%"><span>5 ×1.1</span></div><div class="cvg-tick" data-at="10" style="left:66.6%"><span>10 ×1.2</span></div><div class="cvg-tick" data-at="15" style="left:100%"><span>15 ×1.3</span></div></div>
       <div id="cv-hint">밝은 칩을 탭·드래그로 깎아내세요 — 어두운 밑그림을 탭하면 흠집!</div>
     </div>
     <div id="cv-result">
-      <div id="cvr-ico">💎</div>
-      <div id="cvr-title">걸작!</div>
-      <div id="cvr-sub"></div>
-      <div id="cvr-stats"></div>
-      <div class="dm-actions" style="justify-content:center"><button id="cvr-close">닫기</button></div>
+      <div id="cvr-main">
+        <div id="cvr-ico">💎</div>
+        <div id="cvr-title">걸작!</div>
+        <div id="cvr-sub"></div>
+        <div id="cvr-stats"></div>
+        <div id="cvr-choice" class="cvr-two"><button id="cvr-sell" class="cvr-sell"></button><button id="cvr-keep" class="cvr-go"></button></div>
+        <div id="cvr-closebar" class="dm-actions" style="justify-content:center"><button id="cvr-close">닫기</button></div>
+      </div>
+      <div id="cvr-wrap">
+        <div id="cvr-wtitle">포장해서 줄까요?</div>
+        <div id="cvr-papers"></div>
+        <div id="cvr-wcost">포장지 🪙15 · ❤️+1 더</div>
+        <div class="cvr-two"><button id="cvr-plain">그냥 간직</button><button id="cvr-wrapgo" class="cvr-go">🎀 포장하기</button></div>
+      </div>
     </div>
   </div>
 
@@ -3861,6 +4017,11 @@
     import { BOATS } from './js/boat/boats.js';
     import { RIVER_LEN } from './js/boat/consts.js';
     import { questPanelView } from './js/quest-panel-view.js';
+    import { createForgeGame } from './js/workbench/forge-ui.js';
+    import { toolView, outView, giftView, carveView, pickSel, allItems, tourPick } from './js/workbench/bench-view.js';
+    import { listHtml, sheetHtml } from './js/workbench/bench-ui.js';
+    import { benchSteps } from './js/onboarding/bench-steps.js';
+    import { FORGE_COPY } from './js/workbench/copy.js';
     import { trackLogin, trackEvent, setGaUser, onTrack, setInstallUserProps, setSurveyUserProps } from './js/analytics.js';
     import { bootMetaPixel, metaFromTrack, metaSignup } from './js/meta-pixel.js';   // 📣 Meta Pixel(웹 전용) — 광고 → 가입 → 결제 여정
     import { bootInstallReferrer, syncInstallAttribution, cachedInstallAttribution } from './js/install-referrer-boot.js';   // 📲 안드로이드 설치 채널(Play Install Referrer)
@@ -4353,7 +4514,7 @@
         shell?.onInv(inv);
         if ($('bag-menu').classList.contains('show')) renderBag();     // 가방 열려 있으면 갱신
         if ($('decor-menu').classList.contains('show')) renderDecorItems();
-        if ($('cook-menu').classList.contains('show')) { cookTab === 'tool' ? renderTools() : cookTab === 'out' ? renderOutdoor() : renderGifts(); }
+        if ($('cook-menu').classList.contains('show')) renderBench();
         if ($('kitchen-menu').classList.contains('show')) renderKitchen(Input.getKitchen());   // 🍳 재료 변동 반영
         if ($('shop-menu').classList.contains('show')) renderShop();
         if ($('cafe-menu').classList.contains('show')) renderCafe(Input.getCafe());   // ☕ 재료 보유량 실시간 반영
@@ -4521,7 +4682,7 @@
           $('npc-qprog').textContent = `${view.progress} / ${view.target}`;
           $('npc-qreward').textContent = '🎁 ' + view.reward;
         }
-        const actions = $('npc-actions'); actions.innerHTML = '';
+        const actions = $('npc-actions'); actions.innerHTML = ''; actions.classList.remove('gift-pick');
         const addBtn = (label, cls, fn) => { const b = document.createElement('button'); b.className = cls; b.textContent = label; b.addEventListener('click', fn); actions.appendChild(b); };
         if (view.mode === 'offer') {
           addBtn('수락하기', 'primary', () => { npcAccept(); ui.toast('📜 퀘스트를 수락했어요!'); closeNpc(); });
@@ -5092,13 +5253,14 @@
       // 🎨 완성된 집 근처 여부 → 외관 꾸미기 버튼 표시 토글
       setNearHouse(on) { document.body.classList.toggle('near-house', on); },
       // 작업대(제작) 메뉴 열기 — 요리는 🍳 자유주방으로 분리
-      openCook(tab = 'tool') { showCookTab(tab); Input.setAnalog(0, 0); $('cook-menu').classList.add('show'); document.body.classList.add('menu-open'); },   // 🏗️ 밭 자재 작업대는 'out'(🌷야외 = 밭 시설) 탭으로 연다
+      openCook(tab = 'tool') { showCookTab(tab); Input.setAnalog(0, 0); $('cook-menu').classList.add('show'); document.body.classList.add('menu-open'); runBenchTour(); },   // 🏗️ 밭 자재 작업대는 'out'(🌷야외 = 밭 시설) 탭으로 연다
       // 🔥 화덕 가공 창 열기 — 슬롯 띠(상태)와 레시피(걸기)를 한 화면에
       openCraft(d) { renderCraft(d); Input.setAnalog(0, 0); $('craft-menu').classList.add('show'); document.body.classList.add('menu-open'); },
       // 🍳 자유주방 메뉴판 열기 (요리를 고르면 미니게임 시작)
       openKitchen(d) { renderKitchen(d); setKitchenTab('recipe'); Input.setAnalog(0, 0); $('kitchen-menu').classList.add('show'); document.body.classList.add('menu-open'); },
       carveProgress(p) { cvProgress(p); },                 // 🗿 조각 진행(game.js 레이캐스트 판정 → HUD)
       carveDone(res) { cvDone(res); },                     // 🗿 조각 정산(등급·보상 → 결과 카드)
+      carveGem() { cvGem(); },
       // 🏆 랭킹 게시판(마을 소품) → 리더보드 모달
       openLeaderboard() { openLb(); },
       // 상점 메뉴 열기
@@ -5586,11 +5748,14 @@
     // 선물 주기 선택기 — 보유 선물 버튼으로 교체
     function showGiftPicker(view) {
       const actions = $('npc-actions'); actions.innerHTML = '';
+      actions.classList.add('gift-pick');
       const owned = Input.ownedGifts();
-      Input.getGifts().forEach(g => {
-        const n = owned[g.id] || 0; if (n <= 0) return;
+      const kept = Input.keptGifts().map(k => ({ id: k.id, ico: k.ico + (k.paper ? '🎀' : ''), name: k.name, n: k.n, love: k.love }));
+      const made = Input.getGifts().map(g => ({ id: g.id, ico: g.ico, name: g.name, n: owned[g.id] || 0, love: g.love || 1 }));
+      [...kept, ...made].forEach(g => {
+        const n = g.n; if (n <= 0) return;
         const b = document.createElement('button'); b.className = 'ghost';
-        b.textContent = `${g.ico} ${g.name} ×${n}`;
+        b.innerHTML = `<span>${g.ico}</span> <span>${g.name}</span> <span>×${n}</span> <span class="cv-heart">❤️+${g.love}</span>`;
         b.addEventListener('click', () => {
           const res = Input.giveGift(g.id);
           if (!res.ok) { ui.toast(res.msg || '줄 수 없어요'); return; }
@@ -6291,146 +6456,131 @@
     // ── 작업대 메뉴 (도구 / 야외 / 선물 탭) — 요리는 🍳 자유주방으로 분리 ──
     let cookTab = 'tool';
     // 🌟 bug(반딧불이)가 빠져 있어 촘촘한 포충망·금빛 포충망 비용이 '🪵12 🪵2' 처럼 목재로 보였다(2026-09-24 리뷰)
-    const ico = (k) => ({ fish: '🐟', crop: '🥕', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', seed: '🌰', coins: '🪙', bug: '🌟' })[k] || '🪵';
-    function updateCookInv() { $('cook-inv').textContent = `🪵 ${lastInv.wood}  🥕 ${lastInv.crop}  🐟 ${lastInv.fish || 0}  🪨 ${lastInv.stone || 0}  ⚫ ${lastInv.coal || 0}  💎 ${lastInv.gem || 0}`; }
-    function renderTools() {
-      updateCookInv();
-      const owned = Input.ownedUpgrades();
-      const box = $('tool-items'); box.innerHTML = '';
-      // 🌡️ 내일 서리·태풍 예보가 있으면 맨 위에 덮개 설치 항목(예고일 한정)
-      const wp = Input.getWeatherPrep();
-      if (wp.severe) {
-        const s = wp.info;
-        const costStr = Object.entries(wp.cost).map(([k, n]) => ico(k) + n).join(' ');
-        const el = document.createElement('div');
-        el.className = 'ck-item' + (wp.covered ? ' owned' : '');
-        el.innerHTML = `<span class="ck-ico">🛡️</span><span class="ck-name">밭 덮개</span><span class="ck-buff">내일 ${s.ico} ${s.name} 예보 — 심어둔 밭 ${wp.planted}곳을 지켜요</span><span class="ck-cost">${wp.covered ? '✅ 설치됨' : costStr}</span>`;
-        if (!wp.covered) el.addEventListener('click', () => {
-          const res = Input.craftCover();
-          ui.toast(res.ok ? '🛡️ 덮개 설치 완료 — 내일 밭이 안전해요!' : (res.msg || '만들 수 없어요'));
-          if (res.ok) renderTools();
-        });
-        box.appendChild(el);
+    const ico = (k) => ({ fish: '🐟', crop: '🥕', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', seed: '🌰', coins: '🪙', bug: '🌟', star: '⭐', glow: '✨' })[k] || SELL_ICO_G[k] || '🪵';
+    const WB_INV = ['wood', 'crop', 'fish', 'stone', 'coal', 'gem'];
+    const WB_WIDE = '(min-width: 700px)';
+    const wbSel = { tool: null, out: null, gift: null, carve: null };
+    function updateCookInv() {
+      $('cook-coin').textContent = `🪙 ${lastInv.coins || 0}`;
+      $('cook-inv').innerHTML = WB_INV.map(k => `<span>${ico(k)} ${lastInv[k] || 0}</span>`).join('');
+    }
+    let forgeGame = null;
+    function forgeGameOf() {
+      forgeGame ||= createForgeGame($('forge-modal'), {
+        onAbort: () => Input.forgeAbort(),
+        onFinish: (score) => Input.forgeFinish(score),
+        onHit: (pts) => (pts ? Sound.chop() : Sound.blip()),
+        onClose: (tool) => { wbSel.tool = tool || wbSel.tool; ui.openCook('tool'); },
+      });
+      return forgeGame;
+    }
+    function startForge(tool) {
+      const v = (Input.getForge?.()?.tools || []).find(x => x.tool === tool);
+      if (!v || v.check.state === 'short') { ui.toast(FORGE_COPY.short); return; }
+      const res = Input.forgeBegin(v.tool);
+      if (!res.ok) { ui.toast(res.msg || FORGE_COPY.short); return; }
+      closeCook();
+      forgeGameOf().open({ tool: v.tool, star: res.star, ico: v.ico });
+    }
+    function benchView(t) {
+      const inv = lastInv;
+      if (t === 'tool') {
+        const fv = Input.getForge?.() || {};
+        return toolView({ upgrades: Input.getUpgrades(), owned: Input.ownedUpgrades(), stars: fv.tools || [], forge: fv.forge, tier2: Input.getTier2?.() || [], weather: Input.getWeatherPrep(), inv });
       }
-      Input.getUpgrades().forEach(u => {
-        const isOwned = owned[u.id];
-        const enough = Object.entries(u.cost).every(([k, n]) => (lastInv[k] || 0) >= n);
-        const costStr = Object.entries(u.cost).map(([k, n]) => ico(k) + n).join(' ');
-        const el = document.createElement('div');
-        el.className = 'ck-item' + (isOwned ? ' owned' : (enough ? '' : ' off'));
-        el.innerHTML = `<span class="ck-ico">${u.ico}</span><span class="ck-name">${u.name}</span><span class="ck-buff">${u.desc}</span><span class="ck-cost">${isOwned ? '✅ 보유중' : costStr}</span>`;
-        if (!isOwned) el.addEventListener('click', () => {
-          const res = Input.craftUpgrade(u.id);
-          if (!res.ok) { ui.toast(res.msg || '만들 수 없어요'); return; }
-          ui.toast(`${u.ico} ${res.name} 제작 완료!`);
-          renderTools();
-        });
-        box.appendChild(el);
-      });
-      // 🔨 금빛 도구(2단계) — 📜 도면을 받은 것만 보인다. 하나도 없으면 어디서 얻는지 한 줄로만 알린다
-      const t2 = Input.getTier2?.() || [];
-      const known = t2.filter(x => x.state !== 'noBlueprint');
-      if (!known.length) {
-        const el = document.createElement('div');
-        el.className = 'ck-item off';
-        el.innerHTML = `<span class="ck-ico">📜</span><span class="ck-name">금빛 도구</span><span class="ck-buff">주민과 친해지면(❤️6) 도면을 줘요</span><span class="ck-cost">🔒</span>`;
-        box.appendChild(el);
+      if (t === 'out') return outView({ outdoor: Input.getOutdoor(), stored: Input.getOutdoorStored?.() || {}, atFarm: !!Input.isAtFarm?.(), inv });
+      if (t === 'gift') return giftView({ gifts: Input.getGifts(), owned: Input.ownedGifts(), kept: Input.keptGifts(), inv });
+      return carveView({ workshop: Input.getWorkshop() });
+    }
+    function benchDone(msg) { ui.toast(msg); renderBench(); }
+    function benchGo(it) {
+      const a = it.act;
+      if (!a || it.btn.disabled) return;
+      if (a.kind === 'forge') { startForge(a.tool); return; }
+      if (a.kind === 'upgrade') {
+        const res = Input.craftUpgrade(a.id);
+        if (!res.ok) { ui.toast(res.msg || '만들 수 없어요'); return; }
+        benchDone(`${it.ico} ${res.name} 제작 완료!`);
+        return;
       }
-      known.forEach(x => {
-        const costStr = Object.entries(x.cost).map(([k, n]) => ico(k) + n).join(' ');
-        const buff = x.state === 'needTier1' ? `먼저 ${x.tier1}을(를) 만들어요` : '금·흑단·보석 — 모습이 바뀌어요';
-        const el = document.createElement('div');
-        el.className = 'ck-item' + (x.state === 'owned' ? ' owned' : (x.state === 'ready' ? '' : ' off'));
-        el.innerHTML = `<span class="ck-ico">${x.ico}</span><span class="ck-name">✨ ${x.name}</span><span class="ck-buff">${buff}</span><span class="ck-cost">${x.state === 'owned' ? '✅ 보유중' : costStr}</span>`;
-        if (x.state !== 'owned') el.addEventListener('click', () => {
-          const res = Input.craftTier2(x.tool);
-          if (!res.ok) { ui.toast(res.msg || '만들 수 없어요'); return; }
-          ui.toast(`✨ ${res.name} 제작 완료!`);
-          renderTools();
-        });
-        box.appendChild(el);
-      });
+      if (a.kind === 'cover') {
+        const res = Input.craftCover();
+        if (!res.ok) { ui.toast(res.msg || '만들 수 없어요'); return; }
+        benchDone('🛡️ 덮개 설치 완료 — 내일 밭이 안전해요!');
+        return;
+      }
+      if (a.kind === 'tier2') {
+        const res = Input.craftTier2(a.tool);
+        if (!res.ok) { ui.toast(res.msg || '만들 수 없어요'); return; }
+        benchDone(`✨ ${res.name} 제작 완료!`);
+        return;
+      }
+      if (a.kind === 'gift') {
+        const res = Input.craftGift(a.id);
+        if (!res.ok) { ui.toast(res.msg || '재료가 부족해요'); return; }
+        benchDone(`${it.ico} ${res.name} 제작! 주민에게 대화 → 선물 주기`);
+        return;
+      }
+      if (a.kind === 'place') {
+        const o = Input.getOutdoor().find(x => x.id === a.id);
+        if (!o) return;
+        Input.selectOutdoor(o.id); closeCook();
+        placingDecorItem = o; refreshActionIcon();
+        ui.toast(`${o.ico} ${o.name} · ${TOUCH ? '⭕' : 'Space'}로 놓기`, 2400, { chips: true });
+        return;
+      }
+      if (a.kind === 'carve') {
+        const st = Input.carveStart(a.id);
+        if (!st.ok) { ui.toast(st.msg || '재료가 부족해요'); return; }
+        closeCook();
+        openCarveHud(st);
+      }
     }
-    function renderOutdoor() {
+    function renderBench() {
       updateCookInv();
-      const box = $('out-items'); box.innerHTML = '';
-      const atFarm = !!Input.isAtFarm?.();
-      Input.getOutdoor().forEach(o => {
-        if (o.farm && !atFarm) return;   // 🏗️ 밭 시설은 텃밭 안 작업대 목록에서만(마을에선 놓을 수 없으니 보여 주지 않는다)
-        if (o.hidden && !((Input.getOutdoorStored?.() || {})[o.id] > 0)) return;   // 🌾 좌판·보상 장식은 보관분이 있을 때만
-        const costStr = Object.entries(o.cost).map(([k, n]) => ico(k) + n).join(' ');
-        const stored = (Input.getOutdoorStored?.() || {})[o.id] || 0;   // 🧺 보관분 — 값 없이 꺼내 놓는다
-        const enough = stored > 0 || Object.entries(o.cost).every(([k, n]) => (lastInv[k] || 0) >= n);
-        const el = document.createElement('div');
-        el.className = 'ck-item' + (enough ? '' : ' off');
-        el.innerHTML = `<span class="ck-ico">${o.ico}</span><span class="ck-name">${o.name}</span><span class="ck-buff">${o.desc}</span><span class="ck-cost">${stored > 0 ? `보유 ${stored}` : costStr}</span>${o.tag ? `<span class="ck-tag">${o.tag.label}</span><span class="ck-tag">${o.tag.until}</span>` : ''}`;
-        el.addEventListener('click', () => {
-          if (!enough) { ui.toast('재료가 부족해요'); return; }
-          Input.selectOutdoor(o.id); closeCook();
-          placingDecorItem = o; refreshActionIcon();   // 액션버튼 = 설치 버튼
-          ui.toast(`${o.ico} ${o.name} · ${TOUCH ? '⭕' : 'Space'}로 놓기`, 2400, { chips: true });
-        });
-        box.appendChild(el);
-      });
-    }
-    function renderGifts() {
-      updateCookInv();
-      const owned = Input.ownedGifts();
-      const box = $('gift-items'); box.innerHTML = '';
-      Input.getGifts().forEach(g => {
-        const costStr = Object.entries(g.cost).map(([k, n]) => ico(k) + n).join(' ');
-        const enough = Object.entries(g.cost).every(([k, n]) => (lastInv[k] || 0) >= n);
-        const have = owned[g.id] || 0;
-        const el = document.createElement('div');
-        el.className = 'ck-item' + (enough ? '' : ' off');
-        el.innerHTML = `<span class="ck-ico">${g.ico}</span><span class="ck-name">${g.name}${have ? ` ×${have}` : ''}</span><span class="ck-buff">주민 선물</span><span class="ck-cost">${costStr}</span>`;
-        el.addEventListener('click', () => {
-          const res = Input.craftGift(g.id);
-          if (!res.ok) { ui.toast(res.msg || '재료가 부족해요'); return; }
-          ui.toast(`${g.ico} ${res.name} 제작! 주민에게 대화 → 선물 주기`);
-          renderGifts();
-        });
-        box.appendChild(el);
-      });
-    }
-    // ── 🗿 조각 주문 탭 — 오늘의 주문 3건(자정 갱신). 클릭 → 재료 소비 + 공방 미니게임 ──
-    function renderCarve() {
-      updateCookInv();
-      const d = Input.getWorkshop();
-      const box = $('carve-items'); box.innerHTML = '';
-      d.orders.forEach(o => {
-        const costStr = o.cost.map(c => ico(c.k) + c.need).join(' ');
-        const el = document.createElement('div');
-        el.className = 'ck-item' + (o.done ? ' owned' : (o.ready ? '' : ' off'));
-        el.innerHTML = `<span class="ck-ico">${o.ico}</span><span class="ck-name">${o.name}</span>
-          <span class="ck-buff">오늘의 주문 · 보상 🪙${o.pay}${o.best ? ` · ⭐최고 ${o.best}점` : ''}</span>
-          <span class="ck-cost">${o.done ? '✅ 오늘 완성' : costStr}</span>`;
-        if (!o.done) el.addEventListener('click', () => {
-          const st = Input.carveStart(o.id);
-          if (!st.ok) { ui.toast(st.msg || '재료가 부족해요'); return; }
-          closeCook();
-          openCarveHud(st);
-        });
-        box.appendChild(el);
-      });
+      const v = benchView(cookTab);
+      const sel = wbSel[cookTab] = pickSel(v, wbSel[cookTab]);
+      const banner = $('wb-banner');
+      banner.hidden = !v.banner;
+      banner.textContent = v.banner;
+      const list = $('wb-list'), keep = list.scrollTop;
+      list.innerHTML = listHtml(v, sel);
+      list.scrollTop = keep;
+      list.querySelectorAll('.wb-cell').forEach(b => b.addEventListener('click', () => { wbSel[cookTab] = b.dataset.id; renderBench(); }));
+      const it = allItems(v).find(i => i.id === sel);
+      const sheet = $('wb-sheet');
+      sheet.innerHTML = it ? sheetHtml(it, ico) : '';
+      sheet.querySelector('.wb-go')?.addEventListener('click', () => benchGo(it));
     }
     function showCookTab(t) {
+      if (t !== cookTab) $('wb-list').scrollTop = 0;
       cookTab = t;
-      [...document.querySelectorAll('.ck-tab')].forEach(b => b.classList.toggle('active', b.dataset.tab === t));
-      $('tool-items').style.display = t === 'tool' ? 'flex' : 'none';
-      $('out-items').style.display = t === 'out' ? 'flex' : 'none';
-      $('gift-items').style.display = t === 'gift' ? 'flex' : 'none';
-      $('carve-items').style.display = t === 'carve' ? 'flex' : 'none';
-      $('cook-hint').innerHTML = t === 'tool'
-        ? '<b>영구</b> 도구 강화 · 🪵목재/🥕작물/🐟물고기 소비 — 요리는 옆의 🍳 자유주방에서!'
-        : t === 'out'
-          ? '장식을 고르고 <b>원하는 곳</b>에서 설치 · 🪵목재/🥕작물 소비'
-          : t === 'gift'
-            ? '선물을 만들어 <b>주민과 대화 → 선물 주기</b>로 친밀도↑'
-            : '매일 바뀌는 <b>조각 주문 3건</b> — 밑그림만 남기고 깎으면 완성! 흠집 없이 깎을수록 보상↑';
-      if (t === 'tool') renderTools(); else if (t === 'out') renderOutdoor(); else if (t === 'gift') renderGifts(); else renderCarve();
+      document.querySelectorAll('#cook-menu .ck-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
+      renderBench();
     }
-    document.querySelectorAll('.ck-tab').forEach(b => b.addEventListener('click', () => showCookTab(b.dataset.tab)));
+    function runBenchTour() {
+      if (!spot || Input.hintSeen('spotBench') || spot.active()) return;
+      const back = cookTab;
+      wbSel.tool = tourPick(benchView('tool')) || wbSel.tool;
+      showCookTab('tool');
+      const hasStars = !!document.querySelector('#wb-list .wb-cell[data-star]');
+      const open = () => $('cook-menu').classList.contains('show');
+      let stepped = false;
+      const markSeen = () => { Input.markHintsSeen(['spotBench']); requestSave(); };
+      setTimeout(() => {
+        if (!open() || spot.active()) return;
+        spot.run(benchSteps({ wide: matchMedia(WB_WIDE).matches, hasStars }), {
+          kind: 'bench', skip: 'all',
+          blocked: () => !open(),
+          pause: () => !!document.querySelector('[id$="-modal"].show, #boat-shop.show, #worldmap.show') || document.body.classList.contains('mg-open'),
+          onStep: () => { stepped = true; },
+        }).then(() => {
+          if (stepped || open()) markSeen();
+          if (back !== 'tool' && open()) showCookTab(back);
+        });
+      }, 60);
+    }
+    document.querySelectorAll('#cook-menu .ck-tab').forEach(b => b.addEventListener('click', () => showCookTab(b.dataset.tab)));
     function closeCook() { $('cook-menu').classList.remove('show'); document.body.classList.remove('menu-open'); }
     $('cook-close').addEventListener('click', closeCook);
 
@@ -7207,11 +7357,14 @@
 
     // ── 🗿 조각 공방 HUD — 판정·연출은 game.js(캔버스 소유), 여기는 진행 표시 + 결과 카드만 ──
     let CV = { active: false };
+    const CV_PAPERS = [['kraft', '크라프트'], ['floral', '꽃무늬'], ['starry', '별밤']];
     function openCarveHud(st) {
-      CV.active = true;
+      CV = { active: true, kept: null, paper: 'floral', gemT: 0 };
       $('cv-title').textContent = `${st.ico} ${st.name}`;
-      $('cv-result').classList.remove('show');
-      cvProgress({ removed: 0, waste: st.waste, dmg: 0 });
+      $('cv-result').classList.remove('show', 'wrap');
+      $('cv-gem').classList.remove('show');
+      $('cv-hint').textContent = st.grain ? '결 따라 길게 그으면 여러 칸이 한 번에 깎여요' : '밝은 칩을 탭·드래그로 깎아내세요 — 어두운 밑그림을 탭하면 흠집!';
+      cvProgress({ removed: 0, waste: st.waste, dmg: 0, combo: 0, best: 0 });
       $('cv-layer').classList.add('show');
       document.body.classList.add('menu-open'); document.body.classList.add('mg-open'); document.body.classList.add('cv-open');   // 마을 UI 걷고 무대에 몰입
       Input.setAnalog(0, 0);
@@ -7219,14 +7372,53 @@
     function cvProgress(p) {
       $('cv-prog').textContent = `다듬기 ${Math.round(p.removed / p.waste * 100)}%`;
       $('cv-dmg').textContent = `흠집 ${'●'.repeat(p.dmg)}${'○'.repeat(Math.max(0, 3 - p.dmg))}`;
+      const combo = p.combo || 0, best = p.best || 0;
+      $('cv-combo').textContent = `콤보 ${combo}`;
+      $('cv-gauge').querySelector('.cvg-fill').style.width = `${Math.min(combo, 15) / 15 * 100}%`;
+      $('cv-gauge').querySelectorAll('.cvg-tick').forEach(t => t.classList.toggle('hit', best >= +t.dataset.at));
+    }
+    function cvGem() {
+      const el = $('cv-gem');
+      el.classList.add('show');
+      clearTimeout(CV.gemT);
+      CV.gemT = setTimeout(() => el.classList.remove('show'), 1800);
     }
     function cvDone(res) {
       if (!CV.active) return;
       $('cvr-ico').textContent = res.tier.ico;
       $('cvr-title').textContent = `${res.tier.name}!`;
-      $('cvr-sub').innerHTML = `${res.ico} ${res.name} 완성 — 보상 🪙 <b>${res.coins}</b>`;
-      $('cvr-stats').innerHTML = `<span>품질 <b>${res.score}</b>점${res.isBest ? ' ⭐신기록!' : ''}</span><span>흠집 <b>${res.dmg}</b></span><span>누적 조각 <b>${res.carved}</b></span>`;
+      $('cvr-sub').innerHTML = res.canKeep ? `<span>${res.ico}</span> <span>${res.name}</span>` : `${res.ico} ${res.name} 완성 — 보상 🪙 <b>${res.coins}</b>`;
+      $('cvr-stats').innerHTML = `<span>품질 <b>${res.score}</b>점${res.isBest ? ' ⭐신기록!' : ''}</span><span>흠집 <b>${res.dmg}</b></span><span>최고 콤보 <b>${res.comboMax}</b></span><span>누적 조각 <b>${res.carved}</b></span>`;
+      $('cvr-sell').innerHTML = `🪙 팔기<small>+${res.coins}</small>`;
+      $('cvr-keep').innerHTML = `🎁 간직하기<small>선물 ❤️+${res.keepLove}</small>`;
+      $('cvr-choice').style.display = res.canKeep ? '' : 'none';
+      $('cvr-closebar').style.display = res.canKeep ? 'none' : '';
+      $('cv-result').classList.remove('wrap');
       $('cv-result').classList.add('show');
+    }
+    function cvRenderPapers() {
+      const box = $('cvr-papers'); box.innerHTML = '';
+      CV_PAPERS.forEach(([id, name]) => {
+        const b = document.createElement('button');
+        b.className = 'cvr-paper' + (CV.paper === id ? ' sel' : '');
+        b.innerHTML = `<span class="sw p-${id}"></span><span>${name}</span>`;
+        b.addEventListener('click', () => { CV.paper = id; cvRenderPapers(); });
+        box.appendChild(b);
+      });
+    }
+    function cvKeep() {
+      if (CV.kept) return;
+      const r = Input.carveResolve('keep');
+      if (!r?.ok) { closeCarve(); return; }
+      ui.toast(`🎁 ${r.name}${r.particle} 선물로 간직했어요`, 2400);
+      CV.kept = r.id;
+      cvRenderPapers();
+      $('cv-result').classList.add('wrap');
+    }
+    function cvWrap() {
+      const r = Input.carveWrap(CV.kept, CV.paper);
+      if (!r.ok) { ui.toast(r.msg || '포장할 수 없어요'); return; }
+      closeCarve();
     }
     function closeCarve() {
       CV.active = false;
@@ -7237,6 +7429,10 @@
     }
     $('cv-quit').addEventListener('click', () => Input.carveAbandon());   // 포기해도 낮은 등급으로 정산됨
     $('cvr-close').addEventListener('click', closeCarve);
+    $('cvr-sell').addEventListener('click', () => { Input.carveResolve('sell'); closeCarve(); });
+    $('cvr-keep').addEventListener('click', cvKeep);
+    $('cvr-plain').addEventListener('click', closeCarve);
+    $('cvr-wrapgo').addEventListener('click', cvWrap);
 
     // 로컬 개발 훅 — 콘솔에서 미니게임을 직접 구동(?give 처럼 localhost 전용, 실서비스 노출 안 됨)
     if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) {
@@ -7250,7 +7446,8 @@
       window.__carveStart = (id) => { const st = Input.carveStart(id); if (st.ok) { closeCook(); openCarveHud(st); } return st; };
       window.__carveChip = (n = 1) => Input.carveDebug('chip', n);
       window.__carveScratch = () => Input.carveDebug('scratch');
-      window.__carveState = () => ({ active: CV.active, resultShown: $('cv-result').classList.contains('show'), prog: $('cv-prog').textContent, dmg: $('cv-dmg').textContent });
+      window.__carveDebug = (a, n) => Input.carveDebug(a, n);
+      window.__carveState = () => ({ active: CV.active, resultShown: $('cv-result').classList.contains('show'), wrap: $('cv-result').classList.contains('wrap'), prog: $('cv-prog').textContent, dmg: $('cv-dmg').textContent, combo: $('cv-combo').textContent });
       window.__ui = ui;        // HUD 문구·크기 검증용(캐치 배너·퀘스트 패널을 직접 그려본다)
       window.__state = () => getGameState();   // 의뢰 진행(npcs.<id>.idx)·집 단계 검증용 — 직접 고쳐서 상황을 만든다
     }
@@ -8141,7 +8338,7 @@
       box.appendChild(pantrySection(Input.getPantry()));   // 🍱 찬장을 맨 위로 — 먹으러 여는 일이 가장 잦다
       BAG_CATS.forEach(cat => box.appendChild(bagSection(cat.name, cat.keys.map(k => ({ ...ITEM_META[k], count: lastInv[k] || 0 })))));
       const owned = Input.ownedGifts();
-      box.appendChild(bagSection('🎁 선물', Input.getGifts().map(g => ({ ico: g.ico, name: g.name, count: owned[g.id] || 0 }))));
+      box.appendChild(bagSection('🎁 선물', [...Input.keptGifts().map(k => ({ ico: k.ico + (k.paper ? '🎀' : ''), name: k.name, count: k.n })), ...Input.getGifts().map(g => ({ ico: g.ico, name: g.name, count: owned[g.id] || 0 }))]));
     }
     function openBag() { renderBag(); Input.setAnalog(0, 0); $('bag-menu').classList.add('show'); $('bag-backdrop').classList.add('show'); document.body.classList.add('menu-open'); }
     function closeBag() { $('bag-menu').classList.remove('show'); $('bag-backdrop').classList.remove('show'); document.body.classList.remove('menu-open'); }
