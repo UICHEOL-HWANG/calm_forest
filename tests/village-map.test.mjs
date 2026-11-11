@@ -129,12 +129,13 @@ test('the moved sea cove sits inside the land, as in the 3D world', () => {
 test('index.html paints both maps from the shared village map module', () => {
   const html = read('index.html');
   assert.equal((html.match(/<script type="module"/g) || []).length, 3);
-  assert.match(html, /import \{ MAP_VIEW, LAND_FRINGE, mapLand, mapWater, mapGrove \} from '\.\/js\/world\/village-map\.js';/);
-  assert.ok(html.indexOf("from './js/world/village-map.js'") > html.indexOf("from './js/data/places.js'"));
+  assert.ok(!html.includes("from './js/world/village-map.js'"), 'village map loads with the game, not on the first screen');
+  assert.match(html, /villageMap, requestMapSnapshot \} from '\.\/js\/game-lazy\.js';/);
+  assert.match(html, /const geo = \(\) => \(mapGeo \|\|= \(\(\{ MAP_VIEW, LAND_FRINGE, mapLand, mapWater, mapGrove \}\) =>/);
   for (const gone of ['WM_LAND', 'WM_WATER', 'WM_GROVE', 'const MAP_VIEW =']) assert.ok(!html.includes(gone), gone);
   assert.equal((html.match(/paintIsland\(/g) || []).length, 3);
   assert.match(html, /paintIsland\(c, px, pr, S, SH\)/);
-  assert.match(html, /paintIsland\(c, \(x, z\) => \[\(x - MAP_VIEW\.x0\) \* k, \(z - MAP_VIEW\.z0\) \* k\], \(r\) => r \* k, size, size\)/);
+  assert.match(html, /paintIsland\(c, \(x, z\) => \[\(x - geo\(\)\.VIEW\.x0\) \* k, \(z - geo\(\)\.VIEW\.z0\) \* k\], \(r\) => r \* k, size, size\)/);
 });
 
 test('the world map frame is square like MAP_VIEW', () => {

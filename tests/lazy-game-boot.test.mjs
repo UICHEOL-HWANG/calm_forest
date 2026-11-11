@@ -49,7 +49,7 @@ const script = html.slice(html.indexOf("from './js/game-lazy.js';"))
 
 test('every call wrapper points at a real function, not a live value', () => {
   const lazy = readFileSync(new URL('../js/game-lazy.js', import.meta.url), 'utf8');
-  const files = { game: 'game.js', duel: 'duel/index.js', chest: 'boat-chest-reveal.js', controls: 'controls.js', push: 'push-ui.js', cafe: 'cafe-guests.js', night: 'night-visit.js', decor: 'decor-drops/index.js' };
+  const files = { game: 'game.js', duel: 'duel/index.js', chest: 'boat-chest-reveal.js', controls: 'controls.js', push: 'push-ui.js', cafe: 'cafe-guests.js', night: 'night-visit.js', decor: 'decor-drops/index.js', vmap: 'world/village-map.js', snap: 'world/map-snapshot.js' };
   for (const [, mod, fn] of lazy.matchAll(/need\(\)\.(\w+)\.(\w+)\(\.\.\.a\)/g)) {
     const src = readFileSync(new URL(`../js/${files[mod]}`, import.meta.url), 'utf8');
     const isFn = new RegExp(`(async\\s+)?function\\s+${fn}\\b|(const|let)\\s+${fn}\\s*=\\s*(async\\s*)?\\(`).test(src);

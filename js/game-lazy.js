@@ -3,7 +3,7 @@ import { once } from './boot-order.js';
 let mods = null;
 
 export const loadGameModules = once(async () => {
-  const [game, duel, chest, controls, push, cafe, night, decor] = await Promise.all([
+  const [game, duel, chest, controls, push, cafe, night, decor, vmap, snap] = await Promise.all([
     import('./game.js'),
     import('./duel/index.js'),
     import('./boat-chest-reveal.js'),
@@ -12,8 +12,10 @@ export const loadGameModules = once(async () => {
     import('./cafe-guests.js'),
     import('./night-visit.js'),
     import('./decor-drops/index.js'),
+    import('./world/village-map.js'),
+    import('./world/map-snapshot.js'),
   ]);
-  mods = { game, duel, chest, controls, push, cafe, night, decor };
+  mods = { game, duel, chest, controls, push, cafe, night, decor, vmap, snap };
   return mods;
 });
 
@@ -31,6 +33,8 @@ export const Input = new Proxy({}, {
   has: (_, key) => (mods ? key in mods.game.Input : false),
 });
 
+export const villageMap = () => need().vmap;
+export const requestMapSnapshot = (...a) => need().snap.requestMapSnapshot(...a);
 export const bootWorld = (...a) => need().game.bootWorld(...a);
 export const enterGame = (...a) => need().game.enterGame(...a);
 export const requestSave = (...a) => need().game.requestSave(...a);

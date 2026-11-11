@@ -3844,14 +3844,12 @@
     import { bootTenjin, identifyTenjinUser, trackTenjinGameStart } from './js/tenjin-native.js';
     import { SELL_ICO_G } from './js/data/sell-icons.js';
     import { sellList, clampQty, itemName } from './js/shop/sell-rules.js';
-    import { MAP_VIEW, LAND_FRINGE, mapLand, mapWater, mapGrove } from './js/world/village-map.js';
-    import { requestMapSnapshot } from './js/world/map-snapshot.js';
     import { FORAGE_KEYS, FORAGE_META } from './js/forage/logic.js';
     import { consumeExit, markExit } from './js/exit-flag.js';   // 🚪 나가기 직후엔 토스·플레이 앱 자동 연결을 건너뛴다 · 🗑️ 계정 삭제 뒤에도
     import { pickText, quoteLine, parseBody, leadEmoji, noticeTone } from './js/notices.js';   // 📮 소식함 — 언어별 본문·답장 원문 인용·'|' 표 파서
     import { isTouchDevice } from './js/touch-sim.js';
     import { PLATFORM, IS_TOSS, IS_ITCH, IS_ANDROID, IS_IOS, IS_NATIVE } from './js/platform.js';   // 🔵 앱인토스 웹뷰 여부(로그인 버튼 전환) · 🎮 itch iframe 여부 · 📱 구글 플레이 앱
-    import { loadGameModules, bootWorld, enterGame, requestSave, getGameState, isAtOrchard, mapLocked, npcAccept, npcClaim, Input, markNoticesSeen, resyncPurchases, initPush, offerPush, playChestReveal, stopChestReveal, initControls, initCafeGuests, initNightVisit, initDuel, openDecorAlbum } from './js/game-lazy.js';
+    import { loadGameModules, bootWorld, enterGame, requestSave, getGameState, isAtOrchard, mapLocked, npcAccept, npcClaim, Input, markNoticesSeen, resyncPurchases, initPush, offerPush, playChestReveal, stopChestReveal, initControls, initCafeGuests, initNightVisit, initDuel, openDecorAlbum, villageMap, requestMapSnapshot } from './js/game-lazy.js';
     import { bootReferral, inviteBanner, referralOnPlay, openInviteSheet, referralEnabled } from './js/referral/index.js';   // 🤝 친구 초대
     import { signupGiftOnPlay } from './js/signup-gift/index.js';
     import { nudgeView } from './js/signup-gift/copy.js';
@@ -4045,7 +4043,8 @@
     let lastNpcs = null;     // 주민 실시간 위치(미니맵·전체 지도 공용)
     let lastMapPos = null;   // 전체 지도의 "현재 위치" 마커 — 마을에 있을 때만 갱신
 
-    const MAP_LAND = mapLand(), MAP_SHORE = mapLand(LAND_FRINGE), MAP_WATER = mapWater(), MAP_GROVE = mapGrove();
+    let mapGeo = null;
+    const geo = () => (mapGeo ||= (({ MAP_VIEW, LAND_FRINGE, mapLand, mapWater, mapGrove }) => ({ VIEW: MAP_VIEW, LAND: mapLand(), SHORE: mapLand(LAND_FRINGE), WATER: mapWater(), GROVE: mapGrove() }))(villageMap()));
     let mapShot = null, miniIsland = null;
 
     function paintIsland(c, px, pr, w, h) {
@@ -4055,19 +4054,19 @@
       const ring = (o, half) => { const [a, b] = px(o.x, o.z); c.beginPath(); c.arc(a, b, pr(o.r), 0, Math.PI * 2); c.lineWidth = pr(half * 2); c.stroke(); };
       c.save();
       c.fillStyle = '#8fc9e2'; c.fillRect(0, 0, w, h);
-      c.fillStyle = '#f0e0b8'; outline(MAP_SHORE);
+      c.fillStyle = '#f0e0b8'; outline(geo().SHORE);
       if (mapShot) {
-        const [a, b] = px(MAP_VIEW.x0, MAP_VIEW.z0);
-        c.save(); trace(MAP_LAND); c.clip();
-        c.drawImage(mapShot, a, b, pr(MAP_VIEW.w), pr(MAP_VIEW.h));
+        const [a, b] = px(geo().VIEW.x0, geo().VIEW.z0);
+        c.save(); trace(geo().LAND); c.clip();
+        c.drawImage(mapShot, a, b, pr(geo().VIEW.w), pr(geo().VIEW.h));
         c.restore();
-        c.lineWidth = Math.max(1, w / 260); c.strokeStyle = 'rgba(255,255,255,0.75)'; trace(MAP_LAND); c.stroke();
+        c.lineWidth = Math.max(1, w / 260); c.strokeStyle = 'rgba(255,255,255,0.75)'; trace(geo().LAND); c.stroke();
         c.restore();
         return;
       }
-      c.fillStyle = '#a8d88a'; outline(MAP_LAND);
-      c.fillStyle = '#7cc06e'; MAP_GROVE.forEach(g => disc(g, g.r));
-      MAP_WATER.forEach(o => {
+      c.fillStyle = '#a8d88a'; outline(geo().LAND);
+      c.fillStyle = '#7cc06e'; geo().GROVE.forEach(g => disc(g, g.r));
+      geo().WATER.forEach(o => {
         if (o.ring) {
           c.strokeStyle = '#f0e0b8'; ring(o, o.half + o.bank);
           c.strokeStyle = '#7fc4e6'; ring(o, o.half);
@@ -4082,8 +4081,8 @@
     function bakeMiniIsland(size) {
       if (miniIsland && miniIsland.width === size) return miniIsland;
       const cv = document.createElement('canvas'); cv.width = size; cv.height = size;
-      const c = cv.getContext('2d'), k = size / MAP_VIEW.w;
-      paintIsland(c, (x, z) => [(x - MAP_VIEW.x0) * k, (z - MAP_VIEW.z0) * k], (r) => r * k, size, size);
+      const c = cv.getContext('2d'), k = size / geo().VIEW.w;
+      paintIsland(c, (x, z) => [(x - geo().VIEW.x0) * k, (z - geo().VIEW.z0) * k], (r) => r * k, size, size);
       miniIsland = cv;
       return cv;
     }
@@ -4092,12 +4091,12 @@
       const cv = $('wm-canvas'); if (!cv) return;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const S = cv.clientWidth || 400;
-      const SH = Math.round(S * MAP_VIEW.h / MAP_VIEW.w);   // 캔버스 높이 = 박스 비율 그대로(늘어나지 않는다)
+      const SH = Math.round(S * geo().VIEW.h / geo().VIEW.w);   // 캔버스 높이 = 박스 비율 그대로(늘어나지 않는다)
       cv.width = Math.round(S * dpr); cv.height = Math.round(SH * dpr);
       const c = cv.getContext('2d');
       c.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const K = S / MAP_VIEW.w;                              // 월드 1 → 화면 px (x·z 공통 — 왜곡 없음)
-      const px = (wx, wz) => [(wx - MAP_VIEW.x0) * K, (wz - MAP_VIEW.z0) * K];
+      const K = S / geo().VIEW.w;                              // 월드 1 → 화면 px (x·z 공통 — 왜곡 없음)
+      const px = (wx, wz) => [(wx - geo().VIEW.x0) * K, (wz - geo().VIEW.z0) * K];
       const pr = (r) => r * K;
       paintIsland(c, px, pr, S, SH);
 
@@ -5297,11 +5296,11 @@
           drawExpandBadge();
           return;
         }
-        // 🗺️ 전체 지도와 **같은 박스**(MAP_VIEW)를 쓴다 — 예전엔 중심(0,0)·반경 30 이라
+        // 🗺️ 전체 지도와 **같은 박스**(geo().VIEW)를 쓴다 — 예전엔 중심(0,0)·반경 30 이라
         //   전체 지도와 장소가 어긋났고 x=32 인 🍎과수원이 범위 밖이었다.
-        const K = Math.min(S / MAP_VIEW.w, S / MAP_VIEW.h); // 정사각 미니맵 안에 전체 마을을 왜곡 없이 넣는다
-        const OX = (S - MAP_VIEW.w * K) / 2, OY = (S - MAP_VIEW.h * K) / 2;
-        const px = (wx, wz) => [(wx - MAP_VIEW.x0) * K + OX, (wz - MAP_VIEW.z0) * K + OY];
+        const K = Math.min(S / geo().VIEW.w, S / geo().VIEW.h); // 정사각 미니맵 안에 전체 마을을 왜곡 없이 넣는다
+        const OX = (S - geo().VIEW.w * K) / 2, OY = (S - geo().VIEW.h * K) / 2;
+        const px = (wx, wz) => [(wx - geo().VIEW.x0) * K + OX, (wz - geo().VIEW.z0) * K + OY];
         lastPlaces = d.places || lastPlaces;
         lastNpcs = d.npcs || lastNpcs;
         lastMapPos = { x: d.x, z: d.z };

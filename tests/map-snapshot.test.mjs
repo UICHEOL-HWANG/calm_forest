@@ -119,7 +119,8 @@ test('the snapshot renders with the shared renderer, restores its state and fall
 test('index.html draws the snapshot clipped to the land outline with the picture-book filter', () => {
   const html = read('index.html');
   assert.equal((html.match(/<script type="module"/g) || []).length, 3);
-  assert.match(html, /import \{ requestMapSnapshot \} from '\.\/js\/world\/map-snapshot\.js';/);
+  assert.match(html, /requestMapSnapshot \} from '\.\/js\/game-lazy\.js';/);
+  assert.match(read('js/game-lazy.js'), /export const requestMapSnapshot = \(\.\.\.a\) => need\(\)\.snap\.requestMapSnapshot\(\.\.\.a\);/);
   assert.match(html, /setMapSnapshot\(img\) \{/);
   assert.doesNotMatch(html, /\b(c|ctx)\.filter\s*=/, 'no canvas filter: iOS WKWebView lacks it');
   assert.doesNotMatch(html, /MAP_FILTER|saturate\(1\.55\)/);
