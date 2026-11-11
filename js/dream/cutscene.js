@@ -7,6 +7,7 @@
 //  ⚠️ carriage 는 DREAM 그룹의 자식(로컬 좌표) — 그룹이 DREAM 위치에 놓여 있어야 player 월드 좌표가 맞는다.
 // =============================================================
 import * as THREE from 'three';
+import { PARK } from './layout.js';
 
 export const SLEEP_S = 1.4;          // 보랏빛 암전이 덮여 있는 시간
 export const FLY_FIRST_S = 3.1;      // 첫 회 비행(합계 4.5s)
@@ -14,7 +15,7 @@ export const FLY_SHORT_S = 0.4;      // 두 번째부터(합계 1.8s) — 경로
 const SHORT_FROM = 0.85;
 
 // 비행 경로(DREAM 로컬) — 남서쪽 구름 위에서 내려와 달맞이 섬 남쪽 가장자리(정박 자리)에 앉는다
-export const PARK = Object.freeze({ x: -0.6, z: 6.0, heading: Math.PI / 2 });   // 정박 — 머리(+z 로컬)가 +x 를 본다
+export { PARK };
 const PATH = new THREE.CatmullRomCurve3([
   new THREE.Vector3(-34, 9, 26), new THREE.Vector3(-22, 5.5, 22), new THREE.Vector3(-11, 2.4, 13),
   new THREE.Vector3(-4.5, 0.6, 7.2), new THREE.Vector3(PARK.x, 0, PARK.z),

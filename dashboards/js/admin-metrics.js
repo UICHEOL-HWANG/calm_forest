@@ -73,7 +73,7 @@ export const ZONES = {
   spawn: '스폰 광장', stop: '정류장', neighbor_gate: '이웃 관문', house: '집 앞', bench: '작업대·주방',
   shop: '상점', market: '좌판·시세판', lake: '호수·부두', farm_gate: '텃밭 입구', coop: '닭장',
   cafe_gate: '카페 입구', glade: '계곡', light_workshop: '빛 공방', forest: '채집 숲', mine_gate: '광산 입구',
-  museum_gate: '박물관 입구', observatory_gate: '천문대 입구', dock: '나루터', sea_gate: '바다 관문',
+  museum_gate: '박물관 입구', observatory_gate: '천문대 입구', dock: '나루터', auction: '경매 무대', sea_gate: '바다 관문',
   mountain_gate: '설산 관문', mist_gate: '안개숲 관문', orchard_gate: '과수원 관문',
   house_in: '집 실내', farm: '텃밭', orchard: '과수원', mine: '광산', cafe: '카페 홀', museum: '박물관',
   kitchen: '요리 무대', carving: '조각 무대', prologue: '프롤로그', observatory: '천문대', neighbor: '이웃 마당',
@@ -89,8 +89,8 @@ export const ZONE_CIRCLES = [
   ['market', 11, 2.5, 4.5], ['lake', 16, 9, 7], ['farm_gate', 0, 7, 3],
   ['coop', -4.5, 11.5, 3], ['cafe_gate', 4, 14, 3], ['glade', 7, 26, 7],
   ['light_workshop', 16.5, 33.5, 4], ['forest', -18, 23, 9], ['mine_gate', -14, 3, 3],
-  ['museum_gate', -26, 5, 3.5], ['observatory_gate', 25, 22, 3.5], ['dock', 0, -18, 6],
-  ['sea_gate', 14.5, -12.5, 3], ['mountain_gate', -15, -32, 5], ['mist_gate', -21, -20, 3],
+  ['museum_gate', -26, 5, 3.5], ['observatory_gate', 25, 22, 3.5], ['dock', 0, -18, 6], ['auction', 10.5, -15, 4.5],
+  ['sea_gate', 19.5, -12.5, 3], ['mountain_gate', -15, -32, 5], ['mist_gate', -21, -20, 3],
   ['orchard_gate', 33, 7, 3],
 ];
 

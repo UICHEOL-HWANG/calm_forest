@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>북쪽 물가 넓히기 시안</title>
+<style>
+:root { --ink:#2c3a30; --sub:#5d6b60; --bg:#f4efe3; --card:#fffdf7; --line:#e3dccb; --gold:#e0a63a; --sea:#4f8fb3; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.6 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; }
+main { max-width:1280px; margin:0 auto; padding:28px 20px 60px; }
+h1 { font-size:24px; margin:0 0 6px; }
+.lead { color:var(--sub); margin:0 0 22px; }
+.now { display:grid; grid-template-columns:1fr 1fr; gap:16px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:18px; margin-bottom:22px; }
+.now h2, .opt h2 { font-size:18px; margin:0 0 8px; }
+.now figure { margin:0; }
+.now img, .now svg { width:100%; display:block; border-radius:10px; }
+figcaption { font-size:13px; color:var(--sub); margin-top:6px; }
+.grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+.opt { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; display:flex; flex-direction:column; gap:10px; }
+.opt .tag { display:inline-block; font-size:12px; font-weight:700; color:#fff; background:var(--ink); border-radius:999px; padding:2px 10px; margin-bottom:4px; }
+.opt.rec .tag { background:var(--gold); }
+.opt svg { width:100%; display:block; border-radius:10px; background:#dff1fb; }
+.pair { display:grid; grid-template-columns:1.6fr 1fr; gap:8px; align-items:start; }
+.pair canvas { width:100%; border-radius:10px; display:block; }
+ul { margin:0; padding-left:18px; }
+li { margin:2px 0; }
+.pro li::marker { content:"＋ "; color:#2f8a50; }
+.con li::marker { content:"－ "; color:#c0563d; }
+.code { font-size:13px; color:var(--sub); border-top:1px dashed var(--line); padding-top:8px; }
+.legend { display:flex; flex-wrap:wrap; gap:14px; font-size:13px; color:var(--sub); margin:0 0 14px; }
+.legend i { display:inline-block; width:22px; height:0; border-top:3px solid; vertical-align:middle; margin-right:6px; }
+@media (max-width:900px) {
+  .grid { grid-template-columns:1fr; }
+  .now { grid-template-columns:1fr; }
+}
+@media (max-width:480px) {
+  main { padding:18px 16px 40px; }
+  .pair { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+<main>
+  <h1>🔨 무대를 북쪽 물가로 · 북쪽 맵 넓히기</h1>
+  <p class="lead">아래 그림은 실제 게임 장면을 위에서 렌더링한 것이고, 그 위에 바뀌는 부분을 겹쳐 그렸어요. 카메라는 남쪽에서 북쪽을 보기 때문에 그림 위쪽이 화면 안쪽이에요.</p>
+
+  <section class="now">
+    <figure>
+      <h2>지금 3D 마을 (위에서 본 모습)</h2>
+      <svg id="now-svg" viewBox="-56 -56 112 112"></svg>
+      <figcaption>흰 점선은 걸어갈 수 있는 끝(원점 기준 반경 42)이에요. 땅은 반경 60까지 깔려 있지만 그 바깥은 안개 속 빈 풀밭이에요.</figcaption>
+    </figure>
+    <figure>
+      <h2>지금 마을 지도 (미니맵과 같은 그림)</h2>
+      <img src="north-expand/map-now.png" alt="현재 마을 지도">
+      <figcaption>⚠️ 넓히는 것과 별개로 이미 어긋나 있어요. 3D의 바다 후미는 풀밭으로 둘러싸인 둥근 만인데, 지도에선 섬 바깥의 열린 바다로 그려져서 후미 너머의 걸을 수 있는 풀밭까지 바다로 보여요. 남동쪽·서쪽 가장자리도 실제로는 풀밭인데 바다로 그려져 있고, 박물관을 두른 개울은 빠져 있어요. 섬 모양을 손으로 찍은 원들로 그려서 실제 지형과 따로 놀아요.</figcaption>
+    </figure>
+  </section>
+
+  <div class="legend">
+    <span><i style="border-color:#fff;border-top-style:dashed"></i>지금 걸을 수 있는 끝</span>
+    <span><i style="border-color:var(--gold)"></i>새로 걸을 수 있는 끝</span>
+    <span><i style="border-color:var(--sea)"></i>새 물 / 옮긴 물</span>
+    <span><i style="border-color:#8a4b2a"></i>무대와 등불 줄</span>
+    <span><i style="border-color:#4caf6a;border-top-style:dashed"></i>경매 참가 자리</span>
+  </div>
+
+  <div class="grid" id="grid"></div>
+</main>
+<script>
+const D = Math.PI / 180;
+const BASE = {
+  lake: [16, 9, 6], pond: [0, -21.5, 7], cove: [24, -21.5, 12], isle: [-26.3, 4.8, 7],
+};
+const OPTS = [
+  {
+    key: '1', title: '안 1 · 북동쪽 곶', rec: false,
+    bump: { c: -66, hw: 36, R: 50 }, stage: [19, -40], cove: [24, -21.5], northSea: false,
+    pros: ['넓히는 땅이 가장 작아요(북동쪽만 볼록하게)', '바다 후미 바로 옆이라 오른쪽에 바다가 보여요', '나루터·바다터 등 기존 시설은 그대로예요'],
+    cons: ['마을 가운데에서 약 44칸 떨어져요(지금 과수원보다 멀어요)', '관객 자리 오른쪽 앞이 후미 모래사장에 바짝 붙어요', '무대 뒤는 그냥 마을 끝이라 물가 느낌은 옆에서만 나요'],
+    code: '걷기 한계(원 42)를 방향별 함수로 바꿈 · 지도 땅 모양 · 무대 좌표',
+  },
+  {
+    key: '2', title: '안 2 · 북쪽 바닷가 새로 만들기', rec: true,
+    bump: { c: -80, hw: 70, R: 51 }, stage: [16, -45], cove: [24, -21.5], northSea: true,
+    pros: ['무대 뒤가 바다라서 밤 등불이 물에 비치는 "물가 무대"가 돼요', '바다 후미와 북쪽 바다가 이어져 마을 북쪽에 진짜 해안선이 생겨요', '무대 앞이 비어 있어요(작업대·주방과 겹침 없음)'],
+    cons: ['마을 가운데에서 약 48칸 떨어져요', '왼쪽 등불 기둥이 세계수 잎 그늘 아래에 들어가요(잎은 높아서 길은 안 막아요)', '바다 수면 하나를 새로 깔아야 해서 작업량이 가장 커요'],
+    code: '걷기 한계 함수 · 북쪽 바다 수면(후미와 같은 재질) · 지도 땅·물 · 무대 좌표 · 나무·풀 배치 제외',
+  },
+  {
+    key: '3', title: '안 3 · 연못과 후미 사이 넓히기', rec: false,
+    bump: { c: -38, hw: 34, R: 49 }, stage: [11, -18], cove: [30, -22], northSea: false, moveSea: 6,
+    pros: ['마을 가운데에서 약 21칸으로 가장 가까워요', '왼쪽 연못, 오른쪽 바다 사이의 무대라 처음 고른 A 자리 느낌 그대로예요', '넓힌 만큼 무대 양옆에 여유가 생겨요'],
+    cons: ['바다터 입구·등대·호미 가게를 동쪽으로 6칸 옮겨야 해요(이미 배포된 시설)', '사공 오리 집 자리도 서쪽으로 옮겨야 해요', '무대 앞(남쪽)의 작업대·자유주방·상인은 여전히 가까워요'],
+    code: '바다터 입구 좌표(후미·등대·호미 가게가 따라 움직임) · 사공 오리 자리 · 걷기 한계 함수 · 지도 · 무대 좌표',
+  },
+];
+function bound(theta, bump) {
+  if (!bump) return 42;
+  const d = Math.abs(((theta / D - bump.c + 540) % 360) - 180);
+  if (d >= bump.hw) return 42;
+  const w = Math.cos((d / bump.hw) * Math.PI / 2) ** 2;
+  return 42 + (bump.R - 42) * w;
+}
+function boundPath(bump) {
+  let s = '';
+  for (let i = 0; i <= 360; i += 2) {
+    const t = i * D, r = bound(t, bump);
+    s += (i ? 'L' : 'M') + (Math.cos(t) * r).toFixed(2) + ' ' + (Math.sin(t) * r).toFixed(2);
+  }
+  return s + 'Z';
+}
+function seaPath(bump) {
+  let s = '', back = '';
+  for (let i = -160; i <= -20; i += 2) {
+    const t = i * D, r = bound(t, bump) + 0.6;
+    s += (s ? 'L' : 'M') + (Math.cos(t) * r).toFixed(2) + ' ' + (Math.sin(t) * r).toFixed(2);
+    back = 'L' + (Math.cos(t) * 60).toFixed(2) + ' ' + (Math.sin(t) * 60).toFixed(2) + back;
+  }
+  return s + back + 'Z';
+}
+const NS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+function stageGroup(svg, [x, z]) {
+  const g = el('g', {}, svg);
+  el('circle', { cx: x, cy: z + 3.2, r: 2.4, fill: 'rgba(76,175,106,.18)', stroke: '#4caf6a', 'stroke-width': .35, 'stroke-dasharray': '.9 .6' }, g);
+  el('rect', { x: x - 3.2, y: z - 1.6, width: 6.4, height: 3.2, rx: .4, fill: '#a0522d', stroke: '#5a2c14', 'stroke-width': .3 }, g);
+  el('rect', { x: x - 3.2, y: z - 1.6, width: 6.4, height: .9, fill: '#c0392b' }, g);
+  el('path', { d: `M${x - 6.4} ${z + 4} Q${x - 3} ${z + 1.4} ${x} ${z - 1.2} Q${x + 3} ${z + 1.4} ${x + 6.4} ${z + 4}`, fill: 'none', stroke: '#8a4b2a', 'stroke-width': .25 }, g);
+  for (let i = 0; i <= 10; i++) { const u = i / 10, px = x - 6.4 + 12.8 * u, pz = z + 4 - Math.sin(u * Math.PI) * 5; el('circle', { cx: px, cy: pz, r: .35, fill: i % 2 ? '#ffd76a' : '#ff8a5c' }, g); }
+  [-6.4, 6.4].forEach(dx => el('circle', { cx: x + dx, cy: z + 4, r: .55, fill: '#5a2c14' }, g));
+  const t = el('text', { x, y: z - 2.4, 'text-anchor': 'middle', 'font-size': 2.6, 'font-weight': 700, fill: '#5a2c14', stroke: '#fff', 'stroke-width': .5, 'paint-order': 'stroke' }, g);
+  t.textContent = '🔨 무대';
+}
+function label(svg, x, z, s, size = 2.2, fill = '#1d3a5a') {
+  const t = el('text', { x, y: z, 'text-anchor': 'middle', 'font-size': size, 'font-weight': 700, fill, stroke: '#fff', 'stroke-width': .45, 'paint-order': 'stroke' }, svg);
+  t.textContent = s;
+}
+function baseSvg(svg, vb) {
+  svg.setAttribute('viewBox', vb);
+  el('image', { href: 'north-expand/top.jpg', x: -56, y: -56, width: 112, height: 112, preserveAspectRatio: 'none' }, svg);
+}
+function drawOpt(svg, o) {
+  baseSvg(svg, '-30 -60 78 58');
+  if (o.moveSea) {
+    el('circle', { cx: 24, cy: -21.5, r: 12.6, fill: 'rgba(130,190,120,.82)' }, svg);
+    el('circle', { cx: o.cove[0], cy: o.cove[1], r: 12, fill: 'rgba(79,143,179,.55)', stroke: '#4f8fb3', 'stroke-width': .5 }, svg);
+    el('path', { d: 'M15 -12.5 L19.5 -12.5', stroke: '#1d3a5a', 'stroke-width': .5, 'marker-end': 'url(#arr)' }, svg);
+    label(svg, o.cove[0] + 2, o.cove[1] - 3, '후미·등대 →6칸', 2);
+    label(svg, -4, -12, '🦆 사공 자리 이동', 1.9);
+  }
+  if (o.northSea) el('path', { d: seaPath(o.bump), fill: 'rgba(79,143,179,.72)', stroke: '#4f8fb3', 'stroke-width': .5 }, svg);
+  el('circle', { cx: 0, cy: 0, r: 42, fill: 'none', stroke: '#fff', 'stroke-width': .45, 'stroke-dasharray': '1.4 1' }, svg);
+  el('path', { d: boundPath(o.bump), fill: 'none', stroke: '#e0a63a', 'stroke-width': .7 }, svg);
+  stageGroup(svg, o.stage);
+  if (o.northSea) label(svg, 20, -53, '새 북쪽 바다', 2.6, '#fff');
+  label(svg, 4, -27.5, '🌳 세계수', 1.9);
+  label(svg, 0, -15.5, '🛶 나루터', 1.9);
+  label(svg, 10, -3, '작업대·주방·상인', 1.8, '#5a2c14');
+}
+function drawNow() {
+  const svg = document.getElementById('now-svg');
+  baseSvg(svg, '-56 -56 112 112');
+  el('circle', { cx: 0, cy: 0, r: 42, fill: 'none', stroke: '#fff', 'stroke-width': .5, 'stroke-dasharray': '1.6 1.2' }, svg);
+  el('circle', { cx: 24, cy: -21.5, r: 13.4, fill: 'none', stroke: '#e05a3a', 'stroke-width': .7 }, svg);
+  label(svg, 24, -36.5, '바다 후미 (지도에선 열린 바다)', 2.6, '#c0392b');
+  el('circle', { cx: 32.5, cy: -3.5, r: 7, fill: 'none', stroke: '#e0a63a', 'stroke-width': .6, 'stroke-dasharray': '1.2 .8' }, svg);
+  label(svg, 32.5, 6, '지금 무대(과수원 입구 뒤)', 2.2, '#8a5a10');
+}
+function drawMap(cv, o) {
+  const W = 300, H = 330, dpr = 2; cv.width = W * dpr; cv.height = H * dpr;
+  const c = cv.getContext('2d'); c.scale(dpr, dpr);
+  const V = { x0: -36, z0: -56, w: 82 }, K = W / V.w;
+  const px = (x, z) => [(x - V.x0) * K, (z - V.z0) * K];
+  c.fillStyle = '#8fc9e2'; c.fillRect(0, 0, W, H);
+  const poly = (off, fill) => { c.beginPath(); for (let i = 0; i <= 360; i += 3) { const t = i * D, wob = Math.sin(i * D * 7) * .8 + Math.sin(i * D * 3) * .6, r = bound(t, o.bump) + off + wob; const [a, b] = px(Math.cos(t) * r, Math.sin(t) * r); if (i) c.lineTo(a, b); else c.moveTo(a, b); } c.closePath(); c.fillStyle = fill; c.fill(); };
+  poly(2.2, '#f0e0b8'); poly(0, '#a8d88a');
+  const disc = ([x, z, r], fill) => { const [a, b] = px(x, z); c.beginPath(); c.arc(a, b, r * K, 0, 7); c.fillStyle = fill; c.fill(); };
+  disc([o.cove[0], o.cove[1], 13], '#f0e0b8'); disc([o.cove[0], o.cove[1], 12], '#7fc4e6');
+  disc(BASE.lake, '#7fc4e6'); disc(BASE.pond, '#7fc4e6');
+  { const [a, b] = px(BASE.isle[0], BASE.isle[1]); c.beginPath(); c.arc(a, b, BASE.isle[2] * K, 0, 7); c.lineWidth = 1.4 * K; c.strokeStyle = '#7fc4e6'; c.stroke(); }
+  c.font = '15px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  const ico = (x, z, s) => { const [a, b] = px(x, z); c.fillText(s, a, b); };
+  ico(4, -35, '🌳'); ico(-15, -36, '🏔️'); ico(0, -16, '🛶'); ico(o.cove[0] - 9.5, o.cove[1] + 9, '🌊'); ico(-26, 5, '🏛️'); ico(16, 9, '🏞️');
+  c.font = '19px sans-serif'; ico(o.stage[0], o.stage[1], '🔨');
+  c.font = 'bold 11px -apple-system,"Apple SD Gothic Neo",sans-serif'; c.lineWidth = 3; c.strokeStyle = '#fff'; c.fillStyle = '#33513c';
+  const [lx, ly] = px(o.stage[0], o.stage[1] + 3.6); c.strokeText('경매 무대', lx, ly); c.fillText('경매 무대', lx, ly);
+}
+const grid = document.getElementById('grid');
+OPTS.forEach(o => {
+  const card = document.createElement('section'); card.className = 'opt' + (o.rec ? ' rec' : '');
+  card.innerHTML = `<div><span class="tag">${o.rec ? '추천 · ' : ''}안 ${o.key}</span><h2>${o.title}</h2></div>
+    <div class="pair"><svg></svg><canvas title="새 지도 미리보기"></canvas></div>
+    <figcaption>왼쪽: 실제 장면 위에 그린 변경 · 오른쪽: 맞춘 뒤의 지도(미니맵 같은 그림)</figcaption>
+    <ul class="pro">${o.pros.map(s => `<li>${s}</li>`).join('')}</ul>
+    <ul class="con">${o.cons.map(s => `<li>${s}</li>`).join('')}</ul>
+    <div class="code">바뀌는 것: ${o.code}</div>`;
+  grid.appendChild(card);
+  const svg = card.querySelector('svg');
+  const defs = el('defs', {}, svg); const m = el('marker', { id: 'arr' + o.key, viewBox: '0 0 6 6', refX: 5, refY: 3, markerWidth: 4, markerHeight: 4, orient: 'auto' }, defs); el('path', { d: 'M0 0L6 3L0 6Z', fill: '#1d3a5a' }, m);
+  drawOpt(svg, o);
+  svg.querySelectorAll('[marker-end]').forEach(p => p.setAttribute('marker-end', `url(#arr${o.key})`));
+  drawMap(card.querySelector('canvas'), o);
+});
+drawNow();
+</script>
+</body>
+</html>

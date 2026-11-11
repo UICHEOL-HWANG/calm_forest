@@ -63,6 +63,32 @@ test('build-cap ios: __IOS__ 만 주입(안드로이드 플래그 없음) · 외
   }
 });
 
+test('build-cap: 기본 빌드에는 광고 테스트 플래그·검증 버튼이 없다', () => {
+  try {
+    const env = { ...process.env };
+    delete env.ADS_TEST;
+    execFileSync('node', ['scripts/build-cap.mjs'], { stdio: 'pipe', env });
+    const html = readFileSync('dist-cap/index.html', 'utf8');
+    assert.doesNotMatch(html, /__ADS_TEST__/);
+    assert.doesNotMatch(html, /rewarded-debug\.js/);
+    assert.ok(!existsSync('dist-cap/js/ads/rewarded-debug.js'));
+  } finally {
+    rmSync('dist-cap', { recursive: true, force: true });
+  }
+});
+
+test('build-cap: ADS_TEST=1 이면 테스트 플래그와 검증 버튼을 넣는다', () => {
+  try {
+    execFileSync('node', ['scripts/build-cap.mjs', 'ios'], { stdio: 'pipe', env: { ...process.env, ADS_TEST: '1' } });
+    const html = readFileSync('dist-cap/index.html', 'utf8');
+    assert.match(html, /<script>window\.__IOS__ = true; window\.__ADS_TEST__ = true;<\/script>/);
+    assert.match(html, /<script type="module" src="\.\/js\/ads\/rewarded-debug\.js"><\/script>/);
+    assert.ok(existsSync('dist-cap/js/ads/rewarded-debug.js'));
+  } finally {
+    rmSync('dist-cap', { recursive: true, force: true });
+  }
+});
+
 test('build-cap: 모르는 타깃은 실패(조용히 안드로이드 번들이 나가지 않게)', () => {
   assert.throws(() => execFileSync('node', ['scripts/build-cap.mjs', 'iphone'], { stdio: 'pipe' }));
   rmSync('dist-cap', { recursive: true, force: true });

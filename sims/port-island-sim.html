@@ -1,0 +1,983 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>포구 섬 항해 시안</title>
+<style>
+  :root { --bg: #f3efe6; --ink: #2f3a2c; --sub: #6b7563; --card: #fffdf8; --line: #ddd5c4; --accent: #4f7a3a; --gold: #e2a43b; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
+  header { padding: 18px 24px 4px; }
+  h1 { margin: 0 0 4px; font-size: 22px; }
+  .lead { margin: 0; color: var(--sub); max-width: 1000px; }
+  .bar { display: flex; flex-wrap: wrap; gap: 14px; padding: 10px 24px; align-items: center; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--card); }
+  .seg button { border: 0; background: none; padding: 6px 13px; font: inherit; color: var(--sub); cursor: pointer; }
+  .seg button.on { background: var(--accent); color: #fff; }
+  .seg-label { color: var(--sub); font-size: 13px; }
+  .wrap { display: flex; flex-wrap: wrap; gap: 24px; padding: 6px 24px 20px; align-items: flex-start; }
+  .screen { position: relative; width: var(--w); height: var(--h); border-radius: var(--r); overflow: hidden; background: #10202e; box-shadow: 0 0 0 var(--bez) #262a24, 0 10px 28px rgba(0,0,0,.18); touch-action: none; user-select: none; -webkit-user-select: none; flex: none; }
+  .screen canvas { display: block; width: 100%; height: 100%; }
+  .layer { position: absolute; inset: 0; pointer-events: none; }
+  .bub { position: absolute; transform: translate(-50%, -100%); padding: 0 5px; border-radius: 10px; background: rgba(255,253,248,.95); box-shadow: 0 1px 4px rgba(0,0,0,.25); font-size: calc(14px * var(--s)); line-height: 1.35; white-space: nowrap; }
+  .bub.big { font-size: calc(20px * var(--s)); animation: pulse .3s infinite alternate; }
+  .bub.npc { font-size: calc(15px * var(--s)); }
+  @keyframes pulse { to { transform: translate(-50%, -100%) scale(1.2); } }
+  .mark { position: absolute; transform: translate(-50%, -100%); font-size: calc(15px * var(--s)); filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); animation: bob 0.8s infinite alternate ease-in-out; }
+  .mark.guide { font-size: calc(22px * var(--s)); }
+  .mark .d { display: block; text-align: center; font-size: calc(10px * var(--s)); font-weight: 800; color: #fff; text-shadow: 0 1px 2px #000; }
+  @keyframes bob { to { transform: translate(-50%, -125%); } }
+  .edge { position: absolute; width: calc(34px * var(--s)); height: calc(34px * var(--s)); margin: calc(-17px * var(--s)) 0 0 calc(-17px * var(--s)); border-radius: 50%; background: var(--gold); color: #2f2414; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: calc(18px * var(--s)); box-shadow: 0 2px 8px rgba(0,0,0,.4); }
+  .edge i { font-style: normal; display: block; }
+  .edge .d { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 2px; font-size: calc(10px * var(--s)); font-weight: 800; color: #fff; text-shadow: 0 1px 2px #000; white-space: nowrap; }
+  .top { position: absolute; left: 8px; right: 8px; top: 6px; display: flex; gap: 6px; align-items: flex-start; justify-content: space-between; pointer-events: none; }
+  .stack { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
+  .pill { padding: 1px 8px; border-radius: 8px; background: rgba(20,24,30,.62); color: #fff; font-size: calc(12px * var(--s)); font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .pill.store { background: rgba(255,253,248,.92); color: var(--ink); }
+  .pill.quest { background: rgba(226,164,59,.95); color: #2f2414; }
+  .guidecard { position: absolute; left: 50%; top: calc(30px * var(--s)); transform: translateX(-50%); padding: 3px 12px; border-radius: 12px; background: rgba(255,248,232,.97); color: var(--ink); font-size: calc(12.5px * var(--s)); font-weight: 700; box-shadow: 0 2px 10px rgba(0,0,0,.3); border: 2px solid var(--gold); display: none; white-space: nowrap; }
+  .guidecard small { color: #9a6a12; margin-right: 6px; }
+  .guidecard.flash { animation: gflash .5s 2 alternate; }
+  @keyframes gflash { to { transform: translateX(-50%) scale(1.08); } }
+  .hint { position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); padding: 1px 10px; border-radius: 999px; background: rgba(20,24,30,.6); color: #fff; font-size: calc(12px * var(--s)); white-space: nowrap; }
+  .talk { position: absolute; left: 50%; bottom: 30px; transform: translateX(-50%); max-width: 78%; padding: 6px 12px; border-radius: 12px; background: rgba(255,253,248,.96); color: var(--ink); font-size: calc(12.5px * var(--s)); box-shadow: 0 2px 10px rgba(0,0,0,.3); display: none; text-align: center; }
+  .talk b { color: #9a6a12; }
+  .joy { position: absolute; width: calc(84px * var(--s)); height: calc(84px * var(--s)); border-radius: 50%; background: rgba(255,255,255,.22); transform: translate(-50%, -50%); display: none; }
+  .joy i { position: absolute; left: 50%; top: 50%; width: 42%; height: 42%; border-radius: 50%; background: rgba(255,255,255,.85); transform: translate(-50%, -50%); }
+  .joyhint { position: absolute; left: calc(70px * var(--s)); bottom: calc(46px * var(--s)); width: calc(84px * var(--s)); height: calc(84px * var(--s)); margin: calc(-42px * var(--s)) 0 0 calc(-42px * var(--s)); border-radius: 50%; border: 2px dashed rgba(255,255,255,.8); display: none; align-items: center; justify-content: center; color: #fff; font-size: calc(11px * var(--s)); font-weight: 800; text-shadow: 0 1px 2px #000; animation: jh 1s infinite alternate; }
+  @keyframes jh { to { transform: scale(1.1); } }
+  .act { position: absolute; right: calc(14px * var(--s)); bottom: calc(14px * var(--s)); width: calc(60px * var(--s)); height: calc(60px * var(--s)); border-radius: 50%; border: 0; background: rgba(255,253,248,.3); font-size: calc(24px * var(--s)); display: flex; align-items: center; justify-content: center; cursor: pointer; touch-action: none; }
+  .act.on { background: rgba(255,253,248,.95); box-shadow: 0 0 0 3px var(--gold); }
+  .act.urgent { animation: pulse2 .35s infinite alternate; }
+  .act.point::after { content: '👆'; position: absolute; right: -6px; bottom: -14px; font-size: calc(22px * var(--s)); animation: tapme .6s infinite alternate; }
+  @keyframes tapme { to { transform: translate(-4px, -6px); } }
+  @keyframes pulse2 { to { transform: scale(1.12); } }
+  .fast { position: absolute; right: calc(84px * var(--s)); bottom: calc(18px * var(--s)); padding: 4px 10px; border-radius: 999px; border: 0; background: rgba(255,253,248,.95); font: inherit; font-weight: 800; font-size: calc(12px * var(--s)); cursor: pointer; display: none; box-shadow: 0 2px 6px rgba(0,0,0,.25); }
+  .veil { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: rgba(15,20,28,.6); color: #fff; text-align: center; padding: 10px; }
+  .veil button { border: 0; border-radius: 999px; padding: 7px 20px; background: #fffdf8; color: var(--ink); font: inherit; font-weight: 700; font-size: calc(15px * var(--s)); cursor: pointer; }
+  .veil .row { display: flex; gap: 8px; }
+  .veil .res { font-size: calc(13px * var(--s)); line-height: 1.55; }
+  .ii { width: 1.2em; height: 1.2em; vertical-align: -0.22em; }
+  #mirror-talk { --ink: #4a5a4f; zoom: var(--mz); position: absolute; left: 50%; transform: translateX(-50%); bottom: var(--mtb); z-index: 7; display: none; width: min(620px, calc(var(--w) * 0.92 / var(--mz))); min-height: var(--mth); box-sizing: border-box; padding: var(--mtp); border-radius: 18px; cursor: pointer; background: #fff; box-shadow: 0 10px 30px rgba(20,20,60,0.3); color: var(--ink); text-align: left; font-family: 'Segoe UI', system-ui, sans-serif; }
+  #mirror-talk.show { display: block; animation: mt-in .18s ease-out; }
+  @keyframes mt-in { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+  #mt-face { position: absolute; left: var(--mtfl); top: var(--mtfl); width: var(--mtf); height: var(--mtf); border-radius: 50%; display: grid; place-items: center; font-size: var(--mtff); border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+  #mt-name { display: inline-block; font-size: 12px; font-weight: 800; color: #fff; background: #7a6fd0; padding: 2px 10px; border-radius: 10px; margin-bottom: 6px; }
+  #mt-line { font-size: var(--mtl); line-height: 1.5; word-break: keep-all; overflow-wrap: anywhere; }
+  #mt-next { position: absolute; right: 14px; bottom: 7px; font-size: 11px; opacity: 0.6; }
+  #mirror-talk.point #mt-next::after { content: ' 👆'; font-size: 18px; opacity: 1; }
+  .screen:has(#mirror-talk.show) .hint { opacity: 0 !important; }
+  .pop { position: absolute; transform: translate(-50%, -100%); font-size: calc(18px * var(--s)); pointer-events: none; transition: transform 1s ease-out, opacity 1s; white-space: nowrap; }
+  .side { width: 400px; display: flex; flex-direction: column; gap: 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+  .card h3 { margin: 0 0 6px; font-size: 15px; }
+  .q { display: flex; gap: 8px; align-items: center; padding: 5px 8px; border-radius: 9px; background: #f2ecdf; margin-bottom: 5px; font-size: 13px; }
+  .q .ic { font-size: 18px; }
+  .q .tx { flex: 1; line-height: 1.35; }
+  .q .tx small { color: var(--sub); }
+  .q .st { font-weight: 800; font-size: 12px; white-space: nowrap; }
+  .q.done { background: #e3efd8; }
+  .q.active { box-shadow: 0 0 0 2px var(--gold); background: #fff8e8; }
+  .steps { margin: 0; padding-left: 0; list-style: none; font-size: 12.5px; }
+  .steps li { padding: 2px 0; color: var(--sub); }
+  .steps li.cur { color: var(--ink); font-weight: 800; }
+  .steps li.ok { color: var(--accent); }
+  table.m { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.m th, table.m td { border-top: 1px solid var(--line); padding: 5px 6px; text-align: right; font-variant-numeric: tabular-nums; }
+  table.m th:first-child, table.m td:first-child { text-align: left; }
+  table.m th { color: var(--sub); font-weight: 600; border-top: 0; }
+  .notes { margin: 0 24px 32px; padding: 14px 18px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; max-width: 1100px; color: var(--sub); font-size: 13px; }
+  .notes b { color: var(--ink); }
+  .notes ul { margin: 6px 0; padding-left: 18px; }
+</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+</head>
+<body>
+<header>
+  <h1>⛵ 포구 섬: 바다 낚시 + 섬 의뢰 + 첫 방문 길 안내</h1>
+  <p class="lead">배는 조이스틱 방향으로 그냥 움직입니다. 바다 곳곳의 물결 원이 낚시터이고, 먼 바다와 밤에만 나오는 자리가 따로 있습니다. 첫 방문은 단계별 길 안내(금색 화살표·바닥 표시·화면 밖 방향 표시)가 끝까지 데려갑니다. 한 번 다녀오면 마을↔섬 바로 가기가 열립니다.</p>
+</header>
+<div class="bar">
+  <span class="seg-label">길 안내</span>
+  <div class="seg" id="guideSw"><button data-v="on" class="on">켜기</button><button data-v="off">끄기(비교용)</button></div>
+  <span class="seg-label">시간</span>
+  <div class="seg" id="tod"><button data-v="night" class="on">밤</button><button data-v="day">낮</button></div>
+  <span class="seg-label">가게</span>
+  <div class="seg" id="shop"><button data-v="C1">C1</button><button data-v="C2" class="on">C2</button><button data-v="C3">C3</button></div>
+  <span class="seg-label">화면</span>
+  <div class="seg" id="dev"><button data-d="phone" class="on">가로 폰</button><button data-d="pc">PC</button></div>
+</div>
+<div class="wrap">
+  <div class="screen" id="screen">
+    <canvas id="cv"></canvas>
+    <div class="layer" id="bubs"></div>
+    <div class="top"><div class="stack"><span class="pill store" id="store"></span><span class="pill quest" id="qtrack"></span></div><span class="pill" id="clock"></span></div>
+    <div class="guidecard" id="gcard"></div>
+    <div class="talk" id="talk"></div>
+    <div id="mirror-talk" role="dialog" aria-live="polite"><div id="mt-face"></div><div id="mt-name"></div><div id="mt-line"></div><div id="mt-next"></div></div>
+
+    <div class="hint" id="hint"></div>
+    <div class="joyhint" id="joyhint">끌어서<br>이동</div>
+    <div class="joy" id="joy"><i></i></div>
+    <button class="fast" id="fast">🗺️ 마을로 바로 가기</button>
+    <button class="act" id="act">✋</button>
+    <div class="veil" id="veil"><div class="res" id="res"></div><div class="row"><button id="go">⛵ 출항</button><button id="goFast" style="display:none">🗺️ 섬으로 바로 가기</button></div></div>
+  </div>
+  <div class="side">
+    <div class="card">
+      <h3>🧭 첫 방문 길 안내 단계</h3>
+      <ol class="steps" id="steps"></ol>
+    </div>
+    <div class="card">
+      <h3>📜 섬 주민 의뢰</h3>
+      <div id="qlist"></div>
+    </div>
+    <div class="card">
+      <h3>📊 왕복 기록</h3>
+      <table class="m" id="log"></table>
+    </div>
+  </div>
+</div>
+<div class="notes">
+  <b>바다 낚시터</b>
+  <ul>
+    <li>가까운 바다(항로 근처): 🐟 생선·🦐 새우 · 먼 바다(항로에서 벗어난 곳): 🦑 오징어·🐠 큰 물고기 · 밤에만 뜨는 등불 자리: 🦑 오징어가 잘 잡힘</li>
+    <li>먼 바다·밤 어종은 섬 의뢰나 포장마차에서 구할 수 없는 고급 메뉴 재료라서, 바다에서 시간을 쓸 이유가 됩니다.</li>
+  </ul>
+  <b>길 안내 원칙 (이탈 분석 반영)</b>
+  <ul>
+    <li>한 번에 목표 하나만. 화면 위 금색 카드에 "지금 할 일 한 줄"만 보여 줍니다.</li>
+    <li>목표가 화면 안이면 그 위에 ⬇️ + 남은 거리, 바닥에 금색 고리. 화면 밖이면 가장자리에 방향 화살표 + 거리.</li>
+    <li>캐릭터 발밑에도 목표 방향 화살촉을 깔아, 어디를 봐도 방향을 잃지 않게 합니다.</li>
+    <li>버튼을 눌러야 하는 순간에는 버튼 옆에 👆 손가락이 뜹니다. 첫 낚시는 입질을 넉넉하게 줘서 반드시 성공하게 합니다.</li>
+    <li>각 단계 진입·완료를 이벤트로 남겨 어느 단계에서 끊기는지 깔때기로 봅니다(계획서의 트래킹 절).</li>
+  </ul>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import { clay } from './boat-models.js';
+import { tubBoat, buildShops, setNight } from './port-shop-models.js';
+import { buildIslandNPC, setNpcNight, beachBuoy, ISLAND_NPCS, npcPortrait } from './port-npc-models.js';
+
+const ISLAND = new THREE.Vector3(44, 0, 0);
+const ISLAND_R = 20;
+const WALK_R = ISLAND_R - 0.8;
+const VILLAGE_DOCK = new THREE.Vector3(-25.5, 0, 0);
+const ISLAND_DOCK = new THREE.Vector3(20.6, 0, 0);
+const PIER_END = new THREE.Vector3(22.6, 0, 0);
+const TUB_ICO = 'tub';
+const TUB_SVG = '<img src="icon-set/tub-boat.svg" alt="" style="width:58%;height:58%;pointer-events:none">';
+const VILLAGE_START = new THREE.Vector3(-41, 0, 9);
+const VILLAGE_PIER_END = new THREE.Vector3(-26, 0, 1.6);
+const VILLAGE_SOLIDS = [[new THREE.Vector3(-36, 0, -5), 2.0], [new THREE.Vector3(-35, 0, 6), 1.9], [new THREE.Vector3(-40, 0, 0), 0.8], [new THREE.Vector3(-33, 0, -12), 0.8], [new THREE.Vector3(-38, 0, 12), 0.9]];
+const ROUTE = [[-25.5, 0], [-18, -4.6], [-7, -0.5], [2, 5.2], [11, 1], [16, -3.6], [20.6, 0]].map(([x, z]) => new THREE.Vector3(x, 0, z));
+const SEA_SPOTS = [
+  { at: [-17, -5], zone: 'near' }, { at: [-8, 6.5], zone: 'near' }, { at: [3, -6], zone: 'near' }, { at: [12, 6], zone: 'near' },
+  { at: [-6, -17], zone: 'far' }, { at: [9, 18], zone: 'far' }, { at: [20, -16], zone: 'far' },
+  { at: [-1, 13], zone: 'night' }, { at: [6, -13], zone: 'night' },
+];
+const PIER_SPOT = [19.6, -2.6];
+const CATCH = {
+  near: [['fish', 0.75], ['shrimp', 0.25]],
+  far: [['squid', 0.45], ['fish', 0.3], ['bigfish', 0.25]],
+  night: [['squid', 0.8], ['bigfish', 0.2]],
+  pier: [['fish', 0.85], ['shrimp', 0.15]],
+};
+const ZONE_COL = { near: 0xbfe6ff, far: 0x9fd0ff, night: 0xffd27a, pier: 0xbfe6ff };
+const ICO = { fish: '🐟', bigfish: '🐠', squid: '🦑', shrimp: '🦐', rice: '🍚', veg: '🥬', clam: '🐚' };
+const BOAT_SPEED = 6;
+const WALK = 5;
+const LAND_Y = 0.6;
+const MARKET_POS = new THREE.Vector3(32, LAND_Y, -6);
+const HUT_POS = new THREE.Vector3(29.6, LAND_Y, 8);
+const FARM_POS = new THREE.Vector3(54, LAND_Y, -10);
+const LIGHT_POS = new THREE.Vector3(60, LAND_Y, -9);
+
+const QUESTS = [
+  { id: 'fisher', who: '수달 어부', ico: '🦦', col: 0x7a5a40, hat: 0x3f6d8c, pos: [31.2, 11.6], title: '떠내려간 부표 찾기', ask: '그물 부표가 동쪽 해변으로 떠내려갔어. 3개만 주워 줄래?', thanks: '고마워! 오늘 잡은 생선 나눠 줄게.', item: 'buoy', itemIco: '<img class="ii" src="icon-set/buoy.svg" alt="부표">', itemName: '부표', need: 3, spots: [[50, 17], [58, 12], [62, 4]], reward: { fish: 5, shrimp: 2 } },
+  { id: 'yatai', who: '포장마차 너구리', ico: '🦝', col: 0x7d7d84, hat: 0x2f4f7a, pos: [34.6, -3.6], title: '어묵 국물용 조개', ask: '국물 낼 조개가 떨어졌네. 남쪽 갯바위에서 4개만 캐 와 줘.', thanks: '덕분에 국물 맛 살겠다! 넉넉히 캐 왔으니 조개 반은 가져가.', item: 'clam', itemIco: '🐚', itemName: '조개', need: 4, spots: [[31.5, 13.5], [33.5, 15.2], [35.5, 16.8], [38, 17.5]], reward: { rice: 3, clam: 3 } },
+  { id: 'farm', who: '밭 할머니 염소', ico: '🐐', col: 0xe9e4da, hat: 0xd8643c, pos: [49.5, -12], title: '배추 뽑기 도와주기', ask: '아이고 허리야. 배추 3포기만 뽑아다 주겠니?', thanks: '아이고 고마워라. 넉넉히 가져가렴.', item: 'cabbage', itemIco: '🥬', itemName: '배추', need: 3, spots: [[52.5, -8.5], [55.5, -8.5], [52.5, -11.5], [55.5, -11.5]], reward: { veg: 5 } },
+  { id: 'light', who: '등대지기 부엉이', ico: '🦉', col: 0x8a7a68, hat: 0x40585f, pos: [57.6, -5.4], title: '등대 기름통 가져다주기', ask: '등불 기름이 다 됐어. 어부네 집 데크에 기름통이 있을 거야. 좀 가져다줄래?', thanks: '이제 배들이 길을 잃지 않겠군. 밤바다에서 잡은 오징어야.', item: 'oil', itemIco: '🛢️', itemName: '기름통', need: 1, spots: [[32.4, 10.4]], reward: { squid: 3 }, night: true },
+];
+
+const $ = id => document.getElementById(id);
+let tod = 'night', device = 'phone', shopStyle = 'C2', guideOn = true;
+let fastUnlocked = false, tutorialDone = false;
+const logs = [];
+
+const screen = $('screen');
+const renderer = new THREE.WebGLRenderer({ canvas: $('cv'), antialias: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(30, 2, 0.1, 400);
+const hemi = new THREE.HemisphereLight(0xfff1dc, 0x2c4a5a, 1);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xffe2b8, 1.2); sun.position.set(-20, 40, 20); scene.add(sun);
+
+const lam = c => new THREE.MeshLambertMaterial({ color: c, flatShading: true });
+const glowMat = c => new THREE.MeshBasicMaterial({ color: c });
+function box(g, w, h, d, col, x, y, z) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), lam(col)); m.position.set(x, y, z); g.add(m); return m; }
+function cyl(g, rt, rb, h, col, x, y, z, seg = 10) { const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), lam(col)); m.position.set(x, y, z); g.add(m); return m; }
+
+const sea = new THREE.Mesh(new THREE.PlaneGeometry(300, 180, 1, 1), lam(0x1d3a52));
+sea.rotation.x = -Math.PI / 2; scene.add(sea);
+
+const lanterns = [];
+function lantern(g, x, y, z) {
+  const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.22, 0), glowMat(0xffc56b));
+  m.position.set(x, y, z); g.add(m);
+  const l = new THREE.PointLight(0xffb45a, 0, 9, 1.5); l.position.set(x, y, z); g.add(l);
+  lanterns.push(l);
+}
+function tree(g, x, z, s = 1, y = LAND_Y) {
+  cyl(g, 0.16 * s, 0.22 * s, 1.4 * s, 0x8a5a36, x, y + 0.7 * s, z, 6);
+  const c = new THREE.Mesh(new THREE.IcosahedronGeometry(0.95 * s, 0), lam(0x4f8a45)); c.position.set(x, y + 1.9 * s, z); g.add(c);
+}
+function rock(g, x, z, s = 1) {
+  const r = new THREE.Mesh(new THREE.DodecahedronGeometry(0.7 * s, 0), lam(0x8d8f8a)); r.position.set(x, LAND_Y + 0.2 * s, z); r.scale.y = 0.6; r.rotation.y = x; g.add(r);
+}
+
+function buildVillage() {
+  const g = new THREE.Group();
+  const land = new THREE.Mesh(new THREE.BoxGeometry(40, 1.2, 70), lam(0x7fb069)); land.position.set(-48, 0, 0); g.add(land);
+  const sand = new THREE.Mesh(new THREE.BoxGeometry(4, 0.8, 70), lam(0xe8d7a8)); sand.position.set(-28.5, 0, 0); g.add(sand);
+  box(g, 4.2, 0.2, 1.4, 0x9b6b3f, -27.3, 0.5, 1.6);
+  for (let i = 0; i < 4; i++) cyl(g, 0.1, 0.1, 1.2, 0x6e4a2c, -29 + i * 1.15, 0, 2.3, 6);
+  box(g, 3, 2, 2.6, 0xe9dcc3, -36, 1.6, -5); box(g, 3.4, 0.3, 3, 0xb4472f, -36, 2.75, -5);
+  box(g, 2.6, 1.8, 2.4, 0xe9dcc3, -35, 1.5, 6); box(g, 3, 0.3, 2.8, 0x4f7a3a, -35, 2.55, 6);
+  tree(g, -40, 0); tree(g, -33, -12); tree(g, -38, 12, 1.2);
+  lantern(g, -27.5, 1.6, 2.3);
+  scene.add(g);
+}
+
+function buildRouteBuoys() {
+  const g = new THREE.Group();
+  for (let i = 1; i < ROUTE.length - 1; i++) {
+    const p = ROUTE[i];
+    const b = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.8, 8), lam(0xe8763a)); b.position.set(p.x, 0.3, p.z); g.add(b);
+    const top = new THREE.Mesh(new THREE.IcosahedronGeometry(0.14, 0), glowMat(0xffd27a)); top.position.set(p.x, 0.85, p.z); g.add(top);
+  }
+  scene.add(g);
+}
+
+let shopRoot = null;
+function buildIsland() {
+  const g = new THREE.Group();
+  const sand = new THREE.Mesh(new THREE.CylinderGeometry(ISLAND_R, ISLAND_R + 1.8, 1.2, 28), lam(0xe8d7a8)); sand.position.set(ISLAND.x, 0, ISLAND.z); g.add(sand);
+  const grass = new THREE.Mesh(new THREE.CylinderGeometry(13.5, 14, 0.1, 22), lam(0x86b86f)); grass.position.set(ISLAND.x + 4, LAND_Y + 0.02, -2.5); g.add(grass);
+  const path = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.55, 0.06, 7), lam(0xcbb48c));
+  for (let i = 0; i <= 17; i++) { const p = path.clone(); p.position.set(27 + i * 1.8, LAND_Y + 0.04, -1 - Math.sin(i * 0.3) * 1.6 + (i % 2 ? 0.35 : -0.35)); p.rotation.y = i; g.add(p); }
+  box(g, 4.4, 0.2, 1.6, 0x9b6b3f, 23.6, 0.55, 0);
+  for (const z of [-0.75, 0.75]) for (let i = 0; i < 3; i++) cyl(g, 0.1, 0.1, 1.3, 0x6e4a2c, 21.8 + i * 1.6, 0.05, z, 6);
+  lantern(g, 21.6, 1.7, 0.85);
+  for (const [x, z] of [[31, 16], [34.5, 18.2], [37.2, 18.9], [29.5, 13.8], [39.5, 19]]) rock(g, x, z, 1.2);
+  for (const [x, z, r] of [[33.3, 16.2, 1.2], [36.4, 17.6, 1]]) { const pool = new THREE.Mesh(new THREE.CircleGeometry(r, 10), lam(0x3f8fb0)); pool.rotation.x = -Math.PI / 2; pool.position.set(x, LAND_Y + 0.03, z); g.add(pool); }
+  const fence = 0x9b6b3f;
+  for (let i = 0; i <= 6; i++) { cyl(g, 0.06, 0.06, 0.7, fence, 51 + i, LAND_Y + 0.35, -6.8, 5); cyl(g, 0.06, 0.06, 0.7, fence, 51 + i, LAND_Y + 0.35, -13.2, 5); }
+  box(g, 6, 0.06, 0.06, fence, 54, LAND_Y + 0.55, -6.8); box(g, 6, 0.06, 0.06, fence, 54, LAND_Y + 0.55, -13.2);
+  const soil = new THREE.Mesh(new THREE.BoxGeometry(5.6, 0.08, 5.6), lam(0x8a6040)); soil.position.set(FARM_POS.x, LAND_Y + 0.04, FARM_POS.z); g.add(soil);
+  const lh = new THREE.Group(); lh.position.copy(LIGHT_POS);
+  for (let i = 0; i < 4; i++) cyl(lh, 0.95 - i * 0.1, 1.05 - i * 0.1, 1.2, i % 2 ? 0xc0432b : 0xf4ece0, 0, 0.6 + i * 1.2, 0, 12);
+  cyl(lh, 0.75, 0.75, 0.15, 0x40585f, 0, 4.9, 0, 12);
+  const lampM = new THREE.Mesh(new THREE.IcosahedronGeometry(0.4, 1), glowMat(0xffd27a)); lampM.position.y = 5.35; lh.add(lampM);
+  const cap = new THREE.Mesh(new THREE.ConeGeometry(0.75, 0.8, 12), lam(0x40585f)); cap.position.y = 6.1; lh.add(cap);
+  const lhLight = new THREE.PointLight(0xffd27a, 0, 18, 1.2); lhLight.position.y = 5.4; lh.add(lhLight); lanterns.push(lhLight);
+  g.add(lh);
+  tree(g, 44, -16, 1.2); tree(g, 40, -14, 0.9); tree(g, 47, 8, 1.3); tree(g, 51, 4, 1); tree(g, 38, 6, 0.9); tree(g, 59, 2, 1.1); tree(g, 36, -14, 1);
+  scene.add(g);
+}
+
+function placeShops() {
+  if (shopRoot) scene.remove(shopRoot);
+  shopRoot = new THREE.Group();
+  const { market, hut } = buildShops(shopStyle);
+  market.position.copy(MARKET_POS); market.rotation.y = 0.55; shopRoot.add(market);
+  hut.position.copy(HUT_POS); hut.rotation.y = 0.5; shopRoot.add(hut);
+  scene.add(shopRoot);
+  setNight(shopRoot, tod === 'night');
+}
+
+buildVillage();
+buildRouteBuoys();
+buildIsland();
+placeShops();
+
+function makeAnimal(col, hatCol) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.IcosahedronGeometry(0.4, 1), lam(col)); body.scale.set(1, 1.05, 0.9); body.position.y = 0.43; g.add(body);
+  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.33, 1), lam(col)); head.position.y = 1.03; g.add(head);
+  for (const s of [-1, 1]) { const e = new THREE.Mesh(new THREE.IcosahedronGeometry(0.1, 0), lam(col)); e.position.set(0.21 * s, 1.3, 0); g.add(e); }
+  const hat = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.32, 10), lam(hatCol)); hat.position.y = 1.42; g.add(hat);
+  return g;
+}
+
+const npcs = QUESTS.map(q => {
+  const m = buildIslandNPC(q.id);
+  m.position.set(q.pos[0], LAND_Y, q.pos[1]);
+  m.rotation.y = Math.atan2(28 - q.pos[0], 4 - q.pos[1]);
+  scene.add(m);
+  return m;
+});
+
+function itemMesh(kind) {
+  const g = new THREE.Group();
+  if (kind === 'buoy') {
+    g.add(beachBuoy());
+  } else if (kind === 'clam') {
+    const c = new THREE.Mesh(new THREE.IcosahedronGeometry(0.22, 1), lam(0xe8d2b4)); c.scale.set(1.2, 0.45, 1); c.position.y = 0.08; g.add(c);
+  } else if (kind === 'cabbage') {
+    const c = new THREE.Mesh(new THREE.IcosahedronGeometry(0.36, 1), lam(0x7fbf55)); c.scale.y = 0.8; c.position.y = 0.25; g.add(c);
+    const i = new THREE.Mesh(new THREE.IcosahedronGeometry(0.22, 1), lam(0xc9e6a0)); i.position.y = 0.45; g.add(i);
+  } else if (kind === 'oil') {
+    const o = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.5, 10), lam(0x3f6d8c)); o.position.y = 0.25; g.add(o);
+    const r = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.03, 4, 12), lam(0xd9a066)); r.rotation.x = Math.PI / 2; r.position.y = 0.35; g.add(r);
+  }
+  return g;
+}
+
+function makeSpot(x, z, zone) {
+  const g = new THREE.Group(); g.position.set(x, 0.05, z);
+  const col = ZONE_COL[zone];
+  const big = zone === 'far' ? 1.3 : 1;
+  const ring = new THREE.Mesh(new THREE.RingGeometry(1.1 * big, 1.35 * big, 24), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.55, side: THREE.DoubleSide }));
+  ring.rotation.x = -Math.PI / 2; g.add(ring);
+  const ring2 = ring.clone(); ring2.material = ring.material.clone(); g.add(ring2);
+  const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.5 * big, 10), new THREE.MeshBasicMaterial({ color: 0x0b1a26, transparent: true, opacity: 0.6 }));
+  shadow.rotation.x = -Math.PI / 2; shadow.scale.set(1.6, 0.7, 1); shadow.position.y = -0.02; g.add(shadow);
+  if (zone === 'night') { const f = new THREE.Mesh(new THREE.IcosahedronGeometry(0.16, 0), glowMat(0xffd27a)); f.position.y = 0.5; g.add(f); }
+  scene.add(g);
+  return { g, ring, ring2, shadow, zone, pos: new THREE.Vector3(x, 0, z), left: zone === 'far' ? 3 : 2 };
+}
+
+const boat = tubBoat();
+boat.scale.setScalar(1.05);
+const boatRoot = new THREE.Group(); boatRoot.add(boat); scene.add(boatRoot);
+const boatLight = new THREE.PointLight(0xffb45a, 0, 16, 1.1); boatLight.position.set(0.5, 1.1, -0.97); boatRoot.add(boatLight);
+const glowTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'); const gr = x.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, 'rgba(255,190,110,0.85)'); gr.addColorStop(0.35, 'rgba(255,170,90,0.35)'); gr.addColorStop(1, 'rgba(255,160,80,0)'); x.fillStyle = gr; x.fillRect(0, 0, 128, 128); return new THREE.CanvasTexture(c); })();
+const waterGlow = new THREE.Mesh(new THREE.PlaneGeometry(6, 6), new THREE.MeshBasicMaterial({ map: glowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+waterGlow.rotation.x = -Math.PI / 2; waterGlow.position.set(0.5, 0.08, -0.97); boatRoot.add(waterGlow);
+
+const hero = makeAnimal(0x9b6a43, 0xc0432b);
+const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 2.2, 5), clay(0x6e4a2c)); rod.position.set(0.4, 1.2, -0.6); rod.rotation.x = -0.9; rod.visible = false; hero.add(rod);
+scene.add(hero);
+
+const goldRing = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.15, 28), new THREE.MeshBasicMaterial({ color: 0xffc94a, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false }));
+goldRing.rotation.x = -Math.PI / 2; goldRing.visible = false; scene.add(goldRing);
+const chevShape = new THREE.Shape(); chevShape.moveTo(0, 0.55); chevShape.lineTo(0.42, -0.25); chevShape.lineTo(0, -0.05); chevShape.lineTo(-0.42, -0.25); chevShape.closePath();
+const chevron = new THREE.Mesh(new THREE.ShapeGeometry(chevShape), new THREE.MeshBasicMaterial({ color: 0xffc94a, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false }));
+chevron.visible = false; scene.add(chevron);
+
+const foam = [];
+function spawnFoam(p) {
+  const m = new THREE.Mesh(new THREE.CircleGeometry(0.35 + Math.random() * 0.25, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55 }));
+  m.rotation.x = -Math.PI / 2; m.position.set(p.x + (Math.random() - 0.5) * 0.6, 0.06, p.z + (Math.random() - 0.5) * 0.6);
+  scene.add(m); foam.push({ m, t: 0 });
+}
+
+function dist2(a, b) { return Math.hypot(a.x - b.x, a.z - b.z); }
+
+let S;
+let spots = [];
+let questItems = [];
+function emptyStore() { return { fish: 0, bigfish: 0, squid: 0, shrimp: 0, clam: 0, rice: 0, veg: 0 }; }
+
+const GUIDE = [
+  { id: 'walk', text: '포구 섬 가는 배가 생겼어요. 부두로 가 보세요', target: () => VILLAGE_PIER_END, done: () => S.phase !== 'village' || dist2(hero.position, VILLAGE_PIER_END) < 1.6, joy: true },
+  { id: 'embark', text: '배에 타고 바다로 나가 볼까요?', target: () => VILLAGE_DOCK, done: () => S.phase === 'sail', expect: ['embark'] },
+  { id: 'move', text: () => device === 'pc' ? 'WASD나 방향키로 배를 움직여 보세요' : '화면 왼쪽을 끌어 배를 움직여 보세요', target: () => nearestSpotForGuide(), done: () => S.moved > 5, joy: true },
+  { id: 'spot', text: '물결이 이는 곳이 낚시터예요. 다가가 보세요', target: () => nearestSpotForGuide(), done: () => S.fishing || (context() && context().do === 'cast') || S.caught > 0 },
+  { id: 'cast', text: '🎣 👆', target: () => S.fishing ? S.fishing.sp.pos : nearestSpotForGuide(), done: () => !!S.fishing || S.caught > 0, expect: ['cast'] },
+  { id: 'bite', text: '❗ ➜ 🎣 👆', target: () => S.fishing ? S.fishing.sp.pos : null, done: () => S.caught > 0, expect: ['fish'] },
+  { id: 'island', text: '이제 포구 섬으로! 금색 화살표를 따라가세요', target: () => ISLAND_DOCK, done: () => S.phase === 'island' },
+  { id: 'npc', text: '❗가 뜬 수달 어부에게 말을 걸어 보세요', target: () => npcs[0].position, done: () => S.quests[0].state !== 'avail', expect: ['accept'] },
+  { id: 'collect', text: () => `해변에 떠내려온 부표를 주워 오세요 (${S.quests[0].got}/3)`, target: () => nearestItem(0), done: () => S.quests[0].got >= 3, expect: ['pick'] },
+  { id: 'turnin', text: '수달 어부에게 부표를 돌려주세요', target: () => npcs[0].position, done: () => S.quests[0].state === 'done', expect: ['turnin'] },
+  { id: 'free', text: '다른 주민도 도와 보세요. 돌아갈 땐 부두 끝으로', target: () => PIER_END, done: () => S.phase === 'sail' && S.dir < 0, expect: ['board'] },
+  { id: 'home', text: '마을 부두로 돌아가세요', target: () => VILLAGE_DOCK, done: () => S.phase === 'done' },
+];
+
+const FREE_STEP = GUIDE.findIndex(g => g.id === 'free');
+
+function nearestSpotForGuide() {
+  const p = boatRoot.position;
+  let best = null, bd = 1e9;
+  for (const sp of spots) { if (!sp.left || !sp.g.visible || sp.zone === 'pier') continue; const d = dist2(sp.pos, p); if (d < bd) { bd = d; best = sp; } }
+  return best ? best.pos : null;
+}
+function nearestItem(qi) {
+  const p = hero.position;
+  let best = null, bd = 1e9;
+  for (const it of questItems) { if (it.q !== qi || it.taken) continue; const d = dist2(it.pos, p); if (d < bd) { bd = d; best = it; } }
+  return best ? best.pos : null;
+}
+
+function reset() {
+  for (const sp of spots) scene.remove(sp.g);
+  for (const it of questItems) scene.remove(it.mesh);
+  spots = [...SEA_SPOTS.map(s => makeSpot(s.at[0], s.at[1], s.zone)), makeSpot(PIER_SPOT[0], PIER_SPOT[1], 'pier')];
+  questItems = [];
+  QUESTS.forEach((q, qi) => q.spots.forEach(([x, z]) => {
+    const mesh = itemMesh(q.item); mesh.position.set(x, LAND_Y, z); mesh.visible = false; scene.add(mesh);
+    questItems.push({ q: qi, mesh, pos: new THREE.Vector3(x, LAND_Y, z), taken: false });
+  }));
+  S = { phase: 'idle', time: 0, seaTime: 0, islandTime: 0, taps: 0, store: emptyStore(), caught: 0, bought: false, moved: 0,
+    heading: -Math.PI / 2, speed: 0, wp: 1, dir: 1, fast: false, fishing: null,
+    quests: QUESTS.map(() => ({ state: 'avail', got: 0 })), talk: null, guide: guideOn && !tutorialDone ? 0 : -1, stepLog: [] };
+  boatRoot.position.copy(VILLAGE_DOCK); boatRoot.rotation.y = S.heading;
+  $('mirror-talk').classList.remove('show', 'point');
+  seatHero();
+  applySpotVisibility();
+  renderQuestList(); renderSteps();
+}
+
+function applySpotVisibility() { for (const sp of spots) if (sp.zone === 'night') sp.g.visible = tod === 'night' && sp.left > 0; }
+
+function seatHero() { scene.remove(hero); boatRoot.add(hero); hero.position.set(0, 0.36, 0.16); hero.rotation.y = 0; hero.scale.setScalar(0.8); }
+function standHero(p) { boatRoot.remove(hero); scene.add(hero); hero.position.copy(p); hero.position.y = LAND_Y; hero.scale.setScalar(1); hero.rotation.y = Math.PI / 2; }
+
+function setSail(dir, fast = false) {
+  S.dir = dir; S.wp = 1; S.fast = fast; S.talk = null; S.phase = 'sail';
+  seatHero();
+  if (dir < 0) { S.heading = Math.PI / 2; boatRoot.rotation.y = S.heading; }
+}
+
+function angleTo(from, to) { return Math.atan2(-(to.x - from.x), -(to.z - from.z)); }
+function turn(cur, target, rate) { let d = target - cur; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return cur + Math.max(-rate, Math.min(rate, d)); }
+
+function nearSpot(p, r, pierOnly = false) {
+  let best = null, bd = r;
+  for (const sp of spots) { if (!sp.left || !sp.g.visible || (pierOnly !== (sp.zone === 'pier'))) continue; const d = dist2(sp.pos, p); if (d < bd) { bd = d; best = sp; } }
+  return best;
+}
+
+function startFish(sp) {
+  const first = S.caught === 0 && S.guide >= 0;
+  S.fishing = { sp, t: 0, bite: first ? 1.4 : 1.2 + Math.random() * 1.6, win: first ? 2.2 : 0.9, state: 'wait' };
+  rod.visible = true;
+}
+function tapFish() {
+  const f = S.fishing; if (!f) return;
+  if (f.state === 'bite') {
+    let r = Math.random(), kind = CATCH[f.sp.zone][0][0];
+    for (const [k, w] of CATCH[f.sp.zone]) { if (r < w) { kind = k; break; } r -= w; }
+    S.store[kind]++; S.caught++; f.sp.left--;
+    pop(f.sp.pos, ICO[kind]);
+  } else pop(f.sp.pos, '💦');
+  endFish();
+}
+function endFish() { const f = S.fishing; S.fishing = null; rod.visible = false; if (f && !f.sp.left) f.sp.g.visible = false; }
+
+function onPierEnd(p) { return p.x < 23.2 && Math.abs(p.z) < 1.2; }
+function questOpen(q) { return !q.night || tod === 'night'; }
+
+function nearNpc(p) {
+  let best = -1, bd = 2.6;
+  npcs.forEach((m, i) => { const d = dist2(m.position, p); if (d < bd) { bd = d; best = i; } });
+  return best;
+}
+function nearQuestItem(p) {
+  let best = null, bd = 1.5;
+  for (const it of questItems) {
+    if (it.taken || !it.mesh.visible) continue;
+    const qs = S.quests[it.q];
+    if (qs.state !== 'active' || qs.got >= QUESTS[it.q].need) continue;
+    const d = dist2(it.pos, p); if (d < bd) { bd = d; best = it; }
+  }
+  return best;
+}
+
+function context() {
+  if (S.fishing) return { do: 'fish', ico: S.fishing.state === 'bite' ? '❗' : '🎣', urgent: S.fishing.state === 'bite' };
+  if (S.phase === 'village') return dist2(hero.position, VILLAGE_PIER_END) < 1.6 ? { do: 'embark', ico: TUB_ICO } : null;
+  if (S.phase === 'sail') {
+    if (S.fast) return null;
+    const sp = nearSpot(boatRoot.position, 3.4);
+    if (sp) return { do: 'cast', sp, ico: '🎣' };
+    return null;
+  }
+  if (S.phase === 'island') {
+    const p = hero.position;
+    const it = nearQuestItem(p);
+    if (it) return { do: 'pick', it, ico: '✋' };
+    const ni = nearNpc(p);
+    if (ni >= 0) {
+      const qs = S.quests[ni], q = QUESTS[ni];
+      if (!questOpen(q)) return { do: 'sleep', ni, ico: '💤' };
+      if (qs.state === 'avail') return { do: 'accept', ni, ico: '💬' };
+      if (qs.state === 'active' && qs.got >= q.need) return { do: 'turnin', ni, ico: '🎁' };
+      if (qs.state === 'active') return { do: 'remind', ni, ico: '💬' };
+    }
+    const tutorialBusy = S.guide >= 0 && S.guide < FREE_STEP;
+    if (tutorialBusy) return null;
+    if (dist2(MARKET_POS, p) < 2.6 && !S.bought) return { do: 'buy', ico: '🛒' };
+    if (onPierEnd(p)) {
+      const sp = nearSpot(p, 4, true);
+      if (sp) return { do: 'cast', sp, ico: '🎣', alt: true };
+      return { do: 'board', ico: TUB_ICO };
+    }
+  }
+  return null;
+}
+
+function say(who, text, ms = 3600) { S.talk = { who, text, until: S.time + ms / 1000 }; }
+
+function act() {
+  if (S.talkq) { advanceTalk(); return; }
+  const c = context(); if (!c) return;
+  S.taps++;
+  if (c.do === 'fish') tapFish();
+  else if (c.do === 'cast') startFish(c.sp);
+  else if (['accept', 'remind', 'sleep', 'turnin'].includes(c.do)) talkTo(c.ni, c.do);
+  else if (c.do === 'pick') {
+    c.it.taken = true; c.it.mesh.visible = false;
+    S.quests[c.it.q].got++;
+    pop(c.it.pos, QUESTS[c.it.q].itemIco);
+    renderQuestList();
+  } else if (c.do === 'buy') { S.bought = true; S.store.rice += 2; S.store.veg += 2; pop(MARKET_POS, '🍚+2 🥬+2'); say('🏮 포장마차', '코인 30으로 쌀 2·채소 2를 샀어요. 의뢰를 하면 더 많이 받아요.'); }
+  else if (c.do === 'board') setSail(-1);
+  else if (c.do === 'embark') setSail(1);
+}
+function acceptQuest(ni) {
+  S.quests[ni].state = 'active';
+  questItems.filter(it => it.q === ni).forEach(it => it.mesh.visible = true);
+  renderQuestList();
+}
+function claimQuest(ni) {
+  const q = QUESTS[ni]; S.quests[ni].state = 'done';
+  questItems.filter(it => it.q === ni).forEach(it => it.mesh.visible = false);
+  for (const [k, n] of Object.entries(q.reward)) S.store[k] += n;
+  pop(npcs[ni].position, Object.entries(q.reward).map(([k, n]) => `${ICO[k]}+${n}`).join(' '));
+  renderQuestList();
+}
+const splitLines = text => text.split(/(?<=[.?!])\s+/).filter(Boolean);
+function showLine() {
+  const t = S.talkq;
+  const def = ISLAND_NPCS[QUESTS[t.ni].id];
+  const face = $('mt-face'); face.textContent = '';
+  face.style.background = `url(${npcPortrait(QUESTS[t.ni].id)}) center / 100% no-repeat, #${def.badge.toString(16).padStart(6, '0')}44`;
+  $('mt-name').textContent = def.name; $('mt-line').textContent = t.lines[0];
+  $('mt-next').textContent = device === 'phone' ? '▶ 탭' : '▶ Space · 클릭';
+  const g = S.guide >= 0 ? GUIDE[S.guide] : null;
+  $('mirror-talk').classList.toggle('point', !!(g && g.expect && t.want && g.expect.includes(t.want)));
+  $('mirror-talk').classList.add('show');
+}
+function talkTo(ni, kind) {
+  const q = QUESTS[ni], qs = S.quests[ni];
+  let lines, onDone = null, want = null;
+  if (kind === 'accept') { lines = splitLines(q.ask); onDone = () => acceptQuest(ni); want = 'accept'; }
+  else if (kind === 'turnin') { claimQuest(ni); lines = splitLines(q.thanks); }
+  else if (kind === 'sleep') lines = ['쿨쿨…', '(밤에 다시 와 봐요)'];
+  else lines = ['조금만 더 부탁해.', `${q.itemName} (${qs.got}/${q.need})`];
+  S.talkq = { ni, lines, onDone, want };
+  showLine();
+}
+function advanceTalk() {
+  const t = S.talkq; if (!t) return;
+  t.lines = t.lines.slice(1);
+  if (t.lines.length) { showLine(); return; }
+  S.talkq = null; $('mirror-talk').classList.remove('show', 'point');
+  t.onDone?.();
+}
+function boardFromPier(fast = false) { S.taps++; setSail(-1, fast); }
+
+function stepGuide() {
+  if (S.guide < 0 || S.guide >= GUIDE.length) return;
+  const g = GUIDE[S.guide];
+  if (g.done()) {
+    S.stepLog.push({ id: g.id, t: S.time });
+    S.guide++;
+    if (S.guide >= GUIDE.length) { tutorialDone = true; S.guide = -1; }
+    const card = $('gcard'); card.classList.remove('flash'); void card.offsetWidth; card.classList.add('flash');
+    renderSteps();
+  }
+}
+
+function update(dt) {
+  if (S.phase === 'idle' || S.phase === 'done') return;
+  S.time += dt;
+  for (const sp of spots) {
+    if (!sp.g.visible) continue;
+    const k = (S.time * 0.6) % 1;
+    sp.ring.scale.setScalar(0.6 + k * 0.8); sp.ring.material.opacity = 0.6 * (1 - k);
+    const k2 = (S.time * 0.6 + 0.5) % 1;
+    sp.ring2.scale.setScalar(0.6 + k2 * 0.8); sp.ring2.material.opacity = 0.6 * (1 - k2);
+    sp.shadow.position.x = Math.sin(S.time * 0.8 + sp.pos.x) * 0.5;
+    sp.shadow.rotation.z = S.time * 0.5;
+  }
+  for (const it of questItems) if (it.mesh.visible) it.mesh.rotation.y = S.time * 0.8;
+  if (S.fishing) {
+    const f = S.fishing; f.t += dt;
+    if (f.state === 'wait' && f.t > f.bite) { f.state = 'bite'; f.t = 0; }
+    else if (f.state === 'bite' && f.t > f.win) { pop(f.sp.pos, '💨'); endFish(); }
+  }
+  if (S.phase === 'sail') sail(dt);
+  else if (S.phase === 'island') { S.islandTime += dt; if (!S.fishing) walkIsland(dt); }
+  else if (S.phase === 'village') walkVillage(dt);
+  for (const f of foam.slice()) { f.t += dt; f.m.material.opacity = 0.55 * (1 - f.t / 1.6); f.m.scale.setScalar(1 + f.t); if (f.t > 1.6) { scene.remove(f.m); foam.splice(foam.indexOf(f), 1); } }
+  stepGuide();
+}
+
+function sail(dt) {
+  S.seaTime += dt;
+  const dock = S.dir > 0 ? ISLAND_DOCK : VILLAGE_DOCK;
+  const p = boatRoot.position;
+  const ox = p.x, oz = p.z;
+  if (S.fast) {
+    const route = S.dir > 0 ? ROUTE : ROUTE.slice().reverse();
+    S.speed += (BOAT_SPEED * 2.6 - S.speed) * Math.min(1, dt * 2);
+    let move = S.speed * dt;
+    while (move > 0 && S.wp < route.length) {
+      const wpt = route[S.wp]; const d = dist2(wpt, p);
+      if (d < 1e-3) { S.wp++; continue; }
+      S.heading = turn(S.heading, angleTo(p, wpt), 3.5 * dt);
+      const k = Math.min(move, d);
+      p.x += (wpt.x - p.x) / d * k; p.z += (wpt.z - p.z) / d * k;
+      move -= k; if (k >= d) S.wp++;
+    }
+    if (S.wp >= route.length) { arrive(); return; }
+  } else {
+    if (S.fishing) S.speed = Math.max(0, S.speed - dt * 10);
+    else {
+      const v = joyInput();
+      if (v.lengthSq() > 0.02) {
+        S.heading = turn(S.heading, Math.atan2(-v.x, -v.y), 5 * dt);
+        S.speed = Math.min(BOAT_SPEED * Math.min(1, v.length() * 1.2), S.speed + dt * 10);
+      } else S.speed = Math.max(0, S.speed - dt * 6);
+      if (dist2(dock, p) < 3.2) { S.heading = turn(S.heading, angleTo(p, dock), 4 * dt); S.speed = Math.max(S.speed, 2.5); }
+    }
+    const fwd = new THREE.Vector3(-Math.sin(S.heading), 0, -Math.cos(S.heading));
+    p.addScaledVector(fwd, S.speed * dt);
+  }
+  p.x = Math.max(-26, Math.min(28, p.x)); p.z = Math.max(-24, Math.min(24, p.z));
+  const di = dist2(p, ISLAND);
+  if (di < ISLAND_R + 2.2) { const k = (ISLAND_R + 2.2) / di; p.x = ISLAND.x + (p.x - ISLAND.x) * k; p.z = ISLAND.z + (p.z - ISLAND.z) * k; }
+  S.moved += Math.hypot(p.x - ox, p.z - oz);
+  boatRoot.rotation.y = S.heading;
+  boatRoot.position.y = Math.sin(S.time * 2) * 0.06;
+  boat.rotation.z = Math.sin(S.time * 1.6) * 0.04;
+  const fwd2 = new THREE.Vector3(-Math.sin(S.heading), 0, -Math.cos(S.heading));
+  if (S.speed > 1 && Math.random() < dt * 14) spawnFoam(p.clone().addScaledVector(fwd2, -1.6));
+  if (!S.fast && dist2(dock, p) < 1.2 && !S.fishing) arrive();
+}
+
+function blocked(p, from) {
+  const solids = S.phase === 'village' ? VILLAGE_SOLIDS : [[MARKET_POS, 1.6], [HUT_POS, 1.9], [LIGHT_POS, 1.2]];
+  return solids.some(([c, r]) => { const d = dist2(c, p); return d < r && d <= dist2(c, from); });
+}
+
+function walkVillage(dt) {
+  const v = joyInput();
+  if (v.lengthSq() < 0.02) { hero.position.y = LAND_Y; return; }
+  const l = Math.min(1, v.length());
+  const p = hero.position; const ox = p.x, oz = p.z;
+  const dx = v.x / v.length() * l * WALK * dt, dz = v.y / v.length() * l * WALK * dt;
+  const ok = q => {
+    const onPier = q.x >= -29.4 && q.x <= -25.6 && Math.abs(q.z - 1.6) <= 0.6;
+    const onLand = q.x >= -46 && q.x <= -27 && Math.abs(q.z) <= 18;
+    return (onPier || onLand) && !blocked(q, { x: ox, z: oz });
+  };
+  const hit = [[dx, dz], [dx, 0], [0, dz]].find(([a, b]) => ok({ x: ox + a, z: oz + b }));
+  if (hit) { p.x = ox + hit[0]; p.z = oz + hit[1]; }
+  if (p.x !== ox || p.z !== oz) hero.rotation.y = Math.atan2(p.x - ox, p.z - oz);
+  hero.position.y = LAND_Y + Math.abs(Math.sin(S.time * 14)) * 0.06;
+}
+
+function walkIsland(dt) {
+  const v = joyInput();
+  if (v.lengthSq() < 0.02) { hero.position.y = LAND_Y; return; }
+  const l = Math.min(1, v.length());
+  const p = hero.position; const ox = p.x, oz = p.z;
+  const dx = v.x / v.length() * l * WALK * dt, dz = v.y / v.length() * l * WALK * dt;
+  const ok = q => {
+    const onPier = q.x >= 21.9 && q.x <= 26.5 && Math.abs(q.z) <= 0.75;
+    return (onPier || dist2(q, ISLAND) <= WALK_R) && !blocked(q, { x: ox, z: oz });
+  };
+  const hit = [[dx, dz], [dx, 0], [0, dz]].find(([a, b]) => ok({ x: ox + a, z: oz + b }));
+  if (hit) { p.x = ox + hit[0]; p.z = oz + hit[1]; }
+  if (p.x !== ox || p.z !== oz) hero.rotation.y = Math.atan2(p.x - ox, p.z - oz);
+  hero.position.y = LAND_Y + Math.abs(Math.sin(S.time * 14)) * 0.06;
+}
+
+function arrive() {
+  S.speed = 0;
+  if (S.dir > 0) {
+    S.phase = 'island';
+    boatRoot.position.copy(ISLAND_DOCK); S.heading = -Math.PI / 2; boatRoot.rotation.y = S.heading;
+    standHero(new THREE.Vector3(22.6, 0, 0));
+    if (!fastUnlocked) { fastUnlocked = true; S.unlockedNow = true; }
+  } else {
+    S.phase = 'done';
+    boatRoot.position.copy(VILLAGE_DOCK);
+    finish();
+  }
+}
+
+function total() { return Object.values(S.store).reduce((a, b) => a + b, 0); }
+function serviceUnits() { return Math.floor(total() / 8 * 10) / 10; }
+function storeText() { return Object.entries(S.store).filter(([, n]) => n > 0).map(([k, n]) => `${ICO[k]}${n}`).join(' ') || '비어 있음'; }
+
+function finish() {
+  const done = S.quests.filter(q => q.state === 'done').length;
+  logs.unshift({ guide: S.stepLog.length ? 'on' : (guideOn ? 'done' : 'off'), total: S.time, sea: S.seaTime, island: S.islandTime, caught: S.caught, quests: done, units: serviceUnits() });
+  renderLog();
+  $('res').innerHTML = `마을 도착!${S.unlockedNow ? '<br>🗺️ 이제 마을 부두에서 포구 섬으로 바로 갈 수 있어요' : ''}<br>왕복 ${S.time.toFixed(0)}초 (바다 ${S.seaTime.toFixed(0)}초 · 섬 ${S.islandTime.toFixed(0)}초) · 낚시 ${S.caught}마리 · 의뢰 ${done}개<br>창고 ${storeText()} → 영업 약 ${serviceUnits()}회분`;
+  $('go').textContent = '⛵ 다시 출항';
+  $('goFast').style.display = fastUnlocked ? 'inline-block' : 'none';
+  $('veil').style.display = 'flex';
+}
+
+function renderLog() {
+  $('log').innerHTML = '<tr><th>안내</th><th>왕복</th><th>바다</th><th>섬</th><th>낚시</th><th>의뢰</th><th>영업분</th></tr>' +
+    (logs.length ? logs.slice(0, 8).map(l => `<tr><td>${l.guide}</td><td>${l.total.toFixed(0)}초</td><td>${l.sea.toFixed(0)}초</td><td>${l.island.toFixed(0)}초</td><td>${l.caught}</td><td>${l.quests}/4</td><td>${l.units}</td></tr>`).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--sub)">아직 기록 없음</td></tr>');
+}
+function rewardText(r) { return Object.entries(r).map(([k, n]) => `${ICO[k]}${n}`).join(' '); }
+function renderQuestList() {
+  $('qlist').innerHTML = QUESTS.map((q, i) => {
+    const qs = S ? S.quests[i] : { state: 'avail', got: 0 };
+    const st = qs.state === 'done' ? '완료' : qs.state === 'active' ? `${q.itemIco} ${qs.got}/${q.need}` : (q.night ? '🌙 밤에만' : '대기');
+    return `<div class="q ${qs.state}"><span class="ic">${q.ico}</span><span class="tx"><b>${q.title}</b><br><small>${q.who} · 보상 ${rewardText(q.reward)}</small></span><span class="st">${st}</span></div>`;
+  }).join('');
+}
+function guideText(g) { return typeof g.text === 'function' ? g.text() : g.text; }
+function renderSteps() {
+  const cur = S ? S.guide : 0;
+  $('steps').innerHTML = GUIDE.map((g, i) => {
+    const cls = tutorialDone || (cur >= 0 && i < cur) ? 'ok' : i === cur ? 'cur' : '';
+    const label = g.id === 'collect' ? '부표를 주워 오세요' : guideText(g);
+    return `<li class="${cls}">${cls === 'ok' ? '✅' : i === cur ? '👉' : '⬜'} ${i + 1}. ${label}</li>`;
+  }).join('') + (guideOn ? '' : '<li>(길 안내 꺼짐)</li>');
+}
+
+const bubs = $('bubs');
+function proj(pos, y) { const v = pos.clone().setY(y).project(camera); const r = screen.getBoundingClientRect(); return [(v.x + 1) / 2 * r.width, (1 - v.y) / 2 * r.height, v.z < 1, r]; }
+function pop(pos, text) {
+  const [x, y] = proj(pos, 2);
+  const el = document.createElement('div'); el.className = 'pop'; el.innerHTML = text; el.style.left = x + 'px'; el.style.top = y + 'px';
+  bubs.appendChild(el);
+  requestAnimationFrame(() => { el.style.transform = 'translate(-50%, -220%)'; el.style.opacity = '0'; });
+  setTimeout(() => el.remove(), 1050);
+}
+
+function hintText() {
+  if (S.guide >= 0) return '';
+  if (S.fishing) return S.fishing.state === 'bite' ? '지금!' : '찌를 보고 있어요';
+  if (S.phase === 'sail') return S.fast ? '바로 가는 중' : (S.dir > 0 ? '물결 원에서 낚시 · 등불 부표를 따라가면 섬' : '등불 부표를 따라 마을로');
+  if (S.phase === 'village') return '부두 끝에서 배 타기';
+  if (S.phase === 'island') {
+    const c = context();
+    if (c && c.do === 'pick') return `${QUESTS[c.it.q].itemIco} 줍기`;
+    if (c && ['accept', 'turnin', 'remind', 'sleep'].includes(c.do)) return `${QUESTS[c.ni].ico} ${QUESTS[c.ni].who}`;
+    if (c && c.do === 'buy') return '🏮 포장마차에서 장보기';
+    return '부두 끝에서 마을로 돌아가기';
+  }
+  return '';
+}
+
+function guideTarget() {
+  if (S.guide < 0) return null;
+  const t = GUIDE[S.guide].target();
+  return t ? t.clone() : null;
+}
+
+function guideWaypoint(me, tgt) {
+  if (S.phase !== 'island' && S.phase !== 'village') return tgt;
+  const solids = S.phase === 'village' ? VILLAGE_SOLIDS.map(([c, r]) => [c, r + 0.8]) : [[MARKET_POS, 2.4], [HUT_POS, 2.7], [LIGHT_POS, 2.0]];
+  const dx = tgt.x - me.x, dz = tgt.z - me.z, len = Math.hypot(dx, dz);
+  if (len < 1e-3) return tgt;
+  const ux = dx / len, uz = dz / len;
+  for (const [c, r] of solids) {
+    const cx = c.x - me.x, cz = c.z - me.z;
+    const along = cx * ux + cz * uz;
+    if (along <= 0 || along >= len) continue;
+    const side = cx * uz - cz * ux;
+    if (Math.abs(side) >= r) continue;
+    if (dist2(c, tgt) < r) continue;
+    const s = side >= 0 ? -1 : 1;
+    return new THREE.Vector3(c.x + uz * s * (r + 0.6), tgt.y, c.z - ux * s * (r + 0.6));
+  }
+  return tgt;
+}
+
+function renderHud() {
+  let html = '';
+  if (S.phase === 'island' || S.phase === 'sail') {
+    npcs.forEach((m, i) => {
+      const qs = S.quests[i], q = QUESTS[i];
+      const ic = !questOpen(q) ? '💤' : qs.state === 'avail' ? '❗' : qs.state === 'active' ? (qs.got >= q.need ? '🎁' : q.itemIco) : '';
+      if (!ic) return;
+      const [x, y, ok] = proj(m.position, 2.15); if (!ok) return;
+      html += `<div class="bub npc" style="left:${x}px;top:${y}px">${ic}</div>`;
+    });
+    for (const it of questItems) {
+      if (!it.mesh.visible) continue;
+      const [x, y, ok] = proj(it.pos, 1.3); if (!ok) continue;
+      html += `<div class="mark" style="left:${x}px;top:${y}px">⬇️</div>`;
+    }
+  }
+  if (S.fishing) {
+    const [x, y] = proj(S.fishing.sp.pos, 1.2);
+    html += `<div class="bub ${S.fishing.state === 'bite' ? 'big' : ''}" style="left:${x}px;top:${y}px">${S.fishing.state === 'bite' ? '❗' : '🎣'}</div>`;
+  }
+  const walking = S.phase === 'island' || S.phase === 'village';
+  const tgt = (S.phase === 'sail' || walking) ? guideTarget() : null;
+  const me = walking ? hero.position : boatRoot.position;
+  goldRing.visible = false; chevron.visible = false;
+  if (tgt) {
+    const d = dist2(tgt, me);
+    const ty = (S.phase === 'island' && tgt.y > 0.3) || (S.phase === 'village' && S.guide === 0) ? LAND_Y + 0.06 : 0.1;
+    goldRing.position.set(tgt.x, ty, tgt.z); goldRing.visible = true;
+    goldRing.scale.setScalar(1 + Math.sin(S.time * 5) * 0.12);
+    if (d > 2.5) {
+      const wp = guideWaypoint(me, tgt);
+      const ang = Math.atan2(wp.x - me.x, wp.z - me.z);
+      chevron.visible = true;
+      chevron.position.set(me.x + Math.sin(ang) * 1.9, (walking ? LAND_Y : 0) + 0.12, me.z + Math.cos(ang) * 1.9);
+      chevron.quaternion.setFromEuler(new THREE.Euler(-Math.PI / 2, 0, ang + Math.PI, 'XYZ'));
+    }
+    const [x, y, ok, r] = proj(tgt, (walking ? LAND_Y : 0) + 1.6);
+    const m = 26;
+    const inside = ok && x > m && x < r.width - m && y > m + 24 && y < r.height - m;
+    const dm = `${Math.round(d)}m`;
+    if (inside) html += `<div class="mark guide" style="left:${x}px;top:${y}px">⬇️<span class="d">${d > 3 ? dm : ''}</span></div>`;
+    else {
+      const cx = r.width / 2, cy = r.height / 2;
+      let vx = x - cx, vy = y - cy; if (!ok) { vx = -vx; vy = -vy; }
+      const sx = (cx - m) / Math.max(1e-3, Math.abs(vx)), sy = (cy - m - 12) / Math.max(1e-3, Math.abs(vy));
+      const s = Math.min(sx, sy);
+      const ex = cx + vx * s, ey = cy + vy * s + 6;
+      const rot = Math.atan2(vy, vx) * 180 / Math.PI;
+      html += `<div class="edge" style="left:${ex}px;top:${ey}px"><i style="transform:rotate(${rot}deg)">➜</i><span class="d">${dm}</span></div>`;
+    }
+  }
+  const keep = [...bubs.querySelectorAll('.pop')]; bubs.innerHTML = html; keep.forEach(p => bubs.appendChild(p));
+  $('store').textContent = `창고 ${storeText()} · 영업 ${serviceUnits()}회분`;
+  const act = S.quests.map((qs, i) => ({ qs, q: QUESTS[i] })).filter(o => o.qs.state === 'active');
+  $('qtrack').style.display = act.length ? 'block' : 'none';
+  $('qtrack').innerHTML = act.map(o => `<img class="ii" style="border-radius:50%;background:#fff" src="${npcPortrait(o.q.id)}" alt=""> ${o.q.itemIco}${o.qs.got}/${o.q.need}`).join('  ');
+  $('clock').textContent = `⏱ ${S.time.toFixed(0)}초`;
+  $('hint').innerHTML = hintText();
+  $('hint').style.display = $('hint').textContent || $('hint').querySelector('img') ? 'block' : 'none';
+  const gc = $('gcard');
+  const g = S.guide >= 0 && (S.phase === 'sail' || walking) ? GUIDE[S.guide] : null;
+  if (g && !S.talkq) { gc.style.display = 'block'; gc.innerHTML = `<small>${S.guide + 1}/${GUIDE.length}</small>${guideText(g)}`; } else gc.style.display = 'none';
+  $('joyhint').style.display = g && g.joy && !joy ? 'flex' : 'none';
+  const tk = $('talk');
+  if (S.talk && S.time < S.talk.until) { tk.style.display = 'block'; tk.innerHTML = `<b>${S.talk.who}</b><br>${S.talk.text}`; } else tk.style.display = 'none';
+  const c = context();
+  const a = $('act');
+  a.className = 'act' + (c ? ' on' : '') + (c && c.urgent ? ' urgent' : '') + (c && g && !S.talkq && g.expect && g.expect.includes(c.do) ? ' point' : '');
+  if (c && c.ico === TUB_ICO) a.innerHTML = TUB_SVG; else a.textContent = c ? c.ico : '✋';
+  a.style.display = S.phase === 'idle' || S.phase === 'done' ? 'none' : 'flex';
+  $('board2').style.display = c && c.alt ? 'flex' : 'none';
+  $('fast').style.display = S.phase === 'island' && onPierEnd(hero.position) && fastUnlocked && !S.fishing && !(S.guide >= 0 && S.guide < FREE_STEP) ? 'block' : 'none';
+}
+
+const camTarget = new THREE.Vector3();
+function updateCamera(dt) {
+  const t = S.phase === 'island' || S.phase === 'village' ? hero.position : boatRoot.position;
+  camTarget.lerp(new THREE.Vector3(t.x, 0, t.z), Math.min(1, dt * 4));
+  const island = S.phase === 'island' || S.phase === 'village';
+  const off = device === 'phone' ? (island ? [0, 17, 11.5] : [0, 14, 9.8]) : (island ? [0, 20, 13] : [0, 16.5, 11.5]);
+  camera.position.lerp(new THREE.Vector3(camTarget.x + off[0], off[1], camTarget.z + off[2]), Math.min(1, dt * 3));
+  camera.lookAt(camTarget.x, 0, camTarget.z);
+}
+
+function applyTod() {
+  const night = tod === 'night';
+  scene.background = new THREE.Color(night ? 0x0d1a26 : 0x9fd3e8);
+  scene.fog = new THREE.Fog(night ? 0x0d1a26 : 0x9fd3e8, 34, 85);
+  sea.material.color.set(night ? 0x24557a : 0x4fb3c9);
+  hemi.intensity = night ? 0.62 : 1.05;
+  hemi.color.set(night ? 0x8fa6d6 : 0xfff1dc);
+  sun.intensity = night ? 0.25 : 1.2;
+  sun.color.set(night ? 0x9fb6e6 : 0xffe2b8);
+  boatLight.intensity = night ? 30 : 0;
+  waterGlow.visible = night;
+  for (const l of lanterns) l.intensity = night ? (l.distance > 12 ? 30 : 7) : 0;
+  if (shopRoot) setNight(shopRoot, night);
+  npcs.forEach(m => setNpcNight(m, night));
+  if (S) { applySpotVisibility(); renderQuestList(); }
+}
+
+const keys = new Set();
+let joy = null; const joyVec = new THREE.Vector2();
+function joyInput() {
+  const v = joyVec.clone();
+  if (keys.has('a') || keys.has('arrowleft')) v.x -= 1;
+  if (keys.has('d') || keys.has('arrowright')) v.x += 1;
+  if (keys.has('w') || keys.has('arrowup')) v.y -= 1;
+  if (keys.has('s') || keys.has('arrowdown')) v.y += 1;
+  if (v.length() > 1) v.normalize();
+  return v;
+}
+screen.addEventListener('pointerdown', e => {
+  if (e.target.closest('.act') || e.target.closest('.fast') || e.target.closest('.veil') || e.target.closest('#mirror-talk')) return;
+  const r = screen.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top;
+  if (x > r.width * 0.62) return;
+  joy = { id: e.pointerId, x, y }; screen.setPointerCapture(e.pointerId);
+  Object.assign($('joy').style, { display: 'block', left: x + 'px', top: y + 'px' });
+  $('joy').firstElementChild.style.transform = 'translate(-50%,-50%)';
+});
+screen.addEventListener('pointermove', e => {
+  if (!joy || e.pointerId !== joy.id) return;
+  const r = screen.getBoundingClientRect(); const max = 34;
+  let dx = e.clientX - r.left - joy.x, dy = e.clientY - r.top - joy.y;
+  const l = Math.hypot(dx, dy); if (l > max) { dx *= max / l; dy *= max / l; }
+  joyVec.set(dx / max, dy / max);
+  $('joy').firstElementChild.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+});
+const endJoy = e => { if (!joy || e.pointerId !== joy.id) return; joy = null; joyVec.set(0, 0); $('joy').style.display = 'none'; };
+screen.addEventListener('pointerup', endJoy); screen.addEventListener('pointercancel', endJoy);
+$('act').addEventListener('pointerdown', e => { e.stopPropagation(); act(); });
+$('mirror-talk').addEventListener('pointerdown', e => { e.stopPropagation(); advanceTalk(); });
+$('fast').addEventListener('pointerdown', e => { e.stopPropagation(); boardFromPier(true); });
+const board2 = document.createElement('button');
+board2.id = 'board2'; board2.className = 'act on'; board2.innerHTML = TUB_SVG;
+board2.style.right = 'calc(84px * var(--s))'; board2.style.width = board2.style.height = 'calc(46px * var(--s))'; board2.style.fontSize = 'calc(18px * var(--s))'; board2.style.display = 'none';
+board2.addEventListener('pointerdown', e => { e.stopPropagation(); boardFromPier(); });
+screen.appendChild(board2);
+addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ', 'b'].includes(k)) e.preventDefault();
+  if (k === ' ') { if (!e.repeat) act(); return; }
+  if (k === 'b') { if (S.phase === 'island' && onPierEnd(hero.position)) boardFromPier(); return; }
+  keys.add(k);
+});
+addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
+
+function layout() {
+  const w = device === 'phone' ? 560 : 780;
+  const h = device === 'phone' ? 258 : 470;
+  Object.entries({ '--w': w + 'px', '--h': h + 'px', '--r': device === 'phone' ? '22px' : '8px', '--bez': device === 'phone' ? '6px' : '3px', '--s': device === 'phone' ? 1 : 1.15, '--mz': device === 'phone' ? 0.66 : 0.62, '--mtb': device === 'phone' ? '226px' : '92px', '--mth': device === 'phone' ? '76px' : '92px', '--mtp': device === 'phone' ? '12px 12px 22px 70px' : '14px 16px 24px 86px', '--mtf': device === 'phone' ? '46px' : '58px', '--mtfl': device === 'phone' ? '12px' : '14px', '--mtff': device === 'phone' ? '22px' : '28px', '--mtl': device === 'phone' ? '13.5px' : '14.5px' }).forEach(([k, v]) => screen.style.setProperty(k, v));
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h; camera.fov = device === 'phone' ? 30 : 36; camera.updateProjectionMatrix();
+}
+
+function segBind(id, fn) {
+  $(id).addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; for (const x of e.currentTarget.children) x.classList.toggle('on', x === b); fn(b.dataset.v || b.dataset.d); });
+}
+segBind('guideSw', v => { guideOn = v === 'on'; tutorialDone = false; fastUnlocked = false; reset(); $('veil').style.display = 'flex'; $('res').innerHTML = guideOn ? '길 안내를 켰어요 (첫 방문처럼 시작)' : '길 안내 없이 시작해요 (비교용)'; $('go').textContent = '⛵ 출항'; $('goFast').style.display = 'none'; });
+segBind('tod', v => { tod = v; applyTod(); });
+segBind('shop', v => { shopStyle = v; placeShops(); });
+segBind('dev', v => { device = v; layout(); });
+$('go').addEventListener('click', e => { e.stopPropagation(); startVillage(); });
+function startVillage() { reset(); $('veil').style.display = 'none'; S.phase = 'village'; standHero(VILLAGE_START); }
+$('goFast').addEventListener('click', e => { e.stopPropagation(); reset(); $('veil').style.display = 'none'; S.taps++; setSail(1, true); });
+
+reset();
+applyTod();
+layout();
+renderLog();
+$('res').innerHTML = '첫 방문: 마을에서 걸어서 부두까지 가고, 배로 바다 낚시를 하며 포구 섬에 다녀옵니다';
+camTarget.copy(boatRoot.position); camera.position.set(camTarget.x, 14, camTarget.z + 9.8); camera.lookAt(camTarget);
+let last = performance.now();
+function frame(dt) { update(dt); updateCamera(dt); renderHud(); renderer.render(scene, camera); }
+function loop(now) { const dt = Math.min(0.05, (now - last) / 1000); last = now; frame(dt); requestAnimationFrame(loop); }
+requestAnimationFrame(loop);
+window.__pi = { get S() { return S; }, act, context, hero, boatRoot, get spots() { return spots; }, npcs, get questItems() { return questItems; }, joyVec, boardFromPier, QUESTS, GUIDE, guideTarget, guideWaypoint, startVillage, advanceTalk, step: sec => { for (let i = 0; i < sec * 20; i++) frame(0.05); } };
+</script>
+</body>
+</html>

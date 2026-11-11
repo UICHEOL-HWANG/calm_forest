@@ -46,3 +46,24 @@
 .gd-tut { display: inline-flex; align-items: center; gap: 6px; margin: 0 0 14px; padding: 9px 16px; border: none; border-radius: 12px;
   background: #2f6b4a; color: #fff; font-weight: 700; font-size: 14px; cursor: pointer; }
 .gd-tut:active { transform: scale(.97); }
+.gd.dev-pc [data-dev="touch"], .gd.dev-touch [data-dev="pc"] { display: none !important; }
+.gd-devtabs { display: inline-flex; gap: 4px; padding: 3px; border-radius: 999px; background: #fff; border: 1px solid #c4dfcb; }
+.gd-devtabs button { border: none; background: none; padding: 4px 12px; border-radius: 999px; font: inherit; font-size: 13px; color: #1f4a33; cursor: pointer; }
+.gd-devtabs button[aria-pressed="true"] { background: #2f6b4a; color: #fff; }
+.gd-toc { position: fixed; top: 50%; right: 20px; transform: translateY(-50%); z-index: 3; max-height: calc(100vh - 160px); overflow-y: auto; scrollbar-width: none;
+  padding: 10px 8px; border-radius: 12px; border: 1px solid transparent; font: 12.5px/1.35 -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; color: #6f7d72;
+  transition: background .15s, box-shadow .15s, border-color .15s; }
+.gd-toc::-webkit-scrollbar { display: none; }
+.gd-toc ol { list-style: none; margin: 0; padding: 0; }
+.gd-toc a { display: flex; align-items: center; justify-content: flex-end; gap: 14px; padding: 3px 2px; color: inherit; text-decoration: none; }
+.gd-toc a i { order: 2; flex: none; width: 14px; height: 2px; border-radius: 2px; background: #dbe1d7; transition: background .15s, width .15s; }
+.gd-toc a.on i { width: 18px; background: #7fa58b; }
+.gd-toc a span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.gd-toc .gd-toc-part { height: 8px; overflow: hidden; color: transparent; font-size: 11px; font-weight: 700; letter-spacing: .04em; }
+.gd-toc:hover, .gd-toc:focus-within { background: rgba(255, 255, 255, .96); border-color: #e3e8df; box-shadow: 0 8px 24px rgba(30, 42, 36, .08); }
+.gd-toc:hover a, .gd-toc:focus-within a { justify-content: space-between; }
+.gd-toc:hover a span, .gd-toc:focus-within a span { position: static; width: auto; height: auto; overflow: visible; clip: auto; }
+.gd-toc a:hover span, .gd-toc a:focus-visible span { color: #2f5b3f; }
+.gd-toc a.on span { color: #1f4a33; font-weight: 700; }
+.gd-toc:hover .gd-toc-part, .gd-toc:focus-within .gd-toc-part { height: auto; margin: 6px 2px 2px; color: #a8b3aa; }
+@media (max-width: 1099px) { .gd-toc { display: none; } }

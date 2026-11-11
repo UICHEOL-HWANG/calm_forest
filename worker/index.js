@@ -12,6 +12,7 @@
 //    게임 API 가 항상 교차 오리진이 되는데, 엔드포인트마다 헤더를 붙이면
 //    새 API 를 추가할 때마다 빠뜨리게 되므로 진입점 한 곳에서 씌웁니다.
 // =============================================================
+import { withUtf8 } from './html-charset.js';
 import { onRequestGet as cafeGuests } from '../functions/api/cafe-guests.js';
 import { onRequestPost as nightVisit } from '../functions/api/night-visit.js';
 import { onRequestGet as nightNote } from '../functions/api/night-note.js';
@@ -24,6 +25,7 @@ import { onRequestPost as paddleWebhook } from '../functions/api/paddle-webhook.
 import { onRequestGet as dexNotes } from '../functions/api/dex-notes.js';
 import { onRequestGet as dailyQuests } from '../functions/api/daily-quests.js';
 import { onRequestGet as npcTalk } from '../functions/api/npc-talk.js';
+import { onRequestGet as lines } from '../functions/api/lines.js';
 import { onRequestPost as orchardEvents } from '../functions/api/orchard-events.js';
 import { onRequestPost as pushRegister } from '../functions/api/push-register.js';
 import { onRequestPost as gaMp } from '../functions/api/ga-mp.js';
@@ -38,6 +40,7 @@ import { runNpcGenCron } from '../functions/npc-gen-cron.js';
 import { runAiPregen } from '../functions/ai-pregen-cron.js';
 import { runPush, isPushTick } from '../functions/push-cron.js';
 import { runAuraCron } from '../functions/aura-cron.js';
+import { runLinePool, isLinePoolTick } from '../functions/line-pool-cron.js';
 import { onRequestGet as cardnewsImg } from '../functions/cardnews-img.js';
 import { onRequestGet as rssFeed } from '../functions/rss.js';
 import { onRequestGet as newsPages } from '../functions/news.js';
@@ -93,7 +96,7 @@ export default {
       }
 
       // 그 외는 정적 자산(dist/) — 없으면 자산 핸들러가 404 를 돌려줍니다.
-      return await env.ASSETS.fetch(request);
+      return withUtf8(await env.ASSETS.fetch(request));
     } catch (err) {
       // 여기까지 온 예외는 게임을 하얗게 만들 수 있으므로 구조화 로그로 남기고 500 을 명시 반환
       console.error(JSON.stringify({
@@ -129,6 +132,12 @@ export default {
       }
       ctx.waitUntil(runAiPregen(env).then(r => {
         console.log(JSON.stringify({ message: 'ai-pregen cron', cron: event.cron, ...r }));
+      }));
+      return;
+    }
+    if (event.cron === '0,30 18-21 * * *' && isLinePoolTick(event.scheduledTime)) {
+      ctx.waitUntil(runLinePool(env).then(r => {
+        console.log(JSON.stringify({ message: 'line-pool cron', cron: event.cron, ...r }));
       }));
       return;
     }
@@ -202,6 +211,11 @@ async function routeApi(pathname, { request, env, ctx }) {
   if (pathname === '/api/npc-talk') {
     if (request.method !== 'GET') return new Response('Method Not Allowed', { status: 405 });
     return await npcTalk({ request, env, waitUntil: ctx.waitUntil.bind(ctx) });
+  }
+
+  if (pathname === '/api/lines') {
+    if (request.method !== 'GET') return new Response('Method Not Allowed', { status: 405 });
+    return await lines({ request, env, waitUntil: ctx.waitUntil.bind(ctx) });
   }
 
   // 🏆 리더보드 — Supabase RPC 프록시(엣지 캐시 5분)

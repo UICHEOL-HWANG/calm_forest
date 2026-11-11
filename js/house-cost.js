@@ -15,7 +15,7 @@
 //
 //  THREE 비의존 — 노드에서 잠근다(tests/house-cost.test.mjs).
 // =============================================================
-import { HAMMER_EXPAND_RATE } from './tool-tiers.js';
+import { hammerRate } from './workbench/rules.js';
 import { STYLE_INFO } from './house-stage7.js';   // 🏡 7단계 스타일(모던/한옥) 이름·아이콘
 
 /** 단계별 재료. 키 순서가 곧 표시 순서다(🪵 → 🪨 → 🪙). */
@@ -53,7 +53,7 @@ export const MAX_HOUSE_STAGE = EXPANSIONS[EXPANSIONS.length - 1].stage;
  *    후반 싱크(2026-09-10 리밸런스)를 스스로 되돌린다.
  */
 export function buildNeed(state = {}, k, v) {
-  return (k === 'wood' && state.upgrades?.hammer) ? Math.ceil(v * HAMMER_EXPAND_RATE) : v;
+  return (k === 'wood' && state.upgrades?.hammer) ? Math.ceil(v * hammerRate(state)) : v;
 }
 
 /**

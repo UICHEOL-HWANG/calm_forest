@@ -123,7 +123,7 @@
   /* 게임 월드에서만 페이지 팬/스크롤 차단(메뉴 스크롤은 살림). user-scalable=no 라 확대는 이미 차단됨 */
   #app { position: fixed; inset: 0; touch-action: none; }
   /* 스크롤되는 창들: 세로 스크롤 허용 + 스크롤 체이닝 방지 (도감·NPC·피드백·로그인 카드 포함) */
-  #bag-content, #shop-menu, #cos-items, #cook-menu, #cafe-menu, #decor-menu, #ext-menu, #craft-menu, #homi-menu, #tb-body, .tut-card, .fb-card, .npc-card, #login-card {
+  #bag-content, #shop-menu, #cos-items, #cook-menu, #cafe-menu, #decor-menu, #ext-menu, #craft-menu, #homi-menu, #tb-body, .tut-card, .fb-card, .tk-scroll, #chat-log, #login-card {
     touch-action: pan-y; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
   }
 
@@ -388,6 +388,26 @@
   #sea-btn.stop { background: rgba(200,80,60,0.9); border-color: #ffd0c4; }
   #sea-btn.door { background: rgba(150,120,255,0.88); }
   #sea-btn.wait { background: rgba(60,130,180,0.6); }
+  #sea-btn.idle { visibility: hidden; }
+  body.port-island #sea-btn { left: auto; right: 28px; bottom: calc(96px + env(safe-area-inset-bottom)); transform: none; width: 88px; height: 88px; border: 0; background: var(--mint); color: #2f3a2c; font-size: 36px; box-shadow: var(--shadow); }
+  body.port-island #sea-btn.press { transform: scale(0.93); }
+  body.is-touch.port-island #sea-btn { left: auto; right: max(20px, calc(env(safe-area-inset-right) + 8px)); bottom: calc(14px + env(safe-area-inset-bottom)); width: 88px; height: 88px; }
+  #port-basket { display: none; position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 24; gap: 6px; padding: 9px 12px 10px; border-radius: 14px; background: linear-gradient(#c99a5e, #b3834b); border: 3px solid #7e5531; box-shadow: inset 0 2px 0 rgba(255,255,255,.25), 0 6px 14px rgba(0,0,0,.28); pointer-events: none; }
+  body.port-island #port-basket { display: flex; }
+  #port-basket .pb-tag { position: absolute; left: 50%; top: -15px; transform: translateX(-50%); padding: 2px 12px; border-radius: 9px; background: #7e5531; color: #fff4dc; font-size: 12px; font-weight: 800; white-space: nowrap; }
+  #port-basket .pb-slot { position: relative; width: 52px; height: 52px; border-radius: 10px; background: #f6ead2; box-shadow: inset 0 -3px 0 #e2cfa9; display: flex; align-items: center; justify-content: center; }
+  #port-basket .pb-slot i { font-style: normal; font-size: 28px; line-height: 1; }
+  #port-basket .pb-slot em { position: absolute; right: -5px; bottom: -6px; min-width: 22px; height: 22px; padding: 0 5px; box-sizing: border-box; border-radius: 11px; background: #5a3a1e; color: #fff4dc; font-weight: 900; font-size: 12px; line-height: 18px; text-align: center; border: 2px solid #f6ead2; font-style: normal; }
+  #port-basket .pb-slot.zero { opacity: .4; filter: grayscale(.6); }
+  #port-basket .pb-tip { position: absolute; left: 50%; bottom: calc(100% + 22px); transform: translateX(-50%); padding: 7px 14px; border-radius: 12px; background: #fff8e8; color: #5a3a1e; font-size: 13px; font-weight: 800; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,.22); animation: pb-tip-in .35s ease-out; }
+  #port-basket .pb-tip::after { content: ''; position: absolute; left: 50%; top: 100%; transform: translateX(-50%); border: 7px solid transparent; border-top-color: #fff8e8; }
+  #port-basket .pb-tip[hidden] { display: none; }
+  @keyframes pb-tip-in { from { opacity: 0; transform: translate(-50%, 6px); } to { opacity: 1; transform: translate(-50%, 0); } }
+  @media (max-width: 600px) {
+    #port-basket { gap: 4px; padding: 7px 8px 8px; }
+    #port-basket .pb-slot { width: 38px; height: 38px; }
+    #port-basket .pb-slot i { font-size: 21px; }
+  }
   @keyframes seaBtnPulse { from { box-shadow: 0 0 0 0 rgba(150,255,120,0.6); } to { box-shadow: 0 0 0 16px rgba(150,255,120,0); } }
   #sea-vig { position: fixed; inset: 0; pointer-events: none; z-index: 11; }
   #sea-edge { font-size: 12px; font-weight: 700; color: #fff; background: rgba(200,60,40,0.8); padding: 3px 10px; border-radius: 999px; }
@@ -521,8 +541,8 @@
     #boat-shop .dm-actions button { padding: 5px 14px; }
   }
   /* 튜토리얼 / 씨앗 안내 모달 (공통 카드 스타일) */
-  #tutorial-modal, #seed-modal, #hint-modal, #photo-modal, #char-modal, #merchant-modal, #notice-modal, #settings-modal, #invite-modal, #daily-modal { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
-  #tutorial-modal.show, #seed-modal.show, #hint-modal.show, #photo-modal.show, #char-modal.show, #merchant-modal.show, #notice-modal.show, #settings-modal.show, #invite-modal.show, #daily-modal.show { display: grid; }
+  #tutorial-modal, #seed-modal, #hint-modal, #photo-modal, #char-modal, #notice-modal, #settings-modal, #invite-modal, #daily-modal { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
+  #tutorial-modal.show, #seed-modal.show, #hint-modal.show, #photo-modal.show, #char-modal.show, #notice-modal.show, #settings-modal.show, #invite-modal.show, #daily-modal.show { display: grid; }
   #daily-modal { z-index: 44; }
   #daily-modal .daily-card { width: min(380px, 94vw); background: #f6f0e4; border-radius: 28px; padding: 14px; text-align: left; }
   #hint-modal .tut-card.as-card, #nudge-modal .daily-card { width: min(380px, 94vw); background: #f6f0e4; border-radius: 28px; padding: 14px; text-align: left; }
@@ -560,7 +580,7 @@
   #gift-box-modal #gift-box-ok[hidden] { display: none; }
   @keyframes giftWobble { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(-8deg); } 40% { transform: rotate(7deg); } 60% { transform: rotate(-4deg); } 80% { transform: rotate(2deg); } }
   @keyframes giftPop { 0% { transform: scale(.4); } 70% { transform: scale(1.15); } 100% { transform: scale(1); } }
-  #toast.panel { display: flex; align-items: center; gap: 8px; background: rgba(28,44,35,.92); color: #fff; border-radius: 22px; padding: 8px 16px 8px 12px; box-shadow: 0 10px 24px rgba(0,0,0,.3); width: max-content; max-width: min(560px, 92vw); line-height: 1.35; }
+  #toast.panel { display: flex; align-items: center; gap: 8px; background: rgba(28,44,35,.92); color: #fff; border-radius: 22px; padding: 8px 16px 8px 12px; box-shadow: 0 10px 24px rgba(0,0,0,.3); width: max-content; max-width: min(560px, 92vw); line-height: 1.5; word-break: keep-all; text-wrap: balance; }
   #toast .tst-ic { font-size: 1.2em; flex: none; }
   #toast .tst-tx { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
   #toast .tst-tx b { font-weight: 800; }
@@ -591,6 +611,8 @@
   .dc-warn { background: #ffe1dc; }
   .dc-new { display: inline-block; font-style: normal; font-size: 9.5px; font-weight: 900; background: #b9a6ff; color: #fff; padding: 1px 5px; border-radius: 5px; margin-left: 5px; vertical-align: 2px; }
   .dc-season { grid-column: span 2; background: #fde3d3; font-size: 12.5px; font-weight: 700; color: #8a4a2a; padding: 9px 12px; }
+  .rw-row { display: flex; justify-content: center; margin: 6px 0 8px; }
+  .rw-row:empty { display: none; }
   #daily-ok { width: 100%; border: none; border-radius: 16px; padding: 14px; background: var(--mint); color: #24382d; font-weight: 800; font-size: 15px; cursor: pointer; font-family: inherit; box-shadow: var(--shadow); }
   @media (max-width: 380px) {
     #daily-modal .daily-card { padding: 10px; }
@@ -874,11 +896,12 @@
     width: min(330px, calc(100vw - 24px));
   }
   #login-guide {
-    border: 1px solid #819079;
-    border-radius: 21px;
-    background: #374335;
-    color: #fffdf4;
-    box-shadow: 0 12px 26px #1c2d2250;
+    border: 1px solid rgba(255,255,255,0.35);
+    border-radius: 24px;
+    background: rgba(255,255,255,0.16);
+    backdrop-filter: blur(16px) saturate(1.2);
+    color: #fff;
+    box-shadow: 0 20px 60px rgba(30,50,40,0.35);
   }
   .with-guide #login-card { max-height: none; padding: 15px 16px 14px; }
   #login-screen.with-guide #login-card .leaf { font-size: 24px; line-height: 1.15; }
@@ -898,6 +921,22 @@
       grid-template-areas: "login qr" "login guide" "links links";
       row-gap: 12px;
     }
+    .with-guide:has(#login-qr:not([hidden])) :is(#login-card, #login-qr, #login-guide) { align-self: stretch; }
+    .with-guide:has(#login-qr:not([hidden])) #login-guide {
+      display: grid;
+      grid-template-columns: 64px 1fr;
+      grid-template-rows: auto auto auto;
+      align-content: center;
+      column-gap: 11px;
+      padding: 12px 14px;
+      text-align: left;
+    }
+    .with-guide:has(#login-qr:not([hidden])) #login-guide img { grid-column: 1; grid-row: 1 / 3; width: 64px; height: 100%; min-height: 64px; border-radius: 14px; }
+    .with-guide:has(#login-qr:not([hidden])) .login-guide-copy { display: contents; }
+    .with-guide:has(#login-qr:not([hidden])) .login-guide-copy h2 { grid-column: 2; grid-row: 1; align-self: end; }
+    .with-guide:has(#login-qr:not([hidden])) .login-guide-copy p { grid-column: 2; grid-row: 2; margin: 3px 0 0; align-self: start; font-size: 11.5px; }
+    .with-guide:has(#login-qr:not([hidden])) .login-guide-copy nav { grid-column: 1 / -1; grid-row: 3; margin-top: 10px; flex-wrap: nowrap; }
+    .with-guide:has(#login-qr:not([hidden])) .login-guide-copy a { flex: 1; justify-content: center; }
     .with-guide:has(#login-qr:not([hidden])) #login-entry { display: contents; }
     .with-guide:has(#login-qr:not([hidden])) #login-card { grid-area: login; width: 100%; }
     .with-guide:has(#login-qr:not([hidden])) #login-qr { grid-area: qr; width: 100%; }
@@ -908,13 +947,13 @@
   #login-guide img {
     display: block;
     width: 100%;
-    height: clamp(130px, calc(43vw - 14px), 155px);
+    height: clamp(84px, 24vw, 104px);
     object-fit: cover;
     object-position: center 22%;
   }
-  .login-guide-copy { padding: 13px 13px 12px; }
-  .login-guide-copy h2 { margin: 0; font-size: 18px; letter-spacing: -.035em; }
-  .login-guide-copy p { margin: 5px 0 8px; color: #e7ebd9; font-size: 13px; line-height: 1.55; word-break: keep-all; }
+  .login-guide-copy { padding: 12px 13px 12px; }
+  .login-guide-copy h2 { margin: 0; font-size: 16px; letter-spacing: -.035em; text-shadow: 0 1px 8px rgba(0,0,0,.25); }
+  .login-guide-copy p { margin: 4px 0 8px; color: rgba(255,255,255,.88); font-size: 12px; line-height: 1.5; word-break: keep-all; }
   .login-guide-copy nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
   .login-guide-copy a {
     display: inline-flex;
@@ -923,8 +962,8 @@
     min-height: 44px;
     padding: 0 9px;
     border-radius: 11px;
-    background: #e8f2cc;
-    color: #293a28;
+    background: rgba(255,255,255,.92);
+    color: #3a4a40;
     font-size: 12px;
     font-weight: 700;
     text-decoration: none;
@@ -1166,7 +1205,7 @@
   #hint-banner .hb-img:not([hidden]) ~ div .hb-line { word-break: keep-all; }
   #hint-banner .hb-title { font-size: 14px; font-weight: 700; }
   #hint-banner .hb-line { font-size: 12.5px; opacity: .8; margin-top: 1px; }
-  #hint-banner .hb-line { word-break: keep-all; }
+  #hint-banner .hb-line { word-break: keep-all; text-wrap: balance; }
   /* 배너가 떠 있는 동안 토스트는 그 아래로 내려 겹침 방지 */
   body.hintbanner #toast { top: calc(158px + var(--toss-reserve)); }
   /* 📲 웹 → 앱 유도 배너(B안 가로 바) — 스펙 dev/active/app-banner-funnel §3-1. DOM·규칙은 js/app-banner-ui.js · js/app-banner.js
@@ -1291,63 +1330,25 @@
        · 내 말   = 오른쪽 꼬리 달린 연청 말풍선
        · 선택지  = 말풍선이 아니라 "고르는 것" — 왼쪽 강조선 + 들어오는 꺾쇠
      그림자는 배경 색조(따뜻한 녹)에 맞춰 틴트한다. 순수 검정은 쓰지 않는다. */
-  #chat-modal { position: fixed; inset: 0; z-index: 31; display: none; place-items: center;
-                background: rgba(24,42,33,0.42); backdrop-filter: blur(2px); padding: 16px; }
-  #chat-modal.show { display: grid; }
-  #chat-modal .chat-card { width: min(92vw, 430px); max-height: 84dvh; display: flex; flex-direction: column;
-                           background: linear-gradient(180deg, #fffefa 0%, #fdfaf1 100%);
-                           border: 1px solid rgba(120,150,120,0.16); border-radius: 20px; padding: 14px 16px 16px;
-                           box-shadow: 0 18px 44px -12px rgba(38,64,48,0.34);
-                           animation: chatPop .22s cubic-bezier(0.16, 1, 0.3, 1); }
-  @keyframes chatPop { from { opacity: 0; transform: translateY(10px) scale(0.985); } }
-
-  /* 머리 — 이모지를 동그란 칩에 앉혀 이름과 무게를 맞춘다 */
-  #chat-modal .chat-head { display: flex; align-items: center; gap: 9px; padding-bottom: 11px;
-                           border-bottom: 1px solid rgba(120,150,120,0.14); }
-  #chat-modal #chat-emoji { width: 30px; height: 30px; flex: none; display: grid; place-items: center;
-                            background: #eef5ea; border-radius: 50%; font-size: 17px; }
-  #chat-modal #chat-name { font-weight: 700; font-size: 15px; color: #2f5d43; letter-spacing: -0.2px; }
-
-  /* 로그 — 카드가 아니라 여기만 스크롤한다(선택지가 아래에 붙어 있게) */
-  #chat-modal .chat-log { flex: 1 1 auto; overflow-y: auto; min-height: 0;
-                          margin: 12px 0 4px; display: flex; flex-direction: column; gap: 8px; }
-  #chat-modal .tl { position: relative; font-size: 14px; line-height: 1.6; padding: 9px 13px;
-                    max-width: 84%; word-break: keep-all;
+  #chat-modal { z-index: 31; }
+  #chat-modal .chat-card { width: min(640px, 100%); max-height: min(84dvh, 560px); display: flex; flex-direction: column; padding: 16px 18px 16px 92px; }
+  #chat-modal .chat-head { display: flex; align-items: center; min-height: 26px; }
+  #chat-modal .chat-log { flex: 1 1 auto; overflow-y: auto; min-height: 0; margin: 6px -3px 2px; padding: 2px 3px; display: flex; flex-direction: column; gap: 8px; }
+  #chat-modal .tl { position: relative; font-size: 14px; line-height: 1.6; padding: 9px 13px; max-width: 86%; word-break: keep-all;
                     animation: tlIn .26s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
   @keyframes tlIn { from { opacity: 0; transform: translateY(6px); } }
-  #chat-modal .tl.npc { background: #ecf4e8; color: #2b4a37; align-self: flex-start;
-                        border-radius: 14px 14px 14px 4px; }
-  #chat-modal .tl.me  { background: #e6eef8; color: #2a4560; align-self: flex-end;
-                        border-radius: 14px 14px 4px 14px; }
-  /* 작별은 대화가 아니라 맺음이다 — 말풍선을 벗기고 한 톤 낮춘다 */
-  #chat-modal .tl.bye { background: none; color: #6d7f71; font-style: italic; align-self: center;
-                        text-align: center; max-width: 100%; padding: 10px 4px 2px; }
-
-  /* 선택지 — 말풍선과 다른 물성. 왼쪽 강조선이 호버에 자라고 꺾쇠가 들어온다 */
-  #chat-modal .chat-choices { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; }
-  #chat-modal .chat-choices button { position: relative; display: flex; align-items: center; gap: 8px;
-                                     text-align: left; padding: 10px 12px 10px 14px; font-size: 13.5px; line-height: 1.45;
-                                     font-family: inherit; color: #35604a; word-break: keep-all;
-                                     background: #fff; border: 1px solid rgba(120,150,120,0.22);
-                                     border-left: 3px solid #cfe0cd; border-radius: 12px; cursor: pointer;
-                                     transition: background .16s ease, border-color .16s ease, transform .1s ease;
-                                     animation: tlIn .28s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  #chat-modal .tl.npc { background: var(--nt); color: #3c3326; align-self: flex-start; border-radius: 14px 14px 14px 4px; }
+  #chat-modal .tl.me  { background: #fff; color: #4a4438; align-self: flex-end; border-radius: 14px 14px 4px 14px; box-shadow: 0 0 0 2px #eadfcb; }
+  #chat-modal .tl.bye { background: none; color: #7a6a52; font-style: italic; align-self: center; text-align: center; max-width: 100%; padding: 10px 4px 2px; }
+  #chat-modal .chat-choices { display: flex; flex-direction: column; flex-wrap: nowrap; gap: 8px; padding-top: 8px; }
+  #chat-modal .chat-choices:empty { display: none; }
+  #chat-modal .chat-choices button { display: flex; align-items: center; gap: 8px; text-align: left; padding: 10px 14px; font-size: 13.5px; line-height: 1.45;
+                                     font-weight: 700; word-break: keep-all; animation: tlIn .28s cubic-bezier(0.16, 1, 0.3, 1) backwards;
                                      animation-delay: calc(var(--i, 0) * 55ms); }
-  #chat-modal .chat-choices button::after { content: '›'; margin-left: auto; color: #9ab79c; font-size: 16px;
-                                            opacity: 0; transform: translateX(-3px); transition: all .16s ease; }
-  #chat-modal .chat-choices button:hover { background: #f5faf3; border-left-color: #7fb389; }
-  #chat-modal .chat-choices button:hover::after { opacity: 1; transform: translateX(0); }
-  #chat-modal .chat-choices button:active { transform: scale(0.985); }
-
-  /* 닫기 — .ghost 는 .npc-actions 안에서만 정의돼 있어(1163행) 여기선 안 먹는다.
-     의뢰 모달의 ghost 버튼과 같은 물성으로 맞춘다. */
-  #chat-modal .chat-done { display: flex; justify-content: flex-end; padding-top: 12px; }
-  #chat-modal .chat-done button { border: none; border-radius: 12px; padding: 9px 20px;
-                                  font-family: inherit; font-weight: 600; font-size: 13.5px;
-                                  background: #eef2ee; color: var(--ink); cursor: pointer;
-                                  transition: background .16s ease, transform .1s ease; }
-  #chat-modal .chat-done button:hover { background: #e4ebe3; }
-  #chat-modal .chat-done button:active { transform: scale(0.95); }
+  #chat-modal .chat-choices button::after { content: '›'; margin-left: auto; color: var(--ni); font-size: 16px; }
+  #chat-modal .chat-choices button:hover { box-shadow: 0 0 0 2px var(--nc), 0 3px 0 var(--nd); }
+  #chat-modal .chat-done { justify-content: flex-end; padding-top: 12px; }
+  #chat-modal .chat-done:empty { display: none; }
 
   /* 🦆 사공 퀴즈 — C안 나루터 팻말(시안 sims/ferry-quiz/quiz-options.html 승인 2026-09-30).
      나무 판 + 밧줄에 매단 표찰 4개. 보기가 길면(.two) 2×2 로 접는다 — 주민 이름·요리 이름. */
@@ -1442,16 +1443,50 @@
   #e1-next:active { transform: scale(0.96); }
   #door-prompt { bottom: calc(150px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); font-size: 14px; font-weight: 600; opacity: 0; transition: opacity .25s; pointer-events: none; white-space: nowrap; }
   /* 🪞 거울 주민 대화 박스(B안 2026-10-10) — 화면 아래 얼굴·이름·대사. 어둡게 하지 않는다(걸으며 읽기). 떠 있는 동안 같은 자리의 문 프롬프트는 숨김 */
+  .tk-box { --nc: #5fbf62; --nt: #dff2e0; --ni: #48914a; --nd: #336634; position: relative; box-sizing: border-box;
+    background: #fffaf1; color: #3c3326; border-radius: 24px;
+    box-shadow: 0 0 0 3px #fff, 0 8px 0 var(--nc), 0 14px 26px rgba(30,20,10,0.25); }
+  .tk-face { position: absolute; left: 14px; top: -16px; width: 66px; height: 66px; border-radius: 50%; display: grid; place-items: center;
+    font-size: 32px; line-height: 1; background: var(--nt); border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+  .tk-name { font-size: 18px; font-weight: 800; color: var(--ni); letter-spacing: -0.2px; }
+  .tk-modal { position: fixed; inset: 0; display: none; place-items: end center; padding: 0 12px calc(24px + env(safe-area-inset-bottom)); }
+  .tk-modal.show { display: grid; }
+  .tk-modal.show > .tk-box { animation: tk-in .2s cubic-bezier(0.16, 1, 0.3, 1); }
+  @keyframes tk-in { from { opacity: 0; transform: translateY(10px); } }
+  .tk-acts button { border: 0; border-radius: 14px; padding: 9px 16px; font: inherit; font-weight: 800; font-size: 13.5px; cursor: pointer;
+    background: #fff; color: #4a4438; box-shadow: 0 0 0 2px #eadfcb, 0 3px 0 #d8ccb6; transition: transform .08s, box-shadow .08s; }
+  .tk-acts .primary { background: var(--ni); color: #fff; box-shadow: 0 0 0 2px var(--ni), 0 3px 0 var(--nd); }
+  .tk-acts button:active { transform: translateY(2px); box-shadow: 0 0 0 2px #eadfcb, 0 1px 0 #d8ccb6; }
+  .tk-acts .primary:active { box-shadow: 0 0 0 2px var(--ni), 0 1px 0 var(--nd); }
+  .tk-acts button:disabled { opacity: 0.5; cursor: default; transform: none; }
+  .tk-acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+  body:has(.tk-modal.show) #mobile-controls, body:has(.tk-modal.show) #talk-btn { visibility: hidden; }
   #mirror-talk { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(92px + env(safe-area-inset-bottom)); z-index: 7; display: none;
-    width: min(620px, 92vw); min-height: 92px; box-sizing: border-box; padding: 14px 16px 24px 86px; border-radius: 18px; cursor: pointer;
-    background: #fff; box-shadow: 0 10px 30px rgba(20,20,60,0.3); color: var(--ink); }   /* 불투명 — 모바일에선 같은 자리의 의뢰 칩·문 프롬프트가 비쳐 보였다 */
+    width: min(620px, 92vw); min-height: 92px; padding: 14px 18px 24px 92px; cursor: pointer; }
   #mirror-talk.show { display: block; animation: mt-in .18s ease-out; }
   @keyframes mt-in { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
-  #mt-face { position: absolute; left: 14px; top: 14px; width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; font-size: 28px; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
-  #mt-name { display: inline-block; font-size: 12px; font-weight: 800; color: #fff; background: #7a6fd0; padding: 2px 10px; border-radius: 10px; margin-bottom: 6px; }
+  #mt-name { display: block; margin-bottom: 2px; }
   #mt-line { font-size: 14.5px; line-height: 1.5; word-break: keep-all; overflow-wrap: anywhere; }
-  #mt-next { position: absolute; right: 14px; bottom: 7px; font-size: 11px; opacity: 0.6; }
+  #mt-next { position: absolute; right: 16px; bottom: 8px; font-size: 11px; opacity: 0.55; }
   body:has(#mirror-talk.show) #door-prompt, body:has(#mirror-talk.show) #hint, body:has(#mirror-talk.show) #zone-prompt { opacity: 0 !important; }   /* 박스가 조작 안내 줄 자리까지 쓴다(위의 의뢰 N/3 칩과 안 겹치게) */
+  body.sea-mode:not(.is-touch) #mirror-talk { bottom: calc(5% + 124px + env(safe-area-inset-bottom)); }
+  #guide-card { position: fixed; left: 50%; top: calc(58px + var(--top-inset, 0px)); transform: translateX(-50%); z-index: 8; padding: 5px 14px; border-radius: 14px; background: rgba(255,248,232,.97); color: #3d3424; font-size: 14px; font-weight: 700; white-space: nowrap; max-width: calc(100vw - 24px); overflow: hidden; text-overflow: ellipsis; border: 2px solid #ffc94a; box-shadow: 0 2px 10px rgba(0,0,0,.3); pointer-events: none; }
+  #guide-card small { color: #9a6a12; margin-right: 6px; font-size: 12px; }
+  #guide-card[hidden], #guide-mark[hidden], #guide-edge[hidden] { display: none; }
+  body:has(#mirror-talk.show) #guide-card { display: none; }
+  #guide-mark { position: fixed; z-index: 6; transform: translate(-50%, -100%); font-size: 30px; line-height: 1; text-align: center; pointer-events: none; filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); animation: guide-bob .8s infinite alternate ease-in-out; }
+  #guide-mark span, #guide-edge span { display: block; font-size: 12px; font-weight: 800; color: #fff; text-shadow: 0 1px 2px #000; white-space: nowrap; }
+  @keyframes guide-bob { to { transform: translate(-50%, -125%); } }
+  #guide-edge { position: fixed; z-index: 6; width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%; background: #ffc94a; color: #2f2414; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 21px; box-shadow: 0 2px 8px rgba(0,0,0,.4); pointer-events: none; }
+  #guide-edge i { font-style: normal; display: block; width: 20px; height: 20px; line-height: 0; }
+  #guide-edge i svg, #guide-mark b svg { display: block; width: 100%; height: 100%; }
+  #guide-mark b { display: block; width: 30px; height: 24px; margin: 0 auto; filter: drop-shadow(0 1px 1.5px rgba(0,0,0,.45)); }
+  body.is-touch #guide-mark b { width: 26px; height: 21px; }
+  #guide-edge span { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 2px; }
+  #action-btn.point, #sea-btn.point { overflow: visible; }
+  #action-btn.point::after, #sea-btn.point::after { content: '👆'; position: absolute; right: -6px; bottom: -14px; font-size: 28px; pointer-events: none; animation: guide-tap .6s infinite alternate; }
+  #mirror-talk.point #mt-next::after { content: ' 👆'; font-size: 18px; }
+  @keyframes guide-tap { to { transform: translate(-4px, -6px); } }
   #door-prompt.show { opacity: 1; }
 
   /* 🎣 캐치 배너 — "무엇을 얻었나"를 프롬프트 줄에 두 줄로 크게 띄운다.
@@ -1516,6 +1551,7 @@
   body.near-house #ext-btn { display: block; }
   body.menu-open #ext-btn { display: none; }
   #ext-btn:active { transform: translateX(-50%) scale(0.95); }
+  body.at-restaurant #hotbar, body.at-restaurant #hint { display: none !important; }
   body.indoor #hotbar { display: none !important; } /* 실내에선 도구바 숨김(안 씀) */
   #decor-btn:active { transform: translateX(-50%) scale(0.95); }
 
@@ -1556,9 +1592,11 @@
     #cook-menu { --menu-bottom: calc(58px + env(safe-area-inset-bottom)); gap: 6px; padding: 9px 12px; }
     #cook-menu .dm-head { font-size: 13px; }
     #cook-menu .ck-tab { padding: 4px 11px; font-size: 12px; }
-    #cook-menu .ck-item { width: 78px; padding: 7px 5px; }
-    #cook-menu .ck-item .ck-ico { font-size: 21px; }
-    #cook-menu #cook-hint { min-height: 2.6em; }   /* 뒤쪽 #cook-hint 규칙과 명시도를 맞춰야 이긴다 */
+    #cook-menu .wb-cell .wb-ico { font-size: 22px; }
+    #cook-menu #wb-banner { padding: 5px 9px; font-size: 11.5px; }
+    #cook-menu .dm-actions #cook-close { padding: 7px 22px; font-size: 14px; }
+    #cook-menu #wb-sheet { padding: 10px; gap: 7px; }
+    #cook-menu .wb-big { font-size: 30px; width: 48px; height: 48px; }
   }
   .ck-tabs { display: flex; gap: 6px; justify-content: center; }
   .ck-tab { border: none; border-radius: 10px; padding: 6px 16px; font-weight: 700; font-size: 13px; cursor: pointer; background: #eef2ee; color: var(--ink); }
@@ -1566,16 +1604,75 @@
   .ck-inv { font-size: 12px; opacity: .75; text-align: center; }
   /* 목록만 스크롤 — 제목·탭·안내·닫기는 항상 보이게 고정(창 전체를 스크롤하면 닫기가 화면 밖으로 나간다).
      머리말·꼬리말은 flex-shrink 를 막아야 자리를 뺏기지 않는다(도감 모달과 같은 방식) */
-  #cook-menu > *:not(#tool-items):not(#out-items):not(#gift-items):not(#carve-items) { flex: 0 0 auto; }
-  /* 목록은 고정된 창 높이의 남는 자리를 전부 먹고(flex:1), 넘치면 목록만 스크롤한다 */
-  #tool-items, #out-items, #gift-items, #carve-items { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
-    flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y;
-    align-content: flex-start; padding: 2px 0; }
-  /* 안내문도 탭마다 줄 수가 달라 창을 흔든다 — 두 줄 자리를 늘 비워 둔다.
-     ⚠️ display:flex 를 주면 안 된다 — 안내문은 네 탭 모두 <b> 를 품은 한 줄이라
-        flex 가 <b> 와 앞뒤 글을 **별개 item** 으로 쪼개면서 사이 공백까지 버린다
-        ("영구 도구 강화" → "영구도구 강화"). 높이만 잡으면 목적은 이미 달성된다. */
-  #cook-hint { min-height: 2.9em; }
+  #cook-menu > *:not(.wb-body) { flex: 0 0 auto; }
+  #cook-menu .dm-head { display: flex; align-items: center; gap: 8px; }
+  #cook-menu .dm-actions { justify-content: center; }
+  #cook-menu .dm-actions #cook-close { min-width: min(220px, 70%); padding: 11px 22px; font-size: 15px; font-weight: 800; border-radius: 14px;
+    background: #fff; color: var(--ink); border: 1.5px solid rgba(74,90,79,0.3); box-shadow: 0 3px 10px rgba(90,120,100,0.18); }
+  #cook-menu .dm-actions #cook-close:active { transform: scale(0.97); }
+  .wb-coin { font-size: 13px; font-weight: 700; opacity: .8; font-variant-numeric: tabular-nums; }
+  .wb-inv { display: flex; gap: 5px; justify-content: center; flex-wrap: wrap; }
+  .wb-inv > span { font-size: 11.5px; font-weight: 700; padding: 2px 7px; border-radius: 8px; background: rgba(255,255,255,.6); font-variant-numeric: tabular-nums; }
+  #wb-banner { font-size: 12px; background: rgba(255,232,176,0.55); border-radius: 10px; padding: 7px 10px; word-break: keep-all; }
+  #wb-banner[hidden] { display: none; }
+  .wb-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+  #wb-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y;
+    display: flex; flex-direction: column; gap: 7px; padding: 2px; }
+  .wb-sec { font-size: 11.5px; font-weight: 800; opacity: .6; margin: 2px 2px -2px; }
+  .wb-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; }
+  .wb-cell { position: relative; aspect-ratio: 1; border: none; border-radius: 14px; background: rgba(255,255,255,0.75); color: var(--ink); font: inherit;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 0; cursor: pointer; transition: transform .1s; }
+  .wb-cell:active { transform: scale(0.95); }
+  .wb-cell.sel { background: #fff; box-shadow: 0 0 0 2.5px var(--ink) inset; }
+  .wb-cell.dim .wb-ico, .wb-cell.dim .wb-nm { opacity: .42; }
+  .wb-cell.done { background: #e3f3e6; }
+  .wb-cell.done.sel { background: #f1fbf3; }
+  .wb-cell .wb-ico { font-size: 28px; line-height: 1; }
+  .wb-cell .wb-nm { font-size: 11px; font-weight: 700; white-space: nowrap; max-width: 92%; overflow: hidden; text-overflow: ellipsis; }
+  .wb-cell .wb-cnt { position: absolute; right: 6px; bottom: 4px; font-size: 11px; font-weight: 800; opacity: .7; font-variant-numeric: tabular-nums; }
+  .wb-cell .wb-st { position: absolute; left: 5px; top: 3px; line-height: 1; }
+  .wb-cell .wb-st .fg-stars { font-size: 9.5px; }
+  .wb-cell .wb-tag { position: absolute; right: 5px; top: 4px; font-size: 9.5px; font-weight: 800; color: #fff; background: #e07a3a; border-radius: 6px; padding: 1px 4px; line-height: 1.3; }
+  .wb-cell .wb-tag.t-done { background: #5cae73; }
+  .wb-cell .wb-tag.t-moon, .wb-cell .wb-tag.t-lock { background: #6a6fb8; }
+  #wb-sheet { flex: 0 0 auto; border-radius: 16px; background: #fff; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 -2px 10px rgba(90,120,100,0.12); }
+  #wb-sheet:empty { display: none; }
+  .wb-top { display: flex; align-items: center; gap: 9px; min-width: 0; }
+  .wb-big { font-size: 30px; line-height: 1; flex: 0 0 auto; }
+  .wb-txt { min-width: 0; }
+  .wb-name { font-size: 14px; font-weight: 800; }
+  .wb-sub { font-size: 12px; opacity: .8; line-height: 1.4; word-break: keep-all; }
+  .wb-sub .now { opacity: .75; }
+  .wb-sub .nxt { color: #2f9a5e; font-weight: 800; }
+  .wb-sub .chev { display: inline-block; width: 7px; height: 7px; border-top: 2px solid currentColor; border-right: 2px solid currentColor; transform: rotate(45deg); margin: 0 6px 1px 3px; opacity: .6; }
+  .wb-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .wb-chip { font-size: 11.5px; font-weight: 800; padding: 4px 8px; border-radius: 9px; background: #e2f4e6; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .wb-chip.lack { background: #fbe3df; color: #c9574a; }
+  .wb-note { font-size: 11px; opacity: .65; word-break: keep-all; }
+  .wb-sale { display: flex; gap: 6px; flex-wrap: wrap; font-size: 11px; font-weight: 700; color: #c4631b; }
+  .wb-note.moon { opacity: 1; font-weight: 700; color: #4b4f8a; background: #e7e8fb; padding: 6px 9px; border-radius: 10px; }
+  .wb-go { border: none; border-radius: 12px; padding: 10px 16px; font: inherit; font-size: 13.5px; font-weight: 800; background: var(--mint); color: #24382d; cursor: pointer; white-space: nowrap; }
+  .wb-go:active { transform: scale(0.96); }
+  .wb-go[disabled] { opacity: .45; cursor: default; transform: none; }
+  @media (min-width: 700px) {
+    #cook-menu { width: min(760px, 94vw); }
+    .wb-body { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 10px; }
+    .wb-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    #wb-sheet { justify-content: flex-start; gap: 10px; padding: 14px; overflow-y: auto; min-height: 0; }
+    #wb-sheet:empty { display: flex; }
+    .wb-top { flex-direction: column; text-align: center; gap: 6px; }
+    .wb-big { font-size: 44px; width: 72px; height: 72px; display: grid; place-items: center; border-radius: 18px; background: #fff7e0; }
+    .wb-chips { justify-content: center; }
+    .wb-go { margin-top: auto; width: 100%; padding: 11px; }
+  }
+  @media (min-width: 700px) and (max-height: 640px) {
+    .wb-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+    .wb-body { grid-template-columns: minmax(0, 1fr) 220px; }
+    #wb-sheet { padding: 10px 10px 0; gap: 6px; }
+    .wb-top { flex-direction: row; text-align: left; gap: 8px; }
+    .wb-chips { justify-content: flex-start; }
+    .wb-go { position: sticky; bottom: 0; margin-bottom: 10px; box-shadow: 0 -6px 8px #fff; }
+  }
   /* 🍳 자유주방 메뉴판 — 레시피 카드(미니게임 종류·최고 점수 표시) */
   #kitchen-menu { display: none; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: min(460px, 92vw); max-height: 66dvh; overflow-y: auto; flex-direction: column; gap: 10px; }
   #kitchen-menu.show { display: flex; }
@@ -2001,6 +2098,34 @@
   #cvr-title { font-size: 20px; font-weight: 800; }
   #cvr-sub { font-size: 13px; opacity: .8; text-align: center; }
   #cvr-stats { display: flex; gap: 14px; font-size: 12px; opacity: .85; font-variant-numeric: tabular-nums; flex-wrap: wrap; justify-content: center; }
+  #cv-combo { color: #c4631b; }
+  #cv-gauge { position: relative; height: 12px; border-radius: 6px; background: #efe7d6; margin: 3px 22px 16px 8px; }
+  #cv-gauge .cvg-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 6px; background: linear-gradient(90deg, #ffd76a, #e9a23b); transition: width .15s; }
+  #cv-gauge .cvg-tick { position: absolute; top: -3px; width: 2px; height: 18px; margin-left: -1px; background: #b9ad90; }
+  #cv-gauge .cvg-tick span { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: 800; white-space: nowrap; color: #8a7a55; }
+  #cv-gauge .cvg-tick.hit span { color: #c4631b; }
+  #cv-gem { position: absolute; right: 14px; top: calc(62px + var(--top-inset)); font-size: 13px; font-weight: 800; background: #e3f6ff; color: #2a6a86;
+    border-radius: 10px; padding: 5px 10px; box-shadow: var(--shadow); opacity: 0; transform: translateY(14px) scale(.8); transition: opacity .25s, transform .35s; }
+  #cv-gem.show { opacity: 1; transform: none; }
+  .cvr-two { display: flex; gap: 8px; width: 100%; margin-top: 4px; }
+  .cvr-two button { flex: 1 1 0; border: none; border-radius: 12px; padding: 10px 6px; font-weight: 800; font-size: 14px; line-height: 1.3; cursor: pointer; color: var(--ink); background: #eef2ee; font-family: inherit; }
+  .cvr-two button small { display: block; font-size: 11px; font-weight: 700; opacity: .75; }
+  .cvr-two .cvr-sell { background: #ffe7a6; color: #6a4a00; }
+  .cvr-two .cvr-go { background: var(--mint); }
+  #cvr-wrap { display: none; flex-direction: column; align-items: center; gap: 8px; width: 100%; }
+  #cv-result.wrap #cvr-wrap { display: flex; }
+  #cv-result.wrap #cvr-main { display: none; }
+  #cvr-main { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; }
+  #cvr-wtitle { font-size: 16px; font-weight: 800; }
+  #cvr-papers { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .cvr-paper { width: 60px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; border: none; background: none; padding: 0; cursor: pointer; color: var(--ink); font-family: inherit; }
+  .cvr-paper .sw { width: 50px; height: 50px; border-radius: 12px; box-shadow: var(--shadow); }
+  .cvr-paper.sel .sw { outline: 3px solid #4aa868; outline-offset: 2px; }
+  .sw.p-kraft { background: #c9a074; background-image: repeating-linear-gradient(45deg, rgba(255,255,255,.12) 0 3px, transparent 3px 7px); }
+  .sw.p-floral { background: #f6c9d4; background-image: radial-gradient(circle at 25% 30%, #fff 0 3px, transparent 4px), radial-gradient(circle at 70% 65%, #e88aa3 0 4px, transparent 5px), radial-gradient(circle at 70% 20%, #fff 0 2px, transparent 3px); background-size: 24px 24px; }
+  .sw.p-starry { background: #2f3b6b; background-image: radial-gradient(circle at 30% 30%, #ffe08a 0 1.6px, transparent 2.4px), radial-gradient(circle at 75% 70%, #fff 0 1.2px, transparent 2px); background-size: 16px 16px; }
+  #cvr-wcost { font-size: 12.5px; opacity: .85; }
+  .cv-heart { color: #e6789a; font-weight: 800; }
   /* ☕ 카페 주문판 — 손님 카드가 세로로 쌓이는 목록형(요리 격자와 달리 "주문서" 느낌) */
   #cafe-menu { display: none; bottom: calc(90px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); width: min(460px, 92vw); flex-direction: column; gap: 10px; max-height: 70dvh; overflow-y: auto; }
   #cafe-menu.show { display: flex; }
@@ -2183,6 +2308,41 @@
   .market-banner { width: 100%; text-align: center; font-size: 12px; background: rgba(255,232,176,0.55); border-radius: 10px; padding: 7px 10px; color: var(--ink); }
   .ck-buff .up { color: #2fa564; font-weight: 700; }
   .ck-buff .down { color: #d05a4a; font-weight: 700; }
+  #sell-items { flex-direction: column; flex-wrap: nowrap; align-items: stretch; justify-content: flex-start; }
+  #sell-items .market-banner { text-align: left; }
+  #sell-items .up { color: #2f9a5e; font-weight: 800; }
+  #sell-items .down { color: #c9574a; font-weight: 800; }
+  .sl-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; }
+  .sl-cell { position: relative; aspect-ratio: 1; border: none; border-radius: 14px; background: rgba(255,255,255,0.75); color: var(--ink); font: inherit;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 0; cursor: pointer; transition: transform .1s; }
+  .sl-cell:active { transform: scale(0.95); }
+  .sl-cell.hot { background: #fff6dc; }
+  .sl-cell.sel { background: #fff; box-shadow: 0 0 0 2.5px var(--ink) inset; }
+  .sl-cell .sl-ico { font-size: 28px; line-height: 1; }
+  .sl-cell .sl-nm { font-size: 11px; font-weight: 700; white-space: nowrap; max-width: 92%; overflow: hidden; text-overflow: ellipsis; }
+  .sl-cell .sl-cnt { position: absolute; right: 6px; bottom: 4px; font-size: 11px; font-weight: 800; opacity: .7; font-variant-numeric: tabular-nums; }
+  .sl-cell .sl-tr { position: absolute; left: 6px; top: 4px; font-size: 11px; }
+  .sl-empty { text-align: center; padding: 26px 8px; font-size: 13px; opacity: .7; line-height: 1.5; }
+  #sell-sheet { border-radius: 16px; background: #fff; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 -2px 10px rgba(90,120,100,0.12); }
+  #sell-sheet[hidden] { display: none; }
+  .ss-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .ss-top .ss-ico { font-size: 30px; line-height: 1; }
+  .ss-top .ss-nm { font-size: 14px; font-weight: 800; }
+  .ss-top .ss-sub { font-size: 11.5px; opacity: .75; font-variant-numeric: tabular-nums; }
+  .ss-top .ss-sub .up, .ss-top .ss-sub .down { margin-left: 3px; }
+  .ss-row { display: flex; align-items: center; gap: 6px; }
+  .ss-step { display: flex; align-items: center; background: #eef2ee; border-radius: 10px; }
+  .ss-step button { border: none; background: none; font: inherit; font-size: 17px; font-weight: 800; width: 34px; height: 34px; color: var(--ink); cursor: pointer; touch-action: none; }
+  .ss-step button:disabled { opacity: .3; cursor: default; }
+  .ss-step .ss-q { min-width: 32px; text-align: center; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .ss-max { border: none; border-radius: 10px; padding: 8px 11px; font: inherit; font-size: 12.5px; font-weight: 800; background: #eef2ee; color: var(--ink); cursor: pointer; }
+  .ss-max.on { background: var(--ink); color: #fff; }
+  .ss-go { margin-left: auto; border: none; border-radius: 12px; padding: 9px 14px; font: inherit; font-size: 13.5px; font-weight: 800; background: var(--mint); color: #24382d; cursor: pointer; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ss-go:active, .ss-max:active { transform: scale(0.96); }
+  #shop-menu .dm-actions { justify-content: center; }
+  #shop-menu .dm-actions #shop-close { min-width: min(220px, 70%); padding: 11px 22px; font-size: 15px; font-weight: 800; border-radius: 14px;
+    background: #fff; color: var(--ink); border: 1.5px solid rgba(74,90,79,0.3); box-shadow: 0 3px 10px rgba(90,120,100,0.18); }
+  #shop-menu .dm-actions #shop-close:active { transform: scale(0.97); }
   /* 📊 시세판 모달(전광판) */
   #market-modal { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
   #market-modal.show { display: grid; }
@@ -2241,6 +2401,20 @@
   .tb-mnum { text-align: right; font-variant-numeric: tabular-nums; opacity: .8; }
   .tb-meter.ok .tb-mnum { color: #3e8f50; font-weight: 800; opacity: 1; }
   .tb-hint { margin: 0; font-size: 11.5px; opacity: .7; }
+  .tb-advice { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 11px; background: #eef7e8; border: 1.5px solid #cfe6c4; font-size: 12.5px; font-weight: 700; color: #355c3b; }
+  .tb-advice b { background: #58b468; color: #fff; border-radius: 7px; padding: 1px 7px; font-size: 11.5px; }
+  .tb-advice.clear { background: #fff4e3; border-color: #f0d6a8; }
+  .tb-advice-note { margin: 0; font-size: 12px; font-weight: 700; color: #9a6a12; }
+  .tb-guide { margin: 6px 0; padding: 8px 12px; border-radius: 14px; background: #fffdf6; box-shadow: 0 3px 12px rgba(30,60,40,.18); border: 1.5px solid #bfe8c9; display: flex; flex-direction: column; gap: 2px; }
+  .tb-guide .rw-ad { align-self: flex-start; margin-top: 6px; }
+  .tb-guide-t { font-size: 14px; font-weight: 800; color: #2f5a3a; }
+  .tb-guide-d { font-size: 13px; color: #4a5a4f; }
+  .tb-guide-s { margin-top: 4px; padding-top: 5px; border-top: 1px dashed #e3dccb; font-size: 12.5px; font-weight: 700; color: #7a5a20; }
+  .tb-guide-on { position: relative; box-shadow: 0 0 0 3px #88d7a0, 0 0 0 7px rgba(136,215,160,.35) !important; animation: tb-guide-pulse 1.2s ease-in-out infinite; }
+  .tb-guide-on::after { content: ''; position: absolute; left: 50%; top: -15px; margin-left: -8px; width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 11px solid #ffc94a; filter: drop-shadow(0 1px 1px rgba(60,40,0,.35)); pointer-events: none; animation: tb-guide-tap .9s ease-in-out infinite alternate; }
+  @keyframes tb-guide-pulse { 50% { box-shadow: 0 0 0 3px #88d7a0, 0 0 0 11px rgba(136,215,160,.12) !important; } }
+  @keyframes tb-guide-tap { to { transform: translateY(-5px); } }
+  @media (prefers-reduced-motion: reduce) { .tb-guide-on, .tb-guide-on::after { animation: none; } }
   .tb-decos { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 7px; }
   .tb-deco { text-align: left; border: 2px solid #e2d8c2; background: #fffaf0; border-radius: 13px; padding: 6px 8px; display: flex; align-items: center; gap: 7px;
     box-shadow: 0 3px 0 #e2d8c2; color: var(--ink); font: inherit; cursor: pointer; touch-action: manipulation; min-width: 0; }
@@ -2304,7 +2478,7 @@
   #worldmap.show { display: grid; }
   #worldmap .wm-card { width: min(520px, 94vw); }
   /* 하한을 주지 않으면 폰 가로·분할 화면(dvh 작음)에서 calc 가 음수가 되어 지도가 통째로 사라진다 */
-  #wm-canvas-wrap { position: relative; width: max(240px, min(100%, calc((100dvh - 260px) * 76 / 80))); aspect-ratio: 76 / 80; margin: 10px auto 0; }
+  #wm-canvas-wrap { position: relative; width: max(240px, min(100%, calc(100dvh - 260px))); aspect-ratio: 1 / 1; margin: 10px auto 0; }
   #wm-canvas { display: block; width: 100%; height: 100%; border-radius: 18px; box-shadow: inset 0 0 0 2px rgba(255,255,255,0.6); }
   #orchard-map-target { position: absolute; width: 2px; height: 2px; transform: translate(-50%, -50%); pointer-events: none; }
   #worldmap .dm-actions { justify-content: center; margin-top: 18px; padding-bottom: 4px; }
@@ -2372,6 +2546,61 @@
   .ck-item .ck-buff { font-size: 10px; opacity: .8; line-height: 1.2; }
   .ck-item .ck-cost { font-size: 10.5px; opacity: .75; }
   .ck-item .ck-tag { font-size: 9.5px; line-height: 1.15; color: #c4631b; }
+  .fg-stars { display: inline-flex; gap: 1px; font-size: 12px; vertical-align: middle; }
+  .fg-stars i { font-style: normal; color: #d7d2c2; }
+  .fg-stars i.on { color: #e8b53a; text-shadow: 0 1px 0 rgba(150,100,0,.25); }
+  .fg-stars i.next { color: #e8b53a; opacity: .45; }
+  #forge-modal { position: fixed; inset: 0; z-index: 45; display: none; align-items: center; justify-content: center; background: rgba(40,50,44,.38);
+    -webkit-user-select: none; user-select: none; touch-action: manipulation; padding-top: var(--top-inset); }
+  #forge-modal.show { display: flex; }
+  #forge-modal .fg-panel { position: relative; width: min(380px, 94vw); height: min(460px, calc(100dvh - 32px - var(--top-inset)));
+    border-radius: 18px; overflow: hidden; box-shadow: var(--shadow); display: flex; flex-direction: column; align-items: center; color: var(--ink);
+    background: linear-gradient(180deg, #e3d3b4 0%, #d8c39d 52%, #8a6a4a 52.3%, #6f5236 100%); cursor: pointer; }
+  #forge-modal .fg-top { margin-top: 10px; display: flex; align-items: center; gap: 10px; background: rgba(255,252,244,0.93); border-radius: 14px;
+    box-shadow: var(--shadow); padding: 7px 8px 7px 12px; max-width: calc(100% - 16px); }
+  #forge-modal .fg-title { font-weight: 800; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #forge-modal .fg-quit { border: none; border-radius: 10px; padding: 6px 10px; font-weight: 600; font-size: 12px; cursor: pointer; background: #f5e0dc; color: #a2503f; font-family: inherit; white-space: nowrap; }
+  #forge-modal .fg-quit[hidden] { display: none; }
+  #forge-modal .fg-count { position: absolute; right: 12px; top: 62px; font-size: 12px; font-weight: 800; background: rgba(255,252,244,.93); padding: 4px 9px; border-radius: 10px; font-variant-numeric: tabular-nums; }
+  #forge-modal .fg-ring { position: absolute; left: 50%; top: 48%; width: 150px; height: 150px; transform: translate(-50%, -62%); pointer-events: none; }
+  #forge-modal .fg-target { position: absolute; inset: 45px; border-radius: 50%; border: 4px solid #ffd76a; box-shadow: 0 0 0 6px rgba(255,215,106,.25), inset 0 0 0 3px rgba(255,255,255,.6); }
+  #forge-modal .fg-shrink { position: absolute; inset: 45px; border-radius: 50%; border: 4px solid rgba(255,255,255,.95); opacity: 0; will-change: transform; }
+  #forge-modal .fg-pop { position: absolute; left: 50%; top: 82px; transform: translateX(-50%); font-weight: 900; font-size: 26px; color: #a86d00; opacity: 0; pointer-events: none; white-space: nowrap;
+    paint-order: stroke fill; -webkit-text-stroke: 5px #fffaf0; text-shadow: 0 3px 6px rgba(80,50,0,.35); }
+  #forge-modal .fg-pop.g { color: #2e7d4a; }
+  #forge-modal .fg-pop.m { color: #a8483a; }
+  #forge-modal .fg-pop.show { animation: fgPop .75s ease-out forwards; }
+  @keyframes fgPop { 0% { opacity: 0; transform: translate(-50%, 6px) scale(.9); } 25% { opacity: 1; transform: translate(-50%, 0) scale(1.06); } 70% { opacity: 1; transform: translate(-50%, -4px) scale(1); } 100% { opacity: 0; transform: translate(-50%, -10px) scale(1); } }
+  #forge-modal .fg-anvil { position: relative; width: 128px; height: 70px; margin-top: auto; margin-bottom: 96px; pointer-events: none; }
+  #forge-modal .fg-anvil.hit { animation: fgShake .18s ease-out; }
+  @keyframes fgShake { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(3px); } }
+  #forge-modal .fg-anvil .top { position: absolute; left: 6px; right: 0; top: 18px; height: 20px; background: linear-gradient(#7d8790, #5b646c); border-radius: 4px 14px 4px 4px; }
+  #forge-modal .fg-anvil .horn { position: absolute; left: -14px; top: 20px; width: 26px; height: 12px; background: #6c757d; border-radius: 0 0 0 14px; }
+  #forge-modal .fg-anvil .waist { position: absolute; left: 40px; width: 46px; top: 38px; height: 16px; background: #535b62; }
+  #forge-modal .fg-anvil .foot { position: absolute; left: 24px; width: 80px; top: 54px; height: 14px; background: #5b646c; border-radius: 3px; }
+  #forge-modal .fg-tool { position: absolute; left: 42px; top: -16px; font-size: 30px; transform: rotate(-20deg); }
+  #forge-modal .fg-hammer { position: absolute; right: -26px; top: -62px; font-size: 34px; transform: rotate(-35deg); transform-origin: 80% 80%; }
+  #forge-modal .fg-hammer.hit { animation: fgSwing .22s ease-out; }
+  @keyframes fgSwing { 0% { transform: rotate(-35deg); } 45% { transform: translate(-12px, 16px) rotate(25deg); } 100% { transform: rotate(-35deg); } }
+  #forge-modal .fg-bottom { position: absolute; left: 8px; right: 8px; bottom: 8px; background: rgba(255,252,244,0.93); border-radius: 16px; box-shadow: var(--shadow);
+    padding: 9px 12px; display: flex; flex-direction: column; gap: 5px; text-align: center; }
+  #forge-modal .fg-hint { font-size: 11.5px; opacity: .75; word-break: keep-all; }
+  #forge-modal .fg-strikes { display: flex; justify-content: center; gap: 7px; }
+  #forge-modal .sk { width: 15px; height: 15px; border-radius: 50%; background: #e7e1d2; border: 2px solid #d8d0bc; }
+  #forge-modal .sk.p { background: #e8b53a; border-color: #c99316; }
+  #forge-modal .sk.g { background: #8fd3a2; border-color: #5fb27a; }
+  #forge-modal .sk.m { background: #e6a79a; border-color: #c97d6d; }
+  #forge-modal .fg-result { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(330px, 88vw); display: none;
+    background: rgba(255,252,244,0.97); border-radius: 20px; box-shadow: var(--shadow); padding: 16px 14px; flex-direction: column; align-items: center; gap: 7px; text-align: center; color: var(--ink); cursor: default; }
+  #forge-modal .fg-result.show { display: flex; }
+  #forge-modal .r-ico { font-size: 44px; line-height: 1; }
+  #forge-modal .r-title { font-size: 18px; font-weight: 800; word-break: keep-all; }
+  #forge-modal .r-big { font-size: 15px; font-weight: 800; color: #8a6400; }
+  #forge-modal .r-sub { font-size: 12.5px; opacity: .8; word-break: keep-all; line-height: 1.45; }
+  #forge-modal .fg-meter { width: 100%; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+  #forge-modal .fg-meter div { font-size: 10.5px; font-weight: 800; padding: 5px 0; border-radius: 8px; background: #efe9da; color: #9a8f72; }
+  #forge-modal .fg-meter div.on { background: #e8b53a; color: #fff; }
+  #forge-modal .fg-ok { width: 100%; border: none; border-radius: 10px; padding: 10px 14px; font-weight: 800; font-size: 13.5px; cursor: pointer; background: var(--mint); color: var(--ink); font-family: inherit; }
   /* 활성 버프 HUD — 우측 상단 인벤토리 아래 */
   #buffs { position: fixed; top: calc(84px + var(--top-inset)); right: 16px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; pointer-events: none; }
   #buffs .buff { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.72); border-radius: 12px; padding: 5px 10px; font-size: 12px; font-weight: 600; box-shadow: var(--shadow);
@@ -2409,34 +2638,28 @@
     #hint-modal .tut-card:not(.as-card) #hint-emoji { left: 2px; top: -78px; bottom: auto; width: 66px; height: 66px; border-radius: 20px; font-size: 40px; }
   }
   #merchant-modal { z-index: 45; }
-  #merchant-modal .tut-card { width: min(400px, 92vw); }
-  .merchant-actions { display: flex; flex-direction: column; gap: 10px; }
-  .merchant-actions button { border: none; border-radius: 14px; min-height: 48px; padding: 12px 18px; font-weight: 700; font-size: 15px; cursor: pointer; box-shadow: var(--shadow); }
-  #merchant-primary { background: var(--mint); color: var(--ink); }
-  #merchant-secondary { background: #eef2ee; color: var(--ink); }
+  .merchant-card { width: min(640px, 100%); padding: 16px 18px 16px 92px; }
+  #merchant-title { display: block; min-height: 26px; }
+  #merchant-body { font-size: 14.5px; line-height: 1.55; margin: 4px 0 12px; white-space: pre-line; word-break: keep-all; }
   #buffs .buff .b-t { opacity: .7; font-variant-numeric: tabular-nums; }
 
   /* NPC 대화/퀘스트 모달 */
-  #npc-modal { position: fixed; inset: 0; z-index: 30; display: none; place-items: center; background: rgba(20,40,30,0.4); }
-  #npc-modal.show { display: grid; }
-  .npc-card { width: min(400px, 90vw); max-height: calc(100dvh - 24px); overflow-y: auto; background: #fff; border-radius: 22px; box-shadow: 0 20px 60px rgba(30,50,40,0.35); padding: 24px 24px 20px; color: var(--ink); }
-  .npc-head { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 17px; }
-  #npc-hearts { font-size: 13px; margin-left: auto; letter-spacing: 1px; }
-  #npc-emoji { font-size: 22px; }
-  #npc-line { margin: 12px 0 14px; font-size: 15px; line-height: 1.5; }
-  #npc-quest { background: #f4faf5; border-radius: 14px; padding: 12px 14px; margin-bottom: 16px; }
+  #npc-modal { z-index: 30; }
+  .npc-card { width: min(640px, 100%); padding: 16px 18px 16px 92px; }
+  .npc-card .tk-scroll { max-height: calc(100dvh - 72px - var(--top-inset, 0px)); overflow-y: auto; padding: 2px 4px 5px 3px; margin: -2px -4px -5px -3px; }
+  .npc-head { display: flex; align-items: center; gap: 8px; }
+  #npc-hearts { font-size: 12px; letter-spacing: 1px; }
+  #npc-line { margin: 4px 0 10px; font-size: 15px; line-height: 1.5; word-break: keep-all; }
+  #npc-quest { background: var(--nt); border-radius: 14px; padding: 9px 12px; margin-bottom: 12px; }
   #npc-quest.hidden { display: none; }
-  .nq-title { font-weight: 700; font-size: 13px; margin-bottom: 8px; }
-  .nq-how { font-size: 12.5px; line-height: 1.5; color: #3f7a55; background: #e8f5ec; border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; }
+  .nq-title { font-weight: 800; font-size: 13px; margin-bottom: 4px; }
+  .nq-how { font-size: 12.5px; line-height: 1.45; color: #5a4a38; margin-bottom: 7px; }
   .nq-how:empty { display: none; }
   #npc-qbar { height: 8px; border-radius: 5px; background: rgba(0,0,0,0.08); overflow: hidden; }
-  #npc-qfill { height: 100%; width: 0%; background: linear-gradient(90deg,#8fd6a0,#ffd28a); transition: width .3s; }
-  .nq-meta { display: flex; justify-content: space-between; font-size: 12px; opacity: .72; margin-top: 6px; }
-  .npc-actions { display: flex; gap: 10px; justify-content: flex-end; }
-  .npc-actions button { border: none; border-radius: 12px; padding: 10px 18px; font-weight: 600; cursor: pointer; transition: transform .1s; }
-  .npc-actions .ghost { background: #eef2ee; color: var(--ink); }
-  .npc-actions .primary { background: var(--mint); color: var(--ink); }
-  .npc-actions button:active { transform: scale(0.95); }
+  #npc-qfill { height: 100%; width: 0%; border-radius: 5px; background: var(--nc); transition: width .3s; }
+  .nq-meta { display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; margin-top: 5px; color: #5a4a38; }
+  .tk-acts.gift-pick { justify-content: center; }
+  .tk-acts.gift-pick button { padding: 9px 12px; white-space: nowrap; }
 
   /* 모바일 전용 "대화하기" 버튼 — NPC 근처에서만 표시 */
   #talk-btn { position: fixed; left: 50%; bottom: calc(310px + env(safe-area-inset-bottom)); transform: translateX(-50%);
@@ -2477,6 +2700,20 @@
   /* 🔌 저장이 끊겼다는 안내만은 모달(32~35)·미니게임(40)·승부(40)·인트로(55) 위에 선다.
      31 로 두면 요리·조각 미니게임 중에 세션이 죽었을 때 화면 뒤에 깔려, 정작 필요한 순간에 안 보인다. */
   #loading.save-stuck { z-index: 60; }
+  #loading.boot-bg { color: #fff; font-size: 15px; text-shadow: 0 1px 8px rgba(0,0,0,.25);
+    background: radial-gradient(ellipse at center, rgba(20,35,28,.05), rgba(20,35,28,.38)), #cfd8c4 url("assets/social/login-bg.webp") center / cover no-repeat; }
+  .load-pill { display: inline-flex; align-items: center; gap: 12px; padding: 13px 22px; border-radius: 999px; white-space: nowrap;
+    border: 1px solid rgba(255,255,255,.35); background: rgba(255,255,255,.16); -webkit-backdrop-filter: blur(16px) saturate(1.2); backdrop-filter: blur(16px) saturate(1.2);
+    box-shadow: 0 20px 60px rgba(30,50,40,.35); font-weight: 600; letter-spacing: -.02em; }
+  .load-dots { display: inline-flex; gap: 5px; }
+  .load-dots i { width: 6px; height: 6px; border-radius: 50%; background: #fff; opacity: .35; animation: load-blink 1.2s infinite; }
+  .load-dots i:nth-child(2) { animation-delay: .2s; }
+  .load-dots i:nth-child(3) { animation-delay: .4s; }
+  @keyframes load-blink { 40% { opacity: 1; transform: translateY(-2px); } }
+  @media (prefers-reduced-motion: reduce) { .load-dots i { animation: none; opacity: .8; } }
+  body.pre-world::before { content: ""; position: fixed; inset: 0; z-index: 5; pointer-events: none;
+    background: #cfd8c4 url("assets/social/login-bg.webp") center / cover no-repeat; transition: opacity .8s ease; }
+  body.pre-world.world-ready::before { opacity: 0; }
   /* 🧭 첫 실행 "어디서 알게 되셨어요?"(시안 A) — 로딩 위 가운데 카드·2열 보기. 로딩이 먼저 끝나도 크림 막으로 게임을 가린다 */
   #survey-card { position: fixed; inset: 0; z-index: 33; display: none; place-items: center; background: rgba(255,247,236,0.72); padding: 0 14px; }
   #survey-card.show { display: grid; }
@@ -2586,6 +2823,7 @@
     .sh-row button { padding: 6px 9px; font-size: 11.5px; }
     /* 작업대는 바닥값만 낮춘다 — 최대 높이는 --menu-bottom 을 물고 자동으로 다시 계산된다 */
     #cook-menu { --menu-bottom: calc(78px + env(safe-area-inset-bottom)); width: 94vw; }
+    .wb-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     /* 🍳 미니게임: 좁은 화면 — 카드 폭 확장, 큰 탭 버튼 유지(엄지 존) */
     #mg-card { width: 94vw; padding: 11px 12px calc(11px + env(safe-area-inset-bottom)); gap: 8px; margin-bottom: 6px; }
     #mg-title { font-size: 14px; }
@@ -2623,8 +2861,13 @@
     #npc-prompt { display: none; }
     /* 문/낚시 프롬프트: 조이스틱·액션버튼 위로 올려 겹침 방지 */
     /* 손님 이름+요리가 길어지면 화면 밖으로 나가므로 모바일에선 줄바꿈 허용 */
-    #mirror-talk { bottom: calc(226px + env(safe-area-inset-bottom)); padding: 12px 12px 22px 70px; min-height: 76px; }   /* 🪞 조이스틱·액션 버튼 위 — 문 프롬프트 자리(박스가 떠 있으면 그건 숨김) */
-    #mt-face { width: 46px; height: 46px; font-size: 22px; left: 12px; top: 12px; }
+    #mirror-talk { bottom: calc(226px + env(safe-area-inset-bottom)); padding: 14px 13px 22px; min-height: 0; }   /* 🪞 조이스틱·액션 버튼 위 — 문 프롬프트 자리(박스가 떠 있으면 그건 숨김) */
+    .tk-face { width: 52px; height: 52px; font-size: 25px; left: 12px; top: -26px; }
+    #mt-name, .npc-head, .chat-head, #merchant-title { padding-left: 58px; min-height: 22px; }
+    .npc-card, #chat-modal .chat-card, .merchant-card { padding: 14px 13px; }
+    .tk-modal { padding: 0 8px calc(14px + env(safe-area-inset-bottom)); }
+    .tk-acts button { flex: 1 1 auto; }
+    #chat-modal .chat-choices button { flex: none; }
     #mt-line { font-size: 13.5px; }
     #door-prompt, #fish-prompt { bottom: calc(234px + env(safe-area-inset-bottom)); font-size: 13px; white-space: normal; max-width: 88vw; width: max-content; word-break: keep-all; overflow-wrap: anywhere; text-align: center; }
     #catch-banner { bottom: calc(234px + env(safe-area-inset-bottom)); padding: 10px 18px; max-width: min(300px, 84vw); }
@@ -2638,6 +2881,7 @@
     #mist-choice button { font-size: 13px; padding: 10px 12px; }
     /* 모바일: 코치는 컨텍스트 슬롯(162px) — 토스트는 실측한 카드 높이 아래 */
     body.coaching #toast { top: calc(162px + var(--top-inset) + var(--coach-h, 110px) + 16px); }
+    .sl-grid { grid-template-columns: repeat(4, 1fr); }
   }
   /* ── 세로가 아주 짧은 화면(폰 가로·분할 화면) — 좌측 상단 한 자리를 두고 다투는 것들 ──
      📖 스토리 칩은 읽을거리고 📜 퀘스트 패널은 지금 할 일이다. 자리가 하나뿐이면 할 일이 이긴다
@@ -2661,6 +2905,7 @@
     body.is-touch #sea-btn { width: 104px; height: 104px; bottom: calc(12px + env(safe-area-inset-bottom)); left: calc(100% - 52px - max(20px, calc(env(safe-area-inset-right) + 8px))); }
     body.is-touch.sea-mode #door-prompt { bottom: calc(20px + env(safe-area-inset-bottom)); }
     body.is-touch.sea-mode.sea-busy #door-prompt { bottom: calc(128px + env(safe-area-inset-bottom)); }
+    body.is-touch.sea-mode #mirror-talk { bottom: calc(12px + env(safe-area-inset-bottom)); width: min(560px, calc(100vw - 280px)); }
     body.is-touch #sea-hud { top: calc(80px + var(--top-inset)); }
     body.is-touch #forage-hud { top: calc(80px + var(--top-inset)); width: min(52vw, 340px); }
     body.is-touch #feedback-tab { bottom: auto; right: max(12px, env(safe-area-inset-right)); padding: 6px 10px; font-size: 12px; }
@@ -2672,6 +2917,10 @@
     body.is-touch #npc-prompt { display: none; }
     body.is-touch #door-prompt, body.is-touch #fish-prompt, body.is-touch #zone-prompt { bottom: calc(104px + env(safe-area-inset-bottom)); }
     body.is-touch #toast, body.is-touch.coaching #toast, body.is-touch.hintbanner #toast, body.is-touch.decor-guide #toast, body.is-touch.mist-guide #toast { top: max(calc(72px + var(--top-inset)), var(--rcol-bottom, 0px)); left: auto; right: max(12px, env(safe-area-inset-right)); transform: none; max-width: min(260px, 34vw); font-size: 13px; padding: 8px 12px; }
+    body.is-touch #guide-card { top: calc(8px + var(--top-inset, 0px)); font-size: 12.5px; padding: 3px 12px; }
+    body.is-touch #guide-mark { font-size: 24px; }
+    body.is-touch #guide-edge { width: 34px; height: 34px; margin: -17px 0 0 -17px; font-size: 18px; }
+    body.is-touch #action-btn.point::after, body.is-touch #sea-btn.point::after { font-size: 22px; }
   }
   /* ── 폰 가로모드 — 아래에 붙는 메뉴 창(상점·꾸미기·가방·작업대…) ──
      세로 기준 bottom 90px(핫바 자리)을 그대로 두면 높이 390 대(iPhone 가로 + 홈 인디케이터 21px)에서
@@ -2698,6 +2947,14 @@
       flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y;
     }
     #sell-items, #buy-items, #dm-items, #kt-items { align-content: flex-start; }
+    .sl-grid { grid-template-columns: repeat(6, 1fr); gap: 6px; }
+    .sl-cell .sl-ico { font-size: 24px; }
+    #sell-sheet { flex-direction: row; align-items: center; padding: 6px 10px; gap: 8px; }
+    .ss-top .ss-ico { font-size: 24px; }
+    .ss-top .ss-sub { display: none; }
+    .ss-row { flex: 1 1 auto; }
+    #shop-menu .dm-actions #shop-close { padding: 8px 22px; font-size: 14px; }
+    body:has(#shop-menu.show) #hotbar { display: none; }
     #decor-menu .dm-hint, #cafe-menu .dm-hint, #kitchen-menu .dm-hint { font-size: 11px; line-height: 1.35; max-height: 2.8em; overflow-y: auto; }
     /* 🎀 꾸미기 — 프리뷰 + 목록 가로 배치는 유지, 높이는 창이 정한다(목록 42dvh 상한을 풀어 남는 자리를 다 쓴다) */
     #cos-menu { width: min(600px, 92vw); }
@@ -2722,10 +2979,7 @@
     .tut-card h2 { margin: 0 0 8px; font-size: 17px; }
     .tut-emoji { font-size: 30px; }
     #hire-modal .tut-card { max-height: calc(100dvh - 16px - var(--top-inset, 0px)); }
-    #merchant-body { margin-bottom: 10px !important; }
-    .merchant-actions { flex-direction: row-reverse; gap: 8px; }
-    .merchant-actions button { flex: 1 1 0; min-height: 40px; padding: 9px 14px; font-size: 14px; }
-    .tut-card > .dm-actions:last-child, .tut-card > .merchant-actions:last-child {
+    .tut-card > .dm-actions:last-child {
       position: sticky; bottom: -12px; margin-bottom: -12px; padding: 6px 0 12px;
       background: linear-gradient(rgba(255,255,255,0), #fff 35%); z-index: 1;
     }
@@ -2737,7 +2991,7 @@
     #settings-close { position: sticky; bottom: 0; margin-top: 10px; padding: 9px 16px; }
     /* 🗺️ 지도 — 안내문을 빼고 지도 하한을 낮춰 닫기까지 한 화면에 */
     #worldmap .market-hint { display: none; }
-    #wm-canvas-wrap { width: max(180px, min(100%, calc((100dvh - 150px) * 76 / 80))); margin-top: 4px; }
+    #wm-canvas-wrap { width: max(180px, min(100%, calc(100dvh - 150px))); margin-top: 4px; }
     #worldmap .dm-actions { margin-top: 8px; }
     .wm-quests { margin-top: 6px; }
   }
@@ -2841,12 +3095,13 @@
   </div>
 
   <!-- 💬 주민과 잡담 — 의뢰와 무관한 순수 플레이버(보상 없음). 하루 주민당 2번. -->
-  <div id="chat-modal">
-    <div class="chat-card">
-      <div class="chat-head"><span id="chat-emoji">💬</span><span id="chat-name"></span></div>
+  <div id="chat-modal" class="tk-modal">
+    <div class="chat-card tk-box">
+      <div class="tk-face" id="chat-emoji">💬</div>
+      <div class="chat-head"><span id="chat-name" class="tk-name"></span></div>
       <div class="chat-log" id="chat-log"></div>
-      <div class="chat-choices" id="chat-choices"></div>
-      <div class="chat-done" id="chat-done"></div>
+      <div class="chat-choices tk-acts" id="chat-choices"></div>
+      <div class="chat-done tk-acts" id="chat-done"></div>
     </div>
   </div>
 
@@ -2899,21 +3154,19 @@
 
   <!-- 작업대 메뉴 (도구 / 야외 / 선물 탭) — 요리는 🍳 자유주방으로 분리 -->
   <div id="cook-menu" class="panel">
-    <div class="dm-head">🔧 작업대</div>
+    <div class="dm-head">🔧 작업대 <span id="cook-coin" class="wb-coin"></span></div>
     <div class="ck-tabs">
       <button class="ck-tab active" data-tab="tool">🔧 도구</button>
       <button class="ck-tab" data-tab="out">🌷 야외</button>
       <button class="ck-tab" data-tab="gift">🎁 선물</button>
       <button class="ck-tab" data-tab="carve">🗿 조각</button>
     </div>
-    <span id="cook-inv" class="ck-inv"></span>
-    <div id="tool-items"></div>
-    <div id="out-items" style="display:none"></div>
-    <div id="gift-items" style="display:none"></div>
-    <div id="carve-items" style="display:none"></div>
-    <div class="dm-hint" id="cook-hint"></div>
+    <div id="cook-inv" class="wb-inv"></div>
+    <div id="wb-banner" hidden></div>
+    <div class="wb-body"><div id="wb-list"></div><div id="wb-sheet"></div></div>
     <div class="dm-actions"><button id="cook-close">닫기</button></div>
   </div>
+  <div id="forge-modal"></div>
 
   <!-- 🍳 자유주방 메뉴판 — 요리를 고르면 미니게임 시작 -->
   <div id="kitchen-menu" class="panel">
@@ -3091,16 +3344,27 @@
   <!-- 🗿 조각 공방 HUD — 3D 무대 위 최소 오버레이(캔버스 탭이 곧 조작이라 판은 안 가림) -->
   <div id="cv-layer">
     <div id="cv-top"><span id="cv-title">🗿 조각</span><button id="cv-quit">그만두기</button></div>
+    <span id="cv-gem">💎 +1</span>
     <div id="cv-bottom">
-      <div id="cv-stats"><span id="cv-prog">다듬기 0%</span><span id="cv-dmg">흠집 ○○○</span></div>
+      <div id="cv-stats"><span id="cv-prog">다듬기 0%</span><span id="cv-dmg">흠집 ○○○</span><span id="cv-combo">콤보 0</span></div>
+      <div id="cv-gauge"><div class="cvg-fill"></div><div class="cvg-tick" data-at="5" style="left:33.3%"><span>5 ×1.1</span></div><div class="cvg-tick" data-at="10" style="left:66.6%"><span>10 ×1.2</span></div><div class="cvg-tick" data-at="15" style="left:100%"><span>15 ×1.3</span></div></div>
       <div id="cv-hint">밝은 칩을 탭·드래그로 깎아내세요 — 어두운 밑그림을 탭하면 흠집!</div>
     </div>
     <div id="cv-result">
-      <div id="cvr-ico">💎</div>
-      <div id="cvr-title">걸작!</div>
-      <div id="cvr-sub"></div>
-      <div id="cvr-stats"></div>
-      <div class="dm-actions" style="justify-content:center"><button id="cvr-close">닫기</button></div>
+      <div id="cvr-main">
+        <div id="cvr-ico">💎</div>
+        <div id="cvr-title">걸작!</div>
+        <div id="cvr-sub"></div>
+        <div id="cvr-stats"></div>
+        <div id="cvr-choice" class="cvr-two"><button id="cvr-sell" class="cvr-sell"></button><button id="cvr-keep" class="cvr-go"></button></div>
+        <div id="cvr-closebar" class="dm-actions" style="justify-content:center"><button id="cvr-close">닫기</button></div>
+      </div>
+      <div id="cvr-wrap">
+        <div id="cvr-wtitle">포장해서 줄까요?</div>
+        <div id="cvr-papers"></div>
+        <div id="cvr-wcost">포장지 🪙15 · ❤️+1 더</div>
+        <div class="cvr-two"><button id="cvr-plain">그냥 간직</button><button id="cvr-wrapgo" class="cvr-go">🎀 포장하기</button></div>
+      </div>
     </div>
   </div>
 
@@ -3158,7 +3422,9 @@
       <button class="sh-tab active" data-tab="sell">💰 팔기</button>
       <button class="sh-tab" data-tab="buy">🛍️ 사기</button>
     </div>
+    <div id="sell-ad" class="rw-row"></div>
     <div id="sell-items"></div>
+    <div id="sell-sheet" hidden></div>
     <div id="buy-items" style="display:none"></div>
     <div class="dm-actions"><button id="shop-close">닫기</button></div>
   </div>
@@ -3510,22 +3776,26 @@
   </div>
 
   <!-- NPC 대화/퀘스트 모달 -->
-  <div id="npc-modal">
-    <div class="npc-card">
-      <div class="npc-head"><span id="npc-emoji">🙂</span><span id="npc-name"></span><span id="npc-hearts"></span></div>
-      <p id="npc-line"></p>
-      <div id="npc-quest">
-        <div class="nq-title" id="npc-qtitle"></div>
-        <div class="nq-how" id="npc-qhow"></div>
-        <div id="npc-qbar"><div id="npc-qfill"></div></div>
-        <div class="nq-meta"><span id="npc-qprog"></span><span id="npc-qreward"></span></div>
+  <div id="npc-modal" class="tk-modal">
+    <div class="npc-card tk-box">
+      <div class="tk-face" id="npc-emoji">🙂</div>
+      <div class="tk-scroll">
+        <div class="npc-head"><span id="npc-name" class="tk-name"></span><span id="npc-hearts"></span></div>
+        <p id="npc-line"></p>
+        <div id="npc-quest">
+          <div class="nq-title" id="npc-qtitle"></div>
+          <div class="nq-how" id="npc-qhow"></div>
+          <div id="npc-qbar"><div id="npc-qfill"></div></div>
+          <div class="nq-meta"><span id="npc-qprog"></span><span id="npc-qreward"></span></div>
+        </div>
+        <div class="npc-actions tk-acts" id="npc-actions"></div>
       </div>
-      <div class="npc-actions" id="npc-actions"></div>
     </div>
   </div>
 
   <!-- 🪞 거울 주민 대화 박스(B안) — js/mirror/talk-box.js -->
-  <div id="mirror-talk" role="dialog" aria-live="polite"><div id="mt-face"></div><div id="mt-name"></div><div id="mt-line"></div><div id="mt-next"></div></div>
+  <div id="guide-card" hidden></div><div id="guide-mark" hidden></div><div id="guide-edge" hidden></div>
+  <div id="mirror-talk" class="tk-box" role="dialog" aria-live="polite"><div id="mt-face" class="tk-face"></div><div id="mt-name" class="tk-name"></div><div id="mt-line"></div><div id="mt-next"></div></div>
 
   <!-- 🧪 E1 처치 시작 안내(아래 시트) — 내용은 js/spaces/e1-start.js 가 채운다 -->
   <div id="e1intro-modal" role="dialog" aria-modal="true" aria-labelledby="e1-title">
@@ -3604,14 +3874,14 @@
   </div>
 
   <!-- 🧙 상인 방문 모달 — 환영 거래(1회) → 좌판 안내 -->
-  <div id="merchant-modal">
-    <div class="tut-card">
-      <div class="tut-emoji">🧙</div>
-      <h2 id="merchant-title">방랑 상인</h2>
-      <p id="merchant-body" style="font-size:14px; line-height:1.6; opacity:.85; margin:0 0 18px; white-space:pre-line;"></p>
-      <div class="merchant-actions">
-        <button id="merchant-primary"></button>
+  <div id="merchant-modal" class="tk-modal">
+    <div class="merchant-card tk-box">
+      <div class="tk-face">🧙</div>
+      <div id="merchant-title" class="tk-name">방랑 상인</div>
+      <p id="merchant-body"></p>
+      <div class="merchant-actions tk-acts">
         <button id="merchant-secondary"></button>
+        <button id="merchant-primary" class="primary"></button>
       </div>
     </div>
   </div>
@@ -3699,7 +3969,7 @@
     </div>
   </div>
 
-  <div id="loading">고요한 숲 불러오는 중… 🌿</div>
+  <div id="loading" class="boot-bg"><span class="load-pill">고요한 숲 불러오는 중<span class="load-dots" aria-hidden="true"><i></i><i></i><i></i></span></span></div>
   <div id="survey-card"></div><!-- 🧭 첫 실행 설문(js/install-survey-ui.js) — #loading 안에 넣으면 setLoadWait 가 덮어쓴다 -->
 
   <!-- 🌐 로딩 화면만 먼저 번역한다 — 아래 큰 모듈 스크립트에 맡기면 늦는다.
@@ -3738,7 +4008,8 @@
   </script>
 
   <script type="module">
-    import { initAuth, signInWithGoogle, signInWithApple, requestEmailCode, verifyEmailCode, holdGuestForLogin, signInWithToss, signInWithPlayGames, signInWithGameCenter, deleteMyAccount, signInAsGuest, startLocalGuest, loadGame, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow, fetchNotices, insertInstallAttribution, insertInstallSurvey } from './js/supabase-client.js';
+    import { hasStoredAuthSession, loginFirst } from './js/boot-order.js';
+    import { preloadSupabase, initAuth, signInWithGoogle, signInWithApple, requestEmailCode, verifyEmailCode, holdGuestForLogin, signInWithToss, signInWithPlayGames, signInWithGameCenter, deleteMyAccount, signInAsGuest, startLocalGuest, loadGame, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow, fetchNotices, insertInstallAttribution, insertInstallSurvey } from './js/supabase-client.js';
     import { renderDailyCard } from './js/daily-card.js';
     import { hydrateIcons, setIcon, iconText, iconHtml, iconById, startEmojiIcons } from './js/icons/index.js';
     import { renderToast, renderTiles, buffTiles, fillTiles } from './js/ui-cards.js';
@@ -3749,26 +4020,31 @@
     import { savePhotoNative, sharePhotoNative, shareUrlNative } from './js/photo-native.js';   // 📱 앱: WebView 는 download·share 를 못 한다
     import { capPlugin } from './js/cap-bridge.js';
     import { bootTenjin, identifyTenjinUser, trackTenjinGameStart } from './js/tenjin-native.js';
-    import { SELL_ICO_G } from './js/data/places.js';
+    import { SELL_ICO_G } from './js/data/sell-icons.js';
+    import { sellList, clampQty, itemName } from './js/shop/sell-rules.js';
     import { FORAGE_KEYS, FORAGE_META } from './js/forage/logic.js';
     import { consumeExit, markExit } from './js/exit-flag.js';   // 🚪 나가기 직후엔 토스·플레이 앱 자동 연결을 건너뛴다 · 🗑️ 계정 삭제 뒤에도
     import { pickText, quoteLine, parseBody, leadEmoji, noticeTone } from './js/notices.js';   // 📮 소식함 — 언어별 본문·답장 원문 인용·'|' 표 파서
     import { isTouchDevice } from './js/touch-sim.js';
+    import { toneById, applyTone } from './js/ui/npc-tone.js';
     import { PLATFORM, IS_TOSS, IS_ITCH, IS_ANDROID, IS_IOS, IS_NATIVE } from './js/platform.js';   // 🔵 앱인토스 웹뷰 여부(로그인 버튼 전환) · 🎮 itch iframe 여부 · 📱 구글 플레이 앱
-    import { bootWorld, enterGame, requestSave, getGameState, atOrchard, mapLocked, npcAccept, npcClaim, Input, markNoticesSeen, resyncPurchases } from './js/game.js';
+    import { loadGameModules, bootWorld, enterGame, requestSave, getGameState, isAtOrchard, mapLocked, npcAccept, npcClaim, Input, markNoticesSeen, resyncPurchases, initPush, offerPush, playChestReveal, stopChestReveal, initControls, initCafeGuests, initNightVisit, initDuel, openDecorAlbum, villageMap, requestMapSnapshot } from './js/game-lazy.js';
     import { bootReferral, inviteBanner, referralOnPlay, openInviteSheet, referralEnabled } from './js/referral/index.js';   // 🤝 친구 초대
     import { signupGiftOnPlay } from './js/signup-gift/index.js';
     import { nudgeView } from './js/signup-gift/copy.js';
     import { bootAppBanner, mountAppBanner } from './js/app-banner-ui.js';
     import { mountLoginStore } from './js/login-store-ui.js';
     import { createLoginDwell } from './js/login-dwell.js';
-    import { initPush, offerPush } from './js/push-ui.js';   // 🔔 안드로이드 푸시 알림(안내 카드·설정 토글)   // 📲 웹 → 앱 유도 배너(웹 전용)
     import { renderDock } from './js/boat/dock-ui.js';
     import { resultCardHtml } from './js/boat/result-card.js';
     import { BOATS } from './js/boat/boats.js';
     import { RIVER_LEN } from './js/boat/consts.js';
-    import { playChestReveal, stopChestReveal } from './js/boat-chest-reveal.js';   // 🧰 보물상자 개봉 화면(R3)
     import { questPanelView } from './js/quest-panel-view.js';
+    import { createForgeGame } from './js/workbench/forge-ui.js';
+    import { toolView, outView, giftView, carveView, pickSel, allItems, tourPick } from './js/workbench/bench-view.js';
+    import { listHtml, sheetHtml } from './js/workbench/bench-ui.js';
+    import { benchSteps } from './js/onboarding/bench-steps.js';
+    import { FORGE_COPY } from './js/workbench/copy.js';
     import { trackLogin, trackEvent, setGaUser, onTrack, setInstallUserProps, setSurveyUserProps } from './js/analytics.js';
     import { bootMetaPixel, metaFromTrack, metaSignup } from './js/meta-pixel.js';   // 📣 Meta Pixel(웹 전용) — 광고 → 가입 → 결제 여정
     import { bootInstallReferrer, syncInstallAttribution, cachedInstallAttribution } from './js/install-referrer-boot.js';   // 📲 안드로이드 설치 채널(Play Install Referrer)
@@ -3777,7 +4053,6 @@
     import { skipLoginNow, keepGuestSession } from './js/exp-e2.js';
     import { armDeferredGuest, upgradeGuest } from './js/auth/deferred-guest.js';   // 🧪 E2 처치 — 익명 계정은 첫 입력 뒤에
     import { CONFIG, IS_DEV_SESSION } from './js/config.js';
-    import { initControls } from './js/controls.js';
     import { initMobileHud } from './js/hud/mobile-hud.js';
     import { initHudShell } from './js/hud/hud-shell.js';
     import { createMenuSheet } from './js/hud/menu-sheet.js';
@@ -3786,10 +4061,6 @@
     import { createSpotlight } from './js/hud/spotlight.js';
     import { pillHintKey, spotSteps, treeSteps } from './js/onboarding/spot-steps.js';
     import { Sound, startBGM, toggleBGM, isBGMOn } from './js/sound.js';
-    import { initCafeGuests } from './js/cafe-guests.js';   // ☕ 카페 손님 동적 생성(서버 프록시 경유)
-    import { initNightVisit } from './js/night-visit.js';   // 🦝 밤손님 판정·주민 쪽지(서버 프록시 경유)
-    import { initDuel } from './js/duel/index.js';   // 🐗🦝 밤손님 승부(흔적 조사 → 추격)
-    import { openDecorAlbum } from './js/decor-drops/index.js';
     import { t, LANG, setLang, translateDom, watchDom } from './js/i18n.js';   // 🌐 i18n(한국어 원문 키 사전)
     import { TUNING, isBetaA, betaDay } from './js/tuning.js';
 
@@ -3956,47 +4227,60 @@
     let lastNpcs = null;     // 주민 실시간 위치(미니맵·전체 지도 공용)
     let lastMapPos = null;   // 전체 지도의 "현재 위치" 마커 — 마을에 있을 때만 갱신
 
-    // ── 🗺️ 마을 지도 ────────────────────────────────────────────
-    //   미니맵과 같은 월드 좌표계를 쓰되, 큰 캔버스라 한글 지명을 붙일 수 있다.
-    //   섬 실루엣은 겹친 원들의 합집합 — 손으로 그린 듯한 동물의숲 톤을 코드로만 낸다.
-    // 🗺️ 미니맵과 전체 지도가 **함께 쓰는** 월드 범위(정사각). 여기 한 곳만 고친다.
-    //   예전엔 전체 지도가 {x0:-26, z0:-20, span:52}, 미니맵이 중심(0,0)·반경 30 으로 서로 달라
-    //   같은 장소가 두 화면에서 다른 자리에 보였고(싱크 어긋남), 둘 다 x=32 인 🍎과수원 입구를
-    //   범위 밖으로 흘려 지도 가장자리에 라벨만 잘려 보였다.
-    //   위치 범위는 박물관(-26,5) ~ 과수원(33,7), 설산(-15,-29.5) ~ 빛 공방(16.5,33.5).
-    //   서쪽 박물관·북쪽 세계수/설산·동쪽 과수원 음영·남쪽 빛 공방을 모두 담고 라벨 여백을 둔다.
-    //   전체 지도는 76:80, 정사각 미니맵은 contain 축척으로 같은 좌표계를 쓴다.
-    const MAP_VIEW = { x0: -34, z0: -41, w: 76, h: 80 };
-    const WM_LAND = [   // 섬 실루엣을 이루는 원들 [월드x, 월드z, 반경]
-      [0, 0, 17], [-10, 10, 12], [8, 16, 12], [-8, 20, 12], [5, 24, 11],
-      [-14, 0, 9], [14, -6, 10], [0, -14, 11], [16, 8, 10], [-13, -11, 9], [0, -21, 8], [-17, -16, 8],
-      [-12, -27, 10], [0, -31, 11],   // 🏔️ 설산·🌳 세계수 북쪽 능선, 마을 본섬과 연결
-      [-22, 5, 8],                    // 🏛️ 박물관 서쪽 곶
-      [16, 31, 7],                    // 🏮 빛 공방 남동쪽 숲 가장자리
-      [24, 2, 8], [32, 2, 7],   // 🍎 과수원 언덕길 — 마을 동쪽으로 뻗는다. 없으면 과수원이 바다 위에 뜬다
-    ];
-    const WM_WATER = [[16, 9, 6], [0, -21.5, 7]];        // 🏞️ 마을 호수 · 🛶 나루터 물가
-    const WM_GROVE = [[-13, 24, 9], [2, 25, 7]];         // 🍄 채집 숲 · 🌟 반딧불이 계곡(짙은 수풀)
+    let mapGeo = null;
+    const geo = () => (mapGeo ||= (({ MAP_VIEW, LAND_FRINGE, mapLand, mapWater, mapGrove }) => ({ VIEW: MAP_VIEW, LAND: mapLand(), SHORE: mapLand(LAND_FRINGE), WATER: mapWater(), GROVE: mapGrove() }))(villageMap()));
+    let mapShot = null, miniIsland = null;
 
     function paintIsland(c, px, pr, w, h) {
-      const blob = (list, grow = 0) => { c.beginPath(); list.forEach(([x, z, r]) => { const [a, b] = px(x, z); c.moveTo(a + pr(r + grow), b); c.arc(a, b, pr(r + grow), 0, 7); }); c.fill(); };
+      const trace = (pts) => { c.beginPath(); pts.forEach(([x, z], i) => { const [a, b] = px(x, z); if (i) c.lineTo(a, b); else c.moveTo(a, b); }); c.closePath(); };
+      const outline = (pts) => { trace(pts); c.fill(); };
+      const disc = (o, r) => { const [a, b] = px(o.x, o.z); c.beginPath(); c.arc(a, b, pr(r), 0, Math.PI * 2); c.fill(); };
+      const ring = (o, half) => { const [a, b] = px(o.x, o.z); c.beginPath(); c.arc(a, b, pr(o.r), 0, Math.PI * 2); c.lineWidth = pr(half * 2); c.stroke(); };
+      c.save();
       c.fillStyle = '#8fc9e2'; c.fillRect(0, 0, w, h);
-      c.fillStyle = '#f0e0b8'; blob(WM_LAND, 2.2);
-      c.fillStyle = '#a8d88a'; blob(WM_LAND, 0);
-      c.fillStyle = '#7cc06e'; blob(WM_GROVE, 0);
-      c.fillStyle = '#7fc4e6'; blob(WM_WATER, 0);
+      c.fillStyle = '#f0e0b8'; outline(geo().SHORE);
+      if (mapShot) {
+        const [a, b] = px(geo().VIEW.x0, geo().VIEW.z0);
+        c.save(); trace(geo().LAND); c.clip();
+        c.drawImage(mapShot, a, b, pr(geo().VIEW.w), pr(geo().VIEW.h));
+        c.restore();
+        c.lineWidth = Math.max(1, w / 260); c.strokeStyle = 'rgba(255,255,255,0.75)'; trace(geo().LAND); c.stroke();
+        c.restore();
+        return;
+      }
+      c.fillStyle = '#a8d88a'; outline(geo().LAND);
+      c.fillStyle = '#7cc06e'; geo().GROVE.forEach(g => disc(g, g.r));
+      geo().WATER.forEach(o => {
+        if (o.ring) {
+          c.strokeStyle = '#f0e0b8'; ring(o, o.half + o.bank);
+          c.strokeStyle = '#7fc4e6'; ring(o, o.half);
+          return;
+        }
+        if (o.sand) { c.fillStyle = '#f0e0b8'; disc(o, o.sand); }
+        c.fillStyle = '#7fc4e6'; disc(o, o.r);
+      });
+      c.restore();
+    }
+
+    function bakeMiniIsland(size) {
+      if (miniIsland && miniIsland.width === size) return miniIsland;
+      const cv = document.createElement('canvas'); cv.width = size; cv.height = size;
+      const c = cv.getContext('2d'), k = size / geo().VIEW.w;
+      paintIsland(c, (x, z) => [(x - geo().VIEW.x0) * k, (z - geo().VIEW.z0) * k], (r) => r * k, size, size);
+      miniIsland = cv;
+      return cv;
     }
 
     function drawWorldMap() {
       const cv = $('wm-canvas'); if (!cv) return;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const S = cv.clientWidth || 400;
-      const SH = Math.round(S * MAP_VIEW.h / MAP_VIEW.w);   // 캔버스 높이 = 박스 비율 그대로(늘어나지 않는다)
+      const SH = Math.round(S * geo().VIEW.h / geo().VIEW.w);   // 캔버스 높이 = 박스 비율 그대로(늘어나지 않는다)
       cv.width = Math.round(S * dpr); cv.height = Math.round(SH * dpr);
       const c = cv.getContext('2d');
       c.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const K = S / MAP_VIEW.w;                              // 월드 1 → 화면 px (x·z 공통 — 왜곡 없음)
-      const px = (wx, wz) => [(wx - MAP_VIEW.x0) * K, (wz - MAP_VIEW.z0) * K];
+      const K = S / geo().VIEW.w;                              // 월드 1 → 화면 px (x·z 공통 — 왜곡 없음)
+      const px = (wx, wz) => [(wx - geo().VIEW.x0) * K, (wz - geo().VIEW.z0) * K];
       const pr = (r) => r * K;
       paintIsland(c, px, pr, S, SH);
 
@@ -4033,7 +4317,7 @@
         [62, 2], [-62, 2], [0, 45], [0, -46],
       ];
       const hit = (r) => placed.some(q => Math.abs(q.x - r.x) * 2 < q.w + r.w && Math.abs(q.y - r.y) * 2 < q.h + r.h);
-      const list = (lastPlaces || []).slice().sort((a, b) => a.z - b.z);
+      const list = (lastPlaces || []).slice().sort((a, b) => (a.late ? 1 : 0) - (b.late ? 1 : 0) || a.z - b.z);
       c.textAlign = 'center'; c.textBaseline = 'middle';
 
       // 주민 — 지금 어디 있는지. 색 테두리가 이름표 배지와 같은 고유색이라 점만 봐도 누구인지 안다.
@@ -4146,6 +4430,7 @@
       if (!lastPlaces || lastPlace !== 'village') { ui.toast?.('🗺️ 마을 지도는 밖에서 볼 수 있어요 · 여기선 미니맵만'); return; }
       $('worldmap').classList.add('show');
       Input.setAnalog(0, 0);   // 다른 모달과 같은 규칙 — 열 때 조이스틱을 놓는다(안 그러면 뒤에서 계속 걷는다)
+      requestMapSnapshot();
       drawWorldMap();
     }
     function closeWorldMap() { $('worldmap').classList.remove('show'); }
@@ -4210,6 +4495,7 @@
         if (!stuck) { el.textContent = t('🌙 잠시만요, 마을을 찾는 중이에요'); return; }
         if (el.dataset.stuck === '1') return;          // 이미 띄웠으면 5초마다 다시 그리지 않는다
         el.dataset.stuck = '1';
+        el.classList.remove('boot-bg');
         fillReloadPrompt(el, t('🌙 연결이 오래 걸리네요. 마을은 그대로 있으니 다시 들어와 주세요'), 'save_load_reload');
       },
       // 🔌 놀던 중 저장이 끊겼다 — 세션 만료(토큰 폐기·다른 기기 로그아웃)나 서버 장애.
@@ -4228,6 +4514,7 @@
         }
         if (el.dataset.saveStuck === '1') return;     // 이미 떠 있으면 5초마다 다시 그리지 않는다
         el.dataset.saveStuck = '1';
+        el.classList.remove('boot-bg');
         el.classList.add('save-stuck');
         el.style.display = '';
         fillReloadPrompt(el, t('🌙 연결이 끊겨 저장이 멈췄어요. 다시 들어오면 이어서 놀 수 있어요'), 'save_stuck_reload');
@@ -4250,7 +4537,7 @@
         shell?.onInv(inv);
         if ($('bag-menu').classList.contains('show')) renderBag();     // 가방 열려 있으면 갱신
         if ($('decor-menu').classList.contains('show')) renderDecorItems();
-        if ($('cook-menu').classList.contains('show')) { cookTab === 'tool' ? renderTools() : cookTab === 'out' ? renderOutdoor() : renderGifts(); }
+        if ($('cook-menu').classList.contains('show')) renderBench();
         if ($('kitchen-menu').classList.contains('show')) renderKitchen(Input.getKitchen());   // 🍳 재료 변동 반영
         if ($('shop-menu').classList.contains('show')) renderShop();
         if ($('cafe-menu').classList.contains('show')) renderCafe(Input.getCafe());   // ☕ 재료 보유량 실시간 반영
@@ -4403,6 +4690,7 @@
       openNPCModal(view) {
         if (!view) return;
         $('npc-emoji').textContent = view.npc.emoji || '🙂';
+        applyTone(document.querySelector('#npc-modal .tk-box'), toneById(view.npc.id));
         $('npc-name').textContent = view.npc.name;
         const aff = Input.affinityOf(view.npc.id);
         $('npc-hearts').textContent = aff > 0 ? ('❤️'.repeat(Math.min(aff, 5)) + (aff > 5 ? `×${aff}` : '')) : '';
@@ -4418,7 +4706,7 @@
           $('npc-qprog').textContent = `${view.progress} / ${view.target}`;
           $('npc-qreward').textContent = '🎁 ' + view.reward;
         }
-        const actions = $('npc-actions'); actions.innerHTML = '';
+        const actions = $('npc-actions'); actions.innerHTML = ''; actions.classList.remove('gift-pick');
         const addBtn = (label, cls, fn) => { const b = document.createElement('button'); b.className = cls; b.textContent = label; b.addEventListener('click', fn); actions.appendChild(b); };
         if (view.mode === 'offer') {
           addBtn('수락하기', 'primary', () => { npcAccept(); ui.toast('📜 퀘스트를 수락했어요!'); closeNpc(); });
@@ -4713,8 +5001,10 @@
         b.classList.add('pulse'); clearTimeout(photoPulseT);
         photoPulseT = setTimeout(() => b.classList.remove('pulse'), 2200);
       },
-      showDailyCard(view, onOk) {
+      showDailyCard(view, onOk, adBtn) {
         renderDailyCard($('daily-body'), view);
+        $('daily-ad')?.remove();
+        if (adBtn) { const w = document.createElement('div'); w.id = 'daily-ad'; w.className = 'rw-row'; w.appendChild(adBtn); $('daily-ok').before(w); }
         $('daily-ok').onclick = () => { $('daily-modal').classList.remove('show'); onOk?.(); };
         Input.setAnalog(0, 0);
         $('daily-modal').classList.add('show');
@@ -4855,6 +5145,7 @@
       // 🧙 상인 모달 — primary/secondary 버튼 콜백을 매번 갈아끼운다(중복 리스너 방지: onclick 프로퍼티)
       openMerchantModal({ title, body, primary, secondary }) {
         $('merchant-title').textContent = title || '방랑 상인';
+        applyTone(document.querySelector('#merchant-modal .tk-box'), toneById('merchant'));
         $('merchant-body').textContent = body || '';
         const p = $('merchant-primary'), s = $('merchant-secondary');
         p.textContent = primary.label; p.onclick = () => primary.onClick();
@@ -4957,7 +5248,7 @@
         const el = $('door-prompt');
         nearDoorNow = !!text && !opts?.info;   // 안내만 있는 줄(누를 게 없음)은 액션 버튼을 문으로 바꾸지 않는다 — 🪞 단서 줄이 🚪 로 떠 "뭔지 모르겠다"(2026-10-09)
         const t = text || '';
-        doorIcon = /^(❗|⛏️|🍄|🛗|🪜|🧰|🪞|🚏|💬|💧|🎁|🔙|🎃|🪏)/u.test(t) ? t.match(/^(❗|⛏️|🍄|🛗|🪜|🧰|🪞|🚏|💬|💧|🎁|🔙|🎃|🪏)/u)[1]   // 🪞 거울 마을 — 문구 첫 이모지 = 버튼 아이콘(영어판도 같다). 키워드 사슬보다 먼저(「요리사 판다」가 🍳 로 떴다)
+        doorIcon = /^(❗|⛏️|🍄|🛗|🪜|🧰|🪞|🚏|💬|💧|🎁|🔙|🎃|🪏|🍽️|🍽|✋|🫳|🔪|🍳|🗑️)/u.test(t) ? t.match(/^(❗|⛏️|🍄|🛗|🪜|🧰|🪞|🚏|💬|💧|🎁|🔙|🎃|🪏|🍽️|🍽|✋|🫳|🔪|🍳|🗑️)/u)[1]   // 🪞 거울 마을 — 문구 첫 이모지 = 버튼 아이콘(영어판도 같다). 키워드 사슬보다 먼저(「요리사 판다」가 🍳 로 떴다)
           : t.includes('비료') ? '🌱' : t.includes('주문판') ? '📋'
           : (t.includes('서빙') || t.includes('재료 부족') || t.includes('카페')) ? '☕'
           : t.includes('요리') ? '🍳' : t.includes('만들기') ? '🔧' : t.includes('상점') ? '🛒' : t.includes('일차에 열려요') ? '🔒' : t.includes('랭킹') ? '🏆' : t.includes('닭장') ? '🐔'
@@ -4987,13 +5278,14 @@
       // 🎨 완성된 집 근처 여부 → 외관 꾸미기 버튼 표시 토글
       setNearHouse(on) { document.body.classList.toggle('near-house', on); },
       // 작업대(제작) 메뉴 열기 — 요리는 🍳 자유주방으로 분리
-      openCook(tab = 'tool') { showCookTab(tab); Input.setAnalog(0, 0); $('cook-menu').classList.add('show'); document.body.classList.add('menu-open'); },   // 🏗️ 밭 자재 작업대는 'out'(🌷야외 = 밭 시설) 탭으로 연다
+      openCook(tab = 'tool') { showCookTab(tab); Input.setAnalog(0, 0); $('cook-menu').classList.add('show'); document.body.classList.add('menu-open'); runBenchTour(); },   // 🏗️ 밭 자재 작업대는 'out'(🌷야외 = 밭 시설) 탭으로 연다
       // 🔥 화덕 가공 창 열기 — 슬롯 띠(상태)와 레시피(걸기)를 한 화면에
       openCraft(d) { renderCraft(d); Input.setAnalog(0, 0); $('craft-menu').classList.add('show'); document.body.classList.add('menu-open'); },
       // 🍳 자유주방 메뉴판 열기 (요리를 고르면 미니게임 시작)
       openKitchen(d) { renderKitchen(d); setKitchenTab('recipe'); Input.setAnalog(0, 0); $('kitchen-menu').classList.add('show'); document.body.classList.add('menu-open'); },
       carveProgress(p) { cvProgress(p); },                 // 🗿 조각 진행(game.js 레이캐스트 판정 → HUD)
       carveDone(res) { cvDone(res); },                     // 🗿 조각 정산(등급·보상 → 결과 카드)
+      carveGem() { cvGem(); },
       // 🏆 랭킹 게시판(마을 소품) → 리더보드 모달
       openLeaderboard() { openLb(); },
       // 상점 메뉴 열기
@@ -5059,7 +5351,7 @@
         const b = $('sea-btn');
         if (b.textContent !== label) b.textContent = label;
         const c = cls || '';
-        if (b.dataset.cls !== c) { b.classList.remove('go', 'hook', 'stop', 'door', 'wait'); if (c) b.classList.add(c); b.dataset.cls = c; }
+        if (b.dataset.cls !== c) { b.classList.remove('go', 'hook', 'stop', 'door', 'wait', 'idle'); if (c) b.classList.add(c); b.dataset.cls = c; }
       },
       setSeaRings(list) {
         const { cx, cy, w } = this.seaAnchor();
@@ -5119,6 +5411,12 @@
       },
       // 🗺️ 부팅 때 한 번 받는 지명 목록 — 미니맵 틱은 마을에서만 도니, 실내에서 시작해도 지도가 열리게
       setPlaces(list) { if (list && list.length) lastPlaces = list; },
+      setMapSnapshot(img) {
+        mapShot = img; miniIsland = null;
+        const need = Math.round(($('minimap')?.clientWidth || 0) * Math.min(window.devicePixelRatio || 1, 2));
+        if (need) bakeMiniIsland(need);
+        if ($('worldmap').classList.contains('show')) drawWorldMap();
+      },
       // 미니맵 — 캐릭터 대략 위치 + 주요 지형 (레티나 대응)
       setMinimap(d) {
         lastPlace = d.place || 'village';
@@ -5161,7 +5459,7 @@
           const pad = 9, inner = S - pad * 2, span = half * 2;
           const px = (wx, wz) => [pad + (wx - cx + half) / span * inner, pad + (wz - cz + half) / span * inner];
           // 공간별 바닥색(실내=나무, 동굴=암회색, 텃밭=풀색)
-          const floor = d.place === 'house' ? 'rgba(150,110,70,0.6)' : d.place === 'mine' ? 'rgba(74,74,84,0.75)' : d.place === 'cafe' ? 'rgba(190,145,95,0.7)' : d.place === 'river' ? 'rgba(90,160,200,0.7)' : d.place === 'mist' ? 'rgba(74,80,106,0.8)' : d.place === 'sea' ? 'rgba(70,150,195,0.75)' : d.place === 'museum' ? 'rgba(214,198,170,0.75)' : d.place === 'observatory' ? 'rgba(90,84,130,0.8)' : d.place === 'mountain' ? '#e9eef3' : d.place === 'neighbor' ? 'rgba(150,200,120,0.75)' : d.place === 'mirror' ? 'rgba(80,98,154,0.8)' : d.place === 'halloween' ? 'rgba(90,106,106,0.85)' : d.place === 'dream' ? 'rgba(110,90,170,0.8)' : 'rgba(120,180,110,0.7)';
+          const floor = d.place === 'house' ? 'rgba(150,110,70,0.6)' : d.place === 'mine' ? 'rgba(74,74,84,0.75)' : d.place === 'cafe' ? 'rgba(190,145,95,0.7)' : d.place === 'restaurant' ? 'rgba(201,154,99,0.75)' : d.place === 'river' ? 'rgba(90,160,200,0.7)' : d.place === 'mist' ? 'rgba(74,80,106,0.8)' : d.place === 'sea' ? 'rgba(70,150,195,0.75)' : d.place === 'museum' ? 'rgba(214,198,170,0.75)' : d.place === 'observatory' ? 'rgba(90,84,130,0.8)' : d.place === 'mountain' ? '#e9eef3' : d.place === 'neighbor' ? 'rgba(150,200,120,0.75)' : d.place === 'mirror' ? 'rgba(80,98,154,0.8)' : d.place === 'halloween' ? 'rgba(90,106,106,0.85)' : d.place === 'dream' ? 'rgba(110,90,170,0.8)' : 'rgba(120,180,110,0.7)';
           ctx.fillStyle = floor; ctx.fillRect(pad, pad, inner, inner);
           ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 1.5; ctx.strokeRect(pad, pad, inner, inner);
           // 랜드마크(밭/광맥/가구/출구)
@@ -5177,7 +5475,7 @@
           // 공간 이름 라벨(상단 작게)
           ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.font = 'bold 9px sans-serif';
           ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-          ctx.fillText(t(d.place === 'house' ? '🏠 실내' : d.place === 'mine' ? '⛏️ 동굴' : d.place === 'cafe' ? '☕ 카페' : d.place === 'river' ? '🛶 강' : d.place === 'mist' ? '🌫️ 안개 숲' : d.place === 'sea' ? '🌊 바다터' : d.place === 'museum' ? '🏛️ 박물관' : d.place === 'observatory' ? '🔭 천문대' : d.place === 'mountain' ? '🏔️ 설산' : d.place === 'orchard' ? '🍎 과수원' : d.place === 'neighbor' ? '🏡 이웃의 숲' : d.place === 'mirror' ? '🪞 거울 마을' : d.place === 'halloween' ? '🎃 달빛 유령 정원' : d.place === 'dream' ? '🌙 꿈의 숲' : '🌾 텃밭'), S / 2, pad + 1.5);
+          ctx.fillText(t(d.place === 'house' ? '🏠 실내' : d.place === 'mine' ? '⛏️ 동굴' : d.place === 'cafe' ? '☕ 카페' : d.place === 'restaurant' ? '🍽️ 식당' : d.place === 'river' ? '🛶 강' : d.place === 'mist' ? '🌫️ 안개 숲' : d.place === 'sea' ? '🌊 바다터' : d.place === 'museum' ? '🏛️ 박물관' : d.place === 'observatory' ? '🔭 천문대' : d.place === 'mountain' ? '🏔️ 설산' : d.place === 'orchard' ? '🍎 과수원' : d.place === 'neighbor' ? '🏡 이웃의 숲' : d.place === 'mirror' ? '🪞 거울 마을' : d.place === 'halloween' ? '🎃 달빛 유령 정원' : d.place === 'dream' ? '🌙 꿈의 숲' : '🌾 텃밭'), S / 2, pad + 1.5);
           // 플레이어
           let [pxx, pyy] = px(d.x, d.z);
           pxx = Math.max(pad + 3, Math.min(S - pad - 3, pxx)); pyy = Math.max(pad + 3, Math.min(S - pad - 3, pyy));
@@ -5185,15 +5483,15 @@
           drawExpandBadge();
           return;
         }
-        // 🗺️ 전체 지도와 **같은 박스**(MAP_VIEW)를 쓴다 — 예전엔 중심(0,0)·반경 30 이라
+        // 🗺️ 전체 지도와 **같은 박스**(geo().VIEW)를 쓴다 — 예전엔 중심(0,0)·반경 30 이라
         //   전체 지도와 장소가 어긋났고 x=32 인 🍎과수원이 범위 밖이었다.
-        const K = Math.min(S / MAP_VIEW.w, S / MAP_VIEW.h); // 정사각 미니맵 안에 전체 마을을 왜곡 없이 넣는다
-        const OX = (S - MAP_VIEW.w * K) / 2, OY = (S - MAP_VIEW.h * K) / 2;
-        const px = (wx, wz) => [(wx - MAP_VIEW.x0) * K + OX, (wz - MAP_VIEW.z0) * K + OY];
+        const K = Math.min(S / geo().VIEW.w, S / geo().VIEW.h); // 정사각 미니맵 안에 전체 마을을 왜곡 없이 넣는다
+        const OX = (S - geo().VIEW.w * K) / 2, OY = (S - geo().VIEW.h * K) / 2;
+        const px = (wx, wz) => [(wx - geo().VIEW.x0) * K + OX, (wz - geo().VIEW.z0) * K + OY];
         lastPlaces = d.places || lastPlaces;
         lastNpcs = d.npcs || lastNpcs;
         lastMapPos = { x: d.x, z: d.z };
-        paintIsland(ctx, px, (r) => r * K, S, S);
+        ctx.drawImage(bakeMiniIsland(need), 0, 0, S, S);
         if (d.target) {
           const [tx, ty] = px(d.target.x, d.target.z), pulse = 1 + 0.18 * Math.sin(performance.now() / 260);
           ctx.fillStyle = 'rgba(255,255,255,0.92)';
@@ -5257,7 +5555,7 @@
         if (!spot || Input.hintSeen('saplingOrchard') || saplingOrchardGuidePending) return;
         saplingOrchardGuidePending = true;
         const showWhenReady = () => {
-          if (Input.hintSeen('saplingOrchard') || !atOrchard) { saplingOrchardGuidePending = false; return; }
+          if (Input.hintSeen('saplingOrchard') || !isAtOrchard()) { saplingOrchardGuidePending = false; return; }
           // 🧭 신규 유저 기본 코치/다른 음영 안내가 끝난 뒤에 띄워 순서대로 보이게 한다.
           if (ui.coachActive?.()) { setTimeout(showWhenReady, 350); return; }
           saplingOrchardGuidePending = false;
@@ -5265,7 +5563,7 @@
           spot.run([{ key: 'sapling_plant', target: TOUCH ? '#action-btn' : '#hotbar', hand: TOUCH ? 'tap' : 'key',
             text: TOUCH ? '빈 흙자리 가까이 가면 씨앗 도구로 바뀌어요. 오른쪽 액션 버튼을 눌러 심어요.' : '빈 흙자리 가까이 가면 씨앗 도구로 바뀌어요. Space 또는 화면을 클릭해 심어요.',
             keys: TOUCH ? [] : ['Space'], done: 'act:sapling_plant' }],
-            { kind: 'sapling_orchard', skip: 'all', blocked: () => !atOrchard });
+            { kind: 'sapling_orchard', skip: 'all', blocked: () => !isAtOrchard() });
         };
         showWhenReady();
       },
@@ -5398,6 +5696,7 @@
     async function startTalk(npc) {
       talkClear();
       $('chat-emoji').textContent = npc.emoji;
+      applyTone(document.querySelector('#chat-modal .tk-box'), toneById(npc.id));
       $('chat-name').textContent = t(npc.name);
       $('chat-modal').classList.add('show');
 
@@ -5475,11 +5774,14 @@
     // 선물 주기 선택기 — 보유 선물 버튼으로 교체
     function showGiftPicker(view) {
       const actions = $('npc-actions'); actions.innerHTML = '';
+      actions.classList.add('gift-pick');
       const owned = Input.ownedGifts();
-      Input.getGifts().forEach(g => {
-        const n = owned[g.id] || 0; if (n <= 0) return;
+      const kept = Input.keptGifts().map(k => ({ id: k.id, ico: k.ico + (k.paper ? '🎀' : ''), name: k.name, n: k.n, love: k.love }));
+      const made = Input.getGifts().map(g => ({ id: g.id, ico: g.ico, name: g.name, n: owned[g.id] || 0, love: g.love || 1 }));
+      [...kept, ...made].forEach(g => {
+        const n = g.n; if (n <= 0) return;
         const b = document.createElement('button'); b.className = 'ghost';
-        b.textContent = `${g.ico} ${g.name} ×${n}`;
+        b.innerHTML = `<span>${g.ico}</span> <span>${g.name}</span> <span>×${n}</span> <span class="cv-heart">❤️+${g.love}</span>`;
         b.addEventListener('click', () => {
           const res = Input.giveGift(g.id);
           if (!res.ok) { ui.toast(res.msg || '줄 수 없어요'); return; }
@@ -5509,8 +5811,8 @@
           ? `② 나무 옆에 서면 🪓도끼를 저절로 들어요. 베면 집 지을 🪵목재가 나와요 ${A}`
           : `② 🪓도끼(2)로 나무를 베면 집 지을 🪵목재가 나와요 ${A}` },
       { key: 'sell', short: '🧙 상인 맞이하기',    text: `③ 🪵목재 5개를 모으면 떠돌이 🧙상인이 마을에 와요. 목재를 팔아 🪙코인 ${A}` },
-      { key: 'mine', short: '⛏️ 돌 캐기',    text: TOUCH ? `④ 다리 앞 ⛏️동굴에서 괭이로 집 지을 🪨돌 캐기 ${A}` : `④ 다리 앞 ⛏️동굴에서 괭이(2)로 집 지을 🪨돌 캐기 ${A}` },
       { key: 'house1', short: '🔨 집 바닥 깔기',   text: TOUCH ? '⑤ 집 터에 서면 🔨망치를 저절로 들어요. 🪵목재 15개로 바닥을 깔아요' : '⑤ 🔨망치(3)로 집 터에 🪵목재 15개를 넣어 바닥을 깔아요' },
+      { key: 'mine', short: '⛏️ 돌 캐기',    text: TOUCH ? `④ 다리 앞 ⛏️동굴에서 괭이로 집 지을 🪨돌 캐기 ${A}` : `④ 다리 앞 ⛏️동굴에서 괭이(2)로 집 지을 🪨돌 캐기 ${A}` },
       { key: 'house2', short: '🔨 벽 세우기',   text: '⑥ 🪵목재 20개·🪨돌 10개로 통나무 벽을 세워요' },
       { key: 'harvest', short: '🌾 밭에서 코인 벌기', text: TOUCH ? `⑦ ⛏️괭이로 갈고 🌰심고 💧물 주면 자라요. 다 자라면 거둬서 팔아요 ${A}` : `⑦ ⛏️괭이(2)로 갈고 🌰심고 💧물 주면 자라요. 다 자라면 낫(5)으로 거둬서 팔아요 ${A}` },
       { key: 'build', short: '🔨 지붕 올리기',   text: '⑧ 🪵목재 25개·🪨돌 15개·🪙코인 80으로 지붕을 올려 집 완성 🏠' },
@@ -5556,7 +5858,7 @@
     const STEP_DONE = {
       move: () => Input.hintSeen('spot_t_move') || Input.hintSeen('spot_pc_move'),
       toolpage: () => Input.hintSeen('spot_t_tool') || Input.hintSeen('spot_pc_set'),
-      sell: () => Input.hintSeen('merchantArrived'),
+      sell: () => Input.hintSeen('merchantMet'),
       mine: () => Input.houseStage() >= 2,
       house1: () => Input.houseStage() >= 1,
       house2: () => Input.houseStage() >= 2,
@@ -5736,8 +6038,44 @@
     }
 
     let started = false;
+    const storageOrNull = () => { try { return localStorage; } catch { return null; } };
+    const loginFirstBoot = loginFirst({ platform: PLATFORM, storedSession: hasStoredAuthSession(storageOrNull(), CONFIG.SUPABASE_URL) });
+    let worldP = null;
+    const nextPaint = () => new Promise(r => { requestAnimationFrame(() => requestAnimationFrame(r)); setTimeout(r, 120); });
+    function revealWorld() {
+      if (!document.body.classList.contains('pre-world')) return;
+      nextPaint().then(() => {
+        document.body.classList.add('world-ready');
+        setTimeout(() => document.body.classList.remove('pre-world', 'world-ready'), 900);
+      });
+    }
+    function showWorldFailed() {
+      const el = $('loading');
+      if (!el || el.dataset.worldFailed === '1') return;
+      el.dataset.worldFailed = '1';
+      el.classList.remove('boot-bg');
+      el.style.display = '';
+      fillReloadPrompt(el, t('🌙 연결이 오래 걸리네요. 마을은 그대로 있으니 다시 들어와 주세요'), 'boot_world_reload');
+    }
+    function ensureWorld() {
+      if (!worldP) {
+        worldP = loadGameModules().then(() => {
+          setIcon($('season-emoji'), Input.seasonIco());
+          initCafeGuests();
+          initNightVisit();
+          initDuel();
+          return bootWorld(ui);
+        }).then(() => {
+          $('loading').style.display = 'none';
+          revealWorld();
+        });
+        worldP.catch(showWorldFailed);
+      }
+      return worldP;
+    }
     async function enterPlay(via) {                  // 로그인 완료 → 실제 플레이 (via: login 이벤트 수단을 직접 줄 때만 — 🧪 E2 'guest_deferred')
       if (started) return; started = true;
+      try { await ensureWorld(); } catch { return; }
       $('login-screen').classList.remove('show');
       loginDwell.stop();
       if (TOUCH) document.body.classList.add('is-touch');
@@ -5812,6 +6150,7 @@
       startLocalGuest();
       //  입력 감지는 입장보다 먼저 건다 — enterPlay 가 던져도 계정은 만들어진다. enterGame 의 첫 loadGame 은
       //  enterPlay 안에서 동기로 시작되므로(입력 이벤트보다 먼저) 오프라인 판정이 뒤바뀌지 않는다.
+      try { await ensureWorld(); } catch { return; }
       armDeferredGuest(window, () => upgradeGuest({ signInAsGuest, loadGame, track: trackEvent }));
       await enterPlay('guest_deferred');
     }
@@ -5897,11 +6236,11 @@
     //  · 열리면 body.guide-open 으로 HUD 숨김 + keydown capture 로 게임 입력 차단(Esc 만 닫기)
     //  · 토스 번들은 CONFIG.GUIDE_BASE 가 웹 오리진 절대 URL 이라 같은 코드로 동작
     const guidePanel = $('guide-panel'), guideBody = $('guide-body'), guideChips = $('guide-chips');
-    let guideLoaded = false, guideOpenedAt = 0, guideCurSec = '', guideScrollY = 0, guideSecTimer = null, guideCssLinked = false;
+    let guideLoaded = false, guideOpenedAt = 0, guideCurSec = '', guideScrollY = 0, guideSecTimer = null, guideCssLinked = false, guideIo = null;
     const guideAbs = (rel) => new URL(rel, new URL(CONFIG.GUIDE_BASE, location.href)).href;
     function buildGuideChips(root) {
       guideChips.innerHTML = '';
-      const secs = [...root.querySelectorAll('section.gd-sec')];
+      const secs = [...root.querySelectorAll('section.gd-sec')].filter(s => !s.dataset.dev || root.classList.contains('dev-' + s.dataset.dev));
       for (const sec of secs) {
         const h2 = sec.querySelector('h2');
         const b = document.createElement('button');
@@ -5910,13 +6249,29 @@
         b.addEventListener('click', () => { sec.scrollIntoView({ block: 'start' }); });   // 즉시 이동 — 웹뷰·reduced-motion 에서도 확실히
         guideChips.appendChild(b);
       }
-      const io = new IntersectionObserver((entries) => {
+      guidePanel.querySelector('.gd-toc')?.remove();
+      const toc = document.createElement('nav'), tocList = document.createElement('ol');
+      toc.className = 'gd-toc'; toc.setAttribute('aria-label', LANG === 'en' ? 'Contents' : '목차');
+      for (const sec of secs) {
+        const part = sec.querySelector('[data-part]')?.dataset.part;
+        if (part) { const li = document.createElement('li'); li.className = 'gd-toc-part'; li.textContent = part; tocList.appendChild(li); }
+        const li = document.createElement('li'), a = document.createElement('a'), label = document.createElement('span');
+        a.href = '#' + sec.id; a.dataset.sec = sec.id;
+        label.textContent = sec.querySelector('h2')?.dataset.chip || sec.id;
+        a.append(label, document.createElement('i'));
+        a.addEventListener('click', (e) => { e.preventDefault(); sec.scrollIntoView({ block: 'start' }); });
+        li.appendChild(a); tocList.appendChild(li);
+      }
+      toc.appendChild(tocList); guidePanel.appendChild(toc);
+      guideIo?.disconnect(); guideCurSec = '';
+      const io = guideIo = new IntersectionObserver((entries) => {
         const hit = entries.filter(e => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
         if (!hit) return;
         const id = hit.target.id;
         if (id === guideCurSec) return;
         guideCurSec = id;
         for (const b of guideChips.children) b.classList.toggle('on', b.dataset.sec === id);
+        for (const a of toc.querySelectorAll('a')) a.classList.toggle('on', a.dataset.sec === id);
         guideChips.querySelector('.on')?.scrollIntoView({ inline: 'center', block: 'nearest' });
         clearTimeout(guideSecTimer);
         guideSecTimer = setTimeout(() => trackEvent('guide_section', { id }), 800);   // 스크롤 훑기 중엔 안 쏨
@@ -5933,7 +6288,7 @@
         // 🌐 영어 모드는 영어판 fragment(guide/guide-en.html) — 본문 문장은 사전(i18n)으로 못 바꾸므로 파일을 따로 둔다
         const res = await fetch(guideAbs(LANG === 'en' ? 'guide-en.html' : 'guide.html'));
         if (!res.ok) throw new Error('HTTP ' + res.status);
-        const wrap = document.createElement('div'); wrap.className = 'gd'; wrap.innerHTML = await res.text();
+        const wrap = document.createElement('div'); wrap.className = document.body.classList.contains('is-touch') ? 'gd dev-touch' : 'gd dev-pc'; wrap.innerHTML = await res.text();
         wrap.querySelectorAll('img[src]').forEach(img => { img.src = guideAbs(img.getAttribute('src')); });
         guideBody.replaceChildren(wrap);
         buildGuideChips(wrap);
@@ -6143,146 +6498,131 @@
     // ── 작업대 메뉴 (도구 / 야외 / 선물 탭) — 요리는 🍳 자유주방으로 분리 ──
     let cookTab = 'tool';
     // 🌟 bug(반딧불이)가 빠져 있어 촘촘한 포충망·금빛 포충망 비용이 '🪵12 🪵2' 처럼 목재로 보였다(2026-09-24 리뷰)
-    const ico = (k) => ({ fish: '🐟', crop: '🥕', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', seed: '🌰', coins: '🪙', bug: '🌟' })[k] || '🪵';
-    function updateCookInv() { $('cook-inv').textContent = `🪵 ${lastInv.wood}  🥕 ${lastInv.crop}  🐟 ${lastInv.fish || 0}  🪨 ${lastInv.stone || 0}  ⚫ ${lastInv.coal || 0}  💎 ${lastInv.gem || 0}`; }
-    function renderTools() {
-      updateCookInv();
-      const owned = Input.ownedUpgrades();
-      const box = $('tool-items'); box.innerHTML = '';
-      // 🌡️ 내일 서리·태풍 예보가 있으면 맨 위에 덮개 설치 항목(예고일 한정)
-      const wp = Input.getWeatherPrep();
-      if (wp.severe) {
-        const s = wp.info;
-        const costStr = Object.entries(wp.cost).map(([k, n]) => ico(k) + n).join(' ');
-        const el = document.createElement('div');
-        el.className = 'ck-item' + (wp.covered ? ' owned' : '');
-        el.innerHTML = `<span class="ck-ico">🛡️</span><span class="ck-name">밭 덮개</span><span class="ck-buff">내일 ${s.ico} ${s.name} 예보 — 심어둔 밭 ${wp.planted}곳을 지켜요</span><span class="ck-cost">${wp.covered ? '✅ 설치됨' : costStr}</span>`;
-        if (!wp.covered) el.addEventListener('click', () => {
-          const res = Input.craftCover();
-          ui.toast(res.ok ? '🛡️ 덮개 설치 완료 — 내일 밭이 안전해요!' : (res.msg || '만들 수 없어요'));
-          if (res.ok) renderTools();
-        });
-        box.appendChild(el);
+    const ico = (k) => ({ fish: '🐟', crop: '🥕', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', seed: '🌰', coins: '🪙', bug: '🌟', star: '⭐', glow: '✨' })[k] || SELL_ICO_G[k] || '🪵';
+    const WB_INV = ['wood', 'crop', 'fish', 'stone', 'coal', 'gem'];
+    const WB_WIDE = '(min-width: 700px)';
+    const wbSel = { tool: null, out: null, gift: null, carve: null };
+    function updateCookInv() {
+      $('cook-coin').textContent = `🪙 ${lastInv.coins || 0}`;
+      $('cook-inv').innerHTML = WB_INV.map(k => `<span>${ico(k)} ${lastInv[k] || 0}</span>`).join('');
+    }
+    let forgeGame = null;
+    function forgeGameOf() {
+      forgeGame ||= createForgeGame($('forge-modal'), {
+        onAbort: () => Input.forgeAbort(),
+        onFinish: (score) => Input.forgeFinish(score),
+        onHit: (pts) => (pts ? Sound.chop() : Sound.blip()),
+        onClose: (tool) => { wbSel.tool = tool || wbSel.tool; ui.openCook('tool'); },
+      });
+      return forgeGame;
+    }
+    function startForge(tool) {
+      const v = (Input.getForge?.()?.tools || []).find(x => x.tool === tool);
+      if (!v || v.check.state === 'short') { ui.toast(FORGE_COPY.short); return; }
+      const res = Input.forgeBegin(v.tool);
+      if (!res.ok) { ui.toast(res.msg || FORGE_COPY.short); return; }
+      closeCook();
+      forgeGameOf().open({ tool: v.tool, star: res.star, ico: v.ico });
+    }
+    function benchView(t) {
+      const inv = lastInv;
+      if (t === 'tool') {
+        const fv = Input.getForge?.() || {};
+        return toolView({ upgrades: Input.getUpgrades(), owned: Input.ownedUpgrades(), stars: fv.tools || [], forge: fv.forge, tier2: Input.getTier2?.() || [], weather: Input.getWeatherPrep(), inv });
       }
-      Input.getUpgrades().forEach(u => {
-        const isOwned = owned[u.id];
-        const enough = Object.entries(u.cost).every(([k, n]) => (lastInv[k] || 0) >= n);
-        const costStr = Object.entries(u.cost).map(([k, n]) => ico(k) + n).join(' ');
-        const el = document.createElement('div');
-        el.className = 'ck-item' + (isOwned ? ' owned' : (enough ? '' : ' off'));
-        el.innerHTML = `<span class="ck-ico">${u.ico}</span><span class="ck-name">${u.name}</span><span class="ck-buff">${u.desc}</span><span class="ck-cost">${isOwned ? '✅ 보유중' : costStr}</span>`;
-        if (!isOwned) el.addEventListener('click', () => {
-          const res = Input.craftUpgrade(u.id);
-          if (!res.ok) { ui.toast(res.msg || '만들 수 없어요'); return; }
-          ui.toast(`${u.ico} ${res.name} 제작 완료!`);
-          renderTools();
-        });
-        box.appendChild(el);
-      });
-      // 🔨 금빛 도구(2단계) — 📜 도면을 받은 것만 보인다. 하나도 없으면 어디서 얻는지 한 줄로만 알린다
-      const t2 = Input.getTier2?.() || [];
-      const known = t2.filter(x => x.state !== 'noBlueprint');
-      if (!known.length) {
-        const el = document.createElement('div');
-        el.className = 'ck-item off';
-        el.innerHTML = `<span class="ck-ico">📜</span><span class="ck-name">금빛 도구</span><span class="ck-buff">주민과 친해지면(❤️6) 도면을 줘요</span><span class="ck-cost">🔒</span>`;
-        box.appendChild(el);
+      if (t === 'out') return outView({ outdoor: Input.getOutdoor(), stored: Input.getOutdoorStored?.() || {}, atFarm: !!Input.isAtFarm?.(), inv });
+      if (t === 'gift') return giftView({ gifts: Input.getGifts(), owned: Input.ownedGifts(), kept: Input.keptGifts(), inv });
+      return carveView({ workshop: Input.getWorkshop() });
+    }
+    function benchDone(msg) { ui.toast(msg); renderBench(); }
+    function benchGo(it) {
+      const a = it.act;
+      if (!a || it.btn.disabled) return;
+      if (a.kind === 'forge') { startForge(a.tool); return; }
+      if (a.kind === 'upgrade') {
+        const res = Input.craftUpgrade(a.id);
+        if (!res.ok) { ui.toast(res.msg || '만들 수 없어요'); return; }
+        benchDone(`${it.ico} ${res.name} 제작 완료!`);
+        return;
       }
-      known.forEach(x => {
-        const costStr = Object.entries(x.cost).map(([k, n]) => ico(k) + n).join(' ');
-        const buff = x.state === 'needTier1' ? `먼저 ${x.tier1}을(를) 만들어요` : '금·흑단·보석 — 모습이 바뀌어요';
-        const el = document.createElement('div');
-        el.className = 'ck-item' + (x.state === 'owned' ? ' owned' : (x.state === 'ready' ? '' : ' off'));
-        el.innerHTML = `<span class="ck-ico">${x.ico}</span><span class="ck-name">✨ ${x.name}</span><span class="ck-buff">${buff}</span><span class="ck-cost">${x.state === 'owned' ? '✅ 보유중' : costStr}</span>`;
-        if (x.state !== 'owned') el.addEventListener('click', () => {
-          const res = Input.craftTier2(x.tool);
-          if (!res.ok) { ui.toast(res.msg || '만들 수 없어요'); return; }
-          ui.toast(`✨ ${res.name} 제작 완료!`);
-          renderTools();
-        });
-        box.appendChild(el);
-      });
+      if (a.kind === 'cover') {
+        const res = Input.craftCover();
+        if (!res.ok) { ui.toast(res.msg || '만들 수 없어요'); return; }
+        benchDone('🛡️ 덮개 설치 완료 — 내일 밭이 안전해요!');
+        return;
+      }
+      if (a.kind === 'tier2') {
+        const res = Input.craftTier2(a.tool);
+        if (!res.ok) { ui.toast(res.msg || '만들 수 없어요'); return; }
+        benchDone(`✨ ${res.name} 제작 완료!`);
+        return;
+      }
+      if (a.kind === 'gift') {
+        const res = Input.craftGift(a.id);
+        if (!res.ok) { ui.toast(res.msg || '재료가 부족해요'); return; }
+        benchDone(`${it.ico} ${res.name} 제작! 주민에게 대화 → 선물 주기`);
+        return;
+      }
+      if (a.kind === 'place') {
+        const o = Input.getOutdoor().find(x => x.id === a.id);
+        if (!o) return;
+        Input.selectOutdoor(o.id); closeCook();
+        placingDecorItem = o; refreshActionIcon();
+        ui.toast(`${o.ico} ${o.name} · ${TOUCH ? '⭕' : 'Space'}로 놓기`, 2400, { chips: true });
+        return;
+      }
+      if (a.kind === 'carve') {
+        const st = Input.carveStart(a.id);
+        if (!st.ok) { ui.toast(st.msg || '재료가 부족해요'); return; }
+        closeCook();
+        openCarveHud(st);
+      }
     }
-    function renderOutdoor() {
+    function renderBench() {
       updateCookInv();
-      const box = $('out-items'); box.innerHTML = '';
-      const atFarm = !!Input.isAtFarm?.();
-      Input.getOutdoor().forEach(o => {
-        if (o.farm && !atFarm) return;   // 🏗️ 밭 시설은 텃밭 안 작업대 목록에서만(마을에선 놓을 수 없으니 보여 주지 않는다)
-        if (o.hidden && !((Input.getOutdoorStored?.() || {})[o.id] > 0)) return;   // 🌾 좌판·보상 장식은 보관분이 있을 때만
-        const costStr = Object.entries(o.cost).map(([k, n]) => ico(k) + n).join(' ');
-        const stored = (Input.getOutdoorStored?.() || {})[o.id] || 0;   // 🧺 보관분 — 값 없이 꺼내 놓는다
-        const enough = stored > 0 || Object.entries(o.cost).every(([k, n]) => (lastInv[k] || 0) >= n);
-        const el = document.createElement('div');
-        el.className = 'ck-item' + (enough ? '' : ' off');
-        el.innerHTML = `<span class="ck-ico">${o.ico}</span><span class="ck-name">${o.name}</span><span class="ck-buff">${o.desc}</span><span class="ck-cost">${stored > 0 ? `보유 ${stored}` : costStr}</span>${o.tag ? `<span class="ck-tag">${o.tag.label}</span><span class="ck-tag">${o.tag.until}</span>` : ''}`;
-        el.addEventListener('click', () => {
-          if (!enough) { ui.toast('재료가 부족해요'); return; }
-          Input.selectOutdoor(o.id); closeCook();
-          placingDecorItem = o; refreshActionIcon();   // 액션버튼 = 설치 버튼
-          ui.toast(`${o.ico} ${o.name} · ${TOUCH ? '⭕' : 'Space'}로 놓기`, 2400, { chips: true });
-        });
-        box.appendChild(el);
-      });
-    }
-    function renderGifts() {
-      updateCookInv();
-      const owned = Input.ownedGifts();
-      const box = $('gift-items'); box.innerHTML = '';
-      Input.getGifts().forEach(g => {
-        const costStr = Object.entries(g.cost).map(([k, n]) => ico(k) + n).join(' ');
-        const enough = Object.entries(g.cost).every(([k, n]) => (lastInv[k] || 0) >= n);
-        const have = owned[g.id] || 0;
-        const el = document.createElement('div');
-        el.className = 'ck-item' + (enough ? '' : ' off');
-        el.innerHTML = `<span class="ck-ico">${g.ico}</span><span class="ck-name">${g.name}${have ? ` ×${have}` : ''}</span><span class="ck-buff">주민 선물</span><span class="ck-cost">${costStr}</span>`;
-        el.addEventListener('click', () => {
-          const res = Input.craftGift(g.id);
-          if (!res.ok) { ui.toast(res.msg || '재료가 부족해요'); return; }
-          ui.toast(`${g.ico} ${res.name} 제작! 주민에게 대화 → 선물 주기`);
-          renderGifts();
-        });
-        box.appendChild(el);
-      });
-    }
-    // ── 🗿 조각 주문 탭 — 오늘의 주문 3건(자정 갱신). 클릭 → 재료 소비 + 공방 미니게임 ──
-    function renderCarve() {
-      updateCookInv();
-      const d = Input.getWorkshop();
-      const box = $('carve-items'); box.innerHTML = '';
-      d.orders.forEach(o => {
-        const costStr = o.cost.map(c => ico(c.k) + c.need).join(' ');
-        const el = document.createElement('div');
-        el.className = 'ck-item' + (o.done ? ' owned' : (o.ready ? '' : ' off'));
-        el.innerHTML = `<span class="ck-ico">${o.ico}</span><span class="ck-name">${o.name}</span>
-          <span class="ck-buff">오늘의 주문 · 보상 🪙${o.pay}${o.best ? ` · ⭐최고 ${o.best}점` : ''}</span>
-          <span class="ck-cost">${o.done ? '✅ 오늘 완성' : costStr}</span>`;
-        if (!o.done) el.addEventListener('click', () => {
-          const st = Input.carveStart(o.id);
-          if (!st.ok) { ui.toast(st.msg || '재료가 부족해요'); return; }
-          closeCook();
-          openCarveHud(st);
-        });
-        box.appendChild(el);
-      });
+      const v = benchView(cookTab);
+      const sel = wbSel[cookTab] = pickSel(v, wbSel[cookTab]);
+      const banner = $('wb-banner');
+      banner.hidden = !v.banner;
+      banner.textContent = v.banner;
+      const list = $('wb-list'), keep = list.scrollTop;
+      list.innerHTML = listHtml(v, sel);
+      list.scrollTop = keep;
+      list.querySelectorAll('.wb-cell').forEach(b => b.addEventListener('click', () => { wbSel[cookTab] = b.dataset.id; renderBench(); }));
+      const it = allItems(v).find(i => i.id === sel);
+      const sheet = $('wb-sheet');
+      sheet.innerHTML = it ? sheetHtml(it, ico) : '';
+      sheet.querySelector('.wb-go')?.addEventListener('click', () => benchGo(it));
     }
     function showCookTab(t) {
+      if (t !== cookTab) $('wb-list').scrollTop = 0;
       cookTab = t;
-      [...document.querySelectorAll('.ck-tab')].forEach(b => b.classList.toggle('active', b.dataset.tab === t));
-      $('tool-items').style.display = t === 'tool' ? 'flex' : 'none';
-      $('out-items').style.display = t === 'out' ? 'flex' : 'none';
-      $('gift-items').style.display = t === 'gift' ? 'flex' : 'none';
-      $('carve-items').style.display = t === 'carve' ? 'flex' : 'none';
-      $('cook-hint').innerHTML = t === 'tool'
-        ? '<b>영구</b> 도구 강화 · 🪵목재/🥕작물/🐟물고기 소비 — 요리는 옆의 🍳 자유주방에서!'
-        : t === 'out'
-          ? '장식을 고르고 <b>원하는 곳</b>에서 설치 · 🪵목재/🥕작물 소비'
-          : t === 'gift'
-            ? '선물을 만들어 <b>주민과 대화 → 선물 주기</b>로 친밀도↑'
-            : '매일 바뀌는 <b>조각 주문 3건</b> — 밑그림만 남기고 깎으면 완성! 흠집 없이 깎을수록 보상↑';
-      if (t === 'tool') renderTools(); else if (t === 'out') renderOutdoor(); else if (t === 'gift') renderGifts(); else renderCarve();
+      document.querySelectorAll('#cook-menu .ck-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
+      renderBench();
     }
-    document.querySelectorAll('.ck-tab').forEach(b => b.addEventListener('click', () => showCookTab(b.dataset.tab)));
+    function runBenchTour() {
+      if (!spot || Input.hintSeen('spotBench') || spot.active()) return;
+      const back = cookTab;
+      wbSel.tool = tourPick(benchView('tool')) || wbSel.tool;
+      showCookTab('tool');
+      const hasStars = !!document.querySelector('#wb-list .wb-cell[data-star]');
+      const open = () => $('cook-menu').classList.contains('show');
+      let stepped = false;
+      const markSeen = () => { Input.markHintsSeen(['spotBench']); requestSave(); };
+      setTimeout(() => {
+        if (!open() || spot.active()) return;
+        spot.run(benchSteps({ wide: matchMedia(WB_WIDE).matches, hasStars }), {
+          kind: 'bench', skip: 'all',
+          blocked: () => !open(),
+          pause: () => !!document.querySelector('[id$="-modal"].show, #boat-shop.show, #worldmap.show') || document.body.classList.contains('mg-open'),
+          onStep: () => { stepped = true; },
+        }).then(() => {
+          if (stepped || open()) markSeen();
+          if (back !== 'tool' && open()) showCookTab(back);
+        });
+      }, 60);
+    }
+    document.querySelectorAll('#cook-menu .ck-tab').forEach(b => b.addEventListener('click', () => showCookTab(b.dataset.tab)));
     function closeCook() { $('cook-menu').classList.remove('show'); document.body.classList.remove('menu-open'); }
     $('cook-close').addEventListener('click', closeCook);
 
@@ -6426,7 +6766,9 @@
 
     // 🔥 가공 창 — game.js 의 craftPanelData() 가 준 데이터를 그리기만 한다.
     //    상태는 글자가 아니라 기호로(✓ 🔥) — 칸이 3개만 되어도 문구가 두 줄로 깨졌다(시안 실측).
+    let craftStationNow = null;
     function renderCraft(d) {
+      craftStationNow = d.station;
       $('craft-title').textContent = d.title;
       $('craft-ask').textContent = d.ask;
       $('craft-hint').innerHTML = d.hint;
@@ -6449,6 +6791,9 @@
         ? `${ready[0].ico} ${ready[0].name} 받기`
         : `${d.claimAll} (${ready.length})`;
       claim.onclick = () => { const nd = Input.craftClaim(d.station); if (nd) renderCraft(nd); };
+      $('craft-ad')?.remove();
+      const adBtn = ready.length ? null : Input.craftAdButton(d.station, (nd) => { if ($('craft-menu').classList.contains('show') && craftStationNow === nd.station) renderCraft(nd); });
+      if (adBtn) { const w = document.createElement('div'); w.id = 'craft-ad'; w.className = 'rw-row'; w.appendChild(adBtn); claim.after(w); }
 
       const list = $('craft-recipes');
       list.innerHTML = '';
@@ -7054,11 +7399,14 @@
 
     // ── 🗿 조각 공방 HUD — 판정·연출은 game.js(캔버스 소유), 여기는 진행 표시 + 결과 카드만 ──
     let CV = { active: false };
+    const CV_PAPERS = [['kraft', '크라프트'], ['floral', '꽃무늬'], ['starry', '별밤']];
     function openCarveHud(st) {
-      CV.active = true;
+      CV = { active: true, kept: null, paper: 'floral', gemT: 0 };
       $('cv-title').textContent = `${st.ico} ${st.name}`;
-      $('cv-result').classList.remove('show');
-      cvProgress({ removed: 0, waste: st.waste, dmg: 0 });
+      $('cv-result').classList.remove('show', 'wrap');
+      $('cv-gem').classList.remove('show');
+      $('cv-hint').textContent = st.grain ? '결 따라 길게 그으면 여러 칸이 한 번에 깎여요' : '밝은 칩을 탭·드래그로 깎아내세요 — 어두운 밑그림을 탭하면 흠집!';
+      cvProgress({ removed: 0, waste: st.waste, dmg: 0, combo: 0, best: 0 });
       $('cv-layer').classList.add('show');
       document.body.classList.add('menu-open'); document.body.classList.add('mg-open'); document.body.classList.add('cv-open');   // 마을 UI 걷고 무대에 몰입
       Input.setAnalog(0, 0);
@@ -7066,14 +7414,53 @@
     function cvProgress(p) {
       $('cv-prog').textContent = `다듬기 ${Math.round(p.removed / p.waste * 100)}%`;
       $('cv-dmg').textContent = `흠집 ${'●'.repeat(p.dmg)}${'○'.repeat(Math.max(0, 3 - p.dmg))}`;
+      const combo = p.combo || 0, best = p.best || 0;
+      $('cv-combo').textContent = `콤보 ${combo}`;
+      $('cv-gauge').querySelector('.cvg-fill').style.width = `${Math.min(combo, 15) / 15 * 100}%`;
+      $('cv-gauge').querySelectorAll('.cvg-tick').forEach(t => t.classList.toggle('hit', best >= +t.dataset.at));
+    }
+    function cvGem() {
+      const el = $('cv-gem');
+      el.classList.add('show');
+      clearTimeout(CV.gemT);
+      CV.gemT = setTimeout(() => el.classList.remove('show'), 1800);
     }
     function cvDone(res) {
       if (!CV.active) return;
       $('cvr-ico').textContent = res.tier.ico;
       $('cvr-title').textContent = `${res.tier.name}!`;
-      $('cvr-sub').innerHTML = `${res.ico} ${res.name} 완성 — 보상 🪙 <b>${res.coins}</b>`;
-      $('cvr-stats').innerHTML = `<span>품질 <b>${res.score}</b>점${res.isBest ? ' ⭐신기록!' : ''}</span><span>흠집 <b>${res.dmg}</b></span><span>누적 조각 <b>${res.carved}</b></span>`;
+      $('cvr-sub').innerHTML = res.canKeep ? `<span>${res.ico}</span> <span>${res.name}</span>` : `${res.ico} ${res.name} 완성 — 보상 🪙 <b>${res.coins}</b>`;
+      $('cvr-stats').innerHTML = `<span>품질 <b>${res.score}</b>점${res.isBest ? ' ⭐신기록!' : ''}</span><span>흠집 <b>${res.dmg}</b></span><span>최고 콤보 <b>${res.comboMax}</b></span><span>누적 조각 <b>${res.carved}</b></span>`;
+      $('cvr-sell').innerHTML = `🪙 팔기<small>+${res.coins}</small>`;
+      $('cvr-keep').innerHTML = `🎁 간직하기<small>선물 ❤️+${res.keepLove}</small>`;
+      $('cvr-choice').style.display = res.canKeep ? '' : 'none';
+      $('cvr-closebar').style.display = res.canKeep ? 'none' : '';
+      $('cv-result').classList.remove('wrap');
       $('cv-result').classList.add('show');
+    }
+    function cvRenderPapers() {
+      const box = $('cvr-papers'); box.innerHTML = '';
+      CV_PAPERS.forEach(([id, name]) => {
+        const b = document.createElement('button');
+        b.className = 'cvr-paper' + (CV.paper === id ? ' sel' : '');
+        b.innerHTML = `<span class="sw p-${id}"></span><span>${name}</span>`;
+        b.addEventListener('click', () => { CV.paper = id; cvRenderPapers(); });
+        box.appendChild(b);
+      });
+    }
+    function cvKeep() {
+      if (CV.kept) return;
+      const r = Input.carveResolve('keep');
+      if (!r?.ok) { closeCarve(); return; }
+      ui.toast(`🎁 ${r.name}${r.particle} 선물로 간직했어요`, 2400);
+      CV.kept = r.id;
+      cvRenderPapers();
+      $('cv-result').classList.add('wrap');
+    }
+    function cvWrap() {
+      const r = Input.carveWrap(CV.kept, CV.paper);
+      if (!r.ok) { ui.toast(r.msg || '포장할 수 없어요'); return; }
+      closeCarve();
     }
     function closeCarve() {
       CV.active = false;
@@ -7084,6 +7471,10 @@
     }
     $('cv-quit').addEventListener('click', () => Input.carveAbandon());   // 포기해도 낮은 등급으로 정산됨
     $('cvr-close').addEventListener('click', closeCarve);
+    $('cvr-sell').addEventListener('click', () => { Input.carveResolve('sell'); closeCarve(); });
+    $('cvr-keep').addEventListener('click', cvKeep);
+    $('cvr-plain').addEventListener('click', closeCarve);
+    $('cvr-wrapgo').addEventListener('click', cvWrap);
 
     // 로컬 개발 훅 — 콘솔에서 미니게임을 직접 구동(?give 처럼 localhost 전용, 실서비스 노출 안 됨)
     if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) {
@@ -7097,44 +7488,100 @@
       window.__carveStart = (id) => { const st = Input.carveStart(id); if (st.ok) { closeCook(); openCarveHud(st); } return st; };
       window.__carveChip = (n = 1) => Input.carveDebug('chip', n);
       window.__carveScratch = () => Input.carveDebug('scratch');
-      window.__carveState = () => ({ active: CV.active, resultShown: $('cv-result').classList.contains('show'), prog: $('cv-prog').textContent, dmg: $('cv-dmg').textContent });
+      window.__carveDebug = (a, n) => Input.carveDebug(a, n);
+      window.__carveState = () => ({ active: CV.active, resultShown: $('cv-result').classList.contains('show'), wrap: $('cv-result').classList.contains('wrap'), prog: $('cv-prog').textContent, dmg: $('cv-dmg').textContent, combo: $('cv-combo').textContent });
       window.__ui = ui;        // HUD 문구·크기 검증용(캐치 배너·퀘스트 패널을 직접 그려본다)
       window.__state = () => getGameState();   // 의뢰 진행(npcs.<id>.idx)·집 단계 검증용 — 직접 고쳐서 상황을 만든다
     }
 
     // ── 상점 메뉴 (팔기 / 사기) ──
     let shopTab = 'sell';
-    // 판매 바인딩: 탭=1개, 꾹 누르면(450ms) 전부 — pointer 이벤트로 모바일/데스크톱 공통
-    function bindSell(el, k) {
-      let timer = null, longFired = false;
-      const doSell = (all) => { const r = Input.sellItem(k, all); if (!r.ok) { ui.toast(r.msg); return; } ui.toast(all ? `🪙 +${r.gain} (${r.qty}개 전부)` : `🪙 +${r.gain}`); renderShop(); };
-      el.addEventListener('pointerdown', () => { longFired = false; timer = setTimeout(() => { longFired = true; doSell(true); }, 450); });
-      el.addEventListener('pointerup', () => { if (timer) { clearTimeout(timer); timer = null; } if (!longFired) doSell(false); });
-      el.addEventListener('pointerleave', () => { if (timer) { clearTimeout(timer); timer = null; } });
-      el.addEventListener('contextmenu', (e) => e.preventDefault());
+    let sellSel = null, sellQ = 1;
+    const trendHtml = d => (d > 0 ? `<span class="up">▲${d}%</span>` : d < 0 ? `<span class="down">▼${-d}%</span>` : '');
+    function holdRepeat(btn, step) {
+      let wait = null, rep = null;
+      const stop = () => { clearTimeout(wait); clearInterval(rep); wait = rep = null; window.removeEventListener('pointerup', stop); };
+      btn.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0) return;
+        e.preventDefault(); stop();
+        if (!step()) return;
+        window.addEventListener('pointerup', stop);
+        wait = setTimeout(() => { rep = setInterval(() => { if (!step()) stop(); }, 70); }, 380);
+      });
+      ['pointerleave', 'pointercancel'].forEach(ev => btn.addEventListener(ev, stop));
+      btn.addEventListener('click', (e) => { if (e.detail === 0) step(); });
+      btn.addEventListener('contextmenu', (e) => e.preventDefault());
+    }
+    function renderSellSheet(it) {
+      const sheet = $('sell-sheet');
+      if (!it || shopTab !== 'sell') { sheet.hidden = true; sheet.innerHTML = ''; return; }
+      sellQ = clampQty(sellQ, it.have);
+      sheet.hidden = false;
+      sheet.innerHTML = `<div class="ss-top"><span class="ss-ico">${SELL_ICO_G[it.k] || '📦'}</span><span><div class="ss-nm">${it.name}</div><div class="ss-sub"><span>개당 🪙${it.price}</span>${trendHtml(it.rate)} · <span>${it.have}개 있어요</span></div></span></div>
+        <div class="ss-row"><div class="ss-step"><button class="ss-dec" aria-label="-1">−</button><span class="ss-q"></span><button class="ss-inc" aria-label="+1">+</button></div>
+        <button class="ss-max">전부</button><button class="ss-go"></button></div>`;
+      const dec = sheet.querySelector('.ss-dec'), inc = sheet.querySelector('.ss-inc'), max = sheet.querySelector('.ss-max'), go = sheet.querySelector('.ss-go');
+      const paint = () => {
+        sheet.querySelector('.ss-q').textContent = sellQ;
+        dec.disabled = sellQ <= 1;
+        inc.disabled = sellQ >= it.have;
+        max.classList.toggle('on', sellQ === it.have);
+        go.textContent = `팔기 🪙${it.price * sellQ}`;
+      };
+      const bump = (n) => { if (!dec.isConnected) return false; const q = clampQty(sellQ + n, lastInv[it.k] || 0); if (q === sellQ) return false; sellQ = q; paint(); return true; };
+      holdRepeat(dec, () => bump(-1));
+      holdRepeat(inc, () => bump(1));
+      max.addEventListener('click', () => { sellQ = it.have; paint(); });
+      go.addEventListener('click', () => {
+        const r = Input.sellItem(it.k, sellQ);
+        if (!r.ok) { ui.toast(r.msg); return; }
+        ui.toast(r.qty === it.have ? `🪙 +${r.gain} (${r.qty}개 전부)` : `🪙 +${r.gain} (${r.qty}개)`);
+        sellQ = 1;
+        renderShop();
+        showSellAd(it.k, r.gain);
+      });
+      paint();
+    }
+    function showSellAd(k, gain) {
+      const box = $('sell-ad');
+      box.replaceChildren();
+      const b = Input.sellAdButton(k, gain, (ok) => { if (!ok) return; box.replaceChildren(); renderShop(); });
+      if (b) box.appendChild(b);
     }
     function renderShop() {
       $('shop-coin').textContent = `🪙 ${lastInv.coins || 0}`;
       if (shopTab === 'sell') {
-        const price = Input.getSellPrice(); const rates = Input.getPriceRates(); const box = $('sell-items'); box.innerHTML = '';
-        // 📊 오늘의 시세 배너 — 가장 비싼/싼 품목 하이라이트(매일 바뀜 → 팔 타이밍 전략)
-        const ks = Object.keys(price);
-        const hi = ks.reduce((a, b) => (rates[a] >= rates[b] ? a : b));
-        const lo = ks.reduce((a, b) => (rates[a] <= rates[b] ? a : b));
-        const banner = document.createElement('div');
-        banner.className = 'market-banner';
-        banner.innerHTML = `📊 <b>오늘의 시세</b> · ${SELL_ICO_G[hi] || '📦'} 비싸요 <b>+${rates[hi] - 100}%</b> · ${SELL_ICO_G[lo] || '📦'} 싸요 <b>${rates[lo] - 100}%</b>. 내일 또 바뀌어요`;
-        box.appendChild(banner);
-        ks.forEach(k => {
-          const have = lastInv[k] || 0;
-          const d = rates[k] - 100;   // 등락 %(0=기본가)
-          const trend = d > 0 ? ` <span class="up">📈+${d}%</span>` : d < 0 ? ` <span class="down">📉${d}%</span>` : '';
-          const el = document.createElement('div');
-          el.className = 'ck-item' + (have > 0 ? '' : ' off');
-          el.innerHTML = `<span class="ck-ico">${SELL_ICO_G[k] || '📦'}</span><span class="ck-name">${FORAGE_META[k] ? `<b>${FORAGE_META[k].name}</b> ` : ''}보유 ${have}</span><span class="ck-buff">개당 🪙${price[k]}${trend}</span><span class="ck-cost">탭 1개 · 꾹 전부</span>`;
-          bindSell(el, k);   // 탭=1개, 롱프레스=전부 (모바일·데스크톱 공통)
-          box.appendChild(el);
+        const market = Input.getMarket().items; const box = $('sell-items'); const keepTop = box.scrollTop; box.innerHTML = '';
+        const list = sellList(market, lastInv);
+        const top = market[0];
+        if (top && top.rate > 0) {
+          const banner = document.createElement('div');
+          banner.className = 'market-banner';
+          banner.innerHTML = `📊 <span>오늘 가장 비싼 건</span> ${SELL_ICO_G[top.k] || '📦'} <b>${itemName(top.label)}</b> ${trendHtml(top.rate)}`;
+          box.appendChild(banner);
+        }
+        if (!list.length) {
+          sellSel = null;
+          const empty = document.createElement('div');
+          empty.className = 'sl-empty';
+          empty.innerHTML = '<div>팔 수 있는 게 없어요</div><div>작물·목재·물고기를 모아 오세요</div>';
+          box.appendChild(empty);
+          renderSellSheet(null);
+          return;
+        }
+        if (!list.some(i => i.k === sellSel)) { sellSel = list[0].k; sellQ = 1; }
+        const grid = document.createElement('div');
+        grid.className = 'sl-grid';
+        list.forEach((it, n) => {
+          const el = document.createElement('button');
+          el.className = 'sl-cell' + (it.k === sellSel ? ' sel' : '') + (n === 0 && it.rate > 0 ? ' hot' : '');
+          el.innerHTML = `<span class="sl-tr">${it.rate > 0 ? '<span class="up">▲</span>' : it.rate < 0 ? '<span class="down">▼</span>' : ''}</span><span class="sl-ico">${SELL_ICO_G[it.k] || '📦'}</span><span class="sl-nm">${it.name}</span><span class="sl-cnt">${it.have}</span>`;
+          el.addEventListener('click', () => { if (sellSel !== it.k) { sellSel = it.k; sellQ = 1; } renderShop(); });
+          grid.appendChild(el);
         });
+        box.appendChild(grid);
+        box.scrollTop = keepTop;
+        renderSellSheet(list.find(i => i.k === sellSel));
       } else {
         const box = $('buy-items'); box.innerHTML = '';
         const owned = Input.ownedUpgrades(), homiTier = Input.homiTier();
@@ -7253,9 +7700,11 @@
     $('homi-close').addEventListener('click', () => { $('homi-menu').classList.remove('show'); document.body.classList.remove('menu-open'); });
     function showShopTab(t) {
       shopTab = t;
+      $('sell-ad').replaceChildren();
       [...document.querySelectorAll('#shop-menu .sh-tab')].forEach(b => b.classList.toggle('active', b.dataset.tab === t));   // 좌판 탭만 — .sh-tab 은 꾸미기 가게·캐릭터 창도 쓴다
       $('sell-items').style.display = t === 'sell' ? 'flex' : 'none';
       $('buy-items').style.display = t === 'buy' ? 'flex' : 'none';
+      if (t !== 'sell') renderSellSheet(null);
       renderShop();
     }
     document.querySelectorAll('#shop-menu .sh-tab').forEach(b => b.addEventListener('click', () => showShopTab(b.dataset.tab)));
@@ -7544,7 +7993,6 @@
     $('dex-tab').addEventListener('click', openDex);
     // 🍂 계절 아이콘 — 지금 계절·남은 날·이번 계절 한정 어종
     hydrateIcons();
-    setIcon($('season-emoji'), Input.seasonIco());
     $('season-emoji').addEventListener('click', () => ui.toast(Input.seasonStatus(), 2600));
     $('dex-close').addEventListener('click', () => $('dex-modal').classList.remove('show'));
     $('dex-modal').addEventListener('click', (e) => { if (e.target === $('dex-modal')) $('dex-modal').classList.remove('show'); });
@@ -7607,6 +8055,7 @@
     let nudgeFrom = 'dex';
     const nudgeBtnText = $('nudge-google').textContent;
     const nudgeWarnText = $('nudge-warn').textContent;
+    ui.isGuestNow = isGuestNow;
     ui.loginNudge = (trigger) => {
       if (!isGuestNow()) return;                               // 로그인 유저에겐 표시 안 함
       nudgeFrom = trigger;
@@ -7931,7 +8380,7 @@
       box.appendChild(pantrySection(Input.getPantry()));   // 🍱 찬장을 맨 위로 — 먹으러 여는 일이 가장 잦다
       BAG_CATS.forEach(cat => box.appendChild(bagSection(cat.name, cat.keys.map(k => ({ ...ITEM_META[k], count: lastInv[k] || 0 })))));
       const owned = Input.ownedGifts();
-      box.appendChild(bagSection('🎁 선물', Input.getGifts().map(g => ({ ico: g.ico, name: g.name, count: owned[g.id] || 0 }))));
+      box.appendChild(bagSection('🎁 선물', [...Input.keptGifts().map(k => ({ ico: k.ico + (k.paper ? '🎀' : ''), name: k.name, count: k.n })), ...Input.getGifts().map(g => ({ ico: g.ico, name: g.name, count: owned[g.id] || 0 }))]));
     }
     function openBag() { renderBag(); Input.setAnalog(0, 0); $('bag-menu').classList.add('show'); $('bag-backdrop').classList.add('show'); document.body.classList.add('menu-open'); }
     function closeBag() { $('bag-menu').classList.remove('show'); $('bag-backdrop').classList.remove('show'); document.body.classList.remove('menu-open'); }
@@ -8071,6 +8520,7 @@
 
     (async () => {
       if (IS_NATIVE) void bootTenjin();
+      preloadSupabase().catch(() => {});
       bootReferral({ track: trackEvent });           // 🤝 ?invite= 보관 — 인증(구글 리다이렉트)이 쿼리를 지우기 전에
       try { bootAppBanner(); } catch (e) { /* 저장소 없음 — 배너 연결만 빠진다 */ }   // 📲 jid·utm 보관 — 같은 이유로 인증 전에
       try { bootMetaPixel(); onTrack(metaFromTrack); } catch (e) { /* Pixel 실패해도 게임 진행 */ }   // 📣 fbclid 보관 — 같은 이유로 인증 전에
@@ -8101,11 +8551,8 @@
           dev: IS_DEV_SESSION, force: IS_DEV_SESSION && new URLSearchParams(location.search).get('survey') === '1',   // QA: ?dbg&survey=1
         });
       } catch (e) { /* 저장소 없음 — 설문만 빠진다 */ }
-      initCafeGuests();                              // ☕ 카페 손님 생성기 등록(입장 시 서버에 요청)
-      initNightVisit();                              // 🦝 밤손님 판정기 등록(입장 시 밤 경과를 서버가 판정)
-      initDuel();                                    // 🐗🦝 승부 등록(흔적을 조사하면 도둑과 마주 선다)
-      await bootWorld(ui);                           // ① 씬을 로그인 배경으로 먼저 부팅
-      $('loading').style.display = 'none';
+      if (loginFirstBoot) document.body.classList.add('pre-world');
+      else await ensureWorld();                      // ① 씬을 로그인 배경으로 먼저 부팅
       await surveyP;                                 // 🧭 설문에 아직 답하는 중이면 기다린다 — 🤝 초대 코드가 enterPlay 전에 cf_invite 에 있어야 한다
 
       // 🧪 E2 — 배정은 로그인 화면 판단보다 먼저(js/analytics.js 평가 때 이미 판정·GA4 exp_entry). 여기선 결과만 쓴다.
@@ -8154,6 +8601,10 @@
       }
       else if (skipLoginNow({ decision: e2, offline: res.offline, justExited, hasInvite: e2HasInvite() })) startDeferredGuest();   // 🧪 E2 처치(웹 전용)
       else showLoginScreen(res.offline);             // 세션 없음 → 로그인 화면(씬 위에)
+      if (loginFirstBoot) {
+        await nextPaint();
+        ensureWorld().catch(() => {});
+      }
     })();
   </script>
 </body>

@@ -6,7 +6,7 @@
 //     game.js 에 남은 let 에 쓸 때는 `$w.x = …` (읽기는 그냥 x). 도구·증명: tools/refactor/
 // =============================================================
 import {
-  $w, IS_MOBILE, WEATHER, _seaPrevTool, armWristK, atCafe, atFarm, atMine, atMist, atMuseum, atObservatory, atRiver, atSea,
+  $w, IS_MOBILE, WEATHER, _seaPrevTool, armWristK, atCafe, atRestaurant, atFarm, atMine, atMist, atMuseum, atObservatory, atRiver, atSea,
   blockIfLocked, clayMat, clock, dateHash, diffParams, firstHint, gameState, giveReward, handAnchor, heldToolMesh,
   indoor, isNight, lastDoorPrompt, lastZoneHint, makeSignpost, measureStowLen, nearDoor, obstacles, player,
   playerAnchor, playerArms, poseHeldTool, questEvent, requestSave, rollDifficulty, scene, seaBuoy, seaFishes,
@@ -14,11 +14,12 @@ import {
   spawnFloatText, spawnSparkle, todayStr, toolMesh, triggerMoment, ui, updateStowPose,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
-import { HOMI_STALL, SEA, SEA_COVE, SEA_DECK_W, SEA_DECK_Z0, SEA_DECK_Z1, SEA_EDGE, SEA_GATE, SEA_SPECIES } from '../data/places.js';
+import { HOMI_STALL, SEA, SEA_COVE, SEA_DECK_W, SEA_DECK_Z0, SEA_DECK_Z1, SEA_EDGE, SEA_GATE, SEA_SPECIES, PORT_PIER } from '../data/places.js';
 import { bestAfterCatch } from '../museum.js';
 import { pickSeaTarget } from '../sea-aim.js';
 import { mudflat, updateMudflat, mudflatCamera, leaveMudflat } from './mudflat.js';
 import { dive, updateDive, diveCamera, leaveDive } from './dive.js';
+import { port, updatePort, portCamera, leavePort, leftPort } from '../port/index.js';
 import {
   SEA_PAT, RING_GAIN, RING_GOOD, RING_LEAD, RING_PERFECT, rollPhaseLen, scheduleRings, judgeRing,
   CAST_REL, CAST_END, CAST_FLIGHT, castPose, pumpPose, PUMP_IDLE, buoyFlight, createRope, resetRope, stepRope, rodBendAxis,
@@ -41,6 +42,10 @@ export const seaAngDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b))
 export let coveWater = null, seaWater = null;
 
 export let seaBeacon = null, seaLampMat = null, seaBeamMats = [];
+let coveSolidRef = null;
+export const coveSolid = () => coveSolidRef;
+const CX = SEA_COVE.x - SEA_GATE.x, CZ = SEA_COVE.z - SEA_GATE.z;
+const LX = CX - 4.9, LZ = CZ + 4.6;
 
 export function makeWavyWater(radius, thetaSeg, rings, colCenter, colEdge, opacity, dampFn, gradR) {
   const geo = new THREE.RingGeometry(0.02, radius, thetaSeg, rings);
@@ -86,7 +91,7 @@ export function updateWavyWater(w, t, amp, speed) {
 // 매 프레임: 보이는 수면만 일렁임 + 등대 야간 빔 회전(마을 후미)
 export function updateSeaVisuals(t) {
   if (atSea) { if (seaWater) updateWavyWater(seaWater, t, 0.13, 1.4); }
-  else if (coveWater && !indoor && !atFarm && !atMine && !atRiver && !atMist && !atCafe && !atMuseum && !atObservatory)
+  else if (coveWater && !indoor && !atFarm && !atMine && !atRiver && !atMist && !atCafe && !atRestaurant && !atMuseum && !atObservatory)
     updateWavyWater(coveWater, t, 0.085, 1.6);
   if (seaBeacon) {
     // 밤뿐 아니라 악천후(비·눈·안개) 낮에도 점등 — 흐린 날 등대가 물을 쓸어 비추는 이벤트
@@ -102,9 +107,8 @@ export function updateSeaVisuals(t) {
   }
 }
 
-export function spawnSeaGate() {
+export function spawnSeaCove() {
   const g = new THREE.Group(); g.position.copy(SEA_GATE); scene.add(g);
-  const CX = SEA_COVE.x - SEA_GATE.x, CZ = SEA_COVE.z - SEA_GATE.z;   // 후미 중심(로컬)
   // ── 후미(만) — 모래톱 → 바닷물 → 먼바다 톤. 게이트에 서면 바다가 보인다
   const sand = new THREE.Mesh(new THREE.CircleGeometry(SEA_COVE.r + 1.1, 48), clayMat(0xe8d9a8, false));
   sand.geometry.rotateX(-Math.PI / 2); sand.position.set(CX, 0.03, CZ); sand.receiveShadow = true; g.add(sand);
@@ -123,7 +127,6 @@ export function spawnSeaGate() {
     g.add(foam);
   }
   // ── 등대 — 물속 바위섬 위(빨간 줄무늬 2단, 마을에서 잘 보이는 랜드마크)
-  const LX = CX - 4.9, LZ = CZ + 4.6;
   const islet = new THREE.Mesh(new THREE.IcosahedronGeometry(1.05, 0), clayMat(0x9aa4ab));
   islet.scale.y = 0.5; islet.position.set(LX, 0.16, LZ); islet.castShadow = true; g.add(islet);
   [[-0.9, 0.5, 0.4], [0.8, -0.6, 0.34]].forEach(([dx, dz, s]) => {
@@ -165,6 +168,18 @@ export function spawnSeaGate() {
     });
   });
   g.add(seaBeacon);
+  // 부표 — 물 위 주황 부표(바다터 부표와 같은 문법)
+  [[CX - 1, CZ + 6.5], [CX + 4.5, CZ + 2]].forEach(([bx, bz]) => {
+    const b = new THREE.Mesh(new THREE.SphereGeometry(0.16, 9, 7), clayMat(0xef8a4a));
+    b.scale.y = 1.25; b.position.set(bx, 0.28, bz); g.add(b);
+  });
+  obstacles.push({ x: SEA_COVE.x, z: SEA_COVE.z, r: SEA_COVE.r + 1 });
+  coveSolidRef = solidCircle(SEA_COVE.x, SEA_COVE.z, SEA_COVE.r - 0.35);
+}
+
+export function spawnSeaGate() {
+  const g = new THREE.Group(); g.position.copy(SEA_GATE); scene.add(g);
+  g.add(makeSignpost('🌊 바다터', -1.6, 1.2));
   // ── 방파제 — 물가에서 등대 바위섬 쪽으로 뻗는 바위줄
   for (let i = 0; i < 6; i++) {
     const t = i / 5;
@@ -172,20 +187,12 @@ export function spawnSeaGate() {
     rock.position.set(0.8 + (LX - 1.6) * t, 0.16, -0.8 + (LZ + 0.8) * t);
     rock.castShadow = true; g.add(rock);
   }
-  // 부표 — 물 위 주황 부표(바다터 부표와 같은 문법)
-  [[CX - 1, CZ + 6.5], [CX + 4.5, CZ + 2]].forEach(([bx, bz]) => {
-    const b = new THREE.Mesh(new THREE.SphereGeometry(0.16, 9, 7), clayMat(0xef8a4a));
-    b.scale.y = 1.25; b.position.set(bx, 0.28, bz); g.add(b);
-  });
-  g.add(makeSignpost('🌊 바다터', -1.6, 1.2));
   const stall = buildHomiStall(THREE, clayMat);
   stall.position.set(HOMI_STALL.x - SEA_GATE.x, 0, HOMI_STALL.z - SEA_GATE.z); stall.rotation.y = HOMI_STALL.ry; g.add(stall);
   solidCircle(HOMI_STALL.x, HOMI_STALL.z, HOMI_STALL.r);
   obstacles.push({ x: HOMI_STALL.x, z: HOMI_STALL.z, r: 2 });    // 다른 게이트와 같은 문법의 표지판
   obstacles.push({ x: SEA_GATE.x, z: SEA_GATE.z, r: 2.2 });                     // 밭 금지(게이트 앞)
-  obstacles.push({ x: SEA_COVE.x, z: SEA_COVE.z, r: SEA_COVE.r + 1 });          // 밭 금지(후미)
-  const water = solidCircle(SEA_COVE.x, SEA_COVE.z, SEA_COVE.r - 0.35);         // 🚧 물엔 못 들어감(돌다리 위만 예외)
-  addGateWalk(g, 'sea', { water, color: 0x8fe8ff, ringR: 0.85,
+  addGateWalk(g, 'sea', { water: coveSolid(), color: 0x8fe8ff, ringR: 0.85,
     walk: makeWalk({ ax: SEA_GATE.x + 0.2, az: SEA_GATE.z - 0.1, bx: SEA_GATE.x + 3.4, bz: SEA_GATE.z - 3.9, hw: 0.5, y: 0.36 }) });
 }
 
@@ -317,11 +324,13 @@ export function enterSea() {
 export function exitSea() {
   leaveMudflat();
   leaveDive();
+  leavePort();
+  const fromPort = leftPort();
   seaReset();
   seaHoldRod(false);           // 릴대 반납 — 마을 도구로 복귀
   ui.setSeaMode?.(false);
   $w.atSea = false;
-  player.position.set(SEA_GATE.x - 1.4, 0, SEA_GATE.z + 1.6);
+  if (fromPort) player.position.set(PORT_PIER.end.x, 0, PORT_PIER.end.z); else player.position.set(SEA_GATE.x - 1.4, 0, SEA_GATE.z + 1.6);
   $w.nearDoor = null; ui.setDoorPrompt?.(null);
   snapCamera(); setSpaceVisible();
   Sound.blip();
@@ -522,6 +531,7 @@ export function updateSea(dt, t) {
   if (!atSea || !seaGroup) return;
   if (mudflat.active) return updateMudflat(dt, t);
   if (dive.active) return updateDive(dt, t);
+  if (port.active) return updatePort(dt, t);
   // 배회 물고기 — 방향을 천천히 트는 유영 + 분리 + 부두 회피 + 소란 회피
   seaFishes.forEach((p, pi) => {
     p.tTurn -= dt;
@@ -737,15 +747,41 @@ function seaPose(dt, t, tens) {
   const tgt = st === 'fight' && seaMG.fmesh ? seaMG.fmesh.position
             : st === 'cast' ? _seaCastTo : seaBuoy.visible ? seaBuoy.position : null;
   const yaw = tgt ? Math.atan2(SEA.x + tgt.x - player.position.x, SEA.z + tgt.z - player.position.z) : player.rotation.y;
-  _seaV.set(Math.sin(yaw) * Math.cos(p.elev), Math.sin(p.elev), Math.cos(yaw) * Math.cos(p.elev));
+  aimSeaRod(yaw, p.elev, 0.08 + tens * 0.55 + (p.tip || 0) + Math.sin(t * 40) * seaMG.shiver * 0.2);
+  seaMG.shiver = Math.max(0, seaMG.shiver - dt * 1.2);
+}
+
+const _seaQ0 = new THREE.Quaternion();
+
+function aimSeaRod(yaw, elev, tip) {
+  _seaV.set(Math.sin(yaw) * Math.cos(elev), Math.sin(elev), Math.cos(yaw) * Math.cos(elev));
   const bz = rodBendAxis(_seaV, { x: Math.sin(yaw), y: 0, z: Math.cos(yaw) });
   _seaBZ.set(bz.x, bz.y, bz.z); _seaBX.crossVectors(_seaV, _seaBZ);
   _seaQ2.setFromRotationMatrix(_seaBM.makeBasis(_seaBX, _seaV, _seaBZ));
   handAnchor.updateWorldMatrix(true, false);
   handAnchor.getWorldQuaternion(_seaQ1);
   seaRodMesh.quaternion.copy(_seaQ1.invert()).multiply(_seaQ2);
-  seaRodMesh.userData.sea.tip.rotation.set(0.08 + tens * 0.55 + (p.tip || 0) + Math.sin(t * 40) * seaMG.shiver * 0.2, 0, 0);
-  seaMG.shiver = Math.max(0, seaMG.shiver - dt * 1.2);
+  seaRodMesh.userData.sea.tip.rotation.set(tip, 0, 0);
+}
+
+export function seaRodRest(yaw, pose = {}) {
+  if (!playerArms || !seaRodMesh) return;
+  const { elev = PUMP_IDLE, tip = 0.08, armUp = 0, lean = 0, side = 0, armR = null, armL = null, stow = 0 } = pose;
+  const k = 1 - stow;
+  playerAnchor.rotation.set(lean * k, 0, 0); playerAnchor.scale.set(1, 1, 1);
+  const r = armR ?? [-0.6 - armUp, 0.1, 0.08], l = armL ?? [-0.55 - armUp, -0.45, 0.3];
+  playerArms.R.pivot.rotation.set(r[0] * k, r[1] * k, r[2] * k);
+  playerArms.L.pivot.rotation.set(l[0] * k, l[1] * k, l[2] * k);
+  $w.armWristK = 0;
+  poseHeldTool(stow);
+  aimSeaRod(yaw + side, elev, tip);
+  if (stow > 0) seaRodMesh.quaternion.slerp(_seaQ0, stow);
+}
+
+export function seaRodTip(out) {
+  if (!seaRodMesh) return null;
+  seaRodMesh.updateWorldMatrix(true, true);
+  return seaRodMesh.userData.sea.tipEnd.getWorldPosition(out);
 }
 
 function seaUpdateLine(dt, t, tens) {
@@ -775,6 +811,7 @@ const _seaCamPos = new THREE.Vector3(), _seaCamLook = new THREE.Vector3();
 export function seaCamera(camera, look, dt) {
   if (mudflat.active) return mudflatCamera(camera, look, dt);
   if (dive.active) return diveCamera(camera, look, dt);
+  if (port.active) return portCamera(camera, look, dt);
   const st = seaMG.st, tall = camera.aspect < 1, low = !tall && innerHeight < 500, fov = tall ? 66 : 42, k = tall ? 1.3 : low ? 1.55 : 1, lat = tall ? 0.4 : 1;
   if (camera.fov !== fov) { camera.fov = fov; camera.updateProjectionMatrix(); }
   const px = player.position.x, pz = player.position.z;

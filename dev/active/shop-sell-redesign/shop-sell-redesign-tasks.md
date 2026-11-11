@@ -1,0 +1,12 @@
+# 상점 팔기 탭 개편 · 체크리스트
+- [x] sell-rules 테스트 작성(RED)
+- [x] sell-rules 구현(GREEN, 9/9)
+- [x] sellItem 수량 지원 (js/spaces/shop.js) + Input.getMarket
+- [x] renderShop 팔기 분기 C안 (칸 + 하단 판매대, 꾹 누르면 수량 연속 증감)
+- [x] 닫기 버튼 가운데·크게 (#shop-close)
+- [x] 가로 폰: 상점 열린 동안 핫바 숨김(가운데 닫기를 가렸음)
+- [x] i18n-en 문구 7개
+- [x] 게임 PC·세로·가로 확인 (sims/shop-sell/game-result.jpg)
+- [x] npm test 4608/4608
+- [x] 코드 리뷰 반영(스크롤 유지·꾹 누르는 중 보유량 변경·배너 조건·키보드/우클릭). 부스트 A군 팔기 라벨이 실제보다 적게 보이는 건 보류(토스트는 실제 금액)
+- [ ] 커밋·배포 (사용자 지시 대기)

@@ -16,6 +16,32 @@ export const SPAWN_DELAY_MAX = 14;
 export const STAY = 25;              // 등록 여부와 무관하게 이만큼 머물고 떠난다
 export const CATCH_R = 2.5;          // 이 안에서 액션(Space·탭)을 누르면 등록되는 거리
 export const FADE = 1.2;             // 페이드 인/아웃 시간
+export const EDGE_INSET = 1;
+export const DOOR_HALF = 2.8;
+
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+export function edgeSpot(cell, { center, half, inset = EDGE_INSET, blocked = () => false, doorHalf = DOOR_HALF }) {
+  const lim = half - inset;
+  const lx = clamp(cell.x - center.x, -lim, lim), lz = clamp(cell.z - center.z, -lim, lim);
+  const sides = [
+    { x: -lim, z: lz, along: 'z' }, { x: lim, z: lz, along: 'z' },
+    { x: lx, z: -lim, along: 'x' }, { x: lx, z: lim, along: 'x', door: true },
+  ];
+  const cands = [];
+  for (const s of sides) {
+    for (const d of [0, 1, -1, 2, -2, 3, -3, 4, -4]) {
+      const p = s.along === 'z' ? { x: s.x, z: clamp(s.z + d, -lim, lim) } : { x: clamp(s.x + d, -lim, lim), z: s.z };
+      if (s.door && Math.abs(p.x) < doorHalf) continue;
+      const w = { x: center.x + p.x, z: center.z + p.z };
+      if (blocked(w)) continue;
+      cands.push({ w, d: Math.hypot(w.x - cell.x, w.z - cell.z) });
+    }
+  }
+  if (!cands.length) return null;
+  cands.sort((a, b) => a.d - b.d);
+  return cands[0].w;
+}
 
 /**
  * 무대에서 빼고 GPU 자원까지 놓는다 — 조형은 스폰마다 새 버퍼·재질을 굽는다(js/visitor-art.js bake).
@@ -107,13 +133,15 @@ export function createVisitors(deps) {
     nextTry = nextDelay();
     const pick = pickSpot();
     if (!pick) return;
+    const at = deps.place ? deps.place(pick.c, alive.map(a => ({ x: a.wx, z: a.wz }))) : pick.c;
+    if (!at) return;
     const mesh = deps.makeMesh(pick.id);
-    mesh.position.x = pick.c.x - ox; mesh.position.z = pick.c.z - oz;   // 부모 오프셋만큼 뺀다
-    if (deps.groundAt) mesh.position.y = deps.groundAt(pick.c.x, pick.c.z);   // 🌱 흙 칸 위면 흙 윗면에(발바닥 원점 조형)
+    mesh.position.x = at.x - ox; mesh.position.z = at.z - oz;   // 부모 오프셋만큼 뺀다
+    if (deps.groundAt) mesh.position.y = deps.groundAt(at.x, at.z);   // 🌱 흙 칸 위면 흙 윗면에(발바닥 원점 조형)
     setOpacity(mesh, 0);
     deps.group?.add(mesh);
-    alive.push({ id: pick.id, mesh, life: 0, caught: false, wx: pick.c.x, wz: pick.c.z });
-    deps.onSpawn(pick.id);
+    alive.push({ id: pick.id, mesh, life: 0, caught: false, wx: at.x, wz: at.z });
+    deps.onSpawn(pick.id, mesh, { x: at.x, z: at.z });
   }
 
   // 🔍 액션 대상 — 아직 안 살펴본 손님 중 CATCH_R 안에서 가장 가까운 하나(근접 판정은 **월드 좌표**).

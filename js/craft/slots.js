@@ -62,7 +62,7 @@ export function claimAll(slots = [], today, station = null) {
   for (const s of slots) {
     if (!isReady(s, today) || (station && stationOf(s.item) !== station)) { rest.push(s); continue; }
     gained[s.item] = (gained[s.item] || 0) + s.qty;
-    claimed.push({ item: s.item, qty: s.qty, grade: s.grade, waitedDays: waitedDays(s.day, today) });
+    claimed.push({ item: s.item, qty: s.qty, grade: s.grade, waitedDays: waitedDays(s.day, today), rushed: s.rushed === true });
   }
   return { rest, gained, claimed };
 }
@@ -79,6 +79,6 @@ export function sanitizeSlots(raw) {
     const grade = Math.max(0, Math.min(3, Number.isFinite(s.grade) ? Math.floor(s.grade) : 0));
     const min = yieldOf(s.item, 0), max = yieldOf(s.item, 3);
     const qty = Number.isFinite(s.qty) ? Math.max(min, Math.min(max, Math.floor(s.qty))) : min;
-    return { item: s.item, qty, grade, day: s.day };
+    return s.rushed === true ? { item: s.item, qty, grade, day: s.day, rushed: true } : { item: s.item, qty, grade, day: s.day };
   });
 }

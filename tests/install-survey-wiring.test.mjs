@@ -9,7 +9,7 @@ const html = read('index.html');
 
 test('로딩과 병렬로 시작하고, 인증 직전에만 기다린다', () => {
   const start = html.indexOf('surveyP = bootInstallSurvey({');
-  const world = html.indexOf('await bootWorld(ui);');
+  const world = html.indexOf('else await ensureWorld();');
   const wait = html.indexOf('await surveyP;');
   const auth = html.indexOf('const res = await initAuth(');
   assert.ok(start > 0 && start < world, 'bootWorld 전에 시작(기다리지 않고)');
@@ -25,7 +25,7 @@ test('안드로이드 첫 실행 판정 — 부팅 전 캐시 유무로 fresh, r
 });
 
 test('카드는 #loading 의 형제(안이면 setLoadWait 가 덮어쓴다)·dev 는 ?survey=1 강제만', () => {
-  assert.match(html, /<div id="loading">[^<]*<\/div>\s*<div id="survey-card"><\/div>/);
+  assert.match(html, /<div id="loading"[^>]*>(?:(?!<div)[\s\S])*?<\/div>\s*<div id="survey-card"><\/div>/);
   assert.match(html, /force: IS_DEV_SESSION && new URLSearchParams\(location\.search\)\.get\('survey'\) === '1'/);
 });
 

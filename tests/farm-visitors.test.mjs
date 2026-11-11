@@ -320,3 +320,49 @@ for (const [label, run] of [
     assert.deepEqual(log, ['geo', 'mat']);
   });
 }
+
+test('edgeSpot: 불러들인 칸에서 가장 가까운 울타리 안쪽으로 옮긴다', async () => {
+  const { edgeSpot } = await import('../js/farm-visitors.js');
+  const opt = { center: { x: 0, z: 84 }, half: 6, inset: 1 };
+  assert.deepEqual(edgeSpot({ x: -3, z: 83 }, opt), { x: -5, z: 83 });
+  assert.deepEqual(edgeSpot({ x: 1, z: 80 }, opt), { x: 1, z: 79 });
+  assert.deepEqual(edgeSpot({ x: 4, z: 85 }, opt), { x: 5, z: 85 });
+});
+
+test('edgeSpot: 남쪽 문 앞과 막힌 자리(밭·다른 손님)는 비켜 간다', async () => {
+  const { edgeSpot } = await import('../js/farm-visitors.js');
+  const opt = { center: { x: 0, z: 84 }, half: 6, inset: 1 };
+  const s = edgeSpot({ x: 0.2, z: 88.5 }, opt);
+  assert.ok(!(Math.abs(s.x) < 2.8 && s.z > 84 + 4), JSON.stringify(s));
+  const blocked = p => Math.abs(p.x + 5) < 0.6 && Math.abs(p.z - 83) < 0.6;
+  const t = edgeSpot({ x: -3, z: 83 }, { ...opt, blocked });
+  assert.ok(!blocked(t) && Math.abs(Math.abs(t.x - 0) - 5) < 1e-9, JSON.stringify(t));
+  assert.equal(edgeSpot({ x: 0, z: 84 }, { ...opt, blocked: () => true }), null);
+});
+
+test('place 가 있으면 그 자리에 띄우고, 살펴보기 거리도 그 자리로 잰다', () => {
+  const group = fakeGroup(), player = { x: 999, z: 999 }, spawns = [];
+  const v = createVisitors({
+    group, makeMesh: () => fakeMesh(), cells: () => [{ x: 0, z: 84 }], envAt: () => ({}),
+    matchVisitors: () => [VISITORS[0]], ctx: () => ({ night: false, rain: false }), playerPos: () => player,
+    origin: { x: 0, z: 84 }, place: () => ({ x: -5, z: 84 }),
+    onSpawn: (id, mesh, at) => spawns.push({ id, at }), onDiscover: () => {}, random: () => 0,
+  });
+  v.update(SPAWN_DELAY_MAX + 0.1);
+  assert.equal(group.children[0].position.x, -5);
+  assert.equal(group.children[0].position.z, 0);
+  assert.deepEqual(spawns[0].at, { x: -5, z: 84 });
+  player.x = -5; player.z = 85.5;
+  assert.ok(v.target());
+});
+
+test('place 가 자리를 못 찾으면(null) 이번엔 띄우지 않는다', () => {
+  const group = fakeGroup();
+  const v = createVisitors({
+    group, makeMesh: () => fakeMesh(), cells: () => [{ x: 0, z: 84 }], envAt: () => ({}),
+    matchVisitors: () => [VISITORS[0]], ctx: () => ({ night: false, rain: false }), playerPos: () => ({ x: 999, z: 999 }),
+    place: () => null, onSpawn: () => {}, onDiscover: () => {}, random: () => 0,
+  });
+  v.update(SPAWN_DELAY_MAX + 0.1);
+  assert.equal(group.children.length, 0);
+});

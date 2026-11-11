@@ -7,7 +7,7 @@
 // =============================================================
 import {
   $w, RES_LABEL, camera, clayMat, dateHash, gameState, mgView, pointer, raycaster, refreshInventoryUI, renderer,
-  scene, snapCamera, spawnConfetti, spawnFloatText, spawnSparkle, todayStr, ui, woodMat,
+  requestSave, scene, snapCamera, spawnConfetti, spawnFloatText, spawnSparkle, todayStr, ui, woodMat,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
 import { onPlay, decorBanner } from '../decor-drops/index.js';
@@ -16,6 +16,11 @@ import { logEcon } from '../metrics.js';
 import { Sound } from '../sound.js';
 import { emojiSprite } from '../spaces/kitchen-stage.js';
 import * as THREE from 'three';
+import {
+  GEM_SPARKLE_MS, carvePayout, comboCrossed, comboCut, comboMult, comboScratch, comboStart, comboTick,
+  grainOf, grainSweep, pickGemCell, strokeStep,
+} from './carve-rules.js';
+import { WRAP_COST, addGift, keepLove, keptGiftId, keptGiftList, objParticle, parseKeptGift, wrapKept } from './carve-gift.js';
 
 //    12×9 칩 그리드(InstancedMesh 1드로우콜)를 탭/드래그로 깎아 밑그림 속 형상을 드러낸다.
 //    · 밝은 칩(버릴 부분) 제거 = 진행, 어두운 칩(밑그림) 탭 = 흠집(-20점, 3개면 강제 완성)
@@ -70,6 +75,11 @@ export let carve = null;
 
 export let carveBound = false;
 
+export let carvePending = null;
+
+const COMBO_BREAK_NOTICE = 5;
+const GRAIN_PX = 32;
+
 // 오늘의 주문 3건 — 날짜 시드(모든 유저 동일), 자정 리셋(카페 주문판과 같은 규칙)
 export function workshopOrders() {
   const st = gameState.workshop;
@@ -115,6 +125,8 @@ export function buildWorkshopSet() {
   const chips = new THREE.InstancedMesh(chipGeo, clayMat(0xffffff, false), CARVE_COLS * CARVE_ROWS);
   chips.setColorAt(0, new THREE.Color(0xffffff));   // instanceColor 버퍼 생성
   blockGroup.add(chips);
+  const grain = buildGrainLayer();
+  blockGroup.add(grain.mesh);
   // 끌(치즐) — 탭 지점에 나타나 콕 내리찍는 손맛 연출
   const chisel = new THREE.Group();
   const blade = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.5), new THREE.MeshStandardMaterial({ color: 0xdfe3ea, roughness: 0.3, metalness: 0.6 }));
@@ -126,8 +138,56 @@ export function buildWorkshopSet() {
   const fill = new THREE.PointLight(0xfff2d8, 0.6, 14); fill.position.set(-1.2, 3.2, -3.2); g.add(fill);   // 뒷면 필 라이트 — 완성 회전 때 측·후면이 시커멓지 않게
   g.visible = false;
   scene.add(g);
-  wset = { group: g, blockGroup, backing, chips, chisel, light, debris: [], trauma: 0, popT: -1, spinT: -1, strikeT: -1,
+  wset = { group: g, blockGroup, backing, chips, chisel, light, grain, grainDirty: false, debris: [], trauma: 0, popT: -1, spinT: -1, strikeT: -1,
     debrisMat: clayMat(0xcaa06a, false), _c: new THREE.Color(), _m: new THREE.Matrix4(), _d: new THREE.Object3D() };
+}
+
+function buildGrainLayer() {
+  const canvas = document.createElement('canvas');
+  canvas.width = CARVE_COLS * GRAIN_PX; canvas.height = CARVE_ROWS * GRAIN_PX;
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false });
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(CARVE_COLS * CARVE_S, CARVE_ROWS * CARVE_S), mat);
+  mesh.position.set(0, CARVE_CY, CARVE_S / 2 + 0.006);
+  mesh.renderOrder = 1;
+  mesh.visible = false;
+  return { canvas, ctx: canvas.getContext('2d'), tex, mesh };
+}
+
+function grainLine(ctx, grain, v, len) {
+  ctx.beginPath();
+  for (let u = 0; u <= len; u += 6) {
+    const w = v + 2.4 * Math.sin(u / 37 + v * 0.11) + 1.6 * Math.sin(u / 13 + v * 0.7);
+    if (grain === 'h') { u ? ctx.lineTo(u, w) : ctx.moveTo(u, w); } else { u ? ctx.lineTo(w, u) : ctx.moveTo(w, u); }
+  }
+  ctx.stroke();
+}
+
+function drawGrain() {
+  const gr = wset.grain;
+  wset.grainDirty = false;
+  const { ctx, canvas } = gr;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  gr.mesh.visible = !!carve?.grain;
+  if (!carve?.grain) return;
+  const pad = GRAIN_PX * 0.03;
+  ctx.save();
+  ctx.beginPath();
+  carve.cells.forEach((st, i) => {
+    if (st === 'x') return;
+    const { c, r } = carveCell(i);
+    ctx.rect(c * GRAIN_PX + pad, r * GRAIN_PX + pad, GRAIN_PX - pad * 2, GRAIN_PX - pad * 2);
+  });
+  ctx.clip();
+  const across = carve.grain === 'h' ? canvas.height : canvas.width;
+  const len = carve.grain === 'h' ? canvas.width : canvas.height;
+  ctx.strokeStyle = 'rgba(120,70,25,0.14)'; ctx.lineWidth = 5;
+  for (let v = 4; v < across; v += 22) grainLine(ctx, carve.grain, v, len);
+  ctx.strokeStyle = 'rgba(80,42,12,0.38)'; ctx.lineWidth = 1.4;
+  for (let v = 3; v < across; v += 7) grainLine(ctx, carve.grain, v, len);
+  ctx.restore();
+  gr.tex.needsUpdate = true;
 }
 
 export const carveCell = (i) => ({ c: i % CARVE_COLS, r: (i / CARVE_COLS) | 0 });
@@ -155,8 +215,14 @@ export function setupCarveBlock(d) {
   wset.debrisMat.color.set(m.dust);
   wset.debris.forEach(f => f.m.parent?.remove(f.m)); wset.debris = [];
   wset.trauma = 0; wset.popT = -1; wset.spinT = -1; wset.strikeT = -1; wset.chisel.visible = false;
-  carve = { d, cells, waste, removed: 0, dmg: 0, startAt: performance.now(), over: false, finished: false, drag: false, lastMove: 0 };
+  const now = performance.now();
+  carve = { d, cells, waste, removed: 0, dmg: 0, startAt: now, over: false, finished: false, drag: false, lastMove: 0,
+    grain: grainOf(d), combo: comboStart(), stroke: null, gem: pickGemCell(cells, d.mat), gemFound: false, gemAt: now + GEM_SPARKLE_MS };
+  carvePending = null;
+  drawGrain();
 }
+
+const carveView = () => ({ removed: carve.removed, waste: carve.waste, dmg: carve.dmg, combo: carve.combo.combo, best: carve.combo.best });
 
 // 조각 시작 — 재료 선소비(주방과 같은 악용 방지: 포기해도 낮은 등급으로 완성)
 export function carveStart(id) {
@@ -175,7 +241,7 @@ export function carveStart(id) {
   ui.act?.('carve');                                      // 🎓 튜토리얼: "조각 시작해보기" 단계 통과
   trackEvent('carve_start', { order: id, mat: d.mat });   // [GA4] 미니게임 퍼널: 시작
   decorBanner('carve');
-  return { ok: true, id, name: d.name, ico: d.ico, waste: carve.waste, dmgMax: 3 };
+  return { ok: true, id, name: d.name, ico: d.ico, waste: carve.waste, dmgMax: 3, grain: carve.grain };
 }
 
 // 포인터 입력(캔버스 소유는 game.js) — 탭=깎기/흠집, 드래그=슥슥 연속 깎기(threejs-interaction)
@@ -184,7 +250,12 @@ export function carveActive() { return mgView?.type === 'carve' && carve && !car
 export function bindCarvePointer() {
   if (carveBound) return; carveBound = true;
   const el = renderer.domElement;
-  el.addEventListener('pointerdown', (e) => { if (carveActive()) { carve.drag = true; carveHit(e, true); } });
+  el.addEventListener('pointerdown', (e) => {
+    if (!carveActive()) return;
+    carve.drag = true;
+    carve.stroke = { last: -1, cut: false, scratched: false };
+    carveHit(e, true);
+  });
   el.addEventListener('pointermove', (e) => {
     if (!carveActive() || !carve.drag) return;
     const now = performance.now();
@@ -192,18 +263,69 @@ export function bindCarvePointer() {
     carve.lastMove = now;
     carveHit(e, false);
   });
-  window.addEventListener('pointerup', () => { if (carve) carve.drag = false; });
+  window.addEventListener('pointerup', () => { if (carve) { carve.drag = false; carve.stroke = null; } });
 }
 
 export function carveHit(e, isTap) {
   pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
   pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
   raycaster.setFromCamera(pointer, camera);
+  const i = cellUnderRay();
+  if (i < 0) return;
+  const st = carve.stroke || (carve.stroke = { last: -1, cut: false, scratched: false });
+  const prev = st.last;
+  st.last = i;
+  if (carve.cells[i] === 'w') cutChip(i);
+  else if (carve.cells[i] === 'k' && isTap) { st.scratched = true; scratchChip(i); }   // 드래그로 스친 밑그림은 무판정
+  if (carve.over || prev < 0 || carve.cells[i] === 'k' || carve.cells[i] === 's') return;
+  const step = strokeStep(prev, i, carve.grain, CARVE_COLS);
+  if (!step) return;
+  for (const j of grainSweep(carve.cells, i, step, CARVE_COLS, CARVE_ROWS)) {
+    if (carve.over) break;
+    cutChip(j);
+  }
+}
+
+function cellUnderRay() {
   const hit = raycaster.intersectObject(wset.chips, false)[0];
-  if (!hit || hit.instanceId == null) return;
-  const i = hit.instanceId;
-  if (carve.cells[i] === 'w') removeChip(i);
-  else if (carve.cells[i] === 'k' && isTap) scratchChip(i);   // 드래그로 스친 밑그림은 무판정
+  if (hit && hit.instanceId != null) return hit.instanceId;
+  const back = raycaster.intersectObject(wset.backing, false)[0];
+  if (!back) return -1;
+  const p = wset.blockGroup.worldToLocal(back.point.clone());
+  const c = Math.round(p.x / CARVE_S + (CARVE_COLS - 1) / 2);
+  const r = Math.round((CARVE_CY - p.y) / CARVE_S + (CARVE_ROWS - 1) / 2);
+  if (c < 0 || c >= CARVE_COLS || r < 0 || r >= CARVE_ROWS) return -1;
+  return r * CARVE_COLS + c;
+}
+
+function cutChip(i) {
+  const st = carve.stroke;
+  if (!st?.scratched) {
+    const before = carve.combo.best;
+    carve.combo = comboCut(carve.combo, performance.now(), !st?.cut);
+    const up = comboCrossed(before, carve.combo.best);
+    if (up) ui.toast?.(`콤보 ${up.at}! 보상 ×${up.mult}`);
+  }
+  if (st) st.cut = true;
+  removeChip(i);
+}
+
+function breakCombo(next) {
+  const had = carve.combo.combo;
+  carve.combo = next;
+  if (had >= COMBO_BREAK_NOTICE) ui.toast?.('콤보가 끊겼어요');
+}
+
+function foundGem(i) {
+  carve.gemFound = true;
+  gameState.inventory.gem = (gameState.inventory.gem || 0) + 1;
+  refreshInventoryUI();
+  const p = carvePos(i);
+  spawnSparkle(WSET.x + p.x, p.y, WSET.z + 0.5, 18);
+  spawnFloatText(WSET.x + p.x, p.y + 0.4, WSET.z + 0.6, '💎✨', '#2a6a86', 1.0);
+  Sound.complete();
+  ui.toast?.('💎 숨은 보석을 찾았어요!');
+  ui.carveGem?.();
 }
 
 // 칩 제거 — 소형 피드백(소리+파편). game-feel: 반복 동작은 과하지 않게
@@ -222,7 +344,9 @@ export function removeChip(i) {
   strikeChisel(p);
   Sound.chop();
   carve.removed++;
-  ui.carveProgress?.({ removed: carve.removed, waste: carve.waste, dmg: carve.dmg });
+  wset.grainDirty = true;
+  if (i === carve.gem && !carve.gemFound) foundGem(i);
+  ui.carveProgress?.(carveView());
   if (carve.removed >= carve.waste) { carve.over = true; setTimeout(() => carveFinish('done'), 380); }
 }
 
@@ -237,7 +361,8 @@ export function scratchChip(i) {
   wset.trauma = Math.min(1, wset.trauma + 0.45);
   spawnFloatText(WSET.x + p.x, p.y + 0.3, WSET.z + 0.6, '💢 흠집!', '#c0392b', 0.9);
   carve.dmg++;
-  ui.carveProgress?.({ removed: carve.removed, waste: carve.waste, dmg: carve.dmg });
+  breakCombo(comboScratch(carve.combo));
+  ui.carveProgress?.(carveView());
   if (carve.dmg >= 3) { carve.over = true; setTimeout(() => carveFinish('ruin'), 550); }
 }
 
@@ -266,22 +391,81 @@ export function carveFinish(kind) {
   const isBest = score > (st.best[d.id] || 0);
   if (isBest) st.best[d.id] = score;
   if (!st.done.includes(d.id)) st.done.push(d.id);        // 시도 자체가 오늘 주문 소진(재도전 파밍 방지)
-  const coins = Math.round(d.pay * tier.mult);
-  gameState.inventory.coins += coins;
+  const best = carve.combo.best;
+  const coins = carvePayout(d.pay, tier.mult, kind === 'done' ? best : 0);
+  const canKeep = kind === 'done';
   if (kind === 'done') st.carvedToday = (st.carvedToday || 0) + 1;   // 🦉 의뢰는 오늘 완성 수를 읽는다(망치거나 포기한 건 "완성" 이 아니다)
-  refreshInventoryUI();
+  payCarve(d, coins);
+  if (canKeep) carvePending = { d, tier, coins };
   revealCarve(tier, kind === 'done');
-  logEcon('carve_reward', d.id, coins, gameState.inventory.coins);   // [원장] 코인 유입
   trackEvent(kind === 'abandon' ? 'carve_abandon' : 'carve_result', {   // [GA4] 결과 지표 — 주방 스키마와 같은 결
     order: d.id, quality: tier.id, score, dmg: carve.dmg,
     chips_left: carve.waste - carve.removed,
     duration_ms: Math.round(performance.now() - carve.startAt),
     is_best: isBest ? 1 : 0, total_carved: st.carved,
+    combo_max: best, gem: carve.gemFound ? 1 : 0,
   });
   if (kind !== 'abandon') onPlay('carve');
   const res = { ok: true, name: d.name, ico: d.ico, score, isBest, coins, carved: st.carved, dmg: carve.dmg,
-    tier: { id: tier.id, ico: tier.ico, name: tier.name } };
+    tier: { id: tier.id, ico: tier.ico, name: tier.name },
+    comboMax: best, comboMult: comboMult(best), gem: carve.gemFound, canKeep, keepLove: keepLove(tier.id) };
   setTimeout(() => ui.carveDone?.(res), kind === 'done' ? 1500 : 700);  // 회전 연출을 본 뒤 결과 카드
+}
+
+function payCarve(d, coins) {
+  gameState.inventory.coins += coins;
+  refreshInventoryUI();
+  logEcon('carve_reward', d.id, coins, gameState.inventory.coins);
+}
+
+export function carveResolve(how = 'sell') {
+  const p = carvePending;
+  if (!p) return { ok: false };
+  carvePending = null;
+  if (how !== 'keep') return { ok: true, how: 'sell', coins: p.coins };
+  const id = keptGiftId(p.d.id, p.tier.id);
+  gameState.inventory.coins = Math.max(0, (gameState.inventory.coins || 0) - p.coins);
+  logEcon('carve_keep', p.d.id, -p.coins, gameState.inventory.coins);
+  refreshInventoryUI();
+  gameState.gifts = addGift(gameState.gifts, id);
+  requestSave();
+  Sound.blip();
+  trackEvent('carve_keep', { design: p.d.id, tier: p.tier.id });
+  return { ok: true, how: 'keep', id, ico: p.d.ico, name: p.d.name, particle: objParticle(p.d.name), love: keepLove(p.tier.id) };
+}
+
+export function carveWrap(id, paper) {
+  const kept = parseKeptGift(id);
+  if (!kept) return { ok: false };
+  if ((gameState.inventory.coins || 0) < WRAP_COST) return { ok: false, msg: '코인이 부족해요' };
+  const next = wrapKept(gameState.gifts, id, paper);
+  if (!next) return { ok: false };
+  gameState.gifts = next;
+  gameState.inventory.coins -= WRAP_COST;
+  refreshInventoryUI();
+  requestSave();
+  Sound.blip();
+  logEcon('gift_wrap', paper, -WRAP_COST, gameState.inventory.coins);
+  trackEvent('gift_wrap', { paper, item: kept.design });
+  return { ok: true, id: keptGiftId(kept.design, kept.tier, paper) };
+}
+
+export function keptGiftsView() {
+  return keptGiftList(gameState.gifts, CARVE_DESIGNS);
+}
+
+export function carveTick() {
+  if (!wset || !carve) return;
+  if (wset.grainDirty) drawGrain();
+  if (carve.over) return;
+  const now = performance.now();
+  const next = comboTick(carve.combo, now);
+  if (next !== carve.combo) { breakCombo(next); ui.carveProgress?.(carveView()); }
+  if (carve.gem >= 0 && !carve.gemFound && now >= carve.gemAt) {
+    carve.gemAt = now + GEM_SPARKLE_MS;
+    const p = carvePos(carve.gem);
+    spawnSparkle(WSET.x + p.x, p.y, WSET.z + 0.35, 5);
+  }
 }
 
 // 완성 연출 — 대형 피드백(색 반전+오버슈트 팝+턴테이블 한 바퀴+팡파레). 연출은 잠깐, 곧 원상 복귀
@@ -299,6 +483,7 @@ export function revealCarve(tier, won) {
 }
 
 export function carveSceneEnd() {
+  if (carvePending) carveResolve('sell');
   if (wset) {
     wset.group.visible = false;
     wset.debris.forEach(f => f.m.parent?.remove(f.m)); wset.debris = [];
@@ -331,6 +516,17 @@ export function carveDebug(action, n = 1) {
   } else if (action === 'scratch') {
     const i = carve.cells.indexOf('k');
     if (i >= 0) scratchChip(i);
+  } else if (action === 'gem') {
+    const i = n > 1 && carve.cells[n] === 'w' ? n : carve.cells.indexOf('w');
+    carve.gem = i; carve.gemAt = 0;
+    return { gem: i };
+  } else if (action === 'cellxy') {
+    const p = carvePos(n);
+    const v = new THREE.Vector3(p.x, p.y, CARVE_S / 2);
+    wset.blockGroup.localToWorld(v).project(camera);
+    return { x: (v.x + 1) / 2 * window.innerWidth, y: (1 - v.y) / 2 * window.innerHeight, state: carve.cells[n] };
+  } else if (action === 'combo') {
+    return { ...carve.combo, gem: carve.gem, gemFound: carve.gemFound, grain: carve.grain };
   }
   return carve ? { active: !carve.over, removed: carve.removed, waste: carve.waste, dmg: carve.dmg } : { active: false };
 }

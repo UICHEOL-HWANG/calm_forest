@@ -26,7 +26,7 @@ test('sell price table spreads the forage prices', () => {
 });
 
 test('sell icon table spreads the forage icons', () => {
-  const src = read('js/data/places.js');
+  const src = read('js/data/sell-icons.js');
   assert.match(src, /import \{[^}]*FORAGE_ICO[^}]*\} from '\.\.\/forage\/logic\.js'/);
   assert.match(src, /export const SELL_ICO_G = \{[^\n]*\.\.\.FORAGE_ICO/);
 });
@@ -42,7 +42,8 @@ test('bag shows a sea section and the sell list names sea items', () => {
   assert.match(src, /import \{[^}]*FORAGE_META[^}]*\} from '\.\/js\/forage\/logic\.js'/);
   assert.match(src, /\.\.\.FORAGE_META,\s*\n\s*\};/);
   assert.match(src, /\{ name: '🌊 바다', keys: FORAGE_KEYS \}/);
-  assert.match(src, /FORAGE_META\[k\] \? `<b>\$\{FORAGE_META\[k\]\.name\}<\/b> ` : ''/);
+  assert.match(src, /const list = sellList\(market, lastInv\);/);
+  assert.match(src, /<span class="sl-nm">\$\{it\.name\}<\/span>/);
 });
 
 test('sea item names and labels translate to English', async () => {

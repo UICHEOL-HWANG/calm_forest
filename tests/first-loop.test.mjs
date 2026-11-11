@@ -69,3 +69,11 @@ test('welcomeOffer: 작물 환영가는 정가(5🪙×4)보다 조금만 높다 
   const o = welcomeOffer({ crop: 4 }, { reworld: true });
   assert.ok(o.gain <= o.qty * 5 * 1.5);   // 5 = js/data/catalog.js SELL_PRICE.crop (three 를 끌어와서 직접 import 안 함)
 });
+
+test('welcomeOffer: 집 기초 전 목재 15 이상이면 15 아래로 깎지 않는다', () => {
+  assert.deepEqual(welcomeOffer({ wood: 17 }, { houseWood: 15 }), { item: 'wood', qty: 0, gain: 0, keep: true });
+  assert.deepEqual(welcomeOffer({ wood: 15 }, { houseWood: 15 }), { item: 'wood', qty: 0, gain: 0, keep: true });
+  assert.deepEqual(welcomeOffer({ wood: 20 }, { houseWood: 15 }), { item: 'wood', qty: 5, gain: 30 });
+  assert.deepEqual(welcomeOffer({ wood: 6 }, { houseWood: 15 }), { item: 'wood', qty: 5, gain: 30 });
+  assert.deepEqual(welcomeOffer({ wood: 17 }), { item: 'wood', qty: 5, gain: 30 });
+});

@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>통배 아이콘 비교</title>
+<style>
+  body { margin: 0; background: #f3efe6; color: #2f3a2c; font: 14px/1.5 -apple-system, "Apple SD Gothic Neo", sans-serif; padding: 18px 24px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  p { margin: 0 0 14px; color: #6b7563; max-width: 1100px; }
+  .row { display: flex; gap: 14px; flex-wrap: wrap; }
+  .c { width: 150px; background: #fffdf8; border: 1px solid #ddd5c4; border-radius: 12px; padding: 12px; text-align: center; }
+  .c.mine { border: 2px solid #4f7a3a; }
+  .c > img, .c > svg { width: 64px; height: 64px; display: block; margin: 4px auto 8px; }
+  .c b { display: block; font-size: 13px; }
+  .c small { color: #6b7563; font-size: 12px; }
+  .btns { display: flex; gap: 10px; justify-content: center; margin-top: 8px; }
+  .btn { width: 46px; height: 46px; border-radius: 50%; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.18); display: grid; place-items: center; }
+  .btn img, .btn svg { width: 26px; height: 26px; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; background: rgba(255,253,248,.95); border-radius: 999px; padding: 2px 8px; font-size: 12px; box-shadow: 0 1px 4px rgba(0,0,0,.15); }
+  .chip img, .chip svg { width: 16px; height: 16px; }
+  h2 { font-size: 16px; margin: 22px 0 10px; }
+  .hudbox b { display: block; margin-bottom: 6px; }
+  .hudrow { display: flex; gap: 10px; }
+  .mini { position: relative; background: linear-gradient(#4fb3c9, #3b8fbe); border-radius: 12px; overflow: hidden; }
+  .mini .tag { position: absolute; left: 8px; top: 6px; color: #fff; font-weight: 700; font-size: 12px; }
+  .mini .hb { position: absolute; right: 10px; bottom: 10px; border-radius: 50%; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.25); display: grid; place-items: center; }
+  .mini .hb svg { width: 58%; height: 58%; }
+  .mini .chip { position: absolute; left: 8px; top: 26px; }
+  .ref { margin-top: 18px; display: flex; gap: 18px; align-items: center; color: #6b7563; }
+  .ref img { height: 120px; border-radius: 10px; }
+</style>
+</head>
+<body>
+<h1>⛵ 통배 아이콘: 토스페이스 원본 vs 직접 그리기</h1>
+<p>앞의 여섯 개는 토스페이스 v1.6.1 원본(github.com/toss/tossface, 손대지 않고 쓰는 조건으로 무료)입니다. 초록 테두리 칸은 우리 통배 모양을 토스페이스 그리는 방식(테두리 없음·단색 면·반쪽 2톤 명암)으로 새로 그린 것입니다. 각 칸 아래는 상황 버튼(46px)과 HUD 칩(16px) 크기입니다.</p>
+<div class="row" id="row"></div>
+<h2>통배 새로 그리기 3안</h2>
+<div class="row" id="mine"></div>
+<h2>게임 버튼 자리에 얹어 보기 (바다 배경 · 버튼과 칩은 실제 크기)</h2>
+<div class="row" id="hud"></div>
+<div class="ref"><img src="port-island/v2-embark-phone.png" alt=""><span>게임 속 통배: 빨간 둥근 몸통 · 주황 테두리 · 뒤 꼬리 공 · 등불 기둥</span></div>
+<script>
+const TF = 'https://raw.githubusercontent.com/toss/tossface/main/dist/svg/';
+const items = [
+  ['u26F5', '⛵ 돛단배', '돛이 있어 통배와 다름'],
+  ['u1F6F6', '🛶 카누', '길쭉한 나무배'],
+  ['u1F6A3', '🚣 노 젓는 사람', '노 젓기는 뺐음'],
+  ['u1F6A4', '🚤 쾌속정', '모터보트'],
+  ['u26F4', '⛴ 여객선', '큰 배'],
+  ['u2693', '⚓ 닻', '부두·항구 표시용'],
+];
+const LAMP = `<path d="M16.9 3.8h1.1v7.6h-1.1z" fill="#6b4a2e"/><circle cx="17.45" cy="5.9" r="2.1" fill="#ffc342"/><path d="M15.9 2.6h3.1a.6.6 0 0 1 0 1.2h-3.1a.6.6 0 0 1 0 -1.2z" fill="#3b2a20"/>`;
+const TUBS = {
+  T1: { name: 'T1 옆모습', note: '둥근 몸통 반쪽 명암·테두리·꼬리 공', svg: `<svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M1.5 21.2c1.7-.9 3.4-.9 5.1 0s3.4.9 5.1 0 3.4-.9 5.1 0 3.4.9 5.1 0" stroke="#90c2ff" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+    <circle cx="2.9" cy="14.4" r="1.9" fill="#f04452"/>
+    ${LAMP}
+    <path d="M3.2 11.6h17.6a8.8 8.2 0 0 1 -17.6 0z" fill="#f04452"/>
+    <path d="M12 11.6h8.8a8.8 8.2 0 0 1 -8.8 8.2z" fill="#d22030"/>
+    <path d="M3.9 10.2h16.2a1.4 1.4 0 0 1 0 2.8h-16.2a1.4 1.4 0 0 1 0 -2.8z" fill="#ff8a3d"/>
+  </svg>` },
+  T2: { name: 'T2 비스듬히 위', note: '안쪽·좌판이 보여 "통"으로 읽힘', svg: `<svg viewBox="0 0 24 24" aria-hidden="true">
+    <ellipse cx="12" cy="19.6" rx="10.4" ry="2.6" fill="#90c2ff"/>
+    <circle cx="2.7" cy="13.2" r="1.8" fill="#f04452"/>
+    <ellipse cx="12" cy="13.4" rx="9.4" ry="6" fill="#f04452"/>
+    <path d="M12 7.4a9.4 6 0 0 1 0 12z" fill="#d22030"/>
+    <ellipse cx="12" cy="11" rx="9.4" ry="4.3" fill="#ff8a3d"/>
+    <ellipse cx="12" cy="11.2" rx="7.7" ry="3.1" fill="#8a2a22"/>
+    <path d="M7.4 11.1h9.2a.8.8 0 0 1 0 1.6h-9.2a.8.8 0 0 1 0 -1.6z" fill="#b98a55"/>
+    <path d="M17.2 3.8h1.1v7.2h-1.1z" fill="#6b4a2e"/><circle cx="17.75" cy="5.9" r="2.1" fill="#ffc342"/><path d="M16.2 2.6h3.1a.6.6 0 0 1 0 1.2h-3.1a.6.6 0 0 1 0 -1.2z" fill="#3b2a20"/>
+  </svg>` },
+  T3: { name: 'T3 곰이 탄 모습', note: '"타기" 버튼에 쓰면 행동이 보임', svg: `<svg viewBox="0 0 24 24" aria-hidden="true">
+    <ellipse cx="12" cy="19.6" rx="10.4" ry="2.6" fill="#90c2ff"/>
+    <circle cx="2.7" cy="13.2" r="1.8" fill="#f04452"/>
+    <ellipse cx="12" cy="13.4" rx="9.4" ry="6" fill="#f04452"/>
+    <path d="M12 7.4a9.4 6 0 0 1 0 12z" fill="#d22030"/>
+    <ellipse cx="12" cy="11" rx="9.4" ry="4.3" fill="#ff8a3d"/>
+    <ellipse cx="12" cy="11.2" rx="7.7" ry="3.1" fill="#8a2a22"/>
+    <circle cx="8.4" cy="5.3" r="1.1" fill="#7a5233"/><circle cx="12.6" cy="5.3" r="1.1" fill="#7a5233"/>
+    <path d="M10.5 4.4a3.1 3 0 0 1 3.1 3v3.4h-6.2v-3.4a3.1 3 0 0 1 3.1 -3z" fill="#9b6a43"/>
+    <ellipse cx="10.5" cy="8.6" rx="1.5" ry="1.05" fill="#e8c9a4"/>
+    <circle cx="9.3" cy="7" r=".55" fill="#333d4b"/><circle cx="11.7" cy="7" r=".55" fill="#333d4b"/><circle cx="10.5" cy="8.3" r=".45" fill="#333d4b"/>
+    <path d="M17.2 3.8h1.1v7.2h-1.1z" fill="#6b4a2e"/><circle cx="17.75" cy="5.9" r="2.1" fill="#ffc342"/><path d="M16.2 2.6h3.1a.6.6 0 0 1 0 1.2h-3.1a.6.6 0 0 1 0 -1.2z" fill="#3b2a20"/>
+  </svg>` },
+};
+const row = document.getElementById('row');
+function card(ico, name, note, mine, target = row) {
+  const d = document.createElement('div'); d.className = 'c' + (mine ? ' mine' : '');
+  d.innerHTML = `${ico}<b>${name}</b><small>${note}</small><div class="btns"><span class="btn">${ico}</span></div><div style="margin-top:8px"><span class="chip">${ico} 섬 바로 가기</span></div>`;
+  target.appendChild(d);
+}
+for (const [f, n, note] of items) card(`<img src="${TF}${f}.svg" alt="">`, n, note);
+const mine = document.getElementById('mine');
+for (const t of Object.values(TUBS)) card(t.svg, t.name, t.note, true, mine);
+const hud = document.getElementById('hud');
+for (const [dev, w, h, btn, chip] of [['가로 폰', 560, 258, 46, 16], ['PC', 780, 440, 54, 18]]) {
+  const box = document.createElement('div'); box.className = 'hudbox';
+  box.innerHTML = `<b>${dev}</b><div class="hudrow">${Object.entries(TUBS).map(([k, t]) => `<div class="mini" style="width:${w / 2.4}px;height:${h / 2.4 + 30}px"><span class="tag">${k}</span><span class="hb" style="width:${btn}px;height:${btn}px">${t.svg}</span><span class="chip" style="font-size:${chip - 4}px">${t.svg.replace('<svg', `<svg style="width:${chip}px;height:${chip}px"`)} 섬 바로 가기</span></div>`).join('')}</div>`;
+  hud.appendChild(box);
+}
+</script>
+</body>
+</html>

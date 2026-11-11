@@ -6,7 +6,7 @@
 //     game.js 에 남은 let 에 쓸 때는 `$w.x = …` (읽기는 그냥 x). 도구·증명: tools/refactor/
 // =============================================================
 import {
-  $w, DIG_WINDOW, Input, RAIN_DAY, actAnim, atCafe, atDream, atMirror, atHalloween, atFarm, atMine, atMuseum, atObservatory, atMountain, catchCeremony, clayMat, clearCrop,
+  $w, DIG_WINDOW, Input, RAIN_DAY, actAnim, atCafe, atRestaurant, atDream, atMirror, atHalloween, atFarm, atMine, atMuseum, atObservatory, atMountain, catchCeremony, clayMat, clearCrop,
   clock, cropMini, currentTool, dateHash, dayStr, dexDiscover, dist2D, doPlayerAction, farmBuildingRecs,
   farmHalf, finishPetJob, gameState, giveReward, indoor, lerpAngle, mergeGeos, mode, noteSpecialExhibit,
   obstacles, pendingDig, pet3d, petJob, player, plots, questEvent, refreshCropStage, refreshInventoryUI,
@@ -36,8 +36,9 @@ import { finishOrchardQuest, maybeOfferOrchardQuest, tryHoe } from '../spaces/or
 import { maybeOfferCosQuest } from '../spaces/cos-quest.js';
 import { DIG_HIT_AT, DIG_RESTORE, digHit, expireDig, setPlotDug, trySeed, tryWater, updateDigFx } from '../spaces/shovel.js';
 import { refreshCovers } from '../spaces/weather.js';
-import { e1OnHarvest } from '../spaces/e1-start.js';   // 🧪 E1 — 첫 수확이 처치 대기를 끝낸다
+import { e1OnHarvest, e1Pending } from '../spaces/e1-start.js';   // 🧪 E1 — 첫 수확이 처치 대기를 끝낸다
 import { sickleReach } from '../tool-tiers.js';
+import { starOf } from '../workbench/rules.js';
 import * as THREE from 'three';
 
 export const FARM_AUTO_R = 1.8;
@@ -134,6 +135,7 @@ export function tryHarvest(plot = plots.find(p => p.state === 'mature' && dist2D
   if (plot.cropType?.id) dexDiscover('crop', plot.cropType.id);   // 📖 도감(작물 첫 수확)
   if (plot.cropType?.id) noteSpecialExhibit('crop', plot.cropType.id);   // 🏛️ ✨눈 오는 날이면 특별 전시(일꾼이 거둔 건 안 센다 — 직접 한 것만)
   ui.act?.('harvest');                                            // 튜토리얼: 수확
+  const e1Was = e1Pending();
   e1OnHarvest();                                                  // 🧪 E1 처치: 말풍선 거두고 환영 모달·방문객 이어서
   if (!adv) maybeOfferOrchardQuest();                              // 🌾→🍎 기본 작물을 거두면 과수원 가는 길 의뢰(한 번)
   maybeOfferCosQuest({ via: 'harvest' });
@@ -147,7 +149,7 @@ export function tryHarvest(plot = plots.find(p => p.state === 'mature' && dist2D
   }
   trackEvent('harvest_crop', { crop: gameState.inventory.crop, kind: harvestKind, qty, adv, pest: harvestPest, sickle: viaSickle ? 1 : 0 }); // [GA4] 종류·수량·해충 손실 + 낫으로 딸려 온 칸
   if (!viaSickle) onPlay('crop');
-  requestSignupNudge(gameState, 'harvest', ui);
+  if (!e1Was) requestSignupNudge(gameState, 'harvest', ui);
   // 🌾 잘 드는 낫 — 옆 칸도 함께. 총량은 그대로고 손만 덜 간다(🌾밭 확장 7단계로 밭이 많아졌다).
   //   ⚠️ 밭 격자는 짝수 좌표 2칸 간격이라 2.6 이면 상하좌우만 걸린다(대각선은 2.83).
   if (!viaSickle && sickleReach(gameState)) {
@@ -219,7 +221,7 @@ export function workerApply(rec, task, tally) {
     case 'water': {
       if (!p || p.state !== 'growing') return false;
       const hive = inRadiusOf(recs, 'beehive', p.x, p.z), well = inRadiusOf(recs, 'well', p.x, p.z);
-      p.growth = Math.min(1, p.growth + growthPerWater(p.cropType, !!gameState.upgrades.water, !!p.fert) * (hive ? HIVE_GROWTH_MUL : 1));
+      p.growth = Math.min(1, p.growth + growthPerWater(p.cropType, !!gameState.upgrades.water, !!p.fert, starOf(gameState, 'water')) * (hive ? HIVE_GROWTH_MUL : 1));
       p.wetUntil = clock.elapsedTime + WET_TIME * (well ? WELL_WET_MUL : 1); p.watered = true; p.needSince = 0;
       if (p.growth < MATURE && weedRoll(p.cropType, Math.random())) p.weed = true;
       refreshCropStage(p); bump('water'); return true;
@@ -548,7 +550,7 @@ export function updatePet(dt, t) {
   if (!pet3d) return;
   // 👣 발자국과 같은 규칙 — 바닥이 없거나 카메라가 붙는 공간에선 끈다.
   //    다시 보일 땐 플레이어 발밑에서 시작한다(따라오느라 벽을 뚫지 않게).
-  const off = indoor || atCafe || atMuseum || atObservatory || atMountain || atMine || atDream || atMirror || atHalloween;
+  const off = indoor || atCafe || atRestaurant || atMuseum || atObservatory || atMountain || atMine || atDream || atMirror || atHalloween;
   if (off) {
     if (pet3d.visible) { pet3d.visible = false; $w.petJob = null; }
     return;
@@ -620,7 +622,7 @@ export function petApply(task) {
       if (p.state !== 'growing') return false;
       const recs = farmBuildingRecs();
       const hive = inRadiusOf(recs, 'beehive', p.x, p.z), well = inRadiusOf(recs, 'well', p.x, p.z);
-      p.growth = Math.min(1, p.growth + growthPerWater(p.cropType, !!gameState.upgrades.water, !!p.fert) * (hive ? HIVE_GROWTH_MUL : 1));
+      p.growth = Math.min(1, p.growth + growthPerWater(p.cropType, !!gameState.upgrades.water, !!p.fert, starOf(gameState, 'water')) * (hive ? HIVE_GROWTH_MUL : 1));
       p.wetUntil = clock.elapsedTime + WET_TIME * (well ? WELL_WET_MUL : 1);
       p.watered = true; p.needSince = 0;
       if (p.growth < MATURE && weedRoll(p.cropType, Math.random())) p.weed = true;

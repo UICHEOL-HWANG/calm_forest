@@ -1,0 +1,34 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>exterior port check</title>
+<style>html,body{margin:0;background:#cfe8d0}canvas{display:block}</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { buildCraftCart, buildPriceBoard } from '../js/spaces/exterior-art.js';
+const night = location.search.includes('night');
+const cv = document.createElement('canvas'); cv.width = cv.height = 128;
+const c = cv.getContext('2d'); c.fillStyle = '#d9a066'; c.fillRect(0, 0, 128, 128);
+c.strokeStyle = '#a9743f'; c.lineWidth = 3;
+for (let y = 20; y < 128; y += 30) { c.beginPath(); c.moveTo(0, y); c.lineTo(128, y); c.stroke(); }
+const woodMap = new THREE.CanvasTexture(cv); woodMap.wrapS = woodMap.wrapT = THREE.RepeatWrapping;
+const env = { woodMap, makeCanvas: (w, h) => { const e = document.createElement('canvas'); e.width = w; e.height = h; return e; } };
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight); renderer.shadowMap.enabled = true;
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(night ? 0x1a2238 : 0xcfe8d0);
+scene.add(new THREE.HemisphereLight(0xffffff, 0xbfe8c9, night ? 0.55 : 0.9), new THREE.AmbientLight(0xfff0dd, night ? 0.2 : 0.25));
+const sun = new THREE.DirectionalLight(night ? 0x9fb4ff : 0xffe9c4, night ? 0.6 : 1.1); sun.position.set(10, 18, 8); sun.castShadow = true;
+Object.assign(sun.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6, near: 1, far: 50 }); scene.add(sun);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshStandardMaterial({ color: night ? 0x4c7a5a : 0x9fd08a }));
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+const cart = buildCraftCart(THREE, env); cart.position.set(-2, 0, 0); scene.add(cart);
+const board = buildPriceBoard(THREE, { hiIcon: '🍓', hiPct: 32, loIcon: '🥕', loPct: -18 }, env); board.position.set(2.2, 0, 0); scene.add(board);
+if (night) for (const g of [cart, board]) for (const m of g.userData.lamps) m.emissiveIntensity = 0.6;
+const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 100);
+camera.position.set(0, 14, 16).multiplyScalar(0.5); camera.lookAt(0, 1.3, 0);
+renderer.render(scene, camera);
+</script>

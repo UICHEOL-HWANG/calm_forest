@@ -7,6 +7,7 @@
 // =============================================================
 
 import { playIntroScore } from './sound-intro.js';
+import { DIVE_BAR, MUDFLAT_BAR, diveBar, mudflatBar } from './sound-forage.js';
 
 let ctx = null;
 let master = null;
@@ -155,6 +156,7 @@ export const Sound = {
   starPerfect(step = 0) { const f = starNote(step); chime(f, 0.5, 0.16, { wet: 0.5 }); chime(f * 2, 0.25, 0.05, { type: 'triangle' }); chime(f * 4, 0.12, 0.02); },
   starGood(step = 0)    { chime(starNote(step), 0.32, 0.09, { wet: 0.25 }); },
   starMiss()   { chime(150, 0.2, 0.22, { glide: 88 }); noise(0.12, 500, 0.06, 0.7); },   // 낮고 둔한 "툭"
+  cineWhoosh() { sweep(0.5, 380, 2200, 0.11, 1.2); },
   starComet()  { sweep(0.4, 500, 2600, 0.05); },                                       // 혜성 출발 "슝"
   starComplete(notes = 7) {   // 이은 별만큼 음계를 훑고 C 화음으로 맺는다
     const t = ensureCtx().currentTime;
@@ -493,8 +495,11 @@ function playSnowSledBar(at) {
   if (bar === 3) chime(snowHz(ch[3], 7), 0.8, 0.014, { at: at + sec - e, wet: 0.7, out: musicGain });
 }
 
-function barFn() { return bgmTheme === 'halloween' ? playHalloweenBar : bgmTheme === 'intro' ? playIntroBar : bgmTheme === 'snow' ? playSnowBar : bgmTheme === 'snowsled' ? playSnowSledBar : bgmTheme === 'mirror' ? playMirrorBar : bgmTheme === 'dream' ? playDreamBar : bgmTheme === 'stars' ? playStarsBar : bgmTheme === 'cave' ? playCaveBar : playMainBar; }
-function barLen() { return bgmTheme === 'halloween' ? HW_BAR : bgmTheme === 'intro' ? INTRO_BAR : bgmTheme === 'snow' ? SNOW_BAR : bgmTheme === 'snowsled' ? SNOW_SLED_BAR : bgmTheme === 'mirror' ? MIRROR_BAR : bgmTheme === 'dream' ? DREAM_BAR : bgmTheme === 'stars' ? STARS_BAR : bgmTheme === 'cave' ? CAVE_BAR : MAIN_BAR; }
+function playForageBar(fn) { return (at) => fn({ c: ensureCtx(), out: musicGain, echo: ensureEcho() }, at, barCount++); }
+const playMudflatBar = playForageBar(mudflatBar), playDiveBar = playForageBar(diveBar);
+
+function barFn() { return bgmTheme === 'mudflat' ? playMudflatBar : bgmTheme === 'dive' ? playDiveBar : bgmTheme === 'halloween' ? playHalloweenBar : bgmTheme === 'intro' ? playIntroBar : bgmTheme === 'snow' ? playSnowBar : bgmTheme === 'snowsled' ? playSnowSledBar : bgmTheme === 'mirror' ? playMirrorBar : bgmTheme === 'dream' ? playDreamBar : bgmTheme === 'stars' ? playStarsBar : bgmTheme === 'cave' ? playCaveBar : playMainBar; }
+function barLen() { return bgmTheme === 'mudflat' ? MUDFLAT_BAR : bgmTheme === 'dive' ? DIVE_BAR : bgmTheme === 'halloween' ? HW_BAR : bgmTheme === 'intro' ? INTRO_BAR : bgmTheme === 'snow' ? SNOW_BAR : bgmTheme === 'snowsled' ? SNOW_SLED_BAR : bgmTheme === 'mirror' ? MIRROR_BAR : bgmTheme === 'dream' ? DREAM_BAR : bgmTheme === 'stars' ? STARS_BAR : bgmTheme === 'cave' ? CAVE_BAR : MAIN_BAR; }
 
 // ── 룩어헤드 스케줄러 ────────────────────────────────────────
 //   setInterval 로 '소리를 내는' 게 아니라, 자주 깨어나 앞으로 0.45초 구간을

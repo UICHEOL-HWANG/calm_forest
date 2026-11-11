@@ -16,6 +16,8 @@ import { trackEvent, onTrack } from './analytics.js';
 import { IS_DEV_SESSION } from './config.js';
 import { e3Decision } from './exp-e3-boot.js';
 import { e3SessionMark } from './exp-e3.js';
+import { e6Decision } from './exp-e6-boot.js';
+import { e6SessionMark } from './exp-e6.js';
 
 // ── 경제 원장 ────────────────────────────────────────────────
 let econBuffer = [];               // 전송 대기 원장 행
@@ -59,12 +61,14 @@ function flushDuel() {
 const counts = {};
 const e3Mark = e3SessionMark(e3Decision());
 if (e3Mark) counts[e3Mark] = 1;
+const e6Mark = e6SessionMark(e6Decision());
+if (e6Mark) counts[e6Mark] = 1;
 const startedAt = Date.now();
 onTrack((name, p) => {
   if (name === 'econ_tx' || name === 'session_summary' || name === 'tutorial_spot_view') return;
   counts[name] = (counts[name] || 0) + 1;
   if (name === 'tutorial_step' && p?.key) counts['tut_' + p.key] = (counts['tut_' + p.key] || 0) + 1; // 🧪 군별 스텝 퍼널용
-  if (name === 'exp_exposure' && p?.exp_arm) counts['e1_' + p.exp_arm] = 1;   // 🧪 E1 무리 표시(session_logs 가 공식 원천)
+  if (name === 'exp_exposure' && p?.exp === 'e1' && p?.exp_arm) counts['e1_' + p.exp_arm] = 1;   // 🧪 E1 무리 표시(session_logs 가 공식 원천)
 });
 
 // ── 세션 요약 upsert ─────────────────────────────────────────

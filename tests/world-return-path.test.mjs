@@ -4,7 +4,13 @@ import { readFileSync } from 'node:fs';
 import { returnStart, crossesWater, segDist } from '../js/world/return-path.js';
 
 // 마을의 물 — js/game.js announceUnlock 이 넘기는 값과 같다(LAKE · DOCK_POND · 박물관 섬 개울 · SEA_COVE)
-const WATERS = [{ x: 16, z: 9, r: 6 }, { x: 0, z: -21.5, r: 7 }, { x: -26.3, z: 4.8, r: 7.6 }, { x: 24, z: -21.5, r: 12 }];   // 🌊 포구 후미까지(사공 오리가 바다에서 걸어 나오던 2차 사고)
+const PLACES = readFileSync(new URL('../js/data/places.js', import.meta.url), 'utf8');
+const COVE = (() => {
+  const g = /SEA_GATE = new THREE\.Vector3\((-?[\d.]+), 0, (-?[\d.]+)\)/.exec(PLACES);
+  const c = /const SEA_COVE = \{ x: SEA_GATE\.x \+ ([\d.]+), z: SEA_GATE\.z - ([\d.]+), r: ([\d.]+) \}/.exec(PLACES);
+  return { x: +g[1] + +c[1], z: +g[2] - +c[2], r: +c[3] };
+})();
+const WATERS = [{ x: 16, z: 9, r: 6 }, { x: 0, z: -21.5, r: 7 }, { x: -26.3, z: 4.8, r: 7.6 }, COVE];   // 🌊 포구 후미까지(사공 오리가 바다에서 걸어 나오던 2차 사고)
 const EDGE = 14;
 
 test('선분까지 거리', () => {
@@ -39,5 +45,5 @@ test('물이 없으면 예전처럼 바깥 방향', () => {
 
 test('🦆 사공 오리 출발점은 포구 후미(바다) 안도 아니다', () => {
   const s = returnStart(2.5, -13.5, EDGE, WATERS);
-  assert.ok(Math.hypot(s.x - 24, s.z + 21.5) > 12 + 0.8, `출발점 (${s.x.toFixed(1)}, ${s.z.toFixed(1)}) 가 후미 안`);
+  assert.ok(Math.hypot(s.x - COVE.x, s.z - COVE.z) > COVE.r + 0.8, `출발점 (${s.x.toFixed(1)}, ${s.z.toFixed(1)}) 가 후미 안`);
 });

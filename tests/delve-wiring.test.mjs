@@ -17,7 +17,7 @@ test('수정: 인벤 기본값·라벨·판매가·도감', () => {
   assert.match(src, /gotgam: 0, crystal: 0 \}/);
   assert.match(src, /crystal: '🔮수정'/);
   assert.equal(SELL_PRICE.crystal, CRYSTAL_PRICE);
-  assert.match(read('js/data/places.js'), /SELL_ICO_G = \{[^}]*crystal: '🔮'/);
+  assert.match(read('js/data/sell-icons.js'), /SELL_ICO_G = \{[^}]*crystal: '🔮'/);
   assert.match(read('js/data/dex.js'), /\{ id: 'gem',\s+name: '보석', ico: '💎' \},\n\s*\{ id: 'crystal', name: '수정', ico: '🔮' \}/);
   assert.match(read('js/spaces/delve.js'), /^\s*dexDiscover\('ore', c\.ore\);$/m);
   assert.doesNotMatch(read('js/spaces/delve.js'), /!== 'crystal'/);
@@ -154,7 +154,7 @@ test('되찾기는 조각마다 제 광석(reclaimGive), 성공 뒤 패널 갱�
 });
 
 test('배너 줄은 낱말 단위로 줄바꿈, 캡처 스크립트에 개인 경로 없음, 안 쓰는 import 없음', () => {
-  assert.match(read('index.html'), /#hint-banner \.hb-line \{ word-break: keep-all; \}/);
+  assert.match(read('index.html'), /#hint-banner \.hb-line \{ word-break: keep-all;[^}]*\}/);
   assert.doesNotMatch(read('dev/archive/cave-delve/mockup/impl/capture-impl.mjs'), /\/private\/tmp|\/Users\//);
   assert.doesNotMatch(delveSrc().split('\n').slice(0, 5).join('\n'), /\bclock\b/);
   assert.match(src, /\} from '\.\/spaces\/mine\.js';   \/\/ 📦 ⛏️ 채굴 동굴/);

@@ -11,7 +11,8 @@
 // =============================================================
 
 export const ARMS = ['control', 'harvest_start'];
-export const E1_PLATFORMS = ['web', 'toss'];          // 안드로이드·iOS 는 플랫폼 태깅이 갖춰지면 따로 결정
+export const E1_ROLLOUT = true;
+export const E1_PLATFORMS = ['web', 'toss'];        // 안드로이드·iOS 는 플랫폼 태깅이 갖춰지면 따로 결정
 export const NEW_KINDS = ['empty', 'failed_fresh'];   // js/save-guard.js — 세이브가 없다고 확인된 판정. 'offline' 은 있는지 모르니 뺀다(리뷰 M3)
 export const E1_STORE_KEY = 'cf_e1';                  // localStorage — { arm, platform }
 
@@ -50,13 +51,17 @@ export function armFor(clientId, platform) {
 export function decideE1({ clientId, platform, loadKind, saved = null, stored = null, forced = null, dev = false } = {}) {
   const hashed = armFor(clientId, platform);
   const fresh = !saved && NEW_KINDS.includes(loadKind);
-  const out = (enrolled, arm, first, reason) => ({ hashed, enrolled, arm: enrolled ? arm : null, first, fresh: enrolled && fresh, reason });
+  const out = (enrolled, arm, first, reason, rollout = false) => ({
+    hashed, enrolled, arm: enrolled ? arm : null, first, fresh: enrolled && fresh, reason,
+    rollout: enrolled && rollout, exp: enrolled && rollout ? 'e1_rollout' : 'e1',
+  });
   if (isArm(forced)) return out(true, forced, !stored && !saved?.e1, 'forced');    // QA ?e1= (dev 세션 — 기록 없음)
   if (dev) return out(false, null, false, 'dev');                                  // ?dbg 등 — 개발 기기를 실험에 넣지 않는다(리뷰 M4)
   if (!E1_PLATFORMS.includes(platform)) return out(false, null, false, 'platform');
-  if (isArm(saved?.e1?.arm)) return out(true, saved.e1.arm, false, 'save');        // 다른 기기에서 로그인해도 같은 무리
+  if (isArm(saved?.e1?.arm)) return out(true, saved.e1.arm, false, 'save', saved.e1.rollout === true);      // 다른 기기에서 로그인해도 같은 무리
   if (saved) return out(false, null, false, 'existing');                          // 기존 유저 — 기기에 옛 기록이 있어도 등록 안 함
-  if (isArm(stored?.arm)) return out(true, stored.arm, false, 'device');           // 같은 기기 재방문(첫 저장 전에 나갔으면 fresh)
+  if (isArm(stored?.arm)) return out(true, stored.arm, false, 'device', stored.rollout === true);         // 같은 기기 재방문(첫 저장 전에 나갔으면 fresh)
+  if (fresh && E1_ROLLOUT) return out(true, 'harvest_start', true, 'rollout', true);
   if (fresh) return out(true, hashed, true, 'new');
   return out(false, null, false, 'unknown');
 }
@@ -64,14 +69,14 @@ export function decideE1({ clientId, platform, loadKind, saved = null, stored = 
 export function parseStored(raw) {
   try {
     const v = JSON.parse(raw);
-    return v && typeof v === 'object' && !Array.isArray(v) && isArm(v.arm) ? { arm: v.arm, platform: String(v.platform || '') } : null;
+    return v && typeof v === 'object' && !Array.isArray(v) && isArm(v.arm) ? { arm: v.arm, platform: String(v.platform || ''), rollout: v.rollout === true } : null;
   } catch { return null; }
 }
 
 // 세이브의 e1 필드 — 낯선 값은 버린다(세이브는 클라이언트 권위)
 export function sanitizeE1(v) {
   if (!v || typeof v !== 'object' || !isArm(v.arm)) return null;
-  return { arm: v.arm, seeded: !!v.seeded, harvested: !!v.harvested, intro: !!v.intro };
+  return { arm: v.arm, seeded: !!v.seeded, harvested: !!v.harvested, intro: !!v.intro, rollout: v.rollout === true };
 }
 
 // 처치 밭은 처치 무리의 신규에게, 한 번만

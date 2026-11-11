@@ -1,0 +1,241 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>갯벌·잠수 배경음 시안 · calm forest</title>
+<style>
+  :root{--bg:#eaf3f2;--ink:#21363a;--sub:#5b7276;--card:#fffdf7;--line:#cfe0dd;--accent:#3d8fb0;--mud:#9a7350}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif}
+  header{padding:18px 22px 4px}
+  h1{font-size:19px;margin:0 0 6px}
+  h2.sec{font-size:16px;margin:16px 22px 0}
+  .note{font-size:12.5px;color:var(--sub);line-height:1.6;margin:0;max-width:980px}
+  .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;padding:12px 22px 10px}
+  .col{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:9px;min-width:0}
+  .col.on{border-color:var(--accent);box-shadow:0 0 0 2px rgba(61,143,176,.25)}
+  .col h3{font-size:15px;margin:0}
+  .ref{font-size:12px;color:var(--mud);margin:0}
+  .how{font-size:12.5px;line-height:1.55;margin:0}
+  .tags{display:flex;flex-wrap:wrap;gap:4px}
+  .tags span{font-size:11px;background:#e2efed;border-radius:999px;padding:3px 8px;color:#3b5a5e}
+  .btns button{width:100%;font:inherit;font-size:14px;padding:10px 8px;border-radius:10px;border:1px solid var(--line);background:#f1f7f6;color:var(--ink);cursor:pointer}
+  .btns button.play{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .meter{height:6px;border-radius:3px;background:#e2efed;overflow:hidden}
+  .meter i{display:block;height:100%;width:0;background:var(--accent);transition:width .08s linear}
+  .stop{margin:6px 22px 26px;font:inherit;font-size:13px;padding:7px 14px;border-radius:9px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer}
+  @media (max-width:900px){.grid{grid-template-columns:1fr;padding:10px 16px}header{padding:16px 16px 4px}h2.sec{margin:14px 16px 0}.stop{margin:6px 16px 20px}}
+</style>
+<header>
+  <h1>🌊 갯벌·잠수 배경음 시안</h1>
+  <p class="note">지금은 갯벌과 잠수에 들어가도 바다터 소리 그대로예요. 아래 시안은 게임 안 음악과 같은 방식(파일 없이 코드로 바로 합성)이라 그대로 옮길 수 있어요. 각 칸을 눌러 들어 보세요. 한 번에 하나만 나와요.</p>
+</header>
+<h2 class="sec">🐚 갯벌 캐기</h2>
+<div class="grid" id="grid-mud"></div>
+<h2 class="sec">🤿 잠수</h2>
+<div class="grid" id="grid-dive"></div>
+<button class="stop" id="stop">■ 정지</button>
+<script>
+const VARS = [
+  { id: 'MA', sec: 'mud', name: 'A · 통통 갯벌 장터', ref: '느낌: 신나게 캐는 놀이 · 마림바 2박',
+    how: '통통 튀는 마림바 멜로디가 장조로 깡총깡총 뛰고, 베이스가 한 박씩 받쳐 줘요. 마디 끝마다 갯벌 구멍에서 방울이 뽀록 올라오는 소리가 들어가요.',
+    tags: ['2박 경쾌', '마림바', '뽀록 방울', '장조'] },
+  { id: 'MB', sec: 'mud', name: 'B · 밀물 오기 전에', ref: '느낌: 시간 안에 바구니 채우기 · 우쿨렐레 4박',
+    how: '우쿨렐레 같은 뜯는 화음이 찰랑찰랑 4박으로 가고, 셰이커가 잔잔하게 깔려요. 멜로디가 조금씩 올라가며 "서둘러야지" 하는 기분을 살짝만 줘요.',
+    tags: ['4박 리듬', '우쿨렐레', '셰이커', '살짝 서두름'] },
+  { id: 'MC', sec: 'mud', name: 'C · 바닷바람 산책', ref: '느낌: 느긋한 갯벌 산책 · 기타 아르페지오',
+    how: '통기타가 천천히 펼친화음을 뜯고, 파도 소리가 밀려왔다 빠져요. 가끔 갈매기가 끼룩 울어요. 가장 차분해서 오래 들어도 덜 피곤해요.',
+    tags: ['느긋함', '기타 아르페지오', '파도', '갈매기'] },
+  { id: 'DA', sec: 'dive', name: 'A · 물속 오르골', ref: '느낌: 반짝이는 바닷속 · 오르골 + 메아리',
+    how: '오르골 멜로디가 물속처럼 길게 메아리치고, 낮은 패드가 바닥을 받쳐 줘요. 숨방울이 위로 또르르 올라가는 소리가 가끔 섞여요.',
+    tags: ['오르골', '긴 메아리', '숨방울', '잔잔함'] },
+  { id: 'DB', sec: 'dive', name: 'B · 고래의 노래', ref: '느낌: 깊고 넓은 바다 · 앰비언트',
+    how: '깊은 패드가 천천히 숨 쉬듯 바뀌고, 멀리서 고래가 우우 하고 울어요. 멜로디는 거의 없고 반짝이는 종소리만 띄엄띄엄 나와서 가장 신비로워요.',
+    tags: ['앰비언트', '고래 울음', '깊은 패드', '신비로움'] },
+  { id: 'DC', sec: 'dive', name: 'C · 산호초 왈츠', ref: '느낌: 물고기 사이를 헤엄치기 · 3박 왈츠',
+    how: '쿵짝짝 3박에 비브라폰 멜로디가 물결처럼 오르내려요. 부드러운 베이스가 둥둥 떠다니는 느낌을 줘서 헤엄치는 동작과 잘 맞아요.',
+    tags: ['3박 왈츠', '비브라폰', '둥실 베이스', '밝은 물속'] },
+];
+
+let ctx, master, echoIn, longIn, noiseBuf, playing = null, timer = null, nextAt = 0, bar = 0;
+const meters = {};
+
+function ensure() {
+  if (ctx) return;
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  master = ctx.createGain(); master.gain.value = 0.55; master.connect(ctx.destination);
+  const mkEcho = (time, fbv, lpv) => {
+    const d = ctx.createDelay(2); d.delayTime.value = time;
+    const fb = ctx.createGain(); fb.gain.value = fbv;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = lpv;
+    const inp = ctx.createGain(); inp.connect(d); d.connect(lp).connect(fb).connect(d); lp.connect(master);
+    return inp;
+  };
+  echoIn = mkEcho(0.3, 0.35, 2600);
+  longIn = mkEcho(0.62, 0.55, 1400);
+  noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+  const ch = noiseBuf.getChannelData(0);
+  for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1;
+}
+
+const MAJOR = [0, 2, 4, 5, 7, 9, 11];
+const deg = (d, oct = 4, root = 261.63) => root * Math.pow(2, (MAJOR[((d % 7) + 7) % 7] + 12 * (Math.floor(d / 7) + oct - 4)) / 12);
+
+function env(g, t, vol, atk, dur) {
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + atk);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+}
+function tone(freq, dur, vol, t, { type = 'sine', atk = 0.008, wet = 0, long = 0, lp = 0, glide = 0, vib = 0 } = {}) {
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t);
+  if (glide) o.frequency.exponentialRampToValueAtTime(glide, t + dur);
+  if (vib) { const l = ctx.createOscillator(), lg = ctx.createGain(); l.frequency.value = 4.5; lg.gain.value = freq * vib; l.connect(lg).connect(o.frequency); l.start(t); l.stop(t + dur + 0.05); }
+  env(g, t, vol, atk, dur);
+  let node = o.connect(g);
+  if (lp) { const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = lp; node = g.connect(f); }
+  node.connect(master);
+  if (wet) { const w = ctx.createGain(); w.gain.value = wet; node.connect(w).connect(echoIn); }
+  if (long) { const w = ctx.createGain(); w.gain.value = long; node.connect(w).connect(longIn); }
+  o.start(t); o.stop(t + dur + 0.05);
+}
+function noise(t, dur, vol, { type = 'bandpass', freq = 1000, q = 1, atk = 0.002, sweepTo = 0 } = {}) {
+  const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true;
+  const f = ctx.createBiquadFilter(); f.type = type; f.frequency.setValueAtTime(freq, t); f.Q.value = q;
+  if (sweepTo) f.frequency.exponentialRampToValueAtTime(sweepTo, t + dur);
+  const g = ctx.createGain(); env(g, t, vol, atk, dur);
+  s.connect(f).connect(g).connect(master);
+  s.start(t, Math.random()); s.stop(t + dur + 0.05);
+}
+
+const marimba = (f, vol, t) => { tone(f, 0.32, vol, t, { atk: 0.003, wet: 0.12 }); tone(f * 4, 0.06, vol * 0.25, t, { atk: 0.002 }); };
+const pluck = (f, vol, t, dur = 0.5) => tone(f, dur, vol, t, { type: 'triangle', atk: 0.004, lp: 2400 });
+const guitar = (f, vol, t) => { tone(f, 1.4, vol, t, { type: 'triangle', atk: 0.003, lp: 1800, wet: 0.1 }); tone(f * 2, 0.4, vol * 0.2, t, { atk: 0.003 }); };
+const bass = (f, dur, vol, t) => tone(f, dur, vol, t, { type: 'sine', atk: 0.01 });
+const celesta = (f, dur, vol, t, long = 0.5) => { tone(f, dur, vol, t, { long }); tone(f * 3, dur * 0.3, vol * 0.14, t, { long: long * 0.5 }); };
+const vibes = (f, dur, vol, t) => tone(f, dur, vol, t, { atk: 0.004, vib: 0.006, wet: 0.3 });
+const pad = (f, dur, vol, t, long = 0.3) => tone(f, dur, vol, t, { type: 'triangle', atk: Math.min(1.2, dur * 0.35), long, lp: 1200 });
+const pop = (t, vol = 0.05) => tone(500 + Math.random() * 300, 0.09, vol, t, { atk: 0.004, glide: 1500 });
+const bubbles = (t, n = 4, gap = 0.08, vol = 0.03) => { for (let i = 0; i < n; i++) tone(700 + i * 180 + Math.random() * 80, 0.06, vol, t + i * gap, { atk: 0.004, glide: 1400 + i * 200, long: 0.3 }); };
+const shaker = (t, vol = 0.018) => noise(t, 0.06, vol, { type: 'highpass', freq: 6000, q: 0.7 });
+const wave = (t, dur, vol) => noise(t, dur, vol, { type: 'lowpass', freq: 420, q: 0.5, atk: dur * 0.45, sweepTo: 900 });
+const gull = (t) => { tone(1400, 0.22, 0.02, t, { type: 'triangle', glide: 1900, atk: 0.02, wet: 0.3 }); tone(1500, 0.3, 0.018, t + 0.26, { type: 'triangle', glide: 1100, atk: 0.02, wet: 0.3 }); };
+const whale = (f, t) => tone(f, 3.2, 0.04, t, { atk: 0.9, glide: f * 1.5, vib: 0.01, long: 0.7, lp: 900 });
+
+const MA_MEL = [
+  [[4, 1], [4, 1], [5, 1], [7, 1]], [[7, 1], [5, 1], [4, 2]], [[2, 1], [4, 1], [5, 1], [4, 1]], [[2, 2], [0, 2]],
+  [[4, 1], [4, 1], [5, 1], [7, 1]], [[9, 1], [7, 1], [5, 2]], [[4, 1], [5, 1], [4, 1], [2, 1]], [[0, 3], [-1, 1]],
+];
+const MA_ROOT = [0, 3, 1, 4, 0, 3, 4, 0];
+function barMA(t) {
+  const i = bar % 8, e = 60 / 128 / 2, r = MA_ROOT[i];
+  [0, 2, 4, 6].forEach((k, j) => bass(deg(j % 2 ? r + 4 : r, 2), e * 1.4, 0.09, t + k * e));
+  [1, 3, 5, 7].forEach(k => pluck(deg(r + 2, 3), 0.025, t + k * e, 0.18));
+  let at = t;
+  MA_MEL[i].forEach(([d, n]) => { marimba(deg(d, 5), 0.07, at); at += e * n; });
+  pop(t + e * 7.2, 0.035);
+  if (i % 4 === 3) bubbles(t + e * 4, 3, 0.07, 0.025);
+  return e * 8;
+}
+
+const MB_CH = [[0, 2, 4], [4, 6, 8], [5, 7, 9], [3, 5, 7]];
+const MB_MEL = [[[2, 2], [4, 2], [7, 3], [6, 1]], [[4, 4], [2, 2], [4, 2]], [[5, 2], [7, 2], [9, 3], [8, 1]], [[7, 6], [5, 2]]];
+function barMB(t) {
+  const i = bar % 4, e = 60 / 112 / 2, ch = MB_CH[i], lift = Math.floor(bar / 4) % 2;
+  bass(deg(ch[0], 2), e * 3, 0.08, t); bass(deg(ch[0], 2), e * 2, 0.06, t + e * 4);
+  [0, 3, 4, 6].forEach(k => ch.forEach((d, j) => pluck(deg(d + lift, 4), 0.022, t + k * e + j * 0.012, 0.35)));
+  for (let k = 0; k < 8; k++) shaker(t + k * e, k % 2 ? 0.012 : 0.02);
+  let at = t;
+  MB_MEL[i].forEach(([d, n]) => { tone(deg(d + lift, 5), e * n * 0.95, 0.045, at, { type: 'triangle', atk: 0.01, wet: 0.2 }); at += e * n; });
+  return e * 8;
+}
+
+const MC_CH = [[0, 2, 4, 7], [-2, 0, 2, 5], [-3, -1, 2, 4], [-4, -1, 1, 3]];
+function barMC(t) {
+  const i = bar % 4, e = 60 / 84 / 2, ch = MC_CH[i];
+  bass(deg(ch[0], 2), e * 7, 0.07, t);
+  [0, 1, 2, 3, 2, 1, 2, 3].forEach((k, j) => guitar(deg(ch[k], 3), 0.04, t + j * e));
+  if (i % 2 === 0) wave(t, e * 8, 0.035);
+  if (i === 1) tone(deg(ch[3], 5), e * 4, 0.04, t + e * 2, { type: 'triangle', atk: 0.04, wet: 0.35 });
+  if (i === 3 && Math.random() < 0.7) gull(t + e * 3);
+  return e * 8;
+}
+
+const DA_MEL = [[[4, 2], [2, 1], [4, 1], [7, 2], [5, 2]], [[4, 4], [2, 4]], [[5, 2], [4, 1], [5, 1], [9, 2], [7, 2]], [[4, 6], [-1, 2]]];
+const DA_ROOT = [0, 5, 3, 4];
+function barDA(t) {
+  const i = bar % 4, e = 60 / 72 / 2, r = DA_ROOT[i];
+  pad(deg(r, 2), e * 8.4, 0.06, t);
+  pad(deg(r + 2, 3), e * 8, 0.022, t);
+  let at = t;
+  DA_MEL[i].forEach(([d, n]) => { celesta(deg(d, 5), e * n * 2, 0.05, at); at += e * n; });
+  if (Math.random() < 0.6) bubbles(t + e * (2 + Math.random() * 4), 5, 0.09, 0.02);
+  return e * 8;
+}
+
+const DB_CH = [[0, 4, 9], [-3, 2, 7], [-2, 3, 7], [-4, 1, 5]];
+function barDB(t) {
+  const i = bar % 4, len = 6.4, ch = DB_CH[i];
+  ch.forEach((d, k) => pad(deg(d, k ? 3 : 2), len * 1.1, k ? 0.04 : 0.085, t, 0.5));
+  wave(t, len, 0.012);
+  if (i % 2 === 1) whale(deg(ch[0] + 7, 2), t + 1.2 + Math.random());
+  for (let k = 0; k < 3; k++) if (Math.random() < 0.55) celesta(deg(ch[k] + 14, 4), 2.5, 0.022, t + 0.8 + k * 1.8 + Math.random() * 0.5, 0.8);
+  if (Math.random() < 0.35) bubbles(t + 3 + Math.random() * 2, 4, 0.11, 0.015);
+  return len;
+}
+
+const DC_MEL = [
+  [[4, 2], [5, 1]], [[7, 3]], [[9, 1], [7, 1], [5, 1]], [[4, 3]],
+  [[2, 2], [4, 1]], [[5, 3]], [[7, 1], [5, 1], [2, 1]], [[4, 3]],
+];
+const DC_ROOT = [0, 0, 3, 0, 4, 4, 1, 0];
+function barDC(t) {
+  const i = bar % 8, beat = 60 / 132, r = DC_ROOT[i];
+  bass(deg(r, 2), beat * 1.6, 0.09, t);
+  [1, 2].forEach(b => [r + 2, r + 4].forEach(d => vibes(deg(d, 4), beat * 0.6, 0.018, t + b * beat)));
+  let at = t;
+  DC_MEL[i].forEach(([d, n]) => { vibes(deg(d, 5), beat * n * 1.1, 0.05, at); at += beat * n; });
+  if (i === 7) bubbles(t + beat * 1.5, 4, 0.08, 0.02);
+  return beat * 3;
+}
+
+const BARS = { MA: barMA, MB: barMB, MC: barMC, DA: barDA, DB: barDB, DC: barDC };
+const LOOP = { MA: 8, MB: 8, MC: 4, DA: 4, DB: 4, DC: 8 };
+
+function pump() {
+  while (nextAt < ctx.currentTime + 0.4) {
+    const id = playing, len = BARS[id](nextAt), n = bar % LOOP[id], el = meters[id];
+    setTimeout(() => { if (el && playing === id) el.style.width = `${(n + 1) / LOOP[id] * 100}%`; }, Math.max(0, (nextAt - ctx.currentTime) * 1000));
+    nextAt += len; bar++;
+  }
+}
+function play(id) {
+  ensure(); ctx.resume();
+  stop();
+  playing = id; bar = 0; nextAt = ctx.currentTime + 0.35;
+  master.gain.cancelScheduledValues(ctx.currentTime); master.gain.setValueAtTime(0.55, ctx.currentTime + 0.3);
+  timer = setInterval(pump, 90); pump();
+  render();
+}
+function stop() {
+  if (timer) clearInterval(timer);
+  timer = null; playing = null;
+  if (master) { master.gain.cancelScheduledValues(ctx.currentTime); master.gain.setValueAtTime(0.0001, ctx.currentTime); }
+  render();
+}
+function render() {
+  for (const sec of ['mud', 'dive']) {
+    const grid = document.getElementById('grid-' + sec);
+    grid.innerHTML = '';
+    for (const v of VARS.filter(x => x.sec === sec)) {
+      const col = document.createElement('div');
+      col.className = 'col' + (playing === v.id ? ' on' : '');
+      col.innerHTML = `<h3>${v.name}</h3><p class="ref">${v.ref}</p><p class="how">${v.how}</p><div class="tags">${v.tags.map(x => `<span>${x}</span>`).join('')}</div><div class="btns"><button class="${playing === v.id ? 'play' : ''}">${playing === v.id ? '■ 듣는 중' : '▶ 들어 보기'}</button></div><div class="meter"><i></i></div>`;
+      col.querySelector('button').onclick = () => playing === v.id ? stop() : play(v.id);
+      meters[v.id] = col.querySelector('.meter i');
+      grid.appendChild(col);
+    }
+  }
+}
+document.getElementById('stop').onclick = stop;
+render();
+</script>

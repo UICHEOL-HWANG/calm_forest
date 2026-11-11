@@ -6,5 +6,6 @@ import Capacitor
 class MainViewController: CAPBridgeViewController {
     override open func capacitorDidLoad() {
         bridge?.registerPluginInstance(GameCenterPlugin())   // 🍎 게임센터 로그인(js/gc-native.js)
+        bridge?.registerPluginInstance(TrackingPlugin())
     }
 }

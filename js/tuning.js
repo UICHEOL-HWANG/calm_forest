@@ -5,6 +5,8 @@
 //  배정 자체는 supabase-client.js(명단 테이블), 적용은 game.js/index.html.
 // =============================================================
 
+export const PREPASS_ON = false;
+
 export const TUNING = {
   // 보상 부스트 — 가입(created_at) 후 N일간, 출석·퀘스트·판매 코인 ×mult
   rewardBoost: { days: 3, mult: 1.5, sources: ['daily_bonus', 'quest_reward', 'lucky_box'] },
@@ -13,7 +15,7 @@ export const TUNING = {
   //      2026-09-21 건축 리밸런스로 3단계(지붕)가 🪨돌15·🪙코인80 을 요구하게 됐는데,
   //      튜토리얼 build 달성 조건이 3단계 완성이라 sell·mine 을 안 배운 상태면 진행이 막힌다.
   //      그래서 '재미 전진' 을 유지하되 sell·mine 만 build 앞으로 당겼다.
-  TUT_ORDER_A: ['move', 'chop', 'sell', 'mine', 'house1', 'house2', 'harvest', 'build', 'dress', 'bridge', 'curator'],
+  TUT_ORDER_A: ['move', 'chop', 'sell', 'house1', 'mine', 'house2', 'harvest', 'build', 'dress', 'bridge', 'curator'],
   // 🎯 이탈 예측 개입 — 임계값·on/off 는 서버(coef.json)에 있다. 여기는 클라이언트 값만.
   churn: {
     endpoint: 'https://lab.calmforest.cloud/predict',

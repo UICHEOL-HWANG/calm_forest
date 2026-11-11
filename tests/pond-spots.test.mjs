@@ -4,7 +4,6 @@ import { readFileSync } from 'node:fs';
 import { POND_R, POND_SPOTS, POND_HOUSE_CLEAR } from '../js/data/pond.js';
 
 const places = readFileSync(new URL('../js/data/places.js', import.meta.url), 'utf8');
-const game = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
 const npcSrc = readFileSync(new URL('../js/data/npcs.js', import.meta.url), 'utf8');
 const vec = (src, name) => {
   const m = src.match(new RegExp(`const ${name} = new THREE\\.Vector3\\((-?[\\d.]+), 0, (-?[\\d.]+)\\)`));
@@ -22,7 +21,7 @@ test('후보는 3개, 모두 7단계 집과 통로를 비켜 선다', () => {
 });
 
 test('호수·나루터 연못과 겹치지 않는다', () => {
-  const lake = vec(game, 'LAKE');
+  const lake = vec(places, 'LAKE');
   const dock = vec(places, 'DOCK_POND');
   for (const s of POND_SPOTS) {
     assert.ok(d(abs(s), lake) >= 6 + POND_R + 1);

@@ -120,7 +120,7 @@ export function createSpotlight({ t, trackEvent, blocked = () => false }) {
     if (s.done.startsWith('open:') && document.getElementById(s.done.slice(5))?.classList.contains('show')) { advance('act'); return; }
     if (s.done === 'menu' && document.getElementById('menu-sheet')?.classList.contains('show')) { advance('act'); return; }
     if (run.blocked?.()) { finish(); return; }
-    const isBlocked = run.blocked ? false : blocked();
+    const isBlocked = run.blocked ? !!run.pause?.() : blocked();
     const el = s.target ? document.querySelector(s.target) : null;
     const r = el?.getBoundingClientRect();
     const visible = !s.target || (r && r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden');
@@ -187,12 +187,12 @@ export function createSpotlight({ t, trackEvent, blocked = () => false }) {
   }, true);
 
   return {
-    run(steps, { kind, startAt = 0, onStep, blocked: blk, skip = 'none' } = {}) {
+    run(steps, { kind, startAt = 0, onStep, blocked: blk, pause, skip = 'none' } = {}) {
       const list = steps.slice(startAt);
       if (!list.length) return Promise.resolve();
       return new Promise((resolve) => {
         if (run) stack.push(run);
-        run = { steps: list, i: 0, stepOffset: startAt, stepCount: steps.length, viewLogged: false, kind, onStep, blocked: blk, skip, resolve, t: Date.now(), t0: Date.now(), stuck: false, gone: 0 };
+        run = { steps: list, i: 0, stepOffset: startAt, stepCount: steps.length, viewLogged: false, kind, onStep, blocked: blk, pause, skip, resolve, t: Date.now(), t0: Date.now(), stuck: false, gone: 0 };
         paint();
       });
     },

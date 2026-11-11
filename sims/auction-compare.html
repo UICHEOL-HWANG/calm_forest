@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>저녁 경매 시안</title>
+<style>
+  :root { --mint:#bfe8c9; --ink:#4a5a4f; --cream:#fff7ec; --panel:rgba(255,255,255,.78); --shadow:0 6px 18px rgba(90,120,100,.18);
+    --gold:#e8b54a; --red:#d05a4a; --green:#2fa564; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; padding:24px; font-family:'Segoe UI', system-ui, 'Apple SD Gothic Neo', sans-serif; color:#24312a; background:#e9efe9; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  .lead { font-size:13px; opacity:.75; margin:0 0 6px; max-width:980px; line-height:1.55; }
+  .lead b { color:#2d4a3a; }
+  section.row { margin:28px 0 44px; }
+  section.row > h2 { font-size:17px; margin:0 0 4px; }
+  section.row > p { font-size:12.5px; opacity:.75; margin:0 0 12px; max-width:980px; line-height:1.55; }
+  .frames { display:flex; gap:22px; align-items:flex-start; flex-wrap:wrap; }
+  .tag { font-size:11px; font-weight:700; opacity:.5; margin:0 0 6px; }
+  .frame { position:relative; overflow:hidden; border-radius:14px; box-shadow:0 10px 30px rgba(30,50,40,.25);
+    background: radial-gradient(120% 80% at 30% 20%, #f3c99a, #c98f6e 45%, #6f6a8f 100%); }
+  .frame.pc { width:800px; height:540px; }
+  .frame.m  { width:375px; height:720px; }
+  .frame::before { content:''; position:absolute; inset:0; background:
+     radial-gradient(40px 26px at 20% 70%, #6b7f5d 60%, transparent 62%),
+     radial-gradient(60px 40px at 75% 62%, #5f7653 60%, transparent 62%),
+     radial-gradient(160px 40px at 50% 92%, #b9976e 60%, transparent 62%); opacity:.55; }
+  .frame .hud { position:absolute; top:12px; right:12px; background:var(--panel); border-radius:14px; padding:6px 12px; font-weight:800; font-size:13px; color:var(--ink); box-shadow:var(--shadow); }
+  .frame .stall { position:absolute; left:50%; top:16%; transform:translateX(-50%); font-size:46px; filter:drop-shadow(0 6px 10px rgba(0,0,0,.25)); }
+  .m .stall { top:12%; }
+
+  .au { position:absolute; left:50%; transform:translateX(-50%); bottom:24px; width:min(460px, 92%); background:var(--panel); backdrop-filter:blur(8px);
+    border-radius:18px; box-shadow:var(--shadow); padding:12px 16px; color:var(--ink); display:flex; flex-direction:column; gap:10px; user-select:none; }
+  .pc .au { bottom:18px; }
+  .m .au { bottom:70px; }
+  .au-head { display:flex; align-items:center; gap:8px; font-weight:800; font-size:14px; }
+  .au-head .sub { margin-left:auto; font-size:11.5px; font-weight:700; opacity:.6; }
+  .item { display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:14px; background:rgba(255,255,255,.7); box-shadow:var(--shadow); }
+  .item .ico { font-size:38px; line-height:1; }
+  .item .nm { font-weight:800; font-size:15px; }
+  .item .ds { font-size:11.5px; opacity:.7; margin-top:2px; }
+  .item .ap { margin-left:auto; text-align:right; font-size:11px; opacity:.7; white-space:nowrap; }
+  .item .ap b { display:block; font-size:14px; opacity:1; color:#2d4a3a; }
+  .big { text-align:center; }
+  .big .p { font-size:30px; font-weight:900; letter-spacing:-.02em; color:#2d4a3a; transition:transform .12s; }
+  .big .p.bump { transform:scale(1.14); }
+  .big .who { font-size:12.5px; font-weight:700; opacity:.8; min-height:1.3em; }
+  .bar { height:8px; border-radius:6px; background:#e3ebe4; overflow:hidden; }
+  .bar i { display:block; height:100%; width:100%; background:var(--mint); transition:width .1s linear, background .2s; }
+  .bar.hot i { background:#f2b25e; }
+  .call { text-align:center; font-size:12.5px; font-weight:800; min-height:1.3em; color:#8a5a2a; }
+  .people { display:flex; gap:8px; justify-content:center; }
+  .pp { flex:1; max-width:120px; display:flex; flex-direction:column; align-items:center; gap:3px; padding:7px 4px; border-radius:12px; background:rgba(255,255,255,.55); font-size:11px; font-weight:700; position:relative; text-align:center; }
+  .pp .e { font-size:22px; }
+  .pp.lead { background:#fff3cf; box-shadow:0 0 0 2px var(--gold) inset; }
+  .pp .bub { position:absolute; top:-12px; right:4px; background:#fff; border-radius:10px; padding:1px 7px; font-size:11px; font-weight:800; color:#b26a1d; box-shadow:var(--shadow); opacity:0; transform:translateY(4px); transition:.2s; }
+  .pp .bub.on { opacity:1; transform:none; }
+  .pp .mood { width:100%; height:5px; border-radius:4px; background:#e3ebe4; overflow:hidden; }
+  .pp .mood i { display:block; height:100%; width:0; background:#f2b25e; transition:width .1s linear; }
+  .pp .hint { font-size:10px; font-weight:600; opacity:.7; line-height:1.3; }
+  .btns { display:flex; gap:8px; justify-content:center; }
+  .btn { border:none; border-radius:12px; padding:10px 14px; font-weight:800; font-size:14px; cursor:pointer; background:#eef2ee; color:var(--ink); flex:1; }
+  .btn.main { background:var(--mint); }
+  .btn.warm { background:#ffd8a8; }
+  .btn:disabled { opacity:.4; cursor:default; }
+  .btn:active:not(:disabled) { transform:scale(.96); }
+  .hintline { font-size:11.5px; opacity:.7; text-align:center; }
+  .res { text-align:center; padding:4px 0; }
+  .res .t { font-size:16px; font-weight:900; margin:4px 0; }
+  .res .d { font-size:12px; opacity:.75; }
+  .res .e { font-size:40px; }
+  .stepper { display:flex; align-items:center; gap:6px; justify-content:center; }
+  .stepper .btn { flex:0 0 auto; padding:8px 10px; font-size:13px; }
+  .stepper .v { min-width:96px; text-align:center; font-size:24px; font-weight:900; color:#2d4a3a; }
+  .envs { display:flex; gap:8px; justify-content:center; perspective:600px; }
+  .env { width:25%; max-width:96px; height:86px; position:relative; transform-style:preserve-3d; transition:transform .5s; }
+  .env.open { transform:rotateY(180deg); }
+  .env > div { position:absolute; inset:0; backface-visibility:hidden; border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:11px; font-weight:700; text-align:center; }
+  .env .f { background:#f4e6c8; box-shadow:var(--shadow); font-size:26px; }
+  .env .b { background:#fff; box-shadow:var(--shadow); transform:rotateY(180deg); }
+  .env .b .n { font-size:17px; font-weight:900; color:#2d4a3a; }
+  .env.win .b { box-shadow:0 0 0 3px var(--gold) inset, var(--shadow); background:#fff8e1; }
+  .env.me .b { background:#eaf8ee; }
+  .note { background:#fff; border-radius:12px; padding:10px 14px; font-size:12.5px; line-height:1.6; box-shadow:0 4px 12px rgba(30,50,40,.08); max-width:340px; }
+  .note h4 { margin:0 0 4px; font-size:13px; }
+  .note ul { margin:0; padding-left:18px; }
+  table.cmp { border-collapse:collapse; background:#fff; border-radius:12px; overflow:hidden; font-size:13px; box-shadow:0 4px 12px rgba(30,50,40,.08); }
+  table.cmp th, table.cmp td { padding:9px 14px; border-bottom:1px solid #eef3ee; text-align:left; }
+  table.cmp th { background:#f4faf5; font-size:12px; color:#2d4a3a; }
+  @media (prefers-reduced-motion: reduce) { .env, .big .p, .bar i { transition:none; } }
+</style>
+</head>
+<body>
+<h1>🔨 저녁 경매 시안 3종</h1>
+<p class="lead">시세판 자리에 <b>저녁 경매대</b>를 두고, 하루 한 번 <b>희귀 장식 1점</b>을 주민들과 겨뤄 사는 구조예요. 남는 코인을 쓸 곳을 만드는 게 목적이에요.
+  세 시안은 같은 물건(🌙 달빛 그네, 감정가 🪙400)과 같은 지갑(🪙820)으로 시작하고, 주민이 낼 수 있는 최고가는 판마다 바뀌어요. 각 화면은 따로 움직이니 <b>PC·모바일 둘 다 직접 눌러 보세요</b>.</p>
+
+<section class="row">
+  <h2>A. 🔔 실시간 호가</h2>
+  <p>값을 올려 부르면 주민들이 따라 올라와요. 아무도 안 부르면 "하나, 둘, 셋" 하고 낙찰. 누가 부르면 카운트가 다시 시작돼요. 한 판 20~40초.</p>
+  <div class="frames">
+    <div><div class="tag">PC 800×540</div><div class="frame pc" data-v="A"></div></div>
+    <div><div class="tag">모바일 375×720</div><div class="frame m" data-v="A"></div></div>
+    <div class="note"><h4>느낌</h4><ul><li>긴장감이 가장 커요. 마지막 1초에 누가 끼어드는 맛</li><li>주민마다 성격이 보여요(큐레이터는 크게, 아이는 조금씩, 목수는 막판에)</li><li>그 시간에 접속해 있어야 해요. 놓치면 다음 날</li><li>잔잔한 게임 톤에 비해 빠를 수 있어요</li></ul></div>
+  </div>
+</section>
+
+<section class="row">
+  <h2>B. ✉️ 봉투 입찰</h2>
+  <p>낮에 한 번 금액을 적어 봉투에 넣고, 저녁에 봉투를 하나씩 열어요. 주민 귀띔으로 얼마쯤 낼지 짐작해요. 가장 높은 봉투가 자기가 적은 값에 가져가요.</p>
+  <div class="frames">
+    <div><div class="tag">PC 800×540</div><div class="frame pc" data-v="B"></div></div>
+    <div><div class="tag">모바일 375×720</div><div class="frame m" data-v="B"></div></div>
+    <div class="note"><h4>느낌</h4><ul><li>잠깐 들어와서 적고 나가도 돼요. 반응 속도가 필요 없어요</li><li>봉투 여는 순간이 하이라이트, 저녁에 다시 올 이유가 생겨요</li><li>귀띔 읽고 눈치 보는 재미. 대신 손맛은 적어요</li><li>저녁 개봉 푸시 알림과 잘 붙어요</li></ul></div>
+  </div>
+</section>
+
+<section class="row">
+  <h2>C. ⏬ 떨이 경매</h2>
+  <p>값이 높게 시작해 계속 내려가요. 먼저 "살게요!"를 누르는 쪽이 그 값에 가져가요. 주민이 탐낼수록 눈금이 차오르니, 꽉 차기 직전에 누르면 이득이에요. 한 판 10~15초.</p>
+  <div class="frames">
+    <div><div class="tag">PC 800×540</div><div class="frame pc" data-v="C"></div></div>
+    <div><div class="tag">모바일 375×720</div><div class="frame m" data-v="C"></div></div>
+    <div class="note"><h4>느낌</h4><ul><li>버튼 하나라 가장 단순하고 짧아요</li><li>"조금만 더 기다릴까" 하는 참기 싸움이 재미의 핵심</li><li>미니게임처럼 아무 때나 열 수 있게 만들 수도 있어요</li><li>한 번 누르면 끝이라 아쉬움이 커요</li></ul></div>
+  </div>
+</section>
+
+<section class="row">
+  <h2>한눈에 비교</h2>
+  <table class="cmp">
+    <tr><th></th><th>A 실시간 호가</th><th>B 봉투 입찰</th><th>C 떨이 경매</th></tr>
+    <tr><td>한 판 시간</td><td>20~40초</td><td>적기 10초 · 개봉 5초</td><td>10~15초</td></tr>
+    <tr><td>필요한 것</td><td>그 시간 접속 · 빠른 판단</td><td>눈치 · 저녁 재방문</td><td>참을성 · 타이밍</td></tr>
+    <tr><td>게임 톤과 맞음</td><td>△ 빠름</td><td>◎ 느긋함</td><td>○</td></tr>
+    <tr><td>재방문 유도</td><td>○ 시간 고정</td><td>◎ 적고 나서 저녁에 결과</td><td>△</td></tr>
+    <tr><td>구현 범위</td><td>큼(주민 입찰 규칙 · 카운트)</td><td>작음</td><td>작음</td></tr>
+  </table>
+</section>
+
+<script>
+const ITEM = { ico:'🌙', name:'달빛 그네', desc:'밤이 되면 은은하게 빛나는 마당 그네', appraisal:400 };
+const WALLET = 820;
+const NPCS = [
+  { id:'curator', name:'큐레이터', emoji:'🧑‍🦳', style:'big' },
+  { id:'star', name:'별 보는 아이', emoji:'⭐', style:'eager' },
+  { id:'builder', name:'목수 아저씨', emoji:'👷', style:'sniper' },
+];
+const rnd = (a, b) => a + Math.random() * (b - a);
+const r10 = n => Math.round(n / 10) * 10;
+const coin = n => `🪙${n}`;
+
+function shell(frame, sub) {
+  frame.innerHTML = `<div class="hud">${coin(WALLET)}</div><div class="stall">🎪</div>
+    <div class="au"><div class="au-head">🔨 저녁 경매 <span class="sub">${sub}</span></div>
+    <div class="item"><span class="ico">${ITEM.ico}</span><div><div class="nm">${ITEM.name}</div><div class="ds">${ITEM.desc}</div></div>
+    <div class="ap">감정가<b>${coin(ITEM.appraisal)}</b></div></div><div class="body"></div></div>`;
+  return frame.querySelector('.body');
+}
+
+function resultHtml(win, paid, by) {
+  const diff = paid - ITEM.appraisal;
+  const rel = diff === 0 ? '감정가 그대로' : diff > 0 ? `감정가보다 ${coin(diff)} 비싸게` : `감정가보다 ${coin(-diff)} 싸게`;
+  return win
+    ? `<div class="res"><div class="e">${ITEM.ico}</div><div class="t">낙찰! ${ITEM.name}를 가져왔어요</div><div class="d">${coin(paid)} · ${rel} · 🧺 보관함에 넣었어요</div></div>`
+    : `<div class="res"><div class="e">${by.emoji}</div><div class="t">${by.name}가 가져갔어요</div><div class="d">${coin(paid)}에 낙찰 · 내일 저녁에 또 열려요</div></div>`;
+}
+
+function againBtn(body, fn) {
+  const wrap = document.createElement('div');
+  wrap.className = 'btns';
+  wrap.innerHTML = '<button class="btn main">다시 해 보기</button>';
+  wrap.firstChild.onclick = fn;
+  body.appendChild(wrap);
+}
+
+function mountA(frame) {
+  let timer = null;
+  const body = shell(frame, '실시간 호가');
+  const start = () => {
+    clearInterval(timer);
+    const bidders = NPCS.map(n => ({ ...n, max: r10(rnd(300, 560)), cool: 0 }));
+    let price = 200, leader = null, t = 8, total = 0;
+    body.innerHTML = `<div class="big"><div class="p">${coin(price)}</div><div class="who"></div></div>
+      <div class="bar"><i></i></div><div class="call"></div>
+      <div class="people">${bidders.map(b => `<div class="pp" data-id="${b.id}"><span class="bub"></span><span class="e">${b.emoji}</span>${b.name}</div>`).join('')}</div>
+      <div class="btns"><button class="btn" data-inc="10">+10</button><button class="btn" data-inc="30">+30</button><button class="btn main" data-inc="50">+50</button></div>`;
+    const $p = body.querySelector('.p'), $who = body.querySelector('.who'), $bar = body.querySelector('.bar'), $bi = $bar.querySelector('i'), $call = body.querySelector('.call');
+    const pp = id => body.querySelector(`.pp[data-id="${id}"]`);
+    const render = () => {
+      $p.textContent = coin(price);
+      $p.classList.add('bump'); setTimeout(() => $p.classList.remove('bump'), 120);
+      body.querySelectorAll('.pp').forEach(el => el.classList.toggle('lead', !!leader && leader !== 'me' && leader.id === el.dataset.id));
+      $who.textContent = !leader ? '시작가예요. 먼저 불러 보세요' : leader === 'me' ? '🙋 내가 제일 높아요' : `${leader.emoji} ${leader.name}가 제일 높아요`;
+      body.querySelectorAll('[data-inc]').forEach(b => { b.disabled = leader === 'me' || price + +b.dataset.inc > WALLET; });
+    };
+    const bid = (who, inc) => {
+      price += inc; leader = who; t = Math.max(t, 4);
+      if (who !== 'me') {
+        const bub = pp(who.id).querySelector('.bub');
+        bub.textContent = `+${inc}`; bub.classList.add('on'); setTimeout(() => bub.classList.remove('on'), 700);
+      }
+      render();
+    };
+    body.querySelectorAll('[data-inc]').forEach(b => b.onclick = () => bid('me', +b.dataset.inc));
+    render();
+    timer = setInterval(() => {
+      t -= 0.1; total += 0.1;
+      for (const b of bidders) {
+        if (leader === b) continue;
+        if (b.cool > 0) { b.cool -= 0.1; continue; }
+        const inc = b.style === 'big' ? 50 : b.style === 'eager' ? 10 : 30;
+        if (price + inc > b.max) continue;
+        const p = b.style === 'eager' ? 0.05 : b.style === 'big' ? 0.025 : (t < 2.2 ? 0.2 : 0.004);
+        if (Math.random() < p) { b.cool = rnd(0.6, 1.4); bid(b, inc); break; }
+      }
+      $bi.style.width = `${Math.max(0, Math.min(1, t / 8)) * 100}%`;
+      $bar.classList.toggle('hot', t < 3);
+      $call.textContent = t >= 3 ? '' : t >= 2 ? '하나…' : t >= 1 ? '하나… 둘…' : '하나… 둘… 셋!';
+      if (t <= 0 || total > 45) {
+        clearInterval(timer);
+        body.innerHTML = leader ? resultHtml(leader === 'me', price, leader) : '<div class="res"><div class="e">🍃</div><div class="t">아무도 안 불렀어요</div></div>';
+        againBtn(body, start);
+      }
+    }, 100);
+  };
+  body.innerHTML = '<div class="hintline">저녁 6시, 방랑 상인이 경매대를 열었어요</div><div class="btns"><button class="btn main">🔔 경매 참가하기</button></div>';
+  body.querySelector('.btn').onclick = start;
+}
+
+function mountB(frame) {
+  const body = shell(frame, '봉투 입찰');
+  const tips = {
+    curator: b => `박물관 예산이 ${b.hi > 460 ? '넉넉해' : '빠듯해'} 보여요`,
+    star: b => `용돈을 ${b.hi > 420 ? '꽤 모았대요' : '조금 모았대요'}`,
+    builder: b => `"그네라면 ${b.hi > 440 ? '내가 꼭 사야지' : '직접 만들까'}"`,
+  };
+  const start = () => {
+    const bidders = NPCS.map(n => {
+      const lo = r10(rnd(260, 440)), hi = lo + 80;
+      return { ...n, lo, hi, bid: r10(rnd(lo, hi)) };
+    });
+    let my = 400;
+    body.innerHTML = `<div class="people">${bidders.map(b => `<div class="pp"><span class="e">${b.emoji}</span>${b.name}<span class="hint">${tips[b.id](b)}</span></div>`).join('')}</div>
+      <div class="stepper"><button class="btn" data-d="-50">−50</button><button class="btn" data-d="-10">−10</button><span class="v">${coin(my)}</span><button class="btn" data-d="10">+10</button><button class="btn" data-d="50">+50</button></div>
+      <div class="hintline">가장 높은 봉투가 자기가 적은 값에 가져가요 · 하루 한 번</div>
+      <div class="btns"><button class="btn main" data-go>✉️ 봉투 넣기</button></div>`;
+    const $v = body.querySelector('.v');
+    body.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { my = Math.max(10, Math.min(WALLET, my + +b.dataset.d)); $v.textContent = coin(my); });
+    body.querySelector('[data-go]').onclick = () => {
+      body.innerHTML = `<div class="res"><div class="e">✉️</div><div class="t">${coin(my)} 봉투를 넣었어요</div><div class="d">저녁 6시에 경매대에서 열어요 · 🔔 알림 보내 드릴게요</div></div>
+        <div class="btns"><button class="btn warm">⏩ 저녁으로 건너뛰기 (시뮬용)</button></div>`;
+      body.querySelector('.btn').onclick = () => reveal(bidders, my);
+    };
+  };
+  const reveal = (bidders, my) => {
+    const all = [...bidders.map(b => ({ who:b, v:b.bid })), { who:'me', v:my }].sort((a, b) => a.v - b.v || (a.who === 'me' ? 1 : -1));
+    const win = all[all.length - 1];
+    body.innerHTML = `<div class="call">봉투를 낮은 값부터 하나씩 열어요</div>
+      <div class="envs">${all.map(e => `<div class="env ${e.who === 'me' ? 'me' : ''}"><div class="f">✉️</div>
+        <div class="b"><span>${e.who === 'me' ? '🙋' : e.who.emoji}</span><span>${e.who === 'me' ? '나' : e.who.name}</span><span class="n">${coin(e.v)}</span></div></div>`).join('')}</div>
+      <div class="out"></div>`;
+    const envs = body.querySelectorAll('.env');
+    const last = envs.length - 1;
+    envs.forEach((el, i) => setTimeout(() => {
+      el.classList.add('open');
+      if (i !== last) return;
+      setTimeout(() => {
+        el.classList.add('win');
+        body.querySelector('.call').textContent = '';
+        const out = body.querySelector('.out');
+        out.innerHTML = resultHtml(win.who === 'me', win.v, win.who);
+        againBtn(out, start);
+      }, 500);
+    }, 500 + i * 750 + (i === last ? 500 : 0)));
+  };
+  body.innerHTML = '<div class="hintline">오늘의 경매품이 걸렸어요. 저녁 6시 전까지 봉투를 넣어요</div><div class="btns"><button class="btn main">✉️ 입찰하러 가기</button></div>';
+  body.querySelector('.btn').onclick = start;
+}
+
+function mountC(frame) {
+  let timer = null;
+  const body = shell(frame, '떨이 경매');
+  const start = () => {
+    clearInterval(timer);
+    const bidders = NPCS.map(n => ({ ...n, thr: r10(rnd(260, 470)), delay: rnd(0, 0.3) }));
+    let price = 720, done = false, grab = null;
+    body.innerHTML = `<div class="big"><div class="p">${coin(price)}</div><div class="who">값이 내려가고 있어요</div></div>
+      <div class="people">${bidders.map(b => `<div class="pp" data-id="${b.id}"><span class="e">${b.emoji}</span>${b.name}<span class="mood"><i></i></span></div>`).join('')}</div>
+      <div class="hintline">눈금이 꽉 차면 그 주민이 먼저 사 가요</div>
+      <div class="btns"><button class="btn main" data-buy>🙋 살게요!</button></div>`;
+    const $p = body.querySelector('.p'), $buy = body.querySelector('[data-buy]');
+    const finish = (who, v) => {
+      if (done) return;
+      done = true; clearInterval(timer);
+      body.innerHTML = resultHtml(who === 'me', v, who);
+      againBtn(body, start);
+    };
+    $buy.onclick = () => { if (price <= WALLET) finish('me', price); };
+    timer = setInterval(() => {
+      price = Math.max(150, price - 4);
+      $p.textContent = coin(price);
+      $buy.textContent = `🙋 ${coin(price)}에 살게요!`;
+      $buy.disabled = price > WALLET;
+      for (const b of bidders) {
+        const m = Math.max(0, Math.min(1, 1 - (price - b.thr) / 160));
+        body.querySelector(`.pp[data-id="${b.id}"] .mood i`).style.width = `${m * 100}%`;
+        if (price <= b.thr && !grab) grab = { b, at: b.delay };
+      }
+      if (grab) { grab.at -= 0.1; if (grab.at <= 0) finish(grab.b, price); }
+    }, 100);
+  };
+  body.innerHTML = '<div class="hintline">값은 🪙720에서 시작해 1초에 🪙40씩 내려가요</div><div class="btns"><button class="btn main">⏬ 시작하기</button></div>';
+  body.querySelector('.btn').onclick = start;
+}
+
+const MOUNT = { A: mountA, B: mountB, C: mountC };
+document.querySelectorAll('.frame').forEach(f => MOUNT[f.dataset.v](f));
+</script>
+</body>
+</html>

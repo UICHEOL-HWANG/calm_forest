@@ -19,7 +19,7 @@ test('game.js — 플래그·$w·spaceFlags·가시성·이동 한계·place·�
 
 test('game.js — 루프·입력: 연출이 카메라를 갖고 탭·Space·Esc·Enter 로 건너뛴다 · 센서 정지', () => {
   assert.match(GAME, /else if \(updateMirrorRide\(dt, t\)\) \{ wantAction = false; \}/);
-  assert.match(GAME, /!intro && (?:!houseGuidance\?\.cinematic && )?!dreamCutActive\(\) && !mirrorRideActive\(\)\) \{\n\s+handleAction\(\);/);
+  assert.match(GAME, /!intro && (?:!houseGuidance\?\.cinematic && )?(?:!goalGuide\?\.cinematic && )?!dreamCutActive\(\) && !mirrorRideActive\(\)\) \{\n\s+handleAction\(\);/);
   assert.match(GAME, /if \(mirrorRideActive\(\) && \(e\.code === 'Space' \|\| e\.code === 'Escape' \|\| e\.code === 'Enter'\)\) skipMirrorRide\(\);/);
   assert.match(GAME, /if \(mirrorRideActive\(\)\) \{ skipMirrorRide\(\); return; \}/);
   assert.match(GAME, /dreamSkip\(\) \{ skipDreamCut\(\); skipMirrorRide\(\); \}/);
@@ -47,7 +47,7 @@ test('doors.js · 고정 목록 · index.html · BGM', () => {
   assert.match(DOORS, /inVillage2\(\) \{ return [^}]*!atMirror/);
   assert.match(read('js/spaces/outdoor-decor.js'), /outdoorZone\(\) \{ return [^}]*!atMirror/);
   assert.match(read('js/spaces/farm-auto.js'), /atMine \|\| atDream \|\| atMirror( \|\| atHalloween)?;/);
-  assert.match(GAME, /const off = indoor \|\| atCafe \|\| atMuseum \|\| atObservatory \|\| atMountain \|\| atMine \|\| atDream \|\| atMirror( \|\| atHalloween)?;/);
+  assert.match(GAME, /const off = indoor \|\| atCafe \|\| atRestaurant \|\| atMuseum \|\| atObservatory \|\| atMountain \|\| atMine \|\| atDream \|\| atMirror( \|\| atHalloween)?;/);
   assert.match(HTML, /d\.place === 'mirror' \? 'rgba\(80,98,154,0\.8\)'/);
   assert.match(HTML, /d\.place === 'mirror' \? '🪞 거울 마을'/);
   assert.match(HTML, /<div id="mirror-arrive-modal">/);

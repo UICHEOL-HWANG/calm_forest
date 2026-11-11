@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>경매 무대 시안</title>
+<style>
+  :root { --mint:#bfe8c9; --ink:#4a5a4f; --panel:rgba(255,255,255,.8); --shadow:0 6px 18px rgba(90,120,100,.18); --gold:#e8b54a; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; padding:24px; font-family:'Segoe UI', system-ui, 'Apple SD Gothic Neo', sans-serif; color:#24312a; background:#e9efe9; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  h2 { font-size:17px; margin:0 0 4px; }
+  .lead { font-size:13px; opacity:.75; margin:0 0 18px; max-width:1000px; line-height:1.55; }
+  .refs { display:grid; grid-template-columns:repeat(auto-fill, minmax(290px, 1fr)); gap:12px; max-width:1220px; margin:10px 0 36px; }
+  .ref { background:#fff; border-radius:14px; padding:12px 14px; box-shadow:0 4px 12px rgba(30,50,40,.08); font-size:12.5px; line-height:1.55; }
+  .ref .k { font-size:11px; font-weight:800; opacity:.5; }
+  .ref h3 { margin:2px 0 6px; font-size:14px; }
+  .ref .take { margin-top:6px; padding:6px 9px; border-radius:9px; background:#f1f8f2; font-weight:600; }
+  .ref a { color:#2f7a55; font-size:11.5px; }
+  section.row { margin:26px 0 44px; }
+  section.row > p { font-size:12.5px; opacity:.75; margin:0 0 12px; max-width:1000px; line-height:1.55; }
+  .frames { display:flex; gap:22px; align-items:flex-start; flex-wrap:wrap; }
+  .tag { font-size:11px; font-weight:700; opacity:.5; margin:0 0 6px; }
+  .frame { position:relative; overflow:hidden; border-radius:14px; box-shadow:0 10px 30px rgba(30,50,40,.25); background:var(--bg, #333); }
+  .frame.pc { width:800px; height:540px; }
+  .frame.m { width:375px; height:720px; }
+  .scene { position:absolute; left:0; top:0; }
+  .pc .scene { width:470px; height:540px; }
+  .m .scene { width:375px; height:350px; }
+  .scene svg { width:100%; height:100%; display:block; }
+  .hud { position:absolute; top:12px; left:12px; background:var(--panel); border-radius:14px; padding:6px 12px; font-weight:800; font-size:13px; color:var(--ink); box-shadow:var(--shadow); z-index:2; }
+  .note { background:#fff; border-radius:12px; padding:10px 14px; font-size:12.5px; line-height:1.6; box-shadow:0 4px 12px rgba(30,50,40,.08); max-width:300px; }
+  .note h4 { margin:0 0 4px; font-size:13px; }
+  .note ul { margin:0; padding-left:18px; }
+
+  .au { position:absolute; background:var(--panel); backdrop-filter:blur(8px); border-radius:18px; box-shadow:var(--shadow); padding:12px 14px; color:var(--ink);
+    display:flex; flex-direction:column; gap:9px; user-select:none; z-index:2; }
+  .pc .au { right:14px; top:14px; bottom:14px; width:306px; justify-content:center; }
+  .m .au { left:10px; right:10px; bottom:12px; }
+  .au-head { display:flex; align-items:center; gap:8px; font-weight:800; font-size:14px; }
+  .au-head .sub { margin-left:auto; font-size:11.5px; font-weight:700; opacity:.6; }
+  .item { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:14px; background:rgba(255,255,255,.75); box-shadow:var(--shadow); }
+  .item .ico { font-size:30px; line-height:1; }
+  .item .nm { font-weight:800; font-size:14px; }
+  .item .ds { font-size:11px; opacity:.7; margin-top:2px; }
+  .m .item .ds { display:none; }
+  .item .ap { margin-left:auto; text-align:right; font-size:10.5px; opacity:.7; white-space:nowrap; }
+  .item .ap b { display:block; font-size:13px; opacity:1; color:#2d4a3a; }
+  .big { text-align:center; }
+  .big .p { font-size:30px; font-weight:900; letter-spacing:-.02em; color:#2d4a3a; transition:transform .12s; display:inline-block; }
+  .big .p.bump { transform:scale(1.15); }
+  .big .who { font-size:12.5px; font-weight:700; opacity:.8; min-height:1.3em; }
+  .bar { height:9px; border-radius:6px; background:#e3ebe4; overflow:hidden; }
+  .bar i { display:block; height:100%; width:100%; background:#8fd3a0; transition:width .1s linear, background .25s; }
+  .call { text-align:center; font-size:13px; font-weight:900; min-height:1.3em; color:#a0521f; }
+  .call.flash { animation:flash .5s; }
+  @keyframes flash { 0% { transform:scale(1.3); } 100% { transform:none; } }
+  .feed { display:flex; flex-direction:column; gap:3px; min-height:58px; }
+  .m .feed { min-height:38px; }
+  .feed div { font-size:11.5px; font-weight:700; padding:3px 8px; border-radius:8px; background:rgba(255,255,255,.6); animation:in .25s; }
+  .feed div.me { background:#e5f6e9; }
+  .feed div:nth-child(n+3) { opacity:.55; }
+  .m .feed div:nth-child(n+3) { display:none; }
+  @keyframes in { from { transform:translateY(-6px); opacity:0; } }
+  .btns { display:flex; gap:8px; }
+  .btn { border:none; border-radius:12px; padding:11px 10px; font-weight:800; font-size:14px; cursor:pointer; background:#eef2ee; color:var(--ink); flex:1; }
+  .btn.main { background:var(--mint); }
+  .btn:disabled { opacity:.4; cursor:default; }
+  .btn:active:not(:disabled) { transform:scale(.96); }
+  .hintline { font-size:11.5px; opacity:.7; text-align:center; }
+  .res { text-align:center; }
+  .res .e { font-size:36px; }
+  .res .t { font-size:15px; font-weight:900; margin:4px 0; }
+  .res .d { font-size:12px; opacity:.75; }
+
+  svg text { font-family:'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif; }
+  .bw, .gavel, .bell, .itemfly, .spot, .tw { transform-box:fill-box; }
+  .bw { transform-origin:50% 100%; }
+  .fig.hop .bw { animation:hop .45s ease-out; }
+  @keyframes hop { 40% { transform:translateY(-9px) scaleY(1.04); } 100% { transform:none; } }
+  .fig .hand { opacity:0; transition:opacity .15s; }
+  .fig.raise .hand { opacity:1; }
+  .fig .ring { opacity:0; transition:opacity .2s; }
+  .fig.lead .ring { opacity:1; }
+  .gavel { transform-origin:85% 85%; transition:transform .2s; }
+  .gavel.up { transform:rotate(-38deg); }
+  .gavel.slam { animation:slam .5s; }
+  @keyframes slam { 0% { transform:rotate(-55deg); } 45% { transform:rotate(18deg); } 100% { transform:none; } }
+  .bell { transform-origin:50% 0%; }
+  .bell.ring { animation:ring .9s; }
+  @keyframes ring { 15% { transform:rotate(22deg); } 35% { transform:rotate(-18deg); } 55% { transform:rotate(12deg); } 75% { transform:rotate(-6deg); } 100% { transform:none; } }
+  .spot { transition:opacity .3s; }
+  .spot.hot { animation:pulse .5s infinite alternate; }
+  @keyframes pulse { from { opacity:.55; } to { opacity:1; } }
+  .tw { animation:tw 2.4s infinite alternate; }
+  @keyframes tw { from { opacity:.55; } to { opacity:1; } }
+  .itemfly { transition:transform .9s cubic-bezier(.3,.7,.3,1); }
+  .spark { animation:spark .9s forwards; }
+  @keyframes spark { to { transform:translateY(-26px); opacity:0; } }
+  @media (prefers-reduced-motion: reduce) { .tw, .spot.hot { animation:none; } }
+</style>
+</head>
+<body>
+<h1>🔨 경매 무대 배경 시안</h1>
+<p class="lead">실시간 호가로 확정. 아래 레퍼런스에서 <b>무대에서 일어나는 일</b>을 가져와 배경을 채웠어요. 주민이 부르면 무대 위 그 주민이 ✋손을 들고 들썩이고, 1등에게 금빛 고리가 생기고, 막판엔 경매인이 망치를 들고 조명이 깜빡이고, 낙찰되면 망치가 내려쳐지며 물건이 낙찰자에게 날아가요.
+  무대 위 말풍선은 이모지만 쓰고 숫자는 오른쪽 창(모바일은 아래 창)에만 둬요. 실제 게임에선 같은 구성을 저폴리 3D로 만들어요.</p>
+
+<h2>📚 레퍼런스에서 가져온 것</h2>
+<div class="refs">
+  <div class="ref"><div class="k">실제 경매 · 일본</div><h3>🐟 토요스 시장 참치 경매</h3>종이 울리면 시작하고, 손짓으로 값을 불러요. 한 마리가 5초 만에 끝나기도 해요. 물건이 바닥에 줄지어 놓여 있어요.
+    <div class="take">가져옴: 시작 종 · 손 들어 부르기 · 물건을 가운데 두고 둘러서기</div>
+    <a href="https://www.nippon.com/en/guide-to-japan/gu900134/" target="_blank">nippon.com</a> · <a href="https://www.nippon.com/en/images/i00080/" target="_blank">사진</a></div>
+  <div class="ref"><div class="k">실제 경매 · 미국</div><h3>🐄 가축 경매장(세일 반)</h3>가운데 링을 3면 관중석이 둘러싸고, 경매인은 뒤쪽 높은 부스에 앉아요. 망치가 떨어지면 낙찰. 주말 저녁 마을 모임 같은 분위기예요.
+    <div class="take">가져옴: 링+계단 관중석 · 높은 경매인 부스 · 망치 낙찰</div>
+    <a href="https://www.canr.msu.edu/news/inside-the-community-feeder-calf-auction-in-west-branch" target="_blank">MSU Extension</a> · <a href="https://www.wlj.net/the-art-of-the-livestock-auctioneer" target="_blank">WLJ</a></div>
+  <div class="ref"><div class="k">코지 게임</div><h3>🏮 Palia, 마지 마켓</h3>저녁 6시부터 새벽까지만 여는 야시장 이벤트. 축제 광장에 붉은 등과 불꽃놀이를 걸었어요. "저녁에만 열린다"는 것 자체가 분위기를 만들어요.
+    <div class="take">가져옴: 해질녘~밤 하늘 · 줄 등불 · 낙찰 때 반짝임</div>
+    <a href="https://palia.com/news/introducing-maji-market" target="_blank">palia.com</a> · <a href="https://palia.wiki.gg/wiki/Maji_Market:_Summer_2023" target="_blank">wiki</a></div>
+  <div class="ref"><div class="k">코지 게임</div><h3>🧺 Story of Seasons: Grand Bazaar</h3>일주일에 하루 장날에 모든 게 몰려 있어요. 장터를 언덕에서 내려다보는 구도와, 정령들이 옆에서 응원하는 연출이 있어요.
+    <div class="take">가져옴: 구경 온 주민이 뒤에 앉아 있기 · 하루 한 번 행사 느낌</div>
+    <a href="https://www.rpgfan.com/review/story-of-seasons-grand-bazaar/" target="_blank">RPGFan</a> · <a href="https://www.thexboxhub.com/story-of-seasons-grand-bazaar-review/" target="_blank">Xbox Hub</a></div>
+  <div class="ref"><div class="k">코지 게임</div><h3>🐓 Cornucopia</h3>농장 게임 안에 경매장이 있어서 희귀 동물·장식을 입찰해 사요. 우리와 가장 비슷한 구조예요(희귀 장식 = 경매품).
+    <div class="take">가져옴: 경매품은 희귀 장식 · 코인 쓸 곳으로서의 경매</div>
+    <a href="https://store.steampowered.com/app/1681600/Cornucopia" target="_blank">Steam</a></div>
+  <div class="ref"><div class="k">웹 경매 UI</div><h3>⏱️ 실시간 경매 화면</h3>남은 시간 막대가 노랑, 주황, 빨강으로 바뀌고, 막판 입찰로 시간이 늘면 "연장" 표시를 띄워요. 실시간 입찰 기록이 흘러가요.
+    <div class="take">가져옴: 색이 바뀌는 시간 막대 · "다시 4초!" 표시 · 입찰 기록 3줄</div>
+    <a href="https://wpdoc.webkul.com/auctions-for-woocommerce/psychology.html" target="_blank">Webkul</a> · <a href="https://enter.converge.ai/marketplace/templates/editorial-live-auction-dashboard" target="_blank">템플릿</a></div>
+</div>
+
+<section class="row">
+  <h2>1. 🏮 등불 무대 (마을 광장, 해질녘)</h2>
+  <p>광장에 작은 무대를 세우고 빨간 막과 줄 등불을 걸어요. 경매품은 받침대 위에서 조명을 받고, 방랑 상인이 오른쪽 연단에서 망치를 들어요. 주민들이 무대 앞에 서서 불러요.</p>
+  <div class="frames">
+    <div><div class="tag">PC 800×540</div><div class="frame pc" data-s="lantern"></div></div>
+    <div><div class="tag">모바일 375×720</div><div class="frame m" data-s="lantern"></div></div>
+    <div class="note"><h4>느낌</h4><ul><li>"저녁에만 열리는 행사" 느낌이 가장 강해요</li><li>마을 광장(수확제 광장)에 그대로 놓을 수 있어요</li><li>등불이 블룸에 걸려 번질 수 있어 밝기 조절 필요</li></ul></div>
+  </div>
+</section>
+
+<section class="row">
+  <h2>2. 🐄 장날 경매 링 (헛간 안)</h2>
+  <p>헛간 안 둥근 링 가운데 건초 더미 위에 경매품을 올려요. 뒤쪽 높은 부스에서 경매인이 종과 망치를 들고, 계단 관중석에 구경 온 주민들이 앉아 있어요.</p>
+  <div class="frames">
+    <div><div class="tag">PC 800×540</div><div class="frame pc" data-s="barn"></div></div>
+    <div><div class="tag">모바일 375×720</div><div class="frame m" data-s="barn"></div></div>
+    <div class="note"><h4>느낌</h4><ul><li>시골 장터다운 따뜻한 나무 톤, 우리 농장 테마와 잘 맞아요</li><li>관중석 주민이 많아 북적여요</li><li>실내 공간이 새로 필요해요(문·조명 세트)</li></ul></div>
+  </div>
+</section>
+
+<section class="row">
+  <h2>3. ⚓ 해질녘 포구 경매</h2>
+  <p>부두 끝에서 종을 울리며 시작해요. 파란 천 위에 생선 상자를 줄지어 놓고 경매품을 가운데 상자에 올려요. 앞으로 만들 포구 섬과 이어 붙일 수 있어요.</p>
+  <div class="frames">
+    <div><div class="tag">PC 800×540</div><div class="frame pc" data-s="harbor"></div></div>
+    <div><div class="tag">모바일 375×720</div><div class="frame m" data-s="harbor"></div></div>
+    <div class="note"><h4>느낌</h4><ul><li>노을 바다 배경이 가장 그림 같아요</li><li>포구 섬 콘텐츠와 묶으면 섬 갈 이유가 하나 더 생겨요</li><li>포구 섬이 아직 없어서 순서가 뒤로 밀려요</li></ul></div>
+  </div>
+</section>
+
+<script>
+const ITEM = { ico:'🌙', name:'달빛 그네', desc:'밤이 되면 은은하게 빛나는 마당 그네', appraisal:400 };
+const WALLET = 820;
+const NPCS = [
+  { id:'curator', name:'큐레이터', emoji:'🧑‍🦳', color:'#4a5a7a', style:'big' },
+  { id:'star', name:'별 보는 아이', emoji:'⭐', color:'#5b6fd0', style:'eager' },
+  { id:'builder', name:'목수 아저씨', emoji:'👷', color:'#e0663c', style:'sniper' },
+];
+const rnd = (a, b) => a + Math.random() * (b - a);
+const r10 = n => Math.round(n / 10) * 10;
+const coin = n => `🪙${n}`;
+
+const fig = (id, x, y, color, emoji, s = 1) => `
+  <g class="fig" data-fig="${id}" transform="translate(${x} ${y}) scale(${s})">
+    <ellipse class="ring" cx="0" cy="0" rx="19" ry="6" fill="none" stroke="#ffd45a" stroke-width="3"/>
+    <ellipse cx="0" cy="1" rx="15" ry="4.5" fill="rgba(0,0,0,.25)"/>
+    <g class="bw">
+      <rect x="-11" y="-30" width="22" height="30" rx="10" fill="${color}"/>
+      ${emoji ? `<text x="0" y="-33" font-size="22" text-anchor="middle">${emoji}</text>`
+              : `<circle cx="0" cy="-42" r="11" fill="#6b4630"/><path d="M-9 -45 Q0 -58 9 -45" fill="#7d5539"/>`}
+      <text class="hand" x="14" y="-50" font-size="15" text-anchor="middle">✋</text>
+    </g>
+  </g>`;
+
+const figs = at => NPCS.map(n => fig(n.id, at[n.id][0], at[n.id][1], n.color, n.emoji)).join('') + fig('me', at.me[0], at.me[1], '#6fae7f', '', 1.25);
+
+const lanternRow = (y0, sag, n, colors) => {
+  let out = `<path d="M-10 ${y0} Q200 ${y0 + sag * 2} 410 ${y0}" stroke="#3a2a20" stroke-width="1.5" fill="none"/>`;
+  for (let i = 0; i < n; i++) {
+    const x = 20 + i * (360 / (n - 1)), t = (x + 10) / 420;
+    const y = (1 - t) ** 2 * y0 + 2 * (1 - t) * t * (y0 + sag * 2) + t * t * y0;
+    out += `<circle class="tw" style="animation-delay:${(i % 4) * .5}s" cx="${x}" cy="${y + 9}" r="15" fill="url(#glow)"/>
+      <line x1="${x}" y1="${y}" x2="${x}" y2="${y + 3}" stroke="#3a2a20"/>
+      <ellipse cx="${x}" cy="${y + 9}" rx="6.5" ry="8" fill="${colors[i % colors.length]}"/>`;
+  }
+  return out;
+};
+
+const GLOW = '<radialGradient id="glow"><stop offset="0" stop-color="#ffd27a" stop-opacity=".85"/><stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient>';
+const POOL = '<radialGradient id="pool"><stop offset="0" stop-color="#fff3c6" stop-opacity=".9"/><stop offset="1" stop-color="#fff3c6" stop-opacity="0"/></radialGradient>';
+const itemG = (x, y, size = 30) => `<g data-item transform="translate(${x} ${y})"><g class="itemfly"><text y="0" font-size="${size}" text-anchor="middle">🌙</text></g></g>`;
+
+const SCENES = {
+  lantern: {
+    bg:'#5c4a3a',
+    at:{ item:[170, 176], curator:[92, 292], star:[152, 312], builder:[312, 296], me:[226, 344] },
+    svg(at) { return `
+      <defs>
+        <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a2b57"/><stop offset=".55" stop-color="#7b4f86"/><stop offset="1" stop-color="#f2a27a"/></linearGradient>
+        ${GLOW}
+        <linearGradient id="spotg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff6d0" stop-opacity=".05"/><stop offset="1" stop-color="#fff6d0" stop-opacity=".55"/></linearGradient>
+      </defs>
+      <rect width="400" height="360" fill="url(#sky)"/>
+      ${[[40,20],[120,34],[300,18],[350,40],[220,12]].map(([x,y]) => `<circle cx="${x}" cy="${y}" r="1.4" fill="#fff" opacity=".8"/>`).join('')}
+      <path d="M0 210 L0 170 L20 150 L40 172 L62 140 L88 170 L110 155 L130 175 L150 160 L170 178 L230 178 L250 158 L272 176 L296 146 L320 170 L344 150 L370 172 L400 156 L400 210 Z" fill="#33463c"/>
+      <rect y="208" width="400" height="152" fill="#5c4a3a"/>
+      <ellipse cx="200" cy="300" rx="200" ry="60" fill="#6d5844"/>
+      <rect x="110" y="96" width="180" height="112" fill="#b8433f"/>
+      ${Array.from({length:9}, (_, i) => `<rect x="${116 + i * 20}" y="104" width="6" height="104" fill="#9c3533"/>`).join('')}
+      <path d="M106 92 h188 v8 ${Array.from({length:8}, () => 'q-11.75 12 -23.5 0').join(' ')} z" fill="#e0b04a"/>
+      ${lanternRow(18, 18, 7, ['#ff9a4c', '#ffcf5a'])}
+      ${lanternRow(48, 26, 9, ['#ff8a4c', '#ffcf5a', '#ff6f6f'])}
+      <rect x="78" y="204" width="244" height="14" rx="3" fill="#c9935f"/>
+      <rect x="84" y="218" width="232" height="22" fill="#8f633f"/>
+      ${Array.from({length:11}, (_, i) => `<path d="M${88 + i * 21} 218 l10 11 l10 -11 z" fill="${i % 2 ? '#fff2e0' : '#ff8f8f'}"/>`).join('')}
+      <polygon class="spot" points="148,0 192,0 214,206 126,206" fill="url(#spotg)"/>
+      <rect x="152" y="182" width="36" height="24" rx="3" fill="#efe3c8"/><ellipse cx="170" cy="182" rx="18" ry="4" fill="#fff7e6"/>
+      ${itemG(170, 176)}
+      <text x="262" y="156" font-size="30" text-anchor="middle">🧙</text>
+      <rect x="240" y="168" width="44" height="38" rx="3" fill="#7a5232"/><rect x="236" y="164" width="52" height="6" rx="2" fill="#a0703f"/>
+      <g transform="translate(286 162)"><text class="gavel" font-size="18" text-anchor="middle">🔨</text></g>
+      <g transform="translate(70 196)"><text class="bell" font-size="1" opacity="0">🔔</text></g>
+      ${figs(at)}`; },
+  },
+  barn: {
+    bg:'#d9b880',
+    at:{ item:[200, 226], curator:[84, 304], star:[146, 322], builder:[318, 304], me:[232, 348] },
+    svg(at) { return `
+      <defs>
+        <linearGradient id="shaft" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff2c4" stop-opacity=".45"/><stop offset="1" stop-color="#fff2c4" stop-opacity="0"/></linearGradient>
+        ${POOL}${GLOW}
+      </defs>
+      <rect width="400" height="360" fill="#a8714a"/>
+      ${Array.from({length:17}, (_, i) => `<line x1="${i * 25}" y1="0" x2="${i * 25}" y2="200" stroke="#8f5d3b" stroke-width="2"/>`).join('')}
+      <path d="M0 0 L200 -40 L400 0 L400 26 L200 -14 L0 26 Z" fill="#5e3d27"/>
+      <rect x="0" y="34" width="400" height="9" fill="#6d4a2e"/>
+      <rect x="36" y="56" width="44" height="34" rx="3" fill="#ffe6a8"/><rect x="320" y="56" width="44" height="34" rx="3" fill="#ffe6a8"/>
+      <polygon points="36,90 80,90 150,260 70,260" fill="url(#shaft)"/><polygon points="320,90 364,90 330,260 250,260" fill="url(#shaft)"/>
+      ${[120, 142, 164].map((y, i) => `<rect x="0" y="${y}" width="400" height="14" fill="${i % 2 ? '#7c5236' : '#8a5c3c'}"/>`).join('')}
+      ${[[22,120,'🐔'],[60,120,'🦆'],[300,120,'🐼'],[344,120,'🦡'],[40,142,'🧑‍🌾'],[96,142,'🐔'],[286,142,'🎣'],[370,142,'🦆'],[20,164,'🦡'],[350,164,'🐼']].map(([x,y,e]) => `<text x="${x}" y="${y}" font-size="15" text-anchor="middle">${e}</text>`).join('')}
+      <rect x="164" y="92" width="72" height="56" rx="4" fill="#6d4a2e"/><rect x="160" y="88" width="80" height="7" rx="2" fill="#8d6340"/>
+      <text x="196" y="88" font-size="28" text-anchor="middle">🧙</text>
+      <g transform="translate(234 74)"><text class="bell" font-size="17" text-anchor="middle">🔔</text></g>
+      <g transform="translate(220 112)"><text class="gavel" font-size="16" text-anchor="middle">🔨</text></g>
+      <rect y="178" width="400" height="182" fill="#d9b880"/>
+      <ellipse cx="200" cy="246" rx="150" ry="50" fill="#e8cf9a"/>
+      <ellipse class="spot" cx="200" cy="244" rx="70" ry="22" fill="url(#pool)"/>
+      <ellipse cx="200" cy="246" rx="150" ry="50" fill="none" stroke="#f7f1e3" stroke-width="4"/>
+      ${Array.from({length:16}, (_, i) => { const a = Math.PI * 2 * i / 16; return `<rect x="${200 + Math.cos(a) * 150 - 2}" y="${246 + Math.sin(a) * 50 - 12}" width="4" height="13" fill="#f7f1e3"/>`; }).join('')}
+      <rect x="180" y="226" width="40" height="22" rx="6" fill="#e9c55a"/><line x1="180" y1="236" x2="220" y2="236" stroke="#c99f3a" stroke-width="2"/>
+      ${itemG(200, 226)}
+      <rect x="18" y="214" width="44" height="26" rx="7" fill="#e9c55a"/><rect x="340" y="214" width="44" height="26" rx="7" fill="#e9c55a"/>
+      ${figs(at)}`; },
+  },
+  harbor: {
+    bg:'#a87a50',
+    at:{ item:[200, 186], curator:[92, 290], star:[150, 312], builder:[314, 294], me:[228, 344] },
+    svg(at) { return `
+      <defs>
+        <linearGradient id="hsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5f5c9a"/><stop offset=".6" stop-color="#f59a7a"/><stop offset="1" stop-color="#ffd28a"/></linearGradient>
+        <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e69a86"/><stop offset=".25" stop-color="#5b7fa8"/><stop offset="1" stop-color="#3e5f86"/></linearGradient>
+        ${POOL}${GLOW}
+      </defs>
+      <rect width="400" height="360" fill="url(#hsky)"/>
+      <circle cx="210" cy="146" r="30" fill="#ffe3a0" opacity=".9"/>
+      <path d="M0 150 L30 138 L64 146 L90 132 L120 150 Z" fill="#6d6a8f"/>
+      <rect y="150" width="400" height="80" fill="url(#sea)"/>
+      ${[[170,160,80],[150,172,120],[180,186,60]].map(([x,y,w]) => `<rect x="${x}" y="${y}" width="${w}" height="2" rx="1" fill="#ffe3a0" opacity=".55"/>`).join('')}
+      <path d="M60 60 q6 -6 12 0 q6 -6 12 0" stroke="#4a3f5c" stroke-width="2" fill="none"/><path d="M300 44 q5 -5 10 0 q5 -5 10 0" stroke="#4a3f5c" stroke-width="2" fill="none"/>
+      <polygon points="60,200 340,200 400,360 0,360" fill="#a87a50"/>
+      ${Array.from({length:9}, (_, i) => `<line x1="${60 + i * 35}" y1="200" x2="${i * 50}" y2="360" stroke="#8f633f" stroke-width="1.5"/>`).join('')}
+      <rect x="56" y="196" width="288" height="6" fill="#8f633f"/>
+      ${[70, 330].map(x => `<rect x="${x - 4}" y="150" width="8" height="52" fill="#6d4a2e"/><circle class="tw" cx="${x}" cy="150" r="14" fill="url(#glow)"/><ellipse cx="${x}" cy="150" rx="5" ry="6" fill="#ffcf5a"/>`).join('')}
+      <rect x="296" y="92" width="6" height="110" fill="#5e3d27"/><rect x="284" y="92" width="26" height="5" fill="#5e3d27"/>
+      <g transform="translate(290 100)"><text class="bell" font-size="20" text-anchor="middle">🔔</text></g>
+      <rect x="110" y="200" width="180" height="20" rx="4" fill="#3f7fb0"/>
+      ${[[126,'🐟'],[154,'🦀'],[246,'🐟'],[274,'🦐']].map(([x,e]) => `<rect x="${x - 13}" y="186" width="26" height="16" rx="2" fill="#c8955c"/><text x="${x}" y="196" font-size="13" text-anchor="middle">${e}</text>`).join('')}
+      <ellipse class="spot" cx="200" cy="202" rx="44" ry="13" fill="url(#pool)"/>
+      <rect x="184" y="186" width="32" height="18" rx="2" fill="#d9a86a"/>
+      ${itemG(200, 186, 28)}
+      <rect x="244" y="182" width="30" height="22" rx="2" fill="#8f633f"/>
+      <text x="258" y="180" font-size="28" text-anchor="middle">🧙</text>
+      <g transform="translate(276 170)"><text class="gavel" font-size="16" text-anchor="middle">🔨</text></g>
+      ${figs(at)}`; },
+  },
+};
+
+function makeStage(svg, def) {
+  const figEl = id => svg.querySelector(`[data-fig="${id}"]`);
+  const gavel = svg.querySelector('.gavel'), bell = svg.querySelector('.bell'), spot = svg.querySelector('.spot'), fly = svg.querySelector('[data-item] .itemfly');
+  const restart = (el, cls) => { el.classList.remove(cls); void el.getBBox(); el.classList.add(cls); };
+  return {
+    reset() {
+      svg.querySelectorAll('.fig').forEach(f => f.classList.remove('lead', 'raise', 'hop'));
+      gavel.classList.remove('up', 'slam'); spot.classList.remove('hot');
+      fly.style.transform = '';
+    },
+    start() { restart(bell, 'ring'); restart(gavel, 'slam'); },
+    bid(id) {
+      const f = figEl(id);
+      restart(f, 'hop'); f.classList.add('raise');
+      clearTimeout(f._t); f._t = setTimeout(() => f.classList.remove('raise'), 900);
+      svg.querySelectorAll('.fig').forEach(el => el.classList.toggle('lead', el === f));
+    },
+    tension(t) { gavel.classList.toggle('up', t < 3); spot.classList.toggle('hot', t < 3); },
+    sold(id) {
+      gavel.classList.remove('up'); restart(gavel, 'slam'); restart(bell, 'ring');
+      spot.classList.remove('hot');
+      if (!id) return;
+      const [ix, iy] = def.at.item, [wx, wy] = def.at[id];
+      setTimeout(() => { fly.style.transform = `translate(${wx - ix}px, ${wy - iy - 40}px) scale(.75)`; }, 350);
+      for (let i = 0; i < 6; i++) {
+        const s = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        s.textContent = '✨'; s.setAttribute('font-size', '13'); s.setAttribute('text-anchor', 'middle');
+        s.setAttribute('x', ix + rnd(-26, 26)); s.setAttribute('y', iy + rnd(-30, 4));
+        s.classList.add('spark'); s.style.transformBox = 'fill-box'; s.style.animationDelay = `${i * 60}ms`;
+        svg.appendChild(s); setTimeout(() => s.remove(), 1400);
+      }
+    },
+  };
+}
+
+function resultHtml(win, paid, by) {
+  const diff = paid - ITEM.appraisal;
+  const rel = diff === 0 ? '감정가 그대로' : diff > 0 ? `감정가보다 ${coin(diff)} 비싸게` : `감정가보다 ${coin(-diff)} 싸게`;
+  return win
+    ? `<div class="res"><div class="e">${ITEM.ico}</div><div class="t">낙찰! ${ITEM.name}를 가져왔어요</div><div class="d">${coin(paid)} · ${rel} · 🧺 보관함에 넣었어요</div></div>`
+    : `<div class="res"><div class="e">${by.emoji}</div><div class="t">${by.name}가 가져갔어요</div><div class="d">${coin(paid)}에 낙찰 · 내일 저녁에 또 열려요</div></div>`;
+}
+
+function mount(frame) {
+  const def = SCENES[frame.dataset.s];
+  frame.style.setProperty('--bg', def.bg);
+  frame.innerHTML = `<div class="scene"><svg viewBox="0 0 400 360" preserveAspectRatio="xMidYMid slice">${def.svg(def.at)}</svg></div>
+    <div class="hud">${coin(WALLET)}</div>
+    <div class="au"><div class="au-head">🔨 저녁 경매 <span class="sub">실시간 호가</span></div>
+    <div class="item"><span class="ico">${ITEM.ico}</span><div><div class="nm">${ITEM.name}</div><div class="ds">${ITEM.desc}</div></div><div class="ap">감정가<b>${coin(ITEM.appraisal)}</b></div></div>
+    <div class="body"></div></div>`;
+  const body = frame.querySelector('.body');
+  const stage = makeStage(frame.querySelector('svg'), def);
+  let timer = null, flashUntil = 0;
+  const start = () => {
+    clearInterval(timer); stage.reset(); stage.start();
+    const bidders = NPCS.map(n => ({ ...n, max: r10(rnd(300, 560)), cool: 0 }));
+    let price = 200, leader = null, t = 8, total = 0;
+    body.innerHTML = `<div class="big"><div class="p">${coin(price)}</div><div class="who"></div></div>
+      <div class="bar"><i></i></div><div class="call"></div><div class="feed"></div>
+      <div class="btns"><button class="btn" data-inc="10">+10</button><button class="btn" data-inc="30">+30</button><button class="btn main" data-inc="50">+50</button></div>`;
+    const $p = body.querySelector('.p'), $who = body.querySelector('.who'), $bi = body.querySelector('.bar i'), $call = body.querySelector('.call'), $feed = body.querySelector('.feed');
+    const render = () => {
+      $p.textContent = coin(price);
+      $p.classList.add('bump'); setTimeout(() => $p.classList.remove('bump'), 120);
+      $who.textContent = !leader ? '시작가예요. 먼저 불러 보세요' : leader === 'me' ? '🙋 내가 제일 높아요' : `${leader.emoji} ${leader.name}가 제일 높아요`;
+      body.querySelectorAll('[data-inc]').forEach(b => { b.disabled = leader === 'me' || price + +b.dataset.inc > WALLET; });
+    };
+    const bid = (who, inc) => {
+      const extended = t < 3;
+      price += inc; leader = who; t = Math.max(t, 4);
+      stage.bid(who === 'me' ? 'me' : who.id);
+      const row = document.createElement('div');
+      row.className = who === 'me' ? 'me' : '';
+      row.textContent = `${who === 'me' ? '🙋 나' : `${who.emoji} ${who.name}`} +${inc} → ${coin(price)}`;
+      $feed.prepend(row);
+      while ($feed.children.length > 3) $feed.lastChild.remove();
+      if (extended) {
+        flashUntil = total + 0.8;
+        $call.textContent = '⏱️ 다시 4초!';
+        $call.classList.remove('flash'); void $call.offsetWidth; $call.classList.add('flash');
+      }
+      render();
+    };
+    body.querySelectorAll('[data-inc]').forEach(b => b.onclick = () => bid('me', +b.dataset.inc));
+    render();
+    timer = setInterval(() => {
+      t -= 0.1; total += 0.1;
+      for (const b of bidders) {
+        if (leader === b) continue;
+        if (b.cool > 0) { b.cool -= 0.1; continue; }
+        const inc = b.style === 'big' ? 50 : b.style === 'eager' ? 10 : 30;
+        if (price + inc > b.max) continue;
+        const p = b.style === 'eager' ? 0.05 : b.style === 'big' ? 0.025 : (t < 2.2 ? 0.2 : 0.004);
+        if (Math.random() < p) { b.cool = rnd(0.6, 1.4); bid(b, inc); break; }
+      }
+      $bi.style.width = `${Math.max(0, Math.min(1, t / 8)) * 100}%`;
+      $bi.style.background = t > 4 ? '#8fd3a0' : t > 2 ? '#f2c14e' : '#e8774a';
+      stage.tension(t);
+      if (total >= flashUntil) $call.textContent = t >= 3 ? '' : t >= 2 ? '하나…' : t >= 1 ? '하나… 둘…' : '하나… 둘… 셋!';
+      if (t <= 0 || total > 45) {
+        clearInterval(timer);
+        stage.sold(leader ? (leader === 'me' ? 'me' : leader.id) : null);
+        body.innerHTML = leader ? resultHtml(leader === 'me', price, leader) : '<div class="res"><div class="e">🍃</div><div class="t">아무도 안 불렀어요</div></div>';
+        const wrap = document.createElement('div');
+        wrap.className = 'btns';
+        wrap.innerHTML = '<button class="btn main">다시 해 보기</button>';
+        wrap.firstChild.onclick = start;
+        body.appendChild(wrap);
+      }
+    }, 100);
+  };
+  body.innerHTML = '<div class="hintline">저녁 6시, 방랑 상인이 경매를 열었어요</div><div class="btns"><button class="btn main">🔔 경매 참가하기</button></div>';
+  body.querySelector('.btn').onclick = start;
+}
+
+document.querySelectorAll('.frame').forEach(mount);
+</script>
+</body>
+</html>

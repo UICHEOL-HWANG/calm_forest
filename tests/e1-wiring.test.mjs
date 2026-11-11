@@ -62,8 +62,11 @@ test('기록 — exp_arm 덧붙임 · session counts · dev 강제 파라미터'
   assert.match(ANALYTICS, /withExpArm\(name, /);
   assert.match(ANALYTICS, /export function setExpArm\(/);
   assert.match(METRICS, /counts\['e1_' \+ p\.exp_arm\]/);
+  assert.match(METRICS, /p\?\.exp === 'e1' && p\?\.exp_arm/);
+  assert.match(E1START, /writeStored\(d\.arm, d\.rollout\)/);
+  assert.match(E1START, /rollout: d\.rollout/);
   assert.ok(DEV_PARAMS.includes('e1'), '?e1= 강제 세션은 기록하지 않는다');
-  assert.match(E1START, /trackEvent\('exp_exposure', \{ exp: 'e1', exp_arm:/);
+  assert.match(E1START, /trackEvent\('exp_exposure', \{ exp: d\.exp, exp_arm:/);
 });
 
 test('세이브 왕복 — gameState.e1 이 저장·복원된다', () => {
@@ -79,7 +82,7 @@ test('새 코드는 game.js 밖 — 규칙은 js/exp-e1.js, 연결은 js/spaces/
 
 test('dev 세션(?dbg 등)은 기기에 무리를 남기지 않는다 — 개발 기기가 나중에 재방문 등록자로 잡히지 않게', () => {
   const enroll = fnBody(E1START, 'export function enrollE1(load)');
-  assert.match(enroll, /if \(d\.reason !== 'forced' && !IS_DEV_SESSION\) writeStored\(d\.arm\)/);
+  assert.match(enroll, /if \(d\.reason !== 'forced' && !IS_DEV_SESSION\) writeStored\(d\.arm, d\.rollout\)/);
 });
 
 test('리뷰 M4·M5 — dev 세션 유저 속성 차단 · 이번 세션에 등록됐을 때만 처치 대기', () => {

@@ -2,6 +2,7 @@
 import { capPlugin } from './cap-bridge.js';
 import { IS_ANDROID, IS_IOS } from './platform.js';
 import { IS_DEV_SESSION } from './config.js';
+import { requestTrackingConsent } from './tracking-consent.js';
 
 const SDK_KEYS = {
   ios: 'GN4VXMC8WVUBHYVNTW6XZINFV2DFU97E',
@@ -21,6 +22,7 @@ export function bootTenjin() {
   }
 
   ready = (async () => {
+    if (IS_IOS && !(await requestTrackingConsent())) return null;
     await plugin.initialize({ sdkKey: IS_IOS ? SDK_KEYS.ios : SDK_KEYS.android });
     await plugin.connect();
     return plugin;

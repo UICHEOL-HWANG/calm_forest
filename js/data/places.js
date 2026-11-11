@@ -6,11 +6,12 @@
 //     옮긴 방법·검증: tools/refactor/ · docs/superpowers/specs/2026-09-24-gamejs-split-phase1-design.md
 // =============================================================
 import * as THREE from 'three';
-import { FORAGE_ICO } from '../forage/logic.js';
 
 export const INT = new THREE.Vector3(0, 0, 52); // 실내 위치(플레이 구역 밖, 지면 위)
 
 export const ROOF_Y = 3.4;   // ☀️ 루프탑만 집 한 층 높이만큼 띄운다 — "지붕 위에서 마을을 내려다보는" 높이감(2026-09-17 사용자 피드백).
+
+export const LAKE = new THREE.Vector3(16, 0, 9);
 
 export const LAKE_R = 6;   // 호수 반경(환경 호수와 동일)
 
@@ -29,12 +30,7 @@ export const MARKET = new THREE.Vector3(10, 0, 5.5);  // 📊 시세판 — 호�
 //    ⚠️ 스폰보다 남쪽(z+)에 두면 카메라(남→북)와 캐릭터 사이에 끼어 캐릭터를 가림 — 같은 z선상 동쪽으로.
 export const RANK = new THREE.Vector3(13.5, 0, 1.5);  // 🏆 랭킹 게시판 — 호수 북쪽 가로등(15,3) 잔디. 한복판(2.4,0.2)에서 옮김(NPC 안 가림·활동 구역 밖·호수 가는 길에 보임). 부두 옆(8.5,9.5)·텃밭 입구 앞(-0.5,10.5)은 비좁아 제외
 
-// 품목 아이콘 — **SELL_PRICE 의 모든 키를 덮어야 한다**(tests/orchard.test.mjs 가 강제).
-//   빠진 키가 있으면 📊시세판 월드 텍스처·상인 말풍선·시세판 모달이 문자 그대로 "undefined" 를 그린다.
-//   🍎 과수원 과일 아이콘은 js/orchard.js FRUITS[].ico 와 같은 값.
-export const SELL_ICO_G = { ...FORAGE_ICO, charcoal: '⚫', flour: '🌾', brick: '🧱', bread: '🥐', juice: '🍷', grape_juice: '🍹', crop: '🥕', fish: '🐟', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', crystal: '🔮', egg: '🥚', bug: '🌟', forage: '🍄', wheat: '🌾', corn: '🌽', grape: '🍇', honey: '🍯',
-                     apple: '🍎', pear: '🍐', peach: '🍑', persimmon: '🍊', chestnut: '🌰',
-                     apple_jam: '🥫', roast_chestnut: '🌰', gotgam: '🍡' };   // 🍎 과일 가공(js/craft/recipes.js)
+export { SELL_ICO_G } from './sell-icons.js';
 
 export const FARM = new THREE.Vector3(0, 0, 84);       // 개인 텃밭 필드(마을 밖 별도 공간)
 
@@ -230,10 +226,15 @@ export const MIST_PRACTICE_STEPS = [
   '④ 잘했어요! 이제 정령 세 무리에 도전해요',
 ];
 
-export const SEA_GATE = new THREE.Vector3(14.5, 0, -12.5);   // 마을 북동(빈 사분면) — 호수·나루터와 안 겹침
+export const SEA_GATE = new THREE.Vector3(19.5, 0, -12.5);   // 마을 북동(빈 사분면) — 호수·나루터와 안 겹침
 
-export const HOMI_STALL = { x: 17.2, z: -9.4, ry: -0.6, r: 1.15 };
+export const HOMI_STALL = { x: 16.5, z: -7.5, ry: -0.6, r: 1.15 };
 export const SEA_COVE = { x: SEA_GATE.x + 9.5, z: SEA_GATE.z - 9, r: 12 };  // 포구 앞 후미(만) — 게이트 너머로 보이는 진짜 바다
+const PORT_DIR = Math.atan2(-9 - SEA_COVE.z, 26.5 - SEA_COVE.x);
+const coveAt = (r) => ({ x: SEA_COVE.x + Math.cos(PORT_DIR) * r, z: SEA_COVE.z + Math.sin(PORT_DIR) * r });
+const PIER_A = coveAt(SEA_COVE.r + 0.4), PIER_B = coveAt(SEA_COVE.r - 4.4);
+export const PORT_PIER = { ax: PIER_A.x, az: PIER_A.z, bx: PIER_B.x, bz: PIER_B.z, end: coveAt(SEA_COVE.r - 3.9), boat: { ...coveAt(SEA_COVE.r - 5.7), ry: 0.4 } };
+export const PORT = new THREE.Vector3(700, 0, 0);
 
 export const SEA = new THREE.Vector3(400, 0, 0);             // 바다 인스턴스 — 다른 공간이 전부 x=0 축이라 동쪽으로 뺌
 export const MUDFLAT = new THREE.Vector3(400, 0, 300);

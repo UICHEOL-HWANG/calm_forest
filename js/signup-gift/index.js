@@ -18,12 +18,16 @@ function whenIdle(fn, busy, { first = 3000, every = 700, maxMs = 120000 } = {}) 
   setTimeout(tick, first);
 }
 
-export function requestSignupNudge(state, trigger, ui) {
+let waiting = 0;
+export const nudgeWaiting = () => waiting > 0;
+
+export function requestSignupNudge(state, trigger, ui, opts = {}) {
   const seen = state.hintsSeen || {};
   const { fire, flags } = takeNudge(seen.signupNudge, trigger);
   if (!fire) return false;
   state.hintsSeen = { ...seen, signupNudge: flags };
-  whenIdle(() => ui.loginNudge?.(trigger), busyWith(ui));
+  waiting++;
+  whenIdle(() => { waiting--; ui.loginNudge?.(trigger); }, busyWith(ui), opts);
   return true;
 }
 

@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>등불 무대 3D 시안</title>
+<style>
+  :root { --mint:#bfe8c9; --ink:#4a5a4f; --panel:rgba(255,255,255,.8); --shadow:0 6px 18px rgba(90,120,100,.18); --line:#d9e2da; --accent:#4f7a3a; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; padding:20px 24px 32px; font-family:'Segoe UI', system-ui, 'Apple SD Gothic Neo', sans-serif; color:#24312a; background:#e9efe9; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  .lead { font-size:13px; opacity:.75; margin:0 0 12px; max-width:1100px; line-height:1.55; }
+  .bar { display:flex; flex-wrap:wrap; gap:14px; align-items:center; margin:0 0 14px; }
+  .seg-label { font-size:12.5px; opacity:.7; }
+  .seg { display:inline-flex; border:1px solid var(--line); border-radius:999px; overflow:hidden; background:#fff; }
+  .seg button { border:0; background:none; padding:6px 13px; font:inherit; font-size:13px; color:#6b7563; cursor:pointer; }
+  .seg button.on { background:var(--accent); color:#fff; }
+  .frames { display:flex; gap:22px; align-items:flex-start; flex-wrap:wrap; }
+  .tag-l { font-size:11px; font-weight:700; opacity:.5; margin:0 0 6px; }
+  .frame { position:relative; overflow:hidden; border-radius:14px; box-shadow:0 10px 30px rgba(30,50,40,.25); background:#3a3450; }
+  .frame.pc { width:800px; height:540px; }
+  .frame.m { width:375px; height:720px; }
+  .frame canvas { display:block; width:100%; height:100%; }
+  .tags { position:absolute; inset:0; pointer-events:none; }
+  .ntag { position:absolute; transform:translate(-50%, -100%); padding:1px 8px; border-radius:999px; font-size:11px; font-weight:800; white-space:nowrap; color:#fff;
+    border:2px solid rgba(255,255,255,.85); text-shadow:0 1px 1px rgba(0,0,0,.25); transition:box-shadow .2s; }
+  .ntag.lead { box-shadow:0 0 0 2px #ffd45a; }
+  .hud { position:absolute; top:12px; left:12px; background:var(--panel); border-radius:14px; padding:6px 12px; font-weight:800; font-size:13px; color:var(--ink); box-shadow:var(--shadow); }
+  .au { position:absolute; background:var(--panel); backdrop-filter:blur(8px); border-radius:18px; box-shadow:var(--shadow); padding:12px 14px; color:var(--ink);
+    display:flex; flex-direction:column; gap:9px; user-select:none; }
+  .pc .au { right:14px; top:14px; bottom:14px; width:300px; justify-content:center; }
+  .m .au { left:10px; right:10px; bottom:12px; }
+  .au-head { display:flex; align-items:center; gap:8px; font-weight:800; font-size:14px; }
+  .au-head .sub { margin-left:auto; font-size:11.5px; font-weight:700; opacity:.6; }
+  .item { display:flex; align-items:center; gap:10px; padding:6px 10px; border-radius:14px; background:rgba(255,255,255,.75); box-shadow:var(--shadow); }
+  .item img { width:46px; height:46px; border-radius:10px; background:#f4ead6; }
+  .item .nm { font-weight:800; font-size:14px; }
+  .item .ds { font-size:11px; opacity:.7; margin-top:2px; }
+  .m .item .ds { display:none; }
+  .item .ap { margin-left:auto; text-align:right; font-size:10.5px; opacity:.7; white-space:nowrap; }
+  .item .ap b { display:block; font-size:13px; opacity:1; color:#2d4a3a; }
+  .big { text-align:center; }
+  .big .p { font-size:30px; font-weight:900; letter-spacing:-.02em; color:#2d4a3a; display:inline-block; }
+  .big .p.bump { animation:bump .18s; }
+  @keyframes bump { 50% { transform:scale(1.15); } }
+  .big .who { font-size:12.5px; font-weight:700; opacity:.8; min-height:1.3em; }
+  .tbar { height:9px; border-radius:6px; background:#e3ebe4; overflow:hidden; }
+  .tbar i { display:block; height:100%; width:100%; background:#8fd3a0; transition:background .25s; }
+  .call { text-align:center; font-size:13px; font-weight:900; min-height:1.3em; color:#a0521f; }
+  .call.flash { animation:flash .5s; }
+  @keyframes flash { 0% { transform:scale(1.3); } 100% { transform:none; } }
+  .feed { display:flex; flex-direction:column; gap:3px; min-height:58px; }
+  .m .feed { min-height:38px; }
+  .feed div { font-size:11.5px; font-weight:700; padding:3px 8px; border-radius:8px; background:rgba(255,255,255,.6); animation:in .25s; }
+  .feed div.me { background:#e5f6e9; }
+  .feed div:nth-child(n+3) { opacity:.55; }
+  .m .feed div:nth-child(n+3) { display:none; }
+  @keyframes in { from { transform:translateY(-6px); opacity:0; } }
+  .btns { display:flex; gap:8px; }
+  .btn { border:none; border-radius:12px; padding:11px 10px; font-weight:800; font-size:14px; cursor:pointer; background:#eef2ee; color:var(--ink); flex:1; font-family:inherit; }
+  .btn.main { background:var(--mint); }
+  .btn:disabled { opacity:.4; cursor:default; }
+  .btn:active:not(:disabled) { transform:scale(.96); }
+  .hintline { font-size:11.5px; opacity:.7; text-align:center; }
+  .res { text-align:center; }
+  .res img { width:54px; height:54px; border-radius:12px; }
+  .res .t { font-size:15px; font-weight:900; margin:4px 0; }
+  .res .d { font-size:12px; opacity:.75; }
+  .notes { display:grid; grid-template-columns:repeat(auto-fill, minmax(250px, 1fr)); gap:12px; max-width:1220px; margin-top:20px; }
+  .note { background:#fff; border-radius:12px; padding:10px 14px; font-size:12.5px; line-height:1.6; box-shadow:0 4px 12px rgba(30,50,40,.08); }
+  .note b { display:block; margin-bottom:2px; }
+</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</head>
+<body>
+<h1>🏮 등불 무대 3D 시안</h1>
+<p class="lead">마을 광장에 세운 저녁 경매 무대예요. 주민은 게임 코드의 모양을 그대로 옮겼고, 곰은 게임의 얼굴 모듈을 그대로 불러왔어요. 시안의 ✋는 <b>입찰 팻말</b>로, 🔨🔔은 연단의 망치와 무대 옆 종으로 바뀌었어요.
+  <b>"경매 참가하기"</b>를 누르면 카메라가 게임 시점에서 무대 쪽으로 다가가고, 종이 울리며 시작해요. PC와 모바일은 같은 경매를 보여 주니 어느 쪽에서 눌러도 돼요.</p>
+<div class="bar">
+  <span class="seg-label">시간</span>
+  <div class="seg" id="tod"><button data-v="dusk" class="on">해질녘 (18시)</button><button data-v="night">밤</button></div>
+  <span class="seg-label">시점</span>
+  <div class="seg" id="view"><button data-v="auto" class="on">자동 (참가하면 다가감)</button><button data-v="game">게임 시점 고정</button></div>
+</div>
+<div class="frames">
+  <div><div class="tag-l">PC 800×540</div><div class="frame pc" data-k="pc"></div></div>
+  <div><div class="tag-l">모바일 375×720</div><div class="frame m" data-k="m"></div></div>
+</div>
+<div class="notes">
+  <div class="note"><b>🪧 입찰 팻말</b>주민 모델엔 팔이 없어 팻말을 몸 옆에 들고 있다가 부를 때 머리 위로 번쩍 올려요. 곰은 진짜 팔로 들어요. 팻말 테두리 색 = 그 주민 몸 색이라 누가 불렀는지 멀리서도 보여요.</div>
+  <div class="note"><b>🔨 망치 · 🔔 종</b>시작할 때 종이 울리고 망치로 한 번 톡. 마지막 3초엔 경매인이 망치를 들고 있고, 낙찰되면 내려쳐요.</div>
+  <div class="note"><b>💡 조명</b>경매품엔 위에서 조명을 비추고, 막판엔 조명이 깜빡여요. 낙찰되면 조명이 낙찰자에게 옮겨 가고 꽃가루가 터져요. 1등 발밑엔 금빛 고리.</div>
+  <div class="note"><b>🔍 볼 것</b>등불이 번져 보이지 않는지(게임과 같은 블룸 0.55·임계 0.85), 모바일에서 무대가 아래 창에 가리지 않는지, 이름표가 주민과 겹치지 않는지.</div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { buildStage, buildVillager, buildBear, buildPaddle, buildMoonSwing, makeConfetti, glowMat } from './auction-stage/models.js';
+
+const ITEM = { name:'달빛 그네', desc:'밤이 되면 은은하게 빛나는 마당 그네', appraisal:400 };
+const WALLET = 820;
+const BIDDERS = [{ id:'curator', style:'big' }, { id:'star', style:'eager' }, { id:'builder', style:'sniper' }];
+const coin = n => `🪙${n}`;
+const rnd = (a, b) => a + Math.random() * (b - a);
+const r10 = n => Math.round(n / 10) * 10;
+const hex = c => `#${c.toString(16).padStart(6, '0')}`;
+
+const scene = new THREE.Scene();
+const hemi = new THREE.HemisphereLight(0xffd2b0, 0x5a4a5a, 1);
+const sun = new THREE.DirectionalLight(0xffb27a, 1.6);
+sun.position.set(-10, 8, 7); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left:-12, right:12, top:12, bottom:-12, near:1, far:40 });
+scene.add(hemi, sun, sun.target);
+
+const stage = buildStage();
+scene.add(stage.group);
+const pointLights = [[0, 3.6, -1.2], [-3.2, 3.4, 1.6], [3.2, 3.4, 1.6]].map(p => {
+  const l = new THREE.PointLight(0xffb070, 7, 11, 2); l.position.set(...p); scene.add(l); return l;
+});
+const spot = new THREE.SpotLight(0xfff1c8, 45, 16, 0.36, 0.55, 1.6);
+spot.position.set(-1.25, 7.4, -1.0); spot.castShadow = true; spot.shadow.mapSize.set(1024, 1024);
+scene.add(spot, spot.target);
+const cone = new THREE.Mesh(new THREE.ConeGeometry(1, 1, 28, 1, true),
+  new THREE.MeshBasicMaterial({ color:0xfff3c6, transparent:true, opacity:.07, depthWrite:false, blending:THREE.AdditiveBlending, side:THREE.DoubleSide }));
+scene.add(cone);
+const ITEM_FOCUS = stage.itemPos.clone().add(new THREE.Vector3(0, 1.0, 0));
+const spotGoal = ITEM_FOCUS.clone();
+spot.target.position.copy(ITEM_FOCUS);
+function aimCone() {
+  const a = spot.position, b = spot.target.position.clone();
+  b.y = Math.max(0.1, b.y - 1.0);
+  const d = a.clone().sub(b), len = d.length(), r = Math.tan(spot.angle) * len * 0.8;
+  cone.scale.set(r, len, r);
+  cone.position.copy(a.clone().add(b).multiplyScalar(0.5));
+  cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize());
+}
+
+const STAGE_C = new THREE.Vector3(-0.2, 0, -3);
+function place(a, x, z, y = 0) {
+  a.root.position.set(x, y, z);
+  a.root.rotation.y = Math.atan2(STAGE_C.x - x, STAGE_C.z - z);
+  scene.add(a.root);
+  a.phase = Math.random() * 6; a.hopT = 9; a.hop2 = false; a.raise = 0; a.raiseUntil = 0;
+  return a;
+}
+const actors = {};
+const SPOTS = { curator:[-2.9, 0.1], star:[-1.6, 1.7], builder:[2.9, 0.3] };
+for (const b of BIDDERS) {
+  const a = place(buildVillager(b.id), ...SPOTS[b.id]);
+  a.side = SPOTS[b.id][0] < 0 ? -1 : 1;
+  a.paddle = buildPaddle(a.def.color, 1.25);
+  a.lift.add(a.paddle);
+  actors[b.id] = a;
+}
+const me = place(buildBear(), 0.4, 2.7);
+me.paddle = buildPaddle(0x6fae7f, 0.95);
+me.paddle.rotation.x = Math.PI;
+me.armR.hand.add(me.paddle);
+actors.me = me;
+const merchant = buildVillager('merchant');
+merchant.root.position.set(1.75, 0.5, -3.45); merchant.root.rotation.y = -0.25; scene.add(merchant.root);
+Object.assign(merchant, { phase:1, hopT:9, hop2:false });
+const crowd = [['farmer', -5.3, -2.7], ['pink', 5.4, -2.3], ['teal', 5.1, 2.9]].map(([id, x, z]) => Object.assign(place(buildVillager(id), x, z), { crowd:true }));
+
+const ring = new THREE.Mesh(new THREE.TorusGeometry(0.72, 0.05, 8, 36), glowMat(0xffd45a, 0.35));
+ring.rotation.x = Math.PI / 2; ring.position.y = 0.05; ring.visible = false; scene.add(ring);
+const confetti = makeConfetti(scene);
+
+function skyTex(top, mid, bot) {
+  const c = document.createElement('canvas'); c.width = 4; c.height = 256;
+  const x = c.getContext('2d'), gr = x.createLinearGradient(0, 0, 0, 256);
+  gr.addColorStop(0, top); gr.addColorStop(0.55, mid); gr.addColorStop(1, bot);
+  x.fillStyle = gr; x.fillRect(0, 0, 4, 256);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+const TIMES = {
+  dusk: { sky:skyTex('#3a3a6e', '#9a6a9a', '#f4b183'), fog:0xb08a9a, hemi:[0xffd2b0, 0x5a4a5a, 0.9], sun:[0xffb27a, 1.4], lantern:0.5, swing:0.4, point:5, spot:34, bloom:0.75 },
+  night: { sky:skyTex('#141838', '#26285a', '#3f3a6a'), fog:0x262a4c, hemi:[0x8090c0, 0x202030, 0.55], sun:[0x9fb4ff, 0.45], lantern:0.8, swing:0.85, point:9, spot:44, bloom:1.0 },
+};
+let bloomStrength = 0.75, spotBase = 40;
+function applyTime(k) {
+  const s = TIMES[k];
+  scene.background = s.sky;
+  scene.fog = new THREE.Fog(s.fog, 24, 60);
+  hemi.color.setHex(s.hemi[0]); hemi.groundColor.setHex(s.hemi[1]); hemi.intensity = s.hemi[2];
+  sun.color.setHex(s.sun[0]); sun.intensity = s.sun[1];
+  stage.lanterns.forEach(m => { m.material.emissiveIntensity = s.lantern; });
+  stage.item.userData.glows.forEach(m => { m.material.emissiveIntensity = s.swing; });
+  pointLights.forEach(l => { l.intensity = s.point; });
+  spotBase = s.spot; bloomStrength = s.bloom;
+  views.forEach(v => { v.bloom.strength = bloomStrength; });
+}
+
+const AUC = {
+  pc: { pos:new THREE.Vector3(0.2, 6.6, 12.4), look:new THREE.Vector3(0, 1.1, -1.4) },
+  m: { pos:new THREE.Vector3(0.1, 9.8, 17.5), look:new THREE.Vector3(0, 0.9, -1.2) },
+};
+const GAME = { pos:me.root.position.clone().add(new THREE.Vector3(0, 14, 16)), look:me.root.position.clone() };
+let viewMode = 'auto';
+
+function thumb() {
+  const r = new THREE.WebGLRenderer({ antialias:true, alpha:true, preserveDrawingBuffer:true });
+  r.setSize(128, 128); r.toneMapping = THREE.ACESFilmicToneMapping;
+  const s = new THREE.Scene();
+  s.add(new THREE.HemisphereLight(0xffffff, 0x9ab0a0, 1.4));
+  const k = new THREE.DirectionalLight(0xfff2d8, 1.6); k.position.set(2, 4, 3); s.add(k);
+  const sw = buildMoonSwing(); sw.rotation.y = 0.5; s.add(sw);
+  const c = new THREE.PerspectiveCamera(30, 1, 0.1, 50); c.position.set(0, 1.4, 5.2); c.lookAt(0, 1.05, 0);
+  r.render(s, c);
+  const url = r.domElement.toDataURL();
+  r.dispose(); r.forceContextLoss();
+  return url;
+}
+const THUMB = thumb();
+
+const views = [...document.querySelectorAll('.frame')].map(frame => {
+  const pc = frame.dataset.k === 'pc', W = pc ? 800 : 375, H = pc ? 540 : 720;
+  frame.innerHTML = `<canvas></canvas><div class="tags"></div><div class="hud">${coin(WALLET)}</div>
+    <div class="au"><div class="au-head">🔨 저녁 경매 <span class="sub">실시간 호가</span></div>
+    <div class="item"><img src="${THUMB}" alt=""><div><div class="nm">${ITEM.name}</div><div class="ds">${ITEM.desc}</div></div><div class="ap">감정가<b>${coin(ITEM.appraisal)}</b></div></div>
+    <div class="body"></div></div>`;
+  const renderer = new THREE.WebGLRenderer({ canvas:frame.querySelector('canvas'), antialias:true, preserveDrawingBuffer:true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setSize(W, H, false);
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+  const cam = new THREE.PerspectiveCamera(42, W / H, 0.1, 200);
+  if (pc) cam.setViewOffset(W, H, 150, 0, W, H); else cam.setViewOffset(W, H, 0, 170, W, H);
+  const composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, cam));
+  const bloom = new UnrealBloomPass(new THREE.Vector2(W, H), 0.75, 0.9, 0.85);
+  composer.addPass(bloom); composer.addPass(new OutputPass());
+  const tagBox = frame.querySelector('.tags');
+  const tags = [...BIDDERS.map(b => b.id), 'me'].map(id => {
+    const el = document.createElement('div');
+    el.className = 'ntag'; el.textContent = actors[id].def.name;
+    el.style.background = hex(actors[id].def.color);
+    tagBox.appendChild(el);
+    return { id, el };
+  });
+  return { frame, W, H, renderer, cam, composer, bloom, tags, body:frame.querySelector('.body'), auc:AUC[frame.dataset.k], camPos:GAME.pos.clone(), camLook:GAME.look.clone() };
+});
+applyTime('dusk');
+
+const E = { phase:'idle', price:200, leader:null, t:8, total:0, acc:0, bidders:[], flashUntil:0 };
+const nameOf = w => w === 'me' ? '🙋 나' : actors[w.id].def.name;
+function each(fn) { views.forEach(v => fn(v.body)); }
+function drawIdle() {
+  each(b => { b.innerHTML = '<div class="hintline">저녁 6시, 방랑 상인이 경매를 열었어요</div><div class="btns"><button class="btn main" data-act="start">🔔 경매 참가하기</button></div>'; });
+}
+function drawRun() {
+  each(b => {
+    b.innerHTML = `<div class="big"><div class="p"></div><div class="who"></div></div><div class="tbar"><i></i></div><div class="call"></div><div class="feed"></div>
+      <div class="btns">${[10, 30, 50].map((n, i) => `<button class="btn ${i === 2 ? 'main' : ''}" data-inc="${n}">+${n}</button>`).join('')}</div>`;
+  });
+}
+function syncRun(bump) {
+  each(b => {
+    const p = b.querySelector('.p'); if (!p) return;
+    p.textContent = coin(E.price);
+    if (bump) { p.classList.remove('bump'); void p.offsetWidth; p.classList.add('bump'); }
+    b.querySelector('.who').textContent = !E.leader ? '시작가예요. 먼저 불러 보세요' : E.leader === 'me' ? '🙋 내가 제일 높아요' : `${nameOf(E.leader)}가 제일 높아요`;
+    b.querySelectorAll('[data-inc]').forEach(x => { x.disabled = E.leader === 'me' || E.price + +x.dataset.inc > WALLET; });
+  });
+}
+function pushFeed(who, inc) {
+  each(b => {
+    const f = b.querySelector('.feed'); if (!f) return;
+    const row = document.createElement('div');
+    row.className = who === 'me' ? 'me' : '';
+    row.textContent = `${nameOf(who)} +${inc} → ${coin(E.price)}`;
+    f.prepend(row);
+    while (f.children.length > 3) f.lastChild.remove();
+  });
+}
+function tickUI() {
+  const txt = E.total < E.flashUntil ? '⏱️ 다시 4초!' : E.t >= 3 ? '' : E.t >= 2 ? '하나…' : E.t >= 1 ? '하나… 둘…' : '하나… 둘… 셋!';
+  each(b => {
+    const i = b.querySelector('.tbar i'); if (!i) return;
+    i.style.width = `${Math.max(0, Math.min(1, E.t / 8)) * 100}%`;
+    i.style.background = E.t > 4 ? '#8fd3a0' : E.t > 2 ? '#f2c14e' : '#e8774a';
+    const c = b.querySelector('.call');
+    if (c.textContent !== txt) {
+      c.textContent = txt;
+      if (txt.startsWith('⏱️')) { c.classList.remove('flash'); void c.offsetWidth; c.classList.add('flash'); }
+    }
+  });
+}
+function drawResult() {
+  const w = E.leader, diff = E.price - ITEM.appraisal;
+  const rel = diff === 0 ? '감정가 그대로' : diff > 0 ? `감정가보다 ${coin(diff)} 비싸게` : `감정가보다 ${coin(-diff)} 싸게`;
+  const html = !w ? '<div class="res"><div class="t">아무도 안 불렀어요</div></div>'
+    : w === 'me' ? `<div class="res"><img src="${THUMB}" alt=""><div class="t">낙찰! ${ITEM.name}를 가져왔어요</div><div class="d">${coin(E.price)} · ${rel} · 🧺 보관함에 넣었어요</div></div>`
+    : `<div class="res"><div class="t">${actors[w.id].def.name}가 가져갔어요</div><div class="d">${coin(E.price)}에 낙찰 · 내일 저녁에 또 열려요</div></div>`;
+  each(b => { b.innerHTML = `${html}<div class="btns"><button class="btn main" data-act="start">다시 해 보기</button></div>`; });
+}
+
+const W3 = { tension:false, gavel:0, slamT:9, bellT:9, leaderId:null };
+function worldStart() {
+  Object.values(actors).forEach(a => { a.raise = 0; a.raiseUntil = 0; });
+  W3.leaderId = null; ring.visible = false; spotGoal.copy(ITEM_FOCUS);
+  W3.bellT = 0; W3.slamT = 0;
+}
+function worldBid(id) {
+  const a = actors[id];
+  a.hopT = 0; a.raiseUntil = clock.elapsedTime + 1.0;
+  W3.leaderId = id; ring.visible = true;
+}
+function worldSold(id) {
+  W3.slamT = 0; W3.bellT = 0; merchant.hopT = 0; W3.tension = false;
+  if (!id) return;
+  const a = actors[id];
+  spotGoal.copy(a.root.position).add(new THREE.Vector3(0, 1.0, 0));
+  a.hopT = 0; a.hop2 = true;
+  setTimeout(() => confetti.burst(a.root.position.clone().add(new THREE.Vector3(0, 2.4, 0))), 160);
+}
+
+function start() {
+  E.phase = 'run'; E.price = 200; E.leader = null; E.t = 8; E.total = 0; E.acc = 0; E.flashUntil = 0;
+  E.bidders = BIDDERS.map(b => ({ ...b, max:r10(rnd(300, 560)), cool:0 }));
+  worldStart(); drawRun(); syncRun(false); tickUI();
+}
+function bid(who, inc) {
+  if (E.phase !== 'run') return;
+  if (E.t < 3) E.flashUntil = E.total + 0.8;
+  E.price += inc; E.leader = who; E.t = Math.max(E.t, 4);
+  worldBid(who === 'me' ? 'me' : who.id);
+  pushFeed(who, inc); syncRun(true);
+}
+function step() {
+  E.t -= 0.1; E.total += 0.1;
+  for (const b of E.bidders) {
+    if (E.leader === b) continue;
+    if (b.cool > 0) { b.cool -= 0.1; continue; }
+    const inc = b.style === 'big' ? 50 : b.style === 'eager' ? 10 : 30;
+    if (E.price + inc > b.max) continue;
+    const p = b.style === 'eager' ? 0.05 : b.style === 'big' ? 0.025 : (E.t < 2.2 ? 0.2 : 0.004);
+    if (Math.random() < p) { b.cool = rnd(0.6, 1.4); bid(b, inc); break; }
+  }
+  W3.tension = E.t < 3;
+  if (E.t <= 0 || E.total > 45) {
+    E.phase = 'done';
+    worldSold(E.leader ? (E.leader === 'me' ? 'me' : E.leader.id) : null);
+    drawResult();
+  }
+}
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-act],[data-inc]');
+  if (!b || b.disabled) return;
+  if (b.dataset.inc) bid('me', +b.dataset.inc);
+  else if (b.dataset.act === 'start') start();
+});
+document.querySelectorAll('.seg').forEach(seg => seg.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  if (seg.id === 'tod') applyTime(b.dataset.v); else viewMode = b.dataset.v;
+}));
+drawIdle();
+
+const clock = new THREE.Clock();
+const tmp = new THREE.Vector3();
+const PADDLE_LO = { y:0.05, x:0.62, rz:-0.45, rx:0.25 }, PADDLE_HI = { y:1.0, x:0.8, rz:-0.1, rx:0 };
+function animateActor(a, dt, t) {
+  a.hopT += dt;
+  const h = a.hopT < 0.42 ? Math.sin(Math.PI * a.hopT / 0.42) * 0.26 : 0;
+  if (a.hopT >= 0.42 && a.hop2) { a.hop2 = false; a.hopT = 0; }
+  a.lift.position.y = h;
+  a.lift.scale.set(1, 1 + Math.sin(t * 2.2 + a.phase) * 0.012, 1);
+  if (a.paddle === undefined) return;
+  const want = t < a.raiseUntil ? 1 : 0;
+  a.raise += (want - a.raise) * (1 - Math.exp(-dt * 14));
+  if (a === me) {
+    me.armR.pivot.rotation.x = -0.9 + (-2.0) * a.raise;
+    return;
+  }
+  const r = a.raise, s = a.scale, sd = a.side;
+  a.paddle.position.set(sd * s * (PADDLE_LO.x + (PADDLE_HI.x - PADDLE_LO.x) * r), PADDLE_LO.y + (PADDLE_HI.y - PADDLE_LO.y) * r, 0.16);
+  a.paddle.rotation.set(PADDLE_LO.rx * (1 - r), 0, sd * (PADDLE_LO.rz + (PADDLE_HI.rz - PADDLE_LO.rz) * r));
+}
+function frame() {
+  const dt = Math.min(clock.getDelta(), 0.25), t = clock.elapsedTime;
+  if (E.phase === 'run') {
+    E.acc += dt;
+    while (E.acc >= 0.1 && E.phase === 'run') { E.acc -= 0.1; step(); }
+    if (E.phase === 'run') tickUI();
+  }
+  Object.values(actors).forEach(a => animateActor(a, dt, t));
+  crowd.forEach(a => animateActor(a, dt, t));
+  animateActor(merchant, dt, t);
+  if (W3.leaderId) { tmp.copy(actors[W3.leaderId].root.position); ring.position.x += (tmp.x - ring.position.x) * Math.min(1, dt * 10); ring.position.z += (tmp.z - ring.position.z) * Math.min(1, dt * 10); }
+  ring.rotation.z += dt * 0.8;
+  W3.slamT += dt; W3.bellT += dt;
+  let ga;
+  if (W3.slamT < 0.14) ga = 1.3 - 1.4 * (W3.slamT / 0.14);
+  else if (W3.slamT < 0.4) ga = -0.1 + 0.1 * ((W3.slamT - 0.14) / 0.26);
+  else ga = W3.tension ? 1.05 + Math.sin(t * 6) * 0.05 : 0;
+  W3.gavel += (ga - W3.gavel) * (W3.slamT < 0.4 ? 1 : 1 - Math.exp(-dt * 10));
+  stage.gavel.rotation.z = W3.gavel;
+  stage.bell.rotation.z = W3.bellT < 2 ? Math.sin(W3.bellT * 22) * 0.5 * Math.exp(-W3.bellT * 3) : 0;
+  spot.target.position.lerp(spotGoal, 1 - Math.exp(-dt * 4));
+  spot.intensity = spotBase * (W3.tension ? 0.85 + 0.3 * (0.5 + 0.5 * Math.sin(t * 14)) : 1);
+  cone.material.opacity = W3.tension ? 0.035 + 0.03 * (0.5 + 0.5 * Math.sin(t * 14)) : 0.04;
+  aimCone();
+  stage.lanterns.forEach((m, i) => { m.scale.y = 1.2 + Math.sin(t * 1.6 + i) * 0.03; });
+  confetti.update(dt);
+  const auction = viewMode === 'auto' && E.phase !== 'idle', k = 1 - Math.exp(-dt * 2.6);
+  views.forEach(v => {
+    const goal = auction ? v.auc : GAME;
+    v.camPos.lerp(goal.pos, k); v.camLook.lerp(goal.look, k);
+    v.cam.position.copy(v.camPos); v.cam.lookAt(v.camLook);
+    v.composer.render();
+    v.tags.forEach(tg => {
+      const a = actors[tg.id];
+      tmp.copy(a.root.position); tmp.y += (a === me ? 2.35 : 2.3 * a.scale) + a.lift.position.y;
+      tmp.project(v.cam);
+      tg.el.style.left = `${(tmp.x * 0.5 + 0.5) * v.W}px`;
+      tg.el.style.top = `${(-tmp.y * 0.5 + 0.5) * v.H}px`;
+      tg.el.style.display = tmp.z < 1 ? '' : 'none';
+      tg.el.classList.toggle('lead', W3.leaderId === tg.id);
+    });
+  });
+}
+function loop() { requestAnimationFrame(loop); frame(); }
+loop();
+window.__auction = { E, start, bid, actors, W3, frame };
+</script>
+</body>
+</html>

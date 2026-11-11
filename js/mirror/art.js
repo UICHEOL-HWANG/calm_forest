@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import { bakeGroup, part } from '../dream/art.js';
 import { LANDMARKS, HOUSES, SPOTS, RING_TREES } from './layout.js';
 import { invertColorPure } from './art-color.js';
+import { buildMirrorHouse } from './house.js';
 export { invertColorPure as invertColor };
 
 export const PAL3 = Object.freeze({
@@ -224,14 +225,7 @@ export function buildMirrorWorld() {
   { const { x, z } = LM.lamp; put(solid, new THREE.CylinderGeometry(0.12, 0.16, 3.2, 6), P.wood, x, 1.6, z); put(glow, new THREE.BoxGeometry(0.6, 0.7, 0.6), P.lampGlow, x, 3.4, z); }
   // 🚏 거울 정류장(지붕이 남쪽, 앞이 북쪽 연못을 본다)
   { const sh = makeStopShelter(P.roofA, P.wood); sh.position.set(LM.stop.x, 0, LM.stop.z); sh.rotation.y = Math.PI; solid.add(sh); }   // 표지판 얼굴은 연못 아틀라스에(makeMirrorPond)
-  // 집 3 — 창문은 같은 변환의 glow 그룹에
-  HOUSES.forEach((h, i) => {
-    const s = placed(solid, h.x, h.z, h.ry), w = placed(glow, h.x, h.z, h.ry);
-    put(s, new THREE.BoxGeometry(3, 2.2, 2.6), P.walls[i], 0, 1.1, 0);
-    const r = put(s, new THREE.ConeGeometry(2.4, 1.5, 4), P.roofs[i], 0, 2.95, 0); r.rotation.y = Math.PI / 4; r.scale.set(1, 1, 0.85);
-    put(s, new THREE.BoxGeometry(0.7, 1.1, 0.05), 0x4a4060, 0, 0.55, 1.31);
-    for (const wx of [-0.75, 0.75]) put(w, new THREE.BoxGeometry(0.6, 0.6, 0.05), P.win[i], wx, 1.3, 1.31);
-  });
+  HOUSES.forEach((h, i) => buildMirrorHouse(placed(solid, h.x, h.z, h.ry), placed(glow, h.x, h.z, h.ry), i, P));
   // 가장자리 숲 링 — ⚠️ 정류장 남쪽(z > 14, |x − 2.5| < 7)엔 나무 금지(화면 아래를 가림, 시안 확인)
   for (const t of RING_TREES) lowTree(solid, t.x, t.z, 1.5 + (t.i % 2) * 0.4, P.leaf[t.i % 3], P.trunk);   // 자리·제외 규칙은 layout.js(충돌과 같은 목록)
   SPOTS.forEach((s, i) => cover(solid, s, P, i));

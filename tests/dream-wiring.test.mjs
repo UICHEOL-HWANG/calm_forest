@@ -24,7 +24,7 @@ test('game.js — 플래그·$w·spaceFlags·가시성·이동 한계·미니맵
 
 test('game.js — 루프·입력: 컷신이 카메라를 갖고, 탭·Space·Esc 로 건너뛴다', () => {
   assert.match(GAME, /else if \(updateDreamCut\(dt, t\)\) \{ wantAction = false; \}/);
-  assert.match(GAME, /!intro && (?:!houseGuidance\?\.cinematic && )?!dreamCutActive\(\)( && !mirrorRideActive\(\))?\) \{\n\s+handleAction\(\);/);
+  assert.match(GAME, /!intro && (?:!houseGuidance\?\.cinematic && )?(?:!goalGuide\?\.cinematic && )?!dreamCutActive\(\)( && !mirrorRideActive\(\))?\) \{\n\s+handleAction\(\);/);
   assert.match(GAME, /if \(dreamCutActive\(\) && \(e\.code === 'Space' \|\| e\.code === 'Escape' \|\| e\.code === 'Enter'\)\) skipDreamCut\(\);/);
   assert.match(GAME, /if \(dreamCutActive\(\)\) \{ skipDreamCut\(\); return; \}/);
   assert.match(GAME, /updateDream\(dt, t\);/);
@@ -72,7 +72,7 @@ test('리뷰 반영 — 미니맵·펫·발자국·밤 재확인·충돌 뒤 재
   assert.match(HTML, /d\.place === 'dream' \? '🌙 꿈의 숲'/);
   assert.match(HTML, /'dream-arrive-modal': 'dream-arrive-ok'/);
   assert.match(read('js/spaces/farm-auto.js'), /atMine \|\| atDream( \|\| atMirror)?( \|\| atHalloween)?;/);
-  assert.match(GAME, /const off = indoor \|\| atCafe \|\| atMuseum \|\| atObservatory \|\| atMountain \|\| atMine \|\| atDream( \|\| atMirror)?( \|\| atHalloween)?;/);
+  assert.match(GAME, /const off = indoor \|\| atCafe \|\| atRestaurant \|\| atMuseum \|\| atObservatory \|\| atMountain \|\| atMine \|\| atDream( \|\| atMirror)?( \|\| atHalloween)?;/);
   assert.match(GAME, /resolveColliders\(player\.position\);[^\n]*\n\s+if \(atDream\) clampToDream\(player\.position\);/);
   assert.match(DREAM, /if \(!isNight\(\)\) \{ ui\.toast\?\.\('🌙 꿈꾸기는 밤에만 할 수 있어요'\); return; \}/);
 });

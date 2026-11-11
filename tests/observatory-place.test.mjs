@@ -39,7 +39,7 @@ const OCCUPIED = [
   ['mist gate', MIST_GATE],
   ['dock gate', p(0, -15, 0)],
   ['dock pond', p(0, -21.5, 7)],
-  ['sea gate', p(14.5, -12.5, 0)],
+  ['sea gate', vec3('SEA_GATE')],
   ['sea cove', SEA_COVE],
   ['decor shop', p(-17.5, -4, 0)],
   ['mine gate', p(-14, 3, 0)],

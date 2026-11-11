@@ -493,7 +493,7 @@ def _mature(df: pd.DataFrame, data_max, days: int = 1) -> pd.DataFrame:
 
 
 def run_e5(persona_ids: list[str]) -> dict:
-    df = bq.read_sql(E5_SQL, prop="exp_login", since="20261031", until="20261106", persona_ids=persona_ids)
+    df = bq.read_sql(E5_SQL, prop="exp_login", since="20261031", until="20261127", persona_ids=persona_ids)
     n_all = len(df)
     df, mixed = _one_arm(df)
     df = df[~df.local & ~df.persona & df.country.eq("South Korea")].copy()
@@ -510,10 +510,10 @@ def run_e5(persona_ids: list[str]) -> dict:
         ],
         "daily": daily_cumulative(df, "day", "arm", "y", "guest_first", "control"),
         "official": _ci_official(df, "y", "guest_first"),
-        "window": {"from": "2026-10-31", "to": "2026-11-06"},
+        "window": {"from": "2026-10-31", "to": "2026-11-27"},
         "notes": [f"로그인 화면을 본 배정 기기 {n_all}대 · 무리가 섞인 기기 {mixed}대 제외 · localhost·한국 밖·페르소나 제외",
                   "주 지표 = 로그인 화면을 본 날(KST) 게임 진입(login·nickname_step·tutorial_start)",
-                  "사전등록 판정은 11/6 까지 데이터로 한 번 · 목표 표본 무리당 약 115대에 못 미치면 판정 불가로 읽는다",
+                  "광고 재개 뒤 무리당 115대가 차면 전체 데이터로 한 번 판정 · 11/27 까지 못 차면 그 시점 표본으로 판정(개정 2, 2주차 중간 결과를 본 뒤에 정한 연장) · 2주차 단독 값(11/6 까지 대조 11/45 · 처치 13/38)도 같이 보고",
                   "버튼 위치와 문구를 같이 바꿔서 어느 쪽 덕인지는 가를 수 없다"],
     }
 

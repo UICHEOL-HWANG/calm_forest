@@ -23,6 +23,7 @@ import { clientId, t } from '../i18n.js';
 import { PLATFORM } from '../platform.js';
 import { createPlot, syncFarmCrops, syncFarmSoil } from './farm.js';
 import { enterFarm, startVisitors } from './visitors.js';
+import { nudgeWaiting, requestSignupNudge } from '../signup-gift/index.js';
 import * as THREE from 'three';
 
 const TOUCH = isTouchDevice();   // index.html TOUCH 와 같은 판정(둘째 카드 문구)
@@ -50,8 +51,8 @@ function bubbleTexture() {
 function readStored() {
   try { return parseStored(localStorage.getItem(E1_STORE_KEY)); } catch (e) { return null; }
 }
-function writeStored(arm) {
-  try { localStorage.setItem(E1_STORE_KEY, JSON.stringify({ arm, platform: PLATFORM })); } catch (e) { /* 차단 — 세이브 기록이 대신한다 */ }
+function writeStored(arm, rollout) {
+  try { localStorage.setItem(E1_STORE_KEY, JSON.stringify({ arm, platform: PLATFORM, rollout: !!rollout })); } catch (e) { /* 차단 — 세이브 기록이 대신한다 */ }
 }
 
 // ── 배정 — 로드 판정(load.kind)이 정해진 직후, 어떤 분기보다 먼저 ──
@@ -59,9 +60,9 @@ export function enrollE1(load) {
   const forced = new URLSearchParams(location.search).get('e1');   // QA 강제 — DEV_PARAMS 라 기록은 남지 않는다
   const d = decideE1({ clientId: clientId(), platform: PLATFORM, loadKind: load?.kind, saved: load?.state || null, stored: readStored(), forced, dev: IS_DEV_SESSION });
   if (!d.enrolled) return d;
-  if (d.reason !== 'forced' && !IS_DEV_SESSION) writeStored(d.arm);   // dev 세션은 기기에 남기지 않는다(GA4 도 안 나간다)
+  if (d.reason !== 'forced' && !IS_DEV_SESSION) writeStored(d.arm, d.rollout);   // dev 세션은 기기에 남기지 않는다(GA4 도 안 나간다)
   setExpArm(d.arm);   // 이 세션의 획득 이벤트에 exp_arm + GA4 유저 속성
-  trackEvent('exp_exposure', { exp: 'e1', exp_arm: d.arm, first: d.first ? 1 : 0 });   // [GA4] 배정 직후 · session counts e1_<arm>
+  trackEvent('exp_exposure', { exp: d.exp, exp_arm: d.arm, first: d.first ? 1 : 0 });   // [GA4] 배정 직후 · session counts e1_<arm>
   return d;
 }
 
@@ -69,7 +70,7 @@ export function enrollE1(load) {
 export function applyE1(d) {
   if (!d?.enrolled) return;
   active = true;
-  if (!gameState.e1 || gameState.e1.arm !== d.arm) gameState.e1 = { arm: d.arm, seeded: false, harvested: false, intro: false };
+  if (!gameState.e1 || gameState.e1.arm !== d.arm) gameState.e1 = { arm: d.arm, seeded: false, harvested: false, intro: false, rollout: d.rollout };
   if (shouldSeed(d, gameState.e1)) { seedField(); gameState.e1 = { ...gameState.e1, seeded: true }; }
   document.body.classList.toggle('e1-pending', isPending(gameState.e1));
 }
@@ -182,16 +183,17 @@ function nearestRipe() {
 
 // ── 첫 수확(어느 밭이든) — 처치 대기를 끝내고 미뤄 둔 것들을 이어 준다 ──
 export function e1OnHarvest() {   // 환영 모달은 otherModalOpen() 이 빌 때까지 기다린다(showTutorialWhenClear)
-  if (!e1Pending()) return;
+  if (!e1Pending() || nearestRipe()) return;
   gameState.e1 = { ...gameState.e1, harvested: true };
   document.body.classList.remove('e1-pending');
   hideBubble();
   if (atFarm) startVisitors();
+  if (ui.isGuestNow?.()) requestSignupNudge(gameState, 'harvest', ui, { first: E1_TUTORIAL_DELAY_MS });
   setTimeout(showTutorialWhenClear, E1_TUTORIAL_DELAY_MS);
 }
 
 // 수확 순간엔 '새 집 색'·과수원 의뢰 같은 기존 연출이 같이 뜬다 — 그 카드가 닫힌 뒤에 환영 모달을 연다(겹침 방지)
-function otherModalOpen() { return !!document.querySelector('.show > .tut-card, .show > .npc-card'); }
+function otherModalOpen() { return nudgeWaiting() || !!document.querySelector('.show > .tut-card, .show > .tk-box, #nudge-modal.show, #gift-box-modal.show'); }
 function showTutorialWhenClear() {
   if (gameState.tutorialSeen) return;
   if (otherModalOpen()) { setTimeout(showTutorialWhenClear, 400); return; }

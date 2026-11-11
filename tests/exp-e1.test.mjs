@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  ARMS, ACQ_EVENTS, E1_PLATFORMS, E1_PLOTS, E1_SPAWN, NEW_KINDS,
+  ARMS, ACQ_EVENTS, E1_PLATFORMS, E1_ROLLOUT, E1_PLOTS, E1_SPAWN, NEW_KINDS,
   E1_BUBBLE_EMOJI, E1_INTRO_BUTTONS, armFor, decideE1, e1IntroCards, parseStored, sanitizeE1, seedCoinValue, shouldSeed, withExpArm,
 } from '../js/exp-e1.js';
 import { readFileSync } from 'node:fs';
@@ -47,8 +47,56 @@ test('신규(세이브 없음)만 등록 — 모든 신규 부팅 경로', () =>
     assert.equal(d.enrolled, true, loadKind);
     assert.equal(d.first, true, loadKind);
     assert.equal(d.fresh, true, loadKind);
-    assert.equal(d.arm, armFor('c-x', 'web'));
+    assert.equal(d.arm, 'harvest_start', loadKind);
   }
+});
+
+test('E1 채택(2026-11-09) — 웹·토스 신규는 해시와 상관없이 전원 처치, 기록은 e1_rollout', () => {
+  assert.equal(E1_ROLLOUT, true);
+  for (const platform of E1_PLATFORMS) for (const id of ids(300)) {
+    const d = decideE1({ clientId: id, platform, loadKind: 'empty', saved: null, stored: null });
+    assert.deepEqual([d.enrolled, d.arm, d.first, d.fresh, d.reason], [true, 'harvest_start', true, true, 'rollout'], `${platform}/${id}`);
+    assert.equal(d.exp, 'e1_rollout');
+    assert.equal(shouldSeed(d, undefined), true);
+  }
+});
+
+test('E1 채택 — 이미 배정된 기기·세이브는 옛 무리를 유지하고 기록은 e1', () => {
+  const kept = decideE1({ clientId: 'c-old', platform: 'web', loadKind: 'empty', saved: null, stored: { arm: 'control', platform: 'web' } });
+  assert.deepEqual([kept.arm, kept.reason, kept.exp], ['control', 'device', 'e1']);
+  const bySave = decideE1({ clientId: 'c-old2', platform: 'toss', loadKind: 'loaded', saved: { e1: { arm: 'harvest_start' } }, stored: null });
+  assert.deepEqual([bySave.arm, bySave.reason, bySave.exp], ['harvest_start', 'save', 'e1']);
+});
+
+test('E1 채택 — 롤아웃 기기는 재방문(기기 기록·세이브)에도 e1_rollout 으로 기록한다', () => {
+  const first = decideE1({ clientId: 'c-r', platform: 'web', loadKind: 'empty', saved: null, stored: null });
+  assert.equal(first.rollout, true);
+  const byDevice = decideE1({ clientId: 'c-r', platform: 'web', loadKind: 'empty', saved: null, stored: { arm: 'harvest_start', platform: 'web', rollout: true } });
+  assert.deepEqual([byDevice.arm, byDevice.reason, byDevice.exp, byDevice.rollout, byDevice.first], ['harvest_start', 'device', 'e1_rollout', true, false]);
+  const bySave = decideE1({ clientId: 'c-r', platform: 'toss', loadKind: 'loaded', saved: { e1: { arm: 'harvest_start', rollout: true } }, stored: null });
+  assert.deepEqual([bySave.arm, bySave.reason, bySave.exp, bySave.rollout, bySave.first], ['harvest_start', 'save', 'e1_rollout', true, false]);
+});
+
+test('E1 채택 — 롤아웃 표시가 없는 옛 처치 기록은 계속 e1', () => {
+  const byDevice = decideE1({ clientId: 'c-t', platform: 'web', loadKind: 'empty', saved: null, stored: { arm: 'harvest_start', platform: 'web' } });
+  assert.deepEqual([byDevice.exp, byDevice.rollout], ['e1', false]);
+  const bySave = decideE1({ clientId: 'c-t', platform: 'web', loadKind: 'loaded', saved: { e1: { arm: 'harvest_start' } }, stored: null });
+  assert.deepEqual([bySave.exp, bySave.rollout], ['e1', false]);
+});
+
+test('E1 채택 — 기기 기록·세이브 필드가 rollout 표시를 왕복한다', () => {
+  assert.equal(parseStored('{"arm":"harvest_start","platform":"web","rollout":true}').rollout, true);
+  assert.equal(parseStored('{"arm":"control","platform":"web"}').rollout, false);
+  assert.equal(parseStored('{"arm":"harvest_start","platform":"web","rollout":"yes"}').rollout, false);
+  assert.equal(sanitizeE1({ arm: 'harvest_start', rollout: true }).rollout, true);
+  assert.equal(sanitizeE1({ arm: 'harvest_start' }).rollout, false);
+});
+
+test('E1 채택 — 앱·itch 와 기존 유저는 그대로 등록 안 함', () => {
+  for (const platform of ['itch', 'android', 'ios']) {
+    assert.equal(decideE1({ clientId: 'c', platform, loadKind: 'empty', saved: null, stored: null }).enrolled, false, platform);
+  }
+  assert.equal(decideE1({ clientId: 'c', platform: 'web', loadKind: 'loaded', saved: { inventory: {} }, stored: null }).enrolled, false);
 });
 
 test('기존 세이브가 있으면 등록하지 않는다 → 기존 유저는 아무것도 안 바뀐다', () => {
@@ -96,11 +144,12 @@ test('재방문은 같은 무리 — 기기 기록·세이브 기록', () => {
 
 test('QA 강제(?e1=) 는 유효한 무리만', () => {
   assert.equal(decideE1({ clientId: 'c', platform: 'web', loadKind: 'empty', forced: 'harvest_start' }).arm, 'harvest_start');
-  assert.equal(decideE1({ clientId: 'c', platform: 'web', loadKind: 'empty', forced: 'bogus' }).arm, armFor('c', 'web'));
+  assert.notEqual(decideE1({ clientId: 'c', platform: 'web', loadKind: 'empty', forced: 'bogus' }).reason, 'forced');
+  assert.equal(decideE1({ clientId: 'c', platform: 'web', loadKind: 'empty', forced: 'bogus', stored: { arm: 'control', platform: 'web' } }).arm, 'control');
 });
 
 test('기기 기록 파싱은 낯선 값을 버린다', () => {
-  assert.deepEqual(parseStored(JSON.stringify({ arm: 'control', platform: 'web' })), { arm: 'control', platform: 'web' });
+  assert.deepEqual(parseStored(JSON.stringify({ arm: 'control', platform: 'web' })), { arm: 'control', platform: 'web', rollout: false });
   for (const bad of [null, '', '{', '{"arm":"x"}', '[]', '42']) assert.equal(parseStored(bad), null);
 });
 
@@ -191,6 +240,6 @@ test('개정 1 — 처치 시작 안내 카드 3장(문구 A, 2026-10-12 확정)
 });
 
 test('세이브 왕복 — 안내 카드를 봤는지(intro)도 남는다', () => {
-  assert.deepEqual(sanitizeE1({ arm: 'harvest_start', seeded: true, harvested: false, intro: true }), { arm: 'harvest_start', seeded: true, harvested: false, intro: true });
+  assert.deepEqual(sanitizeE1({ arm: 'harvest_start', seeded: true, harvested: false, intro: true }), { arm: 'harvest_start', seeded: true, harvested: false, intro: true, rollout: false });
   assert.equal(sanitizeE1({ arm: 'control' }).intro, false);
 });
