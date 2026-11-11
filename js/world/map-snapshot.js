@@ -186,9 +186,7 @@ function takeShot(now) {
   }
 }
 
-function prepare(now) {
-  phase = 'compiling'; compileAt = now;
-  const token = ++compileToken;
+function compileFor() {
   const { renderer, scene } = deps;
   const rt = new THREE.WebGLRenderTarget(1, 1);
   const prev = renderer.getRenderTarget(), viewport = renderer.getViewport(new THREE.Vector4());
@@ -203,7 +201,20 @@ function prepare(now) {
     renderer.setRenderTarget(prev);
     renderer.setViewport(viewport);
   }
-  Promise.resolve(job).catch(() => {}).finally(() => { rt.dispose(); if (token === compileToken) phase = 'ready'; });
+  return Promise.resolve(job).catch(() => {}).finally(() => rt.dispose());
+}
+
+function prepare(now) {
+  phase = 'compiling'; compileAt = now;
+  const token = ++compileToken;
+  compileFor().finally(() => { if (token === compileToken) phase = 'ready'; });
+}
+
+export async function shootMapNow() {
+  if (!deps) return false;
+  await compileFor();
+  takeShot(performance.now());
+  return shot === true;
 }
 
 const due = now => (shot === null ? now - readySince >= FIRST_SHOT_DELAY : wanted || (dirtyAt && now - dirtyAt >= DIRTY_SETTLE));

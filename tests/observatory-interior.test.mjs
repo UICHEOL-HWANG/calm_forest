@@ -230,7 +230,7 @@ test('observatoryLensOpen is true while the notebook or lens covers the screen (
 
 test('game loop skips the 3D render while the lens covers it', () => {
   const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
-  assert.match(src, /if \(!observatoryLensOpen\(\)\) composer\.render\(\);/);
+  assert.match(src, /if \(!observatoryLensOpen\(\)( && !holdRender)?\) composer\.render\(\);/);
 });
 
 test('space helpers moved out of game.js: clamp, lighting, action dispatch, minimap marks', () => {

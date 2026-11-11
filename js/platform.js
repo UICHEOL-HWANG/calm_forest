@@ -50,10 +50,10 @@ export const IS_NATIVE = IS_ANDROID || IS_IOS;      // 📱 스토어 앱 공통
 devLog('[platform]', PLATFORM);
 
 // ── 앱인토스 웹뷰 SDK 지연 로더 — esm.sh CDN(ESM·CORS 허용, 무번들 검증 완료) ──
-//    버전 고정(@3.0.2): 심사본 재현성. 토스 웹뷰 밖에서도 import 는 되지만
+//    버전 고정(@3.9.0): 심사본 재현성. 토스 웹뷰 밖에서도 import 는 되지만
 //    getUserKeyForGame/Environment 등 브리지 API 는 웹뷰 안에서만 동작함.
 let _sdkPromise = null;
 export function loadTossSDK() {
-  if (!_sdkPromise) _sdkPromise = import('https://esm.sh/@apps-in-toss/web-framework@3.0.2');
+  if (!_sdkPromise) _sdkPromise = import('https://esm.sh/@apps-in-toss/web-framework@3.9.0');
   return _sdkPromise;
 }
