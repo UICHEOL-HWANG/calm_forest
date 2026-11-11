@@ -13,32 +13,72 @@ revoke all on public.cf_session_zones from anon, authenticated;
 
 create or replace function public.cf_zone_of(x double precision, z double precision)
 returns text
-language sql
+language plpgsql
 immutable
-as $$
-  select coalesce(
-    case when abs(x) <= 46 and abs(z) <= 46 then coalesce(
-      (select v.k from (values
-        ('spawn', 0, 0, 4), ('stop', 16, 17, 2.5), ('neighbor_gate', -4, 25, 2.5),
-        ('house', -8, -8, 5), ('bench', 5.5, -5.5, 3.5), ('shop', -17.5, -4, 4),
-        ('market', 11, 2.5, 4.5), ('lake', 16, 9, 7), ('farm_gate', 0, 7, 3),
-        ('coop', -4.5, 11.5, 3), ('cafe_gate', 4, 14, 3), ('glade', 7, 26, 7),
-        ('light_workshop', 16.5, 33.5, 4), ('forest', -18, 23, 9), ('mine_gate', -14, 3, 3),
-        ('museum_gate', -26, 5, 3.5), ('observatory_gate', 25, 22, 3.5), ('dock', 0, -18, 6), ('auction', 10.5, -15, 4.5),
-        ('sea_gate', 19.5, -12.5, 3), ('mountain_gate', -15, -32, 5), ('mist_gate', -21, -20, 3),
-        ('orchard_gate', 33, 7, 3)
-      ) v(k, cx, cz, r)
-      where (x - v.cx) ^ 2 + (z - v.cz) ^ 2 <= v.r ^ 2
-      limit 1), 'road') end,
-    (select s.k from (values
-        ('house_in', 0, 52, 14), ('farm', 0, 84, 30), ('orchard', 0, 160, 40), ('mine', 0, 250, 20),
-        ('cafe', 0, 320, 16), ('museum', 0, 360, 30), ('kitchen', 0, 420, 20), ('carving', 0, 460, 15),
-        ('prologue', 0, 480, 15), ('observatory', 0, 540, 12), ('neighbor', 0, 700, 40),
-        ('neighbor_in', 0, 780, 14), ('mist', 0, -250, 60), ('sea', 400, 0, 80), ('mountain', 0, -1000, 90)
-      ) s(k, cx, cz, r)
-      where (x - s.cx) ^ 2 + (z - s.cz) ^ 2 <= s.r ^ 2
-      order by (x - s.cx) ^ 2 + (z - s.cz) ^ 2
-      limit 1),
-    'unknown')
-$$;
+parallel safe
+as $fn$
+declare
+  d double precision;
+  best double precision;
+  k text;
+begin
+  if abs(x) <= 46 and abs(z) <= 46 then
+    if (x - (0))^2 + (z - (0))^2 <= 16 then return 'spawn'; end if;
+    if (x - (16))^2 + (z - (17))^2 <= 6.25 then return 'stop'; end if;
+    if (x - (-4))^2 + (z - (25))^2 <= 6.25 then return 'neighbor_gate'; end if;
+    if (x - (-8))^2 + (z - (-8))^2 <= 25 then return 'house'; end if;
+    if (x - (5.5))^2 + (z - (-5.5))^2 <= 12.25 then return 'bench'; end if;
+    if (x - (-17.5))^2 + (z - (-4))^2 <= 16 then return 'shop'; end if;
+    if (x - (11))^2 + (z - (2.5))^2 <= 20.25 then return 'market'; end if;
+    if (x - (16))^2 + (z - (9))^2 <= 49 then return 'lake'; end if;
+    if (x - (0))^2 + (z - (7))^2 <= 9 then return 'farm_gate'; end if;
+    if (x - (-4.5))^2 + (z - (11.5))^2 <= 9 then return 'coop'; end if;
+    if (x - (4))^2 + (z - (14))^2 <= 9 then return 'cafe_gate'; end if;
+    if (x - (7))^2 + (z - (26))^2 <= 49 then return 'glade'; end if;
+    if (x - (16.5))^2 + (z - (33.5))^2 <= 16 then return 'light_workshop'; end if;
+    if (x - (-18))^2 + (z - (23))^2 <= 81 then return 'forest'; end if;
+    if (x - (-14))^2 + (z - (3))^2 <= 9 then return 'mine_gate'; end if;
+    if (x - (-26))^2 + (z - (5))^2 <= 12.25 then return 'museum_gate'; end if;
+    if (x - (25))^2 + (z - (22))^2 <= 12.25 then return 'observatory_gate'; end if;
+    if (x - (0))^2 + (z - (-18))^2 <= 36 then return 'dock'; end if;
+    if (x - (10.5))^2 + (z - (-15))^2 <= 20.25 then return 'auction'; end if;
+    if (x - (19.5))^2 + (z - (-12.5))^2 <= 9 then return 'sea_gate'; end if;
+    if (x - (-15))^2 + (z - (-32))^2 <= 25 then return 'mountain_gate'; end if;
+    if (x - (-21))^2 + (z - (-20))^2 <= 9 then return 'mist_gate'; end if;
+    if (x - (33))^2 + (z - (7))^2 <= 9 then return 'orchard_gate'; end if;
+    return 'road';
+  end if;
+  d := (x - (0))^2 + (z - (52))^2;
+  if d <= 196 and (best is null or d < best) then best := d; k := 'house_in'; end if;
+  d := (x - (0))^2 + (z - (84))^2;
+  if d <= 900 and (best is null or d < best) then best := d; k := 'farm'; end if;
+  d := (x - (0))^2 + (z - (160))^2;
+  if d <= 1600 and (best is null or d < best) then best := d; k := 'orchard'; end if;
+  d := (x - (0))^2 + (z - (250))^2;
+  if d <= 400 and (best is null or d < best) then best := d; k := 'mine'; end if;
+  d := (x - (0))^2 + (z - (320))^2;
+  if d <= 256 and (best is null or d < best) then best := d; k := 'cafe'; end if;
+  d := (x - (0))^2 + (z - (360))^2;
+  if d <= 900 and (best is null or d < best) then best := d; k := 'museum'; end if;
+  d := (x - (0))^2 + (z - (420))^2;
+  if d <= 400 and (best is null or d < best) then best := d; k := 'kitchen'; end if;
+  d := (x - (0))^2 + (z - (460))^2;
+  if d <= 225 and (best is null or d < best) then best := d; k := 'carving'; end if;
+  d := (x - (0))^2 + (z - (480))^2;
+  if d <= 225 and (best is null or d < best) then best := d; k := 'prologue'; end if;
+  d := (x - (0))^2 + (z - (540))^2;
+  if d <= 144 and (best is null or d < best) then best := d; k := 'observatory'; end if;
+  d := (x - (0))^2 + (z - (700))^2;
+  if d <= 1600 and (best is null or d < best) then best := d; k := 'neighbor'; end if;
+  d := (x - (0))^2 + (z - (780))^2;
+  if d <= 196 and (best is null or d < best) then best := d; k := 'neighbor_in'; end if;
+  d := (x - (0))^2 + (z - (-250))^2;
+  if d <= 3600 and (best is null or d < best) then best := d; k := 'mist'; end if;
+  d := (x - (400))^2 + (z - (0))^2;
+  if d <= 6400 and (best is null or d < best) then best := d; k := 'sea'; end if;
+  d := (x - (0))^2 + (z - (-1000))^2;
+  if d <= 8100 and (best is null or d < best) then best := d; k := 'mountain'; end if;
+  return coalesce(k, 'unknown');
+end
+$fn$;
 revoke all on function public.cf_zone_of(double precision, double precision) from public, anon, authenticated;
