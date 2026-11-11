@@ -1,5 +1,4 @@
 export const FORGE_COPY = Object.freeze({
-  hint: '도구를 누르면 별 강화를 볼 수 있어요',
   note: '망치질 5번 · 내일 아침 완성 · 그동안도 쓸 수 있어요',
   max: '최고 별이에요',
   noTool: '먼저 만들어야 별을 달 수 있어요',
@@ -13,6 +12,36 @@ export const FORGE_COPY = Object.freeze({
 });
 
 export const EFFECT_LABEL = Object.freeze({ rod: '입질 여유', water: '물 성장', pot: '요리 버프', net: '포획', hammer: '목재' });
+
+export const BENCH_COPY = Object.freeze({
+  make: '만들기',
+  place: '놓으러 가기',
+  carve: '깎기 시작',
+  cover: '덮개 설치하기',
+  covered: '설치했어요',
+  short: '재료가 부족해요',
+  owned: '가지고 있어요',
+  doneToday: '오늘 완성',
+  needBlueprint: '도면이 필요해요',
+  blueprintHint: '주민과 친해지면(❤️6) 도면을 줘요',
+  goldName: '금빛 도구',
+  goldSub: '금·흑단·보석으로 모습이 바뀌어요',
+  mine: '내 도구 · 별 강화',
+  makeNew: '새로 만들기',
+  outBanner: '🌷 고른 장식은 원하는 곳에 놓을 수 있어요',
+  giftBanner: '🎁 선물을 만들어 주민과 대화하면 친해져요',
+  keptTail: '주민과 대화해서 선물해요',
+  storedSub: '재료 없이 꺼내 놓아요',
+});
+
+export function needTier1(name) { return `먼저 ${name}을(를) 만들어요`; }
+export function giftSub(love) { return `주민에게 주면 ❤️+${love}`; }
+export function storedLine(n) { return `보관 중 ${n}개`; }
+export function coverSub(ico, name, planted) { return `내일 ${ico} ${name} 예보 · 심어둔 밭 ${planted}곳을 지켜요`; }
+export function weatherBanner(ico, name) { return `🌡️ 내일 ${ico} ${name} 예보 · 밭 덮개를 만들어 두세요`; }
+export function forgeBanner(name, star) { return `🔨 ${name} ★${star} 강화 중 · 내일 아침 완성`; }
+export function carveBanner(n) { return `🗿 오늘의 주문 ${n}건 · 자정에 바뀌어요`; }
+export function carveSub(pay, best) { return best ? `오늘의 주문 · 보상 🪙${pay} · ⭐최고 ${best}점` : `오늘의 주문 · 보상 🪙${pay}`; }
 
 export const SHORT_NAME = Object.freeze({ rod: '낚싯대', water: '물조리개', pot: '냄비', net: '포충망', hammer: '망치' });
 

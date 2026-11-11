@@ -159,7 +159,7 @@ export function plazaSpotNow() { return spotNow; }
 let mineNow = null, mineReason = null, busy = false, modalKind = null;
 let fake = null;   // localhost 전용 __plazaFake 로 넣은 가짜 진행률(시안 검수용) — 켜져 있으면 서버 값으로 덮지 않는다
 
-// 🧺 보관함에 1개 — 작업대 장식 탭에서 값 없이 꺼내 놓는다(index.html renderOutdoor 가 hidden 품목을 보관분 있을 때만 보인다)
+// 🧺 보관함에 1개 — 작업대 장식 탭에서 값 없이 꺼내 놓는다(js/workbench/bench-view.js outView 가 hidden 품목을 보관분 있을 때만 보인다)
 function addStored(id) {
   const stored = gameState.outdoorStored || {};
   gameState.outdoorStored = { ...stored, [id]: (stored[id] || 0) + 1 };

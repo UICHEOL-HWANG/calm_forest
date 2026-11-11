@@ -1,10 +1,9 @@
 import { MAX_STAR } from './rules.js';
 import { HAMMER, beatTimes, newRun, tapRun, expireRun, runDone, struckAny, canCancel, runScore, refundBand } from './hammer.js';
 import {
-  FORGE_COPY, EFFECT_LABEL, METER, effectValue, effectText, upgradeLabel, pendingTag, gameTitle, refundLine, foretell,
+  FORGE_COPY, METER, gameTitle, refundLine, foretell,
 } from './copy.js';
 
-const MAT_ICO = Object.freeze({ coins: '🪙', wood: '🪵', stone: '🪨', gem: '💎', fish: '🐟', crop: '🥕', coal: '⚫', bug: '🌟' });
 const RING_GROW = 1.3;
 
 function starMarks(on, next) {
@@ -17,41 +16,6 @@ function starMarks(on, next) {
 }
 
 export function starsHtml(on, next = 0) { return `<span class="fg-stars">${starMarks(on, next)}</span>`; }
-
-function chipsHtml(cost = {}, missing = []) {
-  return Object.entries(cost)
-    .map(([k, n]) => `<span class="chip ${missing.includes(k) ? 'lack' : 'ok'}">${MAT_ICO[k] || k} ${n}</span>`)
-    .join('');
-}
-
-function effHtml(v, nextStar) {
-  const now = v.effects[v.star];
-  if (!nextStar) return `<div class="upc-eff">${EFFECT_LABEL[v.tool]} <span class="now">${effectValue(v.tool, now)}</span></div>`;
-  return `<div class="upc-eff">${EFFECT_LABEL[v.tool]} <span class="now">${effectValue(v.tool, now)}</span><i class="chev"></i><span class="nxt">${effectValue(v.tool, v.effects[nextStar])}</span></div>`;
-}
-
-export function cardHtml(v) {
-  const c = v.check;
-  const showNext = ['ready', 'short', 'busy'].includes(c.state) ? c.next : 0;
-  const markNext = c.state === 'pending' ? c.next : showNext;
-  const head = `<div class="upc-top"><div class="upc-ico">${v.ico}</div><div><div class="upc-name">${v.name} ${starsHtml(v.star, markNext)}</div>${effHtml(v, showNext)}</div></div>`;
-  if (c.state === 'pending') return `<div class="upc">${head}<div class="upc-note moon">${foretell(c.next)}</div></div>`;
-  if (c.state === 'max') return `<div class="upc">${head}<div class="upc-note">${FORGE_COPY.max}</div></div>`;
-  const chips = `<div class="chips">${chipsHtml(c.cost, c.missing || [])}</div>`;
-  if (c.state === 'busy') {
-    return `<div class="upc">${head}${chips}<button class="upc-go" data-go="${v.tool}" disabled>${upgradeLabel(c.next)}</button><div class="upc-note">${FORGE_COPY.busy}</div></div>`;
-  }
-  const cls = c.state === 'short' ? 'upc-go off' : 'upc-go';
-  return `<div class="upc">${head}${chips}<button class="${cls}" data-go="${v.tool}">${upgradeLabel(c.next)}</button><div class="upc-note">${FORGE_COPY.note}</div></div>`;
-}
-
-export function tileParts(v) {
-  return {
-    badge: v.star > 0 ? `<span class="fg-badge">${starMarks(v.star, 0).replace(/<i>★<\/i>/g, '')}</span>` : '',
-    buff: effectText(v.tool, v.effects[v.star]),
-    tag: v.check.state === 'pending' ? pendingTag(v.check.next) : '',
-  };
-}
 
 export function meterHtml(score) {
   const band = refundBand(score);
