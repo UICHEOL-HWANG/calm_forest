@@ -7,6 +7,7 @@
 // =============================================================
 
 import { playIntroScore } from './sound-intro.js';
+import { DIVE_BAR, MUDFLAT_BAR, diveBar, mudflatBar } from './sound-forage.js';
 
 let ctx = null;
 let master = null;
@@ -494,8 +495,11 @@ function playSnowSledBar(at) {
   if (bar === 3) chime(snowHz(ch[3], 7), 0.8, 0.014, { at: at + sec - e, wet: 0.7, out: musicGain });
 }
 
-function barFn() { return bgmTheme === 'halloween' ? playHalloweenBar : bgmTheme === 'intro' ? playIntroBar : bgmTheme === 'snow' ? playSnowBar : bgmTheme === 'snowsled' ? playSnowSledBar : bgmTheme === 'mirror' ? playMirrorBar : bgmTheme === 'dream' ? playDreamBar : bgmTheme === 'stars' ? playStarsBar : bgmTheme === 'cave' ? playCaveBar : playMainBar; }
-function barLen() { return bgmTheme === 'halloween' ? HW_BAR : bgmTheme === 'intro' ? INTRO_BAR : bgmTheme === 'snow' ? SNOW_BAR : bgmTheme === 'snowsled' ? SNOW_SLED_BAR : bgmTheme === 'mirror' ? MIRROR_BAR : bgmTheme === 'dream' ? DREAM_BAR : bgmTheme === 'stars' ? STARS_BAR : bgmTheme === 'cave' ? CAVE_BAR : MAIN_BAR; }
+function playForageBar(fn) { return (at) => fn({ c: ensureCtx(), out: musicGain, echo: ensureEcho() }, at, barCount++); }
+const playMudflatBar = playForageBar(mudflatBar), playDiveBar = playForageBar(diveBar);
+
+function barFn() { return bgmTheme === 'mudflat' ? playMudflatBar : bgmTheme === 'dive' ? playDiveBar : bgmTheme === 'halloween' ? playHalloweenBar : bgmTheme === 'intro' ? playIntroBar : bgmTheme === 'snow' ? playSnowBar : bgmTheme === 'snowsled' ? playSnowSledBar : bgmTheme === 'mirror' ? playMirrorBar : bgmTheme === 'dream' ? playDreamBar : bgmTheme === 'stars' ? playStarsBar : bgmTheme === 'cave' ? playCaveBar : playMainBar; }
+function barLen() { return bgmTheme === 'mudflat' ? MUDFLAT_BAR : bgmTheme === 'dive' ? DIVE_BAR : bgmTheme === 'halloween' ? HW_BAR : bgmTheme === 'intro' ? INTRO_BAR : bgmTheme === 'snow' ? SNOW_BAR : bgmTheme === 'snowsled' ? SNOW_SLED_BAR : bgmTheme === 'mirror' ? MIRROR_BAR : bgmTheme === 'dream' ? DREAM_BAR : bgmTheme === 'stars' ? STARS_BAR : bgmTheme === 'cave' ? CAVE_BAR : MAIN_BAR; }
 
 // ── 룩어헤드 스케줄러 ────────────────────────────────────────
 //   setInterval 로 '소리를 내는' 게 아니라, 자주 깨어나 앞으로 0.45초 구간을
