@@ -100,3 +100,10 @@ test('intro cards only before the first real join', () => {
   assert.equal(introNeeded({ ...fresh, introSeen: true }, 'bid'), false);
   assert.equal(introNeeded(undefined, 'bid'), true);
 });
+
+test('열림 배너는 연출 중엔 기다리고, 터치에선 미니맵 아래 왼쪽 칸에 뜬다', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../js/auction/index.js', import.meta.url), 'utf8');
+  assert.match(src, /!uiBusy\(\) && !document\.body\.classList\.contains\('cine-open'\) && !guide\?\.active/);
+  assert.match(src, /near: \(\) => true, attention: true, slotQuest: true,/);
+});

@@ -33,7 +33,7 @@ const CSS = `
 #goal-arrow .ga-edge{position:absolute;transform:translate(-50%,-50%);gap:8px}
 #goal-arrow .ga-ar{position:relative;flex:none;width:30px;height:30px;border-radius:50%;background:#bfe8c9;box-shadow:0 0 0 3px #fff7ec}
 #goal-arrow .ga-ar::after{content:'';position:absolute;left:8px;top:8px;width:14px;height:14px;background:#4a5a4f;clip-path:polygon(0 0,45% 0,100% 50%,45% 100%,0 100%,55% 50%)}
-#goal-arrow .ga-card .rw-ad{pointer-events:auto;margin-top:4px}
+#goal-arrow .ga-card .rw-ad{pointer-events:auto;align-self:flex-start;margin-top:6px}
 #goal-arrow .ga-card{position:absolute;transform:translate(-50%,-100%);display:none;flex-direction:column;gap:2px;background:rgba(255,253,246,.97);border-radius:16px;box-shadow:0 4px 14px rgba(30,60,40,.28);padding:8px 12px;min-width:180px;max-width:min(260px,calc(100vw - 24px))}
 #goal-arrow .gk-t{font-weight:800;color:#2f5a3a;font-size:14px}
 #goal-arrow .gk-d{font-size:13px;color:#4a5a4f}
@@ -294,7 +294,7 @@ export function createGoalGuide(deps) {
       if (waitT >= CINE_DELAY && canCine()) startCine(r.at, r.g);
       return;
     }
-    if (deps.modalOpen() || document.hidden || !deps.cameraFree()) { hideArrow(); return; }
+    if (deps.modalOpen() || document.hidden || !deps.cameraFree() || deps.otherGuide?.()) { hideArrow(); return; }
     drawArrow(r, dt);
   }
 

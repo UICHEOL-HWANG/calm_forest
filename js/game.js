@@ -79,7 +79,7 @@ import { sanitizeHouseGuide } from './house-guide-rules.js';
 import { initPlaza, updatePlaza, plazaSpotNow, openPlaza, plazaScatterBlocks, plazaDefault, restorePlaza, refreshPlaza, plazaDecorMesh, plazaMapVisible } from './plaza/index.js';
 import { defaultToolStars, restoreToolStars, restoreForge, forgeCancel } from './workbench/rules.js';
 import { forgeView, forgeBegin, forgeAbort, forgeFinish, settleForge } from './workbench/forge.js';
-import { initAuction, updateAuction, auctionMapSpot, auctionSpotNow, openAuction, auctionScatterBlocks, auctionOutdoorMesh, auctionDefault, restoreAuction } from './auction/index.js';
+import { initAuction, updateAuction, auctionMapSpot, auctionSpotNow, openAuction, auctionScatterBlocks, auctionOutdoorMesh, auctionDefault, restoreAuction, auctionGuideActive } from './auction/index.js';
 import { refreshPond, updatePond, pondScatterBlocks } from './pond/index.js';
 import { onPlay, decorBanner, applySetFx } from './decor-drops/index.js';
 import { updateSetFx } from './decor-drops/fx.js';
@@ -2933,6 +2933,7 @@ export async function enterGame() {
     state: () => gameState, player, camera, scene,
     adButton: (slot, list) => shortAdButton(slot, list, null, CAFE_CAPS),
     adOpen: () => !!rewarded?.open(),
+    otherGuide: () => portGuideActive() || restaurantGuideActive() || auctionGuideActive(),
     translate: t, track: trackEvent, save: requestSave,
     cameraFree, setCameraRig, defaultCamPose,
     inVillage: inVillage2, atMine: () => atMine && !delveFloorNow(),

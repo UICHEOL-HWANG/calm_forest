@@ -10,7 +10,7 @@ const index = existsSync(new URL('../js/auction/index.js', import.meta.url)) ? r
 
 test('game.js only wires the auction module', () => {
   const lines = game.split('\n').filter(l => /auction|Auction/.test(l));
-  assert.ok(lines.length <= 12, lines.join('\n'));
+  assert.ok(lines.length <= 13, lines.join('\n'));
   assert.doesNotMatch(game, /function \w*[Aa]uction\w*\s*\(/);
   for (const k of ['initAuction()', 'updateAuction(', 'auctionSpotNow()', 'openAuction()', 'auctionScatterBlocks(', 'auctionOutdoorMesh(', 'restoreAuction(saved.auction)', 'auction: auctionDefault()']) assert.ok(game.includes(k), k);
   assert.match(game, /get playerArms\(\)/);

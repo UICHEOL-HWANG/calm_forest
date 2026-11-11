@@ -127,7 +127,7 @@ function showOpenBanner(day) {
   const name = catalogDef(lot.id)?.name || lot.id;
   ui.showHintBanner?.({
     ico: ONBOARD_COPY.ico, title: ONBOARD_COPY.title, line: bannerLine(name, t),
-    near: () => true, attention: true,
+    near: () => true, attention: true, slotQuest: true,
     onShow: () => trackEvent('auction_banner', { act: 'shown', item: lot.id }),
     onTap: () => {
       trackEvent('auction_banner', { act: 'tap', item: lot.id });
@@ -140,7 +140,7 @@ function showOpenBanner(day) {
 function tickBanner(inVillage) {
   const day = todayStr();
   const away = Math.hypot(player.position.x - AUCTION_ENTRY.x, player.position.z - AUCTION_ENTRY.z) > BANNER_FAR;
-  const ready = auctionOpen() && inVillage && !mgView && cameraFree() && !uiBusy() && !guide?.active && !intro?.open;
+  const ready = auctionOpen() && inVillage && !mgView && cameraFree() && !uiBusy() && !document.body.classList.contains('cine-open') && !guide?.active && !intro?.open;
   const r = bannerTick(gameState.auction, {
     open: auctionOpenAt(gameState.timeOfDay), day, joined: gameState.auction.lastDate === day, ready, far: away,
   });
@@ -194,6 +194,7 @@ export function updateAuction(dt, inVillage) {
   tickOnboard(dt, inVillage);
 }
 
+export function auctionGuideActive() { return !!guide?.active; }
 export function auctionMapSpot() { return { x: X, z: Z + 1 }; }
 
 export function auctionSpotNow() {
