@@ -5,7 +5,7 @@ export function arriveCurve(t) {
   const k = Math.min(1, Math.max(0, t / ARRIVE_SEC));
   return {
     pillarY: Math.min(1, t / 0.25),
-    pillarA: 0.6 * (1 - k),
+    pillarA: 0.32 * (1 - k),
     ringS: 0.4 + 2.4 * Math.min(1, t / 1.2),
     ringA: 0.85 * (1 - Math.min(1, t / 1.2)),
     sparkA: k < 0.15 ? k / 0.15 : 1 - (k - 0.15) / 0.85,
@@ -20,7 +20,7 @@ export function createArriveFx(THREE) {
   function spawn(group, at) {
     const root = new THREE.Group();
     root.position.set(at.x, 0, at.z);
-    const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.7, 3.2, 20, 1, true), new THREE.MeshBasicMaterial(additive(0xfff1b8, { side: THREE.DoubleSide })));
+    const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.7, 3.2, 20, 1, true), new THREE.MeshBasicMaterial(additive(0xffc23a, { side: THREE.DoubleSide })));
     pillar.position.y = 1.6;
     const ring = new THREE.Mesh(new THREE.RingGeometry(0.85, 1.0, 40), new THREE.MeshBasicMaterial(additive(0xffd36b, { side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })));
     ring.rotation.x = -Math.PI / 2;

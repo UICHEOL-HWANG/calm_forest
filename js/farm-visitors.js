@@ -17,7 +17,7 @@ export const STAY = 25;              // 등록 여부와 무관하게 이만큼 
 export const CATCH_R = 2.5;          // 이 안에서 액션(Space·탭)을 누르면 등록되는 거리
 export const FADE = 1.2;             // 페이드 인/아웃 시간
 export const EDGE_INSET = 1;
-export const DOOR_HALF = 1.6;
+export const DOOR_HALF = 2.8;
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 

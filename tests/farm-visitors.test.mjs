@@ -333,7 +333,7 @@ test('edgeSpot: 남쪽 문 앞과 막힌 자리(밭·다른 손님)는 비켜 �
   const { edgeSpot } = await import('../js/farm-visitors.js');
   const opt = { center: { x: 0, z: 84 }, half: 6, inset: 1 };
   const s = edgeSpot({ x: 0.2, z: 88.5 }, opt);
-  assert.ok(!(Math.abs(s.x) < 1.6 && s.z > 84 + 4), JSON.stringify(s));
+  assert.ok(!(Math.abs(s.x) < 2.8 && s.z > 84 + 4), JSON.stringify(s));
   const blocked = p => Math.abs(p.x + 5) < 0.6 && Math.abs(p.z - 83) < 0.6;
   const t = edgeSpot({ x: -3, z: 83 }, { ...opt, blocked });
   assert.ok(!blocked(t) && Math.abs(Math.abs(t.x - 0) - 5) < 1e-9, JSON.stringify(t));
