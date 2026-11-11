@@ -24,7 +24,7 @@ test('approved copy, candidate 1', () => {
   assert.equal(gameTitle('rod', 2), '🔨 낚싯대 ★2 강화');
   assert.equal(FORGE_COPY.ringHint, '고리가 금색 원에 닿을 때 탭해요');
   assert.deepEqual(FORGE_COPY.judge, ['빗나감', '좋아요!', '완벽!']);
-  assert.equal(FORGE_COPY.resultTitle, '좋은 망치질이에요!');
+  assert.deepEqual(FORGE_COPY.resultTitles, ['아쉬운 망치질이에요', '괜찮은 망치질이에요', '좋은 망치질이에요!', '완벽한 망치질이에요!']);
   assert.equal(refundLine(48), '🪙 48 돌려받았어요');
   assert.equal(foretell(2), '🌙 내일 아침 ★2가 돼요. 그동안도 쓸 수 있어요');
   assert.equal(doneToast('🎣', '튼튼한 낚싯대', 2), '🎣 튼튼한 낚싯대가 ★2가 됐어요');

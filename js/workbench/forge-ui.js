@@ -22,6 +22,8 @@ export function meterHtml(score) {
   return METER.map((m, i) => `<div${i === band ? ' class="on"' : ''}>${m.label}<br>${m.rate}</div>`).join('');
 }
 
+export function resultTitle(score) { return FORGE_COPY.resultTitles[refundBand(score)]; }
+
 export function strikesHtml(marks) {
   return marks.map(m => `<i class="sk${m === 2 ? ' p' : m === 1 ? ' g' : m === 0 ? ' m' : ''}"></i>`).join('');
 }
@@ -40,7 +42,7 @@ function stageHtml(tool, star, ico) {
 
 function resultHtml(ico, marks, score, refund, star) {
   return `<div class="r-ico">${ico}</div>
-    <div class="r-title">${FORGE_COPY.resultTitle}</div>
+    <div class="r-title">${resultTitle(score)}</div>
     <div class="fg-strikes">${strikesHtml(marks)}</div>
     <div class="fg-meter">${meterHtml(score)}</div>
     <div class="r-big">${refundLine(refund)}</div>

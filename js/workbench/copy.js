@@ -6,7 +6,7 @@ export const FORGE_COPY = Object.freeze({
   short: '재료가 부족해요',
   ringHint: '고리가 금색 원에 닿을 때 탭해요',
   judge: Object.freeze(['빗나감', '좋아요!', '완벽!']),
-  resultTitle: '좋은 망치질이에요!',
+  resultTitles: Object.freeze(['아쉬운 망치질이에요', '괜찮은 망치질이에요', '좋은 망치질이에요!', '완벽한 망치질이에요!']),
   quit: '그만두기',
   ok: '좋아요',
 });
