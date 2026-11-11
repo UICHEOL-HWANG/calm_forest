@@ -22,6 +22,11 @@ test('토스 밖이거나 SDK 가 광고를 지원하지 않으면 쓸 수 없�
   const old = createTossRewarded({ isToss: true, loadSdk: async () => fakeSdk({ supported: false }) });
   await settle();
   assert.equal(old.available(), false);
+  const boom = () => { throw new TypeError('no bridge'); };
+  const outside = createTossRewarded({ isToss: true, loadSdk: async () => ({ loadFullScreenAd: Object.assign(() => {}, { isSupported: boom }), showFullScreenAd: Object.assign(() => {}, { isSupported: boom }) }) });
+  await settle();
+  assert.equal(outside.available(), false);
+  assert.equal((await outside.show('bridge')).result, 'unavailable');
 });
 
 test('보상 신호 뒤 닫히면 complete, 보상 없이 닫히면 skip', async () => {

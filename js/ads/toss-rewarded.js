@@ -7,7 +7,13 @@ const reasonOf = (e) => String(e?.message || e || '').slice(0, REASON_MAX);
 export function createTossRewarded({ isToss, loadSdk, groupId = TOSS_AD_GROUP, timeoutMs = SHOW_TIMEOUT_MS }) {
   let sdk = null;
   let busy = false;
-  const supported = () => !!sdk?.loadFullScreenAd?.isSupported?.() && !!sdk?.showFullScreenAd?.isSupported?.();
+  const supported = () => {
+    try {
+      return !!sdk?.loadFullScreenAd?.isSupported?.() && !!sdk?.showFullScreenAd?.isSupported?.();
+    } catch {
+      return false;
+    }
+  };
   if (isToss) Promise.resolve().then(loadSdk).then((m) => { sdk = m || null; }, () => { sdk = null; });
 
   const available = () => !!isToss && supported();
