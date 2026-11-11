@@ -118,6 +118,7 @@ export function createHouseGuide(deps) {
     toQuat = shot.quaternion.clone();
     deps.stopAnalog();
     document.body.classList.add('cine-open');
+    deps.whoosh?.();
     overlay.classList.add('show');
     keyHandler = e => { e.preventDefault(); e.stopImmediatePropagation(); if (!e.repeat) finish(true); };
     window.addEventListener('keydown', keyHandler, true);

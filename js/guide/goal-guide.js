@@ -164,6 +164,7 @@ export function createGoalGuide(deps) {
     cine = { rig, skipped: false };
     deps.stopAnalog();
     document.body.classList.add('cine-open');
+    deps.whoosh?.();
     overlay.classList.add('show');
     keyHandler = e => { e.preventDefault(); e.stopImmediatePropagation(); if (!e.repeat) skip(); };
     window.addEventListener('keydown', keyHandler, true);

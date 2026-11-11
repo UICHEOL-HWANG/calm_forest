@@ -636,7 +636,7 @@ function showOverlay(mode = null) {
     document.body.appendChild(overlay);
   }
   overlay.querySelector('#treeshot-cine')?.remove();
-  if (mode) { overlay.prepend(mode === 'chapter' ? chapterCine() : regionCine(shot.q.region)); document.body.classList.add('cine-open'); }
+  if (mode) { overlay.prepend(mode === 'chapter' ? chapterCine() : regionCine(shot.q.region)); document.body.classList.add('cine-open'); Sound.cineWhoosh(); }
   const hint = overlay.querySelector('#treeshot-hint');
   hint.style.bottom = mode === 'chapter' ? `calc(${CINE_BAR} / 2 - 12px)` : mode ? `calc(100% - ${CINE_BAR} / 2 - 12px)` : 'calc(104px + env(safe-area-inset-bottom,0px))';
   overlay.style.display = 'block';

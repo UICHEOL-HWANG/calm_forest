@@ -2852,7 +2852,7 @@ export async function enterGame() {
     modalOpen: () => !!ui.anyModalOpen?.() || document.body.classList.contains('spot-on'),
     stopAnalog: () => Input.setAnalog?.(0, 0),
     projectPlayer: () => projectToScreen(player.position, 0),
-    playReminder: () => Sound.houseGuide(),
+    playReminder: () => Sound.houseGuide(), whoosh: () => Sound.cineWhoosh(),
     track: trackEvent, save: requestSave,
   });
   rewarded = createRewarded({
@@ -2881,7 +2881,7 @@ export async function enterGame() {
     inVillage: inVillage2, atMine: () => atMine && !delveFloorNow(),
     coaching: () => document.body.classList.contains('coaching'),
     modalOpen: () => !!ui.anyModalOpen?.() || document.body.classList.contains('spot-on') || !!houseGuidance?.cinematic,
-    stopAnalog: () => Input.setAnalog?.(0, 0),
+    stopAnalog: () => Input.setAnalog?.(0, 0), whoosh: () => Sound.cineWhoosh(),
     project: (pos, lift) => projectToScreen(pos, lift),
     touch: () => document.body.classList.contains('is-touch'),
     bottomInset: () => { const r = document.getElementById('tool-btn')?.getBoundingClientRect(); return r && r.height ? Math.round(innerHeight - r.top + 56) : 0; },
