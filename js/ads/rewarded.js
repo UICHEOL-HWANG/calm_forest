@@ -1,4 +1,4 @@
-import { prepassArm } from '../guide/prepass-rules.js';
+import { prepassArm, PREPASS_DAILY_CAP, dayCount, bumpDay } from '../guide/prepass-rules.js';
 
 const CSS = `
 .rw-ad{pointer-events:auto;position:relative;isolation:isolate;overflow:hidden;display:inline-block;text-align:center;border:0;border-radius:14px;padding:8px 14px 8px 8px;font:inherit;font-weight:700;font-size:13px;line-height:1.2;color:#fbf6e6;cursor:pointer;background:linear-gradient(180deg,#3d6b4a,#2f5a3a);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 6px 14px -6px rgba(31,74,44,.6);transition:transform .2s cubic-bezier(.16,1,.3,1)}
@@ -25,7 +25,10 @@ export function createRewarded(deps) {
   const seen = new Set();
   let busy = false;
   const arm = () => deps.forceArm?.() || prepassArm(deps.clientId(), deps.platform);
-  const open = () => deps.enabled() && arm() === 'ad' && !!deps.provider().available();
+  const readDay = () => { try { return deps.dayRecord?.get() ?? null; } catch { return null; } };
+  const usedToday = () => (deps.today ? dayCount(readDay(), deps.today()) : 0);
+  const countView = () => { if (!deps.today) return; try { deps.dayRecord?.set(bumpDay(readDay(), deps.today())); } catch { return; } };
+  const open = () => deps.enabled() && arm() === 'ad' && usedToday() < PREPASS_DAILY_CAP && !!deps.provider().available();
 
   function offer(slot) {
     if (deps.enabled() && !seen.has(slot)) { seen.add(slot); deps.track('prepass_eligible', { slot, arm: arm() }); }
@@ -39,7 +42,7 @@ export function createRewarded(deps) {
     try { r = await deps.provider().show(slot); } catch (err) { r = { result: 'fail', reason: String(err?.message || err) }; }
     busy = false;
     deps.track('prepass_ad_result', { slot, result: r?.result || 'fail', value_micros: Number.isFinite(r?.valueMicros) ? r.valueMicros : undefined });
-    if (r?.result === 'complete') { grant(); return true; }
+    if (r?.result === 'complete') { countView(); grant(); return true; }
     if (r?.result !== 'skip') deps.toast(deps.translate('지금은 광고를 볼 수 없어요'));
     return false;
   }

@@ -2909,6 +2909,8 @@ export async function enterGame() {
   rewarded = createRewarded({
     enabled: () => PREPASS_ON || PREPASS_DEV, provider: () => prepassProvider, forceArm: () => (PREPASS_DEV ? 'ad' : null),
     clientId, platform: PLATFORM, track: trackEvent, translate: t, toast: (m) => ui.toast?.(m, 2400),
+    today: todayStr,
+    dayRecord: { get: () => JSON.parse(localStorage.getItem('cf_prepass_day') || 'null'), set: (v) => localStorage.setItem('cf_prepass_day', JSON.stringify(v)) },
   });
   houseShort = guideRevamp ? createHouseShort({
     state: () => gameState, player, house: HOUSE_POS, translate: t, track: trackEvent, save: requestSave, rewarded,
