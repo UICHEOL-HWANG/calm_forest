@@ -1,6 +1,6 @@
 # 맥락
 
-Last Updated: 2026-11-11
+Last Updated: 2026-11-11 23:50
 
 - 근거: ml/reports/story_stall_20261110/result.csv (1장 258·2장 22·3장 22 멈춤)
 - 기존 광고: js/guide/house-short.js(집 3단계), js/ads/rewarded.js(공용 버튼·50:50·계측), game.js sellAdButton 등

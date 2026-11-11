@@ -64,5 +64,7 @@ test('부족 줄 광고 버튼: 세계수 판·카페 손님 카드가 같은 sh
   const gg = read('js/guide/goal-guide.js');
   assert.match(gg, /st\.key === 'cafe_short' \? deps\.adButton\?\.\('cafe_order', st\.shortList\) : null/);
   assert.match(gg, /#goal-arrow \.ga-card \.rw-ad\{pointer-events:auto/);
+  assert.match(gg, /const sig = `\$\{stepSignature\(st\)\}\|\$\{st\.key === 'cafe_short' && !!deps\.adOpen\?\.\(\)\}`;/);
+  assert.match(game, /adOpen: \(\) => !!rewarded\?\.open\(\),/);
   assert.match(game, /adButton: \(slot, list\) => shortAdButton\(slot, list, null, CAFE_CAPS\),/);
 });

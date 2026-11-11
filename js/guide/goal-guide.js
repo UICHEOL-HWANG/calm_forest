@@ -267,7 +267,7 @@ export function createGoalGuide(deps) {
     put(card, 'cd', 'display', 'flex');
     put(card, 'cl', 'left', Math.round(Math.min(innerWidth - half, Math.max(half, sp.x))) + 'px');
     put(card, 'ct', 'top', Math.round(Math.max(Math.max(110, deps.topInset()) + 90, sp.y)) + 'px');
-    const sig = stepSignature(st);
+    const sig = `${stepSignature(st)}|${st.key === 'cafe_short' && !!deps.adOpen?.()}`;
     if (last.csig !== sig) {
       last.csig = sig;
       fillStepCard(card, st, { t: 'gk-t', d: 'gk-d', s: 'gk-s' }, T);

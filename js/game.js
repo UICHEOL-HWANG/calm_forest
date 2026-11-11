@@ -2932,6 +2932,7 @@ export async function enterGame() {
   goalGuide = guideRevamp ? createGoalGuide({
     state: () => gameState, player, camera, scene,
     adButton: (slot, list) => shortAdButton(slot, list, null, CAFE_CAPS),
+    adOpen: () => !!rewarded?.open(),
     translate: t, track: trackEvent, save: requestSave,
     cameraFree, setCameraRig, defaultCamPose,
     inVillage: inVillage2, atMine: () => atMine && !delveFloorNow(),
