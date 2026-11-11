@@ -123,7 +123,7 @@
   /* 게임 월드에서만 페이지 팬/스크롤 차단(메뉴 스크롤은 살림). user-scalable=no 라 확대는 이미 차단됨 */
   #app { position: fixed; inset: 0; touch-action: none; }
   /* 스크롤되는 창들: 세로 스크롤 허용 + 스크롤 체이닝 방지 (도감·NPC·피드백·로그인 카드 포함) */
-  #bag-content, #shop-menu, #cos-items, #cook-menu, #cafe-menu, #decor-menu, #ext-menu, #craft-menu, #homi-menu, #tb-body, .tut-card, .fb-card, .npc-card, #login-card {
+  #bag-content, #shop-menu, #cos-items, #cook-menu, #cafe-menu, #decor-menu, #ext-menu, #craft-menu, #homi-menu, #tb-body, .tut-card, .fb-card, .tk-scroll, #chat-log, #login-card {
     touch-action: pan-y; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
   }
 
@@ -541,8 +541,8 @@
     #boat-shop .dm-actions button { padding: 5px 14px; }
   }
   /* 튜토리얼 / 씨앗 안내 모달 (공통 카드 스타일) */
-  #tutorial-modal, #seed-modal, #hint-modal, #photo-modal, #char-modal, #merchant-modal, #notice-modal, #settings-modal, #invite-modal, #daily-modal { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
-  #tutorial-modal.show, #seed-modal.show, #hint-modal.show, #photo-modal.show, #char-modal.show, #merchant-modal.show, #notice-modal.show, #settings-modal.show, #invite-modal.show, #daily-modal.show { display: grid; }
+  #tutorial-modal, #seed-modal, #hint-modal, #photo-modal, #char-modal, #notice-modal, #settings-modal, #invite-modal, #daily-modal { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
+  #tutorial-modal.show, #seed-modal.show, #hint-modal.show, #photo-modal.show, #char-modal.show, #notice-modal.show, #settings-modal.show, #invite-modal.show, #daily-modal.show { display: grid; }
   #daily-modal { z-index: 44; }
   #daily-modal .daily-card { width: min(380px, 94vw); background: #f6f0e4; border-radius: 28px; padding: 14px; text-align: left; }
   #hint-modal .tut-card.as-card, #nudge-modal .daily-card { width: min(380px, 94vw); background: #f6f0e4; border-radius: 28px; padding: 14px; text-align: left; }
@@ -1330,63 +1330,25 @@
        · 내 말   = 오른쪽 꼬리 달린 연청 말풍선
        · 선택지  = 말풍선이 아니라 "고르는 것" — 왼쪽 강조선 + 들어오는 꺾쇠
      그림자는 배경 색조(따뜻한 녹)에 맞춰 틴트한다. 순수 검정은 쓰지 않는다. */
-  #chat-modal { position: fixed; inset: 0; z-index: 31; display: none; place-items: center;
-                background: rgba(24,42,33,0.42); backdrop-filter: blur(2px); padding: 16px; }
-  #chat-modal.show { display: grid; }
-  #chat-modal .chat-card { width: min(92vw, 430px); max-height: 84dvh; display: flex; flex-direction: column;
-                           background: linear-gradient(180deg, #fffefa 0%, #fdfaf1 100%);
-                           border: 1px solid rgba(120,150,120,0.16); border-radius: 20px; padding: 14px 16px 16px;
-                           box-shadow: 0 18px 44px -12px rgba(38,64,48,0.34);
-                           animation: chatPop .22s cubic-bezier(0.16, 1, 0.3, 1); }
-  @keyframes chatPop { from { opacity: 0; transform: translateY(10px) scale(0.985); } }
-
-  /* 머리 — 이모지를 동그란 칩에 앉혀 이름과 무게를 맞춘다 */
-  #chat-modal .chat-head { display: flex; align-items: center; gap: 9px; padding-bottom: 11px;
-                           border-bottom: 1px solid rgba(120,150,120,0.14); }
-  #chat-modal #chat-emoji { width: 30px; height: 30px; flex: none; display: grid; place-items: center;
-                            background: #eef5ea; border-radius: 50%; font-size: 17px; }
-  #chat-modal #chat-name { font-weight: 700; font-size: 15px; color: #2f5d43; letter-spacing: -0.2px; }
-
-  /* 로그 — 카드가 아니라 여기만 스크롤한다(선택지가 아래에 붙어 있게) */
-  #chat-modal .chat-log { flex: 1 1 auto; overflow-y: auto; min-height: 0;
-                          margin: 12px 0 4px; display: flex; flex-direction: column; gap: 8px; }
-  #chat-modal .tl { position: relative; font-size: 14px; line-height: 1.6; padding: 9px 13px;
-                    max-width: 84%; word-break: keep-all;
+  #chat-modal { z-index: 31; }
+  #chat-modal .chat-card { width: min(640px, 100%); max-height: min(84dvh, 560px); display: flex; flex-direction: column; padding: 16px 18px 16px 92px; }
+  #chat-modal .chat-head { display: flex; align-items: center; min-height: 26px; }
+  #chat-modal .chat-log { flex: 1 1 auto; overflow-y: auto; min-height: 0; margin: 6px -3px 2px; padding: 2px 3px; display: flex; flex-direction: column; gap: 8px; }
+  #chat-modal .tl { position: relative; font-size: 14px; line-height: 1.6; padding: 9px 13px; max-width: 86%; word-break: keep-all;
                     animation: tlIn .26s cubic-bezier(0.16, 1, 0.3, 1) backwards; }
   @keyframes tlIn { from { opacity: 0; transform: translateY(6px); } }
-  #chat-modal .tl.npc { background: #ecf4e8; color: #2b4a37; align-self: flex-start;
-                        border-radius: 14px 14px 14px 4px; }
-  #chat-modal .tl.me  { background: #e6eef8; color: #2a4560; align-self: flex-end;
-                        border-radius: 14px 14px 4px 14px; }
-  /* 작별은 대화가 아니라 맺음이다 — 말풍선을 벗기고 한 톤 낮춘다 */
-  #chat-modal .tl.bye { background: none; color: #6d7f71; font-style: italic; align-self: center;
-                        text-align: center; max-width: 100%; padding: 10px 4px 2px; }
-
-  /* 선택지 — 말풍선과 다른 물성. 왼쪽 강조선이 호버에 자라고 꺾쇠가 들어온다 */
-  #chat-modal .chat-choices { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; }
-  #chat-modal .chat-choices button { position: relative; display: flex; align-items: center; gap: 8px;
-                                     text-align: left; padding: 10px 12px 10px 14px; font-size: 13.5px; line-height: 1.45;
-                                     font-family: inherit; color: #35604a; word-break: keep-all;
-                                     background: #fff; border: 1px solid rgba(120,150,120,0.22);
-                                     border-left: 3px solid #cfe0cd; border-radius: 12px; cursor: pointer;
-                                     transition: background .16s ease, border-color .16s ease, transform .1s ease;
-                                     animation: tlIn .28s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  #chat-modal .tl.npc { background: var(--nt); color: #3c3326; align-self: flex-start; border-radius: 14px 14px 14px 4px; }
+  #chat-modal .tl.me  { background: #fff; color: #4a4438; align-self: flex-end; border-radius: 14px 14px 4px 14px; box-shadow: 0 0 0 2px #eadfcb; }
+  #chat-modal .tl.bye { background: none; color: #7a6a52; font-style: italic; align-self: center; text-align: center; max-width: 100%; padding: 10px 4px 2px; }
+  #chat-modal .chat-choices { display: flex; flex-direction: column; flex-wrap: nowrap; gap: 8px; padding-top: 8px; }
+  #chat-modal .chat-choices:empty { display: none; }
+  #chat-modal .chat-choices button { display: flex; align-items: center; gap: 8px; text-align: left; padding: 10px 14px; font-size: 13.5px; line-height: 1.45;
+                                     font-weight: 700; word-break: keep-all; animation: tlIn .28s cubic-bezier(0.16, 1, 0.3, 1) backwards;
                                      animation-delay: calc(var(--i, 0) * 55ms); }
-  #chat-modal .chat-choices button::after { content: '›'; margin-left: auto; color: #9ab79c; font-size: 16px;
-                                            opacity: 0; transform: translateX(-3px); transition: all .16s ease; }
-  #chat-modal .chat-choices button:hover { background: #f5faf3; border-left-color: #7fb389; }
-  #chat-modal .chat-choices button:hover::after { opacity: 1; transform: translateX(0); }
-  #chat-modal .chat-choices button:active { transform: scale(0.985); }
-
-  /* 닫기 — .ghost 는 .npc-actions 안에서만 정의돼 있어(1163행) 여기선 안 먹는다.
-     의뢰 모달의 ghost 버튼과 같은 물성으로 맞춘다. */
-  #chat-modal .chat-done { display: flex; justify-content: flex-end; padding-top: 12px; }
-  #chat-modal .chat-done button { border: none; border-radius: 12px; padding: 9px 20px;
-                                  font-family: inherit; font-weight: 600; font-size: 13.5px;
-                                  background: #eef2ee; color: var(--ink); cursor: pointer;
-                                  transition: background .16s ease, transform .1s ease; }
-  #chat-modal .chat-done button:hover { background: #e4ebe3; }
-  #chat-modal .chat-done button:active { transform: scale(0.95); }
+  #chat-modal .chat-choices button::after { content: '›'; margin-left: auto; color: var(--ni); font-size: 16px; }
+  #chat-modal .chat-choices button:hover { box-shadow: 0 0 0 2px var(--nc), 0 3px 0 var(--nd); }
+  #chat-modal .chat-done { justify-content: flex-end; padding-top: 12px; }
+  #chat-modal .chat-done:empty { display: none; }
 
   /* 🦆 사공 퀴즈 — C안 나루터 팻말(시안 sims/ferry-quiz/quiz-options.html 승인 2026-09-30).
      나무 판 + 밧줄에 매단 표찰 4개. 보기가 길면(.two) 2×2 로 접는다 — 주민 이름·요리 이름. */
@@ -1481,15 +1443,31 @@
   #e1-next:active { transform: scale(0.96); }
   #door-prompt { bottom: calc(150px + env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); font-size: 14px; font-weight: 600; opacity: 0; transition: opacity .25s; pointer-events: none; white-space: nowrap; }
   /* 🪞 거울 주민 대화 박스(B안 2026-10-10) — 화면 아래 얼굴·이름·대사. 어둡게 하지 않는다(걸으며 읽기). 떠 있는 동안 같은 자리의 문 프롬프트는 숨김 */
+  .tk-box { --nc: #5fbf62; --nt: #dff2e0; --ni: #48914a; --nd: #336634; position: relative; box-sizing: border-box;
+    background: #fffaf1; color: #3c3326; border-radius: 24px;
+    box-shadow: 0 0 0 3px #fff, 0 8px 0 var(--nc), 0 14px 26px rgba(30,20,10,0.25); }
+  .tk-face { position: absolute; left: 14px; top: -16px; width: 66px; height: 66px; border-radius: 50%; display: grid; place-items: center;
+    font-size: 32px; line-height: 1; background: var(--nt); border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+  .tk-name { font-size: 18px; font-weight: 800; color: var(--ni); letter-spacing: -0.2px; }
+  .tk-modal { position: fixed; inset: 0; display: none; place-items: end center; padding: 0 12px calc(24px + env(safe-area-inset-bottom)); }
+  .tk-modal.show { display: grid; }
+  .tk-modal.show > .tk-box { animation: tk-in .2s cubic-bezier(0.16, 1, 0.3, 1); }
+  @keyframes tk-in { from { opacity: 0; transform: translateY(10px); } }
+  .tk-acts button { border: 0; border-radius: 14px; padding: 9px 16px; font: inherit; font-weight: 800; font-size: 13.5px; cursor: pointer;
+    background: #fff; color: #4a4438; box-shadow: 0 0 0 2px #eadfcb, 0 3px 0 #d8ccb6; transition: transform .08s, box-shadow .08s; }
+  .tk-acts .primary { background: var(--ni); color: #fff; box-shadow: 0 0 0 2px var(--ni), 0 3px 0 var(--nd); }
+  .tk-acts button:active { transform: translateY(2px); box-shadow: 0 0 0 2px #eadfcb, 0 1px 0 #d8ccb6; }
+  .tk-acts .primary:active { box-shadow: 0 0 0 2px var(--ni), 0 1px 0 var(--nd); }
+  .tk-acts button:disabled { opacity: 0.5; cursor: default; transform: none; }
+  .tk-acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+  body:has(.tk-modal.show) #mobile-controls, body:has(.tk-modal.show) #talk-btn { visibility: hidden; }
   #mirror-talk { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(92px + env(safe-area-inset-bottom)); z-index: 7; display: none;
-    width: min(620px, 92vw); min-height: 92px; box-sizing: border-box; padding: 14px 16px 24px 86px; border-radius: 18px; cursor: pointer;
-    background: #fff; box-shadow: 0 10px 30px rgba(20,20,60,0.3); color: var(--ink); }   /* 불투명 — 모바일에선 같은 자리의 의뢰 칩·문 프롬프트가 비쳐 보였다 */
+    width: min(620px, 92vw); min-height: 92px; padding: 14px 18px 24px 92px; cursor: pointer; }
   #mirror-talk.show { display: block; animation: mt-in .18s ease-out; }
   @keyframes mt-in { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
-  #mt-face { position: absolute; left: 14px; top: 14px; width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; font-size: 28px; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
-  #mt-name { display: inline-block; font-size: 12px; font-weight: 800; color: #fff; background: #7a6fd0; padding: 2px 10px; border-radius: 10px; margin-bottom: 6px; }
+  #mt-name { display: block; margin-bottom: 2px; }
   #mt-line { font-size: 14.5px; line-height: 1.5; word-break: keep-all; overflow-wrap: anywhere; }
-  #mt-next { position: absolute; right: 14px; bottom: 7px; font-size: 11px; opacity: 0.6; }
+  #mt-next { position: absolute; right: 16px; bottom: 8px; font-size: 11px; opacity: 0.55; }
   body:has(#mirror-talk.show) #door-prompt, body:has(#mirror-talk.show) #hint, body:has(#mirror-talk.show) #zone-prompt { opacity: 0 !important; }   /* 박스가 조작 안내 줄 자리까지 쓴다(위의 의뢰 N/3 칩과 안 겹치게) */
   body.sea-mode:not(.is-touch) #mirror-talk { bottom: calc(5% + 124px + env(safe-area-inset-bottom)); }
   #guide-card { position: fixed; left: 50%; top: calc(58px + var(--top-inset, 0px)); transform: translateX(-50%); z-index: 8; padding: 5px 14px; border-radius: 14px; background: rgba(255,248,232,.97); color: #3d3424; font-size: 14px; font-weight: 700; white-space: nowrap; max-width: calc(100vw - 24px); overflow: hidden; text-overflow: ellipsis; border: 2px solid #ffc94a; box-shadow: 0 2px 10px rgba(0,0,0,.3); pointer-events: none; }
@@ -2659,36 +2637,28 @@
     #hint-modal .tut-card:not(.as-card) #hint-emoji { left: 2px; top: -78px; bottom: auto; width: 66px; height: 66px; border-radius: 20px; font-size: 40px; }
   }
   #merchant-modal { z-index: 45; }
-  #merchant-modal .tut-card { width: min(400px, 92vw); }
-  .merchant-actions { display: flex; flex-direction: column; gap: 10px; }
-  .merchant-actions button { border: none; border-radius: 14px; min-height: 48px; padding: 12px 18px; font-weight: 700; font-size: 15px; cursor: pointer; box-shadow: var(--shadow); }
-  #merchant-primary { background: var(--mint); color: var(--ink); }
-  #merchant-secondary { background: #eef2ee; color: var(--ink); }
+  .merchant-card { width: min(640px, 100%); padding: 16px 18px 16px 92px; }
+  #merchant-title { display: block; min-height: 26px; }
+  #merchant-body { font-size: 14.5px; line-height: 1.55; margin: 4px 0 12px; white-space: pre-line; word-break: keep-all; }
   #buffs .buff .b-t { opacity: .7; font-variant-numeric: tabular-nums; }
 
   /* NPC 대화/퀘스트 모달 */
-  #npc-modal { position: fixed; inset: 0; z-index: 30; display: none; place-items: center; background: rgba(20,40,30,0.4); }
-  #npc-modal.show { display: grid; }
-  .npc-card { width: min(400px, 90vw); max-height: calc(100dvh - 24px); overflow-y: auto; background: #fff; border-radius: 22px; box-shadow: 0 20px 60px rgba(30,50,40,0.35); padding: 24px 24px 20px; color: var(--ink); }
-  .npc-head { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 17px; }
-  #npc-hearts { font-size: 13px; margin-left: auto; letter-spacing: 1px; }
-  #npc-emoji { font-size: 22px; }
-  #npc-line { margin: 12px 0 14px; font-size: 15px; line-height: 1.5; }
-  #npc-quest { background: #f4faf5; border-radius: 14px; padding: 12px 14px; margin-bottom: 16px; }
+  #npc-modal { z-index: 30; }
+  .npc-card { width: min(640px, 100%); padding: 16px 18px 16px 92px; }
+  .npc-card .tk-scroll { max-height: calc(100dvh - 72px - var(--top-inset, 0px)); overflow-y: auto; padding: 2px 4px 5px 3px; margin: -2px -4px -5px -3px; }
+  .npc-head { display: flex; align-items: center; gap: 8px; }
+  #npc-hearts { font-size: 12px; letter-spacing: 1px; }
+  #npc-line { margin: 4px 0 10px; font-size: 15px; line-height: 1.5; word-break: keep-all; }
+  #npc-quest { background: var(--nt); border-radius: 14px; padding: 9px 12px; margin-bottom: 12px; }
   #npc-quest.hidden { display: none; }
-  .nq-title { font-weight: 700; font-size: 13px; margin-bottom: 8px; }
-  .nq-how { font-size: 12.5px; line-height: 1.5; color: #3f7a55; background: #e8f5ec; border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; }
+  .nq-title { font-weight: 800; font-size: 13px; margin-bottom: 4px; }
+  .nq-how { font-size: 12.5px; line-height: 1.45; color: #5a4a38; margin-bottom: 7px; }
   .nq-how:empty { display: none; }
   #npc-qbar { height: 8px; border-radius: 5px; background: rgba(0,0,0,0.08); overflow: hidden; }
-  #npc-qfill { height: 100%; width: 0%; background: linear-gradient(90deg,#8fd6a0,#ffd28a); transition: width .3s; }
-  .nq-meta { display: flex; justify-content: space-between; font-size: 12px; opacity: .72; margin-top: 6px; }
-  .npc-actions { display: flex; gap: 10px; justify-content: flex-end; }
-  .npc-actions button { border: none; border-radius: 12px; padding: 10px 18px; font-weight: 600; cursor: pointer; transition: transform .1s; }
-  .npc-actions .ghost { background: #eef2ee; color: var(--ink); }
-  .npc-actions .primary { background: var(--mint); color: var(--ink); }
-  .npc-actions button:active { transform: scale(0.95); }
-  .npc-actions.gift-pick { flex-wrap: wrap; justify-content: center; gap: 8px; }
-  .npc-actions.gift-pick button { padding: 9px 12px; white-space: nowrap; }
+  #npc-qfill { height: 100%; width: 0%; border-radius: 5px; background: var(--nc); transition: width .3s; }
+  .nq-meta { display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; margin-top: 5px; color: #5a4a38; }
+  .tk-acts.gift-pick { justify-content: center; }
+  .tk-acts.gift-pick button { padding: 9px 12px; white-space: nowrap; }
 
   /* 모바일 전용 "대화하기" 버튼 — NPC 근처에서만 표시 */
   #talk-btn { position: fixed; left: 50%; bottom: calc(310px + env(safe-area-inset-bottom)); transform: translateX(-50%);
@@ -2890,8 +2860,13 @@
     #npc-prompt { display: none; }
     /* 문/낚시 프롬프트: 조이스틱·액션버튼 위로 올려 겹침 방지 */
     /* 손님 이름+요리가 길어지면 화면 밖으로 나가므로 모바일에선 줄바꿈 허용 */
-    #mirror-talk { bottom: calc(226px + env(safe-area-inset-bottom)); padding: 12px 12px 22px 70px; min-height: 76px; }   /* 🪞 조이스틱·액션 버튼 위 — 문 프롬프트 자리(박스가 떠 있으면 그건 숨김) */
-    #mt-face { width: 46px; height: 46px; font-size: 22px; left: 12px; top: 12px; }
+    #mirror-talk { bottom: calc(226px + env(safe-area-inset-bottom)); padding: 14px 13px 22px; min-height: 0; }   /* 🪞 조이스틱·액션 버튼 위 — 문 프롬프트 자리(박스가 떠 있으면 그건 숨김) */
+    .tk-face { width: 52px; height: 52px; font-size: 25px; left: 12px; top: -26px; }
+    #mt-name, .npc-head, .chat-head, #merchant-title { padding-left: 58px; min-height: 22px; }
+    .npc-card, #chat-modal .chat-card, .merchant-card { padding: 14px 13px; }
+    .tk-modal { padding: 0 8px calc(14px + env(safe-area-inset-bottom)); }
+    .tk-acts button { flex: 1 1 auto; }
+    #chat-modal .chat-choices button { flex: none; }
     #mt-line { font-size: 13.5px; }
     #door-prompt, #fish-prompt { bottom: calc(234px + env(safe-area-inset-bottom)); font-size: 13px; white-space: normal; max-width: 88vw; width: max-content; word-break: keep-all; overflow-wrap: anywhere; text-align: center; }
     #catch-banner { bottom: calc(234px + env(safe-area-inset-bottom)); padding: 10px 18px; max-width: min(300px, 84vw); }
@@ -3003,10 +2978,7 @@
     .tut-card h2 { margin: 0 0 8px; font-size: 17px; }
     .tut-emoji { font-size: 30px; }
     #hire-modal .tut-card { max-height: calc(100dvh - 16px - var(--top-inset, 0px)); }
-    #merchant-body { margin-bottom: 10px !important; }
-    .merchant-actions { flex-direction: row-reverse; gap: 8px; }
-    .merchant-actions button { flex: 1 1 0; min-height: 40px; padding: 9px 14px; font-size: 14px; }
-    .tut-card > .dm-actions:last-child, .tut-card > .merchant-actions:last-child {
+    .tut-card > .dm-actions:last-child {
       position: sticky; bottom: -12px; margin-bottom: -12px; padding: 6px 0 12px;
       background: linear-gradient(rgba(255,255,255,0), #fff 35%); z-index: 1;
     }
@@ -3122,12 +3094,13 @@
   </div>
 
   <!-- 💬 주민과 잡담 — 의뢰와 무관한 순수 플레이버(보상 없음). 하루 주민당 2번. -->
-  <div id="chat-modal">
-    <div class="chat-card">
-      <div class="chat-head"><span id="chat-emoji">💬</span><span id="chat-name"></span></div>
+  <div id="chat-modal" class="tk-modal">
+    <div class="chat-card tk-box">
+      <div class="tk-face" id="chat-emoji">💬</div>
+      <div class="chat-head"><span id="chat-name" class="tk-name"></span></div>
       <div class="chat-log" id="chat-log"></div>
-      <div class="chat-choices" id="chat-choices"></div>
-      <div class="chat-done" id="chat-done"></div>
+      <div class="chat-choices tk-acts" id="chat-choices"></div>
+      <div class="chat-done tk-acts" id="chat-done"></div>
     </div>
   </div>
 
@@ -3802,23 +3775,26 @@
   </div>
 
   <!-- NPC 대화/퀘스트 모달 -->
-  <div id="npc-modal">
-    <div class="npc-card">
-      <div class="npc-head"><span id="npc-emoji">🙂</span><span id="npc-name"></span><span id="npc-hearts"></span></div>
-      <p id="npc-line"></p>
-      <div id="npc-quest">
-        <div class="nq-title" id="npc-qtitle"></div>
-        <div class="nq-how" id="npc-qhow"></div>
-        <div id="npc-qbar"><div id="npc-qfill"></div></div>
-        <div class="nq-meta"><span id="npc-qprog"></span><span id="npc-qreward"></span></div>
+  <div id="npc-modal" class="tk-modal">
+    <div class="npc-card tk-box">
+      <div class="tk-face" id="npc-emoji">🙂</div>
+      <div class="tk-scroll">
+        <div class="npc-head"><span id="npc-name" class="tk-name"></span><span id="npc-hearts"></span></div>
+        <p id="npc-line"></p>
+        <div id="npc-quest">
+          <div class="nq-title" id="npc-qtitle"></div>
+          <div class="nq-how" id="npc-qhow"></div>
+          <div id="npc-qbar"><div id="npc-qfill"></div></div>
+          <div class="nq-meta"><span id="npc-qprog"></span><span id="npc-qreward"></span></div>
+        </div>
+        <div class="npc-actions tk-acts" id="npc-actions"></div>
       </div>
-      <div class="npc-actions" id="npc-actions"></div>
     </div>
   </div>
 
   <!-- 🪞 거울 주민 대화 박스(B안) — js/mirror/talk-box.js -->
   <div id="guide-card" hidden></div><div id="guide-mark" hidden></div><div id="guide-edge" hidden></div>
-  <div id="mirror-talk" role="dialog" aria-live="polite"><div id="mt-face"></div><div id="mt-name"></div><div id="mt-line"></div><div id="mt-next"></div></div>
+  <div id="mirror-talk" class="tk-box" role="dialog" aria-live="polite"><div id="mt-face" class="tk-face"></div><div id="mt-name" class="tk-name"></div><div id="mt-line"></div><div id="mt-next"></div></div>
 
   <!-- 🧪 E1 처치 시작 안내(아래 시트) — 내용은 js/spaces/e1-start.js 가 채운다 -->
   <div id="e1intro-modal" role="dialog" aria-modal="true" aria-labelledby="e1-title">
@@ -3897,14 +3873,14 @@
   </div>
 
   <!-- 🧙 상인 방문 모달 — 환영 거래(1회) → 좌판 안내 -->
-  <div id="merchant-modal">
-    <div class="tut-card">
-      <div class="tut-emoji">🧙</div>
-      <h2 id="merchant-title">방랑 상인</h2>
-      <p id="merchant-body" style="font-size:14px; line-height:1.6; opacity:.85; margin:0 0 18px; white-space:pre-line;"></p>
-      <div class="merchant-actions">
-        <button id="merchant-primary"></button>
+  <div id="merchant-modal" class="tk-modal">
+    <div class="merchant-card tk-box">
+      <div class="tk-face">🧙</div>
+      <div id="merchant-title" class="tk-name">방랑 상인</div>
+      <p id="merchant-body"></p>
+      <div class="merchant-actions tk-acts">
         <button id="merchant-secondary"></button>
+        <button id="merchant-primary" class="primary"></button>
       </div>
     </div>
   </div>
@@ -4049,6 +4025,7 @@
     import { consumeExit, markExit } from './js/exit-flag.js';   // 🚪 나가기 직후엔 토스·플레이 앱 자동 연결을 건너뛴다 · 🗑️ 계정 삭제 뒤에도
     import { pickText, quoteLine, parseBody, leadEmoji, noticeTone } from './js/notices.js';   // 📮 소식함 — 언어별 본문·답장 원문 인용·'|' 표 파서
     import { isTouchDevice } from './js/touch-sim.js';
+    import { toneById, applyTone } from './js/ui/npc-tone.js';
     import { PLATFORM, IS_TOSS, IS_ITCH, IS_ANDROID, IS_IOS, IS_NATIVE } from './js/platform.js';   // 🔵 앱인토스 웹뷰 여부(로그인 버튼 전환) · 🎮 itch iframe 여부 · 📱 구글 플레이 앱
     import { loadGameModules, bootWorld, enterGame, requestSave, getGameState, isAtOrchard, mapLocked, npcAccept, npcClaim, Input, markNoticesSeen, resyncPurchases, initPush, offerPush, playChestReveal, stopChestReveal, initControls, initCafeGuests, initNightVisit, initDuel, openDecorAlbum, villageMap, requestMapSnapshot } from './js/game-lazy.js';
     import { bootReferral, inviteBanner, referralOnPlay, openInviteSheet, referralEnabled } from './js/referral/index.js';   // 🤝 친구 초대
@@ -4712,6 +4689,7 @@
       openNPCModal(view) {
         if (!view) return;
         $('npc-emoji').textContent = view.npc.emoji || '🙂';
+        applyTone(document.querySelector('#npc-modal .tk-box'), toneById(view.npc.id));
         $('npc-name').textContent = view.npc.name;
         const aff = Input.affinityOf(view.npc.id);
         $('npc-hearts').textContent = aff > 0 ? ('❤️'.repeat(Math.min(aff, 5)) + (aff > 5 ? `×${aff}` : '')) : '';
@@ -5166,6 +5144,7 @@
       // 🧙 상인 모달 — primary/secondary 버튼 콜백을 매번 갈아끼운다(중복 리스너 방지: onclick 프로퍼티)
       openMerchantModal({ title, body, primary, secondary }) {
         $('merchant-title').textContent = title || '방랑 상인';
+        applyTone(document.querySelector('#merchant-modal .tk-box'), toneById('merchant'));
         $('merchant-body').textContent = body || '';
         const p = $('merchant-primary'), s = $('merchant-secondary');
         p.textContent = primary.label; p.onclick = () => primary.onClick();
@@ -5716,6 +5695,7 @@
     async function startTalk(npc) {
       talkClear();
       $('chat-emoji').textContent = npc.emoji;
+      applyTone(document.querySelector('#chat-modal .tk-box'), toneById(npc.id));
       $('chat-name').textContent = t(npc.name);
       $('chat-modal').classList.add('show');
 
