@@ -116,9 +116,18 @@ test('밀도맵 시간대는 롤업 cf_heat_slot 과 응답 heat_slot 을 쓴다
   assert.match(src('dashboards/admin_analytics.html'), /id="slotSel"/);
 });
 
+function villageZoneRows(sql) {
+  const village = sql.slice(sql.indexOf('abs(x) <= 46'), sql.indexOf("return 'road'"));
+  return [...village.matchAll(/\(x - \((-?[0-9.]+)\)\)\^2 \+ \(z - \((-?[0-9.]+)\)\)\^2 <= ([0-9.]+) then return '([a-z_]+)'/g)]
+    .map((m) => [m[4], +m[1], +m[2], Math.sqrt(+m[3])]);
+}
+
 test('이동 흐름: 구역 이름표는 SQL cf_zone_of 의 키와 맵 판정 키를 전부 덮는다', () => {
   const sql = src('sql/migrations/migrate_zone_paths.sql');
-  const keys = [...sql.matchAll(/\('([a-z_]+)', -?[0-9.]+, -?[0-9.]+, [0-9.]+\)/g)].map((m) => m[1]);
+  const keys = [
+    ...villageZoneRows(sql).map((r) => r[0]),
+    ...[...sql.matchAll(/k := '([a-z_]+)'/g)].map((m) => m[1]),
+  ];
   assert.ok(keys.length >= 30);
   for (const k of [...keys, 'river', 'dream', 'mirror']) assert.ok(ZONES[k], k);
 });
@@ -149,10 +158,7 @@ test('이동 흐름은 롤업 cf_session_zones 와 응답 zone_flow 를 쓴다',
 });
 
 test('동선 재생: 화면의 시설 원은 SQL cf_zone_of 의 마을 원과 같다', () => {
-  const sql = src('sql/migrations/migrate_zone_paths.sql');
-  const village = sql.slice(sql.indexOf('abs(x) <= 46'), sql.indexOf("'road'"));
-  const rows = [...village.matchAll(/\('([a-z_]+)', (-?[0-9.]+), (-?[0-9.]+), ([0-9.]+)\)/g)].map((m) => [m[1], +m[2], +m[3], +m[4]]);
-  assert.deepEqual(ZONE_CIRCLES, rows);
+  assert.deepEqual(ZONE_CIRCLES, villageZoneRows(src('sql/migrations/migrate_zone_paths.sql')));
 });
 
 test('구역 원: 바다 관문·경매 무대 원이 게임 좌표를 따라간다', () => {
