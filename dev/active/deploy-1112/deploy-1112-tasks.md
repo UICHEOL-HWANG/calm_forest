@@ -30,5 +30,6 @@
 - [x] 섬 바구니: 폰에서 행동 버튼(104px)과 겹침 → 왼쪽 붙임·칸 크기 자동(390px 폰 29px)
 - [x] 웹 라이브 0fa397ed · 푸시 main be530bf9 · capacitor 28a0d322 · ios 322cda72
 - [x] Play 129(1.4.17) 3트랙 · iOS 1.0.27 빌드 56 WAITING_FOR_REVIEW(메모 build 56, 영상 첨부 유지) · itch.zip
-- [ ] 토스: -208 검수 중(취소 불가) → 끝나면 -209 제출(테스트 푸시 완료). -208 은 승인돼도 출시하지 말 것
+- [x] 토스: -208 승인(출시 안 함) → -209 검수 제출 REVIEWING. 승인되면 콘솔에서 -209 출시하기(사용자)
 - [x] 토스 광고 그룹 ENABLED·ID 일치(01:47)
+- [ ] 공지: 문구 확정(notice-draft.md), 토스 -209 출시 뒤 scratchpad post_notice.py 로 등록
