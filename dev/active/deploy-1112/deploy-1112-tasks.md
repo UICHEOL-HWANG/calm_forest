@@ -32,4 +32,4 @@
 - [x] Play 129(1.4.17) 3트랙 · iOS 1.0.27 빌드 56 WAITING_FOR_REVIEW(메모 build 56, 영상 첨부 유지) · itch.zip
 - [x] 토스: -208 승인(출시 안 함) → -209 검수 제출 REVIEWING. 승인되면 콘솔에서 -209 출시하기(사용자)
 - [x] 토스 광고 그룹 ENABLED·ID 일치(01:47)
-- [ ] 공지: 문구 확정(notice-draft.md), 토스 -209 출시 뒤 scratchpad post_notice.py 로 등록
+- [x] 공지 id 173 등록(토스 -209 라이브 02:56 확인 뒤, 전체 대상·ko/en)
