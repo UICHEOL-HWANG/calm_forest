@@ -180,3 +180,28 @@ test('★1 도마는 쌀만 받는다(냄비가 없어 손질한 생선을 쓸 �
   actAt(S2, at('crate_fish'), { take: yes });
   assert.equal(contextAt(S2, at('board')).do, 'put');
 });
+
+test('손님은 식탁·다른 의자를 뚫지 않고 통로로 걸어 자리에 앉는다', async () => {
+  const { guestPath, pointAlong, pathLen } = await import('../js/restaurant/session.js');
+  const segDist = (a, b, p) => {
+    const dx = b.x - a.x, dz = b.z - a.z, L = dx * dx + dz * dz, t = L ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.z - a.z) * dz) / L)) : 0;
+    return Math.hypot(a.x + dx * t - p.x, a.z + dz * t - p.z);
+  };
+  const board = { x: HALL.board.x, z: HALL.board.z };
+  HALL.tables.forEach(([tx, tz], i) => {
+    const path = guestPath(i);
+    assert.deepEqual(path[0], HALL.door);
+    assert.deepEqual(path.at(-1), { x: tx, z: tz - 1.0 });
+    for (let k = 1; k < path.length; k++) {
+      const a = path[k - 1], b = path[k];
+      HALL.tables.forEach(([ox, oz], j) => {
+        assert.ok(segDist(a, b, { x: ox, z: oz }) > 0.78 + (j === i ? 0.15 : 0.25), `table ${i} leg ${k} hits table ${j}`);
+        if (j !== i) assert.ok(segDist(a, b, { x: ox, z: oz - 1.0 }) > 0.32 + 0.25, `table ${i} leg ${k} hits chair ${j}`);
+      });
+      assert.ok(segDist(a, b, board) > 0.5, `table ${i} leg ${k} hits the board`);
+    }
+    const xz = p => ({ x: p.x, z: p.z });
+    assert.deepEqual(xz(pointAlong(path, 0)), HALL.door);
+    assert.deepEqual(xz(pointAlong(path, pathLen(path))), { x: tx, z: tz - 1.0 });
+  });
+});

@@ -46,6 +46,7 @@ export const STARTER_STOCK = { fish: 4, rice: 4 };
 export const HALL = {
   half: { x: 7.2, z: 4.2 },
   door: { x: -6.3, z: 3.4 },
+  aisles: { west: -6.3, mid: -3.2 },
   board: { x: -3.2, z: -3.7 },
   tables: [[-4.7, -2.0], [-1.7, -2.0], [-4.7, 1.5], [-1.7, 1.5]],
   stations: [

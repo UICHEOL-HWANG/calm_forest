@@ -1,5 +1,5 @@
 import { HALL, STAR, RESTAURANT, PATIENCE } from './data.js';
-import { createSession, tickSession, contextAt, actAt, finishSession, stationView } from './session.js';
+import { createSession, tickSession, contextAt, actAt, finishSession, stationView, guestPath, pathLen, pointAlong } from './session.js';
 import { recordServe, takeIngredient, settleService } from './rules.js';
 import { showForStar, itemMesh, itemHeight } from './hall.js';
 import { mountHud, contextLabel, goalRows, resultView, menuView } from './hud.js';
@@ -63,16 +63,15 @@ export function createRestaurantRuntime(env) {
   }
 
   function placeGuest(g, m) {
-    const [tx, tz] = HALL.tables[g.table];
-    const sx = tx, sz = tz - 1.0;
+    const path = guestPath(g.table), len = pathLen(path);
     let k = 1;
     if (g.state === 'walk') k = Math.min(1, g.t / g.walk);
     else if (g.state === 'leave') k = Math.max(0, 1 - g.t / g.walk);
-    const x = HALL.door.x + (sx - HALL.door.x) * k, z = HALL.door.z + (sz - HALL.door.z) * k;
+    const p = pointAlong(path, len * k);
     const y = g.state === 'eat' ? 0.16 + Math.abs(Math.sin(g.t * 8)) * 0.05 : k === 1 ? 0.16 : 0;
-    m.position.set(x, y, z);
-    if (g.state === 'walk') m.rotation.y = Math.atan2(sx - HALL.door.x, sz - HALL.door.z);
-    else if (g.state === 'leave') m.rotation.y = Math.atan2(HALL.door.x - sx, HALL.door.z - sz);
+    m.position.set(p.x, y, p.z);
+    if (g.state === 'walk') m.rotation.y = p.dir;
+    else if (g.state === 'leave') m.rotation.y = p.dir + Math.PI;
     else m.rotation.y = 0;
   }
 

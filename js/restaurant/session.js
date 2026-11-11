@@ -9,7 +9,27 @@ const FRESH_CHOP = () => ({ taps: 0, last: -1 });
 const stationDef = id => HALL.stations.find(s => s.id === id);
 const isActive = (S, s) => !s.need || S.star >= s.need;
 const dist = (p, x, z) => Math.hypot(p.x - x, p.z - z);
-const walkTime = tb => Math.hypot(HALL.door.x - tb[0], HALL.door.z - (tb[1] - 1.0)) / HALL.guestWalk;
+export function guestPath(table) {
+  const [tx, tz] = HALL.tables[table], seat = { x: tx, z: tz - 1.0 }, { door, aisles } = HALL;
+  if (tx < aisles.mid) return [door, { x: aisles.west, z: seat.z }, seat];
+  return [door, { x: aisles.mid, z: door.z }, { x: aisles.mid, z: seat.z }, seat];
+}
+export function pathLen(path) {
+  let d = 0;
+  for (let i = 1; i < path.length; i++) d += Math.hypot(path[i].x - path[i - 1].x, path[i].z - path[i - 1].z);
+  return d;
+}
+export function pointAlong(path, dist) {
+  let left = Math.max(0, dist);
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i - 1], b = path[i], seg = Math.hypot(b.x - a.x, b.z - a.z);
+    if (left < seg - 1e-9) { const k = left / seg; return { x: a.x + (b.x - a.x) * k, z: a.z + (b.z - a.z) * k, dir: Math.atan2(b.x - a.x, b.z - a.z) }; }
+    left -= seg;
+  }
+  const end = path[path.length - 1], prev = path[path.length - 2] || end;
+  return { x: end.x, z: end.z, dir: Math.atan2(end.x - prev.x, end.z - prev.z) };
+}
+const walkTime = table => pathLen(guestPath(table)) / HALL.guestWalk;
 
 const FIRST_PAT = 1.2;
 
@@ -43,7 +63,7 @@ function spawn(S) {
   const free = freeTables(S);
   if (!free.length) return null;
   const table = free[Math.floor(S.rng() * free.length)];
-  const g = { id: ++S.gid, table, menu, state: 'walk', t: 0, walk: walkTime(HALL.tables[table]) };
+  const g = { id: ++S.gid, table, menu, state: 'walk', t: 0, walk: walkTime(table) };
   S.guests.push(g);
   return g;
 }
