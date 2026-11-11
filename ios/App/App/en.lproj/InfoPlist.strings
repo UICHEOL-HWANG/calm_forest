@@ -1,3 +1,3 @@
 /* 홈 화면 앱 이름 — 한국어 이외 언어(기본) */
 "CFBundleDisplayName" = "고요한 숲";
-"NSUserTrackingUsageDescription" = "Your data is used to show ads that fit you better. Rewarded ads help keep Calm Forest free.";
+"NSUserTrackingUsageDescription" = "Used to see which ad brought you here and to show ads that fit you better. The game works the same if you don't allow it.";

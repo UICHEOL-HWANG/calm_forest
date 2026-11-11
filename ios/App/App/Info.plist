@@ -29,7 +29,7 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSUserTrackingUsageDescription</key>
-	<string>Your data is used to show ads that fit you better. Rewarded ads help keep Calm Forest free.</string>
+	<string>Used to see which ad brought you here and to show ads that fit you better. The game works the same if you don't allow it.</string>
 	<key>SKAdNetworkItems</key>
 	<array>
 		<dict>
