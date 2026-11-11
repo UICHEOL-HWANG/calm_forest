@@ -72,6 +72,7 @@ import { e6Decision } from './exp-e6-boot.js';
 import { guideRevampOn } from './exp-e6.js';
 import { createHouseShort } from './guide/house-short.js';
 import { createRewarded } from './ads/rewarded.js';
+import { rewardedAvailable, showRewarded } from './ads/admob.js';
 import { createFarmRush } from './ads/farm-rush.js';
 import { repeatOpen, rushSlots, sellBonus } from './guide/prepass-rules.js';
 import { sanitizeHouseGuide } from './house-guide-rules.js';
@@ -1622,6 +1623,7 @@ let prepassProvider = PREPASS_DEV
   ? { available: () => true, show: async () => ({ result: 'complete', valueMicros: 0 }) }
   : { available: () => false, show: async () => ({ result: 'unavailable' }) };
 export function setPrepassProvider(p) { if (!PREPASS_DEV && p?.available && p?.show) prepassProvider = p; }
+setPrepassProvider({ available: () => rewardedAvailable, show: showRewarded });
 const museumDoor = { x: MUSEUM_GATE.x, z: MUSEUM_GATE.z + 3.0 };
 function museumGoal() {
   const curator = npcObjs.find(o => o.def.id === 'curator' && !o.hidden);
