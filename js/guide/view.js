@@ -6,7 +6,7 @@ const RIGHT_SVG = '<svg viewBox="0 0 20 20"><path d="M2 7.5h8.5V3.5L18 10l-7.5 6
 
 export function createGuideView({ scene, camera, root }) {
   const gold = 0xffc94a;
-  const ring = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.15, 28), new THREE.MeshBasicMaterial({ color: gold, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false }));
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.15, 28), new THREE.MeshBasicMaterial({ color: gold, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
   ring.rotation.x = -Math.PI / 2; ring.visible = false; ring.renderOrder = 5; scene.add(ring);
   const sh = new THREE.Shape(); sh.moveTo(0, 0.55); sh.lineTo(0.42, -0.25); sh.lineTo(0, -0.05); sh.lineTo(-0.42, -0.25); sh.closePath();
   const chev = new THREE.Mesh(new THREE.ShapeGeometry(sh), new THREE.MeshBasicMaterial({ color: gold, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false }));

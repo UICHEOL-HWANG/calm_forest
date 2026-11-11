@@ -1,5 +1,17 @@
 export const RESTAURANT = { x: 0, z: 620 };
-export const RESTAURANT_GATE = { x: 12, z: 20.5 };
+export const RESTAURANT_GATE = { x: -3, z: 38.5 };
+export const RESTAURANT_FACE = -1;
+export const restaurantLocal = (lx, lz) => ({ x: RESTAURANT_GATE.x + RESTAURANT_FACE * lx, z: RESTAURANT_GATE.z + RESTAURANT_FACE * lz });
+export const toRestaurantLocal = (x, z) => ({ x: (x - RESTAURANT_GATE.x) * RESTAURANT_FACE, z: (z - RESTAURANT_GATE.z) * RESTAURANT_FACE });
+export function restaurantBox(x1, z1, x2, z2) {
+  const a = restaurantLocal(x1, z1), b = restaurantLocal(x2, z2);
+  return { x1: Math.min(a.x, b.x), z1: Math.min(a.z, b.z), x2: Math.max(a.x, b.x), z2: Math.max(a.z, b.z) };
+}
+const FOOTPRINT = { x: 3.9, z0: -3.0, z1: 4.9 };
+export function restaurantScatterBlocks(x, z, pad = 0) {
+  const l = toRestaurantLocal(x, z);
+  return Math.abs(l.x) < FOOTPRINT.x + pad && l.z > FOOTPRINT.z0 - pad && l.z < FOOTPRINT.z1 + pad;
+}
 export const REST_LIGHT = { hemi: 0.7, amb: 0.5, sun: 0.85, tint: 0xffeedd, sunTint: 0xfff2e0, player: 0.4, fog: 0xe8d6b8, near: 26, far: 70 };
 export const SERVICE_SEC = 100;
 export const LAST_SPAWN_SEC = 90;

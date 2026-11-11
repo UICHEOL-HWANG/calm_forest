@@ -2369,6 +2369,7 @@ export const EN = {
   '🌟 반딧불이 — 포충망(5)으로 반짝일 때 휘두르기': '🌟 Fireflies — swing the Bug Net (5) when they flash',
   '🌟 반딧불이 계곡 — 🌙 밤에 다시 오세요': '🌟 Firefly Valley — 🌙 come back at night',
   '반딧불이 계곡': 'Firefly Valley',
+  '반딧불이 계곡 아래 식당으로 가 보세요': 'Head to the restaurant below Firefly Valley',
   '밤에 포충망으로 반딧불이 잡는 곳': 'Catch fireflies with the Bug Net at night',
   '🍄 채집물 발견! 액션(Space)으로 줍기 — 도구 필요 없어요': '🍄 Forage spotted! Press Action (Space) to pick it up — no tool needed',
   '🍄 채집 숲 — 버섯·산딸기·도토리를 찾아보세요': '🍄 Foraging Woods — look for mushrooms, berries, and acorns',

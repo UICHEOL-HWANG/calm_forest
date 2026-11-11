@@ -7,7 +7,7 @@ import { trackEvent } from '../analytics.js';
 import { logEcon } from '../metrics.js';
 import { NPCS } from '../data/npcs.js';
 import { buildNPCFigure } from './npc.js';
-import { RESTAURANT, RESTAURANT_GATE, HALL, STAR } from '../restaurant/data.js';
+import { RESTAURANT, RESTAURANT_GATE, RESTAURANT_FACE, HALL, STAR, restaurantLocal, restaurantBox } from '../restaurant/data.js';
 import { buildBistro, setBistroEvening } from '../restaurant/exterior.js';
 import { buildHall } from '../restaurant/hall.js';
 import { grantStarter, panState } from '../restaurant/rules.js';
@@ -19,7 +19,9 @@ import { createNav } from '../guide/path.js';
 import { STOP_SOLIDS } from '../restaurant/nav-solids.js';
 import { CAFE_GATE } from '../data/places.js';
 
-export const RESTAURANT_DOOR = { x: RESTAURANT_GATE.x, z: RESTAURANT_GATE.z + 3.1 };
+export const RESTAURANT_DOOR = restaurantLocal(0, 3.1);
+export const restaurantExitSpot = () => restaurantLocal(0, 3.9);
+const OUT_HEADING = RESTAURANT_FACE < 0 ? Math.PI : 0;
 export const RESTAURANT_COPY = {
   sign: '🍽️ 식당',
   enter: '🍽️ 식당에 들어가기',
@@ -43,18 +45,21 @@ export function spawnRestaurantGate() {
   const { x, z } = RESTAURANT_GATE;
   const g = new THREE.Group();
   g.position.set(x, 0, z);
+  g.rotation.y = OUT_HEADING;
   exterior = buildBistro(THREE);
   g.add(exterior);
   g.add(makeSignpost(RESTAURANT_COPY.sign, -4.3, 3.0));
   scene.add(g);
   obstacles.push({ x, z, r: 3.4 });
-  solidBox(x - 3.3, z - 2.65, x + 3.3, z + 2.45);
-  solidBox(x - 2.75, z + 2.45, x - 1.35, z + 2.8);
-  solidBox(x + 1.35, z + 2.45, x + 2.75, z + 2.8);
+  const box = (x1, z1, x2, z2) => { const b = restaurantBox(x1, z1, x2, z2); solidBox(b.x1, b.z1, b.x2, b.z2); };
+  const dot = (lx, lz, r) => { const p = restaurantLocal(lx, lz); solidCircle(p.x, p.z, r); };
+  box(-3.3, -2.65, 3.3, 2.45);
+  box(-2.75, 2.45, -1.35, 2.8);
+  box(1.35, 2.45, 2.75, 2.8);
   for (const s of [-1, 1]) {
-    solidCircle(x + s * 3.35, z + 2.2, 0.35);
-    solidCircle(x + s * 2, z + 3.85, 0.75);
-    solidCircle(x + s * 3.25, z + 4.5, 0.15);
+    dot(s * 3.35, 2.2, 0.35);
+    dot(s * 2, 3.85, 0.75);
+    dot(s * 3.25, 4.5, 0.15);
   }
 }
 
@@ -163,8 +168,9 @@ export function exitRestaurant() {
   $w.atRestaurant = false;
   document.body.classList.remove('at-restaurant');
   setFogExempt(player, false);
-  player.position.set(RESTAURANT_DOOR.x, 0, RESTAURANT_DOOR.z + 0.8);
-  player.rotation.y = 0;
+  const out = restaurantExitSpot();
+  player.position.set(out.x, 0, out.z);
+  player.rotation.y = OUT_HEADING;
   $w.nearDoor = null; ui.setDoorPrompt?.(null);
   snapCamera(); setSpaceVisible();
   trackEvent('exit_restaurant');

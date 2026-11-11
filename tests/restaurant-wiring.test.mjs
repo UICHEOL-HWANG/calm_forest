@@ -71,7 +71,7 @@ test('행동 분기와 dev 훅이 식당 입퇴장을 부른다', () => {
 test('VILLAGE_PLACES, PLACE_UNLOCK, getGameState 가 식당을 안다', () => {
   assert.match(SRC, /\{ ico: '🍽️', name: '식당',\s*x: RESTAURANT_GATE\.x, z: RESTAURANT_GATE\.z, pri: 1 \}/);
   assert.match(SRC, /'식당': 'restaurant'/);
-  assert.match(bodyOf('getGameState'), /atRestaurant \? \{ x: RESTAURANT_GATE\.x, z: 24\.4 \}/);
+  assert.match(bodyOf('getGameState'), /atRestaurant \? restaurantExitSpot\(\)/);
 });
 
 test('저장 키: gameState 리터럴과 applySave 와 import', () => {
@@ -105,8 +105,9 @@ test('마을 배치·실내·프레임·행동·밤 점등이 연결돼 있다',
   assert.match(SRC, /if \(atRestaurant\) tickRestaurant\(dt\);/);
   assert.match(SRC, /if \(atRestaurant\) \{\n    restaurantAction\(\);\n    return;\n  \}/);
   assert.match(SRC, /updateRestaurantNight\(nightAmt\);/);
-  assert.match(SRC, /dist2D\(\{ x, z \}, RESTAURANT_GATE\) < 6/);
-  assert.equal((SRC.match(/dist2D\(\{ x, z \}, RESTAURANT_GATE\) < 5\) continue;/g) || []).length, 2);
+  assert.match(SRC, /restaurantScatterBlocks\(x, z, 1\.5\)/);
+  assert.equal((SRC.match(/if \(restaurantScatterBlocks\(x, z\)\) continue;/g) || []).length, 2);
+  assert.doesNotMatch(SRC, /dist2D\(\{ x, z \}, RESTAURANT_GATE\)/);
 });
 
 test('문: 마을에서 들어가기, 안에서 나가기와 영업 맥락', () => {

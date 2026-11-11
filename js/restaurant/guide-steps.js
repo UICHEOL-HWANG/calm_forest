@@ -1,11 +1,11 @@
-import { RESTAURANT_GATE } from './data.js';
+import { restaurantLocal, toRestaurantLocal } from './data.js';
 
 const at = k => c => c.at[k];
 const reached = n => c => c.stage >= n;
 
 export function restaurantGuideSteps() {
   return [
-    { id: 'walk', text: '카페 옆 식당으로 가 보세요', target: at('door'), done: reached(1) },
+    { id: 'walk', text: '반딧불이 계곡 아래 식당으로 가 보세요', target: at('door'), done: reached(1) },
     { id: 'start', text: '칠판을 눌러 영업을 시작해요', target: at('board'), done: reached(2) },
     { id: 'fish', text: '🐟 상자에서 생선을 꺼내요', target: at('crate'), done: reached(3) },
     { id: 'pan', text: '팬에 올려요', target: at('pan'), done: reached(4) },
@@ -36,7 +36,7 @@ export function shownStep(steps, index, stage) {
   return steps[Math.min(index, stage)] ?? null;
 }
 
-const BOX = { x0: RESTAURANT_GATE.x - 3.8, x1: RESTAURANT_GATE.x + 3.8, z0: RESTAURANT_GATE.z - 3.2, z1: RESTAURANT_GATE.z + 2.8 };
+const BOX = { x0: -3.8, x1: 3.8, z0: -3.2, z1: 2.8 };
 
 function segHitsBox(a, b, box) {
   let t0 = 0, t1 = 1;
@@ -53,10 +53,11 @@ function segHitsBox(a, b, box) {
 const LANE_HALF = 1.1, APPROACH = 2.8, CORNER_Z = 2.2;
 
 export function villageVia(me, door) {
-  if (Math.abs(me.x - door.x) < LANE_HALF && me.z > door.z - 0.5) return null;
-  const front = { x: door.x, z: door.z + APPROACH };
-  if (!segHitsBox(me, front, BOX)) return front;
-  return { x: me.x < door.x ? BOX.x0 - 1 : BOX.x1 + 1, z: BOX.z1 + CORNER_Z };
+  const m = toRestaurantLocal(me.x, me.z), d = toRestaurantLocal(door.x, door.z);
+  if (Math.abs(m.x - d.x) < LANE_HALF && m.z > d.z - 0.5) return null;
+  const front = { x: d.x, z: d.z + APPROACH };
+  if (!segHitsBox(m, front, BOX)) return restaurantLocal(front.x, front.z);
+  return restaurantLocal(m.x < d.x ? BOX.x0 - 1 : BOX.x1 + 1, BOX.z1 + CORNER_Z);
 }
 
 const WALL_X = 0.8, WALL_END_Z = 2.1, GAP = { x: 0.8, z: 2.9 };
