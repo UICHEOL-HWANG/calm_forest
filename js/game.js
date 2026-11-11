@@ -6268,8 +6268,8 @@ const VILLAGE_PLACES = [
   { ico: '🔭', name: '천문대',        x: OBSERVATORY_GATE.x, z: OBSERVATORY_GATE.z, pri: 1 },
   { ico: '🏔️', name: '설산', x: MOUNTAIN_GATE.x, z: MOUNTAIN_GATE.z, pri: 1 },
   { ico: '🏮', name: '빛 공방',       x: LIGHT_WORKSHOP.x, z: LIGHT_WORKSHOP.z, pri: 1 },
-  { ico: '🚏', name: '정류장', x: MIRROR_STOP.x, z: MIRROR_STOP.z, pri: 1 },
-  { ico: '🏡', name: '이웃 마을 가는 길', x: NEIGHBOR_GATE.x, z: NEIGHBOR_GATE.z, pri: 1 },
+  { ico: '🚏', name: '정류장', x: MIRROR_STOP.x, z: MIRROR_STOP.z, pri: 1, late: true },
+  { ico: '🏡', name: '이웃 마을 가는 길', x: NEIGHBOR_GATE.x, z: NEIGHBOR_GATE.z, pri: 1, late: true },
   { ico: '🛶', name: '나루터',        x: DOCK_GATE.x,   z: DOCK_GATE.z,   pri: 1, map: 'river' },
   { ico: '🌫️', name: '안개 숲',       x: MIST_GATE.x,   z: MIST_GATE.z,   pri: 1, map: 'mist' },
   { ico: '🌊', name: '바다터',        x: SEA_GATE.x,    z: SEA_GATE.z,    pri: 1, map: 'sea' },
@@ -6294,7 +6294,7 @@ function villagePlaces() {
   if (_placesCache && now - _placesAt < 5000) return _placesCache;
   _placesAt = now;
   _placesCache = VILLAGE_PLACES.filter(p => (p.need !== 'plaza' || plazaMapVisible()) && (p.need !== 'bridge' || bridgeBrokenNow()) && isOpen(PLACE_UNLOCK[p.name])).map(p => ({   // 🔓 아직 안 선 곳은 지도에서 아예 뺀다(비어 있는 마을)
-    ico: p.ico, name: p.name, x: p.x, z: p.z, pri: p.pri,
+    ico: p.ico, name: p.name, x: p.x, z: p.z, pri: p.pri, late: !!p.late,
     locked: p.need === 'coop' ? !gameState.coop.built : p.map ? mapLocked(p.map) : false,
   }));
   return _placesCache;

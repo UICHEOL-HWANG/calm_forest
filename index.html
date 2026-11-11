@@ -4316,7 +4316,7 @@
         [62, 2], [-62, 2], [0, 45], [0, -46],
       ];
       const hit = (r) => placed.some(q => Math.abs(q.x - r.x) * 2 < q.w + r.w && Math.abs(q.y - r.y) * 2 < q.h + r.h);
-      const list = (lastPlaces || []).slice().sort((a, b) => a.z - b.z);
+      const list = (lastPlaces || []).slice().sort((a, b) => (a.late ? 1 : 0) - (b.late ? 1 : 0) || a.z - b.z);
       c.textAlign = 'center'; c.textBaseline = 'middle';
 
       // 주민 — 지금 어디 있는지. 색 테두리가 이름표 배지와 같은 고유색이라 점만 봐도 누구인지 안다.

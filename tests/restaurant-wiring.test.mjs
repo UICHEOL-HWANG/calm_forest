@@ -123,3 +123,11 @@ test('식당 이벤트 파라미터는 5개 이하', () => {
   assert.ok(m);
   assert.ok(m[1].split(',').length <= 5);
 });
+
+test('지도 이름표: 길목 이름(정류장·이웃 마을 가는 길)은 시설 이름 뒤에 자리를 잡는다', () => {
+  assert.match(SRC, /\{ ico: '🚏', name: '정류장', x: MIRROR_STOP\.x, z: MIRROR_STOP\.z, pri: 1, late: true \}/);
+  assert.match(SRC, /\{ ico: '🏡', name: '이웃 마을 가는 길', x: NEIGHBOR_GATE\.x, z: NEIGHBOR_GATE\.z, pri: 1, late: true \}/);
+  assert.match(SRC, /ico: p\.ico, name: p\.name, x: p\.x, z: p\.z, pri: p\.pri, late: !!p\.late,/);
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /const list = \(lastPlaces \|\| \[\]\)\.slice\(\)\.sort\(\(a, b\) => \(a\.late \? 1 : 0\) - \(b\.late \? 1 : 0\) \|\| a\.z - b\.z\);/);
+});
