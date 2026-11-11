@@ -27,9 +27,9 @@ test('렌더러가 없거나 실패해도 게임을 막지 않는다', async () 
   assert.equal(await warmShaders(boom, 's', 'c'), false);
 });
 
-test('game.js 는 월드 부팅 끝과 플레이 시작 직후에 셰이더를 미리 굽는다', () => {
+test('game.js 는 월드 부팅 끝과 플레이 시작 직전에 셰이더를 미리 굽는다', () => {
   const game = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
   const boot = game.slice(game.indexOf('export async function bootWorld('), game.indexOf('export async function enterGame('));
   assert.match(boot, /setTimeout\(\(\) => warmShaders\(renderer, scene, camera\), 0\);/);
-  assert.match(game, /mode = 'play';\n  setTimeout\(\(\) => warmShaders\(renderer, scene, camera\), 0\);/);
+  assert.match(game, /await warmShaders\(renderer, scene, camera\); await shootMapNow\(\);/);
 });

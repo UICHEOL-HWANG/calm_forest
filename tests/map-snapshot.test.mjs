@@ -307,3 +307,13 @@ test('a compile that never settles times out and the shot still happens', async 
   assert.equal(shots, 1, 'timed out compile falls through to the shot');
   assert.equal(S.mapSnapshotInfo().phase, 'idle');
 });
+
+test('shootMapNow: 준비 전엔 아무것도 안 하고, game.js 는 가림막 뒤에서 첫 사진을 찍는다', async () => {
+  const fresh = await import(`../js/world/map-snapshot.js?fresh=${Date.now()}`);
+  assert.equal(await fresh.shootMapNow(), false);
+  const src = read('js/world/map-snapshot.js');
+  const fn = src.slice(src.indexOf('export async function shootMapNow('));
+  assert.match(fn, /await compileFor\(\);/);
+  assert.match(fn, /takeShot\(performance\.now\(\)\);/);
+  assert.match(read('js/game.js'), /warm: async \(\) => \{ await warmShaders\(renderer, scene, camera\); await shootMapNow\(\); \}/);
+});
