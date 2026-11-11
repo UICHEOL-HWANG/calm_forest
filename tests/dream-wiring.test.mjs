@@ -24,7 +24,7 @@ test('game.js — 플래그·$w·spaceFlags·가시성·이동 한계·미니맵
 
 test('game.js — 루프·입력: 컷신이 카메라를 갖고, 탭·Space·Esc 로 건너뛴다', () => {
   assert.match(GAME, /else if \(updateDreamCut\(dt, t\)\) \{ wantAction = false; \}/);
-  assert.match(GAME, /!intro && (?:!houseGuidance\?\.cinematic && )?!dreamCutActive\(\)( && !mirrorRideActive\(\))?\) \{\n\s+handleAction\(\);/);
+  assert.match(GAME, /!intro && (?:!houseGuidance\?\.cinematic && )?(?:!goalGuide\?\.cinematic && )?!dreamCutActive\(\)( && !mirrorRideActive\(\))?\) \{\n\s+handleAction\(\);/);
   assert.match(GAME, /if \(dreamCutActive\(\) && \(e\.code === 'Space' \|\| e\.code === 'Escape' \|\| e\.code === 'Enter'\)\) skipDreamCut\(\);/);
   assert.match(GAME, /if \(dreamCutActive\(\)\) \{ skipDreamCut\(\); return; \}/);
   assert.match(GAME, /updateDream\(dt, t\);/);

@@ -155,6 +155,7 @@ export const Sound = {
   starPerfect(step = 0) { const f = starNote(step); chime(f, 0.5, 0.16, { wet: 0.5 }); chime(f * 2, 0.25, 0.05, { type: 'triangle' }); chime(f * 4, 0.12, 0.02); },
   starGood(step = 0)    { chime(starNote(step), 0.32, 0.09, { wet: 0.25 }); },
   starMiss()   { chime(150, 0.2, 0.22, { glide: 88 }); noise(0.12, 500, 0.06, 0.7); },   // 낮고 둔한 "툭"
+  cineWhoosh() { sweep(0.5, 380, 2200, 0.11, 1.2); },
   starComet()  { sweep(0.4, 500, 2600, 0.05); },                                       // 혜성 출발 "슝"
   starComplete(notes = 7) {   // 이은 별만큼 음계를 훑고 C 화음으로 맺는다
     const t = ensureCtx().currentTime;

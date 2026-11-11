@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>시네마틱 효과음 비교</title>
+<style>
+:root{--bg:#f5efe3;--card:#fffdf6;--ink:#2f5a3a;--sub:#6b7a6f;--line:#e3dccb;--acc:#3d6b4a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:-apple-system,'Apple SD Gothic Neo',sans-serif;color:var(--ink);padding:24px 16px}
+main{max-width:720px;margin:0 auto}h1{font-size:20px;margin:0 0 4px}p.lead{color:var(--sub);margin:0 0 20px;font-size:14px}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.c{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.c b{font-size:16px}.c span{font-size:13px;color:var(--sub);line-height:1.5}
+button{border:0;border-radius:12px;padding:10px 14px;font:inherit;font-weight:700;color:#fbf6e6;background:linear-gradient(180deg,#3d6b4a,#2f5a3a);cursor:pointer}
+button.ghost{background:transparent;color:var(--acc);border:1px solid var(--line)}
+.stage{margin-top:20px;height:120px;border-radius:16px;background:#0d0f0e;position:relative;overflow:hidden}
+.stage i{position:absolute;left:0;right:0;height:28px;background:#0d0f0e}
+.stage .sky{position:absolute;inset:0;background:linear-gradient(180deg,#9fd3c7,#cfe8b8);transform:scale(1);transition:transform .9s cubic-bezier(.45,0,.2,1)}
+.stage.go .sky{transform:scale(1.35) translateX(-12%)}
+.stage .cap{position:absolute;bottom:4px;left:0;right:0;text-align:center;color:#fff;font-weight:800;font-size:14px;z-index:2}
+</style></head><body><main>
+<h1>시네마틱 "슉" 효과음 후보</h1>
+<p class="lead">카메라가 목적지로 날아갈 때 한 번 납니다. 각 카드의 버튼을 누르면 화면 연출과 함께 들려요.</p>
+<div class="grid">
+  <div class="c"><b>A · 바람 슉</b><span>부드러운 바람이 위로 쓸려 올라갔다 가라앉아요. 숲 분위기에 가장 조용히 녹아요. 0.5초</span><button data-k="a">들어 보기</button></div>
+  <div class="c"><b>B · 또렷한 슉</b><span>짧고 선명하게 지나가요. 작은 휴대폰 스피커에서도 잘 들려요. 0.3초</span><button data-k="b">들어 보기</button></div>
+  <div class="c"><b>C · 휘익 + 반짝</b><span>바람이 길게 지나간 뒤 끝에 작은 방울 소리가 붙어요. 가장 연출 느낌이 커요. 0.7초</span><button data-k="c">들어 보기</button></div>
+</div>
+<div class="stage" id="st"><div class="sky"></div><i style="top:0"></i><i style="bottom:0"></i><div class="cap">다음 목표 · 세계수</div></div>
+<p class="lead" style="margin-top:12px">게임 안에서는 효과음 볼륨 설정을 따르고, 소리를 끄면 나지 않아요.</p>
+</main>
+<script>
+let ctx, master;
+function ac(){ if(!ctx){ ctx=new (window.AudioContext||window.webkitAudioContext)(); master=ctx.createGain(); master.gain.value=0.9; master.connect(ctx.destination);} if(ctx.state==='suspended') ctx.resume(); return ctx; }
+function sweep(dur,from,to,vol,q,peak,at){ const c=ac(), t=c.currentTime+(at||0); const buf=c.createBuffer(1,Math.ceil(c.sampleRate*dur),c.sampleRate); const d=buf.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1; const s=c.createBufferSource(); s.buffer=buf; const bp=c.createBiquadFilter(); bp.type='bandpass'; bp.Q.value=q; bp.frequency.setValueAtTime(from,t); bp.frequency.exponentialRampToValueAtTime(to,t+dur); const g=c.createGain(); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(vol,t+dur*peak); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); s.connect(bp).connect(g).connect(master); s.start(t); s.stop(t+dur); }
+function chime(f,dur,vol,at){ const c=ac(), t=c.currentTime+(at||0); const o=c.createOscillator(), g=c.createGain(); o.type='sine'; o.frequency.setValueAtTime(f,t); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(vol,t+0.008); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.connect(g).connect(master); o.start(t); o.stop(t+dur+0.05); }
+const SFX={
+  a(){ sweep(0.5,380,2200,0.11,1.2,0.35); },
+  b(){ sweep(0.3,700,3400,0.13,2.6,0.25); sweep(0.22,1400,600,0.05,1.5,0.3,0.12); },
+  c(){ sweep(0.7,300,1800,0.1,0.9,0.4); chime(1567.98,0.35,0.06,0.55); chime(2093,0.4,0.04,0.62); },
+};
+const st=document.getElementById('st');
+document.querySelectorAll('button[data-k]').forEach(b=>b.addEventListener('click',()=>{ st.classList.remove('go'); void st.offsetWidth; st.classList.add('go'); SFX[b.dataset.k](); }));
+</script></body></html>

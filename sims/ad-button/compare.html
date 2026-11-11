@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>광고 버튼 시안</title>
+<style>
+:root{--bg:#eef3ea;--ink:#2f3b33;--sub:#6b7a70;--line:#dfe6d8;--card:#fffdf6;--mint2:#bfe8c9}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 -apple-system,"Apple SD Gothic Neo","Pretendard",sans-serif}
+main{max-width:1180px;margin:0 auto;padding:28px 16px 64px}
+h1{font-size:22px;margin:0 0 4px}
+.lead{color:var(--sub);margin:0 0 22px;max-width:70ch}
+.variant{display:grid;grid-template-columns:240px 1fr;gap:20px;padding:22px 0;border-top:1px solid var(--line)}
+.variant h2{font-size:17px;margin:0 0 6px}
+.variant p{margin:0;color:var(--sub);font-size:14px}
+.tag{display:inline-block;margin-top:10px;font-size:12px;font-weight:700;padding:2px 9px;border-radius:999px;background:var(--mint2);color:#1d3a26}
+.stage{display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start}
+.scene{position:relative;border-radius:18px;padding:22px;background:linear-gradient(160deg,#a9cf9a,#8fbf86 45%,#7aa875);overflow:hidden}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.phone{border-radius:28px;padding:10px;background:#2b2f2c}
+.phone .scene{border-radius:20px;padding:14px}
+.phone .cards{grid-template-columns:1fr;gap:10px}
+.card{background:rgba(255,253,246,.97);border-radius:16px;box-shadow:0 6px 18px -6px rgba(40,70,50,.35);padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.card .t{font-weight:800;color:#2f5a3a;font-size:14px}
+.card .d{font-size:13px;color:#4a5a4f}
+.card .s{margin-top:6px;padding-top:8px;border-top:1px dashed #e3dccb}
+.ad{position:relative;isolation:isolate;border:0;font:inherit;font-weight:800;font-size:12.5px;line-height:1;padding:8px 13px;border-radius:999px;cursor:pointer;display:inline-flex;gap:5px;align-items:center;transition:transform .18s cubic-bezier(.16,1,.3,1)}
+.ad:active{transform:translateY(1px) scale(.98)}
+@property --a{syntax:'<angle>';initial-value:0deg;inherits:false}
+.v1 .ad{color:#4b3fa0;border:2px solid transparent;background:linear-gradient(#f4f1ff,#f4f1ff) padding-box,conic-gradient(from var(--a),#b9adf2,#fff1b8,#9fd9f2,#ffd3ec,#b9adf2) border-box;box-shadow:0 2px 8px -2px rgba(110,90,200,.35);animation:spin 3s linear infinite}
+.v1 .ad::before,.v1 .ad::after{content:'✦';position:absolute;font-size:9px;color:#fff;text-shadow:0 0 3px #c9b8ff;animation:twinkle 1.8s ease-in-out infinite}
+.v1 .ad::before{left:-5px;top:-6px}
+.v1 .ad::after{right:-4px;bottom:-6px;animation-delay:.9s}
+.v2 .ad{color:#6b4a0c;background:linear-gradient(180deg,#fff9e8,#fff1cc);box-shadow:inset 0 0 0 1.5px #e9c46a,inset 0 1px 0 rgba(255,255,255,.9),0 3px 8px -3px rgba(150,110,20,.45);overflow:hidden}
+.v2 .ad::before{content:'';position:absolute;top:-20%;bottom:-20%;width:38%;left:-50%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.95) 45%,rgba(255,255,255,.95) 55%,transparent);transform:skewX(-18deg);animation:sweep 3.4s cubic-bezier(.45,0,.2,1) infinite;z-index:-1}
+.v2 .ad::after{content:'✦';position:absolute;right:6px;top:2px;font-size:8px;color:#e0a800;animation:twinkle 3.4s ease-in-out infinite;animation-delay:1.3s}
+.v3 .ad{color:#1f4a2c;border:2px solid transparent;background:linear-gradient(#f3fbf4,#f3fbf4) padding-box,linear-gradient(110deg,#88d7a0,#f2c14e,#88d7a0,#f2c14e,#88d7a0) border-box;background-size:100% 100%,300% 100%;box-shadow:0 3px 8px -3px rgba(40,90,55,.4);animation:flow 4s linear infinite}
+.v3 .ad .dots i{position:absolute;bottom:4px;width:3px;height:3px;border-radius:50%;background:#f2c14e;opacity:0;animation:rise 2.6s ease-out infinite}
+.v3 .ad .dots i:nth-child(1){left:18%}
+.v3 .ad .dots i:nth-child(2){left:52%;animation-delay:.9s;background:#5fbf7a}
+.v3 .ad .dots i:nth-child(3){left:80%;animation-delay:1.7s}
+@keyframes spin{to{--a:360deg}}
+@keyframes twinkle{0%,100%{opacity:0;transform:scale(.4) rotate(0)}50%{opacity:1;transform:scale(1.1) rotate(45deg)}}
+@keyframes sweep{0%,55%{left:-50%}85%,100%{left:130%}}
+@keyframes flow{to{background-position:0 0,300% 0}}
+@keyframes rise{0%{opacity:0;transform:translateY(0)}20%{opacity:1}100%{opacity:0;transform:translateY(-18px)}}
+@media (prefers-reduced-motion:reduce){.ad,.ad::before,.ad::after,.ad .dots i{animation:none!important}}
+.note{margin-top:22px;padding:14px 16px;border-radius:14px;background:var(--card);border:1px dashed #c98a2b;font-size:14px}
+@media (max-width:900px){.variant,.stage{grid-template-columns:1fr}.cards{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+<h1>광고 버튼 시안 · 반짝이되 과하지 않게</h1>
+<p class="lead">모든 광고 자리(집 짓기·텃밭·화덕·출석·상인)에 같은 버튼 하나를 씁니다. 버튼은 실제로 움직입니다. 왼쪽은 PC, 오른쪽은 휴대폰 폭입니다. 기기에서 동작 줄이기를 켜면 반짝임이 멈춥니다.</p>
+<template id="cards">
+  <div class="card"><span class="t">🏠 지붕 올리기</span><span class="d">재료를 모아 와요</span><span class="s"><button class="ad">🎬 광고 보고 🪵 5개 · 🪨 4개 받기<span class="dots"><i></i><i></i><i></i></span></button></span></div>
+  <div class="card"><span class="t">🌱 텃밭 · 3칸 자라는 중</span><span class="d">다 자라기까지 18분</span><span class="s"><button class="ad">🎬 광고 보고 지금 다 자라게<span class="dots"><i></i><i></i><i></i></span></button></span></div>
+  <div class="card"><span class="t">🔥 화덕 · 숯 굽는 중</span><span class="d">내일 아침 완성</span><span class="s"><button class="ad">🎬 광고 보고 바로 완성<span class="dots"><i></i><i></i><i></i></span></button></span></div>
+  <div class="card"><span class="t">🎁 오늘의 출석</span><span class="d">🪙 30 받았어요</span><span class="s"><button class="ad">🎬 광고 보고 두 배로 받기<span class="dots"><i></i><i></i><i></i></span></button></span></div>
+  <div class="card"><span class="t">🧙 방랑 상인 · 🥕 4개</span><span class="d">🪙 20에 살게</span><span class="s"><button class="ad">🎬 광고 보고 웃돈 받기 (+50%)<span class="dots"><i></i><i></i><i></i></span></button></span></div>
+</template>
+<section class="variant v1">
+  <div><h2>① 무지개 테두리</h2><p>지금 집 카드에 들어간 버튼을 차분하게 다듬은 것. 테두리가 3초에 한 바퀴 돌고 모서리 ✦ 두 개가 번갈아 반짝입니다. 바깥 빛은 뺐습니다.</p><span class="tag">지난번 고른 안</span></div>
+  <div class="stage"><div class="scene"><div class="cards" data-fill></div></div><div class="phone"><div class="scene"><div class="cards" data-fill></div></div></div></div>
+</section>
+<section class="variant v2">
+  <div><h2>② 꿀빛 한 줄기</h2><p>크림색 버튼에 꿀빛 테두리. 3.4초마다 빛이 한 번 훑고 지나가고 끝에 ✦ 하나가 반짝입니다. 평소엔 조용하다가 주기적으로 눈길을 끕니다.</p><span class="tag">가장 차분함</span></div>
+  <div class="stage"><div class="scene"><div class="cards" data-fill></div></div><div class="phone"><div class="scene"><div class="cards" data-fill></div></div></div></div>
+</section>
+<section class="variant v3">
+  <div><h2>③ 민트·금빛 흐름</h2><p>게임의 민트와 금빛이 테두리를 따라 천천히 흐르고, 작은 반짝이 가루가 위로 떠오릅니다.</p><span class="tag">게임 색과 통일</span></div>
+  <div class="stage"><div class="scene"><div class="cards" data-fill></div></div><div class="phone"><div class="scene"><div class="cards" data-fill></div></div></div></div>
+</section>
+<p class="note"><b>추천: ② 꿀빛 한 줄기.</b> 광고 자리가 다섯 곳으로 늘어나니 늘 움직이는 ①보다 가끔 한 번 훑는 ②가 덜 피로하고 고급스럽습니다. 금색 길 안내 표식과 같은 계열이라 "보상" 느낌도 납니다.</p>
+</main>
+<script>
+const tpl = document.getElementById('cards').innerHTML;
+document.querySelectorAll('[data-fill]').forEach(el => { el.innerHTML = tpl; });
+document.querySelectorAll('.v1 .dots,.v2 .dots').forEach(d => d.remove());
+</script>
+</body>
+</html>

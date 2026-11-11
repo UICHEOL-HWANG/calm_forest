@@ -31,6 +31,10 @@ const lineSec = () => (gameState.delve.startedAt ? Math.max(0, Math.round((Date.
 
 export function delveFloorNow() { return run ? run.floor : 0; }
 
+export function delveGuideSpots() {
+  return { miner: minerMesh?.position || null, lift: liftMesh?.position || null };
+}
+
 export function delveMinimapMarks() {
   if (!run) return [];
   const a = run.layout.arrival, marks = [{ x: DELVE.x + a.x, z: DELVE.z + a.z - 1, c: '#c8905a', kind: 'exit' }];

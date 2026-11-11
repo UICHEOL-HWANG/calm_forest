@@ -104,3 +104,12 @@ test('🏗️ 증축 목재가 ×1.5 로 올랐고 코인은 그대로다', () =
 test('game.js 에 BUILD_COST 스칼라가 남아 있지 않다', () => {
   assert.equal(/const BUILD_COST\s*=/.test(SRC), false);
 });
+
+test('튜토리얼에서 집 바닥(목재만)은 돌 캐기 앞, 벽(돌 필요)은 돌 캐기 뒤다', () => {
+  const steps = HTML.match(/const TUT_STEPS = \[(.*?)\n {4}\];/s)[1];
+  const base = [...steps.matchAll(/key: '(\w+)'/g)].map(m => m[1]);
+  for (const [label, order] of [['기본', base], ['A군', TUNING.TUT_ORDER_A]]) {
+    assert.ok(order.indexOf('house1') < order.indexOf('mine'), `${label}: 집 바닥이 돌 캐기보다 뒤`);
+    assert.ok(order.indexOf('mine') < order.indexOf('house2'), `${label}: 벽이 돌 캐기보다 앞이라 돌 10 을 못 구한다`);
+  }
+});
