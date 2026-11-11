@@ -12,6 +12,7 @@
 //    게임 API 가 항상 교차 오리진이 되는데, 엔드포인트마다 헤더를 붙이면
 //    새 API 를 추가할 때마다 빠뜨리게 되므로 진입점 한 곳에서 씌웁니다.
 // =============================================================
+import { withUtf8 } from './html-charset.js';
 import { onRequestGet as cafeGuests } from '../functions/api/cafe-guests.js';
 import { onRequestPost as nightVisit } from '../functions/api/night-visit.js';
 import { onRequestGet as nightNote } from '../functions/api/night-note.js';
@@ -95,7 +96,7 @@ export default {
       }
 
       // 그 외는 정적 자산(dist/) — 없으면 자산 핸들러가 404 를 돌려줍니다.
-      return await env.ASSETS.fetch(request);
+      return withUtf8(await env.ASSETS.fetch(request));
     } catch (err) {
       // 여기까지 온 예외는 게임을 하얗게 만들 수 있으므로 구조화 로그로 남기고 500 을 명시 반환
       console.error(JSON.stringify({

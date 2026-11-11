@@ -653,6 +653,8 @@ ROOT_ASSET_ALIASES = {
 
 
 class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
+    extensions_map = {**http.server.SimpleHTTPRequestHandler.extensions_map, '.html': 'text/html; charset=utf-8'}
+
     def translate_path(self, path):
         alias = ROOT_ASSET_ALIASES.get(path.split('?')[0])
         if alias:
