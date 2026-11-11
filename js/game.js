@@ -75,6 +75,7 @@ import { createRewarded } from './ads/rewarded.js';
 import { rewardedAvailable, showRewarded } from './ads/admob.js';
 import { createTossRewarded } from './ads/toss-rewarded.js';
 import { warmShaders } from './render/shader-warm.js';
+import { warmBeforeReveal } from './render/reveal-warm.js';
 import { createFarmRush } from './ads/farm-rush.js';
 import { repeatOpen, rushSlots, sellBonus, houseShort as houseShortOf, bridgeShort, farmStageShort, prepassGrant, shortAdParts, CAFE_CAPS } from './guide/prepass-rules.js';
 import { sanitizeHouseGuide } from './house-guide-rules.js';
@@ -1640,6 +1641,15 @@ let nearNPC = null;     // 현재 근접한 NPC(런타임 객체) 또는 null
 
 // 씬 전역 참조
 let renderer, scene, camera, composer, bloomPass, gradePass;
+let holdRender = false;
+function revealVeil() {
+  const el = document.getElementById('sleep-fade');
+  if (!el) return null;
+  return {
+    show() { el.style.transition = 'none'; el.style.opacity = '1'; },
+    hide() { requestAnimationFrame(() => requestAnimationFrame(() => { el.style.transition = ''; el.style.opacity = ''; })); },
+  };
+}
 let player, playerAnchor, playerLight;
 let playerArm = null;                                    // (미사용 — 팔 막대 없이 도구만 표시)
 let charGroup = null, tailPivot = null, tailPhase = 0;   // 캐릭터 메시 그룹 / 꼬리 피벗(흔들기)
@@ -2885,6 +2895,7 @@ export async function enterGame() {
     window.__outdoor = (id, x, z, rot = 0) => placeOutdoor(x, z, true, id, rot);
     window.__goFloor = goFloor;                       // 🪜 실내 층 이동(검수용) — goFloor 는 모듈 지역 함수라 여기서만 노출
   }
+  await warmBeforeReveal({ warm: () => warmShaders(renderer, scene, camera), veil: revealVeil(), hold: (v) => { holdRender = v; } });
   // 테스트: ?river=1 — 나루터(강 공간)에서 시작. ?time=0.8 과 조합하면 밤 물길 확인
   if (_wq.get('river') === '1') setTimeout(() => enterRiver(), 60);
   // 테스트: ?mist=1 — 안개 낀 숲에서 시작. ?weather=fog 와 조합하면 🌟황금 정령 확인
@@ -2897,7 +2908,6 @@ export async function enterGame() {
   if (_wq.get('mudflatdebug') === '1') { window.__mudflat = mudflatDebug; window.__mudflatCam = setMudflatCam; }   // 테스트: ?sea=1 — 바다터 바로 입장
   if (_wq.get('seadebug') === '1') window.__sea = { mg: seaMG, action: seaAction };   // 테스트: 상태 점검용(연출 검수)
   mode = 'play';
-  setTimeout(() => warmShaders(renderer, scene, camera), 0);
   houseGuidance = createHouseGuide({
     state: () => gameState, player, camera, house: HOUSE_POS,
     clientId, platform: PLATFORM, dev: IS_DEV_SESSION, translate: t,
@@ -6549,7 +6559,7 @@ function animate() {
   const showHouseCue = (mode === 'play' && gameState.houseStage < 3);
   if (houseSign) { houseSign.visible = showHouseCue; if (showHouseCue) houseSign.position.y = 3.3 + Math.sin(t * 2) * 0.12; }
   if (houseGhost) { houseGhost.visible = showHouseCue; if (showHouseCue) houseGhost.scale.setScalar(1 + Math.sin(t * 2) * 0.03); }
-  if (!observatoryLensOpen()) composer.render();   // 🔭 불투명 렌즈 뷰가 덮는 동안엔 3D 를 그리지 않는다
+  if (!observatoryLensOpen() && !holdRender) composer.render();   // 🔭 불투명 렌즈 뷰가 덮는 동안엔 3D 를 그리지 않는다
   if (perfSampler && mode === 'play') { const ps = perfSampler.frame(performance.now()); if (ps) trackEvent('perf_sample', { ...ps, ...perfContext(renderer), night: isNight() ? 1 : 0, pt_lights: countLitPoints(scene), q_lvl: qualityGov ? qualityGov.level() : 0 }); }
   if (qualityGov && mode === 'play' && !photoResolve) { const lvl = qualityGov.frame(performance.now()); if (lvl != null) { applyQualityStep(lvl); trackEvent('quality_step', { q_lvl: lvl }); } }
 
