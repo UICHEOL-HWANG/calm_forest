@@ -65,3 +65,14 @@ test('style: 한국어는 문장부호로 끝나고, 영어는 고어를 쓰지 
   assert.equal(lineProblem('Thyme for one more bid?', cell('last', 'en')), null);
   assert.equal(lineProblem('Any more bids?', cell('last', 'en')), null);
 });
+
+test('fillLine 은 이름 뒤 님을 떼어 "목수 아저씨님" 을 만들지 않는다', () => {
+  assert.equal(fillLine('{who}님, 다음 차례가 궁금하오.', { who: '목수 아저씨' }), '목수 아저씨, 다음 차례가 궁금하오.');
+  assert.equal(fillLine('오호, {who}님의 패기란 눈부시구려!', { who: '큐레이터 할아버지' }), '오호, 큐레이터 할아버지의 패기란 눈부시구려!');
+  assert.equal(fillLine('{who}께서 부르셨소!', { who: '별 보는 아이' }), '별 보는 아이께서 부르셨소!');
+});
+
+test('새로 만드는 줄은 {who} 뒤에 님을 붙이면 honorific 으로 버린다', () => {
+  assert.equal(lineProblem('{who}님, 다음 차례가 궁금하오.', cell('raise_npc')), 'honorific');
+  assert.equal(lineProblem('{who}께서 부르셨소!', cell('raise_npc')), null);
+});

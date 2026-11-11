@@ -20,6 +20,7 @@ export const SLOTS = {
 const VAR_RE = /\{(\w+)\}/g;
 const HAS_VAR = /\{\w+\}/;
 const JOSA = /\}(으로|이|가|을|를|은|는|와|과|로)(?=[\s.,!?…~]|$)/;
+const WHO_NIM = '{who}님';
 const KO_END = /[.!?…~]$/;
 const ARCHAIC = /\b(hath|thee|thou|thy|doth|huzzah|hark)\b/i;
 const BANNED = [/[—–]/, /놀(다|아|았|자|고|러|이)/];
@@ -53,6 +54,7 @@ export function lineProblem(text, { kind, slot, lang }) {
   if (/[0-9０-９]/.test(text)) return 'digit';
   if (BANNED.some(re => re.test(text))) return 'banned';
   if (JOSA.test(text)) return 'josa';
+  if (text.includes(WHO_NIM)) return 'honorific';
   const max = lang === 'en' ? Math.round(def.max * EN_RATIO) : def.max;
   if (lineLength(text) > max) return 'length';
   const hangul = /[가-힣]/.test(text);
@@ -62,6 +64,6 @@ export function lineProblem(text, { kind, slot, lang }) {
 }
 
 export function fillLine(text, vars = {}) {
-  const out = String(text).replace(VAR_RE, (m, k) => (vars[k] == null ? m : String(vars[k])));
+  const out = String(text).replaceAll(WHO_NIM, '{who}').replace(VAR_RE, (m, k) => (vars[k] == null ? m : String(vars[k])));
   return HAS_VAR.test(out) ? null : out;
 }

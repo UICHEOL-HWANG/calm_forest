@@ -132,3 +132,9 @@ test('보강한 프롬프트: 하오체 어미·문장부호·고어 금지 지�
   assert.match(en, /Never use archaic words/);
   assert.match(en, /Any more bids\?/);
 });
+
+test('{who} slot 요청은 이름 뒤 님을 쓰지 말라고 알려 준다', () => {
+  const all = buildLineRequest({ kind: 'auction', key: '_any', slot: 'sold_npc', lang: 'ko' }, 10).messages.map(m => m.content).join('\n');
+  assert.doesNotMatch(all, /"님" 이나 쉼표는 괜찮다/);
+  assert.match(all, /\{who\} 뒤에 "님"을 붙이지 않는다/);
+});
