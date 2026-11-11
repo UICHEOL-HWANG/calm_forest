@@ -2370,7 +2370,7 @@ export const EN = {
   '🌟 반딧불이 — 포충망(5)으로 반짝일 때 휘두르기': '🌟 Fireflies — swing the Bug Net (5) when they flash',
   '🌟 반딧불이 계곡 — 🌙 밤에 다시 오세요': '🌟 Firefly Valley — 🌙 come back at night',
   '반딧불이 계곡': 'Firefly Valley',
-  '반딧불이 계곡 아래 식당으로 가 보세요': 'Head to the restaurant below Firefly Valley',
+  '식당이 문을 열었어요. 반딧불이 계곡 아래로 가 보세요': 'The restaurant is open. Head below Firefly Valley',
   '⚠️ 재고가 부족해요': '⚠️ Running low on ingredients',
   '포구 섬에서 낚아 와요': 'Catch some on Port Island',
   '포구 섬 시장에서 사 와요': 'Buy some at the Port Island market',

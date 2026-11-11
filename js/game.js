@@ -38,7 +38,7 @@ import { easeFor, nextDda, ddaOutcome, defaultDifficulty, mergeDifficulty, PROBE
 import { spotToolStep, spotWant, spotKeep, SPOT_REASON, IDLE as SPOT_IDLE } from './spot-tool-auto.js';
 import { treeFallPose, TREE_FALL_IMPACT, TREE_FALL_PIVOT } from './tree-fall.js';   // 🌳 벌목 쓰러짐(기우뚱 쿵 바운스)
 import { trackChop, trackEvent, onTrack } from './analytics.js';          // [GA4] 이벤트
-import { PLATFORM } from './platform.js';
+import { PLATFORM, IS_TOSS, loadTossSDK } from './platform.js';
 import { createPerfSampler, perfContext, countLitPoints } from './perf-sample.js';   // 📱 플레이 앱 기기별 FPS(세션당 1회 perf_sample)
 import { createQualityGovernor, QUALITY_STEPS } from './adaptive-quality.js';
 import { createKeyState, isEditableTarget } from './keys.js';      // ⌨️ 키 눌림 상태(입력칸 무시·포커스 손실 리셋) + 우클릭 메뉴 예외 판정
@@ -73,6 +73,7 @@ import { guideRevampOn } from './exp-e6.js';
 import { createHouseShort } from './guide/house-short.js';
 import { createRewarded } from './ads/rewarded.js';
 import { rewardedAvailable, showRewarded } from './ads/admob.js';
+import { createTossRewarded } from './ads/toss-rewarded.js';
 import { createFarmRush } from './ads/farm-rush.js';
 import { repeatOpen, rushSlots, sellBonus, houseShort as houseShortOf, bridgeShort, farmStageShort, prepassGrant, shortAdParts, CAFE_CAPS } from './guide/prepass-rules.js';
 import { sanitizeHouseGuide } from './house-guide-rules.js';
@@ -1623,7 +1624,7 @@ let prepassProvider = PREPASS_DEV
   ? { available: () => true, show: async () => ({ result: 'complete', valueMicros: 0 }) }
   : { available: () => false, show: async () => ({ result: 'unavailable' }) };
 export function setPrepassProvider(p) { if (!PREPASS_DEV && p?.available && p?.show) prepassProvider = p; }
-setPrepassProvider({ available: () => rewardedAvailable, show: showRewarded });
+setPrepassProvider(IS_TOSS ? createTossRewarded({ isToss: true, loadSdk: loadTossSDK }) : { available: () => rewardedAvailable, show: showRewarded });
 const museumDoor = { x: MUSEUM_GATE.x, z: MUSEUM_GATE.z + 3.0 };
 function museumGoal() {
   const curator = npcObjs.find(o => o.def.id === 'curator' && !o.hidden);

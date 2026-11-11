@@ -7,7 +7,7 @@ const read = p => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 test('game.js hands the AdMob rewarded module to the prepass buttons', () => {
   const game = read('js/game.js');
   assert.match(game, /import \{ rewardedAvailable, showRewarded \} from '\.\/ads\/admob\.js';/);
-  assert.match(game, /setPrepassProvider\(\{ available: \(\) => rewardedAvailable, show: showRewarded \}\);/);
+  assert.match(game, /setPrepassProvider\(IS_TOSS \? createTossRewarded\(\{ isToss: true, loadSdk: loadTossSDK \}\) : \{ available: \(\) => rewardedAvailable, show: showRewarded \}\);/);
 });
 
 test('the prepass button module and the AdMob module live in separate files', () => {

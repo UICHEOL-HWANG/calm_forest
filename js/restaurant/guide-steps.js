@@ -5,7 +5,7 @@ const reached = n => c => c.stage >= n;
 
 export function restaurantGuideSteps() {
   return [
-    { id: 'walk', text: '반딧불이 계곡 아래 식당으로 가 보세요', target: at('door'), done: reached(1) },
+    { id: 'walk', text: '식당이 문을 열었어요. 반딧불이 계곡 아래로 가 보세요', target: at('door'), done: reached(1) },
     { id: 'start', text: '칠판을 눌러 영업을 시작해요', target: at('board'), done: reached(2) },
     { id: 'fish', text: '🐟 상자에서 생선을 꺼내요', target: at('crate'), done: reached(3) },
     { id: 'pan', text: '팬에 올려요', target: at('pan'), done: reached(4) },

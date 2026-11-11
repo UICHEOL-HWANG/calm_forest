@@ -10,7 +10,7 @@ const base = { inside: true, running: true, served: 0, held: null, pan: null };
 test('8단계 문구는 확정 후보 그대로', () => {
   const s = restaurantGuideSteps();
   assert.deepEqual(s.map(x => x.text), [
-    '반딧불이 계곡 아래 식당으로 가 보세요', '칠판을 눌러 영업을 시작해요', '🐟 상자에서 생선을 꺼내요', '팬에 올려요',
+    '식당이 문을 열었어요. 반딧불이 계곡 아래로 가 보세요', '칠판을 눌러 영업을 시작해요', '🐟 상자에서 생선을 꺼내요', '팬에 올려요',
     '막대가 초록 칸일 때 눌러 뒤집어요', '다 익으면 꺼내요', '접시에 담아요', '손님에게 가져다줘요',
   ]);
   for (const x of s) assert.doesNotMatch(x.text, /[—⬇➜]/u);
