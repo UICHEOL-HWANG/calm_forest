@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>포구 섬 주민 시안</title>
+<style>
+  :root { --bg: #f3efe6; --ink: #2f3a2c; --sub: #6b7563; --card: #fffdf8; --line: #ddd5c4; --accent: #4f7a3a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
+  header { padding: 18px 24px 4px; }
+  h1 { margin: 0 0 4px; font-size: 22px; }
+  .lead { margin: 0; color: var(--sub); max-width: 1100px; }
+  .bar { display: flex; flex-wrap: wrap; gap: 14px; padding: 10px 24px; align-items: center; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--card); }
+  .seg button { border: 0; background: none; padding: 6px 13px; font: inherit; color: var(--sub); cursor: pointer; }
+  .seg button.on { background: var(--accent); color: #fff; }
+  .seg-label { color: var(--sub); font-size: 13px; }
+  .wrap { padding: 8px 24px 12px; }
+  .screen { position: relative; width: var(--w); height: var(--h); border-radius: var(--r); overflow: hidden; box-shadow: 0 0 0 var(--bez) #262a24, 0 10px 28px rgba(0,0,0,.18); }
+  .screen canvas { display: block; width: 100%; height: 100%; }
+  .tag { position: absolute; transform: translate(-50%, -100%); padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; border: 1.5px solid; }
+  .notes { display: grid; grid-template-columns: repeat(4, minmax(0, 220px)); gap: 12px; padding: 14px 24px 28px; }
+  .note { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 13px; }
+  .note b { display: block; margin-bottom: 2px; }
+  .note .face { display: block; width: 58px; height: 58px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.2); margin-bottom: 8px; }
+  .note span { color: var(--sub); }
+</style>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+</head>
+<body>
+<header>
+  <h1>🏝️ 포구 섬 주민 4명</h1>
+  <p class="lead">마을 주민과 같은 몸 규격(몸통 0.5 · 머리 0.38 · 같은 눈 자리)에, 주민마다 실루엣이 갈리는 소품을 얹었습니다. 맨 왼쪽 곰은 플레이어(크기 비교용)입니다. 이름표는 마을과 같은 "몸 색 배지" 규칙입니다.</p>
+</header>
+<div class="bar">
+  <span class="seg-label">시간</span>
+  <div class="seg" id="tod"><button data-v="day" class="on">낮</button><button data-v="night">밤</button></div>
+  <span class="seg-label">시점</span>
+  <div class="seg" id="view"><button data-v="near" class="on">가까이</button><button data-v="game">게임 시점</button><button data-v="back">뒤에서</button></div>
+  <span class="seg-label">화면</span>
+  <div class="seg" id="dev"><button data-v="pc" class="on">PC</button><button data-v="phone">가로 폰</button></div>
+</div>
+<div class="wrap"><div class="screen" id="screen"><canvas id="cv"></canvas></div></div>
+<div class="notes" id="notes"></div>
+<script type="module">
+import * as THREE from 'three';
+import { ISLAND_NPCS, buildIslandNPC, setNpcNight, npcPortrait } from './port-npc-models.js';
+
+let tod = 'day', view = 'near', device = 'pc';
+const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('cv'), antialias: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+renderer.shadowMap.enabled = true;
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(30, 2, 0.1, 200);
+const hemi = new THREE.HemisphereLight(0xfff1dc, 0x3d5a3a, 1); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xffe2b8, 1.2); sun.position.set(-6, 12, 8); sun.castShadow = true; scene.add(sun);
+sun.shadow.camera.left = -8; sun.shadow.camera.right = 8; sun.shadow.camera.top = 8; sun.shadow.camera.bottom = -8;
+const sand = new THREE.Mesh(new THREE.CircleGeometry(14, 40), new THREE.MeshStandardMaterial({ color: 0xe8d7a8, roughness: 1 })); sand.rotation.x = -Math.PI / 2; sand.receiveShadow = true; scene.add(sand);
+const grass = new THREE.Mesh(new THREE.CircleGeometry(9, 40), new THREE.MeshStandardMaterial({ color: 0x86b86f, roughness: 1, flatShading: true })); grass.rotation.x = -Math.PI / 2; grass.position.set(0, 0.01, -3.5); grass.receiveShadow = true; scene.add(grass);
+const sea = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({ color: 0x4fb3c9 })); sea.rotation.x = -Math.PI / 2; sea.position.y = -0.02; scene.add(sea);
+
+function hero() {
+  const g = new THREE.Group(); const c = 0x9b6a43;
+  const m = col => new THREE.MeshStandardMaterial({ color: col, roughness: 0.85, flatShading: true });
+  const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.4, 1), m(c)); b.scale.set(1, 1.05, 0.9); b.position.y = 0.43; g.add(b);
+  const h = new THREE.Mesh(new THREE.IcosahedronGeometry(0.33, 1), m(c)); h.position.y = 1.03; g.add(h);
+  for (const s of [-1, 1]) { const e = new THREE.Mesh(new THREE.IcosahedronGeometry(0.1, 0), m(c)); e.position.set(0.21 * s, 1.3, 0); g.add(e); }
+  const hat = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.32, 10), m(0xc0432b)); hat.position.y = 1.42; g.add(hat);
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  return g;
+}
+
+const ids = Object.keys(ISLAND_NPCS);
+const figs = [];
+const me = hero(); me.position.set(-3.9, 0, 0.4); scene.add(me);
+ids.forEach((id, i) => {
+  const g = buildIslandNPC(id); g.position.set(-2.1 + i * 1.95, 0, 0); scene.add(g);
+  const top = new THREE.Box3().setFromObject(g).max.y;
+  const def = ISLAND_NPCS[id];
+  const el = document.createElement('div'); el.className = 'tag';
+  const hex = '#' + def.badge.toString(16).padStart(6, '0');
+  el.style.background = hex + '33'; el.style.borderColor = hex; el.style.color = '#2f3a2c';
+  el.textContent = `${def.ico} ${def.name}`;
+  document.getElementById('screen').appendChild(el);
+  figs.push({ g, el, top });
+  const n = document.createElement('div'); n.className = 'note'; n.innerHTML = `<i class="face" style="background:url(${npcPortrait(id)}) center / 100% no-repeat, ${hex}44"></i><b>${def.name}</b><span>${def.note}</span>`;
+  document.getElementById('notes').appendChild(n);
+});
+
+function apply() {
+  const night = tod === 'night';
+  scene.background = new THREE.Color(night ? 0x0d1a26 : 0x9fd3e8);
+  hemi.intensity = night ? 0.6 : 1.05; hemi.color.set(night ? 0x8fa6d6 : 0xfff1dc);
+  sun.intensity = night ? 0.25 : 1.2;
+  sea.material.color.set(night ? 0x24557a : 0x4fb3c9);
+  figs.forEach(f => setNpcNight(f.g, night));
+  const w = device === 'phone' ? 560 : 900, h = device === 'phone' ? 258 : 420;
+  const s = document.getElementById('screen');
+  s.style.setProperty('--w', w + 'px'); s.style.setProperty('--h', h + 'px');
+  s.style.setProperty('--r', device === 'phone' ? '22px' : '8px'); s.style.setProperty('--bez', device === 'phone' ? '6px' : '3px');
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  figs.forEach(f => f.g.rotation.y = view === 'back' ? Math.PI : 0);
+  me.rotation.y = view === 'back' ? Math.PI : 0;
+  if (view === 'game') { camera.fov = device === 'phone' ? 30 : 36; const off = device === 'phone' ? [17, 11.5] : [20, 13]; camera.position.set(0.6, off[0], off[1]); camera.lookAt(0.6, 0, 0); }
+  else { camera.fov = 30; camera.position.set(0.6, 3.2, 9.5); camera.lookAt(0.6, 0.9, 0); }
+  camera.updateProjectionMatrix();
+  frame();
+}
+const v = new THREE.Vector3();
+function frame() {
+  renderer.render(scene, camera);
+  const w = renderer.domElement.clientWidth, h = renderer.domElement.clientHeight;
+  for (const f of figs) {
+    v.set(f.g.position.x, f.top + 0.25, f.g.position.z).project(camera);
+    f.el.style.left = ((v.x + 1) / 2 * w) + 'px'; f.el.style.top = ((1 - v.y) / 2 * h) + 'px';
+  }
+}
+let t = 0;
+function loop() { t += 0.016; figs.forEach((f, i) => f.g.position.y = Math.abs(Math.sin(t * 2 + i)) * 0.02); frame(); requestAnimationFrame(loop); }
+function seg(id, fn) { document.getElementById(id).addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; for (const x of e.currentTarget.children) x.classList.toggle('on', x === b); fn(b.dataset.v); apply(); }); }
+seg('tod', x => tod = x); seg('view', x => view = x); seg('dev', x => device = x);
+apply(); loop();
+window.__npc = { set: (k, x) => { if (k === 'tod') tod = x; else if (k === 'view') view = x; else device = x; apply(); } };
+</script>
+</body>
+</html>

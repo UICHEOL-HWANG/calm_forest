@@ -6,7 +6,7 @@
 //     game.js 에 남은 let 에 쓸 때는 `$w.x = …` (읽기는 그냥 x). 도구·증명: tools/refactor/
 // =============================================================
 import {
-  $w, DIG_WINDOW, WEATHER, atCafe, atDream, atMirror, atHalloween, atFarm, atMine, atMist, atMuseum, atObservatory, atMountain, atOrchard, atNeighbor, atRiver, atSea, boat, clock,
+  $w, DIG_WINDOW, WEATHER, atCafe, atRestaurant, atDream, atMirror, atHalloween, atFarm, atMine, atMist, atMuseum, atObservatory, atMountain, atOrchard, atNeighbor, atRiver, atSea, boat, clock,
   currentTool, decorNearRing, dist2D, farmActionFirst, farmHalf, fertTarget, firstHintBanner, gameState,
   houseFloor, indoor, isNight, isOpen, lastDoorPrompt, lastFloorChoiceKey, lastNearHouse, lastZoneHint, mapLocked,
   nearBench, nearBoat, nearBoatShop, nearCafeGuest, nearCoop, nearCosShop, nearHomiStall, nearDecorMesh, nearLightWorkshop, nearDoor, nearDoorFloor,
@@ -16,10 +16,12 @@ import {
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { mudflat, mudflatHint, nearMudflatExit, MUDFLAT_COPY } from './mudflat.js';
 import { dive, diveHint, nearDiveExit, DIVE_COPY } from './dive.js';
+import { port, portPrompt, enterPort, guideHides } from '../port/index.js';
 import { plazaSpot } from '../plaza/index.js';
 import { auctionSpotNow, auctionPrompt } from '../auction/index.js';
 import { delvePrompt, delveFloorNow } from './delve.js';
 import { trackEvent } from '../analytics.js';
+import { RESTAURANT_COPY, nearRestaurantDoor, nearRestaurantExit, updateRestaurantInteract } from './restaurant.js';
 import { decorBanner } from '../decor-drops/index.js';
 import { DECOR, DECOR_SCALE, OUTDOOR, STATION_IDS, stationLabel } from '../data/catalog.js';
 import { BENCH, CAFE, CAFE_GATE, CAFE_HALF, COOP, DOCK_GATE, FARM, FARM_GATE, FOREST, FOREST_R, GLADE, GLADE_R, HOUSE_POS, LIGHT_WORKSHOP, INT, KITCHEN, MARKET, MINE, MINE_GATE, MINE_HALF, MIST, MIST_GATE, MIST_HALF, MOUNTAIN, MOUNTAIN_GATE, MUSEUM, MUSEUM_GATE, NEIGHBOR_GATE, OBSERVATORY, OBSERVATORY_GATE, OBSERVATORY_R, ORCHARD, ORCHARD_GATE, ORCHARD_HALF, ORCHARD_PROMPT_R, RANK, RIVER, RIVER_DOCK_HALF, ROOF_Y, SEA, SEA_DECK_Z0, SEA_GATE, HOMI_STALL, SHOP, SHOP_DOOR } from '../data/places.js';
@@ -51,6 +53,8 @@ import { nearestOutdoor, outdoorZone } from '../spaces/outdoor-decor.js';
 import { chestHintNow, updateRiverInteract } from '../spaces/river.js';
 import { seaPrompt } from '../spaces/sea.js';
 import { gateWalkEnd } from './gate-cue.js';
+import { nearPortPier } from '../port/pier.js';
+import { PORT_COPY } from '../port/data.js';
 import { TELESCOPE_SPOT } from '../spaces/observatory.js';
 import { MOUNTAIN_EXIT_LOCAL, mountainOpen, sledStartReady, hutDoorReady, keeperReady, KEEPER_PROMPT, inCafe, atCafeSpot } from '../spaces/mountain.js';
 import { state as authState } from '../supabase-client.js';
@@ -193,6 +197,7 @@ export function updateDoorInteract() {
       if (nearDiveExit()) { nd = 'seaexit'; prompt = DIVE_COPY.exit; }
       else prompt = diveHint();
     }
+    else if (port.active) { const pp = portPrompt(); nd = pp.nd; prompt = pp.prompt; }
     else if (seaMG.st === 'idle' && dist2D({ x: SEA.x, z: SEA.z + SEA_DECK_Z0 - 0.6 }, player.position) < 1.9) { nd = 'seaexit'; prompt = '🚪 마을로 나가기'; }
     else prompt = seaPrompt();
     $w.nearDoor = nd;
@@ -296,6 +301,9 @@ export function updateDoorInteract() {
     else if (delveFloorNow() === 0 && dist2D({ x: MINE.x, z: MINE.z - MINE_HALF }, player.position) < 1.7) { nd = 'mineexit'; prompt = '🚪 나가기'; }
   } else if (atOrchard) {   // 🍎 과수원 언덕: 들어온 남쪽 경계로 나가기
     if (dist2D({ x: ORCHARD.x, z: ORCHARD.z + ORCHARD_HALF }, player.position) < 1.9) { nd = 'orchardexit'; prompt = '🚪 나가기'; }
+  } else if (atRestaurant) {
+    if (nearRestaurantExit(player.position)) { nd = 'restaurantexit'; prompt = RESTAURANT_COPY.exit; }
+    else prompt = updateRestaurantInteract();
   } else if (atCafe) {   // ☕ 홀: 남쪽 문으로 나가기 / 손님·주문판 근접 안내
     if (dist2D({ x: CAFE.x, z: CAFE.z + CAFE_HALF }, player.position) < 1.9) { nd = 'cafeexit'; prompt = '🚪 나가기'; }
     else prompt = updateCafeInteract();
@@ -337,6 +345,9 @@ export function updateDoorInteract() {
     nd = 'river'; prompt = chestHintNow() ? '🛶 나루터 · 🧰 오늘의 보물상자가 떠내려와요' : '🛶 나루터 (나룻배 타러 가기)';   // 🧰 상자는 나룻배에만 — 입구에서 알린다
   } else if (isOpen('river') && dist2D({ x: DOCK_GATE.x, z: DOCK_GATE.z + 1.2 }, player.position) < 2.4) {
     firstHintBanner('dockGate', '🛶', '나루터', '나룻배 타고 하루 3번 강을 내려가요');
+  } else if (isOpen('port') && nearPortPier(player.position)) {
+    nd = 'port_board'; prompt = PORT_COPY.board;
+    if (gameState.port?.fastUnlocked && !guideHides()) floorChoiceOpts = [{ f: 'port_board', label: PORT_COPY.board, onSelect: () => enterPort() }, { f: 'port_fast', label: PORT_COPY.fastGo, onSelect: () => enterPort({ fast: true }) }];
   } else if (isOpen('sea') && nearGateEnd('sea')) {
     nd = 'sea';
     const locked = mapLocked('sea');
@@ -354,6 +365,8 @@ export function updateDoorInteract() {
     //    진행도 게이트라 {N}(날짜)이 없어 openDay 를 넘기지 않는다 — replace 가 그대로 통과한다.
     prompt = locked ? lockLine('orchard') : '🍎 과수원에 들어가기';
     if (!locked) firstHintBanner('orchardGate', '🍎', '과수원', '묘목을 심어 매일 열매를 따는 곳');
+  } else if (isOpen('restaurant') && nearRestaurantDoor(player.position)) {
+    nd = 'restaurant'; prompt = RESTAURANT_COPY.enter;
   } else if (isOpen('cafe') && dist2D({ x: CAFE_GATE.x, z: CAFE_GATE.z + 1.3 }, player.position) < 2.2) {
     nd = 'cafe'; prompt = '☕ 카페에 들어가기';
     firstHintBanner('cafeGate', '☕', '카페', '모은 재료로 손님에게 요리를 서빙하는 곳');
@@ -472,7 +485,7 @@ export function updateDoorInteract() {
   const fcKey = floorChoiceOpts ? floorChoiceOpts.map(o => o.f).join(',') : null;
   if (fcKey !== lastFloorChoiceKey) {
     $w.lastFloorChoiceKey = fcKey;
-    ui.setFloorChoice?.(floorChoiceOpts ? floorChoiceOpts.map(o => ({ label: o.label, onSelect: () => goFloor(o.f) })) : null);
+    ui.setFloorChoice?.(floorChoiceOpts ? floorChoiceOpts.map(o => ({ label: o.label, onSelect: o.onSelect ?? (() => goFloor(o.f)) })) : null);
   }
   // 첫 접근 안내(1회) — 초보가 각 시설 용도를 알게
   if (nearKitchen) firstHintBanner('kitchen', '🍳', '자유주방', '탭 타이밍 요리로 버프를 얻는 곳');
@@ -494,6 +507,10 @@ export function updateZoneHint() {
   if (atCafe) {   // ☕ 손님 옆에 서면 주문 대사를 띄움(액션 프롬프트와 별도 줄)
     if (nearCafeGuest) hint = `💬 ${nearCafeGuest.order.line}`;
     if (hint !== lastZoneHint) { $w.lastZoneHint = hint; ui.setZoneHint?.(hint); }
+    return;
+  }
+  if (atRestaurant) {
+    if (lastZoneHint !== null) { $w.lastZoneHint = null; ui.setZoneHint?.(null); }
     return;
   }
   if (atMuseum) {   // 🏛️ 진열장 앞 명판 — 같은 자리(액션 버튼을 뺏지 않는다)
@@ -518,7 +535,7 @@ export function updateZoneHint() {
   if (hint !== lastZoneHint) { $w.lastZoneHint = hint; ui.setZoneHint?.(hint); }
 }
 
-export function inVillage2() { return !indoor && !atFarm && !atMine && !atCafe && !atRiver && !atMist && !atSea && !atMuseum && !atObservatory && !atMountain && !atOrchard && !atNeighbor && !atDream && !atMirror && !atHalloween; }
+export function inVillage2() { return !indoor && !atFarm && !atMine && !atCafe && !atRestaurant && !atRiver && !atMist && !atSea && !atMuseum && !atObservatory && !atMountain && !atOrchard && !atNeighbor && !atDream && !atMirror && !atHalloween; }
 
 // 🛋️🪵 "옮기기" 대상 밑 호박색 링(가구·야외 장식 공용, 지연 생성) — 매 프레임 초반에 숨기고 대상이 있을 때만 켠다
 export function ensureNearRing() {

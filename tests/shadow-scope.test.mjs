@@ -6,12 +6,14 @@ import {
   VILLAGE_CLAMP, BOX_HALF, SHADOW_FAR, MAX_REACH, shadowReaches,
   SUBSPACE_FLAGS, OUT_OF_REACH_FLAGS, MEASURED_SHADOWLESS_FLAGS, shadowActiveFor,
 } from '../js/shadow-scope.js';
+import { RESTAURANT } from '../js/restaurant/data.js';
 
 const src = gameSource();
 
 // game.js 의 `const NAME = new THREE.Vector3(x, y, z)` 에서 좌표를 꺼낸다.
 // 좌표를 이 테스트에 베껴 두면 game.js 가 공간을 옮겨도 통과해 버리므로 반드시 소스에서 읽는다.
 function spaceAt(name) {
+  if (name === 'RESTAURANT') return { x: RESTAURANT.x, z: RESTAURANT.z };
   const m = src.match(
     new RegExp(`const ${name} = new THREE\\.Vector3\\(\\s*(-?[\\d.]+)\\s*,\\s*-?[\\d.]+\\s*,\\s*(-?[\\d.]+)\\s*\\)`)
   );
@@ -80,7 +82,7 @@ test('game.js 의 그림자 카메라 반폭이 BOX_HALF 와 같다', () => {
 // ─────────────────────────────────────────────────────────────
 
 // 기하학적으로 상자 밖인 공간(플래그 이름 ↔ game.js 좌표 상수). OUT_OF_REACH_FLAGS 와 짝이다.
-const OUT_OF_REACH = { atMine: 'MINE', atCafe: 'CAFE', atMist: 'MIST', atRiver: 'RIVER', atSea: 'SEA', atHalloween: 'HALLOWEEN', atMuseum: 'MUSEUM', atObservatory: 'OBSERVATORY', atOrchard: 'ORCHARD', atNeighbor: 'NEIGHBOR', atDream: 'DREAM', atMirror: 'MIRROR', atMountain: 'MOUNTAIN' };
+const OUT_OF_REACH = { atMine: 'MINE', atCafe: 'CAFE', atRestaurant: 'RESTAURANT', atMist: 'MIST', atRiver: 'RIVER', atSea: 'SEA', atHalloween: 'HALLOWEEN', atMuseum: 'MUSEUM', atObservatory: 'OBSERVATORY', atOrchard: 'ORCHARD', atNeighbor: 'NEIGHBOR', atDream: 'DREAM', atMirror: 'MIRROR', atMountain: 'MOUNTAIN' };
 // 상자는 닿지만 실측상 보이는 그림자가 없는 공간.
 const MEASURED_SHADOWLESS = { indoor: 'INT', atFarm: 'FARM' };
 
@@ -91,7 +93,7 @@ const MEASURED_SHADOWLESS = { indoor: 'INT', atFarm: 'FARM' };
 // receiveShadow 메시는 지면 원반(buildOrchardGround)과 오솔길 띠(buildOrchardPaths) 둘인데
 // 지면이 더 넓어 최근접점을 정한다: CircleGeometry(ORCHARD_HALF + 16 = 36) @ (0,160)
 // → z 최소 124, 상자 클램프 18 을 빼서 106m. js/shadow-scope.js 주석에 산출 과정을 적어 뒀다.
-const NEAREST_RECEIVER_M = { atMine: 218.5, atMist: 217.5, atCafe: 290.8, atSea: 292, atHalloween: 358, atRiver: 376,
+const NEAREST_RECEIVER_M = { atMine: 218.5, atMist: 217.5, atCafe: 290.8, atRestaurant: 615.8, atSea: 292, atHalloween: 358, atRiver: 376,
                              atMuseum: 330, atObservatory: 510, indoor: 27, atFarm: 18, atOrchard: 106, atNeighbor: 648, atDream: 392, atMirror: 612, atMountain: 909 };
 // 마을 땅 안의 구역: 그림자가 실제로 보인다. 절대 끄면 안 된다.
 const VILLAGE_SPACES = ['GLADE', 'FOREST', 'DOCK_POND'];

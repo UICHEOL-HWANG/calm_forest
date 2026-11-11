@@ -388,6 +388,26 @@
   #sea-btn.stop { background: rgba(200,80,60,0.9); border-color: #ffd0c4; }
   #sea-btn.door { background: rgba(150,120,255,0.88); }
   #sea-btn.wait { background: rgba(60,130,180,0.6); }
+  #sea-btn.idle { visibility: hidden; }
+  body.port-island #sea-btn { left: auto; right: 28px; bottom: calc(96px + env(safe-area-inset-bottom)); transform: none; width: 88px; height: 88px; border: 0; background: var(--mint); color: #2f3a2c; font-size: 36px; box-shadow: var(--shadow); }
+  body.port-island #sea-btn.press { transform: scale(0.93); }
+  body.is-touch.port-island #sea-btn { left: auto; right: max(20px, calc(env(safe-area-inset-right) + 8px)); bottom: calc(14px + env(safe-area-inset-bottom)); width: 88px; height: 88px; }
+  #port-basket { display: none; position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 24; gap: 6px; padding: 9px 12px 10px; border-radius: 14px; background: linear-gradient(#c99a5e, #b3834b); border: 3px solid #7e5531; box-shadow: inset 0 2px 0 rgba(255,255,255,.25), 0 6px 14px rgba(0,0,0,.28); pointer-events: none; }
+  body.port-island #port-basket { display: flex; }
+  #port-basket .pb-tag { position: absolute; left: 50%; top: -15px; transform: translateX(-50%); padding: 2px 12px; border-radius: 9px; background: #7e5531; color: #fff4dc; font-size: 12px; font-weight: 800; white-space: nowrap; }
+  #port-basket .pb-slot { position: relative; width: 52px; height: 52px; border-radius: 10px; background: #f6ead2; box-shadow: inset 0 -3px 0 #e2cfa9; display: flex; align-items: center; justify-content: center; }
+  #port-basket .pb-slot i { font-style: normal; font-size: 28px; line-height: 1; }
+  #port-basket .pb-slot em { position: absolute; right: -5px; bottom: -6px; min-width: 22px; height: 22px; padding: 0 5px; box-sizing: border-box; border-radius: 11px; background: #5a3a1e; color: #fff4dc; font-weight: 900; font-size: 12px; line-height: 18px; text-align: center; border: 2px solid #f6ead2; font-style: normal; }
+  #port-basket .pb-slot.zero { opacity: .4; filter: grayscale(.6); }
+  #port-basket .pb-tip { position: absolute; left: 50%; bottom: calc(100% + 22px); transform: translateX(-50%); padding: 7px 14px; border-radius: 12px; background: #fff8e8; color: #5a3a1e; font-size: 13px; font-weight: 800; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,.22); animation: pb-tip-in .35s ease-out; }
+  #port-basket .pb-tip::after { content: ''; position: absolute; left: 50%; top: 100%; transform: translateX(-50%); border: 7px solid transparent; border-top-color: #fff8e8; }
+  #port-basket .pb-tip[hidden] { display: none; }
+  @keyframes pb-tip-in { from { opacity: 0; transform: translate(-50%, 6px); } to { opacity: 1; transform: translate(-50%, 0); } }
+  @media (max-width: 600px) {
+    #port-basket { gap: 4px; padding: 7px 8px 8px; }
+    #port-basket .pb-slot { width: 38px; height: 38px; }
+    #port-basket .pb-slot i { font-size: 21px; }
+  }
   @keyframes seaBtnPulse { from { box-shadow: 0 0 0 0 rgba(150,255,120,0.6); } to { box-shadow: 0 0 0 16px rgba(150,255,120,0); } }
   #sea-vig { position: fixed; inset: 0; pointer-events: none; z-index: 11; }
   #sea-edge { font-size: 12px; font-weight: 700; color: #fff; background: rgba(200,60,40,0.8); padding: 3px 10px; border-radius: 999px; }
@@ -1471,6 +1491,24 @@
   #mt-line { font-size: 14.5px; line-height: 1.5; word-break: keep-all; overflow-wrap: anywhere; }
   #mt-next { position: absolute; right: 14px; bottom: 7px; font-size: 11px; opacity: 0.6; }
   body:has(#mirror-talk.show) #door-prompt, body:has(#mirror-talk.show) #hint, body:has(#mirror-talk.show) #zone-prompt { opacity: 0 !important; }   /* 박스가 조작 안내 줄 자리까지 쓴다(위의 의뢰 N/3 칩과 안 겹치게) */
+  body.sea-mode:not(.is-touch) #mirror-talk { bottom: calc(5% + 124px + env(safe-area-inset-bottom)); }
+  #guide-card { position: fixed; left: 50%; top: calc(58px + var(--top-inset, 0px)); transform: translateX(-50%); z-index: 8; padding: 5px 14px; border-radius: 14px; background: rgba(255,248,232,.97); color: #3d3424; font-size: 14px; font-weight: 700; white-space: nowrap; max-width: calc(100vw - 24px); overflow: hidden; text-overflow: ellipsis; border: 2px solid #ffc94a; box-shadow: 0 2px 10px rgba(0,0,0,.3); pointer-events: none; }
+  #guide-card small { color: #9a6a12; margin-right: 6px; font-size: 12px; }
+  #guide-card[hidden], #guide-mark[hidden], #guide-edge[hidden] { display: none; }
+  body:has(#mirror-talk.show) #guide-card { display: none; }
+  #guide-mark { position: fixed; z-index: 6; transform: translate(-50%, -100%); font-size: 30px; line-height: 1; text-align: center; pointer-events: none; filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); animation: guide-bob .8s infinite alternate ease-in-out; }
+  #guide-mark span, #guide-edge span { display: block; font-size: 12px; font-weight: 800; color: #fff; text-shadow: 0 1px 2px #000; white-space: nowrap; }
+  @keyframes guide-bob { to { transform: translate(-50%, -125%); } }
+  #guide-edge { position: fixed; z-index: 6; width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%; background: #ffc94a; color: #2f2414; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 21px; box-shadow: 0 2px 8px rgba(0,0,0,.4); pointer-events: none; }
+  #guide-edge i { font-style: normal; display: block; width: 20px; height: 20px; line-height: 0; }
+  #guide-edge i svg, #guide-mark b svg { display: block; width: 100%; height: 100%; }
+  #guide-mark b { display: block; width: 30px; height: 24px; margin: 0 auto; filter: drop-shadow(0 1px 1.5px rgba(0,0,0,.45)); }
+  body.is-touch #guide-mark b { width: 26px; height: 21px; }
+  #guide-edge span { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 2px; }
+  #action-btn.point, #sea-btn.point { overflow: visible; }
+  #action-btn.point::after, #sea-btn.point::after { content: '👆'; position: absolute; right: -6px; bottom: -14px; font-size: 28px; pointer-events: none; animation: guide-tap .6s infinite alternate; }
+  #mirror-talk.point #mt-next::after { content: ' 👆'; font-size: 18px; }
+  @keyframes guide-tap { to { transform: translate(-4px, -6px); } }
   #door-prompt.show { opacity: 1; }
 
   /* 🎣 캐치 배너 — "무엇을 얻었나"를 프롬프트 줄에 두 줄로 크게 띄운다.
@@ -1535,6 +1573,7 @@
   body.near-house #ext-btn { display: block; }
   body.menu-open #ext-btn { display: none; }
   #ext-btn:active { transform: translateX(-50%) scale(0.95); }
+  body.at-restaurant #hotbar, body.at-restaurant #hint { display: none !important; }
   body.indoor #hotbar { display: none !important; } /* 실내에선 도구바 숨김(안 씀) */
   #decor-btn:active { transform: translateX(-50%) scale(0.95); }
 
@@ -2890,6 +2929,7 @@
     body.is-touch #sea-btn { width: 104px; height: 104px; bottom: calc(12px + env(safe-area-inset-bottom)); left: calc(100% - 52px - max(20px, calc(env(safe-area-inset-right) + 8px))); }
     body.is-touch.sea-mode #door-prompt { bottom: calc(20px + env(safe-area-inset-bottom)); }
     body.is-touch.sea-mode.sea-busy #door-prompt { bottom: calc(128px + env(safe-area-inset-bottom)); }
+    body.is-touch.sea-mode #mirror-talk { bottom: calc(12px + env(safe-area-inset-bottom)); width: min(560px, calc(100vw - 280px)); }
     body.is-touch #sea-hud { top: calc(80px + var(--top-inset)); }
     body.is-touch #forage-hud { top: calc(80px + var(--top-inset)); width: min(52vw, 340px); }
     body.is-touch #feedback-tab { bottom: auto; right: max(12px, env(safe-area-inset-right)); padding: 6px 10px; font-size: 12px; }
@@ -2901,6 +2941,10 @@
     body.is-touch #npc-prompt { display: none; }
     body.is-touch #door-prompt, body.is-touch #fish-prompt, body.is-touch #zone-prompt { bottom: calc(104px + env(safe-area-inset-bottom)); }
     body.is-touch #toast, body.is-touch.coaching #toast, body.is-touch.hintbanner #toast, body.is-touch.decor-guide #toast, body.is-touch.mist-guide #toast { top: max(calc(72px + var(--top-inset)), var(--rcol-bottom, 0px)); left: auto; right: max(12px, env(safe-area-inset-right)); transform: none; max-width: min(260px, 34vw); font-size: 13px; padding: 8px 12px; }
+    body.is-touch #guide-card { top: calc(8px + var(--top-inset, 0px)); font-size: 12.5px; padding: 3px 12px; }
+    body.is-touch #guide-mark { font-size: 24px; }
+    body.is-touch #guide-edge { width: 34px; height: 34px; margin: -17px 0 0 -17px; font-size: 18px; }
+    body.is-touch #action-btn.point::after, body.is-touch #sea-btn.point::after { font-size: 22px; }
   }
   /* ── 폰 가로모드 — 아래에 붙는 메뉴 창(상점·꾸미기·가방·작업대…) ──
      세로 기준 bottom 90px(핫바 자리)을 그대로 두면 높이 390 대(iPhone 가로 + 홈 인디케이터 21px)에서
@@ -3773,6 +3817,7 @@
   </div>
 
   <!-- 🪞 거울 주민 대화 박스(B안) — js/mirror/talk-box.js -->
+  <div id="guide-card" hidden></div><div id="guide-mark" hidden></div><div id="guide-edge" hidden></div>
   <div id="mirror-talk" role="dialog" aria-live="polite"><div id="mt-face"></div><div id="mt-name"></div><div id="mt-line"></div><div id="mt-next"></div></div>
 
   <!-- 🧪 E1 처치 시작 안내(아래 시트) — 내용은 js/spaces/e1-start.js 가 채운다 -->
@@ -5223,7 +5268,7 @@
         const el = $('door-prompt');
         nearDoorNow = !!text && !opts?.info;   // 안내만 있는 줄(누를 게 없음)은 액션 버튼을 문으로 바꾸지 않는다 — 🪞 단서 줄이 🚪 로 떠 "뭔지 모르겠다"(2026-10-09)
         const t = text || '';
-        doorIcon = /^(❗|⛏️|🍄|🛗|🪜|🧰|🪞|🚏|💬|💧|🎁|🔙|🎃|🪏)/u.test(t) ? t.match(/^(❗|⛏️|🍄|🛗|🪜|🧰|🪞|🚏|💬|💧|🎁|🔙|🎃|🪏)/u)[1]   // 🪞 거울 마을 — 문구 첫 이모지 = 버튼 아이콘(영어판도 같다). 키워드 사슬보다 먼저(「요리사 판다」가 🍳 로 떴다)
+        doorIcon = /^(❗|⛏️|🍄|🛗|🪜|🧰|🪞|🚏|💬|💧|🎁|🔙|🎃|🪏|🍽️|🍽|✋|🫳|🔪|🍳|🗑️)/u.test(t) ? t.match(/^(❗|⛏️|🍄|🛗|🪜|🧰|🪞|🚏|💬|💧|🎁|🔙|🎃|🪏|🍽️|🍽|✋|🫳|🔪|🍳|🗑️)/u)[1]   // 🪞 거울 마을 — 문구 첫 이모지 = 버튼 아이콘(영어판도 같다). 키워드 사슬보다 먼저(「요리사 판다」가 🍳 로 떴다)
           : t.includes('비료') ? '🌱' : t.includes('주문판') ? '📋'
           : (t.includes('서빙') || t.includes('재료 부족') || t.includes('카페')) ? '☕'
           : t.includes('요리') ? '🍳' : t.includes('만들기') ? '🔧' : t.includes('상점') ? '🛒' : t.includes('일차에 열려요') ? '🔒' : t.includes('랭킹') ? '🏆' : t.includes('닭장') ? '🐔'
@@ -5326,7 +5371,7 @@
         const b = $('sea-btn');
         if (b.textContent !== label) b.textContent = label;
         const c = cls || '';
-        if (b.dataset.cls !== c) { b.classList.remove('go', 'hook', 'stop', 'door', 'wait'); if (c) b.classList.add(c); b.dataset.cls = c; }
+        if (b.dataset.cls !== c) { b.classList.remove('go', 'hook', 'stop', 'door', 'wait', 'idle'); if (c) b.classList.add(c); b.dataset.cls = c; }
       },
       setSeaRings(list) {
         const { cx, cy, w } = this.seaAnchor();
@@ -5434,7 +5479,7 @@
           const pad = 9, inner = S - pad * 2, span = half * 2;
           const px = (wx, wz) => [pad + (wx - cx + half) / span * inner, pad + (wz - cz + half) / span * inner];
           // 공간별 바닥색(실내=나무, 동굴=암회색, 텃밭=풀색)
-          const floor = d.place === 'house' ? 'rgba(150,110,70,0.6)' : d.place === 'mine' ? 'rgba(74,74,84,0.75)' : d.place === 'cafe' ? 'rgba(190,145,95,0.7)' : d.place === 'river' ? 'rgba(90,160,200,0.7)' : d.place === 'mist' ? 'rgba(74,80,106,0.8)' : d.place === 'sea' ? 'rgba(70,150,195,0.75)' : d.place === 'museum' ? 'rgba(214,198,170,0.75)' : d.place === 'observatory' ? 'rgba(90,84,130,0.8)' : d.place === 'mountain' ? '#e9eef3' : d.place === 'neighbor' ? 'rgba(150,200,120,0.75)' : d.place === 'mirror' ? 'rgba(80,98,154,0.8)' : d.place === 'halloween' ? 'rgba(90,106,106,0.85)' : d.place === 'dream' ? 'rgba(110,90,170,0.8)' : 'rgba(120,180,110,0.7)';
+          const floor = d.place === 'house' ? 'rgba(150,110,70,0.6)' : d.place === 'mine' ? 'rgba(74,74,84,0.75)' : d.place === 'cafe' ? 'rgba(190,145,95,0.7)' : d.place === 'restaurant' ? 'rgba(201,154,99,0.75)' : d.place === 'river' ? 'rgba(90,160,200,0.7)' : d.place === 'mist' ? 'rgba(74,80,106,0.8)' : d.place === 'sea' ? 'rgba(70,150,195,0.75)' : d.place === 'museum' ? 'rgba(214,198,170,0.75)' : d.place === 'observatory' ? 'rgba(90,84,130,0.8)' : d.place === 'mountain' ? '#e9eef3' : d.place === 'neighbor' ? 'rgba(150,200,120,0.75)' : d.place === 'mirror' ? 'rgba(80,98,154,0.8)' : d.place === 'halloween' ? 'rgba(90,106,106,0.85)' : d.place === 'dream' ? 'rgba(110,90,170,0.8)' : 'rgba(120,180,110,0.7)';
           ctx.fillStyle = floor; ctx.fillRect(pad, pad, inner, inner);
           ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 1.5; ctx.strokeRect(pad, pad, inner, inner);
           // 랜드마크(밭/광맥/가구/출구)
@@ -5450,7 +5495,7 @@
           // 공간 이름 라벨(상단 작게)
           ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.font = 'bold 9px sans-serif';
           ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-          ctx.fillText(t(d.place === 'house' ? '🏠 실내' : d.place === 'mine' ? '⛏️ 동굴' : d.place === 'cafe' ? '☕ 카페' : d.place === 'river' ? '🛶 강' : d.place === 'mist' ? '🌫️ 안개 숲' : d.place === 'sea' ? '🌊 바다터' : d.place === 'museum' ? '🏛️ 박물관' : d.place === 'observatory' ? '🔭 천문대' : d.place === 'mountain' ? '🏔️ 설산' : d.place === 'orchard' ? '🍎 과수원' : d.place === 'neighbor' ? '🏡 이웃의 숲' : d.place === 'mirror' ? '🪞 거울 마을' : d.place === 'halloween' ? '🎃 달빛 유령 정원' : d.place === 'dream' ? '🌙 꿈의 숲' : '🌾 텃밭'), S / 2, pad + 1.5);
+          ctx.fillText(t(d.place === 'house' ? '🏠 실내' : d.place === 'mine' ? '⛏️ 동굴' : d.place === 'cafe' ? '☕ 카페' : d.place === 'restaurant' ? '🍽️ 식당' : d.place === 'river' ? '🛶 강' : d.place === 'mist' ? '🌫️ 안개 숲' : d.place === 'sea' ? '🌊 바다터' : d.place === 'museum' ? '🏛️ 박물관' : d.place === 'observatory' ? '🔭 천문대' : d.place === 'mountain' ? '🏔️ 설산' : d.place === 'orchard' ? '🍎 과수원' : d.place === 'neighbor' ? '🏡 이웃의 숲' : d.place === 'mirror' ? '🪞 거울 마을' : d.place === 'halloween' ? '🎃 달빛 유령 정원' : d.place === 'dream' ? '🌙 꿈의 숲' : '🌾 텃밭'), S / 2, pad + 1.5);
           // 플레이어
           let [pxx, pyy] = px(d.x, d.z);
           pxx = Math.max(pad + 3, Math.min(S - pad - 3, pxx)); pyy = Math.max(pad + 3, Math.min(S - pad - 3, pyy));

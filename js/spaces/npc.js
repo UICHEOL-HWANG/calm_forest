@@ -29,6 +29,8 @@ import { starOf } from '../workbench/rules.js';
 import { cosOnboardView } from '../cos-onboard.js';
 import { minerCard, jobCard } from '../delve/miner-card.js';
 import { delveJobProgress } from './delve.js';
+import { portCard } from '../port/card.js';
+import { port } from '../port/index.js';
 import { Sound } from '../sound.js';
 import { inVillage2 } from '../spaces/doors.js';
 import * as THREE from 'three';
@@ -855,7 +857,7 @@ export function questPanelTop() {
 //    살아 있는 의뢰가 화면에서 사라진다(규칙·회귀 테스트는 js/quests.js activeQuestList).
 //    pin(nearNPC)은 "지금 눈앞에 있는 사람을 맨 위로" 라는 힌트일 뿐 — 멀어지면 저절로 풀린다.
 export function refreshQuestPanel() {
-  const views = [...npcObjs.filter(o => !o.hidden).map(o => questView(o)), onboardView(gameState.progress?.orchardQuest, orchardWheat()), cosOnboardView(gameState.progress?.cosQuest), minerCard(gameState.delve, gameState.inventory, atMine), jobCard(gameState.delve, gameState.inventory, atMine, todayStr(), delveJobProgress())].filter(Boolean);   // 🌾→🍎 과수원 가는 길(주민에게 말 안 걸어도 뜬다)
+  const views = [...npcObjs.filter(o => !o.hidden).map(o => questView(o)), onboardView(gameState.progress?.orchardQuest, orchardWheat()), cosOnboardView(gameState.progress?.cosQuest), minerCard(gameState.delve, gameState.inventory, atMine), jobCard(gameState.delve, gameState.inventory, atMine, todayStr(), delveJobProgress()), portCard(gameState.port, port.active)].filter(Boolean);   // 🌾→🍎 과수원 가는 길(주민에게 말 안 걸어도 뜬다)
   ui.setQuest?.(activeQuestList(views, { top: questPanelTop(), pinId: views.find(v => v.id === 'delve_miner' || v.id === 'delve_job')?.id || nearNPC?.def.id || null }));
 }
 

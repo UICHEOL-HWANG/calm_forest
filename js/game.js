@@ -16,6 +16,7 @@
 // =============================================================
 
 import * as THREE from 'three';
+import { buildReelRod } from './reel-rod-model.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -100,6 +101,10 @@ import { makeChickenState, stepChickens } from './coop-chickens.js';   // 🐔 �
 import { ORCHARD_AUTO_TOOLS, orchardToolFor, FRUITS, TREE_SLOTS, YIELD_PER_DAY, ORCHARD_STREAM_LOCAL, ORCHARD_SLOTS_LOCAL, fruitOf, fruitKeyOf, sapKeyOf, nearStream, harvestable, settleTrees, chopHit, freeSlots, daysBetween } from './orchard.js';   // 🍎 과수원 규칙(과일 표·물·수확·베기·빈 자리·정산)
 import { restoreStage } from './orchard-onboard.js';
 import { defaultDelve, sanitizeDelve } from './delve/rules.js';
+import { defaultPort, sanitizePort } from './port/rules.js';
+import { defaultRestaurant, sanitizeRestaurant } from './restaurant/rules.js';
+import { RESTAURANT, RESTAURANT_GATE, HALL, REST_LIGHT } from './restaurant/data.js';
+import { enterRestaurant, exitRestaurant, spawnRestaurantGate, buildRestaurantHall, restaurantAction, tickRestaurant, updateRestaurantNight, updateRestaurantGuide, maybeStartRestaurantGuide, restaurantGuideActive } from './spaces/restaurant.js';
 import { restoreStage as restoreCosStage } from './cos-onboard.js';
 import { cosQuestActive, maybeOfferCosQuest, noteCosQuestVisit, updateCosQuestBubble } from './spaces/cos-quest.js';
 import { ORCHARD_TREE, GATE_PATCH, buildOrchardDecor, fruitSpots, buildTreeSoil, disposeOwned } from './orchard-art.js';   // 🍎 과수원 외관(나무 모양·안쪽 소품·입구 잔디 판)
@@ -201,8 +206,10 @@ import {
   houseSolidR, unregisterWindows, updateHouseSign, woodTexture,
 } from './spaces/house.js';   // 📦 집(건축) — 정해진 터, 단계별 건설
 import {
-  buildSea, enterSea, exitSea, seaAction, seaCamera, seaPrompt, spawnSeaGate, updateSea, updateSeaVisuals,
+  buildSea, enterSea, exitSea, seaAction, seaCamera, seaPrompt, spawnSeaCove, spawnSeaGate, updateSea, updateSeaVisuals,
 } from './spaces/sea.js';   // 📦 🌊 바다터 — 대형 낚시 (docs/design/SEA_FISHING_PLAN.md · 프로토타입 sims/sea-sim.html)
+import { spawnPortPier } from './port/pier.js';
+import { port, enterPort, portAction, clampPort, portOwnsMovement, bindPortEnv, updatePortGuide, maybeStartPortGuide, guideActive as portGuideActive } from './port/index.js';
 import { openSeaPick } from './spaces/sea-pick.js';
 import { mudflat, mudflatAction, mudflatSpeedMult, clampMudflat, enterMudflat, mudflatDebug, setMudflatCam } from './spaces/mudflat.js';
 import { dive, diveAction, diveSpeedMult, clampDive, enterDive, diveAtmosphere, diveDebug } from './spaces/dive.js';
@@ -331,6 +338,7 @@ export const $w = {
   get _seaPrevTool() { return _seaPrevTool; }, set _seaPrevTool(v) { _seaPrevTool = v; },
   get armWristK() { return armWristK; }, set armWristK(v) { armWristK = v; },
   get atCafe() { return atCafe; }, set atCafe(v) { atCafe = v; },
+  get atRestaurant() { return atRestaurant; }, set atRestaurant(v) { atRestaurant = v; },
   get atFarm() { return atFarm; }, set atFarm(v) { atFarm = v; },
   get atMine() { return atMine; }, set atMine(v) { atMine = v; },
   get refreshQuestPanel() { return refreshQuestPanel; },
@@ -355,6 +363,7 @@ export const $w = {
   get bugRespawnAt() { return bugRespawnAt; }, set bugRespawnAt(v) { bugRespawnAt = v; },
   get cafeGuestCache() { return cafeGuestCache; }, set cafeGuestCache(v) { cafeGuestCache = v; },
   get cafeInGroup() { return cafeInGroup; }, set cafeInGroup(v) { cafeInGroup = v; },
+  get restaurantInGroup() { return restaurantInGroup; }, set restaurantInGroup(v) { restaurantInGroup = v; },
   get cosmeticShop() { return cosmeticShop; }, set cosmeticShop(v) { cosmeticShop = v; },
   get decorGhost() { return decorGhost; }, set decorGhost(v) { decorGhost = v; },
   get decorNearRing() { return decorNearRing; }, set decorNearRing(v) { decorNearRing = v; },
@@ -543,6 +552,7 @@ let nightLevel = 0;                             // updateDayNight 이 매 프레
 function isNight() { return isNightAt(timeOfDay); }   // 판정은 js/daynight.js 가 단일 출처(테스트가 잠근다)
 
 // ── ☕ 카페 — 채굴장처럼 처음부터 마을에 있는 장소. 새 동사: 접객/서빙 ──
+let atRestaurant = false, restaurantInGroup = null;
 let atCafe = false, nearCafeBoard = false;
 let atMuseum = false, museumGroup = null;   // 🏛️ 박물관 전시실
 let atObservatory = false, observatoryGroup = null;   // 🔭 천문대 실내
@@ -633,12 +643,13 @@ function setSpaceVisible() {
   if (mineGroup) mineGroup.visible = atMine && delveFloorNow() === 0;
   if (mineGroup?.userData.glow) mineGroup.userData.glow.visible = atMine;
   if (cafeInGroup) cafeInGroup.visible = atCafe;
+  if (restaurantInGroup) restaurantInGroup.visible = atRestaurant;
   if (museumGroup) museumGroup.visible = atMuseum;
   if (observatoryGroup) observatoryGroup.visible = atObservatory;
   if (mountainGroup) mountainGroup.visible = atMountain;
   if (riverGroup) riverGroup.visible = atRiver;
   if (mistGroup) mistGroup.visible = atMist;
-  if (seaGroup) seaGroup.visible = atSea;
+  if (seaGroup) seaGroup.visible = atSea && !port.active;
   if (orchardGroup) orchardGroup.visible = atOrchard;
   setDreamVisible(atDream);   // 🌙 꿈의 숲(처음 꿈꿀 때 지어진다)
   setMirrorVisible(atMirror);
@@ -647,7 +658,7 @@ function setSpaceVisible() {
   //   텃밭은 실외라 outdoorZone() 에는 들어가지만 z=84 로 그림자 상자 밖이라 여기선 함께 멈춘다.
   setShadowActive(shadowActiveFor(spaceFlags()));
   // 🌧️ 빗소리: 비 오는 날 야외(마을·텃밭·강)에서만 — 실내·동굴·카페에선 정지
-  if (RAIN_DAY && !intro && mode === 'play' && !indoor && !atMine && !atCafe && !atMuseum && !atObservatory && !atMountain && !atDream && !atMirror && !atHalloween && !neighborIndoorFrame()) startRainSound();
+  if (RAIN_DAY && !intro && mode === 'play' && !indoor && !atMine && !atCafe && !atRestaurant && !atMuseum && !atObservatory && !atMountain && !atDream && !atMirror && !atHalloween && !neighborIndoorFrame()) startRainSound();
   else stopRainSound();
 }
 // ── 🪙 오늘의 시세 — 품목별 판매가가 날짜 시드로 매일 0.7~1.3배 변동(전원 동일) ──
@@ -1127,6 +1138,8 @@ const gameState = {
   museum: { special: {}, maxFloor: 1 },             // 🏛️ ✨조건부 전시 { rain_fish: { id, at } } — 규칙은 js/museum.js SPECIAL_EXHIBITS
   orchard: { trees: [], sapSel: 'apple', settleDate: null },   // 🍎 과수원(js/orchard.js)
   delve: defaultDelve(),
+  port: defaultPort(),
+  restaurant: defaultRestaurant(),
   progress: { advHarvest: 0 },   // 🔒 진행도 해금 카운터 — 고급 작물 수확 횟수(js/tuning.js PROGRESS_GATE)
   kitchen: { cooked: 0, best: {}, tiers: {} }, // 🍳 자유주방 { 누적 요리 수, 레시피별 최고 점수(0~100), 등급별 획득 수 }
   pantry: [],   // 🍱 찬장 — 보관한 음식 [{ id: 레시피id, score }]. 등급은 score 에서 파생. 최대 PANTRY_MAX 칸
@@ -1544,7 +1557,7 @@ export function markNoticesSeen(list) {
 
 // 스테이션 첫 접근 시 1회만 뜨는 카드 모달 안내(초보 온보딩)
 let firstHintRetries = {};   // key → 미룬 횟수(무한 재시도 방지)
-const hintPlace = () => [indoor, atFarm, atMine, atCafe, atRiver, atMist, atSea, atMuseum, atObservatory, atMountain, atOrchard, atDream, atMirror].map(Number).join('');
+const hintPlace = () => [indoor, atFarm, atMine, atCafe, atRestaurant, atRiver, atMist, atSea, atMuseum, atObservatory, atMountain, atOrchard, atDream, atMirror].map(Number).join('');
 function firstHint(key, ico, title, body, place = hintPlace()) {
   if (gameState.hintsSeen[key]) return;
   const away = place.includes('1') && place !== hintPlace();
@@ -1808,6 +1821,7 @@ function setToolPage(id, auto = false) {
 function toolZoneKey() {
   if (indoor) return 'indoor';
   if (atCafe) return 'cafe';
+  if (atRestaurant) return 'restaurant';
   if (atMuseum) return 'museum';
   if (atObservatory) return 'observatory';
   if (atMountain) return 'mountain';
@@ -2733,6 +2747,7 @@ export async function enterGame() {
       return { stage: gameState.houseStage, inv: { wood: gameState.inventory.wood, stone: gameState.inventory.stone, coins: gameState.inventory.coins } };
     };
     // 🚧 __pos() / __tp(x,z) — 충돌·배치 검증용 위치 조회·텔레포트
+    if (_wq.has('dbg')) window.__setAnalog = (x, z) => Input.setAnalog(x, z);
     window.__pos = () => [Math.round(player.position.x * 100) / 100, Math.round(player.position.z * 100) / 100];
     window.__tp = (x, z) => { player.position.set(x, 0, z); snapCamera(); return window.__pos(); };
     // 🌾 __farmMax() — 텃밭을 밭으로 가득 채워 최악 상태를 재현(드로우콜 측정용). 로컬 전용.
@@ -2840,13 +2855,15 @@ export async function enterGame() {
     window.__quality = (lvl) => { applyQualityStep(lvl); return { dpr: renderer.getPixelRatio(), bloom: bloomPass.enabled }; };
     window.__bloomSize = () => [bloomPass.renderTargetBright.width, bloomPass.renderTargetBright.height];
     // 🌓 그림자·드로우콜 검수용 즉시 입퇴장 — __house·__mine 과 같은 패턴(마을 밖 공간 전부)
-    window.__space = { farm: [enterFarm, exitFarm], cafe: [enterCafe, exitCafe], river: [enterRiver, exitRiver],
+    window.__space = { farm: [enterFarm, exitFarm], cafe: [enterCafe, exitCafe], restaurant: [enterRestaurant, exitRestaurant], river: [enterRiver, exitRiver],
       mist: [enterMist, exitMist], sea: [enterSea, exitSea], house: [enterHouse, exitHouse], mine: [enterMine, exitMine],
       museum: [enterMuseum, exitMuseum] };
     // 🏛️ 전시 관람 검수용 — 진열장 앞까지 걸어가지 않고 바로 확대 화면을 띄운다(프레이밍 비교)
     window.__museumView = { open: openMuseumView, close: closeMuseumView, state: () => museumView && { ...museumView.frame, visible: museumView.group.visible, meshChildren: museumView.mesh.children.length, look: _camLook.toArray().map(v => +v.toFixed(2)), pos: museumView.group.position.toArray().map(v => +v.toFixed(2)), cam: camera.position.toArray().map(v => +v.toFixed(2)) }, items: () => museumFloorItems().map((it, i) => ({ i, ico: it.ico, name: it.name, cat: it.cat, id: it.id, has: !!gameState.dex[it.cat]?.[it.id] })) };
     window.__museumLight = MUSEUM_LIGHT;              // 🏛️ 전시실 조명 검수(값을 바꿔 보며 비교)
     window.__camIn = camOffsetIndoor;                 // 실내 카메라 각도 검수(값을 바꿔 보며 비교)
+    window.__camRest = camOffsetRest;
+    window.__restLight = REST_LIGHT;
     window.__camUser = { get: () => ({ ...camUser, pitch: effectivePitch(camUser), adjustable: userCamAdjustable() }), set: (s) => setCamUser(s), pos: () => camera.position.toArray().map(v => +v.toFixed(2)) };   // 🎥 플레이어 카메라 검수
     window.__floor = () => interiorFloor;             // 실내 바닥 재질 검수
     window.__decor = (id, x, z, rot = 0, f = null) => placeDecor(id, INT.x + x, INT.z + z, true, rot, true, f);   // 가구 무료 배치(검수용) — f 는 층
@@ -2863,6 +2880,7 @@ export async function enterGame() {
   if (_wq.get('sea') === '1') setTimeout(() => enterSea(), 60);
   if (_wq.get('mudflat') === '1') setTimeout(() => enterMudflat({ entry: 'pick' }), 60);
   if (_wq.get('dive') === '1') setTimeout(() => enterDive({ entry: 'pick' }), 60);
+  if (_wq.get('port') === '1') setTimeout(() => enterPort(), 60);
   if (_wq.get('divedebug') === '1') window.__dive = diveDebug;
   if (_wq.get('mudflatdebug') === '1') { window.__mudflat = mudflatDebug; window.__mudflatCam = setMudflatCam; }   // 테스트: ?sea=1 — 바다터 바로 입장
   if (_wq.get('seadebug') === '1') window.__sea = { mg: seaMG, action: seaAction };   // 테스트: 상태 점검용(연출 검수)
@@ -2954,7 +2972,7 @@ export async function enterGame() {
   setTimeout(announceMapOpens, 4000);   // 🧪 [베타 2차] 열린 맵 안내 — 시작 직후 코치·환영 배너와 겹치지 않게 4초 뒤
   startMetrics(() => ({                // [계측] 세션 요약(60초/이탈 시 upsert)용 스냅샷
     coins: gameState.inventory.coins || 0,
-    place: indoor ? 'house' : atFarm ? 'farm' : atOrchard ? 'orchard' : atMine ? 'mine' : atCafe ? 'cafe' : atMuseum ? 'museum' : atObservatory ? 'observatory' : atMountain ? 'mountain' : atNeighbor ? 'neighbor' : atMirror ? 'mirror' : atDream ? 'dream' : atRiver ? 'river' : atMist ? 'mist' : atSea ? 'sea' : atHalloween ? 'halloween' : 'village',
+    place: indoor ? 'house' : atFarm ? 'farm' : atOrchard ? 'orchard' : atMine ? 'mine' : atCafe ? 'cafe' : atRestaurant ? 'restaurant' : atMuseum ? 'museum' : atObservatory ? 'observatory' : atMountain ? 'mountain' : atNeighbor ? 'neighbor' : atMirror ? 'mirror' : atDream ? 'dream' : atRiver ? 'river' : atMist ? 'mist' : atSea ? 'sea' : atHalloween ? 'halloween' : 'village',
     x: player.position.x, z: player.position.z,
   }));
   gameState.firstDay = ensureFirstDay(gameState.firstDay, todayStr());
@@ -3077,6 +3095,8 @@ function applySave(saved) {
   gameState.progress.orchardQuest = restoreStage(saved.progress?.orchardQuest, gameState.progress.advHarvest);
   gameState.progress.orchardRefill = saved.progress?.orchardRefill === true || undefined;
   gameState.delve = sanitizeDelve(saved.delve);
+  gameState.port = sanitizePort(saved.port);
+  gameState.restaurant = sanitizeRestaurant(saved.restaurant);
   gameState.progress.cosQuest = restoreCosStage(saved.progress?.cosQuest, gameState.cosmetics.owned.length);
   syncBridge();            // 🌉 복원된 unlocks(legacy·flags.bridge)로 다리를 다시 맞춘다 — 빌더는 로드 전에 돈다
   syncOrchardGateLock();   // 🔒 복원된 진행도로 가로대를 다시 계산 — 입구를 세울 땐 progress 가 아직 기본값 0 이라 항상 잠긴 것으로 보인다
@@ -3249,7 +3269,7 @@ function grantDecor(id) {
 }
 
 export function getGameState() {
-  gameState.playerPos = atNeighbor ? neighborReturnPos() : (atMirror || mirrorRideActive()) ? mirrorReturnPos() : atDream ? dreamReturnPos() : atMountain ? mountainReturnPos() : delveFloorNow() > 0 ? { x: MINE_GATE.x, z: MINE_GATE.z + 2 } : { x: player.position.x, z: player.position.z };
+  gameState.playerPos = atRestaurant ? { x: RESTAURANT_GATE.x, z: 24.4 } : atNeighbor ? neighborReturnPos() : (atMirror || mirrorRideActive()) ? mirrorReturnPos() : atDream ? dreamReturnPos() : atMountain ? mountainReturnPos() : delveFloorNow() > 0 ? { x: MINE_GATE.x, z: MINE_GATE.z + 2 } : { x: player.position.x, z: player.position.z };
   if (atHalloween) gameState.playerPos = halloweenReturnPos();
   gameState.plots = plots.map(p => ({ x: p.x, z: p.z, state: p.state, growth: p.growth, crop: p.cropType?.id,   // crop: 밤손님 판정·복원용 작물 종류
     ...(p.fert ? { fert: 1 } : {}), ...(p.weed ? { weed: 1 } : {}), ...(p.pest ? { pest: 1 } : {}) }));   // 🌾 고급 작물 공정 — 켜진 것만 기록(옛 스키마와 호환), claimedBy 는 런타임 전용
@@ -3356,10 +3376,10 @@ function setShadowActive(on) {
 }
 
 // 현재 공간 플래그 묶음 — updateDayNight 가 매 프레임 부르므로 객체를 재사용한다(프레임당 할당 0).
-const _spaceFlags = { indoor: false, atFarm: false, atMine: false, atCafe: false, atRiver: false, atMist: false, atSea: false, atMuseum: false, atObservatory: false, atMountain: false, atOrchard: false, atNeighbor: false, atDream: false, atMirror: false, atHalloween: false };
+const _spaceFlags = { indoor: false, atFarm: false, atMine: false, atCafe: false, atRestaurant: false, atRiver: false, atMist: false, atSea: false, atMuseum: false, atObservatory: false, atMountain: false, atOrchard: false, atNeighbor: false, atDream: false, atMirror: false, atHalloween: false };
 function spaceFlags() {
   _spaceFlags.indoor = indoor; _spaceFlags.atFarm = atFarm; _spaceFlags.atMine = atMine;
-  _spaceFlags.atCafe = atCafe; _spaceFlags.atRiver = atRiver; _spaceFlags.atMist = atMist;
+  _spaceFlags.atCafe = atCafe; _spaceFlags.atRestaurant = atRestaurant; _spaceFlags.atRiver = atRiver; _spaceFlags.atMist = atMist;
   _spaceFlags.atSea = atSea; _spaceFlags.atMuseum = atMuseum; _spaceFlags.atObservatory = atObservatory; _spaceFlags.atMountain = atMountain; _spaceFlags.atOrchard = atOrchard; _spaceFlags.atNeighbor = atNeighbor; _spaceFlags.atDream = atDream; _spaceFlags.atMirror = atMirror; _spaceFlags.atHalloween = atHalloween;
   return _spaceFlags;
 }
@@ -3473,7 +3493,7 @@ function buildWorld() {
     for (let tries = 0; tries < 60 && !ok; tries++) { // 호수·집터·시설 위에 안 생기게 재시도
       const r = 8 + Math.random() * 22, a = Math.random() * Math.PI * 2;
       x = Math.cos(a) * r; z = Math.sin(a) * r;
-      ok = !(dist2D({ x, z }, LAKE) < LAKE_R + 2.5 || dist2D({ x, z }, HOUSE_POS) < HOUSE_CLEAR_R || dist2D({ x, z }, BENCH) < 2.5 || dist2D({ x, z }, KITCHEN) < 3 || dist2D({ x, z }, SHOP) < 2.5 || dist2D({ x, z }, FARM_GATE) < 2.5 || dist2D({ x, z }, MINE_GATE) < 2.5 || dist2D({ x, z }, COOP) < 6 || dist2D({ x, z }, GLADE) < GLADE_R + 1 || dist2D({ x, z }, CAFE_GATE) < 5.5 || dist2D({ x, z }, FOREST) < FOREST_R + 1
+      ok = !(dist2D({ x, z }, LAKE) < LAKE_R + 2.5 || dist2D({ x, z }, HOUSE_POS) < HOUSE_CLEAR_R || dist2D({ x, z }, BENCH) < 2.5 || dist2D({ x, z }, KITCHEN) < 3 || dist2D({ x, z }, SHOP) < 2.5 || dist2D({ x, z }, FARM_GATE) < 2.5 || dist2D({ x, z }, MINE_GATE) < 2.5 || dist2D({ x, z }, COOP) < 6 || dist2D({ x, z }, GLADE) < GLADE_R + 1 || dist2D({ x, z }, CAFE_GATE) < 5.5 || dist2D({ x, z }, RESTAURANT_GATE) < 6 || dist2D({ x, z }, FOREST) < FOREST_R + 1
       || dist2D({ x, z }, DOCK_POND) < DOCK_POND_R + 2 || dist2D({ x, z }, DOCK_GATE) < 4   // 🛶 나루터 연못·데크 위엔 나무 금지
       || dist2D({ x, z }, MIST_GATE) < 5   // 🌫️ 안개 숲 입구 앞은 비워둠(자체 고목 연출이 있음)
       || dist2D({ x, z }, SHOP_POS) < 4   // 🏪 꾸미기 가게 — 반치수 2.56 + 걸어다닐 틈. 없으면 나무가 가게 안에 박힌다
@@ -3515,7 +3535,9 @@ function buildWorld() {
   buildFarmInstances();   // 🌾 밭 흙 인스턴스 버퍼
   spawnMineGate();    // 채굴 동굴 입구
   buildMine();        // 채굴 동굴
+  lockFrom('cove'); spawnSeaCove(); lockTo();
   lockFrom('sea'); spawnSeaGate(); lockTo();     // 🌊 바다터 포구(마을 북동)
+  lockFrom('port'); spawnPortPier(); lockTo();
   buildSea();         // 🌊 바다 인스턴스(부두+대형 낚시)
   rebuildOrchard();   // 🍎 과수원 언덕(지형·시냇물·나무)
 
@@ -3528,6 +3550,7 @@ function buildWorld() {
     if (dist2D({ x, z }, SEA_COVE) < SEA_COVE.r + 0.5) continue;  // 🌊 후미 물 위 제외
     if (dist2D({ x, z }, SHOP_POS) < 3.2) continue;
     if (dist2D({ x, z }, HOMI_STALL) < 2.4) continue;               // 🏪 가게 바닥은 두께 0.09 라 풀(높이 0.7)이 마루를 뚫고 올라온다
+    if (dist2D({ x, z }, RESTAURANT_GATE) < 5) continue;
     if (dist2D({ x, z }, LIGHT_WORKSHOP) < 3.2) continue;            // 🏮 빛 공방 받침도 같은 이유
     if (plazaScatterBlocks(x, z, 0.5)) continue;
     if (auctionScatterBlocks(x, z)) continue;
@@ -3546,6 +3569,7 @@ function buildWorld() {
   });
 
   buildPlayer();
+  bindPortEnv({ $w, scene, camera, hudRoot: document.body, setActPoint: k => { for (const id of ['action-btn', 'sea-btn']) document.getElementById(id)?.classList.toggle('point', k === 'btn'); document.getElementById('mirror-talk')?.classList.toggle('point', k === 'talk'); }, player, ui, snapCamera, setSpaceVisible, gameState: () => gameState, requestSave, analog, keys, trackEvent, exitSea, isNight, popAt: (p, ico) => spawnFloatText(p.x, 1.4, p.z, ico, '#ffffff', 1.1), solidCircle, todayStr, refreshQuestPanel, isTouch: () => document.body.classList.contains('is-touch'), spendCoins: n => { if ((gameState.inventory.coins || 0) < n) return false; gameState.inventory.coins -= n; logEcon('port_market', 'market', -n, gameState.inventory.coins); refreshInventoryUI(); return true; }, earnCoins: n => { gameState.inventory.coins = (gameState.inventory.coins || 0) + n; logEcon('port_sell', 'hut', n, gameState.inventory.coins); refreshInventoryUI(); }, makeSignpost, removeSolid });
   buildFireflies();
   buildStars();
   buildRain();              // 🌧️ 빗줄기(비 오는 날에만 표시)
@@ -4148,7 +4172,7 @@ export function refreshAura() {
 }
 function updateAura(dt) {
   if (!auraFx.points.parent) scene.add(auraFx.points);
-  const off = indoor || atCafe || atMuseum || atObservatory || atMountain || atMine || atDream;
+  const off = indoor || atCafe || atRestaurant || atMuseum || atObservatory || atMountain || atMine || atDream;
   auraFx.points.visible = !off && !!gameState.aura.equipped;
   if (auraFx.points.visible) auraFx.update(dt, player.position, { nightLevel });
 }
@@ -4161,7 +4185,7 @@ function updateTrail(dt) {
     for (const m of trailPool) m.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
     trailPool.length = 0; trailItem = id;
   }
-  const off = indoor || atCafe || atMuseum || atObservatory || atMountain || atMine || atDream || atMirror || atHalloween;
+  const off = indoor || atCafe || atRestaurant || atMuseum || atObservatory || atMountain || atMine || atDream || atMirror || atHalloween;
   if (!id || off) { if (trailLive.length) clearTrail(); else trailFx.clear(); return; }
 
   if (player.position.distanceTo(trailLastPos) >= TRAIL_STEP) {
@@ -4219,7 +4243,7 @@ function umbrellaHeld() { return !!umbrellaMesh && umbrellaMesh.visible && umbre
 function updateUmbrella(dt) {
   const theme = toolSkinOf(gameState.cosmetics);
   //  🌊 바다터는 양팔로 릴대를 잡는다 · 클로즈업(요리·밤손님 대결)은 카메라가 붙어 우산이 화면을 가린다
-  const outdoors = !(indoor || atCafe || atMuseum || atObservatory || atMountain || atDream || atMirror || atHalloween || atMine || atSea || boat.active || mgView || duelActive);
+  const outdoors = !(indoor || atCafe || atRestaurant || atMuseum || atObservatory || atMountain || atDream || atMirror || atHalloween || atMine || atSea || boat.active || mgView || duelActive);
   const show = !!charGroup && !!charK && umbrellaShown(theme, WEATHER, outdoors);
   if (umbrellaMesh && (umbrellaTheme !== theme || umbrellaMesh.parent !== charGroup)) dropUmbrella();   // 세트를 바꿨거나 캐릭터를 다시 지었다
   //  🪓 동작(도구질·줍기·삽질) 중엔 갓을 뒤로 젖힌다 — 머리 위 갓이 숙인 몸과 도구를 가렸다(2026-10-02 실측).
@@ -4752,35 +4776,8 @@ function toolMesh(id, tier = 0, skin = null) {
     gem(0, 0.10, 0.9);
     g.scale.setScalar(1.25);
   } else if (id === 'reel') {
-    // 🌊 대물 릴대 — sims/arm-sim.html 검수 v2. 민대와 실루엣이 확실히 다르게:
-    //   짧고 굵은 보트 로드 + 윈치급 오버사이즈 드럼 릴 + 굵은 가이드 링 + 밝은 팁.
-    const NAVY = 0x2e4a66, KNOB = 0xd94f4f, ROPE = 0xe8d9a8;
-    const rknob = new THREE.Mesh(new THREE.SphereGeometry(0.05, 7, 6), clayMat(GRIP)); rknob.position.y = -0.08; g.add(rknob);
-    const rear = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.046, 0.22, 7), clayMat(GRIP)); rear.position.y = 0.04; g.add(rear);
-    const reel = new THREE.Group(); reel.position.set(0.1, 0.24, 0); g.add(reel);
-    const spool = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.105, 0.075, 12), clayMat(STEEL));
-    spool.rotation.z = Math.PI / 2; reel.add(spool);
-    [-1, 1].forEach(sx => {
-      const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.02, 12), clayMat(EDGE));
-      rim.rotation.z = Math.PI / 2; rim.position.x = sx * 0.04; reel.add(rim);
-    });
-    const wound = new THREE.Mesh(new THREE.TorusGeometry(0.085, 0.022, 6, 12), clayMat(ROPE));
-    wound.rotation.y = Math.PI / 2; reel.add(wound);
-    const crank = new THREE.Group(); crank.position.x = 0.065; reel.add(crank);
-    const armC = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.11, 0.018), clayMat(EDGE)); armC.position.y = 0.048; crank.add(armC);
-    const kn = new THREE.Mesh(new THREE.SphereGeometry(0.03, 7, 6), clayMat(KNOB)); kn.position.y = 0.105; crank.add(kn);
-    const blank = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.048, 0.52, 7), clayMat(NAVY)); blank.position.y = 0.56; g.add(blank);
-    [[0.52, 0.04], [0.7, 0.032]].forEach(([y, r]) => {
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.013, 5, 10), clayMat(EDGE));
-      ring.rotation.x = Math.PI / 2; ring.position.set(0.03 + r, y, 0); g.add(ring);
-    });
-    const rtip = new THREE.Group(); rtip.position.y = 0.8; g.add(rtip);
-    const tipRod = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.026, 0.2, 6), clayMat(EDGE));
-    tipRod.position.y = 0.09; rtip.add(tipRod);
-    rtip.rotation.z = 0.34;
-    const tipEnd = new THREE.Group(); tipEnd.position.y = 0.19; rtip.add(tipEnd);   // 낚싯줄 시작점
-    g.scale.setScalar(1.25);   // 대물 장비 — 카메라 클로즈업(0.45)에서도 또렷하게
-    g.userData.sea = { crank, tip: rtip, tipEnd };
+    g.userData.sea = buildReelRod(g);
+    g.scale.setScalar(1.25);
   } else if (id === 'net') {
     // 🦋 포충망 — 긴 손잡이 + 테 + 반투명 망(밤에 실루엣이 또렷하게 보이도록 밝은 색)
     const nk = up ? 1.22 : 1;   // 촘촘한 = 테가 커지고 망이 덜 비친다(잡을 확률↑)
@@ -5026,13 +5023,13 @@ function refreshHeldTool(cos = gameState.cosmetics) {
 
 function setHeldTool(id) {
   if (!handAnchor) return;
-  if (atSea && (seaRodMesh || mudflat.active || dive.active)) return;   // 🌊 바다터에선 릴대 고정 — 숫자키 도구 전환을 무시(팔레트도 숨김)
+  if (atSea && (seaRodMesh || mudflat.active || dive.active || port.active)) return;   // 🌊 바다터에선 릴대 고정 — 숫자키 도구 전환을 무시(팔레트도 숨김)
   if (heldToolMesh) { handAnchor.remove(heldToolMesh); disposeTree(heldToolMesh); }   // clayMat 은 캐시가 없다 — 안 버리면 도구를 바꿀 때마다 샌다
   heldToolId = id;
   heldToolMesh = toolMesh(id, tierOf(id, gameState), toolSkinOf(gameState.cosmetics));   // 지금 등급·테마로 — 업그레이드를 샀거나 세트를 입었으면 모습이 다르다
   measureStowLen(heldToolMesh); updateStowPose();
   handAnchor.add(heldToolMesh);
-  if (indoor || atCafe) setFogExempt(heldToolMesh, true);   // 실내에서 바꿔 든 도구도 안개 밖
+  if (indoor || atCafe || atRestaurant) setFogExempt(heldToolMesh, true);   // 실내에서 바꿔 든 도구도 안개 밖
   // 🪏 처음 삽을 들면 쓰는 법 1회 안내(모달) — 밭을 지우고 싶은 사람이 정확히 이 순간 답을 얻는다
   if (id === 'shovel' && gameState.character) {
     const one = digIsOneShot(gameState);
@@ -5048,7 +5045,7 @@ function setHeldDecor(id) {
   const m = decorMesh(id); m.scale.setScalar(0.5 / DECOR_SCALE); m.position.y = 0.05;   // 손에 든 미니어처는 배율 상쇄(전과 같은 크기)
   m.rotation.y = decorRot * Math.PI / 2;   // 현재 회전 상태 미리보기
   heldToolMesh = m; measureStowLen(m); updateStowPose(); handAnchor.add(m);
-  if (indoor || atCafe) setFogExempt(m, true);
+  if (indoor || atCafe || atRestaurant) setFogExempt(m, true);
 }
 
 // ── 🌦️ 날씨 파티클 — 비: 빠른 빗줄기 / 눈: 천천히 흩날리는 눈송이 ──
@@ -5081,13 +5078,13 @@ function buildSeasonDrift() {
 }
 function updateSeasonDrift(dt, t) {
   if (!seasonDrift) return;
-  const show = mode === 'play' && !indoor && !atMine && !atCafe && !atMuseum && !atObservatory && !atMountain && !atDream && !atMirror && !atHalloween && !neighborIndoorFrame();
+  const show = mode === 'play' && !indoor && !atMine && !atCafe && !atRestaurant && !atMuseum && !atObservatory && !atMountain && !atDream && !atMirror && !atHalloween && !neighborIndoorFrame();
   seasonDrift.update(dt, t, player.position.x, player.position.z, show);
 }
 
 function updateRain(dt) {
   if (!rainLines) return;
-  const show = mode === 'play' && !indoor && !atMine && !atCafe && !atMuseum && !atObservatory && !atMountain && !atDream && !atMirror && !atHalloween && !neighborIndoorFrame();
+  const show = mode === 'play' && !indoor && !atMine && !atCafe && !atRestaurant && !atMuseum && !atObservatory && !atMountain && !atDream && !atMirror && !atHalloween && !neighborIndoorFrame();
   rainLines.visible = show;
   if (!show) return;
   const { vel, snow, len } = rainLines.userData;
@@ -5183,6 +5180,7 @@ function buildEnvironment() {
     if (dist2D({ x, z }, WORLD_TREE) < 5) continue;                   // 🌳 세계수 밑동·뿌리 위 제외
     if (dist2D({ x, z }, LIGHT_WORKSHOP) < 3.2) continue;            // 🏮 빛 공방 받침·디딤판 위 제외
     if (dist2D({ x, z }, MIRROR_STOP) < 4) continue;                 // 🚏 거울 마을 정류장
+    if (dist2D({ x, z }, RESTAURANT_GATE) < 5) continue;
     if (dist2D({ x, z }, NEIGHBOR_GATE) < 1.5) continue;             // 🏡 이웃 마을 팻말 밑
     if (plazaScatterBlocks(x, z, 1)) continue;
     if (auctionScatterBlocks(x, z)) continue;
@@ -5193,6 +5191,7 @@ function buildEnvironment() {
   lockFrom('glade'); buildGlade(); lockTo();      // 🌟 반딧불이 계곡(남쪽 숲) — 밤 콘텐츠
   lockFrom('lightWorkshop'); buildLightWorkshop(); lockTo();   // 🏮 빛 공방(계곡 연못가 오두막 + 주인)
   lockFrom('cafe'); spawnCafeGate(); lockTo();   // ☕ 카페 건물(마을 남쪽) — 처음부터 있음
+  lockFrom('restaurant'); spawnRestaurantGate(); lockTo();
   spawnCosmeticShop();  // 🏪 꾸미기 가게(마을 서쪽) — 처음부터 있음
   refreshMuseumGate(); // 🏛️ 박물관(마을 서쪽) — 처음부터 있음. 층은 수집률로 자란다
   buildBridge();       // 🌉 박물관 섬을 두른 개울 + 다리(해금 켜짐·새 세이브면 무너진 채 시작 — js/spaces/bridge.js)
@@ -5202,6 +5201,7 @@ function buildEnvironment() {
   lockFrom('neighbor'); spawnNeighborGate(); lockTo();
   spawnHalloweenGate();    // 🏡 이웃 마을 가는 길(마을 남쪽, 🍄숲·🌟계곡 사이) — 처음부터 있음
   buildCafeHall();   // ☕ 카페 홀(별도 공간)
+  buildRestaurantHall();
   lockFrom('forest'); buildForest(); lockTo();     // 🍄 채집 숲(남서쪽) — 줍기
   lockFrom('river'); buildDockGate(); lockTo();   // 🛶 나루터(마을 북쪽 12시) — 처음부터 있음
   buildRiverSpace(); // 🛶 강(별도 공간) — 나룻배 러너
@@ -6258,6 +6258,7 @@ const VILLAGE_PLACES = [
   { ico: '🌳', name: '세계수',        x: WORLD_TREE.x,  z: WORLD_TREE.z,  pri: 1 },
   { ico: '🐔', name: '닭장',          x: COOP.x,        z: COOP.z,        pri: 2, need: 'coop' },
   { ico: '☕', name: '카페',          x: CAFE_GATE.x,   z: CAFE_GATE.z,   pri: 1 },
+  { ico: '🍽️', name: '식당',          x: RESTAURANT_GATE.x, z: RESTAURANT_GATE.z, pri: 1 },
   { ico: '🌟', name: '반딧불이 계곡', x: GLADE.x,       z: GLADE.z,       pri: 1 },
   { ico: '🍄', name: '채집 숲',       x: FOREST.x,      z: FOREST.z,      pri: 1 },
   { ico: '🏛️', name: '박물관',        x: MUSEUM_GATE.x, z: MUSEUM_GATE.z, pri: 1 },
@@ -6277,7 +6278,7 @@ const VILLAGE_PLACES = [
 
 // 🔓 지명 → 해금 표 id(js/world/unlocks.js). 여기 없는 지명(집·작업대·텃밭·광산·호수·랭킹·설산·광장)은 늘 보인다
 const PLACE_UNLOCK = {
-  '자유주방': 'kitchen', '상점': 'shop', '시세판': 'market', '닭장': 'coop', '카페': 'cafe', '반딧불이 계곡': 'glade',
+  '자유주방': 'kitchen', '상점': 'shop', '시세판': 'market', '닭장': 'coop', '카페': 'cafe', '식당': 'restaurant', '반딧불이 계곡': 'glade',
   '채집 숲': 'forest', '박물관': 'museum', '천문대': 'observatory', '빛 공방': 'lightWorkshop', '정류장': 'mirror',
   '이웃 마을 가는 길': 'neighbor', '나루터': 'river', '안개 숲': 'mist', '바다터': 'sea', '과수원': 'orchard', '경매 무대': 'merchant',
 };
@@ -6358,6 +6359,8 @@ function minimapMarks(place) {
     marks.push({ x: SEA.x, z: SEA.z + SEA_DECK_Z0 - 0.6, c: '#c8905a', kind: 'exit' });       // 뭍으로(남쪽)
     seaFishes.forEach(f => marks.push({ x: SEA.x + f.g.position.x, z: SEA.z + f.g.position.z, c: '#5a86b8', r: 2.6 }));   // 배회 물고기
     if (seaMG.st === 'fight' && seaMG.fmesh) marks.push({ x: SEA.x + seaMG.fmesh.position.x, z: SEA.z + seaMG.fmesh.position.z, c: '#ffb04d', r: 3 });   // 낚인 대어
+  } else if (place === 'restaurant') {
+    marks.push({ x: RESTAURANT.x + HALL.door.x, z: RESTAURANT.z + HALL.half.z, c: '#c8905a', kind: 'exit' });
   } else if (place === 'cafe') {
     marks.push({ x: CAFE.x, z: CAFE.z + CAFE_HALF, c: '#c8905a', kind: 'exit' });             // 나가는 문(남쪽)
     marks.push({ x: CAFE.x + CAFE_BOARD[0], z: CAFE.z + CAFE_BOARD[1], c: '#8a7a5f', r: 2.4 }); // 📋 주문판
@@ -6412,12 +6415,13 @@ function animate() {
       updateDoorInteract();
     }
     updateFishing();
+    if (atRestaurant) tickRestaurant(dt);
     updateE1Bubble(dt, t);   // 🧪 E1 처치 말풍선(첫 수확 전에만 있다)
     updateSea(dt, t);     // 🌊 바다터(배회 물고기 + 줄다리기 미니게임)
     emitBuffs();          // 활성 버프 HUD 갱신(만료 처리 포함)
     if (t - lastMini > 0.12) {   // 미니맵(캐릭터 위치) 갱신
       lastMini = t;
-      const place = indoor ? 'house' : atFarm ? 'farm' : atOrchard ? 'orchard' : atMine ? 'mine' : atCafe ? 'cafe' : atMuseum ? 'museum' : atObservatory ? 'observatory' : atMountain ? 'mountain' : atNeighbor ? 'neighbor' : atMirror ? 'mirror' : atDream ? 'dream' : atRiver ? 'river' : atMist ? 'mist' : atSea ? 'sea' : atHalloween ? 'halloween' : 'village';
+      const place = indoor ? 'house' : atFarm ? 'farm' : atOrchard ? 'orchard' : atMine ? 'mine' : atCafe ? 'cafe' : atRestaurant ? 'restaurant' : atMuseum ? 'museum' : atObservatory ? 'observatory' : atMountain ? 'mountain' : atNeighbor ? 'neighbor' : atMirror ? 'mirror' : atDream ? 'dream' : atRiver ? 'river' : atMist ? 'mist' : atSea ? 'sea' : atHalloween ? 'halloween' : 'village';
       const md = { place, x: player.position.x, z: player.position.z, yaw: player.rotation.y, camYaw: userCamOn() ? camUser.yaw : 0 };
       tickMapSnapshot(place === 'village' && !mgView && !duelActive && !intro && !placingDecor && !sleeping && !extView);
       if (!camTourAsked && userCamAdjustable()) camTourAsked = !!ui.camTour?.();
@@ -6445,9 +6449,9 @@ function animate() {
       } else if (place === 'mine' && delveFloorNow() > 0) {
         md.cx = DELVE.x; md.cz = DELVE.z; md.half = DELVE_HALF; md.marks = delveMinimapMarks();
       } else if (place !== 'village') {   // 서브 공간: 중심·반경·랜드마크를 함께 전달
-        const C = place === 'house' ? INT : place === 'farm' ? { x: FARM.x - YARD_D / 2, z: FARM.z } : place === 'cafe' ? CAFE : place === 'observatory' ? OBSERVATORY : place === 'mountain' ? MOUNTAIN : place === 'neighbor' ? (neighborIndoorFrame()?.c ?? NEIGHBOR) : place === 'river' ? RIVER : place === 'mist' ? MIST : place === 'sea' ? (mudflat.active ? MUDFLAT : dive.active ? DIVE : SEA) : place === 'museum' ? MUSEUM : place === 'orchard' ? ORCHARD : MINE;
+        const C = place === 'house' ? INT : place === 'farm' ? { x: FARM.x - YARD_D / 2, z: FARM.z } : place === 'cafe' ? CAFE : place === 'restaurant' ? RESTAURANT : place === 'observatory' ? OBSERVATORY : place === 'mountain' ? MOUNTAIN : place === 'neighbor' ? (neighborIndoorFrame()?.c ?? NEIGHBOR) : place === 'river' ? RIVER : place === 'mist' ? MIST : place === 'sea' ? (port.active ? player.position : mudflat.active ? MUDFLAT : dive.active ? DIVE : SEA) : place === 'museum' ? MUSEUM : place === 'orchard' ? ORCHARD : MINE;
         md.cx = C.x; md.cz = C.z;
-        md.half = place === 'house' ? curHalf() : place === 'farm' ? farmHalf() + YARD_D / 2 : place === 'cafe' ? CAFE_HALF : place === 'observatory' ? OBSERVATORY_R : place === 'mountain' ? MOUNTAIN_R : place === 'neighbor' ? (neighborIndoorFrame()?.half ?? NEIGHBOR_R) : place === 'river' ? RIVER_DOCK_HALF : place === 'mist' ? MIST_HALF : place === 'sea' ? (mudflat.active || dive.active ? 16 : 14) : place === 'museum' ? Math.max(museumDims().hw, museumDims().hd) : place === 'orchard' ? ORCHARD_HALF : MINE_HALF;
+        md.half = place === 'house' ? curHalf() : place === 'farm' ? farmHalf() + YARD_D / 2 : place === 'cafe' ? CAFE_HALF : place === 'restaurant' ? HALL.half.x : place === 'observatory' ? OBSERVATORY_R : place === 'mountain' ? MOUNTAIN_R : place === 'neighbor' ? (neighborIndoorFrame()?.half ?? NEIGHBOR_R) : place === 'river' ? RIVER_DOCK_HALF : place === 'mist' ? MIST_HALF : place === 'sea' ? (port.active ? 24 : mudflat.active || dive.active ? 16 : 14) : place === 'museum' ? Math.max(museumDims().hw, museumDims().hd) : place === 'orchard' ? ORCHARD_HALF : MINE_HALF;
         // 🛶 런 중엔 배를 중심으로 앞뒤를 보는 레이더(고정 데크 지도 대신)
         if (place === 'river' && boat.active) { md.cx = player.position.x; md.cz = player.position.z - 14; md.half = 22; }
         md.marks = minimapMarks(place);
@@ -6470,6 +6474,8 @@ function animate() {
   updateSeasonDrift(dt, t);   // 🌸🍂 꽃잎·낙엽
   updateSway(t);
   updateSeaVisuals(t);  // 🌊 일렁이는 수면(후미·바다터) + 등대 야간 빔
+  updatePortGuide(mode === 'play' && (inVillage2() || port.active));
+  updateRestaurantGuide(mode === 'play' && (inVillage2() || atRestaurant));
   updateGateCues(t, dt);
   updateTrees(dt);
   updateOreRocks();
@@ -6504,7 +6510,7 @@ function animate() {
   updateCatchItem(dt);   // 🎁 캐치 아이템(수확물/물고기 들어올리기)
   updateFloatTexts(dt);
   updateNPC(dt, t);
-  if (t - unlockTickAt > 1) { unlockTickAt = t; if (mode === 'play') syncUnlocks(); }   // 🔓 매초 한 번 — 놓친 해금 지점이 있어도 1초 안에 맞춘다(꺼져 있으면 즉시 반환)
+  if (t - unlockTickAt > 1) { unlockTickAt = t; if (mode === 'play') { syncUnlocks(); maybeStartPortGuide(isOpen('port') && !atSea && !restaurantGuideActive()); maybeStartRestaurantGuide(isOpen('restaurant') && !atSea && !portGuideActive()); } }   // 🔓 매초 한 번 — 놓친 해금 지점이 있어도 1초 안에 맞춘다(꺼져 있으면 즉시 반환)
   updateWorldTree(dt, t);    // 🌳 세계수 잎이 판 진척을 따라 자란다
   updateLightWorkshop();   // 🏷️ 반디 요정 이름표
   updateMerchantVisit(dt);   // 🧙 상인 방문 이벤트(1회)
@@ -6593,6 +6599,7 @@ function doPlayerAction(tx, tz, kind) {
   actAnim = 1; actKind = kind || 'swing';
 }
 function updatePlayer(dt, t) {
+  if (portOwnsMovement()) return;
   if (boat.active) {                               // 🛶 런 중엔 걷기 대신 배 물리
     charGroup?.scale.setScalar(1);                 // 🧸 말랑 스킨이 걷다 멈춘 채 눌려 있지 않게
     charGroup?.userData.skinTick?.(t);             // 🌿 정령 반딧불은 계속 떠다닌다
@@ -6661,6 +6668,9 @@ function updatePlayer(dt, t) {
   } else if (atCafe) { // ☕ 카페 홀: 벽 안쪽으로 제한
     player.position.x = Math.max(CAFE.x - CAFE_HALF + 0.8, Math.min(CAFE.x + CAFE_HALF - 0.8, player.position.x));
     player.position.z = Math.max(CAFE.z - CAFE_HALF + 0.8, Math.min(CAFE.z + CAFE_HALF - 0.7, player.position.z));
+  } else if (atRestaurant) {
+    player.position.x = Math.max(RESTAURANT.x - HALL.half.x + 0.7, Math.min(RESTAURANT.x + HALL.half.x - 0.7, player.position.x));
+    player.position.z = Math.max(RESTAURANT.z - HALL.half.z + 0.7, Math.min(RESTAURANT.z + HALL.half.z - 0.7, player.position.z));
   } else if (atMuseum) { // 🏛️ 전시실: 벽 안쪽으로 제한
     const mdm = museumDims();
     player.position.x = Math.max(MUSEUM.x - mdm.hw + 0.8, Math.min(MUSEUM.x + mdm.hw - 0.8, player.position.x));
@@ -6681,6 +6691,7 @@ function updatePlayer(dt, t) {
     // 🌊 부두 위만 걷기 — 좌우는 널판 안, 앞뒤는 뭍끝~부두끝(싸움 중 끌려가는 건 updateSea 의 pz 가 제어)
     if (mudflat.active) clampMudflat(player.position);
     else if (dive.active) clampDive(player.position);
+    else if (port.active) clampPort(player.position);
     else {
       player.position.x = Math.max(SEA.x - SEA_DECK_W / 2 + 0.45, Math.min(SEA.x + SEA_DECK_W / 2 - 0.45, player.position.x));
       player.position.z = Math.max(SEA.z + SEA_EDGE - 0.1, Math.min(SEA.z + SEA_DECK_Z0 - 0.2, player.position.z));
@@ -6724,6 +6735,7 @@ function updatePlayer(dt, t) {
 
   // 🎒 도구 수납 — ✋맨손이면 등으로, 아니면 손으로. 툭 사라지지 않게 0.25초쯤 걸려 옮긴다
   const stowWant = (toolPage === 'none' && !placingDecor) ? 1 : 0;   // 가구를 고른 동안은 손에 들어 보이게
+  if (heldGroup && heldGroup.visible === atRestaurant) heldGroup.visible = !atRestaurant;
   if (toolStow !== stowWant) toolStow = Math.max(0, Math.min(1, toolStow + (stowWant ? dt * 4 : -dt * 4)));
 
   // 액션 제스처: 도구질 = 백스윙 → 휙 내려침 → 팔로스루 / 맨손 줍기 = 허리를 접었다 편다
@@ -6853,6 +6865,7 @@ const camOffsetIndoor = new THREE.Vector3(0, 17, 10);   // 🏠 실내 전용 �
 //   낮춰(≈29°) 마을이 프레임 안에 들어오게 하면서도, camOffset(마을 시점)보다 더 위에서 내려다봐
 //   "지붕 위에서 마을을 내려다보는" 높이감은 유지한다.
 const camOffsetRoof = new THREE.Vector3(0, 10, 18);
+const camOffsetRest = new THREE.Vector3(0, 11, 9);
 // 🎥 플레이어 카메라 — 마을·야외 공간의 기본 추적에서만 camOffset 대신 쓴다(js/camera-user.js).
 //   실내·루프탑·동굴·카페·박물관·천문대·바다·나룻배·이웃 실내, 그리고 연출 샷(액션샷·세리머니·조망·외관·cameraRig)은 손대지 않는다
 //   — 벽 있는 방은 눕히거나 멀리 빼면 벽 너머 허공이 보이고, 연출 샷은 구도가 정해져 있다.
@@ -6862,7 +6875,7 @@ let camUser = loadCam(_lsCam);
 const _userOff = new THREE.Vector3();
 const CAM_MIN_H = 3.2;   // 포커스(눈높이 아래 발밑) 위 최소 카메라 높이 — 낮은 피치 + 이벤트 줌(0.58)에서도 땅을 뚫지 않게
 function userCamOn() {
-  return !indoor && !atMine && !atCafe && !atMuseum && !atObservatory && !atSea && !boat.active
+  return !indoor && !atMine && !atCafe && !atRestaurant && !atMuseum && !atObservatory && !atSea && !boat.active
     && !neighborIndoorFrame() && !neighborIndoorElevated();
 }
 // 지금 손가락/휠로 만져도 되나 — 기본 추적 카메라가 화면을 잡고 있을 때만
@@ -7131,7 +7144,7 @@ function refreshBuildingFade() {
 const _obsFocus = new THREE.Vector3(), camFocus = () => atObservatory ? observatoryCamFocus(player.position, _obsFocus) : player.position;   // 🔭 작은 원형 홀 — 방 중심 쪽으로 당겨 잡는다
 function snapCamera() {
   const f = camFocus();
-  _camTarget.copy(f).add(indoor && curFloorDef().elevated ? camOffsetRoof : indoor || atMuseum || atObservatory ? camOffsetIndoor : followOffset());   // 🎥 마을·야외는 플레이어 줌·기울기   // 🏛️/🔭 실내 공간도 실내 각도(≈60°) · ☀️ 루프탑만 완만한 피치
+  _camTarget.copy(f).add(indoor && curFloorDef().elevated ? camOffsetRoof : indoor || atMuseum || atObservatory ? camOffsetIndoor : atRestaurant ? camOffsetRest : followOffset());   // 🎥 마을·야외는 플레이어 줌·기울기   // 🏛️/🔭 실내 공간도 실내 각도(≈60°) · ☀️ 루프탑만 완만한 피치
   camera.position.copy(_camTarget);
   _camLook.set(f.x, f.y + 1.2, f.z);   // ☀️ 루프탑처럼 발밑이 0이 아닐 때도 눈높이를 따라간다
   camera.lookAt(_camLook);
@@ -7230,7 +7243,7 @@ function updateCamera(dt) {
   const zoom = atSea ? (seaAct ? seaBase + (seaPhone - seaBase) * phoneT : 0.86)
              : clock.elapsedTime < momentUntil ? 0.58 : 1;
   const lookAhead = seaAct ? (pk - 1) * 1.6 : 0;                    // 폰 세로에서 최대 2.1 앞(−z)
-  _camOff.copy((indoor && curFloorDef().elevated) || neighborIndoorElevated() ? camOffsetRoof : (indoor || neighborIndoorFrame()) ? camOffsetIndoor : followOffset()).multiplyScalar(zoom);   // 🎥 이벤트 줌(0.58)은 플레이어 줌 위에 곱해진다   // ☀️ 루프탑만 완만한 피치(마을이 보이게)
+  _camOff.copy((indoor && curFloorDef().elevated) || neighborIndoorElevated() ? camOffsetRoof : (indoor || neighborIndoorFrame()) ? camOffsetIndoor : atRestaurant ? camOffsetRest : followOffset()).multiplyScalar(zoom);   // 🎥 이벤트 줌(0.58)은 플레이어 줌 위에 곱해진다   // ☀️ 루프탑만 완만한 피치(마을이 보이게)
   const f = camFocus();
   _camTarget.copy(f).add(_camOff);
   if (userCamOn() && _camTarget.y < f.y + CAM_MIN_H) _camTarget.y = f.y + CAM_MIN_H;   // 🎥 낮은 피치에서 땅을 뚫지 않게
@@ -7329,6 +7342,7 @@ function updateDayNight(dt) {
   if (stars) stars.material.opacity = Math.max(0, nightAmt - 0.35) * 1.5 * (0.8 + Math.sin(t * 3.3) * 0.2);
   // 집 창문 따뜻한 불빛
   houseWindows.forEach(m => { m.emissiveIntensity = nightAmt * 2.1 * (m.userData.nightScale ?? 1); });   // nightScale: 통유리 집은 약하게
+  updateRestaurantNight(nightAmt);
   for (const anim of houseAddonAnims) anim(t);   // 🧩 굴뚝 연기 등 움직이는 구성품
   // 🔥 화덕 불꽃 — 세로로 늘 때 가로가 눌리고(부피 보존 인상), 두 겹이 반대로 비틀린다
   for (const f of kilnFlames) {
@@ -7424,6 +7438,16 @@ function updateDayNight(dt) {
     ambient.color.setHex(0xffe6c8);   // 전구색(ambient 는 매 프레임 리셋되므로 안전)
     if (playerLight) playerLight.intensity = 0.5;
     scene.fog.color.setHex(0xe8d6b8); scene.fog.near = 26; scene.fog.far = 70;
+  }
+  if (atRestaurant) {
+    hemiLight.intensity = REST_LIGHT.hemi; ambient.intensity = REST_LIGHT.amb; sunLight.intensity = REST_LIGHT.sun;
+    ambient.color.setHex(REST_LIGHT.tint);
+    sunLight.color.setHex(REST_LIGHT.sunTint);
+    sunLight.position.set(RESTAURANT.x + 6, 16, RESTAURANT.z + 10);
+    sunLight.target.position.set(RESTAURANT.x, 0.8, RESTAURANT.z);
+    sunLight.target.updateMatrixWorld();
+    if (playerLight) playerLight.intensity = REST_LIGHT.player;
+    scene.fog.color.setHex(REST_LIGHT.fog); scene.fog.near = REST_LIGHT.near; scene.fog.far = REST_LIGHT.far;
   }
   // 🌫️ 안개 숲: 시간대 무관 어둑 + 짙은 안개(정화한 날은 맑고 환하게)
   if (atMist) {
@@ -7627,6 +7651,8 @@ function handleAction() {
   if (nearDoor === 'orchardexit') return exitOrchard();
   if (nearDoor === 'cafe') return enterCafe();
   if (nearDoor === 'cafeexit') return exitCafe();
+  if (nearDoor === 'restaurant') return enterRestaurant();
+  if (nearDoor === 'restaurantexit') return exitRestaurant();
   if (nearDoor === 'museum') return enterMuseum();
   if (nearDoor === 'bridge') return bridgeInteract();   // 🌉 무너진 다리 → 수리(🪵🪨)
   if (nearDoor === 'museumexit') return exitMuseum();
@@ -7645,9 +7671,10 @@ function handleAction() {
   if (nearDoor === 'riverexit') return exitRiver();
   if (nearDoor === 'mist') return enterMist();
   if (nearDoor === 'mistexit') return exitMist();
+  if (nearDoor === 'port_board' && !atSea) return enterPort();
   if (nearDoor === 'sea') return openSeaPick();
   if (nearDoor === 'seaexit') return exitSea();
-  if (atSea) { (mudflat.active ? mudflatAction : dive.active ? diveAction : seaAction)(); return; }   // 🌊 바다터: 액션 = 던지기/버티기/감기
+  if (atSea) { (mudflat.active ? mudflatAction : dive.active ? diveAction : port.active ? portAction : seaAction)(); return; }   // 🌊 바다터: 액션 = 던지기/버티기/감기
   if (atMist) { mistAction(); return; }
   if (atOrchard) return orchardAction();   // 🍎 과수원: 심기·물주기·수확·베기(js/game.js orchardAction)
   if (atRiver) {                  // 🛶 나루터 데크: 배 타기 / 창고 열기
@@ -7664,6 +7691,10 @@ function handleAction() {
       if (TOOLS[currentTool].id === 'hoe') return delveFloorNow() > 0 ? tryDelveMine() : tryMine();
     }
     ui.toast?.('⛏️ 🌾농사 세트의 괭이(2)로 캐야 해요');
+    return;
+  }
+  if (atRestaurant) {
+    restaurantAction();
     return;
   }
   if (atCafe) {                   // ☕ 홀: 손님에게 서빙 / 주문판 열기
@@ -7791,7 +7822,7 @@ let pendingDig = null;         // { plot, second } — 제스처가 타격 시�
 
 // ── 🌱 비료 — 자라는 밭 한 칸을 즉시 수확 가능 상태로(코인 전용 소모품, 상점 20🪙) ──
 function fertTarget() {
-  if (indoor || atMine || atCafe || (gameState.inventory.fert || 0) <= 0) return null;
+  if (indoor || atMine || atCafe || atRestaurant || (gameState.inventory.fert || 0) <= 0) return null;
   // 🌾 고급 작물에 이미 비료를 줬으면 대상이 아니다 — 안 그러면 포충망·낫 액션이 "이미 줬어요"에 막힌다
   return plots.find(p => p.state === 'growing' && !(p.fert && isAdv(p.cropType)) && dist2D(p.group.position, player.position) < 1.8) || null;
 }
@@ -8543,9 +8574,9 @@ function onResize() {
 export {
   BARN, DIG_WINDOW, FORAGE_NODES, GLADE_MAX, HINT_H, HINT_W, IS_MOBILE, LAKE, ORES, RAIN_DAY, RES_ICON, RES_LABEL,
   SEASON, SEVERE_TODAY, SEVERE_TOMORROW, WEATHER, _camLook, _camTarget, _hintAnyPrev, _seaPrevTool, _v, actAnim, analog,
-  applyCosmetics, applyHouseStyle, armWristK, atCafe, atDream, atMirror, atHalloween, atFarm, atMine, atMist, atMuseum, atObservatory, atOrchard, atNeighbor, atRiver, atSea, atMountain,
+  applyCosmetics, applyHouseStyle, armWristK, atCafe, atRestaurant, atDream, atMirror, atHalloween, atFarm, atMine, atMist, atMuseum, atObservatory, atOrchard, atNeighbor, atRiver, atSea, atMountain,
   awardBadge, baitActive, biteAt, biteEnd, blockIfLocked, boat, boatView, bobber, buffOn, buffs, bugJarMesh,
-  bugRespawnAt, cafeGuestCache, cafeGuestFetcher, cafeGuestObjs, cafeInGroup, camera, castPos, catchCeremony,
+  bugRespawnAt, cafeGuestCache, cafeGuestFetcher, cafeGuestObjs, cafeInGroup, restaurantInGroup, camera, castPos, catchCeremony,
   churnTrigger, clayMat, clearCrop, clearPest, clock, colliders, cookTier, cosmeticShop, cropMini, currentQuest,
   currentTool, cycleSapSel, dateHash, dayStr, decorGhost, decorMeshes, decorNearRing, decorRot, decorTapHintShown,
   decorTarget, dexDiscover, diffParams, disposeTree, doSleep, dropKilnFlames, dist2D, doPlayerAction, dockGroup, duelFetcher, easeOutBack,
