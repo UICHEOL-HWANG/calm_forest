@@ -6577,7 +6577,7 @@ function animate() {
   updatePond(dt, inVillage2());
   updateShopCue(t);          // 🛒 좌판 안내 스프라이트
   if (mode === 'play') goalGuide?.update(dt);
-  if (mode === 'play') yardGuide?.update(dt);
+  if (mode === 'play') yardGuide?.update(dt); else yardGuide?.suspend();
   if (mode === 'play') { houseShort?.update(dt); farmRush?.update(dt); }
   houseGuidance?.update();   // 🏠 조망샷은 다른 카메라 연출·모달이 비었을 때만 시작
   // 집 터 안내판/마커: 플레이 중 + 미완성일 때만 (로그인 화면에선 숨김)

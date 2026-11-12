@@ -86,6 +86,11 @@ export function createYardGuide(deps) {
 
   return {
     active: () => !!guide?.active(),
+    suspend() {
+      lastProgressAt = performance.now() / 1000;
+      setHud(false);
+      view?.hide();
+    },
     pointTo(kind) {
       if (flow === 'yard_fill' || flow === 'pond_d1') return;
       const sea = kind === 'sea';

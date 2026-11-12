@@ -785,8 +785,10 @@ export function showShopCue(sec) {
 }
 
 export function updateShopCue(t) {
-  if (!shopCue || !shopCue.visible) return;
-  if (clock.elapsedTime > shopCueUntil) { shopCue.visible = false; return; }
+  if (!shopCue) return;
+  const live = clock.elapsedTime <= shopCueUntil;
+  shopCue.visible = live && !glyphsHidden;
+  if (!shopCue.visible) return;
   shopCue.position.y = 3.2 + Math.sin(t * 2.4) * 0.15;
 }
 

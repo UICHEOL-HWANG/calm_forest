@@ -1162,7 +1162,7 @@
     body.coaching #habitat-meter,
     body.decor-guide #habitat-meter { display: none !important; }
     body:has(#habitat-meter:not([hidden])) #story-chip,
-    body:has(#habitat-meter:not([hidden])) #hint-banner { display: none !important; }
+    body:not(.yard-guiding):has(#habitat-meter:not([hidden])) #hint-banner { display: none !important; }
   }
   /* 📏 세로가 짧은 화면 — 토스 상단 52px 까지 밀리면 미터 아래가 #door-prompt 와 겹친다.
      실측(320×568 + 토스): 슬롯 top 214, 문 프롬프트 top 307 → **여유 93px**. */

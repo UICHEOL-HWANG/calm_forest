@@ -101,3 +101,14 @@ test('안내 중 무관한 HUD·NPC 말풍선 숨김 배선', () => {
   assert.match(n, /o\.sprite\.visible = !glyphsHidden;/);
   assert.match(src('js/game.js'), /setHudHidden: setNpcGlyphsHidden,/);
 });
+
+test('HUD 숨김 다듬기: 올빼미 배너·모드 전환·좌판 표시', () => {
+  const h = src('index.html');
+  assert.match(h, /body:not\(\.yard-guiding\):has\(#habitat-meter:not\(\[hidden\]\)\) #hint-banner/);
+  assert.doesNotMatch(h, /body:has\(#habitat-meter:not\(\[hidden\]\)\) #hint-banner/);
+  const y = src('js/pond/yard-guide.js');
+  assert.match(y, /suspend\(\) \{\s*lastProgressAt = performance\.now\(\) \/ 1000;/);
+  assert.match(src('js/game.js'), /if \(mode === 'play'\) yardGuide\?\.update\(dt\); else yardGuide\?\.suspend\(\);/);
+  const n = src('js/spaces/npc.js');
+  assert.match(n, /shopCue\.visible = live && !glyphsHidden;/);
+});
