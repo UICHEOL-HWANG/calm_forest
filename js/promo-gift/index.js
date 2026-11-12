@@ -47,18 +47,26 @@ async function call(stage, code) {
   }
 }
 
+async function connectThenRerun(ctx, from) {
+  let out = null;
+  try { out = await ctx.ui?.connectAccount?.(from); } catch (e) { out = null; }
+  if (memo.play) runNow(memo.play, { wait: false }).catch(() => null);
+  return out;
+}
+
 function runNow(ctx, { wait = true } = {}) {
   const s = store();
   if (!s) return Promise.resolve(NONE);
   if (memo.running) return memo.running;
   memo.running = (async () => {
+    if (!pendingCode(s)) return NONE;
     if (wait) await whenIdle(busyWith(ctx.ui));
     const code = pendingCode(s);
     let result = 'dup';
     const track = (ev, p) => { if (ev === 'promo_gift_claim') result = p.result; ctx.track(ev, p); };
     const views = await runPromoGift({
       auth: ctx.auth, storage: s, call, grant: (b) => { try { ctx.grant(b); } catch (e) { return; } }, track,
-      show: (view) => { ctx.beforeShow?.(); return showLetter(view, { track: ctx.track, connect: ctx.ui?.connectAccount, code, lang: getLang() }); },
+      show: (view) => { ctx.beforeShow?.(); return showLetter(view, { track: ctx.track, connect: (from) => connectThenRerun(ctx, from), code, lang: getLang() }); },
     });
     return { views, result };
   })().catch(() => NONE).finally(() => { memo.running = null; });

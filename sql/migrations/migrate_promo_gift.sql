@@ -43,7 +43,7 @@ declare
   r      promo_codes%rowtype;
   v_used int;
 begin
-  select * into r from promo_codes where code = upper(p_code);
+  select * into r from promo_codes where code = upper(p_code) for update;
   if not found then return jsonb_build_object('ok', false, 'reason', 'unknown'); end if;
   if not r.active then return jsonb_build_object('ok', false, 'reason', 'inactive'); end if;
   if p_stage = 1 then

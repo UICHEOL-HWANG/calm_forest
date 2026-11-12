@@ -1,5 +1,5 @@
-const CODE_RE = /^[A-Z0-9]{4,16}$/;
-const PATH_RE = /\/g\/([A-Za-z0-9-]{4,20})(?=[/?#]|$)/;
+import { normalizeGiftCode, readGiftParam } from './code.js';
+
 const KEEP_REASONS = new Set(['anonymous', 'not_started', 'no_user']);
 
 export const STAGE1_BUNDLE = Object.freeze({ coins: 200, seed_wheat: 3, seed_corn: 3, seed_grape: 3, fert: 5, bait: 5 });
@@ -7,18 +7,7 @@ export const PROMO_DECOR_IDS = Object.freeze(['promoballoon', 'promosuitcase']);
 export const KEYS = Object.freeze({ code: 'cf_gift_code', via: 'cf_gift_via', device: 'cf_gift_stage1_device', seen: 'cf_gift_link_seen' });
 export const VIAS = Object.freeze(['url', 'deeplink', 'referrer', 'toss', 'manual']);
 
-export function normalizeGiftCode(text) {
-  const s = String(text ?? '').trim().replace(/[\s-]+/g, '').toUpperCase();
-  return CODE_RE.test(s) ? s : null;
-}
-
-export function readGiftParam(search) {
-  const str = String(search || '').split('#')[0];
-  const path = str.match(PATH_RE);
-  if (path) return normalizeGiftCode(path[1]);
-  const q = str.indexOf('?');
-  try { return normalizeGiftCode(new URLSearchParams(q >= 0 ? str.slice(q) : str).get('gift')); } catch (e) { return null; }
-}
+export { normalizeGiftCode, readGiftParam };
 
 export function giftFromReferrer(raw) {
   let text = String(raw || '').trim();

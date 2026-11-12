@@ -10,7 +10,7 @@
 // =============================================================
 
 import { readInviteParam } from './referral/rules.js';
-import { readGiftParam, normalizeGiftCode } from './promo-gift/rules.js';
+import { readGiftParam, normalizeGiftCode } from './promo-gift/code.js';
 
 export const DEFAULT_APP_BANNER = {
   storeLive: { android: false, ios: false },   // 스토어 출시를 직접 확인한 OS 만 켠다(변경 로그에 기록)

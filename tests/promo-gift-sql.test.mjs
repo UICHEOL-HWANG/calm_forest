@@ -55,3 +55,7 @@ test('RPC 는 service_role 만 실행한다', () => {
   assert.match(SQL, /grant execute on function public\.promo_gift_claim\(uuid, text, int\)\s+to service_role;/);
   assert.match(SQL, /grant execute on function public\.promo_code_check\(text, int\)\s+to service_role;/);
 });
+
+test('promo_code_check 는 코드 행을 잠가 max_uses 경쟁을 막는다', () => {
+  assert.match(fn('promo_code_check'), /from promo_codes where code = upper\(p_code\) for update;/);
+});

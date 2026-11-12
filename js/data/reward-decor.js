@@ -5,7 +5,7 @@
 //  ▶ js/data/catalog.js 의 OUTDOOR 가 이 배열을 펼쳐 넣는다. 원장 → 소유(js/shop/entitlements.js)는
 //    THREE 를 끌고 오는 data/catalog.js 대신 여기만 읽는다(순수 모듈 유지).
 //  ▶ 작업대 비판매(hidden) — 원장(purchases kind='decor')이 🧺 보관함에 넣어 준다.
-//  ▶ 서버 가드 목록 _reward_decor_ids()(sql/migrations/migrate_referrals.sql)와 같아야 한다 — tests/referral-items.test.mjs
+//  ▶ 서버 가드 목록 _reward_decor_ids()(sql/migrations/migrate_promo_gift.sql)와 같아야 한다 — tests/referral-items.test.mjs
 // =============================================================
 
 export const REWARD_DECOR = Object.freeze([

@@ -18,3 +18,10 @@ test('Play referrer 에 gift 를 싣는다', () => {
   assert.match(decodeURIComponent(playReferrer({ jid: 'J1', utm: { source: 'meta' }, gift: 'INSTA1' })), /(^|&)gift=INSTA1(&|$)/);
   assert.doesNotMatch(decodeURIComponent(playReferrer({ jid: 'J1', gift: 'bad!' })), /gift=/);
 });
+
+test('app-banner 는 첫 화면 번들을 위해 code.js 만 가져온다', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../js/app-banner.js', import.meta.url), 'utf8');
+  assert.match(src, /from '\.\/promo-gift\/code\.js'/);
+  assert.doesNotMatch(src, /promo-gift\/rules\.js/);
+});
