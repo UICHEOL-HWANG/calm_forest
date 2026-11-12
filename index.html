@@ -4016,11 +4016,12 @@
 
   <script type="module">
     import { hasStoredAuthSession, loginFirst } from './js/boot-order.js';
-    import { preloadSupabase, initAuth, signInWithGoogle, signInWithApple, requestEmailCode, verifyEmailCode, holdGuestForLogin, signInWithToss, signInWithPlayGames, signInWithGameCenter, deleteMyAccount, signInAsGuest, startLocalGuest, loadGame, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow, fetchNotices, insertInstallAttribution, insertInstallSurvey } from './js/supabase-client.js';
+    import { preloadSupabase, initAuth, signInWithGoogle, signInWithApple, requestEmailCode, verifyEmailCode, holdGuestForLogin, resumeHeldGuest, signInWithToss, signInWithPlayGames, signInWithGameCenter, deleteMyAccount, signInAsGuest, startLocalGuest, loadGame, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow, fetchNotices, insertInstallAttribution, insertInstallSurvey } from './js/supabase-client.js';
     import { renderDailyCard } from './js/daily-card.js';
     import { hydrateIcons, setIcon, iconText, iconHtml, iconById, startEmojiIcons } from './js/icons/index.js';
     import { renderToast, renderTiles, buffTiles, fillTiles } from './js/ui-cards.js';
     import { mountEmailLogin } from './js/auth/email-login.js';   // ✉️ 이메일 코드 로그인(웹·itch)
+    import { requestEmailHandoff, pendingEmailHandoff, takeEmailHandoff } from './js/auth/email-handoff.js';
     import { mountInAppLogin, INAPP_COPY, trackHandoffArrival } from './js/auth/in-app-login.js';
     import { e5Decision } from './js/exp-e5-boot.js';
     import { guestFirst, E5_COPY } from './js/exp-e5.js';
@@ -6043,12 +6044,8 @@
       trackEvent('login_screen', { reason: why, inapp: inAppLogin.app || undefined });   // [GA4] 토스 유저 중 몇 %가 이 화면을 보는지
       loginStore?.shown();
       loginDwell.start();
-      try { if (sessionStorage.getItem('cf_login_email')) {
-        const from = sessionStorage.getItem('cf_login_email_from') || 'login_nudge';
-        sessionStorage.removeItem('cf_login_email');
-        sessionStorage.removeItem('cf_login_email_from');
-        emailLogin.openEmail({ from });
-      } } catch { }
+      const handoff = takeEmailHandoff(sessionStorage);
+      if (handoff) emailLogin.openEmail({ from: handoff.from });
       const inv = inviteBanner();                    // 🤝 초대 링크로 왔으면 — 로그인하면 하트핀
       if (inv) { $('login-invite').textContent = inv; $('login-invite').classList.add('show'); }
     }
@@ -6234,7 +6231,7 @@
                                                         : '이번엔 게스트로 시작해요. 진행은 이 기기에만 임시 저장돼요.', 4000), 2200);
     });
     $('guest-btn').addEventListener('click', async () => {
-      const r = await signInAsGuest(); await enterPlay();
+      const r = resumeHeldGuest() || await signInAsGuest(); await enterPlay();
       if (r && r.online === false) ui.toast('게스트 오프라인 모드 — 진행은 되지만 저장은 안 돼요');
     });
     $('logout-btn').addEventListener('click', () => signOut());
@@ -8034,7 +8031,7 @@
           holdGuestForLogin(getGameState());
           if (!inAppLogin.inApp && !IS_ITCH) return signInWithGoogle();
           trackEvent('inapp_nudge_email', { from, app: IS_ITCH ? 'itch' : inAppLogin.app });
-          try { sessionStorage.setItem('cf_login_email', '1'); sessionStorage.setItem('cf_login_email_from', from); } catch { }
+          requestEmailHandoff(sessionStorage, from);
           location.reload();
         };
     if (!IS_TOSS && !IS_NATIVE && (inAppLogin.inApp || IS_ITCH)) {
@@ -8593,7 +8590,7 @@
           if (!sessionExpiredSent) { sessionExpiredSent = true; trackEvent('session_expired', { provider: s.provider || 'unknown' }); }
           ui.setSaveStuck(true);
         }
-      }, { keepGuest: keepGuestSession(e2, { hasInvite: e2HasInvite() }) });   // 🧪 E2 처치 기기만 같은 기기의 게스트 세션을 이어 간다
+      }, { keepGuest: keepGuestSession(e2, { hasInvite: e2HasInvite() }), holdGuest: pendingEmailHandoff(sessionStorage) });   // 🧪 E2 처치 기기만 같은 기기의 게스트 세션을 이어 간다
       // 🚪 방금 '나가기'로 나왔으면 토스 자동 연결을 한 번 건너뛴다 — 안 그러면 곧장 다시 들어와 캐릭터 선택으로 돌아오는 루프(js/exit-flag.js)
       const justExited = consumeExit(sessionStorage);
       if (!res.needLogin) enterPlay();               // 기존/복귀 세션 → 바로 시작(토스 재방문도 여기 — SDK 호출 없음)

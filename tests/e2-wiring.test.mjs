@@ -43,7 +43,7 @@ test('부팅: 배정 → initAuth → (토스·안드로이드·iOS 분기) → 
   const skip = at(/else if \(skipLoginNow\(\{ decision: e2, offline: res\.offline, justExited, hasInvite: e2HasInvite\(\) \}\)\) startDeferredGuest\(\)/);
   const screen = at(/else showLoginScreen\(res\.offline\);/);
   assert.ok(decide < auth && auth < toss && toss < ios && ios < skip && skip < screen, '순서가 어긋났다');
-  assert.match(bootSrc, /await initAuth\([\s\S]*?\}, \{ keepGuest: keepGuestSession\(e2, \{ hasInvite: e2HasInvite\(\) \}\) \}\)/);
+  assert.match(bootSrc, /await initAuth\([\s\S]*?\}, \{ keepGuest: keepGuestSession\(e2, \{ hasInvite: e2HasInvite\(\) \}\), holdGuest: pendingEmailHandoff\(sessionStorage\) \}\)/);
 });
 
 test('토스·플레이 앱·iOS 실패 화면과 세션 있는 재방문 경로는 손대지 않았다', () => {
@@ -71,7 +71,7 @@ test('enterPlay 의 login 수단 — 인자가 없으면 기존 그대로', () =
 });
 
 test('initAuth: 게스트 세션 이어 가기는 keepGuest 일 때만, 토스·스토어 앱 경로는 그대로', () => {
-  assert.match(supa, /export async function initAuth\(onStatusChange, \{ keepGuest = false \} = \{\}\)/);
+  assert.match(supa, /export async function initAuth\(onStatusChange, \{ keepGuest = false, holdGuest = false \} = \{\}\)/);
   const anon = supa.match(/if \(s && isAnon\(s\)\) \{[\s\S]*?\n    \}/)[0];
   assert.match(anon, /if \(keepGuest && !IS_TOSS && !IS_NATIVE\) \{ applySession\(s\); return \{ needLogin: false, offline: false \}; \}/);
   assert.match(anon, /if \(IS_TOSS \|\| IS_NATIVE\) pendingGuest = await readGuestSave\(s\.user\.id\);/);
