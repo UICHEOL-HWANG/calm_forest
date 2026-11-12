@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { captureCode, pendingCode, runPromoGift, checkVerdict, manualOutcome } from '../js/promo-gift/flow.js';
+import { captureCode, pendingCode, runPromoGift, checkVerdict, manualOutcome, pendingStages } from '../js/promo-gift/flow.js';
 import { KEYS, STAGE1_BUNDLE } from '../js/promo-gift/rules.js';
 
 function mem(init = {}) {
@@ -133,4 +133,14 @@ test('manualOutcome — 기기 표시된 게스트는 login, 편지가 있으면
   assert.deepEqual(manualOutcome({ views: [], result: 'dup', auth: MEMBER, storage: marked }), { ok: false, reason: 'dup' });
   assert.deepEqual(manualOutcome({ views: [], result: 'dup', auth: GUEST, storage: fresh }), { ok: false, reason: 'dup' });
   assert.deepEqual(manualOutcome({ views: [], result: 'net_fail', auth: GUEST, storage: marked }), { ok: false, reason: 'net_fail' });
+});
+
+test('pendingStages — runPromoGift 가 청구할 단계', () => {
+  const code = { [KEYS.code]: 'QAPROMO1' };
+  const marked = { ...code, [KEYS.device]: '1' };
+  assert.deepEqual(pendingStages({ auth: GUEST, storage: mem(marked) }), []);
+  assert.deepEqual(pendingStages({ auth: GUEST, storage: mem(code) }), [1]);
+  assert.deepEqual(pendingStages({ auth: MEMBER, storage: mem(marked) }), [2]);
+  assert.deepEqual(pendingStages({ auth: MEMBER, storage: mem(code) }), [1, 2]);
+  assert.deepEqual(pendingStages({ auth: GUEST, storage: mem() }), []);
 });

@@ -4,13 +4,13 @@ import { IS_TOSS, IS_NATIVE, loadTossSDK } from '../platform.js';
 import { capPlugin, capListen } from '../cap-bridge.js';
 import { getLang } from '../i18n.js';
 import { readGiftParam, giftFromReferrer, normalizeGiftCode } from './rules.js';
-import { captureCode, pendingCode, runPromoGift, checkVerdict, manualOutcome } from './flow.js';
+import { captureCode, pendingCode, runPromoGift, pendingStages, checkVerdict, manualOutcome } from './flow.js';
 import { showLetter, openCodeEntry } from './ui.js';
 
 const BUSY = ['body.intro-open', '#char-modal.show', '#tutorial-modal.show', '#hint-modal.show', '#nudge-modal.show', '#gift-box-modal.show'];
 const SDK_WAIT_MS = 4000;
 const NONE = Object.freeze({ views: [], result: 'net_fail' });
-const memo = { track: () => {}, play: null, running: null };
+const memo = { track: () => {}, play: null, running: null, wake: null, closeEntry: null };
 
 const enabled = () => !IS_DEV_SESSION && !!CONFIG.PROMO_GIFT_API;
 const store = () => { try { return localStorage; } catch (e) { return null; } };
@@ -74,19 +74,23 @@ async function connectThenRerun(ctx, from) {
 function runNow(ctx, { wait = true } = {}) {
   const s = store();
   if (!s) return Promise.resolve(NONE);
+  if (!pendingStages({ auth: ctx.auth, storage: s }).length) return Promise.resolve({ views: [], result: 'dup' });
   if (memo.running) return memo.running;
   memo.running = (async () => {
     if (!pendingCode(s)) return NONE;
-    if (wait) await whenIdle(busyWith(ctx.ui));
+    if (wait) {
+      await Promise.race([whenIdle(busyWith(ctx.ui)), new Promise(r => { memo.wake = r; })]);
+      memo.wake = null;
+    }
     const code = pendingCode(s);
     let result = 'dup';
     const track = (ev, p) => { if (ev === 'promo_gift_claim') result = p.result; ctx.track(ev, p); };
     const views = await runPromoGift({
       auth: ctx.auth, storage: s, call, grant: (b) => { try { ctx.grant(b); } catch (e) { return; } }, track,
-      show: (view) => { ctx.beforeShow?.(); return showLetter(view, { track: ctx.track, connect: (from) => connectThenRerun(ctx, from), code, lang: getLang() }); },
+      show: (view) => { (memo.closeEntry || ctx.beforeShow)?.(); return showLetter(view, { track: ctx.track, connect: (from) => connectThenRerun(ctx, from), code, lang: getLang() }); },
     });
     return { views, result };
-  })().catch(() => NONE).finally(() => { memo.running = null; });
+  })().catch(() => NONE).finally(() => { memo.running = null; memo.wake = null; memo.closeEntry = null; });
   return memo.running;
 }
 
@@ -141,6 +145,8 @@ export function openGiftCodeEntry({ auth, track, ui, grant }) {
       if (!verdict.store) return { ok: false, reason: verdict.reason };
       captureCode({ storage: s, code, via: 'manual', force: true, track });
       memo.play = { auth, track, ui, grant };
+      memo.closeEntry = closeEntry;
+      memo.wake?.();
       const { views, result } = await runNow({ ...memo.play, beforeShow: closeEntry }, { wait: false });
       return manualOutcome({ views, result, auth, storage: s });
     },

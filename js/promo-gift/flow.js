@@ -34,10 +34,14 @@ export function manualOutcome({ views, result, auth, storage }) {
   return { ok: false, reason: result };
 }
 
+export function pendingStages({ auth, storage }) {
+  return nextClaims({ isGuest: !!auth?.isGuest, provider: auth?.provider, stage1Device: read(storage, KEYS.device) === '1', hasCode: !!pendingCode(storage) });
+}
+
 export async function runPromoGift({ auth, storage, call, grant, show, track }) {
   const code = pendingCode(storage);
   const loggedIn = isLoggedIn(auth);
-  const stages = nextClaims({ isGuest: !!auth?.isGuest, provider: auth?.provider, stage1Device: read(storage, KEYS.device) === '1', hasCode: !!code });
+  const stages = pendingStages({ auth, storage });
   const views = [];
   for (const stage of stages) {
     const res = await call(stage, code);

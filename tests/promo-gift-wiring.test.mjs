@@ -61,3 +61,9 @@ test('수동 입력은 서버 확인 뒤에만 저장한다', () => {
   assert.match(src, /async function check\(code\)[\s\S]*action: 'check'/);
   assert.match(src, /checkVerdict\(await check\(code\)\)[\s\S]*?captureCode\(\{ storage: s, code, via: 'manual', force: true/);
 });
+
+test('runNow — 청구할 게 없으면 대기 없이 반환, 수동 제출은 대기 중인 실행을 깨운다', () => {
+  const src = readFileSync(new URL('../js/promo-gift/index.js', import.meta.url), 'utf8');
+  assert.match(src, /pendingStages\(\{ auth: ctx\.auth, storage: s \}\)\.length\) return Promise\.resolve\(\{ views: \[\], result: 'dup' \}\);\n\s*if \(memo\.running\)/);
+  assert.match(src, /memo\.wake\?\.\(\);\n\s*const \{ views, result \} = await runNow/);
+});
