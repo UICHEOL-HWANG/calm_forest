@@ -55,6 +55,7 @@ export function pickPush(row, dates, night) {
     const stations = [...new Set(ready.map(s => stationOf(s.item)).filter(Boolean))].sort();
     if (stations.length) return { kind: 'craft', stations };
   }
+  if (lastMs < dates.todayStartMs && row.pond_day === dates.yesterday) return { kind: 'pond' };
 
   if (awayDays >= RETURN_AFTER_DAYS && sprouting(row.plots).length && (row.returns_7d | 0) < RETURN_MAX_7D) {
     return { kind: 'return' };
@@ -79,6 +80,10 @@ export function messageFor(pick, lang = 'ko') {
     const ico = st.map(s => s[0]).join('');
     if (en) return { title: `${ico} Your ${st.map(s => s[1]).join(' & ')} is done`, body: 'Come pick it up 🌿' };
     return { title: `${ico} ${st.map(s => s[1]).join('·')}에 넣어 둔 게 다 됐어요`, body: '꺼내러 와 주세요 🌿' };
+  }
+  if (pick.kind === 'pond') {
+    return en ? { title: '🐟 Your pond fish are waiting', body: 'Come feed them today 🌿' }
+              : { title: '🐟 연못 물고기들이 기다려요', body: '오늘 먹이를 주러 와 주세요 🌿' };
   }
   return en ? { title: '🍓 There might be something to harvest', body: 'The forest is quietly waiting.' }
             : { title: '🍓 수확할 게 생겼을지도 몰라요', body: '숲이 조용히 기다리고 있어요.' };
