@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pond Actions</title>
+<style>
+  :root { --bg: #f4efe6; --ink: #2b2118; --muted: #6b5b4a; --card: #fffaf2; --line: #e2d6c4; --gold: #e8b84a; --btn: #4e7f9a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Pretendard", "Apple SD Gothic Neo", sans-serif; }
+  header { padding: 16px 20px 4px; max-width: 1360px; }
+  h1 { margin: 0 0 4px; font-size: 20px; }
+  header p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; padding: 14px 20px 24px; max-width: 1360px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .card h2 { margin: 0; padding: 10px 12px 2px; font-size: 16px; }
+  .card .how { margin: 0; padding: 0 12px 6px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+  .card .meta { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 12px 10px; }
+  .pill { font-size: 11px; padding: 2px 8px; border-radius: 99px; background: #efe5d4; color: var(--muted); }
+  .pill.good { background: #e3f0dc; color: #3f6b35; }
+  .pill.warn { background: #f7e1d6; color: #9a4a2a; }
+  .view { position: relative; border-top: 2px solid var(--line); }
+  .view canvas { display: block; width: 100%; }
+  .tag { position: absolute; left: 8px; top: 8px; background: rgba(43,33,24,.72); color: #fff; font-size: 11px; padding: 3px 7px; border-radius: 6px; }
+  .act { position: absolute; right: 12px; bottom: 12px; width: 52px; height: 52px; border-radius: 50%; background: #fffaf2; border: 3px solid var(--btn); display: grid; place-items: center; font-size: 24px; box-shadow: 0 3px 0 rgba(0,0,0,.18); }
+  .panel { position: absolute; background: rgba(255,250,242,.97); border: 2px solid #c9d6dc; border-radius: 14px; box-shadow: 0 6px 18px rgba(43,33,24,.25); padding: 10px 12px; font-size: 12px; }
+  .panel h3 { margin: 0 0 6px; font-size: 14px; display: flex; justify-content: space-between; align-items: baseline; }
+  .panel h3 small { color: var(--muted); font-weight: 500; font-size: 11px; }
+  .sub { font-size: 11px; color: var(--muted); margin: 6px 0 4px; }
+  .book { left: 4%; right: 4%; top: 10%; }
+  .slots { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+  .slots.sea { grid-template-columns: repeat(4, 1fr); width: 58%; }
+  .slot { aspect-ratio: 1; border-radius: 9px; background: #e6eff2; display: grid; place-items: center; font-size: 18px; border: 2px solid transparent; position: relative; }
+  .slot i { position: absolute; bottom: 1px; font-style: normal; font-size: 9px; color: var(--muted); }
+  .slot.got { border-color: #9cc3d6; }
+  .slot.empty { background: #dde5e8; color: #8a9aa0; font-size: 15px; }
+  .slot.sel { outline: 2px solid var(--btn); outline-offset: 1px; }
+  .hint { margin-top: 8px; padding: 7px 9px; border-radius: 9px; background: #e6eff2; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .btn { background: var(--btn); color: #fff; border-radius: 9px; padding: 5px 10px; font-weight: 700; font-size: 12px; white-space: nowrap; }
+  .btn.ghost { background: #dde5e8; color: var(--ink); }
+  .ad { padding: 4px 9px; border-radius: 9px; background: #fff6dc; border: 2px solid #e8b84a; box-shadow: 0 0 0 2px rgba(232,184,74,.35); font-weight: 700; font-size: 11px; color: var(--ink); }
+  .feed { left: 50%; transform: translateX(-50%); bottom: 14px; width: 72%; }
+  .feed p { margin: 0 0 8px; line-height: 1.5; }
+  .feed .foot { display: flex; justify-content: space-between; align-items: center; color: var(--muted); }
+  .deco { left: 4%; right: 4%; bottom: 14px; }
+  .deco .row { display: flex; gap: 6px; }
+  .deco .opt { flex: 1; border-radius: 9px; background: #e6eff2; padding: 6px 4px; text-align: center; font-size: 11px; border: 2px solid transparent; }
+  .deco .opt b { display: block; font-size: 20px; }
+  .deco .opt.own { border-color: #9cc3d6; }
+  .deco .opt.sel { border-color: var(--btn); background: #dfeef4; }
+  .deco .opt s { color: var(--muted); text-decoration: none; display: block; font-size: 10px; }
+  .name { left: 50%; transform: translateX(-50%); top: 12%; width: 60%; }
+  .field { display: flex; gap: 6px; align-items: center; background: #e6eff2; border-radius: 9px; padding: 6px 8px; margin-bottom: 6px; }
+  .field span { font-size: 20px; }
+  .field u { text-decoration: none; flex: 1; border-bottom: 2px solid var(--btn); padding-bottom: 1px; }
+  .note { margin: 0; padding: 4px 12px 12px; font-size: 11px; color: var(--muted); }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; padding: 12px 16px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>마당 연못에서 무엇을 할 수 있나 · 시안 4종</h1>
+  <p>식탁과 같은 틀: 연못 가까이 가면 🐟 버튼, 누르면 창 · 물고기는 강 7종(계절 한정 4종 포함) + 바다 대어 · 창 안 글자는 자리 잡기용 초안(문구 검수 전)</p>
+</header>
+<div class="grid" id="grid"></div>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+const clayMat = (c, flat = true) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.95, metalness: 0, flatShading: flat });
+const M = c => clayMat(c, false);
+
+const texCache = new Map();
+function emojiTex(e, bubble) {
+  const key = e + (bubble ? 'b' : '');
+  if (texCache.has(key)) return texCache.get(key);
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  if (bubble) {
+    g.fillStyle = '#fffaf2'; g.beginPath(); g.arc(64, 58, 50, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.moveTo(52, 100); g.lineTo(64, 124); g.lineTo(76, 100); g.fill();
+  }
+  g.font = `${bubble ? 64 : 92}px "Apple Color Emoji","Noto Color Emoji",sans-serif`;
+  g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(e, 64, bubble ? 62 : 70);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  texCache.set(key, t); return t;
+}
+function emojiSprite(e, size, bubble = true) {
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: emojiTex(e, bubble), depthWrite: false }));
+  s.scale.setScalar(size); return s;
+}
+
+const TIER_RIM = { best: 0xe8b84a, mid: 0xc9c2b6, low: 0xf6f1e8 };
+function plate(tier, r = 0.34) {
+  const g = new THREE.Group();
+  g.add(new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.88, 0.05, 16), M(TIER_RIM[tier])));
+  g.add(new THREE.Mesh(new THREE.CylinderGeometry(r * 0.8, r * 0.8, 0.052, 16), M(0xfbf7ef)));
+  return g;
+}
+function bowl(col, liquid, extra) {
+  const g = new THREE.Group();
+  const b = new THREE.Mesh(new THREE.SphereGeometry(0.22, 14, 10, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), M(col));
+  b.rotation.x = Math.PI; b.position.y = 0.24; g.add(b);
+  const l = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.02, 14), M(liquid)); l.position.y = 0.22; g.add(l);
+  if (extra) extra(g);
+  return g;
+}
+const DISH = {
+  veg_stew: () => bowl(0xd98b5f, 0x9a7a3a, g => [[-0.07, 0x7fbf5a], [0.08, 0xe58a3a]].forEach(([x, c]) => { const v = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.05, 0.07), M(c)); v.position.set(x, 0.25, 0.03); g.add(v); })),
+  mushroom_soup: () => bowl(0xe8d9c0, 0xd9c49a, g => { const cap = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2), M(0xb5462f)); cap.position.set(0.04, 0.24, 0); g.add(cap); }),
+  rice_ball: () => { const g = new THREE.Group(); [-0.1, 0.1].forEach(x => { const r = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.2, 3), M(0xfbfbf5)); r.position.set(x, 0.13, 0); r.rotation.y = 0.5; g.add(r); const n = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.07, 0.03), M(0x2f3a2a)); n.position.set(x, 0.07, 0.06); g.add(n); }); return g; },
+  baked_yam: () => { const g = new THREE.Group(); [[-0.08, 0.3], [0.09, -0.4]].forEach(([x, r]) => { const y = new THREE.Mesh(new THREE.CapsuleGeometry(0.06, 0.18, 4, 8), M(0x8a3f5a)); y.rotation.z = Math.PI / 2; y.rotation.y = r; y.position.set(x, 0.08, 0); g.add(y); }); return g; },
+  herb_salad: () => { const g = new THREE.Group(); [0x6cc06a, 0x8fd46c, 0x4fa85a, 0xe25a4a, 0x6cc06a].forEach((c, i) => { const a = i / 5 * Math.PI * 2; const l = new THREE.Mesh(new THREE.IcosahedronGeometry(0.09, 0), clayMat(c)); l.position.set(Math.cos(a) * 0.1, 0.09 + (i % 2) * 0.04, Math.sin(a) * 0.1); g.add(l); }); return g; },
+  grilled_fish: () => { const g = new THREE.Group(); const m = M(0xa98a6a); const b = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8).scale(2, 0.8, 0.8), m); b.position.y = 0.08; g.add(b); const t = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.14, 5).rotateZ(Math.PI / 2), m); t.position.set(-0.24, 0.08, 0); g.add(t); return g; },
+  omelette: () => { const g = new THREE.Group(); const o = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2).scale(1.5, 0.7, 1), M(0xf2c94c)); o.position.y = 0.03; g.add(o); const k = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.02, 0.03), M(0xc8342a)); k.position.set(0, 0.15, 0); g.add(k); return g; },
+  bread: () => { const g = new THREE.Group(); const b = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.06, 6, 10, Math.PI * 1.2), M(0xd99a4e)); b.rotation.x = -Math.PI / 2; b.position.y = 0.07; g.add(b); return g; },
+  grape_juice: () => { const g = new THREE.Group(); const c = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.24, 12), new THREE.MeshStandardMaterial({ color: 0xdcecff, transparent: true, opacity: 0.45 })); c.position.y = 0.14; g.add(c); const j = new THREE.Mesh(new THREE.CylinderGeometry(0.072, 0.065, 0.18, 12), M(0x7a3a8a)); j.position.y = 0.11; g.add(j); return g; },
+  lunchbox: () => { const g = new THREE.Group(); const b = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.1, 0.3), M(0xb5462f)); b.position.y = 0.06; g.add(b); [[-0.1, -0.06, 0xfbfbf5], [0.1, -0.06, 0xf2c94c], [0.1, 0.06, 0x6cc06a], [-0.1, 0.06, 0xe58a3a]].forEach(([x, z, c]) => { const f = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.03, 0.1), M(c)); f.position.set(x, 0.12, z); g.add(f); }); return g; },
+  forest_feast: () => { const g = new THREE.Group(); const p = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.18, 0.2, 14), M(0x3a3430)); p.position.y = 0.12; g.add(p); const s = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.02, 14), M(0xc8742a)); s.position.y = 0.21; g.add(s); return g; },
+};
+function dishOnPlate([id, tier]) { const g = plate(tier); g.add(DISH[id]()); return g; }
+
+function checkerTex(rx = 1) {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const x = c.getContext('2d');
+  for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) { x.fillStyle = (i + j) % 2 ? '#fbf3e6' : '#d9584a'; x.fillRect(i * 8, j * 8, 8, 8); }
+  const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, 1); return t;
+}
+
+function longTable(list) {
+  const g = new THREE.Group();
+  const side = clayMat(0xd9584a);
+  const top = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.1, 1.7), [side, side, new THREE.MeshStandardMaterial({ map: checkerTex(2.6), roughness: 1 }), side, side, side]);
+  top.position.y = 0.74; g.add(top);
+  [[-2, -0.7], [2, -0.7], [-2, 0.7], [2, 0.7]].forEach(([x, z]) => { const l = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.7, 0.12), clayMat(0x8a5a36)); l.position.set(x, 0.35, z); g.add(l); });
+  [-1.25, 1.25].forEach(z => {
+    const b = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.12, 0.4), clayMat(0x9c6b40)); b.position.set(0, 0.42, z); g.add(b);
+    [-1.7, 1.7].forEach(x => { const l = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.4, 0.3), clayMat(0x8a5a36)); l.position.set(x, 0.2, z); g.add(l); });
+  });
+  list.slice(0, 6).forEach((d, i) => { const m = dishOnPlate(d); m.position.set(-1.8 + i * 0.72, 0.8, -0.38); g.add(m); });
+  list.slice(6).forEach((d, i) => { const m = dishOnPlate(d); m.position.set(-1.44 + i * 0.72, 0.8, 0.38); g.add(m); });
+  return g;
+}
+
+function animal(col, ear = 'round', earCol = col) {
+  const g = new THREE.Group(); const fur = M(col);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.42, 12, 10).scale(1, 1.15, 0.9), fur); body.position.y = 0.5; g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.36, 12, 10), fur); head.position.y = 1.15; g.add(head);
+  const ec = M(earCol);
+  if (ear === 'long') [-0.15, 0.15].forEach(x => { const e = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.35, 4, 8), ec); e.position.set(x, 1.6, 0); g.add(e); });
+  else if (ear === 'horn') [-0.18, 0.18].forEach(x => { const e = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.3, 5), ec); e.position.set(x, 1.55, 0); e.rotation.z = x > 0 ? -0.4 : 0.4; g.add(e); });
+  else if (ear === 'point') [-0.2, 0.2].forEach(x => { const e = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.24, 4), ec); e.position.set(x, 1.5, 0); g.add(e); });
+  else [-0.22, 0.22].forEach(x => { const e = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 6), ec); e.position.set(x, 1.45, 0); g.add(e); });
+  const sn = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), M(0xf0dcc0)); sn.position.set(0, 1.08, 0.3); g.add(sn);
+  [-0.12, 0.12].forEach(x => { const e = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 6), clayMat(0x2a2624)); e.position.set(x, 1.22, 0.31); g.add(e); });
+  return g;
+}
+
+function cottage() {
+  const g = new THREE.Group();
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(5, 2.8, 4.2), clayMat(0xf3e3c8)); wall.position.y = 1.4; g.add(wall);
+  const roof = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 3.4, 1.7, 4, 1), clayMat(0xc4574a));
+  roof.rotation.y = Math.PI / 4; roof.scale.set(1.05, 1, 0.86); roof.position.y = 3.65; g.add(roof);
+  const door = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.6, 0.1), clayMat(0x8a5a36)); door.position.set(-0.9, 0.8, 2.11); g.add(door);
+  return g;
+}
+
+function yardScene() {
+  const s = new THREE.Scene(); s.background = new THREE.Color(0xbfe3f2);
+  s.add(new THREE.HemisphereLight(0xfff6e6, 0x8a7a66, 0.9));
+  const sun = new THREE.DirectionalLight(0xfff1d6, 1.5); sun.position.set(6, 12, 8); s.add(sun);
+  const gr = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), clayMat(0x9cc96b)); gr.rotation.x = -Math.PI / 2; s.add(gr);
+  const h = cottage(); h.position.set(-1.5, 0, -3); s.add(h);
+  return s;
+}
+
+const ALL_DISHES = [
+  ['veg_stew', 'mid'], ['rice_ball', 'best'], ['herb_salad', 'low'], ['mushroom_soup', 'best'], ['baked_yam', 'mid'],
+  ['grilled_fish', 'best'], ['omelette', 'mid'], ['bread', 'best'], ['grape_juice', 'low'], ['lunchbox', 'mid'], ['forest_feast', 'best'],
+];
+
+const waterMat = () => new THREE.MeshStandardMaterial({ color: 0x4aa6d0, transparent: true, opacity: 0.32, roughness: 0.25, emissive: 0x184a63, emissiveIntensity: 0.45, depthWrite: false });
+const POND = new THREE.Vector3(3.0, 0, 0.8);
+const FISH = [0x9fb4c8, 0xe06a5a, 0x7ae0ff, 0xe8743c, 0xf5a9c4];
+
+function fishMesh(col, s = 0.8) {
+  const g = new THREE.Group(); const mat = M(col);
+  g.add(new THREE.Mesh(new THREE.SphereGeometry(0.26, 8, 6).scale(1.6, 0.9, 0.7), mat));
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.3, 6).rotateZ(Math.PI / 2).translate(-0.52, 0, 0), mat); g.add(tail);
+  g.scale.setScalar(s); return g;
+}
+function pond(opts = {}) {
+  const g = new THREE.Group();
+  const bed = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 1.9, 0.06, 20), clayMat(0x3f7f96)); bed.position.y = -0.18; g.add(bed);
+  const water = new THREE.Mesh(new THREE.CylinderGeometry(1.95, 1.95, 0.04, 24), waterMat()); water.position.y = 0.04; g.add(water);
+  for (let i = 0; i < 14; i++) {
+    const a = i / 14 * Math.PI * 2;
+    const s = new THREE.Mesh(new THREE.DodecahedronGeometry(0.26 + (i % 3) * 0.05, 0), clayMat(i % 2 ? 0xb8b0a4 : 0xa39a8e));
+    s.position.set(Math.cos(a) * 2.1, 0.08, Math.sin(a) * 2.1); s.scale.y = 0.6; g.add(s);
+  }
+  [[-0.8, -0.6], [0.9, 0.7], [0.2, -1.1]].forEach(([x, z]) => { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.02, 10, 1, false, 0.4, Math.PI * 1.75), clayMat(0x5fbf7a)); p.position.set(x, 0.07, z); g.add(p); });
+  if (opts.bridge) {
+    for (let i = 0; i < 4; i++) { const st = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.3, 0.14, 8), clayMat(0xd9cfc0)); st.position.set(-1.3 + i * 0.85, 0.08, 0.35 - i * 0.05); g.add(st); }
+  }
+  if (opts.lantern) {
+    const base = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.6, 0.3), clayMat(0x9a948a)); base.position.set(-2.6, 0.3, -0.9); g.add(base);
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.25, 4), clayMat(0x7a746a)); cap.position.set(-2.6, 0.75, -0.9); cap.rotation.y = Math.PI / 4; g.add(cap);
+    const glow = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.14, 0.18), new THREE.MeshStandardMaterial({ color: 0xffe2a0, emissive: 0xffc860, emissiveIntensity: 0.9 })); glow.position.set(-2.6, 0.55, -0.9); g.add(glow);
+  }
+  if (opts.lotus) [[0.9, 0.7], [-0.8, -0.6]].forEach(([x, z]) => { const f = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), M(0xf5a9c4)); f.position.set(x, 0.14, z); g.add(f); });
+  return g;
+}
+function swimmers(group, n, gather) {
+  for (let i = 0; i < n; i++) {
+    const f = fishMesh(FISH[i % FISH.length]);
+    if (gather) { const a = -0.5 + i * 0.28; f.position.set(1.0 + Math.cos(a) * 0.5, 0.0 + (i % 2) * 0.08, 1.0 + Math.sin(a) * 0.4); f.rotation.y = -a + Math.PI * 0.8; }
+    else { const a = i / n * Math.PI * 2; f.position.set(Math.cos(a) * 1.1, -0.05, Math.sin(a) * 0.9); f.rotation.y = -a - Math.PI / 2; }
+    group.add(f);
+  }
+  const big = fishMesh(0x4a6f8f, 1.2); big.position.set(gather ? 0.4 : -0.3, -0.06, gather ? 0.9 : 0.2); big.rotation.y = 0.6; group.add(big);
+}
+function base(opts) {
+  const s = yardScene();
+  const p = pond(opts); p.position.copy(POND); s.add(p);
+  return { s, p };
+}
+const player = (x, z, ry = Math.PI * 0.85) => { const a = animal(0xb98a5e); a.position.set(POND.x + x, 0, POND.z + z); a.rotation.y = ry; return a; };
+
+const SCENES = {
+  book() { const { s, p } = base(); swimmers(p, 5); s.add(player(-1.6, 2.4)); return s; },
+  feed() {
+    const { s, p } = base(); swimmers(p, 5, true);
+    const me = player(1.4, 2.6, Math.PI * 1.05); s.add(me);
+    const b = emojiSprite('🍞', 0.7); b.position.set(me.position.x, 1.95, me.position.z); s.add(b);
+    for (let i = 0; i < 6; i++) { const c = new THREE.Mesh(new THREE.SphereGeometry(0.035, 6, 5), M(0xe0b070)); c.position.set(POND.x + 0.9 + (i % 3) * 0.18, 0.08, POND.z + 1.0 + Math.floor(i / 3) * 0.16); s.add(c); }
+    [[0.8, 1.2], [1.25, 0.85]].forEach(([x, z]) => { const r = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.02, 4, 18), new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.7 })); r.rotation.x = -Math.PI / 2; r.position.set(POND.x + x, 0.07, POND.z + z); s.add(r); });
+    return s;
+  },
+  deco() { const { s, p } = base({ bridge: true, lantern: true, lotus: true }); swimmers(p, 5); s.add(player(-1.8, 2.3)); return s; },
+  name() {
+    const { s, p } = base(); swimmers(p, 5);
+    s.add(player(-0.4, 2.5, Math.PI));
+    const h = emojiSprite('💕', 0.6); h.position.set(POND.x + 0.2, 0.9, POND.z + 0.6); s.add(h);
+    return s;
+  },
+};
+
+const CAM = { pos: new THREE.Vector3(2.4, 6.0, 8.0), look: new THREE.Vector3(2.9, 0.2, 0.9), fov: 44 };
+
+const CONCEPTS = [
+  {
+    key: 'book', title: '① 📒 물고기 수첩',
+    how: '연못을 누르면 강 7칸 + 바다 4칸 수첩. 잡은 종은 칸이 채워지고, 빈 칸 ❔는 언제·어디서 낚이는지 알려 준다. 계절 한정 4종이 "그 계절에 다시 올 이유"가 된다',
+    pills: [['good', '다음 목표 + 계절 재방문'], ['good', '보상 없음'], ['', '작업 작음 (식탁 요리책과 같은 창)']],
+    overlay: `
+      <div class="panel book">
+        <h3>📒 물고기 수첩 <small>5 / 11</small></h3>
+        <div class="sub">강 물고기</div>
+        <div class="slots">
+          <div class="slot got">🐟<i>피라미</i></div><div class="slot got">🐠<i>붉은</i></div><div class="slot got">🌈<i>무지개</i></div><div class="slot got">🍁<i>단풍 잉어</i></div>
+          <div class="slot empty sel">❔</div><div class="slot empty">❔</div><div class="slot empty">❔</div>
+        </div>
+        <div class="sub">바다 대어</div>
+        <div class="slots sea"><div class="slot got">🐠<i>방어 9kg</i></div><div class="slot empty">❔</div><div class="slot empty">❔</div><div class="slot empty">❔</div></div>
+        <div class="hint"><span>❔ ❄️ 겨울에만 강에서 낚여요</span><span class="btn ghost">겨울까지 41일</span></div>
+      </div>`,
+    note: '식탁 ① 요리책과 같은 창 모양 → 한 번 만들어 두 곳에서 쓴다',
+  },
+  {
+    key: 'feed', title: '② 🍞 먹이 주기',
+    how: '하루 한 번 먹이를 던지면 물고기가 몰려와 뻐끔거린다. 그 뒤 30초 동안 🍀 낚시 행운. 식탁 "오늘의 한 입"의 연못판',
+    pills: [['good', '매일 들를 이유'], ['good', '낚시로 바로 이어짐'], ['warn', 'E3 묶음에 보상이 하나 더']],
+    overlay: `
+      <div class="panel feed">
+        <h3>🍞 먹이 주기 <small>하루 1번</small></h3>
+        <p>물고기 6마리가 몰려왔어요 · 🍀 낚시 행운 30초</p>
+        <div class="foot"><span class="ad">🎬 광고 보고 한 번 더</span><span class="btn">부두로</span></div>
+      </div>`,
+    note: '하루 1번을 쓴 뒤에만 광고 버튼(반복 자리 slot pond_feed_more, prepass 처치 무리). 연출은 물고기를 수면 가까이 모으고 물결 고리만 더한다',
+  },
+  {
+    key: 'deco', title: '③ 🪷 연못 꾸미기',
+    how: '코인으로 연못 소품을 하나씩 들인다. 징검다리 · 석등 · 연꽃 · 작은 분수. 물고기를 다 모은 뒤에도 할 게 남고, 코인 쓸 곳이 생긴다',
+    pills: [['good', '다 모은 뒤에도 할 거리'], ['good', '코인 소비처'], ['warn', '소품 조형·저장 필드 추가']],
+    overlay: `
+      <div class="panel deco">
+        <h3>🪷 연못 꾸미기 <small>🪙 1,240</small></h3>
+        <div class="row">
+          <div class="opt own"><b>🪨</b>징검다리<s>들임</s></div>
+          <div class="opt own"><b>🏮</b>석등<s>들임</s></div>
+          <div class="opt sel"><b>🪷</b>연꽃<s>🪙 300</s></div>
+          <div class="opt"><b>⛲</b>작은 분수<s>🪙 800</s></div>
+        </div>
+      </div>`,
+    note: '석등은 밤에 은은하게. 블룸 임계 0.85 아래(나룻배 교훈)',
+  },
+  {
+    key: 'name', title: '④ 💕 이름 붙이기',
+    how: '연못 물고기를 눌러 이름을 붙인다. 이웃이 구경 오면 이름표가 보인다. 애착은 크지만 하는 일은 한 번뿐',
+    pills: [['good', '애착'], ['warn', '한 번 하면 끝'], ['warn', '닉네임 금칙어 검사·이웃 노출']],
+    overlay: `
+      <div class="panel name">
+        <h3>💕 이름 붙이기</h3>
+        <div class="field"><span>🍁</span><u>단풍이</u></div>
+        <div class="field"><span>🌈</span><u>무지개 물고기</u></div>
+        <div style="text-align:right"><span class="btn">저장</span></div>
+      </div>`,
+    note: '이웃에게 보이는 글자라 신고·차단 체계(UGC) 범위에 들어간다',
+  },
+];
+
+const W = 640, H = 420;
+const grid = document.getElementById('grid');
+const rigs = [];
+for (const c of CONCEPTS) {
+  const card = document.createElement('div'); card.className = 'card';
+  card.innerHTML = `<h2>${c.title}</h2><p class="how">${c.how}</p>
+    <div class="meta">${c.pills.map(([k, t]) => `<span class="pill ${k}">${t}</span>`).join('')}</div>
+    <div class="view"><span class="tag">연못 앞 · 버튼 누른 뒤</span>${c.overlay}<div class="act">🐟</div></div>
+    <p class="note">${c.note}</p>`;
+  grid.appendChild(card);
+  const view = card.querySelector('.view');
+  const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  r.setPixelRatio(2); r.setSize(W, H, false);
+  view.insertBefore(r.domElement, view.firstChild);
+  const cam = new THREE.PerspectiveCamera(CAM.fov, W / H, 0.1, 200); cam.position.copy(CAM.pos); cam.lookAt(CAM.look);
+  rigs.push({ r, s: SCENES[c.key](), cam });
+}
+for (const { r, s, cam } of rigs) r.render(s, cam);
+window.__ready = true;
+</script>
+</body>
+</html>

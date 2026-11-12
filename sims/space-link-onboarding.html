@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Space Link Onboarding</title>
+<style>
+  :root { --bg: #f4efe6; --ink: #2b2118; --muted: #6b5b4a; --card: #fffaf2; --line: #e2d6c4; --pond: #4e7f9a; --table: #c0563f; --e6: #8a7a66; --gold: #e8b84a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Pretendard", "Apple SD Gothic Neo", sans-serif; }
+  .wrap { max-width: 1400px; padding: 18px 20px 28px; }
+  h1 { margin: 0 0 4px; font-size: 21px; }
+  .lead { margin: 0 0 14px; color: var(--muted); font-size: 13px; line-height: 1.55; }
+  .lanes { display: grid; grid-template-columns: 150px repeat(5, 1fr); gap: 8px; }
+  .hd { font-size: 12px; font-weight: 700; color: var(--muted); padding: 6px 8px; background: #efe5d4; border-radius: 8px; text-align: center; }
+  .hd small { display: block; font-weight: 500; }
+  .lane { font-size: 13px; font-weight: 700; padding: 10px 8px; border-radius: 8px; display: flex; align-items: center; }
+  .lane.e6 { background: #ece6dc; color: var(--e6); }
+  .lane.pond { background: #e2edf2; color: var(--pond); }
+  .lane.table { background: #f6e3dc; color: var(--table); }
+  .lane.hook { background: #f3ecd2; color: #8a6a1a; }
+  .cell { min-height: 76px; }
+  .box { background: var(--card); border: 2px solid var(--line); border-radius: 10px; padding: 8px 9px; font-size: 12px; line-height: 1.45; height: 100%; }
+  .box b { display: block; font-size: 13px; margin-bottom: 2px; }
+  .box .n { display: inline-block; margin-top: 4px; font-size: 11px; color: var(--muted); }
+  .box.e6 { border-color: #cfc4b2; background: #f7f3ec; color: #6b5b4a; }
+  .box.pond { border-color: #9cc3d6; }
+  .box.table { border-color: #e3a996; }
+  .box.hook { border-color: #e2c97a; }
+  .box.key { box-shadow: 0 0 0 3px var(--gold); }
+  .empty { border: 2px dashed #e2d6c4; border-radius: 10px; height: 100%; }
+  .legend { display: flex; gap: 14px; margin: 14px 0 0; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+  .legend span::before { content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; background: var(--c); }
+  .rules { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
+  .rule { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 12px; line-height: 1.55; }
+  .rule h3 { margin: 0 0 4px; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>공간 연결 온보딩 · 언제 이어 줄까</h1>
+  <p class="lead">원칙: <b>E6가 재는 구간(첫날 집 지붕까지)은 건드리지 않고</b>, 지붕을 올린 바로 그 순간 "마당이 허전하다"로 연못을 잇는다 · 첫 시도는 무조건 성공 · 한 번에 목표 하나 + 금색 화살표 · 하루 한 번 행동은 첫날에 한 번 해 보게 하고 "내일" 약속으로 끝낸다</p>
+
+  <div class="lanes">
+    <div></div>
+    <div class="hd">첫날 0~10분<small>신규 100%</small></div>
+    <div class="hd">첫날 · 집 지붕 완성<small>13% (지금 낚시 6%)</small></div>
+    <div class="hd">다음 날 (D1)<small>연못 만든 사람</small></div>
+    <div class="hd">수첩 4종 · 3장 도달<small>며칠 뒤</small></div>
+    <div class="hd">넓은 연못 · 꾸미기<small>중반</small></div>
+
+    <div class="lane e6">E6 영역<br>(그대로)</div>
+    <div class="cell"><div class="box e6"><b>집 바닥 → 벽 → 지붕</b>상인 말 걸기, 첫 수확, 목표 화살표. 여기엔 연못 안내를 넣지 않는다</div></div>
+    <div class="cell"><div class="box e6"><b>지붕 완성 = E6 주 지표 끝</b>이 순간 뒤부터가 공간 연결 차례</div></div>
+    <div class="cell"><div class="empty"></div></div>
+    <div class="cell"><div class="empty"></div></div>
+    <div class="cell"><div class="empty"></div></div>
+
+    <div class="lane pond">🐟 연못</div>
+    <div class="cell"><div class="empty"></div></div>
+    <div class="cell"><div class="box pond key"><b>① 마당 채우기 (4단계)</b>🦉 "마당이 좀 허전하지?" → 부두 화살표 → 첫 캐스팅 무조건 성공 → 마당에 연못이 생기는 컷 2초 → 연못 화살표 → 🍞 먹이 주기 1회<span class="n">guide_step pond_1~4</span></div></div>
+    <div class="cell"><div class="box pond"><b>② 먹이 + 수첩 열기</b>접속하면 연못 화살표 1회 → 먹이 주기 → 📒 수첩 처음 열기 → ❔ 칸이 다음 목표("부두에서 붉은 물고기")</div></div>
+    <div class="cell"><div class="box pond"><b>③ 넓히기 알림</b>수첩 4종 되는 순간 카드 1회 "연못을 넓힐 수 있어요". 모자란 재료 줄에 "어디서" 안내</div></div>
+    <div class="cell"><div class="box pond"><b>④ 꾸미기 · 이름</b>2단계에서 흰 고리 자리가 생길 때 꾸미기 안내 1회. 이름 붙이기는 안내 없이 수첩에서 물고기를 누르면 발견</div></div>
+
+    <div class="lane table">🍽️ 식탁</div>
+    <div class="cell"><div class="empty"></div></div>
+    <div class="cell"><div class="empty"></div></div>
+    <div class="cell"><div class="empty"></div></div>
+    <div class="cell"><div class="box table key"><b>⑤ 첫 요리 → 식탁</b>3장(카페 열림)에서 첫 요리를 완성하면 마당에 식탁이 생기는 컷 → 식탁 화살표 → 🥄 오늘의 한 입 1회 → 📖 요리책 ❔ 안내</div></div>
+    <div class="cell"><div class="box table"><b>⑥ 7종 → 긴 식탁</b>7종째 요리 순간 식탁이 긴 식탁으로 바뀌는 컷. 요리책이 "다음 요리"를 계속 알려 준다</div></div>
+
+    <div class="lane hook">🔔 다음 날<br>약속</div>
+    <div class="cell"><div class="empty"></div></div>
+    <div class="cell"><div class="box hook"><b>"내일 또 먹이 줄 수 있어요"</b>첫날 마지막 화면에 남는 문장. 푸시 동의 요청을 이때 붙이면 이유가 분명하다</div></div>
+    <div class="cell"><div class="box hook"><b>FCM 푸시</b>전날 연못을 만든 사람에게만 "🐟 연못 물고기들이 기다려요" (밤손님 예고와 같은 규칙)</div></div>
+    <div class="cell"><div class="box hook"><b>계절 ❔</b>"❄️ 겨울에만 강에서 낚여요"가 계절이 바뀔 때 다시 올 이유</div></div>
+    <div class="cell"><div class="empty"></div></div>
+  </div>
+
+  <div class="legend">
+    <span style="--c:#ece6dc">E6 실험 영역 (손대지 않음)</span>
+    <span style="--c:#9cc3d6">연못 안내</span>
+    <span style="--c:#e3a996">식탁 안내</span>
+    <span style="--c:#e2c97a">재방문 약속</span>
+    <span style="--c:#e8b84a">금색 테두리 = 가장 중요한 순간</span>
+  </div>
+
+  <div class="rules">
+    <div class="rule"><h3>왜 지붕 직후인가</h3>첫날 지붕을 올린 사람이 13%로, 지금 낚시하는 6%의 두 배다. 집을 막 완성한 "내 공간" 감정이 가장 높은 순간이라 "마당"으로 잇기 자연스럽다. E6 주 지표가 지붕에서 끝나므로 판정에 섞이지 않는다</div>
+    <div class="rule"><h3>지붕 전에 안 넣는 이유</h3>바닥까지 간 24% 중 지붕까지 가는 사람이 56%뿐이다. 그 사이에 낚시 곁길을 끼우면 집 완성이 더 줄 수 있고, 집 완성이 재방문 38% vs 11%로 가장 강한 신호다</div>
+    <div class="rule"><h3>실험과의 관계</h3>연못 안내는 연못과 같은 E3 스위치 안. 대조 무리는 지금처럼 안내 없음. 안내 단계마다 guide_step 을 남겨 어디서 끊기는지 본다. 봇으로 화살표만 따라가 완주되는지 검증</div>
+  </div>
+</div>
+</body>
+</html>
