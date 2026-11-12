@@ -66,7 +66,7 @@ import { logEcon, startMetrics } from './metrics.js';            // [계측] 경
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
 import { t, LANG, aiBucket, clientId } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
 import { createHouseGuide } from './spaces/house-guide.js';   // 🏠 목재 15개 → 집터 조망 + 방향 안내 50:50
-import { rearmMerchant } from './guide/guide-rules.js';
+import { rearmMerchant, detourPoint } from './guide/guide-rules.js';
 import { createGoalGuide } from './guide/goal-guide.js';
 import { e6Decision } from './exp-e6-boot.js';
 import { guideRevampOn } from './exp-e6.js';
@@ -86,6 +86,11 @@ import { initAuction, updateAuction, auctionMapSpot, auctionSpotNow, openAuction
 import { refreshPond, updatePond, pondScatterBlocks } from './pond/index.js';
 import { feedPond, openPondBook } from './pond/feed.js';
 import { POND_COPY } from './pond/copy.js';
+import { pondPos, pondNear } from './pond/index.js';
+import { installYardGuide } from './pond/yard-guide.js';
+import { spaceLinkOn } from './exp-e3.js';
+import { e3Decision } from './exp-e3-boot.js';
+import { kstDate } from './kst-date.js';
 import { onPlay, decorBanner, applySetFx } from './decor-drops/index.js';
 import { updateSetFx } from './decor-drops/fx.js';
 import { normalizeDrops } from './decor-drops/rules.js';
@@ -289,7 +294,7 @@ import {
   craftCover, refreshCovers, resolveWeatherEvent, weatherPrepView,
 } from './spaces/weather.js';   // 📦 🌡️ 날씨 이벤트 — 서리·태풍 예고를 보고 하루 안에 대비하는 재방문 훅
 import {
-  tryChop, tryFish, updateFishing,
+  tryChop, tryFish, updateFishing, setFishAssist,
 } from './spaces/fishing.js';   // 📦 낚시: 호수 물가에서 던지기 → 물면 낚아채기(반응 미니게임)
 import {
   _fmM, buildFarmInstances, createPlot, cycleSeedSel, farmHintMeshes, seedSelCrop, syncFarmCrops, syncFarmSoil,
@@ -1621,6 +1626,7 @@ let mode = 'attract';   // 'attract'(로그인 배경) | 'play'(플레이)
 let goalGuide = null;
 const guideRevamp = guideRevampOn(e6Decision());
 let houseShort = null;
+let yardGuide = null;
 let rewarded = null;
 let farmRush = null;
 const PREPASS_DEV = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) && new URLSearchParams(location.search).get('prepass') === '1';
@@ -2956,7 +2962,7 @@ export async function enterGame() {
     state: () => gameState, player, camera, scene,
     adButton: (slot, list) => shortAdButton(slot, list, null, CAFE_CAPS),
     adOpen: () => !!rewarded?.open(),
-    otherGuide: () => portGuideActive() || restaurantGuideActive() || auctionGuideActive(),
+    otherGuide: () => portGuideActive() || restaurantGuideActive() || auctionGuideActive() || !!yardGuide?.active(),
     translate: t, track: trackEvent, save: requestSave,
     cameraFree, setCameraRig, defaultCamPose,
     inVillage: inVillage2, atMine: () => atMine && !delveFloorNow(),
@@ -3000,6 +3006,17 @@ export async function enterGame() {
     },
     farmBranchDue: () => unlocksOn() && !gameState.unlocks?.legacy && habitatDone(gameState.tree, 'water') && !habitatDone(gameState.tree, 'farm'),
   }) : null;
+  yardGuide = installYardGuide({
+    state: () => gameState, on: () => spaceLinkOn(e3Decision()), inVillage: inVillage2,
+    free: () => !ui.anyModalOpen?.() && !ui.coachActive?.() && !portGuideActive() && !restaurantGuideActive() && !auctionGuideActive() && !goalGuide?.cinematic && !houseGuidance?.cinematic && cameraFree(),
+    scene, camera, player,
+    route: (me, tgt) => detourPoint({ x: me.x, z: me.z }, { x: tgt.x, z: tgt.z }, colliders.filter(c => ('r' in c ? c.r >= 1.0 : true))),
+    track: trackEvent, save: requestSave, today: kstDate,
+    banner: line => ui.showHintBanner?.({ ico: '🦉', title: POND_COPY.owlTitle, line, near: () => true, attention: true }),
+    setAssist: setFishAssist, pondPos, pondNear,
+    nearLake: () => dist2D(LAKE, player.position) <= LAKE_R + 2.8,
+    fishing: () => fishState !== 'idle',
+  });
   if (_wq.has('dbg')) window.__guide = goalGuide;
   houseGuidance.onInventory();          // 로컬 강제 시안(?houseguide=)만 부팅 보유량으로 시험; 실제 배정은 플레이 중 15개 도달
   movedOnce = false;
@@ -6560,6 +6577,7 @@ function animate() {
   updatePond(dt, inVillage2());
   updateShopCue(t);          // 🛒 좌판 안내 스프라이트
   if (mode === 'play') goalGuide?.update(dt);
+  if (mode === 'play') yardGuide?.update(dt);
   if (mode === 'play') { houseShort?.update(dt); farmRush?.update(dt); }
   houseGuidance?.update();   // 🏠 조망샷은 다른 카메라 연출·모달이 비었을 때만 시작
   // 집 터 안내판/마커: 플레이 중 + 미완성일 때만 (로그인 화면에선 숨김)

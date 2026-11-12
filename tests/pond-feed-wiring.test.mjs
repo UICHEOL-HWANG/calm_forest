@@ -33,3 +33,20 @@ test('🐟 행동 버튼: 프롬프트·아이콘·분기·광고', () => {
   assert.match(g, /rewarded\.button\('pond_feed_more', \['광고 보고', ' ', POND_COPY\.adMore\]/);
   assert.match(src('js/guide/prepass-rules.js'), /'sell_bonus', 'pond_feed_more'\]/);
 });
+
+test('마당 채우기 연결', () => {
+  const y = src('js/pond/yard-guide.js');
+  assert.match(y, /export function createYardGuide\(deps\)/);
+  assert.match(y, /export function installYardGuide\(deps\)/);
+  assert.match(y, /export function yardGuidePointTo\(kind\)/);
+  assert.match(y, /run\('yard_fill', yardSteps\(POND_COPY\)/);
+  assert.match(y, /run\('pond_d1', d1Steps\(POND_COPY\)/);
+  assert.match(y, /onStep: e => deps\.track\('guide_step', e\)/);
+  assert.match(y, /hintsSeen\.yardFill = true/);
+  assert.match(y, /hintsSeen\.pondD1 = true/);
+  assert.doesNotMatch(y, /guideRevamp|e6Decision/);
+  const g = src('js/game.js');
+  assert.match(g, /yardGuide = installYardGuide\(\{/);
+  assert.match(g, /if \(mode === 'play'\) yardGuide\?\.update\(dt\);/);
+  assert.match(g, /otherGuide: \(\) => portGuideActive\(\) \|\| restaurantGuideActive\(\) \|\| auctionGuideActive\(\) \|\| !!yardGuide\?\.active\(\),/);
+});
