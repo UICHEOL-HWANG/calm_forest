@@ -44,8 +44,8 @@ function frameActionShot(dataURL) {
         // 우: 오늘 날씨 + 도감 진행도 + 날짜
         const dex = Input.getDex();
         const wIco = iconText($('time-emoji')) || '🌿';
-        const t = new Date();
-        const ds = `${t.getFullYear()}.${String(t.getMonth() + 1).padStart(2, '0')}.${String(t.getDate()).padStart(2, '0')}`;
+        const now = new Date();
+        const ds = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
         c.textAlign = 'right'; c.fillStyle = '#fffdf4';
         c.font = `700 ${Math.round(fs * 0.75)}px sans-serif`;
         c.fillText(t(`${wIco}  📖 도감 ${dex.count}/${dex.total}  ·  ${ds}`), W - pad, H - Math.round(barH * 0.38));
