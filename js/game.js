@@ -332,7 +332,7 @@ import { restoreMountain } from './mountain/save.js';
 import { onMountainside } from './mountain/landmark.js';
 import { souvenirOutdoorMesh } from './mountain/souvenir-art.js';
 import { SIGNUP_GIFT_IDS, buildSignupGift } from './spaces/signup-gift-art.js';
-import { buildPromoGift } from './spaces/promo-gift-art.js';
+import { buildPromoGift, PROMO_SUITCASE_BOX } from './spaces/promo-gift-art.js';
 import { PROMO_DECOR_IDS } from './promo-gift/rules.js';
 import { requestSignupNudge } from './signup-gift/index.js';
 import { FRIEND_ARCH_ID, buildFriendArch } from './spaces/friend-arch-art.js';   // 🌈 무지개 우정 아치(🤝 초대 보상)
@@ -5974,7 +5974,7 @@ function outdoorMesh(id) {
 const OVERLAP_PLACE_MSG = '🌳 나무나 건물과 겹쳐서 놓을 수 없어요';
 function outdoorBlockedByWorld(id, x, z, ry) {
   const ignore = new Set(outdoorMeshes.map(m => m.userData.solid).filter(Boolean));
-  const fp = outdoorFootprint(id, x, z, ry, { cartBox: MINE_CART_BOX, vatBox: VAT_BOX, cartId: MINE_CART_ID });
+  const fp = outdoorFootprint(id, x, z, ry, { cartBox: MINE_CART_BOX, vatBox: VAT_BOX, cartId: MINE_CART_ID, suitcaseBox: PROMO_SUITCASE_BOX });
   return blockedByWorld(fp, colliders, ignore);
 }
 function placeOutdoor(wx, wz, silent = false, id = placingOutdoor, rot = null) {
@@ -6038,7 +6038,10 @@ function placeOutdoor(wx, wz, silent = false, id = placingOutdoor, rot = null) {
       const [hw, hd] = (ry % 2) ? [VAT_BOX.d / 2, VAT_BOX.w / 2] : [VAT_BOX.w / 2, VAT_BOX.d / 2];
       solid = solidBox(wx - hw, wz - hd, wx + hw, wz + hd);
       obstacles.pop(); ob = { x: wx, z: wz, r: 1.2 }; obstacles.push(ob);
-    } else solid = ['fence', 'stonewall', 'postlamp', 'brazier', 'scarecrow', 'spiritlamp', 'ghostlamp', 'gravefence', 'haybale', 'pumpkins', 'pumpkinlamp', 'harvestscarecrow', 'moonswing', 'lanternarch', 'starvane'].includes(id) ? solidCircle(wx, wz, ['postlamp', 'scarecrow', 'spiritlamp', 'ghostlamp', 'pumpkinlamp', 'harvestscarecrow', 'starvane'].includes(id) ? 0.22 : 0.5) : null;   // 🎃 거미줄 아치(webarch)는 걸어서 통과한다 · 🌾 수확제 4종은 목록에 없어 통과했다(2026-10-09)
+    } else if (id === 'promosuitcase') {
+      const [hw, hd] = (ry % 2) ? [PROMO_SUITCASE_BOX.d / 2, PROMO_SUITCASE_BOX.w / 2] : [PROMO_SUITCASE_BOX.w / 2, PROMO_SUITCASE_BOX.d / 2];
+      solid = solidBox(wx - hw, wz - hd, wx + hw, wz + hd);
+    } else solid = ['fence', 'stonewall', 'postlamp', 'brazier', 'scarecrow', 'spiritlamp', 'ghostlamp', 'gravefence', 'haybale', 'pumpkins', 'pumpkinlamp', 'harvestscarecrow', 'moonswing', 'lanternarch', 'starvane', 'promoballoon'].includes(id) ? solidCircle(wx, wz, ['postlamp', 'scarecrow', 'spiritlamp', 'ghostlamp', 'pumpkinlamp', 'harvestscarecrow', 'starvane', 'promoballoon'].includes(id) ? 0.22 : 0.5) : null;   // 🎃 거미줄 아치(webarch)는 걸어서 통과한다 · 🌾 수확제 4종은 목록에 없어 통과했다(2026-10-09)
   }
   m.userData.rec = rec; m.userData.obstacle = ob; m.userData.solid = solid;   // 🪵 들어 올릴 때 레코드·밭 금지 구역·충돌체를 같이 뺀다(시설은 obstacle 이 배열)
   if (STATION_IDS.includes(id)) {

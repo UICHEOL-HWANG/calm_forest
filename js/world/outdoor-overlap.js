@@ -1,4 +1,4 @@
-const SMALL = ['postlamp', 'scarecrow', 'spiritlamp', 'ghostlamp', 'pumpkinlamp', 'harvestscarecrow'];
+const SMALL = ['postlamp', 'scarecrow', 'spiritlamp', 'ghostlamp', 'pumpkinlamp', 'harvestscarecrow', 'promoballoon'];
 const FLAT = ['path', 'flowerbed'];
 const KILN_HALF = [1.01, 0.58];
 const GAP = 0.05;
@@ -8,10 +8,11 @@ function box(x, z, hw, hd, ry) {
   return { x1: x - a, z1: z - b, x2: x + a, z2: z + b };
 }
 
-export function outdoorFootprint(id, x, z, ry, { cartBox, vatBox, cartId } = {}) {
+export function outdoorFootprint(id, x, z, ry, { cartBox, vatBox, cartId, suitcaseBox } = {}) {
   if (id === 'kiln') return box(x, z, KILN_HALF[0], KILN_HALF[1], ry);
   if (cartBox && id === cartId) return box(x, z, cartBox.w / 2, cartBox.d / 2, ry);
   if (vatBox && id === 'vat') return box(x, z, vatBox.w / 2, vatBox.d / 2, ry);
+  if (suitcaseBox && id === 'promosuitcase') return box(x, z, suitcaseBox.w / 2, suitcaseBox.d / 2, ry);
   if (SMALL.includes(id)) return { x, z, r: 0.22 };
   if (FLAT.includes(id)) return { x, z, r: 0.35 };
   return { x, z, r: 0.5 };

@@ -96,7 +96,7 @@ test('reopening a finished auction does not count as an open', () => {
 });
 
 test('placed auction decor is solid in the yard', () => {
-  const line = game.split('\n').find(l => l.includes("'harvestscarecrow'].includes(id) ? solidCircle") || l.includes("'starvane'].includes(id) ? solidCircle"));
+  const line = game.split('\n').find(l => /\} else solid = \[[^\]]*\]\.includes\(id\) \? solidCircle\(/.test(l));
   assert.ok(line, 'solid list line missing');
   for (const id of ['moonswing', 'lanternarch', 'starvane']) assert.ok(line.includes(`'${id}'`), id);
 });

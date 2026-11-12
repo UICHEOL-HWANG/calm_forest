@@ -1,6 +1,9 @@
 import { colored, mergeColored } from '../mountain/merge-colored.js';
 
 const SCALE = 1.25;
+const CENTERED = new Set(['promosuitcase']);
+
+export const PROMO_SUITCASE_BOX = Object.freeze({ w: 1.6, d: 1.05 });
 
 function kit(T) {
   const root = new T.Group();
@@ -81,8 +84,14 @@ export function buildPromoGift(T, id) {
   const k = kit(T);
   shape(T, k);
   k.root.scale.setScalar(SCALE);
+  const geo = bake(T, k.root);
+  if (CENTERED.has(id)) {
+    geo.computeBoundingBox();
+    const b = geo.boundingBox;
+    geo.translate(-(b.min.x + b.max.x) / 2, 0, -(b.min.z + b.max.z) / 2);
+  }
   const g = new T.Group();
-  const mesh = new T.Mesh(bake(T, k.root), new T.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0, flatShading: true }));
+  const mesh = new T.Mesh(geo, new T.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0, flatShading: true }));
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   g.add(mesh);
