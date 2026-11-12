@@ -67,3 +67,22 @@ test('runNow — 청구할 게 없으면 대기 없이 반환, 수동 제출은 
   assert.match(src, /pendingStages\(\{ auth: ctx\.auth, storage: s \}\)\.length\) return Promise\.resolve\(\{ views: \[\], result: 'dup' \}\);\n\s*if \(memo\.running\)/);
   assert.match(src, /memo\.wake\?\.\(\);\n\s*const \{ views, result \} = await runNow/);
 });
+
+test('낮은 화면(가로 폰)에서도 봉투 버튼이 화면 안에 남는다', () => {
+  assert.match(html, /#promo-gift-modal \.pg-env \{[^}]*max-height: calc\(100vh - 16px\); max-height: calc\(100dvh - 16px\);[^}]*overflow-y: auto;/);
+  const low = html.match(/@media \(max-height: 480px\) \{([\s\S]*?)\n  \}\n/);
+  assert.ok(low, '낮은 화면 미디어 쿼리 없음');
+  assert.match(low[1], /#promo-gift-modal \.pg-env \{ width: min\(440px, 92vw\);/);
+  assert.match(low[1], /#promo-gift-modal \.pg-list \{ display: grid; grid-template-columns: 1fr 1fr;/);
+  assert.match(low[1], /#promo-gift-modal \.pg-flap \{ height: 56px; \}/);
+});
+
+test('휴대폰 키보드 — 낮은 화면에선 코드 창을 위쪽에, 키보드 Enter 로 제출', () => {
+  const low = html.match(/@media \(max-height: 700px\) \{([\s\S]*?)\n  \}\n/);
+  assert.ok(low, '키보드용 미디어 쿼리 없음');
+  assert.match(low[1], /#gift-code-modal \{ place-items: start center; padding-top: 10vh; padding-top: 10dvh; \}/);
+  assert.match(html, /@media \(max-height: 480px\) \{\n    #gift-code-modal \{ padding-top: 8px; \}/);
+  assert.match(html, /<input id="gift-code-input"[^>]*enterkeyhint="go"/);
+  const ui = readFileSync(new URL('../js/promo-gift/ui.js', import.meta.url), 'utf8');
+  assert.match(ui, /input\.onkeydown = \(e\) => \{ if \(e\.key === 'Enter' && !e\.isComposing && !e\.repeat && e\.keyCode !== 229\) \{ e\.preventDefault\(\); go\.click\(\); \} \};/);
+});
