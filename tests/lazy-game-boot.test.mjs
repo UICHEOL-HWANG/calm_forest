@@ -37,6 +37,7 @@ test('first-screen bundle has no three.js and stays under the size limit', async
     const inputs = bootFiles.flatMap(f => Object.keys(metafile.outputs[f].inputs));
     assert.ok(!inputs.some(f => f.includes('vendor/three')), 'three.js is in the first-screen bundle');
     assert.ok(!inputs.some(f => f.endsWith('js/game.js')), 'game.js is in the first-screen bundle');
+    assert.ok(!inputs.some(f => f.endsWith('js/i18n-en.js')), 'English dictionary is in the first-screen bundle');
     const kb = Math.round(bootFiles.reduce((s, f) => s + metafile.outputs[f].bytes, 0) / 1024);
     assert.ok(kb <= BOOT_KB_LIMIT, `first-screen JS ${kb}KB > ${BOOT_KB_LIMIT}KB`);
   } finally { rmSync(dir, { recursive: true, force: true }); }
@@ -66,4 +67,10 @@ test('top-level statements do not call into the game before it loads', () => {
     const before = line.slice(0, m.index);
     assert.ok(/=>|function\b/.test(before), `top-level game call: ${line.trim().slice(0, 120)}`);
   }
+});
+
+test('English dictionary is loaded only when the language is English', () => {
+  const src = readFileSync(new URL('../js/i18n.js', import.meta.url), 'utf8');
+  assert.ok(!/^import[^;]*'\.\/i18n-en\.js'/m.test(src), 'static import of i18n-en.js');
+  assert.match(src, /LANG === 'en'[^;]*import\('\.\/i18n-en\.js'\)/);
 });

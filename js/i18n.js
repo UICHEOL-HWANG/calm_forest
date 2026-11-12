@@ -22,7 +22,6 @@
 
 import { CONFIG } from './config.js';
 import { IS_ITCH } from './platform.js';   // 🎮 itch 번들은 영어 기본(2026-09-09)
-import { EN } from './i18n-en.js';
 
 // ── 분석용 영구 client_id — supabase-client.js 도 이걸 import ─
 //   ※ 인증이 아니라 순수 집계용 식별자. 권한 판단에 쓰면 안 됨.
@@ -75,6 +74,13 @@ function detectLang() {
 }
 
 export const LANG = detectLang();
+const dictFailed = (e) => {
+  const surface = () => { Promise.reject(e); };
+  if (globalThis.document?.readyState === 'loading') document.addEventListener('DOMContentLoaded', surface, { once: true });
+  else surface();
+  return {};
+};
+const EN = LANG === 'en' ? await import('./i18n-en.js').then(m => m.EN, dictFailed) : {};
 export function getLang() { return LANG; }
 
 // 유저가 🌐 토글로 언어 변경 — 저장 후 reload(캔버스 간판·캐시 문자열까지 새로 그림)
