@@ -1,5 +1,5 @@
 # Context — promo-gift
-Last Updated: 2026-11-13
+Last Updated: 2026-11-13 (구현 완료·미병합)
 
 ## 결정 (사용자)
 - 선물 코드 링크(`?gift=` · `/g/CODE` · Play referrer `gift=` · 토스 initialURL · 메뉴 수동 입력)
@@ -24,3 +24,10 @@ Last Updated: 2026-11-13
 - GA4 새 이벤트 ≤5·파라미터 한도(ga4-param-limit)
 - 테스트 방문은 `?dbg=1`
 - 코드 주석 금지(프로젝트 규칙)
+
+## 구현 상태 (2026-11-13)
+- 워크트리 .claude/worktrees/promo-gift · 브랜치 feat/promo-gift · 커밋 11개(로컬, 미푸시·미병합)
+- SDD 장부 .superpowers/sdd/2026-11-13-promo-gift/progress.md (판정·미룬 지적 전부)
+- 계획 대비 변경: promo 모듈은 index.html 에서 동적 import(첫 화면 JS 650KB 상한 유지), js/promo-gift/code.js 분리, 메뉴 시트 CATS 에 gift-code-btn, 이벤트 분류표 3행
+- 배포 런북 추가: purchases CHECK 교체 때 락 → lock_timeout·한산한 시간, 적용 뒤 anon/authenticated execute 권한 false 확인, 옛 signup/referral 마이그레이션 재실행 금지, app-invite-links 와 같은 릴리스로(AASA /g/*), 옛 iOS 빌드는 모르는 꾸미기 id 를 cashOwned 에 남김(기존 문제)
+- 남은 미룬 점: 제자리 로그인(토스·PGS·GC) 뒤 2단계 꾸미기는 다음 동기화 때 보관함에 보임
