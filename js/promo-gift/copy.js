@@ -2,7 +2,7 @@ export const LETTER = Object.freeze({
   fallbackFrom: '숲에서 온 초대장',
   title1: '고요한 숲에 온 걸 환영해요',
   note1: '첫날 쓰라고 몇 가지 챙겨 넣었어요',
-  ps: '추신. 로그인하면 전용 꾸미기 세트를 하나 더 보내 드려요 🎈',
+  ps: '추신. 로그인하면 전용 꾸미기 세트를 하나 더 보내 드려요 🎈',
   take: '받기',
   login: '✉️ 로그인하고 더 받기',
   from2: '두 번째 편지',
@@ -20,6 +20,7 @@ export const FAIL = Object.freeze({
   not_started: '아직 시작 전인 코드예요',
   net_fail: '연결이 불안정해요. 잠시 후 다시 해 주세요',
   dup: '이미 선물을 받았어요',
+  login: '로그인하면 꾸미기 세트를 받을 수 있어요',
 });
 
 export const MENU = Object.freeze({

@@ -19,9 +19,24 @@ export function captureCode({ storage, code, via, force = false, track }) {
   return c;
 }
 
+const isLoggedIn = (auth) => !auth?.isGuest && auth?.provider !== 'anonymous' && auth?.provider !== 'offline';
+
+export function checkVerdict(res) {
+  if (!res || res.error) return { store: false, reason: 'net_fail' };
+  if (res.ok !== true) return { store: false, reason: res.reason || 'unknown' };
+  return { store: true, reason: null };
+}
+
+export function manualOutcome({ views, result, auth, storage }) {
+  if (views && views.length) return { ok: true, reason: null };
+  const marked = read(storage, KEYS.device) === '1';
+  if (result === 'dup' && !isLoggedIn(auth) && marked) return { ok: false, reason: 'login' };
+  return { ok: false, reason: result };
+}
+
 export async function runPromoGift({ auth, storage, call, grant, show, track }) {
   const code = pendingCode(storage);
-  const loggedIn = !auth?.isGuest && auth?.provider !== 'anonymous' && auth?.provider !== 'offline';
+  const loggedIn = isLoggedIn(auth);
   const stages = nextClaims({ isGuest: !!auth?.isGuest, provider: auth?.provider, stage1Device: read(storage, KEYS.device) === '1', hasCode: !!code });
   const views = [];
   for (const stage of stages) {

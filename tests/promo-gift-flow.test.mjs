@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { captureCode, pendingCode, runPromoGift } from '../js/promo-gift/flow.js';
+import { captureCode, pendingCode, runPromoGift, checkVerdict, manualOutcome } from '../js/promo-gift/flow.js';
 import { KEYS, STAGE1_BUNDLE } from '../js/promo-gift/rules.js';
 
 function mem(init = {}) {
@@ -115,4 +115,22 @@ test('저장소가 깨져도 던지지 않는다', async () => {
   assert.equal(pendingCode(broken), null);
   assert.equal(captureCode({ storage: broken, code: 'INSTA1', via: 'url', track: () => {} }), null);
   assert.deepEqual(await runPromoGift({ auth: GUEST, storage: broken, call: async () => null, grant: () => {}, show: async () => {}, track: () => {} }), []);
+});
+
+test('checkVerdict — 실패는 사유와 저장 금지, 통과만 저장', () => {
+  assert.deepEqual(checkVerdict({ ok: false, reason: 'expired' }), { store: false, reason: 'expired' });
+  assert.deepEqual(checkVerdict({ ok: false }), { store: false, reason: 'unknown' });
+  assert.deepEqual(checkVerdict(null), { store: false, reason: 'net_fail' });
+  assert.deepEqual(checkVerdict({ error: 500 }), { store: false, reason: 'net_fail' });
+  assert.deepEqual(checkVerdict({ ok: true, code: 'A1B2', label: 'x' }), { store: true, reason: null });
+});
+
+test('manualOutcome — 기기 표시된 게스트는 login, 편지가 있으면 ok, 로그인 유저는 dup', () => {
+  const marked = mem({ [KEYS.device]: '1' });
+  const fresh = mem();
+  assert.deepEqual(manualOutcome({ views: [], result: 'dup', auth: GUEST, storage: marked }), { ok: false, reason: 'login' });
+  assert.deepEqual(manualOutcome({ views: [{ stage: 1 }], result: 'ok', auth: GUEST, storage: marked }), { ok: true, reason: null });
+  assert.deepEqual(manualOutcome({ views: [], result: 'dup', auth: MEMBER, storage: marked }), { ok: false, reason: 'dup' });
+  assert.deepEqual(manualOutcome({ views: [], result: 'dup', auth: GUEST, storage: fresh }), { ok: false, reason: 'dup' });
+  assert.deepEqual(manualOutcome({ views: [], result: 'net_fail', auth: GUEST, storage: marked }), { ok: false, reason: 'net_fail' });
 });

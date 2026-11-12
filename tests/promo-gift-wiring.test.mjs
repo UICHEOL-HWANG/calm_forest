@@ -55,3 +55,9 @@ test('새 코드에 주석이 없다', () => {
     assert.doesNotMatch(src, /^\s*\/\/|\/\*/m, p);
   }
 });
+
+test('수동 입력은 서버 확인 뒤에만 저장한다', () => {
+  const src = readFileSync(new URL('../js/promo-gift/index.js', import.meta.url), 'utf8');
+  assert.match(src, /async function check\(code\)[\s\S]*action: 'check'/);
+  assert.match(src, /checkVerdict\(await check\(code\)\)[\s\S]*?captureCode\(\{ storage: s, code, via: 'manual', force: true/);
+});

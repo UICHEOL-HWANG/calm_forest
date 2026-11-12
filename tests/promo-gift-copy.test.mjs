@@ -39,7 +39,7 @@ test('문구에 엠대시·놀다가 없고 전부 영어판이 있다', () => {
 
 test('봉투 핵심 문구', () => {
   assert.equal(LETTER.title1, '고요한 숲에 온 걸 환영해요');
-  assert.equal(LETTER.ps, '추신. 로그인하면 전용 꾸미기 세트를 하나 더 보내 드려요 🎈');
+  assert.equal(LETTER.ps, '추신. 로그인하면 전용 꾸미기 세트를 하나 더 보내 드려요 🎈');
   assert.equal(LETTER.title2, '약속한 꾸미기 세트예요');
   assert.equal(MENU.button, '선물 코드');
 });

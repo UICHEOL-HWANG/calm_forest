@@ -4,7 +4,7 @@ import { IS_TOSS, IS_NATIVE, loadTossSDK } from '../platform.js';
 import { capPlugin, capListen } from '../cap-bridge.js';
 import { getLang } from '../i18n.js';
 import { readGiftParam, giftFromReferrer, normalizeGiftCode } from './rules.js';
-import { captureCode, pendingCode, runPromoGift } from './flow.js';
+import { captureCode, pendingCode, runPromoGift, checkVerdict, manualOutcome } from './flow.js';
 import { showLetter, openCodeEntry } from './ui.js';
 
 const BUSY = ['body.intro-open', '#char-modal.show', '#tutorial-modal.show', '#hint-modal.show', '#nudge-modal.show', '#gift-box-modal.show'];
@@ -38,6 +38,23 @@ async function call(stage, code) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ action: 'claim', code, stage }),
+    });
+    if (r.status === 400) return await r.json().catch(() => ({ ok: false, reason: 'bad_code' }));
+    if (!r.ok) return { error: r.status };
+    return await r.json();
+  } catch (e) {
+    return null;
+  }
+}
+
+async function check(code) {
+  const token = await getAccessToken();
+  if (!token) return null;
+  try {
+    const r = await fetch(CONFIG.PROMO_GIFT_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action: 'check', code }),
     });
     if (r.status === 400) return await r.json().catch(() => ({ ok: false, reason: 'bad_code' }));
     if (!r.ok) return { error: r.status };
@@ -120,10 +137,12 @@ export function openGiftCodeEntry({ auth, track, ui, grant }) {
     submit: async (text, closeEntry) => {
       const code = normalizeGiftCode(text);
       if (!code) return { ok: false, reason: 'bad_code' };
+      const verdict = checkVerdict(await check(code));
+      if (!verdict.store) return { ok: false, reason: verdict.reason };
       captureCode({ storage: s, code, via: 'manual', force: true, track });
       memo.play = { auth, track, ui, grant };
       const { views, result } = await runNow({ ...memo.play, beforeShow: closeEntry }, { wait: false });
-      return views.length ? { ok: true } : { ok: false, reason: result };
+      return manualOutcome({ views, result, auth, storage: s });
     },
   });
 }
