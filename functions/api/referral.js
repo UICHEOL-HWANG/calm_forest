@@ -46,7 +46,7 @@ export function json(body, status = 200) {
 }
 const log = (o) => console.log(JSON.stringify({ evt: 'referral', ...o }));
 
-export async function verifiedUid(env, request, fetchImpl) {
+export async function verifiedUser(env, request, fetchImpl) {
   const token = (request.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
   if (!token) return null;
   try {
@@ -55,8 +55,13 @@ export async function verifiedUid(env, request, fetchImpl) {
     });
     if (!r.ok) return null;
     const u = await r.json();
-    return u?.id && !u.is_anonymous ? u.id : null;     // 익명(게스트) 차단
+    return u?.id ? { id: u.id, anonymous: !!u.is_anonymous } : null;
   } catch (e) { return null; }
+}
+
+export async function verifiedUid(env, request, fetchImpl) {
+  const u = await verifiedUser(env, request, fetchImpl);
+  return u && !u.anonymous ? u.id : null;
 }
 
 export const serviceHeaders = (env) => ({
