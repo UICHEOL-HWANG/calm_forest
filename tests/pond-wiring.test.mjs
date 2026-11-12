@@ -55,3 +55,11 @@ test('pond_created 는 로드마다 보내지 않는다', () => {
   const p = src('js/pond/index.js');
   assert.ok(p.includes('shouldTrackCreated(trigger, !!gameState.hintsSeen.pond)'));
 });
+
+test('P1: 연못 위치·근처·모으기·연못 생긴 날', () => {
+  const p = src('js/pond/index.js');
+  for (const fn of ['pondExists', 'pondPos', 'pondNear', 'pondCount', 'pondGather']) assert.match(p, new RegExp(`export function ${fn}\\(`));
+  assert.match(p, /hintsSeen\.pondDay = kstDate\(\)/);
+  assert.match(src('js/pond/build.js'), /gather\(sec\)/);
+  assert.match(src('js/data/pond.js'), /export const POND_ACT_R = 3\.4;/);
+});
