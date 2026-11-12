@@ -110,5 +110,5 @@ test('HUD 숨김 다듬기: 올빼미 배너·모드 전환·좌판 표시', () 
   assert.match(y, /suspend\(\) \{\s*lastProgressAt = performance\.now\(\) \/ 1000;/);
   assert.match(src('js/game.js'), /if \(mode === 'play'\) yardGuide\?\.update\(dt\); else yardGuide\?\.suspend\(\);/);
   const n = src('js/spaces/npc.js');
-  assert.match(n, /shopCue\.visible = live && !glyphsHidden;/);
+  assert.match(n, /shopCue\.visible = shopCueVisible\(\{ now: clock\.elapsedTime, until: shopCueUntil, hidden: glyphsHidden \}\);/);
 });

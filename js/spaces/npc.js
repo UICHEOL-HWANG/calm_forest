@@ -34,6 +34,7 @@ import { port } from '../port/index.js';
 import { Sound } from '../sound.js';
 import { inVillage2 } from '../spaces/doors.js';
 import * as THREE from 'three';
+import { shopCueVisible } from './shop-cue-rules.js';
 
 // id별 퀘스트 진행 상태(없으면 생성)
 export function npcState(id) {
@@ -786,8 +787,7 @@ export function showShopCue(sec) {
 
 export function updateShopCue(t) {
   if (!shopCue) return;
-  const live = clock.elapsedTime <= shopCueUntil;
-  shopCue.visible = live && !glyphsHidden;
+  shopCue.visible = shopCueVisible({ now: clock.elapsedTime, until: shopCueUntil, hidden: glyphsHidden });
   if (!shopCue.visible) return;
   shopCue.position.y = 3.2 + Math.sin(t * 2.4) * 0.15;
 }
