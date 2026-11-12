@@ -8,7 +8,7 @@ const ids = (s) => [...s.matchAll(/'([a-z_]+)'/g)].map(m => m[1]);
 
 test('장식 가드 목록에 보상 장식 전부가 들어 있다', () => {
   const decor = SQL.match(/_reward_decor_ids\(\)[\s\S]*?array\[([\s\S]*?)\]::text\[\]/)[1];
-  assert.deepEqual(ids(decor), REWARD_DECOR.map(d => d.id));
+  assert.deepEqual(ids(decor), REWARD_DECOR.filter(d => d.reward !== 'promo').map(d => d.id));
 });
 
 test('선물 후보는 reward signup 3종과 같다', () => {

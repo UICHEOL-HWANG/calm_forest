@@ -13,6 +13,8 @@ export const REWARD_DECOR = Object.freeze([
   Object.freeze({ id: 'giftsprout', name: '첫 새싹 화분', ico: '🪴', cost: { leaf: 9999 }, desc: '가입 선물. 금빛 봉오리가 달린 새싹', hidden: true, reward: 'signup' }),
   Object.freeze({ id: 'giftmailbox', name: '새집 우편함', ico: '📮', cost: { leaf: 9999 }, desc: '가입 선물. 초록 지붕 새집 모양 우편함', hidden: true, reward: 'signup' }),
   Object.freeze({ id: 'giftlantern', name: '환영 등불', ico: '🏮', cost: { leaf: 9999 }, desc: '가입 선물. 밤이 되면 불이 켜지는 등불', hidden: true, reward: 'signup' }),
+  Object.freeze({ id: 'promoballoon', name: '꼬마 열기구', ico: '🎈', cost: { leaf: 9999 }, desc: '링크 선물. 줄무늬 열기구가 말뚝에 매여 있어요', hidden: true, reward: 'promo' }),
+  Object.freeze({ id: 'promosuitcase', name: '여행 가방 더미', ico: '🧳', cost: { leaf: 9999 }, desc: '링크 선물. 꼬리표 붙은 여행 가방 세 개', hidden: true, reward: 'promo' }),
 ]);
 
 export const isRewardDecor = (id) => REWARD_DECOR.some(d => d.id === id);
