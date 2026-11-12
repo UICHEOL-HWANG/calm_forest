@@ -45,7 +45,7 @@ export function renderLetters({ box, wrap, det, countEl, Input, t, toast, focusK
     cover.append(back, el('span', 'nb-big', l.face), el('span', 'nb-pill', l.stage));
     const page = el('div', 'nb-body');
     page.append(el('h3', null, l.title), el('p', 'nt-lead', l.body));
-    const att = l.gift ? `🎁 ${giftLine(l.gift, t)}` : `🎁 ${t('📜 금빛 도구 도면 의뢰가 열려요')}`;
+    const att = l.giftText ? `🎁 ${l.giftText}` : l.gift ? `🎁 ${giftLine(l.gift, t)}` : `🎁 ${t('📜 금빛 도구 도면 의뢰가 열려요')}`;
     page.appendChild(el('p', 'nb-att', att));
     det.append(cover, page);
     if (l.gift) {
@@ -55,7 +55,7 @@ export function renderLetters({ box, wrap, det, countEl, Input, t, toast, focusK
       btn.addEventListener('click', () => {
         if (!Input.claimLetter(l.key)) return;
         btn.textContent = t('받았어요'); btn.disabled = true;
-        toast('🎒 가방에 넣었어요');
+        toast(l.gift.decor ? '🧺 보관함에 넣었어요' : '🎒 가방에 넣었어요');
       });
       det.appendChild(btn);
     }

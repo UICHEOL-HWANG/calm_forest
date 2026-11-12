@@ -51,3 +51,23 @@ test('새 문구에 엠대시·놀다 없음', () => {
   const all = [chipText(0), stageUpToast({ name: '가', idx: 1, letter: true }), giftCapToast({ name: '가' }), retroToast(2), nextRewardText(0)];
   for (const s of all) { assert.ok(!s.includes('—')); assert.ok(!/놀[아았이자다]/.test(s)); }
 });
+
+test('보여 주기 문구: 소개 카드·길 안내·상시 줄', async () => {
+  const C = await import('../js/affinity/copy.js');
+  assert.equal(C.introTitle({ name: '목수 아저씨' }), '목수 아저씨와 친해져 보세요');
+  assert.equal(C.introTitle({ name: '농부 삼촌' }), '농부 삼촌과 친해져 보세요');
+  assert.equal(C.introTitle({ nameEn: 'Carpenter', lang: 'en' }), 'Get to know Carpenter');
+  assert.equal(C.introBody({ item: '🪑 목수의 흔들의자' }), '친해질수록 편지가 오고, 💛 단짝이 되면 🪑 목수의 흔들의자를 보내 줘요.');
+  assert.equal(C.introBody({ item: '🥕 채소 수레' }), '친해질수록 편지가 오고, 💛 단짝이 되면 🥕 채소 수레를 보내 줘요.');
+  assert.equal(C.introBody({ item: '🏺 유리 진열장' }), '친해질수록 편지가 오고, 💛 단짝이 되면 🏺 유리 진열장을 보내 줘요.');
+  assert.equal(C.guideGiveText({ name: '목수 아저씨' }), '목수 아저씨에게 꽃다발 건네기');
+  assert.equal(C.guideGiveText({ nameEn: 'Carpenter', lang: 'en' }), 'Give the bouquet to Carpenter');
+  assert.deepEqual(C.trackerLines({ name: '목수 아저씨', value: 7, next: 10, nextIdx: 3, reward: '🪑 목수의 흔들의자', giftLeft: 2 }),
+    { head: '💛 목수 아저씨 ❤️7/10', reward: '🪑 목수의 흔들의자까지 ❤️3', gift: '오늘 선물 🎁 2번 더' });
+  assert.deepEqual(C.trackerLines({ name: '낚시꾼 할아버지', value: 4, next: 6, nextIdx: 2, reward: '📜 도면', giftLeft: 0, compact: true }),
+    { head: '🤝 낚시꾼 할아버지', reward: '📜 도면까지 ❤️2', gift: '선물은 내일 다시' });
+  assert.deepEqual(C.trackerLines({ nameEn: 'Carpenter', value: 7, next: 10, nextIdx: 3, reward: '🪑 Rocking Chair', giftLeft: 2, lang: 'en' }),
+    { head: '💛 Carpenter ❤️7/10', reward: '🪑 Rocking Chair in ❤️3', gift: 'Gifts today: 🎁 2 more' });
+  assert.equal(C.trackerStart(), '🎁 주민과 친해지면 선물이 와요');
+  assert.equal(C.trackerStart('en'), '🎁 Befriend villagers for gifts');
+});

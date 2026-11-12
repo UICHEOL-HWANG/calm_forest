@@ -58,3 +58,31 @@ export function nextRewardText(n, ico = '', lang = 'ko') {
   const tail = ico ? ` ${ico}` : '';
   return lang === 'en' ? `Next ❤️${next}${tail}` : `다음 ❤️${next}${tail}`;
 }
+
+export function introTitle({ name, nameEn, lang = 'ko' }) {
+  return lang === 'en' ? `Get to know ${nameEn}` : `${name}${josa(name, '과', '와')} 친해져 보세요`;
+}
+
+export function introBody({ item, itemEn, lang = 'ko' }) {
+  if (lang === 'en') return `The closer you get, the more letters arrive. Become 💛 Best Friends and they will send you ${itemEn}.`;
+  return `친해질수록 편지가 오고, 💛 단짝이 되면 ${item}${josa(item, '을', '를')} 보내 줘요.`;
+}
+
+export function guideGiveText({ name, nameEn, lang = 'ko' }) {
+  return lang === 'en' ? `Give the bouquet to ${nameEn}` : `${name}에게 꽃다발 건네기`;
+}
+
+export function trackerLines({ name, nameEn, value, next, nextIdx, reward, giftLeft, compact = false, lang = 'ko' }) {
+  const ico = STAGES[nextIdx]?.ico || '';
+  const who = lang === 'en' ? nameEn : name;
+  const left = next - value;
+  return {
+    head: `${ico} ${who}${compact ? '' : ` ❤️${value}/${next}`}`,
+    reward: lang === 'en' ? `${reward} in ❤️${left}` : `${reward}까지 ❤️${left}`,
+    gift: giftLeft > 0
+      ? (lang === 'en' ? `Gifts today: 🎁 ${giftLeft} more` : `오늘 선물 🎁 ${giftLeft}번 더`)
+      : (lang === 'en' ? 'Gifts again tomorrow' : '선물은 내일 다시'),
+  };
+}
+
+export const trackerStart = (lang = 'ko') => (lang === 'en' ? '🎁 Befriend villagers for gifts' : '🎁 주민과 친해지면 선물이 와요');

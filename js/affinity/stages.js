@@ -14,7 +14,7 @@ export const AFFINITY_NPCS = Object.freeze([
 ]);
 
 export const GIFT_DAILY_CAP = 2;
-export const LETTER_MAX_STAGE = 2;
+export const LETTER_MAX_STAGE = 4;
 
 export const isAffinityNpc = (id) => AFFINITY_NPCS.includes(id);
 
@@ -63,4 +63,16 @@ export function giftGain(state, today, npc, love) {
 
 export function owlDailyGain(lastDay, today) {
   return { gain: lastDay === today ? 0 : 1, day: today };
+}
+
+export function pickTracker(affinity, visibleIds) {
+  let best = null;
+  for (const npc of visibleIds) {
+    if (!isAffinityNpc(npc)) continue;
+    const { idx, value, next } = stageProgress(affinity?.[npc]);
+    if (idx < 0 || !next) continue;
+    const left = next - value;
+    if (!best || left < best.next - best.value || (left === best.next - best.value && value > best.value)) best = { npc, value, next };
+  }
+  return best;
 }

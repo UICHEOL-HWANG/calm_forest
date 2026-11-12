@@ -36,6 +36,8 @@ import { josa } from '../spaces/cafe.js';
 import { HALLOWEEN_INDOOR_IDS, HALLOWEEN_STYLE, buildHalloween, makeCtx } from './halloween-art.js';
 import { DREAM_DECOR_IDS, buildDreamDecor } from '../dream/decor-art.js';   // 🌙 꿈 장식 4종
 import { IDS as KITCHEN_SET_IDS, build as buildKitchenSet } from '../decor-drops/art-kitchen.js';
+import { AFF_FRAME_IDS } from '../data/affinity-decor.js';
+import { buildAffinityFrame } from '../affinity/art.js';
 import { IDS as NIGHT_SET_IDS, build as buildNightSet } from '../decor-drops/art-night.js';
 import { SOUVENIR_INDOOR_IDS, buildSouvenir } from '../mountain/souvenir-art.js';
 import { MIRROR_DECOR_IDS, buildMirrorDecor } from '../mirror/decor-art.js';
@@ -446,6 +448,8 @@ export function decorMesh(id) {
     g.add(buildDreamDecor(id));
   } else if (KITCHEN_SET_IDS.includes(id)) {
     g.add(buildKitchenSet(id));
+  } else if (AFF_FRAME_IDS.includes(id)) {
+    g.add(buildAffinityFrame(id));
   } else if (NIGHT_SET_IDS.includes(id)) {
     g.add(buildNightSet(id));
   } else if (CANDY_DECOR_IDS.includes(id)) {

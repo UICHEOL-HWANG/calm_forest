@@ -467,3 +467,4 @@ affinity_gift_capped,social,npc_affinity,3,N,not_fired,0,0,,,npc,js/affinity/ind
 affinity_letter_open,social,npc_affinity,2,N,not_fired,0,0,,,npc|stage,js/affinity/index.js:125,"소식함 편지 칸에서 주민 편지를 처음 열었을 때",
 affinity_reward_claim,economy,npc_affinity,2,N,not_fired,0,0,,,npc|stage,js/affinity/index.js:135,"편지에 동봉된 꾸러미·보상을 받았을 때",
 npc_book_open,ui,npc_affinity,2,N,not_fired,0,0,,,from|npc,js/affinity/index.js:188,"주민 수첩을 열었을 때 (from=chip/menu)",
+affinity_intro_open,onboarding,npc_affinity,2,N,not_fired,0,0,,,npc|from,js/affinity/index.js:269,"호감도 소개 카드가 열렸을 때 (from=npc/tracker)",

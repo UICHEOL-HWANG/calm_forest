@@ -3538,4 +3538,11 @@ export const EN = {
   '병아리 둥지': 'Chick Nest',
   '유리 진열장': 'Glass Display Case',
   '올빼미 우체통': 'Owl Mailbox',
+  '{0} 액자': "{0}'s Photo Frame",
+  '{0}의 단짝 선물': 'A best-friend gift from {0}',
+  '🎁 선물 주기 (하루 ❤️2)': '🎁 Give gifts (❤️2 a day)',
+  '🔁 반복 의뢰 ❤️+1': '🔁 Repeat requests ❤️+1',
+  '🎁 선물 만들러 가기': '🎁 Make a gift',
+  '🎁 작업대에서 꽃다발 만들기': '🎁 Make a bouquet at the workbench',
+  '🥕 꽃다발 재료(작물 2개)를 챙겨 드렸어요': '🥕 Here are 2 crops for the bouquet',
 };

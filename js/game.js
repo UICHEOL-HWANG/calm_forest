@@ -268,9 +268,10 @@ import {
   withdrawWarehouse,
 } from './spaces/outdoor-decor.js';   // 📦 🪵 야외 장식·창고·선물 (구역 머리말 — 분리 2단계)
 import {
-  affinityChip, affinityLetters, affinityVisible, claimLetter, npcBook, onLettersChanged, owlDailyAffinity, readLetter,
+  affinityChip, affinityIntroFor, affinityLetters, affinityTracker, affinityVisible, claimLetter, introNpcForStart, markIntroSeen, npcBook, onLettersChanged, owlDailyAffinity, readLetter,
   syncAffinityLetters, trackBookOpen, unreadLetterCount,
 } from './affinity/index.js';
+import { affinityGuideActive, startAffinityGuide, updateAffinityGuide } from './affinity/guide.js';
 import {
   rebuildFarm, spawnFarmGate, surveyBenchWorld, surveyDeskWorld,
 } from './spaces/farm-field.js';   // 📦 🪧 표지판·텃밭 게이트·측량소·텃밭 필드 (구역 머리말 — 분리 2단계)
@@ -339,6 +340,8 @@ import { SIGNUP_GIFT_IDS, buildSignupGift } from './spaces/signup-gift-art.js';
 import { requestSignupNudge } from './signup-gift/index.js';
 import { FRIEND_ARCH_ID, buildFriendArch } from './spaces/friend-arch-art.js';   // 🌈 무지개 우정 아치(🤝 초대 보상)
 import { MINE_CART_ID, MINE_CART_BOX, buildMineCart } from './delve/cart-art.js';
+import { AFF_ART_IDS, buildAffinityOutdoor } from './affinity/art.js';
+import { AFF_BOX, AFF_SOLID_K } from './data/affinity-decor.js';
 import { outdoorFootprint, blockedByWorld } from './world/outdoor-overlap.js';
 // 🔁 js/spaces/* 가 game.js 의 let 에 쓸 때 거치는 접근자(읽기는 import 한 live binding) — tools/refactor/extract-module.mjs 가 만든다
 export const $w = {
@@ -2232,6 +2235,11 @@ export const Input = {
   affinityOf(npcId) { return gameState.affinity[npcId] || 0; }, // 친밀도
   affinityChip(npcId) { return affinityChip(npcId); },
   affinityVisible(npcId) { return affinityVisible(npcId); },
+  affinityTracker(compact) { return affinityTracker(compact); },
+  affinityIntroFor(npcId, force) { return affinityIntroFor(npcId, force); },
+  introNpcForStart() { return introNpcForStart(); },
+  markIntroSeen(npcId, from) { markIntroSeen(npcId, from); },
+  startAffinityGuide(npcId) { return startAffinityGuide(npcId); },
   npcBook() { return npcBook(); },
   affinityLetters() { return affinityLetters(); },
   readLetter(key) { readLetter(key); },
@@ -2963,7 +2971,7 @@ export async function enterGame() {
     state: () => gameState, player, camera, scene,
     adButton: (slot, list) => shortAdButton(slot, list, null, CAFE_CAPS),
     adOpen: () => !!rewarded?.open(),
-    otherGuide: () => portGuideActive() || restaurantGuideActive() || auctionGuideActive(),
+    otherGuide: () => portGuideActive() || restaurantGuideActive() || auctionGuideActive() || affinityGuideActive(),
     translate: t, track: trackEvent, save: requestSave,
     cameraFree, setCameraRig, defaultCamPose,
     inVillage: inVillage2, atMine: () => atMine && !delveFloorNow(),
@@ -5894,6 +5902,8 @@ function outdoorMesh(id) {
     g.add(buildHalloween(THREE, id, HALLOWEEN_STYLE[id], makeCtx(THREE, (m) => houseWindows.push(m))));
   } else if (id === MINE_CART_ID) {
     g.add(buildMineCart(THREE));
+  } else if (AFF_ART_IDS.includes(id)) {
+    g.add(buildAffinityOutdoor(id, (m) => houseWindows.push(m)));
   } else if (id === FRIEND_ARCH_ID) {   // 🌈 무지개 우정 아치 — 걸어서 통과(충돌체 없음) · 밤 반짝이는 houseWindows
     g.add(buildFriendArch(THREE, (m) => houseWindows.push(m)));
   } else if (SIGNUP_GIFT_IDS.includes(id)) {
@@ -6032,6 +6042,10 @@ function placeOutdoor(wx, wz, silent = false, id = placingOutdoor, rot = null) {
       obstacles.pop(); ob = { x: wx, z: wz, r: 1.2 }; obstacles.push(ob);   // 밭·나무 금지 반경도 몸집에 맞춘다
     } else if (id === MINE_CART_ID) {
       const [hw, hd] = (ry % 2) ? [MINE_CART_BOX.d / 2, MINE_CART_BOX.w / 2] : [MINE_CART_BOX.w / 2, MINE_CART_BOX.d / 2];
+      solid = solidBox(wx - hw, wz - hd, wx + hw, wz + hd);
+    } else if (AFF_BOX[id]) {
+      const b = AFF_BOX[id], k = AFF_SOLID_K;
+      const [hw, hd] = (ry % 2) ? [b.d * k / 2, b.w * k / 2] : [b.w * k / 2, b.d * k / 2];
       solid = solidBox(wx - hw, wz - hd, wx + hw, wz + hd);
     } else if (id === 'vat') {
       // 🫙 발효통 — 화덕과 같은 문법. 반치수는 조형 모듈이 준 발자국(VAT_BOX)의 절반
@@ -6523,6 +6537,7 @@ function animate() {
   updateSeaVisuals(t);  // 🌊 일렁이는 수면(후미·바다터) + 등대 야간 빔
   updatePortGuide(mode === 'play' && (inVillage2() || port.active));
   updateRestaurantGuide(mode === 'play' && (inVillage2() || atRestaurant));
+  updateAffinityGuide(mode === 'play' && inVillage2());
   updateGateCues(t, dt);
   updateTrees(dt);
   updateOreRocks();
@@ -8332,7 +8347,7 @@ const RES_LABEL = { ...FORAGE_LABEL, charcoal: '⚫숯', flour: '🌾밀가루',
   sap_persimmon: '🍊감나무 묘목', sap_chestnut: '🌰밤나무 묘목', leaf: '🍂단풍잎' };   // 🌾 고급 작물·씨앗 · 🍯꿀(벌통) · 🍎 과수원(js/orchard.js)
 
 
-function makeNameTag(def) {
+function makeNameTag(def, prefix = '') {
   // 캔버스는 가장 긴 이름(낚시꾼 할아버지)까지 여유 있게. 스프라이트 배율은 이 비율에 맞춘다.
   const W = 384, H = 96;
   const FONT = (px) => `bold ${px}px -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif`;
@@ -8341,7 +8356,7 @@ function makeNameTag(def) {
   // 🧑‍🌾 같은 ZWJ 결합 이모지는 웹뷰마다 폭이 달라(한 글자/두 글자) 이름표에 큰 공백이 생겼다 → 마지막 조각(🌾)만 쓴다.
   //   폭이 실측 그대로라 배지가 글자에 딱 맞고 가운데 정렬된다. 대화창 등 다른 곳의 def.emoji 는 그대로.
   const tagEmoji = def.emoji.includes('\u200D') ? def.emoji.split('\u200D').pop() : def.emoji;
-  const label = `${tagEmoji} ${t(def.name)}`;
+  const label = `${prefix}${tagEmoji} ${t(def.name)}`;
 
   // ⚠️ textAlign='center' 에 기대지 않는다 — 토스 웹뷰에서 가운데 정렬이 안 먹어 글자가
   //    배지 밖으로 밀려 나갔다(2026-09-09 실기기 보고). 왼쪽 기준으로 x 를 직접 계산한다.

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { LETTERS, letterOf } from '../js/data/npc-letters.js';
+import { LETTERS, BEST_ITEMS, letterOf, frameDecorId } from '../js/data/npc-letters.js';
 import { AFFINITY_NPCS, STAGES } from '../js/affinity/stages.js';
 import { blueprintOfNpc } from '../js/tool-blueprints.js';
 
@@ -8,12 +8,25 @@ const VALUE = { seed: 3, crop: 5, wood: 2.4, coins: 1, bait: 5, fish: 8, flour: 
 const worth = (gift) => Object.entries(gift).reduce((s, [k, v]) => s + VALUE[k] * v, 0);
 const texts = () => AFFINITY_NPCS.flatMap(npc => Object.values(LETTERS[npc]).flatMap(l => [l.body, l.alt].filter(Boolean)));
 
-test('주민 11명 모두 이웃·친구 편지가 있다', () => {
+test('주민 11명 모두 이웃·친구·단짝·가족 편지가 있다', () => {
   assert.deepEqual(Object.keys(LETTERS).sort(), [...AFFINITY_NPCS].sort());
   for (const npc of AFFINITY_NPCS) {
-    assert.ok(LETTERS[npc].nbr?.body, `${npc} 이웃 편지`);
-    assert.ok(LETTERS[npc].friend?.body, `${npc} 친구 편지`);
+    for (const st of ['nbr', 'friend', 'best', 'family']) {
+      assert.ok(LETTERS[npc][st]?.body, `${npc} ${st} 편지`);
+      assert.ok(LETTERS[npc][st]?.bodyEn, `${npc} ${st} 영어`);
+    }
   }
+});
+
+test('단짝 편지는 그 주민 전용 꾸미기, 가족 편지는 그 주민 액자를 동봉한다', () => {
+  const ids = new Set();
+  for (const npc of AFFINITY_NPCS) {
+    assert.deepEqual(LETTERS[npc].best.gift, { decor: BEST_ITEMS[npc].decor }, npc);
+    assert.deepEqual(LETTERS[npc].family.gift, { decor: frameDecorId(npc) }, npc);
+    assert.match(BEST_ITEMS[npc].decor, /^aff_[a-z]+$/);
+    ids.add(BEST_ITEMS[npc].decor); ids.add(frameDecorId(npc));
+  }
+  assert.equal(ids.size, AFFINITY_NPCS.length * 2, '꾸미기 id 22개는 서로 달라야 한다');
 });
 
 test('이웃 꾸러미는 아는 재료만, 35~50코인 상당', () => {

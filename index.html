@@ -545,8 +545,8 @@
     #boat-shop .dm-actions button { padding: 5px 14px; }
   }
   /* 튜토리얼 / 씨앗 안내 모달 (공통 카드 스타일) */
-  #tutorial-modal, #seed-modal, #hint-modal, #photo-modal, #char-modal, #notice-modal, #npcbook-modal, #settings-modal, #invite-modal, #daily-modal { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
-  #tutorial-modal.show, #seed-modal.show, #hint-modal.show, #photo-modal.show, #char-modal.show, #notice-modal.show, #npcbook-modal.show, #settings-modal.show, #invite-modal.show, #daily-modal.show { display: grid; }
+  #tutorial-modal, #seed-modal, #hint-modal, #photo-modal, #char-modal, #notice-modal, #npcbook-modal, #affintro-modal, #settings-modal, #invite-modal, #daily-modal { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
+  #tutorial-modal.show, #seed-modal.show, #hint-modal.show, #photo-modal.show, #char-modal.show, #notice-modal.show, #npcbook-modal.show, #affintro-modal.show, #settings-modal.show, #invite-modal.show, #daily-modal.show { display: grid; }
   #daily-modal { z-index: 44; }
   #daily-modal .daily-card { width: min(380px, 94vw); background: #f6f0e4; border-radius: 28px; padding: 14px; text-align: left; }
   #hint-modal .tut-card.as-card, #nudge-modal .daily-card { width: min(380px, 94vw); background: #f6f0e4; border-radius: 28px; padding: 14px; text-align: left; }
@@ -635,6 +635,27 @@
   .nb-claim { flex: 0 0 auto; margin: 0 16px 16px; border: none; border-radius: 14px; padding: 13px; background: #2f3a33; color: #fffaf1; font-weight: 800; font-size: 15px; cursor: pointer; }
   .nb-claim:disabled { opacity: .5; cursor: default; }
   #npcbook-modal { padding-top: var(--top-inset); box-sizing: border-box; }
+  .afi { width: min(440px, 92vw); padding: 16px 16px 14px; --nc: #e0663c; }
+  .afi-h { display: flex; gap: 10px; align-items: center; font-size: 16px; color: var(--ni, #b8492a); }
+  .afi-face { font-size: 28px; }
+  .afi-hero { display: flex; gap: 12px; align-items: center; margin: 10px 0; }
+  .afi-hero #afi-img { width: 120px; height: 120px; border-radius: 16px; background: var(--nt, #fbe4da); flex: none; object-fit: contain; }
+  .afi-hero p { margin: 0; font-size: 14px; line-height: 1.55; word-break: keep-all; }
+  .afi-ways { display: flex; gap: 6px; flex-wrap: wrap; }
+  .afi-ways > span { font-size: 12px; font-weight: 700; background: #f3ece0; border-radius: 999px; padding: 3px 10px; }
+  .afi-acts { display: flex; gap: 8px; margin-top: 12px; }
+  .afi-acts button { flex: 1; border: 0; border-radius: 14px; padding: 11px; font: inherit; font-weight: 800; cursor: pointer; background: #fff; color: #4a4438; box-shadow: 0 0 0 2px #eadfcb, 0 3px 0 #d8ccb6; }
+  .afi-acts #afi-go { flex: 2; background: var(--ni, #b8492a); color: #fff; box-shadow: 0 0 0 2px var(--ni, #b8492a), 0 3px 0 var(--nd, #8a3520); }
+  @media (max-width: 480px) { .afi-hero #afi-img { width: 92px; height: 92px; } }
+  #aff-track { display: flex; gap: 8px; align-items: center; width: 100%; margin-top: 6px; padding: 7px 8px; border: 0; border-radius: 12px; background: #fff2f5; box-shadow: 0 0 0 1.5px #f2b8c8; font: inherit; color: #3c3326; text-align: left; cursor: pointer; }
+  #aff-track[hidden] { display: none; }
+  #aff-track .at-th { width: 38px; height: 38px; border-radius: 10px; background: #fbe4da; flex: none; object-fit: contain; }
+  #aff-track .at-tx { min-width: 0; flex: 1; }
+  #aff-track b { display: block; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #aff-track small { display: block; font-size: 11px; line-height: 1.35; color: #8a6a58; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #aff-track .at-bar { height: 5px; border-radius: 3px; background: rgba(0,0,0,.08); margin-top: 3px; overflow: hidden; }
+  #aff-track .at-bar i { display: block; height: 100%; background: linear-gradient(90deg, #f29bb4, #e6789a); }
+  #aff-track.start b { white-space: normal; }
   .nbk { width: min(560px, 94vw); max-height: min(640px, calc(100dvh - 24px - var(--top-inset))); display: flex; flex-direction: column; background: #fffaf1; color: #2f3a33; border-radius: 26px; overflow: hidden; box-shadow: 0 24px 60px rgba(30, 40, 30, .35); }
   .nbk-head { display: flex; align-items: center; gap: 8px; padding: 18px 16px 10px 18px; }
   .nbk-head h2 { margin: 0; font-size: 21px; font-weight: 900; letter-spacing: -.03em; }
@@ -3136,6 +3157,7 @@
   <!-- 📜 진행 중 의뢰 목록 — 한 명만 그리면 다른 의뢰를 완료했을 때 살아 있는 의뢰가 사라진다(베타 r5) -->
   <div id="quest-panel" class="panel">
     <div id="quest-list"></div>
+    <button id="aff-track" type="button" hidden></button>
     <div id="quest-foot"><div class="q-more" id="quest-more"></div><button id="quest-toggle" type="button"></button></div>
   </div>
 
@@ -3916,6 +3938,15 @@
         <button id="notice-ok">알겠어요 🌱</button>
       </div>
       <div id="notice-detail" class="nb-det"></div>
+    </div>
+  </div>
+
+  <div id="affintro-modal">
+    <div class="afi tk-box">
+      <div class="afi-h"><span class="afi-face" id="afi-face"></span><b id="afi-title"></b></div>
+      <div class="afi-hero"><img id="afi-img" alt=""><p id="afi-body"></p></div>
+      <div class="afi-ways"><span>🎁 선물 주기 (하루 ❤️2)</span><span>🔁 반복 의뢰 ❤️+1</span></div>
+      <div class="afi-acts"><button id="afi-go" type="button">🎁 선물 만들러 가기</button><button id="afi-later" type="button">나중에</button></div>
     </div>
   </div>
 
@@ -4731,6 +4762,7 @@
         });
         $('quest-more').textContent = view.more ? `+ ${view.more}건 더` : '';
         $('quest-toggle').textContent = view.toggle || '';
+        renderAffTrack();
       },
       // 낚시 프롬프트(던지는 중 / 물었어요!)
       setFishPrompt(text) {
@@ -4756,8 +4788,9 @@
         applyTone(document.querySelector('#npc-modal .tk-box'), toneById(view.npc.id));
         $('npc-name').textContent = view.npc.name;
         const chipNpc = view.npc.id;
+        lastNpcOpen = chipNpc;
         $('npc-hearts').textContent = Input.affinityVisible(chipNpc) ? Input.affinityChip(chipNpc) : '';
-        $('npc-hearts').onclick = () => { closeNpc(); ui.openNpcBook(chipNpc, 'chip'); };
+        $('npc-hearts').onclick = () => { lastNpcOpen = null; closeNpc(); ui.openNpcBook(chipNpc, 'chip'); };
         $('npc-line').textContent = view.line;
         const quest = $('npc-quest');
         if (view.mode === 'done') {
@@ -5646,7 +5679,13 @@
         showWhenReady();
       },
     };
-    const closeNpc = () => { $('npc-modal').classList.remove('show'); flushPendingToasts(); };
+    let lastNpcOpen = null;
+    const closeNpc = () => {
+      $('npc-modal').classList.remove('show'); flushPendingToasts();
+      const intro = lastNpcOpen && Input.affinityIntroFor(lastNpcOpen);
+      lastNpcOpen = null;
+      if (intro) ui.showAffinityIntro(intro, 'npc');
+    };
 
     // ── 💬 주민과 잡담 ───────────────────────────────────────────
     //  의뢰와 무관한 순수 플레이버다. 보상이 0 — 선물(재료를 쓴다)·접객의 가치를
@@ -6513,6 +6552,45 @@
       $('npcbook-modal').classList.add('show');
     };
     $('npcbook-btn').addEventListener('click', () => ui.openNpcBook(null, 'menu'));
+    let afiNpc = null;
+    ui.showAffinityIntro = async (intro, from) => {
+      if (!intro) return;
+      afiNpc = intro.npc;
+      applyTone(document.querySelector('#affintro-modal .afi'), toneById(intro.npc));
+      $('afi-face').textContent = intro.face; $('afi-title').textContent = intro.title; $('afi-body').textContent = intro.body;
+      $('afi-img').removeAttribute('src');
+      Input.markIntroSeen(intro.npc, from);
+      Input.setAnalog(0, 0);
+      $('affintro-modal').classList.add('show');
+      const { affinityThumb } = await import('./js/affinity/thumb.js');
+      const src = affinityThumb(intro.decor, 240);
+      if (src && afiNpc === intro.npc) $('afi-img').src = src;
+    };
+    $('afi-go').addEventListener('click', () => { $('affintro-modal').classList.remove('show'); Input.startAffinityGuide(afiNpc); });
+    $('afi-later').addEventListener('click', () => $('affintro-modal').classList.remove('show'));
+    function renderAffTrack() {
+      const el = $('aff-track');
+      const compact = questPhoneMQ.matches;
+      const v = Input.affinityTracker?.(compact);
+      if (!v) { el.hidden = true; return; }
+      el.hidden = false;
+      el.classList.toggle('start', !!v.start);
+      el.textContent = '';
+      if (v.start) { const b = document.createElement('b'); b.textContent = v.text; el.appendChild(b); el.onclick = () => ui.showAffinityIntro(Input.affinityIntroFor(Input.introNpcForStart(), true), 'tracker'); return; }
+      if (!compact && v.decor) {
+        const img = document.createElement('img'); img.alt = ''; img.className = 'at-th';
+        el.appendChild(img);
+        import('./js/affinity/thumb.js').then(({ affinityThumb }) => { const src = affinityThumb(v.decor, 96); if (src) img.src = src; });
+      }
+      const tx = document.createElement('div'); tx.className = 'at-tx';
+      const b = document.createElement('b'); b.textContent = v.head;
+      const s1 = document.createElement('small'); s1.textContent = v.reward;
+      const s2 = document.createElement('small'); s2.textContent = v.gift;
+      const bar = document.createElement('div'); bar.className = 'at-bar';
+      const fill = document.createElement('i'); fill.style.width = Math.round(v.pct * 100) + '%'; bar.appendChild(fill);
+      tx.append(b, s1, s2, bar); el.appendChild(tx);
+      el.onclick = () => ui.openNpcBook(v.npc, 'tracker');
+    }
     $('npcbook-x').addEventListener('click', () => $('npcbook-modal').classList.remove('show'));
     // 🤝 친구 초대 시트 — 코드는 처음 열 때 발급. 앱은 네이티브 공유 시트, 웹은 navigator.share → 복사
     $('invite-btn').addEventListener('click', () => {

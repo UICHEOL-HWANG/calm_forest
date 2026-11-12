@@ -10,6 +10,7 @@ import { BENCH, KITCHEN, SHOP, MARKET, RANK, FARM_GATE, MINE_GATE, COOP, CAFE_GA
 import { NPCS } from './npcs.js';
 import { STATIONS } from '../craft/recipes.js';
 import { REWARD_DECOR } from './reward-decor.js';
+import { AFF_FRAMES, AFF_OUTDOOR } from './affinity-decor.js';
 import { FORAGE_SELL } from '../forage/logic.js';
 import { HOMI_TIERS } from '../forage/homi.js';
 import { iconById } from '../icons/index.js';
@@ -101,6 +102,7 @@ export const DECOR = [
   { id: 'guardFlag', name: '이겼다! 깃발', ico: '🚩', cost: 0, pay: 'coins', hidden: true, set: 'guard', foot: [0.4, 0.4] },
   { id: 'guardJar', name: '반딧불 한 병', ico: '🫙', cost: 0, pay: 'coins', hidden: true, set: 'guard', foot: [0.3, 0.3], sm: true, h: 0.4 },
   { id: 'guardScarecrow', name: '금빛 허수아비', ico: '🌾', cost: 0, pay: 'coins', hidden: true, set: 'guard', foot: [1.05, 0.6] },
+  ...AFF_FRAMES,
 ];
 
 export const FISH_KINDS = [
@@ -246,6 +248,7 @@ export const OUTDOOR = [
   { id: 'moonswing',   name: '달빛 그네', ico: '🌙', cost: { coins: 9999 }, desc: '경매에서 산 달빛 그네', hidden: true },
   { id: 'lanternarch', name: '등불 아치', ico: '🏮', cost: { coins: 9999 }, desc: '경매에서 산 등불 아치', hidden: true },
   { id: 'starvane',    name: '별 풍향계', ico: '⭐', cost: { coins: 9999 }, desc: '경매에서 산 별 풍향계', hidden: true },
+  ...AFF_OUTDOOR,
   ...REWARD_DECOR,   // 🤝 친구 초대 보상 장식(js/data/reward-decor.js) — 원장이 보관함에 넣어 준다 · 서버 가드 대상
   { id: 'mine_cart', name: '광산 수레', ico: '🛒', cost: { coins: 9999 }, desc: '광부 아저씨가 준 수레 · 지하 20층 도달 보상', hidden: true, quest: 'delve' },
   // 🎃 할로윈 한정 코인 장식 — 직접 구매(작업대 목록, 기간 한정). hidden 과 다르다: hidden 은 영구 비판매, sale 은 기간 판매

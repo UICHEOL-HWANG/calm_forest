@@ -21,6 +21,7 @@ import { BUILD_STAGES } from '../house-cost.js';
 import { e6Decision } from '../exp-e6-boot.js';
 import { guideRevampOn } from '../exp-e6.js';
 import { storyReworld } from '../story/rules.js';
+import { hasUnreadLetter } from '../affinity/index.js';
 import { logEcon } from '../metrics.js';
 import { activeQuestList, pickGated, questIdFor } from '../quests.js';
 import { quizOffer } from './ferry-quiz-run.js';   // 🦆 사공 퀴즈
@@ -358,7 +359,7 @@ export function buildNPCs() {
 export function npcGlyph(o) {
   const st = npcState(o.def.id);
   const q = currentQuest(o.def, st);
-  if (!q) return '';                 // 체인도 끝나고 오늘 반복 의뢰도 없다
+  if (!q) return hasUnreadLetter(o.def.id) ? '💌' : '';
   if (!st.given) return '!';
   return st.progress >= q.target ? '✓' : '…';
 }
@@ -370,7 +371,7 @@ export function updateNPCGlyph(o) {
   const c = o.ctx; c.clearRect(0, 0, 128, 128);
   if (!g) { o.sprite.visible = false; o.tex.needsUpdate = true; return; }
   o.sprite.visible = true;
-  c.fillStyle = g === '✓' ? '#8fd6a0' : g === '!' ? '#ffd27a' : '#cfe3ff';
+  c.fillStyle = g === '✓' ? '#8fd6a0' : g === '!' ? '#ffd27a' : g === '💌' ? '#ffffff' : '#cfe3ff';
   roundRect(c, 18, 14, 92, 82, 22); c.fill();
   c.beginPath(); c.moveTo(54, 94); c.lineTo(74, 94); c.lineTo(60, 118); c.closePath(); c.fill();
   c.fillStyle = '#3a4a40'; c.font = 'bold 60px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';

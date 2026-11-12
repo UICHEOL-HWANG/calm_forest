@@ -41,16 +41,16 @@ test('한 번에 문턱 둘을 건너면 편지 두 통', () => {
   assert.deepEqual(lettersToIssue({ farmer: 6 }, {}), [{ npc: 'farmer', idx: 1 }, { npc: 'farmer', idx: 2 }]);
 });
 
-test('P1 은 친구 단계까지만 발행하고, 상한을 올리면 나머지를 소급한다', () => {
-  assert.equal(LETTER_MAX_STAGE, 2);
-  const issued = markIssued({}, lettersToIssue({ merchant: 31 }, {}));
-  assert.deepEqual(issued, { merchant: 2 });
-  assert.deepEqual(lettersToIssue({ merchant: 31 }, issued, 4), [{ npc: 'merchant', idx: 3 }, { npc: 'merchant', idx: 4 }]);
+test('편지는 가족 단계까지 발행하고, P1 에서 친구까지 받은 사람에겐 나머지만 소급한다', () => {
+  assert.equal(LETTER_MAX_STAGE, 4);
+  assert.deepEqual(lettersToIssue({ merchant: 31 }, {}).map(l => l.idx), [1, 2, 3, 4]);
+  assert.deepEqual(lettersToIssue({ merchant: 31 }, { merchant: 2 }), [{ npc: 'merchant', idx: 3 }, { npc: 'merchant', idx: 4 }]);
+  assert.deepEqual(markIssued({}, lettersToIssue({ merchant: 31 }, {})), { merchant: 4 });
 });
 
 test('소급 발행은 주민 여럿을 한꺼번에, 손님·모르는 id 는 건너뛴다', () => {
   const out = lettersToIssue({ merchant: 31, angler: 3, guest_deer: 15, ghost: 9 }, {});
-  assert.deepEqual(out, [{ npc: 'merchant', idx: 1 }, { npc: 'merchant', idx: 2 }, { npc: 'angler', idx: 1 }]);
+  assert.deepEqual(out, [{ npc: 'merchant', idx: 1 }, { npc: 'merchant', idx: 2 }, { npc: 'merchant', idx: 3 }, { npc: 'merchant', idx: 4 }, { npc: 'angler', idx: 1 }]);
 });
 
 test('markIssued 는 원본을 바꾸지 않는다', () => {
@@ -94,4 +94,13 @@ test('올빼미 일일 +1 은 하루 한 번', () => {
   assert.deepEqual(owlDailyGain(undefined, '2026-11-13'), { gain: 1, day: '2026-11-13' });
   assert.deepEqual(owlDailyGain('2026-11-13', '2026-11-13'), { gain: 0, day: '2026-11-13' });
   assert.deepEqual(owlDailyGain('2026-11-12', '2026-11-13'), { gain: 1, day: '2026-11-13' });
+});
+
+test('상시 줄은 시작한 주민 중 다음 보상이 가장 가까운 주민을 고른다', async () => {
+  const { pickTracker } = await import('../js/affinity/stages.js');
+  assert.equal(pickTracker({}, ['builder', 'farmer']), null);
+  assert.deepEqual(pickTracker({ builder: 7, farmer: 2 }, ['builder', 'farmer']), { npc: 'farmer', value: 2, next: 3 });
+  assert.deepEqual(pickTracker({ builder: 9, farmer: 2 }, ['builder', 'farmer']), { npc: 'builder', value: 9, next: 10 });
+  assert.equal(pickTracker({ builder: 9 }, ['farmer']), null);
+  assert.equal(pickTracker({ builder: 20, guest_deer: 2 }, ['builder', 'guest_deer']), null);
 });
