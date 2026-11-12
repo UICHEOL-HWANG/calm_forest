@@ -275,11 +275,6 @@ async function routeApi(pathname, { request, env, ctx }) {
     return await promoGift({ request, env });
   }
 
-  if (pathname === '/api/promo-gift') {
-    if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
-    return await promoGift({ request, env });
-  }
-
   if (pathname === '/api/aura-order') {   // 🏮 빛 공방 주문·조회·수령
     if (request.method !== 'GET' && request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
     return await auraOrder({ request, env });

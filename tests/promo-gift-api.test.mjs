@@ -104,6 +104,7 @@ test('worker 가 /api/promo-gift 를 POST 로만 연결하고 config 에 주소�
   const w = readFileSync(new URL('../worker/index.js', import.meta.url), 'utf8');
   assert.match(w, /import \{ onRequestPost as promoGift \} from '\.\.\/functions\/api\/promo-gift\.js';/);
   assert.match(w, /if \(pathname === '\/api\/promo-gift'\) \{\s*if \(request\.method !== 'POST'\)[^\n]*\n\s*return await promoGift\(\{ request, env \}\);/);
+  assert.equal((w.match(/pathname === '\/api\/promo-gift'/g) || []).length, 1);
   const c = readFileSync(new URL('../js/config.js', import.meta.url), 'utf8');
   assert.match(c, /PROMO_GIFT_API: `\$\{API_BASE\}\/api\/promo-gift`/);
 });
