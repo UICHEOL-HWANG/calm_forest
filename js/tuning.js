@@ -46,7 +46,7 @@ export const TUNING = {
     iosProviderToken: '129595134',             // App Store Connect 캠페인 링크 pt
     tenjinClickUrls: {
       ios: 'https://track.tenjin.com/v0/metapixel/bMFUmJpVCTh0je7WTB6g19?jsr=true&bundle_id=com.cheorish.lab.calmforest&platform=ios',
-      android: '', // Android SDK 이벤트 수신 뒤 Tenjin이 표시하는 주소를 채운다.
+      android: 'https://track.tenjin.com/v0/metapixel/bMFUmJpVCTh0je7WTB6g19?jsr=true&bundle_id=com.cheorish.lab.calmforest&platform=android',
     },
   },
 };

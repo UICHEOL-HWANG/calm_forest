@@ -14,16 +14,21 @@ function fbclid() {
   } catch { return ''; }
 }
 
+function isTrackedWave(value) {
+  const wave = /^w(\d+)_/.exec(value || '');
+  return !!wave && Number(wave[1]) >= 2;
+}
+
 export function tenjinClickUrl(os, cfg, touch, identifiers = {}) {
   const utm = touch?.utm;
   if (utm?.source !== 'meta') return null;
   // 이번 집행의 소재만 Tenjin에 보낸다. 과거 W1 방문의 늦은 스토어 클릭은 제외한다.
-  if (!/^w2_/.test(utm.content || '') && !/^w2_/.test(utm.term || '') && !/^w2_/.test(utm.campaign || '')) return null;
+  if (!isTrackedWave(utm.content) && !isTrackedWave(utm.term) && !isTrackedWave(utm.campaign)) return null;
   const base = cfg?.tenjinClickUrls?.[os];
   if (!base) return null;
   const url = new URL(base);
   // Meta의 상위 캠페인(webapp_202610) 안에서 W2 실험군은 광고 세트명으로 구분한다.
-  const name = /^w2_/.test(utm.term || '') ? utm.term : utm.content || utm.campaign;
+  const name = isTrackedWave(utm.term) ? utm.term : utm.content || utm.campaign;
   if (utm.campaign_id) url.searchParams.set('campaign_id', utm.campaign_id);
   if (name) url.searchParams.set('campaign_name', name);
   if (utm.content) url.searchParams.set('creative_name', utm.content);
