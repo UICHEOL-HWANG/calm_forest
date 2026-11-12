@@ -45,8 +45,8 @@ test('판매 웃돈 광고는 받은 뒤 버튼을 넘겨 상점이 지울 수 �
   const game = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
   const fn = game.slice(game.indexOf('function sellAdButton('), game.indexOf('function dailyAdButton('));
   assert.match(fn, /\(ok, btn\) => onDone\?\.\(ok, btn\)/);
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  assert.match(html, /Input\.sellAdButton\(k, gain, \(ok\) => \{ if \(!ok\) return; box\.replaceChildren\(\); renderShop\(\); \}\)/);
+  const shop = readFileSync(new URL('../js/game-ui/shop-menu.js', import.meta.url), 'utf8');
+  assert.match(shop, /Input\.sellAdButton\(k, gain, \(ok\) => \{ if \(!ok\) return; box\.replaceChildren\(\); renderShop\(\); \}\)/);
 });
 
 test('부족 줄 광고 버튼: 세계수 판·카페 손님 카드가 같은 shortAdButton 을 쓴다', async () => {

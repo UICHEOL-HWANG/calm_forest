@@ -42,8 +42,9 @@ test('bag shows a sea section and the sell list names sea items', () => {
   assert.match(src, /import \{[^}]*FORAGE_META[^}]*\} from '\.\/js\/forage\/logic\.js'/);
   assert.match(src, /\.\.\.FORAGE_META,\s*\n\s*\};/);
   assert.match(src, /\{ name: '🌊 바다', keys: FORAGE_KEYS \}/);
-  assert.match(src, /const list = sellList\(market, lastInv\);/);
-  assert.match(src, /<span class="sl-nm">\$\{it\.name\}<\/span>/);
+  const shop = read('js/game-ui/shop-menu.js');
+  assert.match(shop, /const list = sellList\(market, lastInv\(\)\);/);
+  assert.match(shop, /<span class="sl-nm">\$\{it\.name\}<\/span>/);
 });
 
 test('sea item names and labels translate to English', async () => {

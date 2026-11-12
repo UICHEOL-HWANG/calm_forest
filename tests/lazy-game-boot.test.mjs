@@ -38,6 +38,7 @@ test('first-screen bundle has no three.js and stays under the size limit', async
     assert.ok(!inputs.some(f => f.includes('vendor/three')), 'three.js is in the first-screen bundle');
     assert.ok(!inputs.some(f => f.endsWith('js/game.js')), 'game.js is in the first-screen bundle');
     assert.ok(!inputs.some(f => f.endsWith('js/i18n-en.js')), 'English dictionary is in the first-screen bundle');
+    assert.ok(!inputs.some(f => f.includes('js/game-ui/')), 'game-time panels are in the first-screen bundle');
     const kb = Math.round(bootFiles.reduce((s, f) => s + metafile.outputs[f].bytes, 0) / 1024);
     assert.ok(kb <= BOOT_KB_LIMIT, `first-screen JS ${kb}KB > ${BOOT_KB_LIMIT}KB`);
   } finally { rmSync(dir, { recursive: true, force: true }); }
@@ -50,7 +51,7 @@ const script = html.slice(html.indexOf("from './js/game-lazy.js';"))
 
 test('every call wrapper points at a real function, not a live value', () => {
   const lazy = readFileSync(new URL('../js/game-lazy.js', import.meta.url), 'utf8');
-  const files = { game: 'game.js', duel: 'duel/index.js', chest: 'boat-chest-reveal.js', controls: 'controls.js', push: 'push-ui.js', cafe: 'cafe-guests.js', night: 'night-visit.js', decor: 'decor-drops/index.js', vmap: 'world/village-map.js', snap: 'world/map-snapshot.js' };
+  const files = { game: 'game.js', duel: 'duel/index.js', chest: 'boat-chest-reveal.js', controls: 'controls.js', push: 'push-ui.js', cafe: 'cafe-guests.js', night: 'night-visit.js', decor: 'decor-drops/index.js', vmap: 'world/village-map.js', snap: 'world/map-snapshot.js', gameUi: 'game-ui/index.js' };
   for (const [, mod, fn] of lazy.matchAll(/need\(\)\.(\w+)\.(\w+)\(\.\.\.a\)/g)) {
     const src = readFileSync(new URL(`../js/${files[mod]}`, import.meta.url), 'utf8');
     const isFn = new RegExp(`(async\\s+)?function\\s+${fn}\\b|(const|let)\\s+${fn}\\s*=\\s*(async\\s*)?\\(`).test(src);
@@ -73,4 +74,12 @@ test('English dictionary is loaded only when the language is English', () => {
   const src = readFileSync(new URL('../js/i18n.js', import.meta.url), 'utf8');
   assert.ok(!/^import[^;]*'\.\/i18n-en\.js'/m.test(src), 'static import of i18n-en.js');
   assert.match(src, /LANG === 'en'[^;]*import\('\.\/i18n-en\.js'\)/);
+});
+
+test('game-time panels load with the game modules', () => {
+  const lazy = readFileSync(new URL('../js/game-lazy.js', import.meta.url), 'utf8');
+  assert.ok(lazy.includes("import('./game-ui/index.js')"));
+  for (const f of ['cook-course', 'carve-hud', 'shop-menu']) {
+    assert.ok(!html.includes(`'./js/game-ui/${f}.js'`), `index.html statically imports ${f}`);
+  }
 });

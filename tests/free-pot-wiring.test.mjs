@@ -31,6 +31,7 @@ test('세이브 복원: 찬장의 자유 요리(free:<조합>)를 버리지 않�
 
 import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const COURSE = readFileSync(new URL('../js/game-ui/cook-course.js', import.meta.url), 'utf8');
 
 test('주방에 자유 냄비 탭이 있고 표를 지연 로드한다', () => {
   assert.match(html, /id="kt-tab-free"/);
@@ -38,11 +39,11 @@ test('주방에 자유 냄비 탭이 있고 표를 지연 로드한다', () => {
   assert.match(html, /function renderFreePot\(/);
 });
 test('결과 카드가 자유 요리의 맛·평·새 발견을 보여 준다', () => {
-  assert.match(html, /res\.free/);
+  assert.match(COURSE, /res\.free/);
   assert.match(html, /id="mgr-taste"/);
 });
 test('영어일 때 생성된 이름·평은 _en 을 직접 쓴다', () => {
-  assert.match(html, /LANG === 'en' \? res\.free\.judge_en : res\.free\.judge/);
+  assert.match(COURSE, /LANG === 'en' \? res\.free\.judge_en : res\.free\.judge/);
 });
 test('free_pot_open·free_pot_blocked 트래킹', () => {
   assert.match(src, /trackEvent\('free_pot_open', \{ found[\s\S]{0,80}total[\s\S]{0,80}kinds_have/);
@@ -53,7 +54,8 @@ test('freePotStart 는 freePotCheck 를 거쳐 kitchenStart 로 들어간다', (
 });
 
 test('확정 문구(🍲 보글보글 냄비) — 탭·버튼·안내·새 발견·발견 수', () => {
-  for (const s of ['🍲 보글보글 냄비', '🔥 보글보글 끓이기', '재료를 1~3개 넣고 보글보글 끓여 봐요', '✨NEW']) assert.ok(html.includes(s), s);
+  for (const s of ['🍲 보글보글 냄비', '🔥 보글보글 끓이기', '재료를 1~3개 넣고 보글보글 끓여 봐요']) assert.ok(html.includes(s), s);
+  assert.ok(COURSE.includes('✨NEW'));
   assert.match(html, /끓여 본 요리 \$\{/);
   const EN = readFileSync(new URL('../js/i18n-en.js', import.meta.url), 'utf8');
   for (const k of ['🍲 보글보글 냄비', '🔥 보글보글 끓이기', '재료를 1~3개 넣고 보글보글 끓여 봐요', '📖 레시피', '최고의 솜씨', '훌륭한 솜씨', '무난한 솜씨', '아쉬운 솜씨',
@@ -62,7 +64,7 @@ test('확정 문구(🍲 보글보글 냄비) — 탭·버튼·안내·새 발�
 
 
 test('결과 카드는 짧게 — 별 + 한 줄 평 + ✨NEW 배지 + 작은 발견 수(문장 "처음 끓여 본…" 없음)', () => {
-  const i = html.indexOf('function showCookResult('), body = html.slice(i, html.indexOf('\n    }\n', i));
+  const i = COURSE.indexOf('function showCookResult('), body = COURSE.slice(i, COURSE.indexOf('\n}\n', i));
   assert.match(body, /✨NEW/);
   assert.doesNotMatch(body, /처음 끓여 본 요리예요/);
   assert.doesNotMatch(body, /'Taste'|'맛'/);                          // "맛" 글자 없이 별만
@@ -81,7 +83,7 @@ test('조리 무대는 재료 모형 — 국물 위·석쇠·노트·퐁당·썰
   assert.doesNotMatch(hit, /emojiSprite\(/);
   const pot = STAGE.slice(STAGE.indexOf('export function mgPotHit('), STAGE.indexOf('export function updateMgScene('));
   assert.doesNotMatch(pot, /emojiSprite\(/);
-  assert.match(html, /Input\.mgSceneStart\(c\.mg, MG\.costKeys, CHOP_N, MG\.grillKey\)/);
+  assert.match(COURSE, /Input\.mgSceneStart\(c\.mg, MG\.costKeys, CHOP_N, MG\.grillKey\)/);
   assert.match(fn('kitchenStart'), /keys: stageKeys\(r\)/);
   assert.match(fn('kitchenStart'), /grillKey: grillKeyOf\(r\)/);
 });
