@@ -90,6 +90,7 @@ export function openCodeEntry({ submit }) {
     go.disabled = false;
     if (!r.ok) msg.textContent = FAIL[r.reason] || FAIL.unknown;
   };
+  input.onkeydown = (e) => { if (e.key === 'Enter' && !e.isComposing && !e.repeat && e.keyCode !== 229) { e.preventDefault(); go.click(); } };
   modal.classList.add('show');
   input.focus();
 }
