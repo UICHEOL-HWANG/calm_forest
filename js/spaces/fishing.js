@@ -25,6 +25,14 @@ import { refreshPond } from '../pond/index.js';
 import * as THREE from 'three';
 
 const SEA_GATE_HINT_R = 8;   // 바다터 입구 안내 반경 — 호수 낚시 범위(LAKE_R+2.8)와는 12.8 떨어져 안 겹친다
+const ASSIST_BITE_SEC = 1.2;
+const ASSIST_HOLD_SEC = 20;
+let assistNext = false;
+let assisted = false;
+
+export function setFishAssist(on) {
+  assistNext = !!on;
+}
 
 export function tryFish() {
   if (fishState === 'bite') { catchFish(); return; }        // 지금! 낚아채기
@@ -49,6 +57,8 @@ export function tryFish() {
   doPlayerAction(castPos.x, castPos.z); // 낚싯대 던지기 제스처
   $w.fishDiff = rollDifficulty('fish');   // 🎚️ 이번 캐스트의 입질 여유 — probe 팔 × 유저 DDA
   $w.fishState = 'wait'; $w.biteAt = clock.elapsedTime + (RAIN_DAY ? 1.0 + Math.random() * 1.6 : 1.5 + Math.random() * 2.8); // 🌧️ 비 오는 날: 입질 빨라짐
+  assisted = assistNext;
+  if (assisted) $w.biteAt = clock.elapsedTime + ASSIST_BITE_SEC;
   Sound.water(); spawnWater(castPos.x, castPos.z);
   if ((gameState.inventory.bait || 0) > 0) {                     // 🪱 미끼 — 캐스트마다 1개 자동 소모
     gameState.inventory.bait -= 1; $w.baitActive = true; refreshInventoryUI();
@@ -96,12 +106,14 @@ export function catchFish() {
   catchCeremony('fishZoom');                                            // 🎉 첫 낚시만 밀착, 이후 폴짝 + 물고기 팝
   showCatchItem(fishMesh(kind.rarity), castPos.x, 0.25, castPos.z);     // 🐟 물속에서 튀어나와 머리 위에서 파닥!
   tryUnlockDrop(kind.rarity === 'rare' ? 0.6 : (kind.season || kind.rarity === 'uncommon') ? 0.18 : 0.08); // 🎨 랜덤 색(희귀일수록↑)
-  settleDifficulty('fish', 1);   // 🎚️ 성공 → DDA 가 조금 어려워진다
-  trackEvent('fishing_catch', { fish: kind.name, rarity: kind.rarity, season: SEASON, rod: gameState.upgrades.rod ? 1 : 0, ...diffParams(fishDiff) }); // [GA4] 🎚️ 난이도 동봉
+  if (!assisted) settleDifficulty('fish', 1);
+  trackEvent('fishing_catch', { fish: kind.name, rarity: kind.rarity, season: SEASON, rod: gameState.upgrades.rod ? 1 : 0, ...diffParams(fishDiff), ...(assisted ? { assist: 1 } : {}) });
+  if (assisted) assistNext = false;
   resetFishing();
 }
 
 export function resetFishing() {
+  assisted = false;
   $w.fishState = 'idle'; $w.baitActive = false; if (bobber) bobber.visible = false; ui.setFishPrompt?.(null);
 }
 
@@ -120,6 +132,7 @@ export function updateFishing() {
     bobber.position.y = 0.32 + Math.sin(now * 3) * 0.04; // 잔잔히 떠 있음
     if (now >= biteAt) {
       $w.fishState = 'bite'; $w.biteEnd = now + (gameState.upgrades.rod ? rodBiteSec(gameState) : 1.4) * fishDiff.ease; // 튼튼한 낚싯대: 입질 여유↑ · 🎚️ probe × DDA
+      if (assisted) $w.biteEnd = now + ASSIST_HOLD_SEC;
       ui.setFishPrompt?.('❗ 물었어요! 지금 낚아채요!');
       Sound.blip(); spawnWater(castPos.x, castPos.z);
     }
