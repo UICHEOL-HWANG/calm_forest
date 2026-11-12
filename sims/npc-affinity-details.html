@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>주민 호감도 세부 시안</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px; background: #eef1ec; font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", sans-serif; color: #2c2418; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  h2 { font-size: 20px; margin: 34px 0 4px; padding-top: 18px; border-top: 2px dashed #cfd6cc; }
+  .lead { margin: 0 0 8px; font-size: 14px; color: #555; line-height: 1.55; max-width: 1040px; }
+  .warn { display: inline-block; font-size: 12.5px; color: #8a5a20; background: #fff3dc; border-radius: 8px; padding: 4px 10px; margin-bottom: 14px; }
+  .row { display: flex; gap: 20px; align-items: flex-start; margin: 18px 0 30px; flex-wrap: wrap; }
+  .row-title { width: 100%; font-size: 17px; font-weight: 800; margin: 0 0 2px; }
+  .rec { font-size: 12px; font-weight: 800; color: #fff; background: #48914a; border-radius: 999px; padding: 3px 10px; margin-left: 8px; vertical-align: 2px; }
+  .row-sub { width: 100%; font-size: 13.5px; color: #555; margin: 0 0 6px; line-height: 1.55; max-width: 1040px; }
+  .cap { font-size: 12px; color: #666; margin: 6px 0 0; text-align: center; }
+  .stage { position: relative; overflow: hidden; border-radius: 14px; background: url(../dev/archive/neighbor-village/bg.jpg) center/cover; box-shadow: 0 6px 20px rgba(0,0,0,0.15); }
+  .pc { width: 720px; height: 450px; }
+  .mo { width: 300px; height: 620px; background-position: 38% center; }
+  .dim::before { content: ''; position: absolute; inset: 0; background: rgba(20,40,30,0.35); }
+
+  .tk-box { --nc: #e0663c; --nt: #fbe4da; --ni: #b8492a; --nd: #8a3520; position: absolute; left: 50%; transform: translateX(-50%); bottom: 26px; width: 94%;
+    background: #fffaf1; color: #3c3326; border-radius: 24px; padding: 16px 18px;
+    box-shadow: 0 0 0 3px #fff, 0 8px 0 var(--nc), 0 14px 26px rgba(30,20,10,0.25); }
+  .tk-face { position: absolute; left: 14px; top: -16px; width: 66px; height: 66px; border-radius: 50%; display: grid; place-items: center; font-size: 32px; background: var(--nt); border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+  .head { padding-left: 76px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-height: 26px; }
+  .tk-name { font-size: 18px; font-weight: 800; color: var(--ni); }
+  .line { font-size: 14.5px; line-height: 1.5; word-break: keep-all; margin-top: 8px; }
+  .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 12px; }
+  .btn { border-radius: 14px; padding: 8px 15px; font-weight: 800; font-size: 13px; background: #fff; color: #4a4438; box-shadow: 0 0 0 2px #eadfcb, 0 3px 0 #d8ccb6; }
+  .btn.p { background: #b8492a; color: #fff; box-shadow: 0 0 0 2px #b8492a, 0 3px 0 #8a3520; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 800; border-radius: 999px; padding: 3px 10px; background: #fbe4da; color: #b8492a; }
+  .chip.tap { box-shadow: 0 0 0 2px #e9b9a6; }
+  .meter { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700; color: #7a6a58; }
+  .meter .bar { width: 70px; height: 7px; border-radius: 4px; background: rgba(0,0,0,0.08); overflow: hidden; }
+  .meter .bar i { display: block; height: 100%; width: 25%; background: linear-gradient(90deg, #f29bb4, #e6789a); }
+
+  .ladder { display: flex; gap: 4px; margin-top: 10px; }
+  .ladder .st { flex: 1; text-align: center; border-radius: 12px; padding: 6px 2px 5px; background: #f3ece0; font-size: 11px; color: #8a7a66; line-height: 1.3; }
+  .ladder .st b { display: block; font-size: 15px; }
+  .ladder .st em { display: block; font-style: normal; font-size: 10.5px; opacity: .85; }
+  .ladder .st.done { background: #fbe4da; color: #b8492a; }
+  .ladder .st.now { background: #b8492a; color: #fff; box-shadow: 0 3px 0 #8a3520; }
+
+  .card { position: absolute; background: #fffaf1; border-radius: 20px; color: #3c3326; box-shadow: 0 0 0 3px #fff, 0 6px 0 #d8ccb6, 0 14px 26px rgba(0,0,0,0.22); padding: 14px 16px; }
+  .card h4 { margin: 0 0 8px; font-size: 14.5px; }
+  .vl { display: flex; flex-direction: column; gap: 5px; }
+  .vl div { display: flex; align-items: center; gap: 8px; font-size: 12.5px; border-radius: 10px; padding: 5px 8px; background: #f3ece0; color: #7a6a58; }
+  .vl div b { font-size: 15px; width: 20px; text-align: center; }
+  .vl div span { margin-left: auto; font-weight: 700; }
+  .vl div.done { background: #fbe4da; color: #b8492a; }
+  .vl div.now { background: #b8492a; color: #fff; }
+
+  .book { position: absolute; inset: 22px 26px; background: #fffaf1; border-radius: 22px; padding: 14px 16px; box-shadow: 0 0 0 3px #fff, 0 8px 0 #c9b79a, 0 16px 30px rgba(0,0,0,0.25); color: #3c3326; }
+  .book .bh { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 16px; margin-bottom: 10px; }
+  .book .bh small { margin-left: auto; font-size: 11.5px; font-weight: 700; color: #8a7a66; }
+  .ngrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .nc { border-radius: 14px; background: #fff; box-shadow: 0 0 0 2px #eadfcb; padding: 8px 6px; text-align: center; font-size: 11px; line-height: 1.35; }
+  .nc .f { font-size: 24px; }
+  .nc .n { font-weight: 800; font-size: 11.5px; }
+  .nc .s { display: inline-block; margin: 3px 0; padding: 1px 7px; border-radius: 999px; font-weight: 800; font-size: 10.5px; }
+  .nc .nx { color: #8a7a66; font-size: 10.5px; }
+  .nc.sel { box-shadow: 0 0 0 2px #b8492a; }
+
+  .letter { position: absolute; background: #fffdf6; border-radius: 16px; padding: 14px 16px; color: #3c3326; box-shadow: 0 0 0 3px #fff, 0 6px 0 #d8ccb6, 0 14px 26px rgba(0,0,0,0.22); }
+  .letter .lh { font-size: 13px; font-weight: 800; color: #b8492a; display: flex; justify-content: space-between; gap: 8px; }
+  .letter p { font-size: 13px; line-height: 1.6; margin: 8px 0 10px; word-break: keep-all; }
+  .letter .att { font-size: 12.5px; font-weight: 800; background: #fbe4da; color: #b8492a; border-radius: 10px; padding: 6px 10px; display: inline-block; }
+  .letter .go { float: right; }
+  .actor { position: absolute; text-align: center; }
+  .actor .body { font-size: 44px; filter: drop-shadow(0 4px 4px rgba(0,0,0,0.3)); line-height: 1; }
+  .actor .bub { display: inline-block; background: #fff; border-radius: 16px; padding: 4px 10px; font-size: 20px; box-shadow: 0 3px 10px rgba(0,0,0,0.2); position: relative; margin-bottom: 6px; }
+  .actor .bub::after { content: ''; position: absolute; left: 50%; bottom: -6px; margin-left: -6px; border: 6px solid transparent; border-top-color: #fff; border-bottom: 0; }
+  .hud-note { position: absolute; left: 50%; transform: translateX(-50%); top: 14px; background: rgba(255,250,241,0.96); border-radius: 14px; padding: 7px 14px; font-size: 12.5px; font-weight: 800; color: #3c3326; box-shadow: 0 3px 10px rgba(0,0,0,0.18); white-space: nowrap; }
+  .inbox { position: absolute; inset: 24px 28px; background: #fffaf1; border-radius: 22px; box-shadow: 0 0 0 3px #fff, 0 8px 0 #c9b79a, 0 16px 30px rgba(0,0,0,0.25); display: flex; overflow: hidden; color: #3c3326; }
+  .inbox .list { width: 42%; border-right: 2px solid #f0e6d6; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+  .inbox .list .tabs { display: flex; gap: 6px; margin-bottom: 4px; }
+  .inbox .list .tabs span { font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: 999px; background: #f3ece0; color: #8a7a66; }
+  .inbox .list .tabs span.on { background: #b8492a; color: #fff; }
+  .inbox .it { display: flex; gap: 8px; align-items: center; border-radius: 12px; padding: 7px 8px; font-size: 12px; background: #fff; box-shadow: 0 0 0 2px #eadfcb; }
+  .inbox .it.on { box-shadow: 0 0 0 2px #b8492a; }
+  .inbox .it b { font-size: 18px; }
+  .inbox .it i { font-style: normal; margin-left: auto; width: 7px; height: 7px; border-radius: 50%; background: #e6789a; }
+  .inbox .det { flex: 1; padding: 14px 16px; position: relative; }
+  .inbox .det .letter { position: static; box-shadow: none; padding: 0; background: transparent; }
+
+  .rgrid { display: grid; grid-template-columns: 1.1fr 1fr 1fr; gap: 6px 8px; font-size: 12px; align-items: center; }
+  .rgrid .hd { font-weight: 800; color: #8a7a66; font-size: 11.5px; }
+  .rgrid .who { font-weight: 800; display: flex; gap: 6px; align-items: center; }
+  .rgrid .who b { font-size: 20px; }
+  .it2 { border-radius: 12px; background: #fff; box-shadow: 0 0 0 2px #eadfcb; padding: 6px 8px; display: flex; gap: 6px; align-items: center; line-height: 1.25; }
+  .it2 b { font-size: 20px; }
+  .it2.tpl { box-shadow: 0 0 0 2px #cfd6cc; background: #f6f8f4; }
+  .count { margin-top: 10px; font-size: 12px; font-weight: 800; color: #48914a; background: #e6f2e6; border-radius: 10px; padding: 6px 10px; display: inline-block; }
+
+  .mo .tk-box { width: 92%; bottom: 16px; padding: 14px 13px; }
+  .mo .tk-face { width: 52px; height: 52px; font-size: 25px; left: 12px; top: -26px; }
+  .mo .head { padding-left: 58px; min-height: 22px; }
+  .mo .line { font-size: 13.5px; }
+  .mo .acts .btn { flex: 1 1 auto; text-align: center; }
+  .mo .ladder .st { font-size: 9.5px; padding: 5px 1px 4px; }
+  .mo .ladder .st b { font-size: 13px; }
+  .mo .ladder .st em { font-size: 9px; }
+  .mo .book { inset: 16px 12px; padding: 12px; }
+  .mo .ngrid { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .mo .letter { left: 5% !important; right: 5% !important; width: auto !important; }
+  .mo .hud-note { white-space: normal; width: 88%; text-align: center; }
+  .mo .inbox { inset: 16px 12px; flex-direction: column; }
+  .mo .inbox .list { width: 100%; border-right: 0; border-bottom: 2px solid #f0e6d6; }
+  .mo .rgrid { grid-template-columns: 1fr 1fr; }
+  .mo .rgrid .who { grid-column: 1 / -1; margin-top: 4px; }
+  .mo .rgrid .hd.w { display: none; }
+
+  table.rt { border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; font-size: 13px; max-width: 1040px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
+  table.rt th, table.rt td { padding: 8px 12px; border-bottom: 1px solid #eee; text-align: left; vertical-align: top; line-height: 1.45; }
+  table.rt th { background: #f6f1e7; font-size: 12.5px; }
+  table.rt td.new { color: #b8492a; font-weight: 700; }
+</style>
+</head>
+<body>
+<h1>💗 호감도 A + 편지: 세부 결정 세 가지</h1>
+<p class="lead">방향은 "관계 단계 + 단계마다 주민이 편지와 선물을 보낸다"로 정해졌어요. 아래 세 가지를 하나씩 골라 주세요. 그림 속 아이템은 이모지로 자리만 잡았고, 실제 3D 모양은 구현 단계에서 렌더 비교로 따로 받을게요.</p>
+<span class="warn">화면 속 문구·아이템 이름은 모두 가안이에요. 문구 후보는 따로 검수받을게요.</span>
+
+<table class="rt">
+  <tr><th>단계</th><th>문턱</th><th>무엇이 생기나 (추천안 기준)</th></tr>
+  <tr><td>👋 아는 사이</td><td>❤️1</td><td>주민 수첩에 그 주민 칸이 열려요</td></tr>
+  <tr><td>🏡 이웃</td><td>❤️3</td><td class="new">✉️ 첫 편지 + 그 주민 전문 재료 꾸러미 (지금의 "씨앗 3·작물 1 답례"를 대신해요)</td></tr>
+  <tr><td>🤝 친구</td><td>❤️6</td><td>✉️ 편지 + 📜 금빛 도구 도면 의뢰 (지금 있는 것). 도구가 없는 판다·올빼미는 전용 보상</td></tr>
+  <tr><td>💛 단짝</td><td>❤️10</td><td class="new">✉️ 편지 + 🎁 그 주민 전용 꾸미기 아이템</td></tr>
+  <tr><td>🌳 가족</td><td>❤️15</td><td class="new">✉️ 편지 + 🖼️ 그 주민 액자(집 안 벽) + 이름표에 🌳 표시</td></tr>
+</table>
+
+<h2>① 관계는 어디에 보일까</h2>
+<p class="lead">목수 아저씨 ❤️7(친구 단계)과 대화하는 장면이에요.</p>
+<div class="row" id="r1a"></div>
+<div class="row" id="r1b"></div>
+<div class="row" id="r1c"></div>
+
+<h2>② 편지는 어떻게 받을까</h2>
+<p class="lead">목수 아저씨와 단짝이 된 순간이에요. 편지에는 전용 아이템이 들어 있고, 받으면 🧺 보관함으로 들어가요.</p>
+<div class="row" id="r2a"></div>
+<div class="row" id="r2b"></div>
+<div class="row" id="r2c"></div>
+
+<h2>③ 보상 아이템은 몇 개나 만들까</h2>
+<p class="lead">주민 11명(마을 주민 10 + 올빼미) 기준이에요. 카페 손님 8종은 이번 범위에서 빼고 팁 보너스로만 이어요.</p>
+<div class="row" id="r3a"></div>
+<div class="row" id="r3b"></div>
+<div class="row" id="r3c"></div>
+
+<script>
+const LADDER = [['👋', '아는 사이', '❤️1'], ['🏡', '이웃', '❤️3 편지'], ['🤝', '친구', '❤️6 도면'], ['💛', '단짝', '❤️10 아이템'], ['🌳', '가족', '❤️15 액자']];
+const ladder = (now) => `<div class="ladder">${LADDER.map(([i, n, e], k) => `<div class="st ${k < now ? 'done' : k === now ? 'now' : ''}"><b>${i}</b>${n}<em>${e}</em></div>`).join('')}</div>`;
+const vlist = (now) => `<div class="vl">${LADDER.map(([i, n, e], k) => `<div class="${k < now ? 'done' : k === now ? 'now' : ''}"><b>${i}</b>${n}<span>${e}</span></div>`).join('')}</div>`;
+const LINE = '오늘도 왔구나! 다리 난간 고친 거 봤어? 네가 구해 준 나무로 했지.';
+const box = (headExtra, body = '') => `<div class="tk-box"><div class="tk-face">👷</div>
+  <div class="head"><span class="tk-name">목수 아저씨</span>${headExtra}</div>
+  <div class="line">${LINE}</div>${body}
+  <div class="acts"><span class="btn">🎁 선물</span><span class="btn">💬 대화하기</span><span class="btn p">닫기</span></div></div>`;
+const meter = (mo) => `<span class="meter">❤️ 7 / 10<span class="bar"><i></i></span>${mo ? '' : '다음: 💛 단짝'}</span>`;
+
+const S1A = (mo) => box(`<span class="chip">🤝 친구</span>${meter(mo)}`, ladder(2));
+const S1B = (mo) => `<div class="card" style="${mo ? 'left:8%;right:8%;top:40px' : 'right:40px;top:30px;width:270px'}"><h4>🤝 목수 아저씨와 친구</h4>${vlist(2)}</div>` +
+  box(`<span class="chip tap">🤝 친구 ▾</span>${meter(mo)}`);
+const NPCS = [
+  ['🧑‍🌾', '농부 삼촌', '🤝 친구', '#dff2e0', '#48914a', '❤️10 💛'],
+  ['👷', '목수 아저씨', '🤝 친구', '#fbe4da', '#b8492a', '❤️10 💛'],
+  ['🧙', '방랑 상인', '🌳 가족', '#ece2f8', '#7044b0', '모두 받음'],
+  ['🎣', '낚시꾼 할아버지', '🏡 이웃', '#dfeaf8', '#2f6fae', '❤️6 🤝'],
+  ['🐼', '요리사 판다', '👋 아는 사이', '#eeeeea', '#5a5a52', '❤️3 🏡'],
+  ['🦡', '숲지기 오소리', '🏡 이웃', '#e8e4dc', '#5a5249', '❤️6 🤝'],
+  ['⭐', '별 보는 아이', '', '#e3e7fa', '#4a5cb8', '선물 하나면 시작'],
+  ['🦉', '의뢰 올빼미', '💛 단짝', '#fbefd2', '#a87a10', '❤️15 🌳'],
+  ['🐔', '목장 아주머니', '', '#fbe0d6', '#a8452f', '선물 하나면 시작'],
+];
+const book = (mo) => `<div class="book"><div class="bh">📒 주민 수첩<small>${mo ? '' : '☰ 메뉴 · 대화창 칩을 눌러도 열려요'}</small></div>
+  <div class="ngrid">${NPCS.slice(0, mo ? 9 : 8).map(([f, n, s, bg, c, nx], k) => `<div class="nc ${k === 1 ? 'sel' : ''}"><div class="f">${f}</div><div class="n">${n}</div>${s ? `<span class="s" style="background:${bg};color:${c}">${s}</span>` : '<span class="s" style="background:#f3ece0;color:#8a7a66">아직</span>'}<div class="nx">다음 ${nx}</div></div>`).join('')}</div></div>`;
+const S1C = (mo) => book(mo);
+
+const LETTER = `<div class="lh"><span>✉️ 목수 아저씨의 편지</span><span style="opacity:.6">💛 단짝</span></div>
+  <p>요즘 네 마당 지나갈 때마다 기분이 좋아. 남는 나무로 흔들의자 하나 짜 봤는데, 마당에 놔 줄래? 다음엔 지붕 손보는 것도 도와줄게.</p>
+  <span class="att">🎁 동봉: 🪑 목수의 흔들의자</span>`;
+const S2A = (mo) => `<div class="inbox"><div class="list"><div class="tabs"><span>📮 소식</span><span class="on">✉️ 편지</span></div>
+  <div class="it on"><b>👷</b>목수 아저씨 · 단짝<i></i></div><div class="it"><b>🧙</b>방랑 상인 · 가족</div>${mo ? '' : '<div class="it"><b>🦉</b>의뢰 올빼미 · 단짝</div><div class="it"><b>🧑‍🌾</b>농부 삼촌 · 친구</div>'}</div>
+  <div class="det"><div class="letter">${LETTER}<div style="margin-top:12px"><span class="btn p go">보관함에 넣기</span></div></div></div></div>`;
+const S2B = (mo) => `<div class="hud-note">📮 우편함에 편지가 왔어요</div>
+  <div class="actor" style="${mo ? 'left:40px;top:110px' : 'left:130px;top:150px'}"><div class="bub">✉️</div><div class="body">📮</div></div>
+  <div class="actor" style="${mo ? 'left:120px;top:150px' : 'left:230px;top:190px'}"><div class="body">🧑</div></div>
+  <div class="letter" style="${mo ? 'top:270px' : 'right:30px;top:80px;width:330px'}">${LETTER}<div style="margin-top:12px"><span class="btn p go">보관함에 넣기</span></div></div>`;
+const S2C = (mo) => `<div class="hud-note">🦉 올빼미가 목수 아저씨 편지를 가져왔어요</div>
+  <div class="actor" style="${mo ? 'left:60px;top:120px' : 'left:120px;top:150px'}"><div class="bub">✉️💛</div><div class="body">🦉</div></div>
+  <div class="actor" style="${mo ? 'left:150px;top:170px' : 'left:220px;top:200px'}"><div class="body">🧑</div></div>
+  <div class="letter" style="${mo ? 'top:280px' : 'right:30px;top:80px;width:330px'}">${LETTER}<div style="margin-top:12px"><span class="btn p go">보관함에 넣기</span></div></div>`;
+
+const ROWS3 = [
+  ['🧑‍🌾', '농부 삼촌', ['🥕', '채소 수레'], ['🌻', '해바라기 아치'], '농부'],
+  ['👷', '목수 아저씨', ['🪑', '흔들의자'], ['🛖', '작은 공방 헛간'], '목수'],
+  ['🧙', '방랑 상인', ['⛺', '보라 천막'], ['🔮', '수정구 좌대'], '상인'],
+  ['🎣', '낚시꾼 할아버지', ['🎣', '낚시 쉼터'], ['🐟', '물고기 풍향계'], '낚시꾼'],
+  ['🦉', '의뢰 올빼미', ['📮', '올빼미 우체통'], ['🪶', '깃털 횃대'], '올빼미'],
+];
+const grid3 = (kind, mo) => {
+  const fam = (n, x) => kind === 'a' ? `<div class="it2"><b>${x[0]}</b>${x[1]}</div>` : `<div class="it2 tpl"><b>🖼️</b>${n} 액자</div>`;
+  const pal = (n, x) => kind === 'c' ? `<div class="it2 tpl"><b>🪧</b>${n} 명패</div>` : `<div class="it2"><b>${x[0]}</b>${x[1]}</div>`;
+  const total = { a: '새 아이템 22개 (전부 다른 모양)', b: '새 아이템 12개 (전용 11 + 액자 틀 1)', c: '새 아이템 2개 (명패 틀 1 + 액자 틀 1)' }[kind];
+  return `<div class="book"><div class="bh">🎁 단계 보상 미리보기<small>${mo ? '' : '주민 수첩 안'}</small></div>
+    <div class="rgrid"><span class="hd w">주민</span><span class="hd">💛 단짝 ❤️10</span><span class="hd">🌳 가족 ❤️15</span>
+    ${ROWS3.slice(0, mo ? 4 : 5).map(([f, n, a, b, sn]) => `<div class="who"><b>${f}</b>${n}</div>${pal(sn, a)}${fam(sn, b)}`).join('')}</div>
+    <span class="count">${total}</span></div>`;
+};
+
+const rows = {
+  r1a: ['A · 대화창에 단계표를 늘 펼쳐 둠', false, '대화할 때마다 다섯 칸이 다 보여요. 가장 눈에 잘 띄지만, 모바일에선 대화창이 한 줄 더 높아져 마을이 가려져요.', S1A],
+  r1b: ['B · 칩만 두고, 누르면 단계 카드가 펼쳐짐', false, '평소엔 "🤝 친구 ❤️7/10" 칩만. 칩을 누르면 위로 단계 카드가 열려요. 대화창 높이는 그대로예요.', S1B],
+  r1c: ['C · 칩 + 📒 주민 수첩', true, '대화창엔 칩만(B와 같음). 칩을 누르거나 ☰ 메뉴에서 수첩을 열면 주민 전원의 단계와 "다음에 받을 것"이 한눈에 보여요. 편지 다시 읽기와 보상 미리보기도 여기 모아요. 아직 안 친한 주민에게도 "선물 하나면 시작"이 보여 13%의 진입 문제를 직접 겨냥해요.', S1C],
+  r2a: ['A · 📮 소식함에 "편지" 칸 추가', false, '지금 소식함(공지·답장)에 편지 칸을 하나 더해요. 만들 게 가장 적어요. 다만 소식함은 출석 창 다음에야 뜨는 곳이라, 단계가 오른 그 순간의 기쁨이 하루 늦게 와요.', S2A],
+  r2b: ['B · 집 앞 우편함', false, '집 앞에 우편함이 생기고, 편지가 오면 머리 위에 ✉️ 말풍선이 떠요. 마당과 이어지는 맛은 좋지만, 집에 가야만 받을 수 있어 다른 곳에 있을 땐 놓쳐요. 우편함 모델과 집 앞 자리 잡기가 새로 들어가요.', S2B],
+  r2c: ['C · 🦉 올빼미가 날아와 전해 줌', true, '단계가 오르면 의뢰 올빼미가 내 앞으로 날아와 편지를 건네요(특별 의뢰 때 쓰는 비행을 그대로 써요). 그 순간 바로 받고, 다 읽은 편지는 📒 주민 수첩에 모여요. 올빼미가 "배달부"가 되니 올빼미 호감도에도 이야기가 생겨요.', S2C],
+  r3a: ['A · 주민마다 전용 2개 (단짝·가족 모두 다른 모양)', false, '가장 탐나지만 3D 모델 22개를 새로 만들어야 해요. 한 개씩 렌더 비교를 받으면 작업이 가장 길어요.', (mo) => grid3('a', mo)],
+  r3b: ['B · 단짝은 전용 1개, 가족은 공통 액자', true, '단짝 보상은 주민마다 다른 모양(11개), 가족 보상은 같은 액자 틀에 주민 얼굴만 바뀌어요. 액자는 집 안 벽에 걸어 "이 집에 사는 친구들" 갤러리가 돼요. 모델 12개로 주민마다 하나씩은 꼭 특별한 게 생겨요.', (mo) => grid3('b', mo)],
+  r3c: ['C · 공통 틀만 (명패·액자, 색과 얼굴만 다름)', false, '모델 2개면 끝나지만 주민마다 다른 맛이 없어요. "모으는 재미"보다 "기념품"에 가까워요.', (mo) => grid3('c', mo)],
+};
+for (const [id, [title, rec, sub, fn]] of Object.entries(rows)) {
+  const dim = id === 'r1c' || id === 'r2a' || id.startsWith('r3') ? 'dim' : '';
+  document.getElementById(id).innerHTML = `<div class="row-title">${title}${rec ? '<span class="rec">추천</span>' : ''}</div><div class="row-sub">${sub}</div>
+    <div><div class="stage pc ${dim}">${fn(false)}</div><p class="cap">PC</p></div>
+    <div><div class="stage mo ${dim}">${fn(true)}</div><p class="cap">모바일</p></div>`;
+}
+</script>
+</body>
+</html>
