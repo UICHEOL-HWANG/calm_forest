@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { YARD_IDLE_SEC, YARD_PIER, GO_REACH, YARD_MAX_TRIES, YARD_STALL_SEC, guideStalled, bridgeDone, yardIdle, yardReady, yardSteps, goStep, d1Ready, d1Steps } from '../js/pond/yard-steps.js';
+import { YARD_IDLE_SEC, YARD_PIER, GO_REACH, YARD_MAX_TRIES, YARD_STALL_SEC, guideStalled, bridgeDone, yardIdle, yardReady, yardSteps, goStep, hudHidden, d1Ready, d1Steps } from '../js/pond/yard-steps.js';
 import { createGuide } from '../js/guide/runner.js';
 
 const COPY = { stepLake: 'L', stepCast: 'C', stepCatch: 'K', stepPond: 'P', stepFeed: 'F', stepD1: 'D' };
@@ -112,4 +112,12 @@ test('다리 완료: 플래그 또는 레거시 집 3단계', () => {
   assert.equal(bridgeDone({ unlocks: { legacy: true }, houseStage: 2 }), false);
   assert.equal(bridgeDone({ unlocks: {}, houseStage: 3 }), false);
   assert.equal(bridgeDone(null), false);
+});
+
+test('hudHidden: 안내 중 + 마을 + 현재 단계일 때만 숨김', () => {
+  assert.equal(hudHidden({ active: true, inVillage: true, hasStep: true }), true);
+  assert.equal(hudHidden({ active: false, inVillage: true, hasStep: true }), false);
+  assert.equal(hudHidden({ active: true, inVillage: false, hasStep: true }), false);
+  assert.equal(hudHidden({ active: true, inVillage: true, hasStep: false }), false);
+  assert.equal(hudHidden({}), false);
 });

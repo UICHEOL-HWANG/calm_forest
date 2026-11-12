@@ -8,6 +8,10 @@ export function guideStalled(sinceSec, nowSec) {
   return nowSec - sinceSec >= YARD_STALL_SEC;
 }
 
+export function hudHidden({ active, inVillage, hasStep }) {
+  return !!active && !!inVillage && !!hasStep;
+}
+
 export function bridgeDone(s) {
   return !!s?.unlocks?.flags?.bridge || (!!s?.unlocks?.legacy && (s.houseStage | 0) >= 3);
 }

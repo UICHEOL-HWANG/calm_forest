@@ -363,13 +363,20 @@ export function npcGlyph(o) {
   return st.progress >= q.target ? '✓' : '…';
 }
 
+let glyphsHidden = false;
+
+export function setNpcGlyphsHidden(on) {
+  glyphsHidden = !!on;
+  for (const o of npcObjs) if (o.sprite) o.sprite.visible = !glyphsHidden && !!o.lastGlyph;
+}
+
 export function updateNPCGlyph(o) {
   if (!o || !o.ctx) return;
   const g = npcGlyph(o);
   if (g === o.lastGlyph) return; o.lastGlyph = g;
   const c = o.ctx; c.clearRect(0, 0, 128, 128);
   if (!g) { o.sprite.visible = false; o.tex.needsUpdate = true; return; }
-  o.sprite.visible = true;
+  o.sprite.visible = !glyphsHidden;
   c.fillStyle = g === '✓' ? '#8fd6a0' : g === '!' ? '#ffd27a' : '#cfe3ff';
   roundRect(c, 18, 14, 92, 82, 22); c.fill();
   c.beginPath(); c.moveTo(54, 94); c.lineTo(74, 94); c.lineTo(60, 118); c.closePath(); c.fill();

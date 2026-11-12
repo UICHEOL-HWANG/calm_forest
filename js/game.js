@@ -319,7 +319,7 @@ import {
   _chipGeo, _confGeo, _dropGeo, _leafGeo, makeParticle, rndSpin, updateFloatTexts, updateParticles, updatePops,
 } from './spaces/fx.js';   // 📦 팝 애니메이션(밭/작물/집 부재 톡 튀어오름)
 import {
-  PLOT_KEEP_OUT, badgeColor, buildNPCs, merchantVisit, npcState, questView, refreshQuestPanel, setNpcHidden, shadeToLum, startNpcReturn,
+  PLOT_KEEP_OUT, badgeColor, buildNPCs, merchantVisit, npcState, questView, refreshQuestPanel, setNpcGlyphsHidden, setNpcHidden, shadeToLum, startNpcReturn,
   talkToNPC, updateMerchantVisit, updateNPC, updateNPCGlyph, updateNPCInteract, updateOwlVisit, updateShopCue,
 } from './spaces/npc.js';   // 📦 NPC (마을 주민 다중) + 퀘스트 체인
 import { restoreAura } from './aura/recipe.js';
@@ -3013,7 +3013,7 @@ export async function enterGame() {
     route: (me, tgt) => detourPoint({ x: me.x, z: me.z }, { x: tgt.x, z: tgt.z }, colliders.filter(c => ('r' in c ? c.r >= 1.0 : true))),
     track: trackEvent, save: requestSave, today: kstDate,
     banner: line => ui.showHintBanner?.({ ico: '🦉', title: POND_COPY.owlTitle, line, near: () => true, attention: true }),
-    setAssist: setFishAssist, pondPos, pondNear,
+    setAssist: setFishAssist, setHudHidden: setNpcGlyphsHidden, pondPos, pondNear,
     nearLake: () => dist2D(LAKE, player.position) <= LAKE_R + 2.8,
     fishing: () => fishState !== 'idle',
   });

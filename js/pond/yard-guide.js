@@ -2,13 +2,25 @@ import { createGuide } from '../guide/runner.js';
 import { createGuideView } from '../guide/view.js';
 import { SEA_GATE } from '../data/places.js';
 import { feedStatus } from './actions.js';
-import { yardIdle, yardReady, yardSteps, goStep, d1Ready, d1Steps, guideStalled, bridgeDone, YARD_PIER } from './yard-steps.js';
+import { yardIdle, yardReady, yardSteps, goStep, hudHidden, d1Ready, d1Steps, guideStalled, bridgeDone, YARD_PIER } from './yard-steps.js';
 import { POND_COPY } from './copy.js';
 
+export const YARD_HUD_CLASS = 'yard-guiding';
+export const YARD_HUD_CSS = 'body.yard-guiding #story-chip, body.yard-guiding #quest-panel, body.yard-guiding #habitat-meter, body.yard-guiding #app-banner { display: none !important; }';
+
 let inst = null;
+let hudStyled = false;
+
+function injectHudStyle() {
+  if (hudStyled) return;
+  hudStyled = true;
+  const el = document.createElement('style');
+  el.textContent = YARD_HUD_CSS;
+  document.head.appendChild(el);
+}
 
 export function createYardGuide(deps) {
-  let guide = null, view = null, idle = 0, flow = null, lastIndex = 0, lastProgressAt = 0;
+  let guide = null, view = null, idle = 0, flow = null, lastIndex = 0, lastProgressAt = 0, hudOn = false;
 
   const ctx = () => {
     const pond = deps.pondPos();
@@ -19,14 +31,23 @@ export function createYardGuide(deps) {
     };
   };
 
+  const setHud = hidden => {
+    if (hidden === hudOn) return;
+    hudOn = hidden;
+    document.body.classList.toggle(YARD_HUD_CLASS, hidden);
+    deps.setHudHidden(hidden);
+  };
+
   const stop = () => {
     guide = null;
+    setHud(false);
     flow = null;
     view?.hide();
     deps.setAssist(false);
   };
 
   const run = (name, steps, onDone) => {
+    injectHudStyle();
     view ??= createGuideView({ scene: deps.scene, camera: deps.camera, root: document.body });
     flow = name;
     lastIndex = 0;
@@ -90,7 +111,9 @@ export function createYardGuide(deps) {
       if (guide.index() !== lastIndex) { lastIndex = guide.index(); lastProgressAt = nowSec; }
       if (guideStalled(lastProgressAt, nowSec)) { stop(); return; }
       const step = guide.current();
-      if (!deps.inVillage() || !step) { view.hide(); return; }
+      const village = deps.inVillage();
+      setHud(hudHidden({ active: true, inVillage: village, hasStep: !!step }));
+      if (!village || !step) { view.hide(); return; }
       view.show(step, guide.index(), guide.total, c, deps.player.position, deps.route, 0);
     },
   };

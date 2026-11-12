@@ -85,3 +85,19 @@ test('마이그레이션은 한 트랜잭션', () => {
   const s = src('sql/migrations/migrate_push_pond.sql').trim();
   assert.ok(s.startsWith('begin;') && s.endsWith('commit;'));
 });
+
+test('안내 중 무관한 HUD·NPC 말풍선 숨김 배선', () => {
+  const g = src('js/pond/yard-guide.js');
+  assert.match(g, /export const YARD_HUD_CLASS = 'yard-guiding';/);
+  const css = g.match(/export const YARD_HUD_CSS =\s*`([^`]*)`|export const YARD_HUD_CSS =\s*'([^']*)'/);
+  assert.ok(css, 'YARD_HUD_CSS');
+  const body = css[1] ?? css[2];
+  for (const id of ['story-chip', 'quest-panel', 'habitat-meter', 'app-banner']) assert.ok(body.includes(`body.yard-guiding #${id}`), id);
+  assert.ok(body.includes('display: none !important'));
+  assert.match(g, /document\.body\.classList\.toggle\(YARD_HUD_CLASS, hidden\)/);
+  assert.match(g, /deps\.setHudHidden\(hidden\)/);
+  const n = src('js/spaces/npc.js');
+  assert.match(n, /export function setNpcGlyphsHidden\(on\)/);
+  assert.match(n, /o\.sprite\.visible = !glyphsHidden;/);
+  assert.match(src('js/game.js'), /setHudHidden: setNpcGlyphsHidden,/);
+});
