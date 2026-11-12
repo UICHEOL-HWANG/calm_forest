@@ -1,0 +1,15 @@
+# Tasks — app-invite-links
+- [x] 계획·사용자 결정
+- [x] 테스트 먼저(tests/invite-link.test.mjs)
+- [x] 링크·코드 전달 규칙
+- [x] Worker /i/ · .well-known
+- [x] 앱 진입·코드 입력 칸·배너 코드 줄
+- [x] 안드·iOS 네이티브 설정 + @capacitor/app
+- [x] 안드 디버그 빌드·에뮬레이터 콜드 스타트 확인
+- [x] iOS 시뮬레이터 빌드 확인(16:04 성공, AppPlugin 컴파일)
+- [x] 코드 리뷰(MEDIUM 1·LOW 1 반영)
+- [x] 문구 검수(2026-11-12 사용자 확정, 문구 그대로)
+- [ ] App ID Associated Domains 켜기
+- [ ] 커밋(승인 후)
+- [ ] 배포 5곳(웹 먼저)
+- [ ] 배포 후 App Links 검증·iOS 유니버설 링크 실기기 확인

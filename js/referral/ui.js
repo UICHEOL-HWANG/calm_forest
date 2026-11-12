@@ -19,11 +19,33 @@ const fill = (tpl, n) => tpl.replace('{0#}', String(n));
  * view = { guest, loading, error, code, active, pending }
  * on   = { copy(url), share(url) }
  */
+function entryNode(on) {
+  const wrap = el('div', 'inv-entry');
+  const input = el('input', 'inv-code');
+  input.type = 'text';
+  input.maxLength = 40;
+  input.placeholder = MSG.entryHint;
+  input.setAttribute('autocapitalize', 'characters');
+  input.setAttribute('autocomplete', 'off');
+  input.setAttribute('spellcheck', 'false');
+  const btn = el('button', 'inv-enter', MSG.entryBtn);
+  btn.addEventListener('click', async () => {
+    if (btn.disabled) return;
+    btn.disabled = true;
+    try { if (await on.enter(input.value)) wrap.remove(); } finally { btn.disabled = false; }
+  });
+  const row = el('div', 'inv-entry-row');
+  row.append(input, btn);
+  wrap.append(el('p', 'inv-entry-title', MSG.entryTitle), row);
+  return wrap;
+}
+
 export function renderInviteSheet(box, view, on) {
   box.replaceChildren();
   box.append(el('h2', 'inv-title', MSG.title), el('p', 'inv-desc', MSG.desc));
 
   if (view.guest) { box.append(el('p', 'inv-note', MSG.guest)); return; }
+  if (view.entry && on.enter) box.append(entryNode(on));
 
   const tiers = el('div', 'inv-tiers');
   for (const t of tierView(view.active ?? 0)) {

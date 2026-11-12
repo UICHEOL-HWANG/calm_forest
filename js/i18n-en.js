@@ -3095,6 +3095,11 @@ export const EN = {
   '내 초대 링크로는 받을 수 없어요': "You can't use your own invite link",
   '초대 링크가 올바르지 않아요': 'This invite link is not valid',
   '🌲 고요한 숲에서 같이 플레이하자! 이 링크로 오면 선물이 있어 →': "🌲 Come play with me in Calm Forest! Join with this link and you'll get a gift →",
+  '친구에게 초대받았나요?': 'Did a friend invite you?',
+  '초대 코드 8자리를 넣어 주세요': 'Enter the 8-character invite code',
+  '초대 코드 8자리를 다시 확인해 주세요': 'Please check the 8-character invite code',
+  '이미 친구와 연결되어 있어요': "You're already connected with a friend",
+  '초대 코드 {0} · 앱에서 입력해도 받을 수 있어요': 'Invite code {0} · You can also enter it in the app',
 
   // ── 🏮 빛 공방(js/aura/*, js/spaces/light-workshop.js) ─────────────
   // 재사용(이미 있음): 별 · 하트 · 물방울 · 반딧불 · 착용 · 벗기 · 복숭아 · 꿀 · 호박 · 호수 · 산딸기

@@ -45,6 +45,7 @@ import { onRequestGet as cardnewsImg } from '../functions/cardnews-img.js';
 import { onRequestGet as rssFeed } from '../functions/rss.js';
 import { onRequestGet as newsPages } from '../functions/news.js';
 import { onRequestGet as appLink } from '../functions/app-link.js';
+import { onRequestGet as inviteLink, wellKnown } from '../functions/invite-link.js';
 import { onRequestGet as utmLinksGet, onRequestPost as utmLinksPost } from '../functions/api/utm-links.js';
 import { handleGo } from '../functions/go-redirect.js';
 
@@ -66,6 +67,10 @@ export default {
         const res = await routeApi(pathname, { request, env, ctx });
         if (res) return withCors(res);
       }
+
+      if (pathname.startsWith('/i/')) return await inviteLink({ request });
+
+      if (pathname === '/.well-known/apple-app-site-association') return await wellKnown({ request, env });
 
       if (pathname === '/app' || pathname === '/app/') {
         if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method Not Allowed', { status: 405 });

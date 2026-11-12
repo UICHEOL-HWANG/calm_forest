@@ -637,6 +637,8 @@ ROOT_ASSET_ALIASES = {
     '/preview.jpg': 'assets/social/preview.jpg',
     # 📱 PWA(assets/pwa/ → 루트) — sw.js 는 스코프 때문에 저장소 루트에 그대로 둔다
     '/manifest.webmanifest': 'assets/pwa/manifest.webmanifest',
+    '/.well-known/assetlinks.json': 'assets/well-known/assetlinks.json',
+    '/.well-known/apple-app-site-association': 'assets/well-known/apple-app-site-association',
     '/icon-192.png': 'assets/pwa/icon-192.png',
     '/icon-512.png': 'assets/pwa/icon-512.png',
     '/icon-maskable-512.png': 'assets/pwa/icon-maskable-512.png',
