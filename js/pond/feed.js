@@ -1,4 +1,4 @@
-import { gameState, buffs, clock, ui, requestSave, todayStr, pondFeedAdButton } from '../game.js';
+import { gameState, buffs, clock, ui, requestSave, todayStr, pondFeedAdButton, isOpen } from '../game.js';
 import { emitBuffs } from '../spaces/cooking.js';
 import { trackEvent } from '../analytics.js';
 import { kstDate } from '../kst-date.js';
@@ -69,6 +69,7 @@ function slotInfo(slot) {
   if (slot.got) return { line: `${slot.ico} ${slot.name}` };
   const h = slot.hint;
   if (h.kind === 'season') return { line: `${POND_COPY.season[h.season]} · ${POND_COPY.until[h.season].replace('{0}', h.days)}` };
+  if (h.kind === 'sea' && !isOpen('sea')) return { line: POND_COPY.hintSeaLocked };
   if (h.kind === 'sea') return { line: POND_COPY.hintSea, go: { label: POND_COPY.goSea, onClick: () => go('sea') } };
   return { line: h.now ? POND_COPY.hintLakeNow : POND_COPY.hintLake, go: { label: POND_COPY.goLake, onClick: () => go('lake') } };
 }

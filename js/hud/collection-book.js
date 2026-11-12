@@ -40,6 +40,7 @@ function mount() {
   m.innerHTML = '<div class="cb-card"><h2 class="cb-title"><span id="cb-title"></span><small id="cb-count"></small></h2><div id="cb-head"></div><div id="cb-body"></div><div class="cb-hint" id="cb-hint"></div><button class="cb-btn ghost cb-close" id="cb-close"></button></div>';
   m.addEventListener('click', e => { if (e.target === m) closeBook(); });
   document.body.append(m);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && isBookOpen()) closeBook(); });
 }
 
 function setHint(info) {

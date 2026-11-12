@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { YARD_IDLE_SEC, YARD_PIER, GO_REACH, yardIdle, yardReady, yardSteps, goStep, d1Ready, d1Steps } from '../js/pond/yard-steps.js';
+import { YARD_IDLE_SEC, YARD_PIER, GO_REACH, YARD_MAX_TRIES, YARD_STALL_SEC, guideStalled, bridgeDone, yardIdle, yardReady, yardSteps, goStep, d1Ready, d1Steps } from '../js/pond/yard-steps.js';
 import { createGuide } from '../js/guide/runner.js';
 
 const COPY = { stepLake: 'L', stepCast: 'C', stepCatch: 'K', stepPond: 'P', stepFeed: 'F', stepD1: 'D' };
@@ -89,4 +89,27 @@ test('다음 날 안내 단계', () => {
   assert.equal(g.current().id, 'd1_feed');
   g.tick({ ...base, hasPond: true, pond: { x: 1, z: 1 }, nearPond: true, fedToday: true });
   assert.equal(g.active(), false);
+});
+
+test('시작 횟수 상한', () => {
+  const ok = { on: true, bridge: true, done: false, idleSec: 5 };
+  assert.equal(YARD_MAX_TRIES, 2);
+  assert.equal(yardReady({ ...ok, tries: 0 }), true);
+  assert.equal(yardReady({ ...ok, tries: 1 }), true);
+  assert.equal(yardReady({ ...ok, tries: 2 }), false);
+  assert.equal(yardReady(ok), true);
+});
+
+test('멈춘 안내 판정 경계', () => {
+  assert.equal(YARD_STALL_SEC, 600);
+  assert.equal(guideStalled(0, 599), false);
+  assert.equal(guideStalled(0, 600), true);
+});
+
+test('다리 완료: 플래그 또는 레거시 집 3단계', () => {
+  assert.equal(bridgeDone({ unlocks: { flags: { bridge: true } } }), true);
+  assert.equal(bridgeDone({ unlocks: { legacy: true }, houseStage: 3 }), true);
+  assert.equal(bridgeDone({ unlocks: { legacy: true }, houseStage: 2 }), false);
+  assert.equal(bridgeDone({ unlocks: {}, houseStage: 3 }), false);
+  assert.equal(bridgeDone(null), false);
 });

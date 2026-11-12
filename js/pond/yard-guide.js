@@ -2,13 +2,13 @@ import { createGuide } from '../guide/runner.js';
 import { createGuideView } from '../guide/view.js';
 import { SEA_GATE } from '../data/places.js';
 import { feedStatus } from './actions.js';
-import { yardIdle, yardReady, yardSteps, goStep, d1Ready, d1Steps, YARD_PIER } from './yard-steps.js';
+import { yardIdle, yardReady, yardSteps, goStep, d1Ready, d1Steps, guideStalled, bridgeDone, YARD_PIER } from './yard-steps.js';
 import { POND_COPY } from './copy.js';
 
 let inst = null;
 
 export function createYardGuide(deps) {
-  let guide = null, view = null, idle = 0, flow = null;
+  let guide = null, view = null, idle = 0, flow = null, lastIndex = 0, lastProgressAt = 0;
 
   const ctx = () => {
     const pond = deps.pondPos();
@@ -29,6 +29,8 @@ export function createYardGuide(deps) {
   const run = (name, steps, onDone) => {
     view ??= createGuideView({ scene: deps.scene, camera: deps.camera, root: document.body });
     flow = name;
+    lastIndex = 0;
+    lastProgressAt = performance.now() / 1000;
     guide = createGuide({
       flow: name, steps, now: () => performance.now(),
       onStep: e => deps.track('guide_step', e),
@@ -37,8 +39,16 @@ export function createYardGuide(deps) {
   };
 
   const startYard = () => {
+    const h = deps.state().hintsSeen;
+    if (deps.pondPos() && feedStatus(h, deps.today()).fed) {
+      h.yardFill = true;
+      deps.save();
+      return;
+    }
+    h.yardTries = (h.yardTries | 0) + 1;
+    deps.save();
     deps.banner(POND_COPY.owlStart);
-    deps.setAssist(true);
+    if (!deps.pondPos()) deps.setAssist(true);
     run('yard_fill', yardSteps(POND_COPY), () => {
       deps.state().hintsSeen.yardFill = true;
       deps.save();
@@ -64,7 +74,7 @@ export function createYardGuide(deps) {
       if (!guide) {
         const s = deps.state(), h = s.hintsSeen || {}, on = deps.on(), today = deps.today();
         idle = yardIdle(idle, dt, deps.free() && deps.inVillage());
-        if (yardReady({ on, bridge: !!s.unlocks?.flags?.bridge, done: !!h.yardFill, idleSec: idle })) {
+        if (yardReady({ on, bridge: bridgeDone(s), done: !!h.yardFill, idleSec: idle, tries: h.yardTries })) {
           idle = 0;
           startYard();
         } else if (d1Ready({ on, yardDone: !!h.yardFill, d1Done: !!h.pondD1, pondDay: h.pondDay, today, fedToday: feedStatus(h, today).fed, idleSec: idle })) {
@@ -76,6 +86,9 @@ export function createYardGuide(deps) {
       const c = ctx();
       guide.tick(c);
       if (!guide) return;
+      const nowSec = performance.now() / 1000;
+      if (guide.index() !== lastIndex) { lastIndex = guide.index(); lastProgressAt = nowSec; }
+      if (guideStalled(lastProgressAt, nowSec)) { stop(); return; }
       const step = guide.current();
       if (!deps.inVillage() || !step) { view.hide(); return; }
       view.show(step, guide.index(), guide.total, c, deps.player.position, deps.route, 0);

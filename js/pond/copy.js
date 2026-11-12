@@ -12,6 +12,7 @@ export const POND_COPY = Object.freeze({
   hintLake: '🎣 마을 호수에서 낚여요',
   hintLakeNow: '🎣 지금 계절이에요. 마을 호수에서 낚여요',
   hintSea: '🌊 바다터에서 낚여요',
+  hintSeaLocked: '🌊 바다터가 열리면 낚을 수 있어요',
   goLake: '호수로',
   goSea: '바다터로',
   season: Object.freeze({

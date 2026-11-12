@@ -32,3 +32,8 @@ test('주석 없음', () => {
   assert.doesNotMatch(src, /^\s*\/\//m);
   assert.doesNotMatch(src, /\/\*/);
 });
+
+test('열려 있는 동안 Escape 로 닫힌다', () => {
+  const s = readFileSync(new URL('../js/hud/collection-book.js', import.meta.url), 'utf8');
+  assert.match(s, /document\.addEventListener\('keydown', e => \{ if \(e\.key === 'Escape' && isBookOpen\(\)\) closeBook\(\); \}\);/);
+});

@@ -1,13 +1,23 @@
 export const YARD_IDLE_SEC = 5;
 export const YARD_PIER = Object.freeze({ x: 12.8, z: 9 });
 export const GO_REACH = 3;
+export const YARD_MAX_TRIES = 2;
+export const YARD_STALL_SEC = 600;
+
+export function guideStalled(sinceSec, nowSec) {
+  return nowSec - sinceSec >= YARD_STALL_SEC;
+}
+
+export function bridgeDone(s) {
+  return !!s?.unlocks?.flags?.bridge || (!!s?.unlocks?.legacy && (s.houseStage | 0) >= 3);
+}
 
 export function yardIdle(prev, dt, free) {
   return free ? prev + dt : 0;
 }
 
-export function yardReady({ on, bridge, done, idleSec }) {
-  return !!on && !!bridge && !done && idleSec >= YARD_IDLE_SEC;
+export function yardReady({ on, bridge, done, idleSec, tries }) {
+  return !!on && !!bridge && !done && (tries | 0) < YARD_MAX_TRIES && idleSec >= YARD_IDLE_SEC;
 }
 
 export function yardSteps(copy) {
