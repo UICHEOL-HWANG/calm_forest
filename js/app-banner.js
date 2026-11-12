@@ -10,6 +10,7 @@
 // =============================================================
 
 import { readInviteParam } from './referral/rules.js';
+import { readGiftParam, normalizeGiftCode } from './promo-gift/code.js';
 
 export const DEFAULT_APP_BANNER = {
   storeLive: { android: false, ios: false },   // 스토어 출시를 직접 확인한 OS 만 켠다(변경 로그에 기록)
@@ -56,14 +57,15 @@ export function captureTouch(search, prev, now, makeId) {
   const q = new URLSearchParams(search || '');
   const src = q.get('utm_source');
   const invite = readInviteParam(search) || prev?.invite;
-  if (prev?.jid && !src && invite === prev?.invite) return prev;
+  const gift = readGiftParam(search) || prev?.gift;
+  if (prev?.jid && !src && invite === prev?.invite && gift === prev?.gift) return prev;
   const utm = src
     ? Object.fromEntries(UTM_KEYS.map(k => [k, String(q.get('utm_' + k) || '').slice(0, 100)]))
     : (prev?.utm ?? null);
   if (src && q.has('utm_term')) utm.term = String(q.get('utm_term') || '').slice(0, 100);
   // Meta 광고 세트 ID — Tenjin의 campaign_id와 연결한다. 이름 변경과 무관한 식별자다.
   if (src && q.has('campaign_id')) utm.campaign_id = String(q.get('campaign_id') || '').slice(0, 100);
-  return { jid: prev?.jid || makeId(), ts: prev?.ts ?? now, utm, ...(invite ? { invite } : {}) };
+  return { jid: prev?.jid || makeId(), ts: prev?.ts ?? now, utm, ...(invite ? { invite } : {}), ...(gift ? { gift } : {}) };
 }
 
 // 값마다 따로 인코딩 — 랜딩 URL 의 utm 값에 '&jid=' 를 숨겨 귀속을 위조하지 못하게.
@@ -76,6 +78,8 @@ export function playReferrer(touch, medium = 'web_banner') {
   if (touch?.jid) parts.push(['jid', touch.jid]);
   const invite = readInviteParam(`?invite=${encodeURIComponent(touch?.invite || '')}`);
   if (invite) parts.push(['invite', invite]);
+  const gift = normalizeGiftCode(touch?.gift);
+  if (gift) parts.push(['gift', gift]);
   return encodeURIComponent(parts.map(([k, v]) => `${k}=${encodeURIComponent(String(v).slice(0, 60))}`).join('&'));
 }
 

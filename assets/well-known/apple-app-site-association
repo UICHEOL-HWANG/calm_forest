@@ -3,7 +3,7 @@
     "details": [
       {
         "appIDs": ["YW465H4L6Q.com.cheorish.lab.calmforest"],
-        "components": [{ "/": "/i/*" }]
+        "components": [{ "/": "/i/*" }, { "/": "/g/*" }]
       }
     ]
   }

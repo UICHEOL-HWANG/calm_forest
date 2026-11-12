@@ -45,3 +45,13 @@ test('placeOutdoor 는 새로 놓을 때만 세계 충돌체와의 겹침을 막
   assert.match(src, /if \(!silent && !def\.farm && outdoorBlockedByWorld\(id, wx, wz, ry\)\)/);
   assert.match(src, /outdoorMeshes\.map\(m => m\.userData\.solid\)/);
 });
+
+test('링크 선물 꾸미기 발자국 — 열기구는 말뚝 크기 원, 가방 더미는 회전에 맞춘 상자', () => {
+  assert.deepEqual(outdoorFootprint('promoballoon', 1, 2, 0), { x: 1, z: 2, r: 0.22 });
+  const suitcaseBox = { w: 1.6, d: 1.05 };
+  const a = outdoorFootprint('promosuitcase', 0, 0, 0, { suitcaseBox });
+  const b = outdoorFootprint('promosuitcase', 0, 0, 1, { suitcaseBox });
+  assert.ok(Math.abs((a.x2 - a.x1) - 1.6) < 1e-9 && Math.abs((a.z2 - a.z1) - 1.05) < 1e-9);
+  assert.ok(Math.abs((b.x2 - b.x1) - 1.05) < 1e-9 && Math.abs((b.z2 - b.z1) - 1.6) < 1e-9);
+  assert.equal(blockedByWorld(a, [tree(1.2, 0)]), true);
+});

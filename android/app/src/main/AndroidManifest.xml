@@ -32,6 +32,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="calmforest.cloud" android:pathPrefix="/i/" />
+                <data android:scheme="https" android:host="calmforest.cloud" android:pathPrefix="/g/" />
             </intent-filter>
 
         </activity>

@@ -462,3 +462,6 @@ enter_restaurant,crafting,restaurant,2,N,not_fired,0,0,,,,js/spaces/restaurant.j
 exit_restaurant,crafting,restaurant,2,N,not_fired,0,0,,,,js/spaces/restaurant.js:156,식당에서 마을로 나왔을 때 (영업 중이면 결과 없이 끝),
 restaurant_service,crafting,restaurant,1,N,not_fired,0,0,,,star|served|avg_score|dda,js/restaurant/runtime.js:147,"식당 저녁 영업 한 판이 끝났을 때 (star=영업 때 별 단계, served=받은 손님 수, avg_score=못 받은 주문을 1점으로 센 평균 별점, dda=영업 뒤 손님 간격 배율)",
 restaurant_star_up,crafting,restaurant,1,N,not_fired,0,0,,,star,js/restaurant/runtime.js:148,식당 평판 별이 올랐을 때 (star=오른 뒤 별 단계),
+promo_gift_arrive,onboarding,promo_gift,2,N,not_fired,0,0,,,code|via,js/promo-gift/flow.js:18,"프로모 선물 링크로 들어왔을 때 (code=선물 코드, via=도착 경로)",
+promo_gift_claim,onboarding,promo_gift,2,N,not_fired,0,0,,,code|step|result,js/promo-gift/flow.js:30,"프로모 선물을 받으려고 시도했을 때 (step=1 게스트 또는 2 로그인, result=new·dup·만료 사유·net_fail)",
+promo_gift_login_click,onboarding,promo_gift,2,N,not_fired,0,0,,,code,js/promo-gift/ui.js:66,"프로모 선물 편지에서 로그인 버튼을 눌렀을 때 (code=선물 코드)",

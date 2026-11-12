@@ -332,6 +332,8 @@ import { restoreMountain } from './mountain/save.js';
 import { onMountainside } from './mountain/landmark.js';
 import { souvenirOutdoorMesh } from './mountain/souvenir-art.js';
 import { SIGNUP_GIFT_IDS, buildSignupGift } from './spaces/signup-gift-art.js';
+import { buildPromoGift, PROMO_SUITCASE_BOX } from './spaces/promo-gift-art.js';
+import { PROMO_DECOR_IDS } from './promo-gift/rules.js';
 import { requestSignupNudge } from './signup-gift/index.js';
 import { FRIEND_ARCH_ID, buildFriendArch } from './spaces/friend-arch-art.js';   // 🌈 무지개 우정 아치(🤝 초대 보상)
 import { MINE_CART_ID, MINE_CART_BOX, buildMineCart } from './delve/cart-art.js';
@@ -3301,6 +3303,16 @@ function grantDecor(id) {
   return true;
 }
 
+export function grantItems(bundle, source = 'promo_gift') {
+  for (const [k, v] of Object.entries(bundle || {})) {
+    if (!(k in gameState.inventory) || !Number.isInteger(v) || v <= 0) continue;
+    gameState.inventory[k] += v;
+    logEcon(source, k, v, gameState.inventory[k]);
+  }
+  requestSave();
+  refreshInventoryUI();
+}
+
 export function getGameState() {
   gameState.playerPos = atRestaurant ? restaurantExitSpot() : atNeighbor ? neighborReturnPos() : (atMirror || mirrorRideActive()) ? mirrorReturnPos() : atDream ? dreamReturnPos() : atMountain ? mountainReturnPos() : delveFloorNow() > 0 ? { x: MINE_GATE.x, z: MINE_GATE.z + 2 } : { x: player.position.x, z: player.position.z };
   if (atHalloween) gameState.playerPos = halloweenReturnPos();
@@ -5884,6 +5896,8 @@ function outdoorMesh(id) {
     g.add(buildFriendArch(THREE, (m) => houseWindows.push(m)));
   } else if (SIGNUP_GIFT_IDS.includes(id)) {
     g.add(buildSignupGift(THREE, id, (m) => houseWindows.push(m)));
+  } else if (PROMO_DECOR_IDS.includes(id)) {
+    g.add(buildPromoGift(THREE, id));
   } else if (id === 'kiln') {
     // 🔥 화덕 — sims/kiln-sim.html 에서 확정한 C안(낮은 아궁이). 상판이 표시 면이라
     //    완성물이 쌓이면 가까이 가지 않아도 "다 구워졌다" 가 읽힌다.
@@ -5960,7 +5974,7 @@ function outdoorMesh(id) {
 const OVERLAP_PLACE_MSG = '🌳 나무나 건물과 겹쳐서 놓을 수 없어요';
 function outdoorBlockedByWorld(id, x, z, ry) {
   const ignore = new Set(outdoorMeshes.map(m => m.userData.solid).filter(Boolean));
-  const fp = outdoorFootprint(id, x, z, ry, { cartBox: MINE_CART_BOX, vatBox: VAT_BOX, cartId: MINE_CART_ID });
+  const fp = outdoorFootprint(id, x, z, ry, { cartBox: MINE_CART_BOX, vatBox: VAT_BOX, cartId: MINE_CART_ID, suitcaseBox: PROMO_SUITCASE_BOX });
   return blockedByWorld(fp, colliders, ignore);
 }
 function placeOutdoor(wx, wz, silent = false, id = placingOutdoor, rot = null) {
@@ -6024,7 +6038,10 @@ function placeOutdoor(wx, wz, silent = false, id = placingOutdoor, rot = null) {
       const [hw, hd] = (ry % 2) ? [VAT_BOX.d / 2, VAT_BOX.w / 2] : [VAT_BOX.w / 2, VAT_BOX.d / 2];
       solid = solidBox(wx - hw, wz - hd, wx + hw, wz + hd);
       obstacles.pop(); ob = { x: wx, z: wz, r: 1.2 }; obstacles.push(ob);
-    } else solid = ['fence', 'stonewall', 'postlamp', 'brazier', 'scarecrow', 'spiritlamp', 'ghostlamp', 'gravefence', 'haybale', 'pumpkins', 'pumpkinlamp', 'harvestscarecrow', 'moonswing', 'lanternarch', 'starvane'].includes(id) ? solidCircle(wx, wz, ['postlamp', 'scarecrow', 'spiritlamp', 'ghostlamp', 'pumpkinlamp', 'harvestscarecrow', 'starvane'].includes(id) ? 0.22 : 0.5) : null;   // 🎃 거미줄 아치(webarch)는 걸어서 통과한다 · 🌾 수확제 4종은 목록에 없어 통과했다(2026-10-09)
+    } else if (id === 'promosuitcase') {
+      const [hw, hd] = (ry % 2) ? [PROMO_SUITCASE_BOX.d / 2, PROMO_SUITCASE_BOX.w / 2] : [PROMO_SUITCASE_BOX.w / 2, PROMO_SUITCASE_BOX.d / 2];
+      solid = solidBox(wx - hw, wz - hd, wx + hw, wz + hd);
+    } else solid = ['fence', 'stonewall', 'postlamp', 'brazier', 'scarecrow', 'spiritlamp', 'ghostlamp', 'gravefence', 'haybale', 'pumpkins', 'pumpkinlamp', 'harvestscarecrow', 'moonswing', 'lanternarch', 'starvane', 'promoballoon'].includes(id) ? solidCircle(wx, wz, ['postlamp', 'scarecrow', 'spiritlamp', 'ghostlamp', 'pumpkinlamp', 'harvestscarecrow', 'starvane', 'promoballoon'].includes(id) ? 0.22 : 0.5) : null;   // 🎃 거미줄 아치(webarch)는 걸어서 통과한다 · 🌾 수확제 4종은 목록에 없어 통과했다(2026-10-09)
   }
   m.userData.rec = rec; m.userData.obstacle = ob; m.userData.solid = solid;   // 🪵 들어 올릴 때 레코드·밭 금지 구역·충돌체를 같이 뺀다(시설은 obstacle 이 배열)
   if (STATION_IDS.includes(id)) {

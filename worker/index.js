@@ -32,6 +32,7 @@ import { onRequestPost as gaMp } from '../functions/api/ga-mp.js';
 import { onRequestPost as clientLogs } from '../functions/api/logs.js';   // 🧯 클라이언트 오류 로그
 import { onRequestPost as referral } from '../functions/api/referral.js';
 import { onRequestPost as signupGift } from '../functions/api/signup-gift.js';
+import { onRequestPost as promoGift } from '../functions/api/promo-gift.js';
 import { onRequest as auraOrder } from '../functions/api/aura-order.js';
 import { onRequestPost as cardsIngest } from '../functions/api/cards-ingest.js';
 import { onRequestGet as cardsTopicsGet, onRequestPatch as cardsTopicsPatch } from '../functions/api/cards-topics.js';
@@ -45,7 +46,7 @@ import { onRequestGet as cardnewsImg } from '../functions/cardnews-img.js';
 import { onRequestGet as rssFeed } from '../functions/rss.js';
 import { onRequestGet as newsPages } from '../functions/news.js';
 import { onRequestGet as appLink } from '../functions/app-link.js';
-import { onRequestGet as inviteLink, wellKnown } from '../functions/invite-link.js';
+import { onRequestGet as inviteLink, onGiftRequestGet as giftLink, wellKnown } from '../functions/invite-link.js';
 import { onRequestGet as utmLinksGet, onRequestPost as utmLinksPost } from '../functions/api/utm-links.js';
 import { handleGo } from '../functions/go-redirect.js';
 
@@ -69,6 +70,7 @@ export default {
       }
 
       if (pathname.startsWith('/i/')) return await inviteLink({ request });
+      if (pathname.startsWith('/g/')) return await giftLink({ request });
 
       if (pathname === '/.well-known/apple-app-site-association') return await wellKnown({ request, env });
 
@@ -267,6 +269,11 @@ async function routeApi(pathname, { request, env, ctx }) {
   if (pathname === '/api/signup-gift') {
     if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
     return await signupGift({ request, env });
+  }
+
+  if (pathname === '/api/promo-gift') {
+    if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
+    return await promoGift({ request, env });
   }
 
   if (pathname === '/api/aura-order') {   // 🏮 빛 공방 주문·조회·수령

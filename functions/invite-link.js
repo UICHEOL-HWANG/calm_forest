@@ -1,4 +1,5 @@
 import { readInviteParam } from '../js/referral/rules.js';
+import { readGiftParam } from '../js/promo-gift/rules.js';
 
 const AASA = '/.well-known/apple-app-site-association';
 
@@ -12,6 +13,19 @@ export async function onRequestGet({ request }) {
   const url = new URL(request.url);
   const dest = new URL(inviteLinkTarget(url.pathname), url.origin);
   for (const [k, v] of url.searchParams) if (k !== 'invite') dest.searchParams.append(k, v);
+  return new Response(null, { status: 302, headers: { Location: dest.toString(), 'Cache-Control': 'no-store' } });
+}
+
+export function giftLinkTarget(pathname) {
+  const code = readGiftParam(pathname);
+  return code ? `/?gift=${code}` : '/';
+}
+
+export async function onGiftRequestGet({ request }) {
+  if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method Not Allowed', { status: 405 });
+  const url = new URL(request.url);
+  const dest = new URL(giftLinkTarget(url.pathname), url.origin);
+  for (const [k, v] of url.searchParams) if (k !== 'gift') dest.searchParams.append(k, v);
   return new Response(null, { status: 302, headers: { Location: dest.toString(), 'Cache-Control': 'no-store' } });
 }
 
