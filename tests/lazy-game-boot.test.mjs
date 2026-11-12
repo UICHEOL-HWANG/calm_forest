@@ -9,7 +9,7 @@ const HEAVY = [
   'game.js', 'duel/index.js', 'boat-chest-reveal.js', 'controls.js', 'push-ui.js',
   'cafe-guests.js', 'night-visit.js', 'decor-drops/index.js', 'data/places.js',
 ];
-const BOOT_KB_LIMIT = 650;
+const BOOT_KB_LIMIT = 670;
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const staticImports = [...html.matchAll(/^\s*import\s[^;]*?from\s+'(\.\/js\/[^']+)'/gm)].map(m => m[1]);

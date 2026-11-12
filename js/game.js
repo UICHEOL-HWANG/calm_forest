@@ -3303,6 +3303,16 @@ function grantDecor(id) {
   return true;
 }
 
+export function grantItems(bundle, source = 'promo_gift') {
+  for (const [k, v] of Object.entries(bundle || {})) {
+    if (!(k in gameState.inventory) || !Number.isInteger(v) || v <= 0) continue;
+    gameState.inventory[k] += v;
+    logEcon(source, k, v, gameState.inventory[k]);
+  }
+  requestSave();
+  refreshInventoryUI();
+}
+
 export function getGameState() {
   gameState.playerPos = atRestaurant ? restaurantExitSpot() : atNeighbor ? neighborReturnPos() : (atMirror || mirrorRideActive()) ? mirrorReturnPos() : atDream ? dreamReturnPos() : atMountain ? mountainReturnPos() : delveFloorNow() > 0 ? { x: MINE_GATE.x, z: MINE_GATE.z + 2 } : { x: player.position.x, z: player.position.z };
   if (atHalloween) gameState.playerPos = halloweenReturnPos();

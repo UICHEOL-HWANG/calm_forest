@@ -45,6 +45,7 @@ export const npcAccept = (...a) => need().game.npcAccept(...a);
 export const npcClaim = (...a) => need().game.npcClaim(...a);
 export const markNoticesSeen = (...a) => need().game.markNoticesSeen(...a);
 export const resyncPurchases = (...a) => need().game.resyncPurchases(...a);
+export const grantItems = (...a) => need().game.grantItems(...a);
 
 export const initDuel = (...a) => need().duel.initDuel(...a);
 export const playChestReveal = (...a) => need().chest.playChestReveal(...a);
