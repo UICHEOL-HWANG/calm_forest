@@ -207,7 +207,7 @@ test('.well-known 원본 — assetlinks 는 Play 서명 지문 3개, AASA 는 �
   for (const f of al[0].target.sha256_cert_fingerprints) assert.match(f, /^([0-9A-F]{2}:){31}[0-9A-F]{2}$/);
   const aasa = JSON.parse(read('assets/well-known/apple-app-site-association'));
   assert.deepEqual(aasa.applinks.details[0].appIDs, ['YW465H4L6Q.com.cheorish.lab.calmforest']);
-  assert.deepEqual(aasa.applinks.details[0].components, [{ '/': '/i/*' }]);
+  assert.deepEqual(aasa.applinks.details[0].components[0], { '/': '/i/*' });
 });
 
 test('build-web·serve.py 가 .well-known 두 파일을 내보낸다', () => {

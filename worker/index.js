@@ -46,7 +46,7 @@ import { onRequestGet as cardnewsImg } from '../functions/cardnews-img.js';
 import { onRequestGet as rssFeed } from '../functions/rss.js';
 import { onRequestGet as newsPages } from '../functions/news.js';
 import { onRequestGet as appLink } from '../functions/app-link.js';
-import { onRequestGet as inviteLink, wellKnown } from '../functions/invite-link.js';
+import { onRequestGet as inviteLink, onGiftRequestGet as giftLink, wellKnown } from '../functions/invite-link.js';
 import { onRequestGet as utmLinksGet, onRequestPost as utmLinksPost } from '../functions/api/utm-links.js';
 import { handleGo } from '../functions/go-redirect.js';
 
@@ -70,6 +70,7 @@ export default {
       }
 
       if (pathname.startsWith('/i/')) return await inviteLink({ request });
+      if (pathname.startsWith('/g/')) return await giftLink({ request });
 
       if (pathname === '/.well-known/apple-app-site-association') return await wellKnown({ request, env });
 
