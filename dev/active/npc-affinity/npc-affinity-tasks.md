@@ -42,7 +42,18 @@
 - [ ] 커밋(사용자 요청 시) → 배포 승인 → deploy-checklist (새 꾸미기 id 없음, 단독 배포 가능)
 - [ ] 다음 날 BQ 재검증
 
-## P2
+## P2 (진행 중, 2026-11-13)
+- [x] 스타일 C 기념물형 + 액자 F2 확정, 11종 시안 완성
+- [x] 단짝·가족 편지 22통 확정
+- [x] 보여 주기 A+B+C(💌) 확정, 문구 S1~S12 확정
+- [x] 편지 데이터·영어·테스트 (LETTER_MAX_STAGE 4, 단짝·가족 22통 + bodyEn)
+- [x] js/affinity/art.js (시안 모델에서 생성, 재질별 굽기 2~5메시) · js/data/affinity-decor.js · catalog 등록 22 id · outdoorMesh/indoor decorMesh · 충돌 상자(발자국 85%)
+- [x] 받기 → $w.grantDecor, 🧺 토스트 · 가족 이름표 🌳 (refreshFamilyTags)
+- [x] A 소개 카드(#affintro-modal, 3D 썸네일 js/affinity/thumb.js) + 길 안내(js/affinity/guide.js, flow 'affinity') · B 의뢰 패널 줄(#aff-track) · C 💌(npcGlyph, 의뢰 기호 우선)
+- [x] 실게임: 소개 카드→안내 1/2→2/2→완료, 작물 2개 보충, 편지 4통·꾸미기 지급, 흔들의자 배치(2메시/2,448삼각형), 액자 높이 0.44, 이름표 🌳, 상시 줄 PC(썸네일)·모바일
+- [x] 함정: 토스 아이콘이 이모지를 span/img(.te/.ti)로 바꿈 → CSS 는 자식 결합자(>)나 전용 클래스로만
+- [x] code-reviewer P2: MEDIUM 4(안내 멈춤·상시 줄 갱신·배치 발자국·올빼미 소개) + LOW 4(작물 보충 1회·지급 실패 시 받음 표시 안 함·썸네일 실패 대비·칩 클릭 시 모달 겹침) 수정, 테스트 5,297 통과, 첫 화면 번들 646.1KB(상한 650)
+- [ ] 영어 검수(P1+P2 한꺼번에), 토스 실기기, 커밋, 5곳 동시 배포
 - [ ] 단짝 11종 이름 검수
 - [ ] 렌더 시안: 4명씩 묶어 3안 (11종) + 액자 틀 3안, PC·모바일 실물 크기
 - [ ] `js/affinity/art.js`, 카탈로그 등록(OUTDOOR hidden quest:'affinity' 11, DECOR hidden sm 11)

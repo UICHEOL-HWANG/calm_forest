@@ -60,3 +60,12 @@ Last Updated: 2026-11-13 (P1 구현·검증 완료, 미커밋, 워크트리 feat
 - 월드 말풍선은 이모지만. 문구 금지어: 엠대시, "놀다"
 - 코드 주석 금지
 - E3·E6: 첫날 구간에 호감도 안내 넣지 않기, 배포일을 E3 사전등록에 기록
+
+## P2 결정 (2026-11-13, 사용자)
+- 단짝 아이템 스타일: C 기념물형(다듬은 버전). 시안 `sims/npc-affinity-items-all.html`, 모델 원본 `sims/npc-affinity-items-models.js`(ITEMS_C2 11종 + buildFrameF2 + paintPortrait)
+- 가족 액자: F2 둥근 금테 + 그린 얼굴 + 꽃, 주민 11명 초상(`PORTRAIT`), 시안 `sims/npc-affinity-items-c2.html` ③
+- 단짝·가족 편지 22통(L23~L44): `sims/npc-affinity-copy-p2.html` 원문 그대로 확정
+- 보여 주기: A 첫 소개 카드 + 길 안내(작업대 꽃다발 → 주민 건네기, 작물 모자라면 2개 지급) + B 의뢰 패널 상시 줄 + C 머리 위 💌(편지 안 읽음일 때만)
+- 보여 주기 문구 S1~S12 추천안 확정: `sims/npc-affinity-copy-surfacing.html`. B 줄은 폰(<200px 패널)에서 썸네일·숫자 빼고 진행 막대
+- A·B 는 집 완성(houseStage>=3) 뒤에만 → E3·E6 첫날 구간과 안 겹침
+- 영어: P1 화면·편지(`sims/npc-affinity-en.html`) + P2 편지·보여 주기 영어는 배포 전 한꺼번에 검수
