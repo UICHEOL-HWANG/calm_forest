@@ -84,6 +84,8 @@ import { defaultToolStars, restoreToolStars, restoreForge, forgeCancel } from '.
 import { forgeView, forgeBegin, forgeAbort, forgeFinish, settleForge } from './workbench/forge.js';
 import { initAuction, updateAuction, auctionMapSpot, auctionSpotNow, openAuction, auctionScatterBlocks, auctionOutdoorMesh, auctionDefault, restoreAuction, auctionGuideActive } from './auction/index.js';
 import { refreshPond, updatePond, pondScatterBlocks } from './pond/index.js';
+import { feedPond, openPondBook } from './pond/feed.js';
+import { POND_COPY } from './pond/copy.js';
 import { onPlay, decorBanner, applySetFx } from './decor-drops/index.js';
 import { updateSetFx } from './decor-drops/fx.js';
 import { normalizeDrops } from './decor-drops/rules.js';
@@ -2024,6 +2026,11 @@ export function guideShortAd(slot, list, onDone, caps) { return shortAdButton(sl
 function dailyAdButton(coins, streak) {
   if (!coins || !repeatOpen(gameState.houseStage) || !rewarded?.offer('daily_double')) return null;
   return rewarded.button('daily_double', ['광고 보고', ' ', `🪙 ${coins}`, ' ', '더 받기'], () => { giveReward({ coins }, 'daily_double', 'day' + streak); requestSave(); }, (ok, btn) => { if (ok) btn.remove(); });
+}
+
+export function pondFeedAdButton(onDone) {
+  if (!repeatOpen(gameState.houseStage) || !rewarded?.offer('pond_feed_more')) return null;
+  return rewarded.button('pond_feed_more', ['광고 보고', ' ', POND_COPY.adMore], () => feedPond('ad'), (ok, btn) => onDone?.(ok, btn));
 }
 
 function farmRushGrant(list) {
@@ -7676,6 +7683,7 @@ function handleAction() {
   if (nearDoor === 'warehouse') return withdrawWarehouse();
   if (nearDoor === 'hireboard') return hireBoardInteract();   // 📋 일꾼 게시판 → 고용 창   // 🧺 작물 창고 옆에서 액션 = 내용물 꺼내기
   if (nearDoor === 'trace') { const tr = traceTarget(); if (tr) return investigateTrace(tr); }
+  if (nearDoor === 'pond') return openPondBook();
   if (nearDoor === 'pet') return commandPet();   // 🐾 밭 근처에서 액션 = 맡기기(물·잡초·해충 최대 5칸)
   if (nearDoor === 'mine') return enterMine();
   if (typeof nearDoor === 'string' && nearDoor.startsWith('delve_') && handleDelveDoor(nearDoor)) return;

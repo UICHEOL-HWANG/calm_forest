@@ -12,3 +12,24 @@ test('낚시 보장: 다음 한 번만, DDA 안 건드림, assist 기록', () =>
   assert.match(f, /if \(!assisted\) settleDifficulty\('fish', 1\);/);
   assert.match(f, /\.\.\.\(assisted \? \{ assist: 1 \} : \{\}\)/);
 });
+
+test('먹이·수첩 연결', () => {
+  const f = src('js/pond/feed.js');
+  assert.match(f, /export function feedPond\(kind = 'free'\)/);
+  assert.match(f, /export function openPondBook\(\)/);
+  assert.match(f, /trackEvent\('pond_feed', \{ kind, count: pondCount\(\) \}\)/);
+  assert.match(f, /trackEvent\('pond_book_open', \{ count: book\.got \}\)/);
+  assert.match(f, /buffs\.luck = Math\.max\(buffs\.luck, clock\.elapsedTime\) \+ FEED_BUFF_SEC/);
+  assert.doesNotMatch(f, /^\s*\/\//m);
+});
+
+test('🐟 행동 버튼: 프롬프트·아이콘·분기·광고', () => {
+  const d = src('js/spaces/doors.js');
+  assert.match(d, /if \(!prompt && pondNear\(\)\) \{ \$w\.nearDoor = 'pond'; prompt = POND_COPY\.prompt; \}/);
+  const h = src('index.html');
+  assert.equal((h.match(/\|🗑️\|🐟\)\/u/g) || []).length, 2);
+  const g = src('js/game.js');
+  assert.match(g, /if \(nearDoor === 'pond'\) return openPondBook\(\);/);
+  assert.match(g, /rewarded\.button\('pond_feed_more', \['광고 보고', ' ', POND_COPY\.adMore\]/);
+  assert.match(src('js/guide/prepass-rules.js'), /'sell_bonus', 'pond_feed_more'\]/);
+});

@@ -18,6 +18,8 @@ import { mudflat, mudflatHint, nearMudflatExit, MUDFLAT_COPY } from './mudflat.j
 import { dive, diveHint, nearDiveExit, DIVE_COPY } from './dive.js';
 import { port, portPrompt, enterPort, guideHides } from '../port/index.js';
 import { plazaSpot } from '../plaza/index.js';
+import { pondNear } from '../pond/index.js';
+import { POND_COPY } from '../pond/copy.js';
 import { auctionSpotNow, auctionPrompt } from '../auction/index.js';
 import { delvePrompt, delveFloorNow } from './delve.js';
 import { trackEvent } from '../analytics.js';
@@ -477,6 +479,7 @@ export function updateDoorInteract() {
   //   ⚠️ 안내는 **프롬프트 줄에만** — 월드 라벨로 띄우면 다른 라벨을 가린다(🎀가게와 같은 규칙).
   //   🔍 텃밭 방문객을 살펴볼 수 있으면 그게 먼저 — farmActionFirst 는 손님이 있으면 false 라 그것만으론 못 막는다.
   //      안 비키면 handleAction 맨 위의 문 분기가 commandPet 으로 채가서 손님을 못 살펴봤다(2026-10-12).
+  if (!prompt && pondNear()) { $w.nearDoor = 'pond'; prompt = POND_COPY.prompt; }
   if (!prompt && !farmActionFirst() && !visitorTarget() && petChoresNear()) { $w.nearDoor = 'pet'; prompt = '🐾 맡기기'; }
   if (placingOutdoor) prompt = null;
   if (prompt !== lastDoorPrompt) { $w.lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt); }
