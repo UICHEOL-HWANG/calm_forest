@@ -3,6 +3,7 @@ import { capPlugin } from './cap-bridge.js';
 import { IS_ANDROID, IS_IOS } from './platform.js';
 import { IS_DEV_SESSION } from './config.js';
 import { requestTrackingConsent } from './tracking-consent.js';
+import { admobImpressionJson } from './tenjin-ad-revenue.js';
 
 const SDK_KEYS = {
   ios: 'GN4VXMC8WVUBHYVNTW6XZINFV2DFU97E',
@@ -44,6 +45,14 @@ export async function identifyTenjinUser(userId) {
   const sdk = await bootTenjin();
   if (sdk) await sdk.setCustomerUserId({ userId: String(userId) }).catch((error) =>
     console.warn('[tenjin] user ID failed', error));
+}
+
+export async function trackTenjinAdImpression(paid) {
+  const json = admobImpressionJson(paid);
+  if (!json) return;
+  const sdk = await bootTenjin();
+  if (sdk) await sdk.eventAdImpressionAdMob({ json }).catch((error) =>
+    console.warn('[tenjin] ad impression failed', error));
 }
 
 export async function trackTenjinGameStart() {

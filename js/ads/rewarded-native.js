@@ -52,7 +52,7 @@ async function runTracking(plugin) {
   }
 }
 
-function watchShow({ plugin, listen, timeoutMs }) {
+function watchShow({ plugin, listen, timeoutMs, onPaid }) {
   return new Promise((resolve) => {
     const subs = [];
     const state = { rewarded: false, paid: null };
@@ -70,6 +70,7 @@ function watchShow({ plugin, listen, timeoutMs }) {
     const settled = () => state.rewarded && state.paid;
     subs.push(listen(EVENTS.impression, (v) => {
       state.paid = v || null;
+      if (v) { try { onPaid(v); } catch { } }
       if (lateTimer && settled()) finish({});
     }));
     subs.push(listen(EVENTS.reward, () => {
@@ -94,7 +95,7 @@ function paidFields(paid) {
   };
 }
 
-export function createRewardedAds({ platform, plugin, listen, testMode = false, showTimeoutMs = SHOW_TIMEOUT_MS }) {
+export function createRewardedAds({ platform, plugin, listen, testMode = false, showTimeoutMs = SHOW_TIMEOUT_MS, onPaid = () => {} }) {
   const available = NATIVE.has(platform) && !!plugin;
   let initPromise = null;
   let busy = false;
@@ -138,7 +139,7 @@ export function createRewardedAds({ platform, plugin, listen, testMode = false, 
       if (code === NOFILL_CODE[platform]) return { result: 'nofill' };
       return { result: 'fail', reason: `load:${code}:${reasonOf(e)}` };
     }
-    const shown = await watchShow({ plugin, listen, timeoutMs: showTimeoutMs });
+    const shown = await watchShow({ plugin, listen, timeoutMs: showTimeoutMs, onPaid });
     if (shown.rewarded) return { result: 'complete', ...paidFields(shown.paid) };
     if (shown.error) return { result: 'fail', reason: shown.error, ...paidFields(shown.paid) };
     return { result: 'skip', ...paidFields(shown.paid) };

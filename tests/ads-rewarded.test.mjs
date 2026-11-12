@@ -88,6 +88,21 @@ test('보상 전에 닫으면 skip, 수익은 그래도 담는다', async () => 
   assert.equal(f.live(), 0);
 });
 
+test('노출 수익이 오면 onPaid 로 원본 데이터를 넘긴다', async () => {
+  const f = fakeAdMob();
+  const paid = [];
+  const ads = createRewardedAds({ platform: 'android', plugin: f.plugin, listen: f.listen, onPaid: (v) => paid.push(v) });
+  await ads.showRewarded('house');
+  assert.deepEqual(paid, [{ adUnitId: 'u', valueMicros: 1234, currencyCode: 'USD', precision: 1 }]);
+});
+
+test('onPaid 가 던져도 광고 결과는 그대로다', async () => {
+  const f = fakeAdMob();
+  const ads = createRewardedAds({ platform: 'android', plugin: f.plugin, listen: f.listen, onPaid: () => { throw new Error('x'); } });
+  assert.equal((await ads.showRewarded('house')).result, 'complete');
+  assert.equal(f.live(), 0);
+});
+
 test('수익 콜백이 없으면 valueMicros 키가 없다', async () => {
   const f = fakeAdMob({ script: ['reward', 'dismissed'] });
   const ads = createRewardedAds({ platform: 'android', plugin: f.plugin, listen: f.listen });

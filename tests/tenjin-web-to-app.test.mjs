@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { captureTouch, storeUrl, DEFAULT_APP_BANNER } from '../js/app-banner.js';
 import { tenjinClickUrl } from '../js/tenjin-web-to-app.js';
+import { TUNING } from '../js/tuning.js';
 
 const cfg = {
   ...DEFAULT_APP_BANNER,
@@ -26,6 +27,23 @@ test('W2 Meta 클릭에는 광고 세트·소재·Meta 식별자를 Tenjin 매�
   assert.equal(url.searchParams.get('tenjin_parameter_0'), 'fb.1.1.abc');
   assert.equal(url.searchParams.get('tenjin_parameter_1'), 'click-1');
   assert.equal(url.searchParams.get('platform'), 'ios');
+});
+
+test('운영 설정의 Android W2 클릭은 Tenjin Android 링크로 보낸다', () => {
+  const touch = { utm: { source: 'meta', term: 'w2_general_origin_v2', content: 'w2_general_origin_v2' } };
+  const url = new URL(tenjinClickUrl('android', TUNING.appBanner, touch));
+  assert.equal(url.hostname, 'track.tenjin.com');
+  assert.equal(url.searchParams.get('platform'), 'android');
+  assert.equal(url.searchParams.get('bundle_id'), 'com.cheorish.lab.calmforest');
+  assert.equal(url.searchParams.get('campaign_name'), 'w2_general_origin_v2');
+});
+
+test('W3 이후 주차 광고 클릭도 Tenjin에 보낸다', () => {
+  const touch = { utm: { source: 'meta', campaign: 'webapp_202611', term: 'w3_general_v3', content: 'w3_general_v3' } };
+  const url = new URL(tenjinClickUrl('ios', cfg, touch));
+  assert.equal(url.searchParams.get('campaign_name'), 'w3_general_v3');
+  const later = { utm: { source: 'meta', content: 'w12_x' } };
+  assert.equal(new URL(tenjinClickUrl('android', TUNING.appBanner, later)).searchParams.get('creative_name'), 'w12_x');
 });
 
 test('비광고 방문과 W1은 Tenjin에 보내지 않고 기존 스토어 주소는 보존한다', () => {
