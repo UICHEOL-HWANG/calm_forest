@@ -1,5 +1,5 @@
 import { Input } from '../game-lazy.js';
-import { LANG } from '../i18n.js';
+import { LANG, t } from '../i18n.js';
 import { Sound } from '../sound.js';
 
 let $, ui, layoutBuffs;
@@ -360,7 +360,7 @@ function mgResultChrome(res) {
   STAGE_HUDS.forEach(id => $(id).classList.remove('show'));
   $('mg-tap').style.display = 'none'; $('mg-judge').textContent = ''; $('mg-tip').textContent = '';
   $('mgr-ico').textContent = res.tier.ico;
-  $('mgr-title').textContent = `${res.tier.name}!`;
+  $('mgr-title').textContent = `${t(res.tier.name)}!`;
   $('mgr-stats').innerHTML = `<span>점수 <b>${res.score}</b>점${res.isBest ? ' ⭐신기록!' : ''}</span><span>최대 콤보 <b>${MG.maxCombo}</b></span><span>누적 요리 <b>${res.cooked}</b>회</span>`;
   $('mg-result').classList.add('show');
   $('mg-card').classList.add('done');
