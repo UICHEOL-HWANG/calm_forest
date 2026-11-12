@@ -545,8 +545,8 @@
     #boat-shop .dm-actions button { padding: 5px 14px; }
   }
   /* 튜토리얼 / 씨앗 안내 모달 (공통 카드 스타일) */
-  #tutorial-modal, #seed-modal, #hint-modal, #photo-modal, #char-modal, #notice-modal, #settings-modal, #invite-modal, #daily-modal { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
-  #tutorial-modal.show, #seed-modal.show, #hint-modal.show, #photo-modal.show, #char-modal.show, #notice-modal.show, #settings-modal.show, #invite-modal.show, #daily-modal.show { display: grid; }
+  #tutorial-modal, #seed-modal, #hint-modal, #photo-modal, #char-modal, #notice-modal, #npcbook-modal, #settings-modal, #invite-modal, #daily-modal { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
+  #tutorial-modal.show, #seed-modal.show, #hint-modal.show, #photo-modal.show, #char-modal.show, #notice-modal.show, #npcbook-modal.show, #settings-modal.show, #invite-modal.show, #daily-modal.show { display: grid; }
   #daily-modal { z-index: 44; }
   #daily-modal .daily-card { width: min(380px, 94vw); background: #f6f0e4; border-radius: 28px; padding: 14px; text-align: left; }
   #hint-modal .tut-card.as-card, #nudge-modal .daily-card { width: min(380px, 94vw); background: #f6f0e4; border-radius: 28px; padding: 14px; text-align: left; }
@@ -627,6 +627,42 @@
     .dc-season { font-size: 11.5px; }
   }
   #notice-modal { padding-top: var(--top-inset); box-sizing: border-box; }
+  .nb-tabs { display: flex; gap: 6px; padding: 0 16px 8px 18px; }
+  .nb-tabs[hidden] { display: none; }
+  .nb-tabs button { border: 1.5px solid #f0e6d4; background: #fff; color: #6f6250; border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; }
+  .nb-tabs button.on { background: #2f3a33; border-color: #2f3a33; color: #fffaf1; }
+  .nb-att { margin: 10px 0 0; display: inline-block; font-size: 13px; font-weight: 800; color: #7a5a30; background: #f3ece0; border-radius: 10px; padding: 6px 10px; }
+  .nb-claim { flex: 0 0 auto; margin: 0 16px 16px; border: none; border-radius: 14px; padding: 13px; background: #2f3a33; color: #fffaf1; font-weight: 800; font-size: 15px; cursor: pointer; }
+  .nb-claim:disabled { opacity: .5; cursor: default; }
+  #npcbook-modal { padding-top: var(--top-inset); box-sizing: border-box; }
+  .nbk { width: min(560px, 94vw); max-height: min(640px, calc(100dvh - 24px - var(--top-inset))); display: flex; flex-direction: column; background: #fffaf1; color: #2f3a33; border-radius: 26px; overflow: hidden; box-shadow: 0 24px 60px rgba(30, 40, 30, .35); }
+  .nbk-head { display: flex; align-items: center; gap: 8px; padding: 18px 16px 10px 18px; }
+  .nbk-head h2 { margin: 0; font-size: 21px; font-weight: 900; letter-spacing: -.03em; }
+  #npcbook-body { overflow-y: auto; padding: 4px 16px 18px; }
+  .nbk-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .nbk-card { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 6px; border: 1.5px solid #f0e6d4; border-radius: 16px; background: #fff; font: inherit; color: inherit; cursor: pointer; text-align: center; word-break: keep-all; }
+  .nbk-card.fresh { background: #faf6ee; }
+  .nbk-face { font-size: 26px; line-height: 1.1; }
+  .nbk-face.big { font-size: 34px; }
+  .nbk-name { font-size: 12.5px; font-weight: 800; }
+  .nbk-stage { font-size: 11.5px; font-weight: 800; color: #b0563a; }
+  .nbk-next { font-size: 11px; color: #8a7a66; }
+  .nbk-dhead { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .nbk-back { width: 34px; height: 34px; border: none; border-radius: 50%; background: #f3ece0; font-size: 18px; cursor: pointer; }
+  .nbk-who { display: flex; flex-direction: column; gap: 3px; }
+  .nbk-who b { font-size: 17px; }
+  .nbk-chip, .npc-chip { display: inline-block; font-size: 12px; font-weight: 800; border-radius: 999px; padding: 3px 10px; background: var(--nt, #f3ece0); color: var(--ni, #6f6250); white-space: nowrap; }
+  .nbk-gift { margin: 6px 0 10px; font-size: 13px; font-weight: 700; color: #7a6a58; }
+  .nbk-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+  .nbk-rows li { display: flex; align-items: center; gap: 8px; border-radius: 12px; padding: 7px 10px; background: #f3ece0; color: #7a6a58; font-size: 13px; }
+  .nbk-rows li.done { background: #fbe4da; color: #b0563a; }
+  .nbk-rows li.now { background: #2f3a33; color: #fffaf1; }
+  .nbk-rl { font-weight: 800; }
+  .nbk-rr { margin-left: auto; font-weight: 700; text-align: right; }
+  .nbk-letters { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .nbk-letter { position: relative; border: 1.5px solid #f0e6d4; background: #fff; border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 12.5px; font-weight: 800; cursor: pointer; }
+  .nbk-letter.unread::after { content: ''; position: absolute; top: 2px; right: 2px; width: 7px; height: 7px; border-radius: 50%; background: #e86f3c; }
+  @media (max-width: 480px) { .nbk-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; } }
   .nb { position: relative; width: min(420px, 94vw); height: min(640px, calc(100dvh - 24px - var(--top-inset))); display: flex; background: #fffaf1; color: #2f3a33; border-radius: 26px; overflow: hidden; box-shadow: 0 24px 60px rgba(20,40,30,.4); text-align: left; animation: floatUp .45s ease both; }
   .nb-list { flex: 1; min-width: 0; display: flex; flex-direction: column; }
   .nb-head { display: flex; align-items: center; gap: 8px; padding: 18px 16px 10px 18px; }
@@ -2654,8 +2690,9 @@
   #npc-modal { z-index: 30; }
   .npc-card { width: min(640px, 100%); padding: 16px 18px 16px 92px; }
   .npc-card .tk-scroll { max-height: calc(100dvh - 72px - var(--top-inset, 0px)); overflow-y: auto; padding: 2px 4px 5px 3px; margin: -2px -4px -5px -3px; }
-  .npc-head { display: flex; align-items: center; gap: 8px; }
-  #npc-hearts { font-size: 12px; letter-spacing: 1px; }
+  .npc-head { display: flex; align-items: center; gap: 4px 8px; flex-wrap: wrap; }
+  .npc-chip { border: none; font-family: inherit; cursor: pointer; }
+  .npc-chip:empty { display: none; }
   #npc-line { margin: 4px 0 10px; font-size: 15px; line-height: 1.5; word-break: keep-all; }
   #npc-quest { background: var(--nt); border-radius: 14px; padding: 9px 12px; margin-bottom: 12px; }
   #npc-quest.hidden { display: none; }
@@ -3024,6 +3061,7 @@
       <button id="album-btn"><span class="uico">📸</span><span class="ulbl">사진첩</span></button>
       <button id="decor-set-btn"><span class="uico">🎁</span><span class="ulbl">꾸미기 세트</span></button>
       <button id="inbox-btn"><span class="uico">📮</span><span class="ulbl">소식함</span></button>
+      <button id="npcbook-btn"><span class="uico">📒</span><span class="ulbl">주민 수첩</span></button>
       <button id="invite-btn" style="display:none;"><span class="uico">🤝</span><span class="ulbl">친구 초대</span></button>
       <hr class="util-sep">
       <button id="lb-btn"><span class="uico">🏆</span><span class="ulbl">리더보드</span></button>
@@ -3787,7 +3825,7 @@
     <div class="npc-card tk-box">
       <div class="tk-face" id="npc-emoji">🙂</div>
       <div class="tk-scroll">
-        <div class="npc-head"><span id="npc-name" class="tk-name"></span><span id="npc-hearts"></span></div>
+        <div class="npc-head"><span id="npc-name" class="tk-name"></span><button id="npc-hearts" class="npc-chip" type="button"></button></div>
         <p id="npc-line"></p>
         <div id="npc-quest">
           <div class="nq-title" id="npc-qtitle"></div>
@@ -3873,10 +3911,18 @@
     <div id="notice-box" class="nb">
       <div class="nb-list">
         <div class="nb-head"><h2 id="notice-title">📮 새 소식</h2><span id="notice-count" class="nb-count"></span><button id="notice-x" class="nb-x" type="button" aria-label="닫기">✕</button></div>
+        <div id="notice-tabs" class="nb-tabs" hidden><button type="button" data-tab="news" class="on">📮 소식</button><button type="button" data-tab="letters">✉️ 편지</button></div>
         <div id="notice-list" class="nb-items"></div>
         <button id="notice-ok">알겠어요 🌱</button>
       </div>
       <div id="notice-detail" class="nb-det"></div>
+    </div>
+  </div>
+
+  <div id="npcbook-modal">
+    <div class="nbk">
+      <div class="nbk-head"><h2>📒 주민 수첩</h2><button id="npcbook-x" class="nb-x" type="button" aria-label="닫기">✕</button></div>
+      <div id="npcbook-body"></div>
     </div>
   </div>
 
@@ -4475,6 +4521,7 @@
       el.appendChild(box);
     }
 
+    let noticeArgs = { list: [], kind: 'inbox', seenId: 0 };
     let noticeShown = [];   // 📮 지금 소식 창에 띄운 목록 — 닫을 때 가장 큰 id 를 읽음으로 기록
     let questLast = null;
     const questBarLast = new Map();
@@ -4708,8 +4755,9 @@
         $('npc-emoji').textContent = view.npc.emoji || '🙂';
         applyTone(document.querySelector('#npc-modal .tk-box'), toneById(view.npc.id));
         $('npc-name').textContent = view.npc.name;
-        const aff = Input.affinityOf(view.npc.id);
-        $('npc-hearts').textContent = aff > 0 ? ('❤️'.repeat(Math.min(aff, 5)) + (aff > 5 ? `×${aff}` : '')) : '';
+        const chipNpc = view.npc.id;
+        $('npc-hearts').textContent = Input.affinityVisible(chipNpc) ? Input.affinityChip(chipNpc) : '';
+        $('npc-hearts').onclick = () => { closeNpc(); ui.openNpcBook(chipNpc, 'chip'); };
         $('npc-line').textContent = view.line;
         const quest = $('npc-quest');
         if (view.mode === 'done') {
@@ -5066,8 +5114,22 @@
       },
       // 📮 소식함 — kind 'new'(출석 직후: 안 읽은 것만) / 'inbox'(메뉴: 최근 목록). 닫으면 notice-ok 리스너가 읽음 처리
       //    유저·관리자 문자열은 전부 textContent 로만 넣는다(innerHTML 금지). 영어 모드 본문은 pickText 가 *_en 우선
-      showNotices(list, kind = 'inbox', seenId = 0) {
+      showNotices(list, kind = 'inbox', seenId = 0, opts = {}) {
         $('notice-title').textContent = kind === 'new' ? '📮 새 소식' : '📮 소식함';
+        const tabs = $('notice-tabs');
+        tabs.hidden = kind !== 'inbox';
+        noticeArgs = { list, kind, seenId };
+        const letterTab = kind === 'inbox' && opts.tab === 'letters';
+        tabs.querySelectorAll('button').forEach(b => b.classList.toggle('on', (b.dataset.tab === 'letters') === letterTab));
+        if (letterTab) {
+          import('./js/affinity/letters-ui.js').then(({ renderLetters }) => {
+            renderLetters({ box: $('notice-box'), wrap: $('notice-list'), det: $('notice-detail'), countEl: $('notice-count'),
+              Input, t, toast: (m) => ui.toast(m, 2000), focusKey: opts.key || null, wide: () => matchMedia('(min-width: 720px)').matches });
+            Input.setAnalog(0, 0);
+            $('notice-modal').classList.add('show');
+          });
+          return;
+        }
         const box = $('notice-box'), wrap = $('notice-list'), det = $('notice-detail');
         wrap.innerHTML = ''; det.innerHTML = '';
         box.classList.remove('open');
@@ -5801,7 +5863,7 @@
         b.addEventListener('click', () => {
           const res = Input.giveGift(g.id);
           if (!res.ok) { ui.toast(res.msg || '줄 수 없어요'); return; }
-          ui.toast(`${res.ico} 선물 전달! ${res.npc} ❤️${res.affinity}` + (res.reward ? ` · 답례 ${res.reward}` : ''));
+          if (!res.toasted) ui.toast(`${res.ico} 선물 전달! ${res.npc} ❤️${res.affinity}`);
           closeNpc();
         });
         actions.appendChild(b);
@@ -6433,6 +6495,25 @@
       markNoticesSeen(noticeShown); noticeShown = [];
     });
     $('notice-x').addEventListener('click', () => $('notice-ok').click());
+    $('notice-tabs').addEventListener('click', (e) => {
+      const tab = e.target.closest('button')?.dataset.tab;
+      if (!tab) return;
+      ui.showNotices(noticeArgs.list, 'inbox', getGameState().noticeSeenId || 0, { tab });
+    });
+    ui.openNpcBook = async (npcId = null, from = 'menu') => {
+      $('topleft').classList.remove('open');
+      Input.trackBookOpen(from, npcId);
+      const { renderBook } = await import('./js/affinity/book-ui.js');
+      renderBook({ root: $('npcbook-body'), Input, t, focusId: npcId, onLetter: async (key) => {
+        $('npcbook-modal').classList.remove('show');
+        const rows = await fetchNotices(0);
+        ui.showNotices(rows, 'inbox', getGameState().noticeSeenId || 0, { tab: 'letters', key });
+      } });
+      Input.setAnalog(0, 0);
+      $('npcbook-modal').classList.add('show');
+    };
+    $('npcbook-btn').addEventListener('click', () => ui.openNpcBook(null, 'menu'));
+    $('npcbook-x').addEventListener('click', () => $('npcbook-modal').classList.remove('show'));
     // 🤝 친구 초대 시트 — 코드는 처음 열 때 발급. 앱은 네이티브 공유 시트, 웹은 navigator.share → 복사
     $('invite-btn').addEventListener('click', () => {
       $('topleft').classList.remove('open');

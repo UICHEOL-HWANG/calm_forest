@@ -462,3 +462,8 @@ enter_restaurant,crafting,restaurant,2,N,not_fired,0,0,,,,js/spaces/restaurant.j
 exit_restaurant,crafting,restaurant,2,N,not_fired,0,0,,,,js/spaces/restaurant.js:156,식당에서 마을로 나왔을 때 (영업 중이면 결과 없이 끝),
 restaurant_service,crafting,restaurant,1,N,not_fired,0,0,,,star|served|avg_score|dda,js/restaurant/runtime.js:147,"식당 저녁 영업 한 판이 끝났을 때 (star=영업 때 별 단계, served=받은 손님 수, avg_score=못 받은 주문을 1점으로 센 평균 별점, dda=영업 뒤 손님 간격 배율)",
 restaurant_star_up,crafting,restaurant,1,N,not_fired,0,0,,,star,js/restaurant/runtime.js:148,식당 평판 별이 올랐을 때 (star=오른 뒤 별 단계),
+affinity_stage,progression,npc_affinity,2,N,not_fired,0,0,,,npc|stage|via,js/affinity/index.js:45,"주민 호감도 단계가 올랐을 때 (stage=1 아는 사이~5 가족, via=gift/repeat/daily/retro)",
+affinity_gift_capped,social,npc_affinity,3,N,not_fired,0,0,,,npc,js/affinity/index.js:63,"오늘 선물 하트 상한(주민당 2)을 넘긴 선물을 줬을 때",
+affinity_letter_open,social,npc_affinity,2,N,not_fired,0,0,,,npc|stage,js/affinity/index.js:125,"소식함 편지 칸에서 주민 편지를 처음 열었을 때",
+affinity_reward_claim,economy,npc_affinity,2,N,not_fired,0,0,,,npc|stage,js/affinity/index.js:135,"편지에 동봉된 꾸러미·보상을 받았을 때",
+npc_book_open,ui,npc_affinity,2,N,not_fired,0,0,,,from|npc,js/affinity/index.js:188,"주민 수첩을 열었을 때 (from=chip/menu)",

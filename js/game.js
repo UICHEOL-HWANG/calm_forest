@@ -268,6 +268,10 @@ import {
   withdrawWarehouse,
 } from './spaces/outdoor-decor.js';   // 📦 🪵 야외 장식·창고·선물 (구역 머리말 — 분리 2단계)
 import {
+  affinityChip, affinityLetters, affinityVisible, claimLetter, npcBook, onLettersChanged, owlDailyAffinity, readLetter,
+  syncAffinityLetters, trackBookOpen, unreadLetterCount,
+} from './affinity/index.js';
+import {
   rebuildFarm, spawnFarmGate, surveyBenchWorld, surveyDeskWorld,
 } from './spaces/farm-field.js';   // 📦 🪧 표지판·텃밭 게이트·측량소·텃밭 필드 (구역 머리말 — 분리 2단계)
 import {
@@ -1548,12 +1552,13 @@ async function prefetchNotices() {
   const since = gameState.noticeSeenId || 0;
   const rows = await fetchNotices(since, { ascending: true });   // 오래된 순 — 20건 넘게 밀려도 읽음 id 가 건너뛰지 않게
   pendingNotices = unreadNotices(rows, since);
-  ui.setUnread?.(pendingNotices.length);
+  refreshUnread();
 }
+function refreshUnread() { ui.setUnread?.(pendingNotices.length + unreadLetterCount()); }
 export function markNoticesSeen(list) {
   const id = maxId(list);
   pendingNotices = pendingNotices.filter(n => n.id > id);
-  ui.setUnread?.(pendingNotices.length);
+  refreshUnread();
   if (id <= (gameState.noticeSeenId || 0)) return;
   gameState.noticeSeenId = id;
   requestSave();
@@ -2225,6 +2230,13 @@ export const Input = {
   craftGift(id) { return craftGift(id); },              // 선물 제작
   giveGift(id) { return giveGift(id); },                // 근처 주민에게 선물
   affinityOf(npcId) { return gameState.affinity[npcId] || 0; }, // 친밀도
+  affinityChip(npcId) { return affinityChip(npcId); },
+  affinityVisible(npcId) { return affinityVisible(npcId); },
+  npcBook() { return npcBook(); },
+  affinityLetters() { return affinityLetters(); },
+  readLetter(key) { readLetter(key); },
+  claimLetter(key) { return claimLetter(key); },
+  trackBookOpen(from, npc) { trackBookOpen(from, npc); },
   // ── 💬 잡담 ────────────────────────────────────────────────
   //  보상이 없다. 친밀도도 코인도 안 준다 — 선물(재료를 쓴다)·접객의 가치를 희석하지 않기 위해서다.
   //  하루 주민당 TALK_PER_DAY 번. 다 쓰면 그 주민은 작별 문구만 남긴다.
@@ -2611,6 +2623,8 @@ export async function enterGame() {
   refreshStations();
   catchUpCraft();                      // 🔥 자는 사이 다 구워진 게 있으면 알린다
   settleForge(false);
+  onLettersChanged(refreshUnread);
+  syncAffinityLetters();
   prefetchNotices();                   // 📮 안 읽은 소식을 미리 받아 둔다(await 안 함 — 출석 모달을 닫을 때 준비돼 있으면 이어서 띄운다)
   // 테스트: ?house=4|5|6 — 증축 단계 미리보기(?weather= 와 같은 개발용 파라미터)
   const _hq = parseInt(_wq.get('house') || '', 10);
@@ -8455,7 +8469,8 @@ export function npcClaim() {
       st.hidden = false;
       ui.toast?.(`📜 ${bp.name} 도면을 받았어요! 작업대 🔧 도구 탭에서 만들 수 있어요`, 3200);
       trackEvent('hidden_quest_clear', { npc: o.def.id, tool: q.tool });   // [GA4] 문턱 도달 → 발견 → 완료 퍼널
-    } else if (repeating) st.repeat.done = true; else st.idx++;
+    } else if (repeating) st.repeat.done = true;
+    else { st.idx++; if (o.def.daily && st.idx === DAILY_COUNT) owlDailyAffinity(); }
     st.given = false; st.progress = 0; st.readyToasted = false; st.acceptedAt = null;
     gameState.story.q = (gameState.story.q || 0) + 1; syncStory('quest');   // 📖 2장(이웃들) 진행
     if (!currentQuest(o.def, st)) { st.allDone = true; syncBadges(); } // 🏅 체인 완료 배지(패널은 아래 refreshQuestPanel 이 다시 그린다)
