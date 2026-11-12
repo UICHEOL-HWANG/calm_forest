@@ -30,7 +30,7 @@ test('enterPlay 가 플랫폼과 무관하게 셸을 켜고, 공용 훅은 셸�
   assert.match(HTML, /shell\?\.onInv\(inv\);/);
   assert.match(HTML, /setUnread\(n\) \{ shell\?\.setUnread\(n\); menuSheet\.setUnread\(n\); \}/);
   assert.match(HTML, /if \(shell\) \{ shell\.layoutLeft\(\); return; \}/);
-  assert.match(HTML, /if \(shell\) \{\s*const keys = /);
+  assert.match(read('js/game-ui/bag.js'), /if \(shell\(\)\) \{\s*const keys = /);
 });
 
 test('퀘스트 카드는 오른쪽 🎒📖☰ 와 겹치면 그 간격까지만 폭을 줄인다', () => {

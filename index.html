@@ -4016,19 +4016,17 @@
 
   <script type="module">
     import { hasStoredAuthSession, loginFirst } from './js/boot-order.js';
-    import { preloadSupabase, initAuth, signInWithGoogle, signInWithApple, requestEmailCode, verifyEmailCode, holdGuestForLogin, signInWithToss, signInWithPlayGames, signInWithGameCenter, deleteMyAccount, signInAsGuest, startLocalGuest, loadGame, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow, fetchNotices, insertInstallAttribution, insertInstallSurvey } from './js/supabase-client.js';
+    import { preloadSupabase, initAuth, signInWithGoogle, signInWithApple, requestEmailCode, verifyEmailCode, holdGuestForLogin, signInWithToss, signInWithPlayGames, signInWithGameCenter, deleteMyAccount, signInAsGuest, startLocalGuest, loadGame, signOut, submitFeedback, state as authState, fetchNotices, insertInstallAttribution, insertInstallSurvey } from './js/supabase-client.js';
     import { renderDailyCard } from './js/daily-card.js';
-    import { hydrateIcons, setIcon, iconText, iconHtml, startEmojiIcons } from './js/icons/index.js';
+    import { hydrateIcons, setIcon, iconHtml, startEmojiIcons } from './js/icons/index.js';
     import { renderToast, renderTiles, buffTiles, fillTiles } from './js/ui-cards.js';
     import { mountEmailLogin } from './js/auth/email-login.js';   // ✉️ 이메일 코드 로그인(웹·itch)
     import { mountInAppLogin, INAPP_COPY, trackHandoffArrival } from './js/auth/in-app-login.js';
     import { e5Decision } from './js/exp-e5-boot.js';
     import { guestFirst, E5_COPY } from './js/exp-e5.js';
-    import { savePhotoNative, sharePhotoNative, shareUrlNative } from './js/photo-native.js';   // 📱 앱: WebView 는 download·share 를 못 한다
+    import { shareUrlNative } from './js/photo-native.js';   // 📱 앱: WebView 는 download·share 를 못 한다
     import { capPlugin } from './js/cap-bridge.js';
     import { bootTenjin, identifyTenjinUser, trackTenjinGameStart } from './js/tenjin-native.js';
-    import { SELL_ICO_G } from './js/data/sell-icons.js';
-    import { FORAGE_KEYS, FORAGE_META } from './js/forage/logic.js';
     import { consumeExit, markExit } from './js/exit-flag.js';   // 🚪 나가기 직후엔 토스·플레이 앱 자동 연결을 건너뛴다 · 🗑️ 계정 삭제 뒤에도
     import { pickText, quoteLine, parseBody, leadEmoji, noticeTone } from './js/notices.js';   // 📮 소식함 — 언어별 본문·답장 원문 인용·'|' 표 파서
     import { isTouchDevice } from './js/touch-sim.js';
@@ -4041,16 +4039,10 @@
     import { bootAppBanner, mountAppBanner } from './js/app-banner-ui.js';
     import { mountLoginStore } from './js/login-store-ui.js';
     import { createLoginDwell } from './js/login-dwell.js';
-    import { renderDock } from './js/boat/dock-ui.js';
     import { resultCardHtml } from './js/boat/result-card.js';
     import { BOATS } from './js/boat/boats.js';
     import { RIVER_LEN } from './js/boat/consts.js';
     import { questPanelView } from './js/quest-panel-view.js';
-    import { createForgeGame } from './js/workbench/forge-ui.js';
-    import { toolView, outView, giftView, carveView, pickSel, allItems, tourPick } from './js/workbench/bench-view.js';
-    import { listHtml, sheetHtml } from './js/workbench/bench-ui.js';
-    import { benchSteps } from './js/onboarding/bench-steps.js';
-    import { FORGE_COPY } from './js/workbench/copy.js';
     import { trackLogin, trackEvent, setGaUser, onTrack, setInstallUserProps, setSurveyUserProps } from './js/analytics.js';
     import { bootMetaPixel, metaFromTrack, metaSignup } from './js/meta-pixel.js';   // 📣 Meta Pixel(웹 전용) — 광고 → 가입 → 결제 여정
     import { bootInstallReferrer, syncInstallAttribution, cachedInstallAttribution } from './js/install-referrer-boot.js';   // 📲 안드로이드 설치 채널(Play Install Referrer)
@@ -6079,7 +6071,7 @@
           initCafeGuests();
           initNightVisit();
           initDuel();
-          gameUi = installGameUi({ $, ui, layoutBuffs, lastInv: () => lastInv });
+          gameUi = installGameUi({ $, ui, layoutBuffs, TOUCH, spot, refreshActionIcon, escapeHtml, isGuestNow, lastInv: () => lastInv, shell: () => shell, setPlacingDecorItem: (d) => { placingDecorItem = d; } });
           return bootWorld(ui);
         }).then(() => {
           $('loading').style.display = 'none';
@@ -6511,357 +6503,7 @@
     $('store-btn').addEventListener('click', () => { if (Input.storeDecor?.()) stopPlacing(); });   // 🧺 든 가구를 창고로(메뉴 안 버튼과 같은 동작)
     window.addEventListener('keydown', (e) => { if ((e.key === 'r' || e.key === 'R') && placingDecorItem) { e.preventDefault(); rotatePlacing(); } });
 
-    // ── 작업대 메뉴 (도구 / 야외 / 선물 탭) — 요리는 🍳 자유주방으로 분리 ──
-    let cookTab = 'tool';
-    // 🌟 bug(반딧불이)가 빠져 있어 촘촘한 포충망·금빛 포충망 비용이 '🪵12 🪵2' 처럼 목재로 보였다(2026-09-24 리뷰)
-    const ico = (k) => ({ fish: '🐟', crop: '🥕', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', seed: '🌰', coins: '🪙', bug: '🌟', star: '⭐', glow: '✨' })[k] || SELL_ICO_G[k] || '🪵';
-    const WB_INV = ['wood', 'crop', 'fish', 'stone', 'coal', 'gem'];
-    const WB_WIDE = '(min-width: 700px)';
-    const wbSel = { tool: null, out: null, gift: null, carve: null };
-    function updateCookInv() {
-      $('cook-coin').textContent = `🪙 ${lastInv.coins || 0}`;
-      $('cook-inv').innerHTML = WB_INV.map(k => `<span>${ico(k)} ${lastInv[k] || 0}</span>`).join('');
-    }
-    let forgeGame = null;
-    function forgeGameOf() {
-      forgeGame ||= createForgeGame($('forge-modal'), {
-        onAbort: () => Input.forgeAbort(),
-        onFinish: (score) => Input.forgeFinish(score),
-        onHit: (pts) => (pts ? Sound.chop() : Sound.blip()),
-        onClose: (tool) => { wbSel.tool = tool || wbSel.tool; ui.openCook('tool'); },
-      });
-      return forgeGame;
-    }
-    function startForge(tool) {
-      const v = (Input.getForge?.()?.tools || []).find(x => x.tool === tool);
-      if (!v || v.check.state === 'short') { ui.toast(FORGE_COPY.short); return; }
-      const res = Input.forgeBegin(v.tool);
-      if (!res.ok) { ui.toast(res.msg || FORGE_COPY.short); return; }
-      closeCook();
-      forgeGameOf().open({ tool: v.tool, star: res.star, ico: v.ico });
-    }
-    function benchView(t) {
-      const inv = lastInv;
-      if (t === 'tool') {
-        const fv = Input.getForge?.() || {};
-        return toolView({ upgrades: Input.getUpgrades(), owned: Input.ownedUpgrades(), stars: fv.tools || [], forge: fv.forge, tier2: Input.getTier2?.() || [], weather: Input.getWeatherPrep(), inv });
-      }
-      if (t === 'out') return outView({ outdoor: Input.getOutdoor(), stored: Input.getOutdoorStored?.() || {}, atFarm: !!Input.isAtFarm?.(), inv });
-      if (t === 'gift') return giftView({ gifts: Input.getGifts(), owned: Input.ownedGifts(), kept: Input.keptGifts(), inv });
-      return carveView({ workshop: Input.getWorkshop() });
-    }
-    function benchDone(msg) { ui.toast(msg); renderBench(); }
-    function benchGo(it) {
-      const a = it.act;
-      if (!a || it.btn.disabled) return;
-      if (a.kind === 'forge') { startForge(a.tool); return; }
-      if (a.kind === 'upgrade') {
-        const res = Input.craftUpgrade(a.id);
-        if (!res.ok) { ui.toast(res.msg || '만들 수 없어요'); return; }
-        benchDone(`${it.ico} ${res.name} 제작 완료!`);
-        return;
-      }
-      if (a.kind === 'cover') {
-        const res = Input.craftCover();
-        if (!res.ok) { ui.toast(res.msg || '만들 수 없어요'); return; }
-        benchDone('🛡️ 덮개 설치 완료 — 내일 밭이 안전해요!');
-        return;
-      }
-      if (a.kind === 'tier2') {
-        const res = Input.craftTier2(a.tool);
-        if (!res.ok) { ui.toast(res.msg || '만들 수 없어요'); return; }
-        benchDone(`✨ ${res.name} 제작 완료!`);
-        return;
-      }
-      if (a.kind === 'gift') {
-        const res = Input.craftGift(a.id);
-        if (!res.ok) { ui.toast(res.msg || '재료가 부족해요'); return; }
-        benchDone(`${it.ico} ${res.name} 제작! 주민에게 대화 → 선물 주기`);
-        return;
-      }
-      if (a.kind === 'place') {
-        const o = Input.getOutdoor().find(x => x.id === a.id);
-        if (!o) return;
-        Input.selectOutdoor(o.id); closeCook();
-        placingDecorItem = o; refreshActionIcon();
-        ui.toast(`${o.ico} ${o.name} · ${TOUCH ? '⭕' : 'Space'}로 놓기`, 2400, { chips: true });
-        return;
-      }
-      if (a.kind === 'carve') {
-        const st = Input.carveStart(a.id);
-        if (!st.ok) { ui.toast(st.msg || '재료가 부족해요'); return; }
-        closeCook();
-        openCarveHud(st);
-      }
-    }
-    function renderBench() {
-      updateCookInv();
-      const v = benchView(cookTab);
-      const sel = wbSel[cookTab] = pickSel(v, wbSel[cookTab]);
-      const banner = $('wb-banner');
-      banner.hidden = !v.banner;
-      banner.textContent = v.banner;
-      const list = $('wb-list'), keep = list.scrollTop;
-      list.innerHTML = listHtml(v, sel);
-      list.scrollTop = keep;
-      list.querySelectorAll('.wb-cell').forEach(b => b.addEventListener('click', () => { wbSel[cookTab] = b.dataset.id; renderBench(); }));
-      const it = allItems(v).find(i => i.id === sel);
-      const sheet = $('wb-sheet');
-      sheet.innerHTML = it ? sheetHtml(it, ico) : '';
-      sheet.querySelector('.wb-go')?.addEventListener('click', () => benchGo(it));
-    }
-    function showCookTab(t) {
-      if (t !== cookTab) $('wb-list').scrollTop = 0;
-      cookTab = t;
-      document.querySelectorAll('#cook-menu .ck-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
-      renderBench();
-    }
-    function runBenchTour() {
-      if (!spot || Input.hintSeen('spotBench') || spot.active()) return;
-      const back = cookTab;
-      wbSel.tool = tourPick(benchView('tool')) || wbSel.tool;
-      showCookTab('tool');
-      const hasStars = !!document.querySelector('#wb-list .wb-cell[data-star]');
-      const open = () => $('cook-menu').classList.contains('show');
-      let stepped = false;
-      const markSeen = () => { Input.markHintsSeen(['spotBench']); requestSave(); };
-      setTimeout(() => {
-        if (!open() || spot.active()) return;
-        spot.run(benchSteps({ wide: matchMedia(WB_WIDE).matches, hasStars }), {
-          kind: 'bench', skip: 'all',
-          blocked: () => !open(),
-          pause: () => !!document.querySelector('[id$="-modal"].show, #boat-shop.show, #worldmap.show') || document.body.classList.contains('mg-open'),
-          onStep: () => { stepped = true; },
-        }).then(() => {
-          if (stepped || open()) markSeen();
-          if (back !== 'tool' && open()) showCookTab(back);
-        });
-      }, 60);
-    }
-    document.querySelectorAll('#cook-menu .ck-tab').forEach(b => b.addEventListener('click', () => showCookTab(b.dataset.tab)));
-    function closeCook() { $('cook-menu').classList.remove('show'); document.body.classList.remove('menu-open'); }
-    $('cook-close').addEventListener('click', closeCook);
 
-    // ═══════════════ 🍳 자유주방 — 메뉴판 ═══════════════
-    //  한 요리는 미니게임 여러 판을 이어 치르는 **코스**다. ★ 개수 = 판 수 = 난이도.
-    //  메뉴판이 "이 요리는 무엇을 몇 판 하는가"를 미리 보여주므로, 플레이어가 난이도를 직접 고른다.
-    // 🔥 화덕 미니게임 — 걸 때 한 번. 판정은 js/craft/minigame.js(순수)가 하고 여기선 조작만 받는다.
-    //    3D 무대를 쓰지 않는다: 매일 치르는 조작이라 무대 전환이 거추장스럽다.
-    const CMG = {
-      charcoal: { title: '⚫ 불 조절', tip: '바늘이 초록 구간에 왔을 때 눌러 멈추세요' },
-      flour:    { title: '🌾 맷돌 돌리기', tip: '원을 따라 <b>일정하게</b> 돌려요<br>빠르기보다 고르기' },
-      brick:    { title: '🧱 반죽 다지기', tip: '꾹 누르고 있다가 초록 구간에서 떼세요' },
-      juice:    { title: '🍷 포도 밟기', tip: '링에 맞춰 <b>같은 박자로</b> 6번<br>연타하면 뭉개져요' },
-      // 🍎 과수원 과일 가공 — 조작은 원조 품목 것을 빌린다(js/craft/recipes.js mgBaseOf)
-      apple_jam:      { title: '🥫 사과잼 졸이기', tip: '꾹 누르고 있다가 초록 구간에서 떼세요' },
-      roast_chestnut: { title: '🌰 밤 굽기', tip: '바늘이 초록 구간에 왔을 때 눌러 멈추세요' },
-      gotgam:         { title: '🍡 곶감 주무르기', tip: '링에 맞춰 <b>같은 박자로</b> 6번<br>연타하면 뭉개져요' },
-    };
-    const GRADE_FACE = ['😅', '🙂', '😋', '💫'];
-    let cmgRaf = 0, cmgCleanup = null;
-
-    function craftMinigame(itemId, onDone) {
-      const meta = CMG[itemId]; if (!meta) { onDone(1); return; }
-      const kind = Input.craftMgBase(itemId);   // 조작 종류 = 원조 품목 id(charcoal·flour·brick·juice) — 과일 가공은 빌려 쓴다
-      $('cmg-title').innerHTML = meta.title;
-      $('cmg-tip').innerHTML = meta.tip;
-      $('cmg-after').style.display = 'none';
-      const stage = $('cmg-stage'); stage.innerHTML = '';
-      // 가공 창을 접고 화면을 화덕으로 옮긴다 — 걸 때만 잠깐 클로즈업(요리·조각과 같은 문법)
-      $('craft-menu').classList.remove('show');
-      Input.craftFocus(true);
-      document.body.classList.add('menu-open', 'mg-open');   // 마을 UI 를 걷고 무대에 몰입(요리·조각과 같은 문법)
-      $('craft-mg').classList.add('show');
-
-      const finish = (score) => {
-        if (cmgRaf) { cancelAnimationFrame(cmgRaf); cmgRaf = 0; }
-        cmgCleanup?.(); cmgCleanup = null;
-        const grade = Input.craftGrade(score);
-        $('cmg-grade').textContent = GRADE_FACE[grade];
-        $('cmg-yield').textContent = `${Input.craftYield(itemId, grade)}개가 나와요`;
-        $('cmg-after').style.display = '';
-        $('cmg-ok').onclick = () => {
-          $('craft-mg').classList.remove('show');
-          document.body.classList.remove('mg-open');
-          Input.craftFocus(false);                       // 마을 카메라로 복귀
-          $('craft-menu').classList.add('show');         // 가공 창을 다시 편다
-          onDone(grade);
-        };
-      };
-
-      if (kind === 'flour') {
-        // 🌾 맷돌 — 원을 따라 끈 각을 쌓는다. 한 바퀴 반이면 끝.
-        stage.innerHTML = '<div class="cmg-wheel"><div class="hub"></div><div class="grip"></div></div>';
-        const wheel = stage.querySelector('.cmg-wheel'), grip = stage.querySelector('.grip');
-        const R = 72, samples = [];
-        let ang = -Math.PI / 2, total = 0, dragging = false, last = ang;
-        const put = () => {
-          grip.style.left = `${95 + Math.cos(ang) * R}px`;
-          grip.style.top = `${95 + Math.sin(ang) * R}px`;
-        };
-        put();
-        const at = e => {
-          const r = wheel.getBoundingClientRect();
-          const p = e.touches ? e.touches[0] : e;
-          return Math.atan2(p.clientY - (r.top + r.height / 2), p.clientX - (r.left + r.width / 2));
-        };
-        const down = e => { dragging = true; last = at(e); e.preventDefault(); };
-        const move = e => {
-          if (!dragging) return;
-          const a = at(e);
-          let d = a - last; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2;
-          last = a; ang = a; total += Math.abs(d); put();
-          samples.push({ t: performance.now(), a: total });
-          if (total >= Math.PI * 3) { up(); finish(Input.craftScore('flour', samples)); }
-        };
-        const up = () => { dragging = false; };
-        wheel.addEventListener('pointerdown', down); window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
-        cmgCleanup = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
-      } else if (kind === 'charcoal') {
-        // ⚫ 불 조절 — 바늘이 오간다. 초록 구간에서 멈춘다.
-        const { half } = Input.craftDiff('charcoal'), target = 0.5;   // 🎚️ 초록 구간 반폭만 흔든다
-        stage.innerHTML = `<div class="cmg-bar"><div class="zone"></div><div class="needle"></div></div>
-                           <button class="cf-btn go cmg-press">멈추기</button>`;
-        const zone = stage.querySelector('.zone'), needle = stage.querySelector('.needle');
-        zone.style.left = `${(target - half) * 100}%`; zone.style.width = `${half * 200}%`;
-        const t0 = performance.now();
-        let pos = 0;
-        const tick = () => {
-          const t = (performance.now() - t0) / 1000;
-          pos = 0.5 + Math.sin(t * 2.4) * 0.48;                 // 좌우로 오감
-          needle.style.left = `calc(${pos * 100}% - 2px)`;
-          Input.craftFlame(pos);                                // 🔥 실제 화덕의 불이 바늘을 따라 반응한다
-          cmgRaf = requestAnimationFrame(tick);
-        };
-        tick();
-        stage.querySelector('button').onclick = () => {
-          const score = Input.craftScore('charcoal', { pos, target, half });
-          Input.craftFlameBurst(score > 0);                     // 맞으면 확 타오르고 불티, 빗나가면 사그라듦
-          finish(score);
-        };
-      } else if (kind === 'juice') {
-        // 🍷 포도 밟기 — 링이 퍼지는 박자에 맞춰 여섯 번. 판정은 간격이라 첫 탭은 기준점이다.
-        const TARGET = 520, NEED = 6;
-        stage.innerHTML = '<div class="cmg-stomp"><div class="pulse"></div><div class="cnt"></div></div>';
-        const pad = stage.querySelector('.cmg-stomp'), cnt = stage.querySelector('.cnt');
-        pad.querySelector('.pulse').style.animationDuration = TARGET + 'ms';
-        Input.craftDiff('juice');   // 🎚️ 팔만 돌린다 — 허용 오차는 채점할 때 game.js 가 먹인다
-        const taps = [];
-        cnt.textContent = NEED;
-        const down = (e) => {
-          e.preventDefault();
-          taps.push(performance.now());
-          pad.classList.remove('hit'); void pad.offsetWidth; pad.classList.add('hit');   // 재생 중이어도 다시 튄다
-          cnt.textContent = Math.max(0, NEED - taps.length);
-          Input.craftStomp();                                  // 🫙 실제 통에서 즙이 튄다
-          if (taps.length >= NEED) finish(Input.craftScore('juice', taps));
-        };
-        pad.addEventListener('pointerdown', down);
-        cmgCleanup = () => pad.removeEventListener('pointerdown', down);
-      } else {
-        // 🧱 반죽 — 꾹 눌렀다 목표 구간에서 뗀다
-        const { targetMs, tol } = Input.craftDiff('brick'), MAX = 2200;   // 🎚️ 허용 오차만 흔든다
-        stage.innerHTML = `<div class="cmg-hold"><div class="fill"></div><div class="goal"></div></div>
-                           <button class="cf-btn go cmg-press">꾹 누르기</button>`;
-        const fill = stage.querySelector('.fill'), goal = stage.querySelector('.goal');
-        goal.style.left = `${((targetMs - tol) / MAX) * 100}%`;
-        goal.style.width = `${((tol * 2) / MAX) * 100}%`;
-        let t0 = 0;
-        const btn = stage.querySelector('button');
-        const tick = () => {
-          if (t0) { const held = performance.now() - t0; fill.style.width = `${Math.min(100, (held / MAX) * 100)}%`; }
-          cmgRaf = requestAnimationFrame(tick);
-        };
-        tick();
-        const down = () => { t0 = performance.now(); };
-        const up = () => { if (!t0) return; const held = performance.now() - t0; t0 = 0; finish(Input.craftScore('brick', { heldMs: held, targetMs, tol })); };
-        btn.addEventListener('pointerdown', down); btn.addEventListener('pointerup', up);
-        cmgCleanup = () => { btn.removeEventListener('pointerdown', down); btn.removeEventListener('pointerup', up); };
-      }
-    }
-
-    // 🔥 가공 창 — game.js 의 craftPanelData() 가 준 데이터를 그리기만 한다.
-    //    상태는 글자가 아니라 기호로(✓ 🔥) — 칸이 3개만 되어도 문구가 두 줄로 깨졌다(시안 실측).
-    let craftStationNow = null;
-    function renderCraft(d) {
-      craftStationNow = d.station;
-      $('craft-title').textContent = d.title;
-      $('craft-ask').textContent = d.ask;
-      $('craft-hint').innerHTML = d.hint;
-      const strip = $('craft-slots');
-      strip.innerHTML = '';
-      for (let i = 0; i < d.cap; i++) {
-        const s = d.slots[i], el = document.createElement('div');
-        if (!s) { el.className = 'cf-chip empty'; el.textContent = '비어 있음'; }
-        else {
-          el.className = 'cf-chip';
-          el.innerHTML = `<span class="mini">${s.ico}</span> ${s.name}${s.ready ? ' ×' + s.qty : ''} ` +
-            (s.ready ? '<span class="cf-ready mark">✓</span>' : `<span class="mark" style="opacity:.55">${d.ico}</span>`);
-        }
-        strip.appendChild(el);
-      }
-      const ready = d.slots.filter(s => s.ready);
-      const claim = $('craft-claim');
-      claim.style.display = ready.length ? '' : 'none';
-      claim.textContent = ready.length === 1
-        ? `${ready[0].ico} ${ready[0].name} 받기`
-        : `${d.claimAll} (${ready.length})`;
-      claim.onclick = () => { const nd = Input.craftClaim(d.station); if (nd) renderCraft(nd); };
-      $('craft-ad')?.remove();
-      const adBtn = ready.length ? null : Input.craftAdButton(d.station, (nd) => { if ($('craft-menu').classList.contains('show') && craftStationNow === nd.station) renderCraft(nd); });
-      if (adBtn) { const w = document.createElement('div'); w.id = 'craft-ad'; w.className = 'rw-row'; w.appendChild(adBtn); claim.after(w); }
-
-      const list = $('craft-recipes');
-      list.innerHTML = '';
-      const full = d.slots.length >= d.cap;
-      for (const r of d.recipes) {
-        const row = document.createElement('div');
-        row.className = 'cf-recipe' + (r.lack.length || full ? ' lack' : '');
-        const cost = r.cost.map(c =>
-          `<span class="${r.lack.includes(c.k) ? 'short' : ''}">${c.ico}${c.label} ${c.have}/${c.need}</span>`).join(' · ');
-        row.innerHTML = `<span class="ico">${r.ico}</span>` +
-          `<span class="txt"><span class="nm">${r.name}</span><span class="cost">${cost} → 2~5개</span></span>`;
-        const b = document.createElement('button');
-        b.className = 'cf-btn'; b.textContent = '넣기';
-        b.disabled = r.lack.length > 0 || full;
-        b.onclick = () => craftMinigame(r.id, (grade) => { const nd = Input.craftSet(r.id, grade); if (nd) renderCraft(nd); });
-        row.appendChild(b); list.appendChild(row);
-      }
-    }
-
-    function renderKitchen(d) {
-      // ⚠️ " · " 로 이어 붙인 한 줄은 i18n 이 '{0} · {1}' 글루 패턴으로 쪼개 번역한다 —
-      //    한쪽이 비면 앞에 구분자만 덩그러니 남으므로 조각을 모아서 잇는다.
-      const bits = [];
-      if (d.cooked) bits.push(`누적 요리 ${d.cooked}회`);
-      if (d.pantry) bits.push(`🧺 찬장 ${d.pantry.items.length}/${d.pantry.max}`);
-      $('kt-sub').textContent = bits.join(' · ');
-      const box = $('kt-items'); box.innerHTML = '';
-      d.recipes.forEach(r => {
-        const costStr = r.cost.map(c => `<span class="${c.have < c.need ? 'lack' : ''}">${c.ico} ${c.have}/${c.need}</span>`).join(' · ');
-        const courseStr = r.course.map(c => `${c.ico} ${c.name}`).join(' → ');
-        const el = document.createElement('div');
-        el.className = 'kt-row' + (r.ready ? '' : ' off');
-        el.innerHTML = `<span class="kt-ico">${r.ico}</span>
-          <div class="kt-body">
-            <div class="kt-name">${r.name} <span class="kt-diff d${r.diff}">${'★'.repeat(r.diff)}</span></div>
-            <div class="kt-desc">${r.desc}</div>
-            <div class="kt-course">${courseStr}</div>
-            <div class="kt-cost">${costStr}</div>
-          </div>
-          <div class="kt-side"><div class="kt-best">${r.best ? `⭐ 최고 ${r.best}점` : '기록 없음'}</div></div>`;
-        el.addEventListener('click', () => {
-          if (!r.ready) { ui.toast('재료가 부족해요'); return; }
-          const st = Input.kitchenStart(r.id);
-          if (!st.ok) { ui.toast(st.msg || '재료가 부족해요'); renderKitchen(Input.getKitchen()); return; }
-          closeKitchen();
-          startCookCourse(st);
-        });
-        box.appendChild(el);
-      });
-    }
-    function closeKitchen() { $('kitchen-menu').classList.remove('show'); document.body.classList.remove('menu-open'); }
-    $('kt-close').addEventListener('click', closeKitchen);
 
     // ── 🍲 보글보글 냄비 탭 — 재료 1~3개(같은 재료 여러 번 가능·보유 수 이내) → 조합 표가 이름·맛을 정한다
     let fpPot = [];
@@ -6977,6 +6619,16 @@
     const renderShop = () => gameUi?.shop.renderShop();
     const openHomi = () => gameUi.shop.openHomi();
     const showShopTab = (tab) => gameUi.shop.showShopTab(tab);
+    const renderBench = () => gameUi?.bench.renderBench();
+    const showCookTab = (tab) => gameUi.bench.showCookTab(tab);
+    const runBenchTour = () => gameUi.bench.runBenchTour();
+    const closeCook = () => gameUi.bench.closeCook();
+    const renderCraft = (d) => gameUi.kitchen.renderCraft(d);
+    const renderKitchen = (d) => gameUi?.kitchen.renderKitchen(d);
+    const closeKitchen = () => gameUi.kitchen.closeKitchen();
+    const renderBoatShop = (d) => gameUi.boat.renderBoatShop(d);
+    const openLb = () => gameUi.lb.openLb();
+    const renderBag = () => gameUi?.bag.renderBag();
 
     // 로컬 개발 훅 — 콘솔에서 미니게임을 직접 구동(?give 처럼 localhost 전용, 실서비스 노출 안 됨)
     if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) {
@@ -7024,25 +6676,6 @@
     }
     $('cafe-close').addEventListener('click', () => { $('cafe-menu').classList.remove('show'); document.body.classList.remove('menu-open'); });
 
-    // ── 🛶 나룻배: 결과 모달 · 🧰 창고(배 강화) · 런 조작 버튼 ──
-    function renderBoatShop(d) {
-      renderDock($('bs-dock'), d, {
-        select(id) { const r = Input.selectBoat(id); if (!r.ok) ui.toast(r.msg); renderBoatShop(Input.getDock()); },
-        course(c) { const r = Input.selectCourse(c); if (!r.ok && r.msg) ui.toast(r.msg); renderBoatShop(Input.getDock()); },
-        unlock(id) { const r = Input.unlockBoat(id); if (!r.ok) { ui.toast(r.msg); return; } ui.toast(`${r.ico} ${r.name} 완성!`, 2400); renderBoatShop(Input.getDock()); },
-      });
-    }
-    $('bs-close').addEventListener('click', () => $('boat-shop').classList.remove('show'));
-    $('boat-shop').addEventListener('click', (e) => { if (e.target === $('boat-shop')) $('boat-shop').classList.remove('show'); });
-    $('boat-result-close').addEventListener('click', () => $('boat-result').classList.remove('show'));
-    $('br-again').addEventListener('click', () => { $('boat-result').classList.remove('show'); Input.startBoatRun(); });
-    $('boat-quit').addEventListener('click', () => Input.quitBoatRun());
-    $('boat-skill').addEventListener('click', () => Input.boatSkill());
-    $('boat-view').addEventListener('click', () => {
-      const m = Input.toggleBoatView();
-      $('boat-view').textContent = m === 'first' ? '👁️ 1인칭' : '👁️ 3인칭';
-      ui.toast(m === 'first' ? '👁️ 1인칭 시점 (뱃머리)' : '👁️ 3인칭 시점 (멀미가 나면 이쪽으로)');
-    });
 
     // 내 활동 기록 대시보드 — 영구 계정은 플랫폼에 관계없이 본인 로그를 볼 수 있다.
     $('stats-btn').addEventListener('click', () => {
@@ -7116,165 +6749,15 @@
     $('story-close').addEventListener('click', () => closeStoryModal());
     $('story-modal').addEventListener('click', (e) => { if (e.target === $('story-modal')) closeStoryModal(); });
 
-    // ═══════════════ 🏆 리더보드 — /api/leaderboard (서버 집계·엣지 캐시) ═══════════════
-    const LB_BOARDS = [
-      { id: 'boat',  label: '🛶 오늘의 뱃길', unit: '점',  desc: '오늘의 물길 최고 점수 — 코스는 모두에게 같아요', daily: true },
-      { id: 'boat_rapid', label: '🌊 급류', unit: '점', desc: '오늘 급류 최고 점수', daily: true },
-      { id: 'sea',   label: '🌊 오늘의 대어', unit: 'kg',  desc: '오늘 낚은 가장 무거운 물고기 — 어종은 가리지 않아요', daily: true, fmt: s => (s / 10).toFixed(1) },
-      { id: 'rich',  label: '🪙 주간 부자',   unit: '🪙', desc: '이번 주에 번 코인' },
-      { id: 'mine',  label: '⛏️ 광부왕',      unit: '회',  desc: '이번 주 채굴 횟수' },
-      { id: 'cook',  label: '🍳 요리왕',      unit: '회',  desc: '이번 주 요리 횟수' },
-      { id: 'quest', label: '📜 퀘스트',      unit: '건',  desc: '이번 주 완료한 의뢰' },
-      { id: 'sled',  label: '🛷 썰매',        unit: '초',  desc: '오늘 설산 썰매 최고 기록', daily: true, fmt: v => (-v / 1000).toFixed(2) },
-    ];
-    let lbBoard = 'boat';
-    const lbCache = {};   // 모달 열려있는 동안 보드별 응답 캐시(탭 왕복 시 재요청 방지)
-    function lbMedal(r) { return r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : r + '위'; }
-    // 🌊 오늘의 대어 — 그 무게를 낸 어종(서버가 sp 로 준다. 없으면 예전처럼 비움 — SQL 적용 전에도 안전)
-    //   이름은 별도 span — 옵저버가 '참치' 같은 사전 단어로 번역한다(아이콘과 붙이면 못 찾는다)
-    function lbSpecies(sp) {
-      if (!sp) return '';
-      const s = (Input.getSeaSpecies?.() || []).find(x => x.id === sp);
-      return s ? `<span class="lb-sp">${s.ico} <span>${s.name}</span></span>` : '';
-    }
-    async function renderLb(board) {
-      lbBoard = board;
-      const meta = LB_BOARDS.find(b => b.id === board);
-      $('lb-sub').textContent = meta.desc + (meta.daily ? '' : ' — 매주 월요일 새로 시작해요');
-      [...document.querySelectorAll('.lb-tab')].forEach(b => b.classList.toggle('active', b.dataset.id === board));
-      const list = $('lb-list'), meBox = $('lb-me');
-      list.innerHTML = '<div class="lb-empty">불러오는 중… 🌿</div>'; meBox.innerHTML = '';
-      try {
-        if (!lbCache[board]) {
-          const uid = (authState.userId || '');
-          const res = await fetch(`${CONFIG.API_BASE}/api/leaderboard?board=${board}&uid=${uid}`);
-          if (!res.ok) throw new Error('http ' + res.status);
-          lbCache[board] = await res.json();
-        }
-        const d = lbCache[board];
-        const top = d.top || [];
-        const myNick = Input.getNickname() || '';
-        if (!top.length) {
-          list.innerHTML = `<div class="lb-empty">아직 기록이 없어요.<br>${meta.label}의 첫 주인공이 되어보세요!</div>`;
-          return;
-        }
-        list.innerHTML = top.map(r =>
-          `<div class="lb-row${r.rank <= 3 ? ' top3' : ''}${d.me && r.rank === d.me.rank && r.nick === myNick ? ' me-row' : ''}">
-            <span class="lb-rank">${lbMedal(r.rank)}</span>
-            <span class="lb-nick">${escapeHtml(r.nick)}</span>${lbSpecies(r.sp)}
-            <span class="lb-score">${meta.fmt ? meta.fmt(r.score) : Number(r.score).toLocaleString()}${meta.unit}</span>
-          </div>`).join('');
-        // 내 순위 — 상위 목록에 안 보이면 하단에 고정 표시
-        if (d.me && !(top.some(r => r.rank === d.me.rank && r.nick === myNick))) {
-          meBox.innerHTML = `<div class="lb-row"><span class="lb-rank">${lbMedal(d.me.rank)}</span><span class="lb-nick">${escapeHtml(myNick || '나')} (나)</span>${lbSpecies(d.me.sp)}<span class="lb-score">${meta.fmt ? meta.fmt(d.me.score) : Number(d.me.score).toLocaleString()}${meta.unit}</span></div>`;
-        } else if (!d.me && authState.userId) {
-          meBox.innerHTML = `<div class="lb-empty" style="padding:8px;">아직 이 보드에 내 기록이 없어요. 지금 만들어봐요!</div>`;
-        }
-      } catch (e) {
-        list.innerHTML = '<div class="lb-empty">순위를 불러오지 못했어요.<br>잠시 후 다시 열어주세요 🌧️</div>';
-      }
-    }
-    function openLb() {
-      const tabs = $('lb-tabs');
-      if (!tabs.children.length) {
-        LB_BOARDS.forEach(b => {
-          const t = document.createElement('button');
-          t.className = 'lb-tab'; t.dataset.id = b.id; t.textContent = b.label;
-          t.addEventListener('click', () => renderLb(b.id));
-          tabs.appendChild(t);
-        });
-        $('lb-close').addEventListener('click', () => $('lb-modal').classList.remove('show'));
-      }
-      Object.keys(lbCache).forEach(k => delete lbCache[k]);   // 열 때마다 신선하게(서버가 5분 캐시)
-      Input.setAnalog(0, 0);
-      $('lb-modal').classList.add('show');
-      trackEvent('leaderboard_open', { board: lbBoard });   // [GA4] 소셜 기능 사용률
-      renderLb(lbBoard);
-    }
-    $('lb-btn').addEventListener('click', openLb);   // ☰메뉴 접힘은 util-btns 위임 핸들러가 처리
     $('hire-close').addEventListener('click', () => $('hire-modal').classList.remove('show'));
     $('hire-modal').addEventListener('click', (e) => { if (e.target === $('hire-modal')) $('hire-modal').classList.remove('show'); });
     $('market-close').addEventListener('click', () => $('market-modal').classList.remove('show'));
     $('market-modal').addEventListener('click', (e) => { if (e.target === $('market-modal')) $('market-modal').classList.remove('show'); }); // 바깥 클릭 닫기
 
-    // ── 📖 도감 — 발견한 종은 컬러, 미발견은 실루엣(???). 게스트에겐 보존 배너(회원 유치) ──
-    // ⚠️ js/game.js 에도 같은 이름의 표가 있다(박물관 명판용). 문구가 서로 달라 **둘 다** 고쳐야 한다 —
-    //    한쪽만 고치면 도감 모달 제목에 카테고리 키가 날것으로 뜬다('visitor' 가 그대로 보였다).
-    const DEX_CAT_LABEL = { fish: '🎣 물고기', crop: '🌾 작물', ore: '⛏️ 광물', cook: '🍳 요리', npc: '🏡 이웃', weather: '🌦️ 날씨', bug: '🌟 반딧불이', forage: '🍄 채집물', track: '🐾 밤손님 흔적', river: '🛶 강에서', spirit: '🌫️ 안개 숲 정령', dig: '🪏 땅속에서', visitor: '🦋 텃밭 방문객' };
     const isGuestNow = () => !['google', 'email', 'toss', 'pgs', 'gc', 'apple'].includes(authState.provider);   // 구글·이메일·토스·플레이 게임즈·🍎게임센터·Apple 계정 = 영구 계정
-    // 📖 도감 설명문 — /api/dex-notes 에서 받아 카드에 한 줄씩 붙인다.
-    //   종 목록이 배포마다 고정이라 응답도 고정 → 한 번 받으면 localStorage 에 두고 다시 부르지 않는다.
-    //   실패·미설정이면 설명 줄 없이 지금처럼 아이콘·이름만 나온다.
-    const DEX_NOTE_KEY = `cf_dexnote_${LANG}_v1`;
-    let dexNotes = {};
-    try { dexNotes = JSON.parse(localStorage.getItem(DEX_NOTE_KEY) || '{}') || {}; } catch (e) { dexNotes = {}; }
-    const dexNoteBusy = new Set();
-    async function fetchDexNotes(cats) {
-      const todo = cats.filter(c => !dexNotes[c] && !dexNoteBusy.has(c));
-      if (!todo.length) return;
-      todo.forEach(c => dexNoteBusy.add(c));
-      await Promise.all(todo.map(async (c) => {
-        try {
-          const res = await fetch(`${CONFIG.API_BASE}/api/dex-notes?cat=${c}&lang=${LANG}`);
-          if (res.ok) {
-            const d = await res.json();
-            if (d && Object.keys(d).length) dexNotes[c] = d;
-          }
-        } catch (e) { /* 오프라인 — 설명 줄 없이 진행 */ }
-        finally { dexNoteBusy.delete(c); }
-      }));
-      try { localStorage.setItem(DEX_NOTE_KEY, JSON.stringify(dexNotes)); } catch (e) {}
-      if ($('dex-modal').classList.contains('show')) renderDex();   // 도착했으면 다시 그린다
-    }
-
-    function renderDex() {
-      const d = Input.getDex();
-      $('dex-title').textContent = `📖 도감 (${d.count}/${d.total})`;
-      const box = $('dex-sections'); box.innerHTML = '';
-      for (const cat in d.cats) {
-        const h = document.createElement('div'); h.className = 'dex-cat'; h.textContent = DEX_CAT_LABEL[cat] || cat; box.appendChild(h);
-        const grid = document.createElement('div'); grid.className = 'dex-grid';
-        d.cats[cat].forEach(e => {
-          const el = document.createElement('div');
-          el.className = 'dex-item' + (e.found ? '' : ' locked');
-          // 발견한 것에만 설명을 붙인다 — 미발견 카드에 붙으면 그 자체가 스포일러가 된다
-          const note = e.found ? (dexNotes[cat] || {})[e.id] : '';
-          el.innerHTML = `<span class="d-ico">${e.ico}</span><span class="d-name">${e.found ? e.name : '???'}</span>`
-            + (note ? `<span class="d-desc">${note}</span>` : '');
-          grid.appendChild(el);
-        });
-        box.appendChild(grid);
-      }
-      // 🏅 배지 — 미획득도 이름·조건을 보여줘 목표 제시(도감과 달리 ??? 없음)
-      const bh = document.createElement('div'); bh.className = 'dex-cat';
-      bh.textContent = `🏅 배지 (${d.badgeCount}/${d.badgeTotal})`; box.appendChild(bh);
-      const bgrid = document.createElement('div'); bgrid.className = 'dex-grid';
-      d.badges.forEach(b => {
-        const el = document.createElement('div');
-        el.className = 'dex-item badge' + (b.earned ? '' : ' locked');
-        el.innerHTML = `<span class="d-ico">${b.ico}</span><span class="d-name">${b.name}</span><span class="d-desc">${b.desc}</span>`;
-        bgrid.appendChild(el);
-      });
-      box.appendChild(bgrid);
-      $('dex-guest').classList.toggle('show', isGuestNow());   // 게스트만: 보존 배너 + 구글 버튼
-      return d;
-    }
-
-    function openDex() {
-      Input.setAnalog(0, 0);
-      const d = renderDex();
-      $('dex-modal').classList.add('show');
-      ui.act?.('dex');                                          // 튜토리얼: 도감 확인 단계
-      trackEvent('dex_open', { found: d.count, total: d.total, badges: d.badgeCount, guest: isGuestNow() }); // [GA4] 도감 관심 퍼널
-      // 하나라도 발견한 분류만 받아온다 — 안 본 것까지 미리 받을 이유가 없다
-      fetchDexNotes(Object.keys(d.cats).filter(c => d.cats[c].some(e => e.found)));
-    }
-    $('dex-tab').addEventListener('click', openDex);
     // 🍂 계절 아이콘 — 지금 계절·남은 날·이번 계절 한정 어종
     hydrateIcons();
     $('season-emoji').addEventListener('click', () => ui.toast(Input.seasonStatus(), 2600));
-    $('dex-close').addEventListener('click', () => $('dex-modal').classList.remove('show'));
-    $('dex-modal').addEventListener('click', (e) => { if (e.target === $('dex-modal')) $('dex-modal').classList.remove('show'); });
     // 🔵 토스 웹뷰에선 구글 OAuth 가 불가하므로 넛지의 출구를 토스 식별키 연결로 바꾼다
     //    (안 바꾸면 게스트가 "구글로 로그인하세요"라는 실행 불가능한 안내에 갇힌다)
     //    📱 플레이 앱도 같은 이유(WebView 구글 OAuth 차단)로 출구를 플레이 게임즈 연결로 바꾼다.
@@ -7366,201 +6849,7 @@
     $('nudge-later').addEventListener('click', () => $('nudge-modal').classList.remove('show'));
     $('nudge-modal').addEventListener('click', (e) => { if (e.target === $('nudge-modal')) $('nudge-modal').classList.remove('show'); });
 
-    // ── 사진 찍기 (캡처 → 저장/공유) ──
-    let lastPhoto = null, photoPulseT;
-
-    // ── 📸 액션샷 공유 카드 — 촬영본에 프레임·타이틀·도감 진행도를 합성(공유 시 홍보 카드가 됨) ──
-    function frameActionShot(dataURL) {
-      return new Promise((resolve) => {
-        const img = new Image();
-        img.onload = () => {
-          try {
-            const W = img.width, H = img.height;
-            const S = Math.min(W, H);   // 세로 캡처(모바일)에서도 글자·바가 사진 폭에 맞게
-            const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-            const c = cv.getContext('2d');
-            c.drawImage(img, 0, 0);
-            // 크림 프레임 테두리
-            const bw = Math.max(6, Math.round(W * 0.012));
-            c.strokeStyle = 'rgba(255,252,240,0.9)'; c.lineWidth = bw;
-            c.strokeRect(bw / 2, bw / 2, W - bw, H - bw);
-            // 하단 정보 바(그라데이션 — 사진을 가리지 않게 은은히)
-            const barH = Math.round(S * 0.11);
-            const grad = c.createLinearGradient(0, H - barH * 1.7, 0, H);
-            grad.addColorStop(0, 'rgba(28,42,34,0)');
-            grad.addColorStop(1, 'rgba(28,42,34,0.74)');
-            c.fillStyle = grad; c.fillRect(0, H - barH * 1.7, W, barH * 1.7);
-            const pad = Math.round(W * 0.032), fs = Math.round(S * 0.045);
-            // 좌: 게임 타이틀 + 주소(유입 링크)
-            c.textAlign = 'left'; c.fillStyle = '#fffdf4';
-            c.font = `800 ${fs}px sans-serif`;
-            c.fillText(t('🌿 고요한 숲'), pad, H - Math.round(barH * 0.55));
-            c.font = `500 ${Math.round(fs * 0.58)}px sans-serif`; c.fillStyle = 'rgba(255,253,244,0.85)';
-            c.fillText('calmforest.cloud', pad, H - Math.round(barH * 0.18));
-            // 우: 오늘 날씨 + 도감 진행도 + 날짜
-            const dex = Input.getDex();
-            const wIco = iconText($('time-emoji')) || '🌿';
-            const t = new Date();
-            const ds = `${t.getFullYear()}.${String(t.getMonth() + 1).padStart(2, '0')}.${String(t.getDate()).padStart(2, '0')}`;
-            c.textAlign = 'right'; c.fillStyle = '#fffdf4';
-            c.font = `700 ${Math.round(fs * 0.75)}px sans-serif`;
-            c.fillText(t(`${wIco}  📖 도감 ${dex.count}/${dex.total}  ·  ${ds}`), W - pad, H - Math.round(barH * 0.38));
-            resolve(cv.toDataURL('image/png'));
-          } catch (e) { resolve(dataURL); }   // 합성 실패 시 원본 그대로
-        };
-        img.onerror = () => resolve(dataURL);
-        img.src = dataURL;
-      });
-    }
-    let photoBusy = false;   // 액션샷 진행 중 중복 클릭 방지
-    $('photo-btn').addEventListener('click', async () => {
-      if (photoBusy) return;
-      photoBusy = true;
-      Input.setAnalog(0, 0); $('photo-btn').classList.remove('pulse');
-      ui.toast('📸 찰칵…!');
-      // 카메라가 캐릭터에 밀착 + 랜덤 포즈 → 포즈 정점 프레임에서 캡처(역동샷)
-      let data = await Input.captureActionShot();
-      photoBusy = false;
-      if (!data) { ui.toast('사진 캡처에 실패했어요'); return; }
-      data = await frameActionShot(data);   // 📸 공유 카드 합성(프레임+타이틀+도감 진행도)
-      lastPhoto = data; $('photo-img').src = data;
-      const pc = $('photo-cloud'); pc.disabled = false; pc.textContent = '☁️ 사진첩';   // 새 사진 → 저장 버튼 초기화
-      const ps = $('photo-save'); ps.disabled = false; ps.textContent = '💾 저장';        // 📱 앱의 '✅ 저장됨' 되돌리기
-      $('photo-modal').classList.add('show');
-      trackEvent('photo_capture');   // [GA4]
-    });
-    $('photo-close').addEventListener('click', () => $('photo-modal').classList.remove('show'));
-
-    // ── 📸 사진첩(OCI 버킷) — 구글 로그인 전용, 게스트에겐 로그인 넛지 ──
-    //    업로드: 카드 PNG → JPEG(용량 1/3) → 같은 오리진 /api/photo (서버가 OCI 에 서명 PUT)
-    //    목록: photos 테이블(RLS) → /api/photo-urls 로 presigned <img> URL 일괄 발급
-    function toJpegDataURL(pngDataURL, quality = 0.85, maxDim = 1600) {
-      return new Promise((resolve) => {
-        const img = new Image();
-        img.onload = () => {
-          try {
-            // 레티나/4K 캡처는 그대로 올리면 서버 한도(1.5MB)를 넘을 수 있어 긴 변 1600px 로 축소
-            const k = Math.min(1, maxDim / Math.max(img.width, img.height));
-            const cv = document.createElement('canvas');
-            cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
-            const c = cv.getContext('2d');
-            c.fillStyle = '#fff'; c.fillRect(0, 0, cv.width, cv.height);   // PNG 투명부 → 흰 배경
-            c.drawImage(img, 0, 0, cv.width, cv.height);
-            resolve(cv.toDataURL('image/jpeg', quality));
-          } catch (e) { resolve(null); }
-        };
-        img.onerror = () => resolve(null);
-        img.src = pngDataURL;
-      });
-    }
-    const authHeaders = async () => { const t = await getAccessToken(); return t ? { authorization: 'Bearer ' + t } : {}; };
-
-    let cloudBusy = false;
-    $('photo-cloud').addEventListener('click', async () => {
-      if (isGuestNow()) { ui.loginNudge('album'); return; }       // 게스트 → 회원 전환 넛지
-      if (!lastPhoto || cloudBusy) return;
-      cloudBusy = true;
-      const btn = $('photo-cloud'); btn.disabled = true; btn.textContent = '☁️ 저장 중…';
-      try {
-        const jpeg = await toJpegDataURL(lastPhoto);
-        if (!jpeg) throw new Error('convert_failed');
-        const res = await fetch(CONFIG.PHOTO_API, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json', ...(await authHeaders()) },
-          body: JSON.stringify({ image: jpeg }),
-        });
-        const d = await res.json().catch(() => ({}));
-        if (res.status === 409) { ui.toast('📸 사진첩 가득 · 지우면 더 담겨요', 3200); }
-        else if (res.status === 503) { ui.toast('☁️ 사진첩 서버 준비 중이에요. 조금만 기다려주세요'); }
-        else if (!res.ok || !d.ok) { throw new Error(d.error || 'HTTP ' + res.status); }
-        else {
-          insertPhotoRow(d.key, iconText($('time-emoji')) || null);   // 목록용 메타 행
-          btn.textContent = '✅ 저장됨';                                  // 같은 사진 중복 저장 방지(비활성 유지)
-          ui.toast(`☁️ 사진첩에 저장했어요! (${d.count}/${d.max})`);
-          trackEvent('photo_upload', { count: d.count });               // [GA4] 사진첩 퍼널
-          cloudBusy = false;
-          return;
-        }
-      } catch (err) {
-        console.warn('[사진첩] 업로드 실패:', err?.message || err);
-        ui.toast('☁️ 저장에 실패했어요. 잠시 후 다시 시도해주세요');
-      }
-      btn.disabled = false; btn.textContent = '☁️ 사진첩'; cloudBusy = false;
-    });
-
-    // 사진첩 열기 — 그리드(최신순) + 크게 보기/공유/삭제
-    let albumCur = null;   // 크게 보는 사진 { key, url }
-    async function openAlbum() {
-      if (isGuestNow()) { ui.loginNudge('album'); return; }
-      $('topleft').classList.remove('open');
-      const grid = $('album-grid');
-      grid.innerHTML = '<div class="album-empty">불러오는 중…</div>';
-      $('album-count').textContent = '';
-      Input.setAnalog(0, 0);
-      $('album-modal').classList.add('show');
-      const rows = await listPhotos();
-      $('album-count').textContent = `${rows.length}/100`;
-      trackEvent('album_open', { count: rows.length });               // [GA4]
-      if (!rows.length) {
-        grid.innerHTML = '<div class="album-empty">아직 사진이 없어요. 📷 액션샷을 찍고 ☁️ 버튼으로 저장해보세요!</div>';
-        return;
-      }
-      let urls = {};
-      try {
-        const res = await fetch(CONFIG.PHOTO_URLS_API, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json', ...(await authHeaders()) },
-          body: JSON.stringify({ keys: rows.map(r => r.object_key) }),
-        });
-        urls = (await res.json())?.urls || {};
-      } catch (e) { console.warn('[사진첩] URL 발급 실패:', e?.message || e); }
-      grid.innerHTML = '';
-      let shown = 0;
-      rows.forEach(r => {
-        const url = urls[r.object_key]; if (!url) return;
-        shown++;
-        const d = new Date(r.taken_at);
-        const cell = document.createElement('div'); cell.className = 'album-cell';
-        cell.innerHTML = `<img loading="lazy" src="${url}" alt="${escapeHtml(`고요한 숲 사진 · ${r.weather || ''} ${d.getMonth() + 1}/${d.getDate()}`)}"><span class="album-date">${escapeHtml(r.weather || '')} ${d.getMonth() + 1}/${d.getDate()}</span>`;
-        cell.addEventListener('click', () => {
-          albumCur = { key: r.object_key, url };
-          $('album-img').src = url;
-          $('album-view').classList.add('show');
-        });
-        grid.appendChild(cell);
-      });
-      if (!shown) grid.innerHTML = '<div class="album-empty">사진을 불러오지 못했어요. ☁️ 서버 설정을 확인해주세요</div>';
-    }
-    $('album-btn').addEventListener('click', openAlbum);
-    $('album-close').addEventListener('click', () => $('album-modal').classList.remove('show'));
-    $('album-modal').addEventListener('click', (e) => { if (e.target === $('album-modal')) $('album-modal').classList.remove('show'); });
-    $('album-view-close').addEventListener('click', () => $('album-view').classList.remove('show'));
-    $('album-view').addEventListener('click', (e) => { if (e.target === $('album-view')) $('album-view').classList.remove('show'); });
-    $('album-share').addEventListener('click', async () => {
-      if (!albumCur) return;
-      if (IS_ANDROID) {                                  // 📱 앱: 링크를 공유 시트로
-        try { await shareUrlNative({ plugin: capPlugin('Photo'), url: albumCur.url, title: t('🌿 고요한 숲') }); } catch (e) { ui.toast('공유하지 못했어요'); }
-        return;
-      }
-      try {
-        if (navigator.share) await navigator.share({ title: t('🌿 고요한 숲'), url: albumCur.url });
-        else { await navigator.clipboard.writeText(albumCur.url); ui.toast('🔗 사진 링크를 복사했어요 (1시간 유효)'); }
-      } catch (e) {}   // 공유 시트 취소는 정상 흐름
-    });
-    $('album-delete').addEventListener('click', async () => {
-      if (!albumCur) return;
-      try {
-        const res = await fetch(`${CONFIG.PHOTO_API}?key=${encodeURIComponent(albumCur.key)}`, {
-          method: 'DELETE', headers: await authHeaders(),
-        });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        deletePhotoRow(albumCur.key);
-        trackEvent('photo_delete');                                   // [GA4]
-        $('album-view').classList.remove('show');
-        ui.toast('🗑️ 사진을 지웠어요');
-        openAlbum();                                                  // 목록 갱신
-      } catch (err) { ui.toast('삭제에 실패했어요. 잠시 후 다시'); }
-    });
+    let photoPulseT;
 
     // ── 배경음악 토글 ──
     let musicPref = 'on';
@@ -7581,91 +6870,6 @@
       b.addEventListener('click', () => { Input.emote(b.dataset.e); emotePop.classList.remove('show'); }));
     $('emote-sit').addEventListener('click', () => { Input.toggleSit(); emotePop.classList.remove('show'); });
 
-    // ── 가방 창 (분류별 아이템 보기) ──
-    const ITEM_META = {
-      wood: { ico: '🪵', name: '목재' }, seed: { ico: '🌰', name: '씨앗' }, coins: { ico: '🪙', name: '코인' },
-      crop: { ico: '🥕', name: '작물' }, fish: { ico: '🐟', name: '물고기' }, egg: { ico: '🥚', name: '달걀' },
-      stone: { ico: '🪨', name: '돌' }, coal: { ico: '⚫', name: '석탄' }, gem: { ico: '💎', name: '보석' },
-      bug: { ico: '🌟', name: '반딧불이' }, forage: { ico: '🍄', name: '채집물' },
-      star: { ico: '⭐', name: '별조각' }, glow: { ico: '✨', name: '정령빛' },
-      fert: { ico: '🌱', name: '비료' }, bait: { ico: '🪱', name: '미끼' },
-      wheat: { ico: '🌾', name: '밀' }, corn: { ico: '🌽', name: '옥수수' }, grape: { ico: '🍇', name: '포도' },
-      seed_wheat: { ico: '🌾', name: '밀 씨앗' }, seed_corn: { ico: '🌽', name: '옥수수 씨앗' }, seed_grape: { ico: '🍇', name: '포도 씨앗' },
-      honey: { ico: '🍯', name: '꿀' }, candy: { ico: '🍬', name: '사탕' },
-      apple: { ico: '🍎', name: '사과' }, pear: { ico: '🍐', name: '배' }, peach: { ico: '🍑', name: '복숭아' },
-      persimmon: { ico: '🍊', name: '감' }, chestnut: { ico: '🌰', name: '밤' },
-      sap_apple: { ico: '🍎', name: '사과나무 묘목' }, sap_pear: { ico: '🍐', name: '배나무 묘목' },
-      sap_peach: { ico: '🍑', name: '복숭아나무 묘목' }, sap_persimmon: { ico: '🍊', name: '감나무 묘목' },
-      sap_chestnut: { ico: '🌰', name: '밤나무 묘목' },
-      ...FORAGE_META,
-    };
-    const BAG_CATS = [
-      { name: '🌲 자원', keys: ['wood', 'seed', 'coins'] },
-      { name: '🌱 농사·낚시·닭장', keys: ['crop', 'fish', 'egg', 'fert', 'bait'] },
-      { name: '🌾 고급 작물', keys: ['wheat', 'corn', 'grape', 'honey', 'seed_wheat', 'seed_corn', 'seed_grape'] },
-      { name: '🍎 과수원', keys: ['sap_apple', 'sap_pear', 'sap_peach', 'sap_persimmon', 'sap_chestnut', 'apple', 'pear', 'peach', 'persimmon', 'chestnut'] },
-      { name: '⛏️ 광물', keys: ['stone', 'coal', 'gem'] },
-      { name: '🌙 밤·숲', keys: ['bug', 'forage'] },
-      { name: '🛶 강 · 🌫️ 숲', keys: ['star', 'glow'] },
-      { name: '🎃 할로윈', keys: ['candy'] },
-      { name: '🌊 바다', keys: FORAGE_KEYS },
-    ];
-    function bagSection(title, items) {
-      const sec = document.createElement('div'); sec.className = 'bag-sec';
-      const h = document.createElement('div'); h.className = 'bag-h'; h.textContent = title; sec.appendChild(h);
-      const grid = document.createElement('div'); grid.className = 'bag-grid';
-      items.forEach(it => {
-        const c = document.createElement('div'); c.className = 'bag-item' + (it.count > 0 ? '' : ' zero');
-        c.innerHTML = `<span class="bag-ico">${it.ico}</span><span class="bag-name">${it.name}</span><span class="bag-cnt">×${it.count}</span>`;
-        grid.appendChild(c);
-      });
-      sec.appendChild(grid); return sec;
-    }
-    // 🍱 찬장 — 보관해 둔 음식. 칸을 누르면 그 자리에서 먹어 버프가 켜진다.
-    //   재료와 달리 "등급"이 붙어 있어서 개수만 세는 bagSection 으로는 표현이 안 된다(칸마다 다른 물건).
-    function pantrySection(d) {
-      const sec = document.createElement('div'); sec.className = 'bag-sec';
-      const h = document.createElement('div'); h.className = 'bag-h';
-      h.textContent = `🍱 찬장 ${d.items.length}/${d.max}`;
-      sec.appendChild(h);
-      if (!d.items.length) {
-        const empty = document.createElement('div'); empty.className = 'bag-empty';
-        empty.textContent = '🍳 자유주방에서 요리한 뒤 "🧺 보관하기"를 고르면 여기 담겨요';
-        sec.appendChild(empty); return sec;
-      }
-      const grid = document.createElement('div'); grid.className = 'bag-grid';
-      d.items.forEach(f => {
-        const c = document.createElement('button'); c.className = 'bag-item food';
-        c.innerHTML = `<span class="bag-ico">${f.ico}</span><span class="bag-name">${f.name}</span><span class="bag-tier">${f.tier.ico} ${f.buff.ico}${f.buff.dur}초</span>`;
-        c.title = `${f.tier.name} · ${f.buff.name} 버프 ${f.buff.dur}초`;
-        c.addEventListener('click', () => {
-          const r = Input.pantryEat(f.i);
-          if (r?.ok) ui.toast(`${r.ico} ${r.name} 먹었어요 — ${r.buff.ico} ${r.buff.name} 버프 ${r.buff.dur}초`, 2600);
-          renderBag();
-        });
-        grid.appendChild(c);
-      });
-      sec.appendChild(grid); return sec;
-    }
-    function renderBag() {
-      const box = $('bag-content'); box.innerHTML = '';
-      if (shell) {
-        const keys = document.body.classList.contains('at-mine') ? ['coins', 'stone', 'coal', 'gem'] : ['coins', 'wood', 'seed', 'crop', 'stone'];
-        const ICO = { coins: '🪙', wood: '🪵', seed: '🌰', crop: '🥕', stone: '🪨', coal: '⚫', gem: '💎' };
-        const row = document.createElement('div'); row.className = 'bag-sum';
-        keys.forEach(k => { const c = document.createElement('span'); c.className = 'bag-chip' + (k === 'coins' ? ' coin' : ''); c.textContent = `${ICO[k]} ${lastInv[k] || 0}`; row.appendChild(c); });
-        box.appendChild(row);
-      }
-      box.appendChild(pantrySection(Input.getPantry()));   // 🍱 찬장을 맨 위로 — 먹으러 여는 일이 가장 잦다
-      BAG_CATS.forEach(cat => box.appendChild(bagSection(cat.name, cat.keys.map(k => ({ ...ITEM_META[k], count: lastInv[k] || 0 })))));
-      const owned = Input.ownedGifts();
-      box.appendChild(bagSection('🎁 선물', [...Input.keptGifts().map(k => ({ ico: k.ico + (k.paper ? '🎀' : ''), name: k.name, count: k.n })), ...Input.getGifts().map(g => ({ ico: g.ico, name: g.name, count: owned[g.id] || 0 }))]));
-    }
-    function openBag() { renderBag(); Input.setAnalog(0, 0); $('bag-menu').classList.add('show'); $('bag-backdrop').classList.add('show'); document.body.classList.add('menu-open'); }
-    function closeBag() { $('bag-menu').classList.remove('show'); $('bag-backdrop').classList.remove('show'); document.body.classList.remove('menu-open'); }
-    $('inv-hud').addEventListener('click', openBag);   // 자원 숫자·가방 아무 데나 탭하면 열림
-    $('bag-close').addEventListener('click', closeBag);
-    $('bag-backdrop').addEventListener('click', closeBag);
 
     // ── 집 외관 꾸미기 ──
     const hex = (c) => '#' + c.toString(16).padStart(6, '0');
@@ -7737,46 +6941,6 @@
       $('ext-menu').classList.add('show'); document.body.classList.add('menu-open');
     });
     $('ext-close').addEventListener('click', () => { $('ext-menu').classList.remove('show'); document.body.classList.remove('menu-open'); Input.setExtView(false); });
-    $('photo-save').addEventListener('click', async () => {
-      if (!lastPhoto) return;
-      if (IS_ANDROID) {                                  // 📱 앱: 갤러리(사진/calmforest)에 바로 저장
-        const btn = $('photo-save');
-        //  처음 한 번은 시스템 "사진 접근 허용" 창이 뜬다 — 놓치지 않게 먼저 알려 준다(2026-09-25 실기기: 창을 못 보고 안 되는 줄 앎)
-        let first = false; try { first = !localStorage.getItem('cf_photo_saved'); } catch {}
-        if (first) ui.toast('📷 사진 저장 권한을 물어보면 \'허용\'을 눌러 주세요', 4000);
-        try {
-          await savePhotoNative({ plugin: capPlugin('Photo'), dataUrl: lastPhoto });
-          try { localStorage.setItem('cf_photo_saved', '1'); } catch {}
-          btn.textContent = '✅ 저장됨'; btn.disabled = true;   // 새 사진을 찍으면 되돌린다(photo-btn)
-          ui.toast('🖼️ 갤러리 calmforest 앨범에 저장했어요');
-        } catch (e) {
-          ui.toast(/legacy/.test(e?.message) ? '이 기기는 바로 저장이 안 돼요 — 📤공유로 보내 주세요'
-                                             : '사진을 저장하지 못했어요 — 사진 권한을 허용했는지 확인해 주세요', 4000);
-        }
-        return;
-      }
-      const a = document.createElement('a'); a.href = lastPhoto; a.download = 'calmforest-' + Date.now() + '.png'; a.click();
-    });
-    $('photo-share').addEventListener('click', async () => {
-      if (!lastPhoto) return;
-      if (IS_ANDROID) {                                  // 📱 앱: 안드로이드 공유 시트
-        try {
-          await sharePhotoNative({ plugin: capPlugin('Photo'), dataUrl: lastPhoto, text: t('내 마을 구경오세요 · https://calmforest.cloud') });
-          trackEvent('photo_share');   // [GA4] 공유 훅
-        } catch (e) { ui.toast('공유하지 못했어요'); }
-        return;
-      }
-      try {
-        const blob = await (await fetch(lastPhoto)).blob();
-        const file = new File([blob], 'calmforest.png', { type: 'image/png' });
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title: '고요한 숲 🌿', text: t('내 마을 구경오세요 · https://calmforest.cloud') });
-          trackEvent('photo_share');   // [GA4] 공유 훅
-        } else {
-          ui.toast('이 기기는 바로 공유가 안 되니 💾저장으로 받아 공유해요');
-        }
-      } catch (e) { /* 사용자 취소 등은 무시 */ }
-    });
 
     // 낮/밤은 늘 자동으로 흐른다 — 시간 바·이모지는 읽기 전용 시계다(드래그·클릭 조절 제거).
     $('fb-cancel').addEventListener('click', closeFb);

@@ -38,10 +38,10 @@ test('reward labels spread the forage labels', () => {
 });
 
 test('bag shows a sea section and the sell list names sea items', () => {
-  const src = read('index.html');
-  assert.match(src, /import \{[^}]*FORAGE_META[^}]*\} from '\.\/js\/forage\/logic\.js'/);
-  assert.match(src, /\.\.\.FORAGE_META,\s*\n\s*\};/);
-  assert.match(src, /\{ name: '🌊 바다', keys: FORAGE_KEYS \}/);
+  const bag = read('js/game-ui/bag.js');
+  assert.match(bag, /import \{[^}]*FORAGE_META[^}]*\} from '\.\.\/forage\/logic\.js'/);
+  assert.match(bag, /\.\.\.FORAGE_META,\s*\n\s*\};/);
+  assert.match(bag, /\{ name: '🌊 바다', keys: FORAGE_KEYS \}/);
   const shop = read('js/game-ui/shop-menu.js');
   assert.match(shop, /const list = sellList\(market, lastInv\(\)\);/);
   assert.match(shop, /<span class="sl-nm">\$\{it\.name\}<\/span>/);

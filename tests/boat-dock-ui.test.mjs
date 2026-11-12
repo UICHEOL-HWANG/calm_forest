@@ -32,7 +32,7 @@ test('lack labels', () => {
 });
 
 test('index.html wiring', () => {
-  const H = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const H = ['../index.html', '../js/game-ui/boat-menu.js', '../js/game-ui/leaderboard.js'].map(f => readFileSync(new URL(f, import.meta.url), 'utf8')).join('\n');
   assert.match(H, /id="boat-skill"/);
   assert.match(H, /\{ id: 'boat_rapid',/);
   assert.match(H, /Input\.unlockBoat\(/);
