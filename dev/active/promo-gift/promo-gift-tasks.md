@@ -1,0 +1,14 @@
+# Tasks — promo-gift
+- [x] 설계 질문·결정 (2026-11-13)
+- [x] 창 시안 3안·꾸미기 시안 3안 → B안·C안
+- [x] 스펙 작성 `docs/superpowers/specs/2026-11-13-promo-gift-design.md`
+- [ ] 사용자 스펙 검토
+- [ ] 선행: guest-login-conversion·app-invite-links 커밋(승인 후)
+- [ ] 구현 계획(writing-plans)
+- [ ] SQL·셀프테스트
+- [ ] API·링크
+- [ ] 클라 규칙·테스트
+- [ ] 흐름·창·메뉴·i18n
+- [ ] 꾸미기 3D·가드 목록
+- [ ] 트래킹·E2E·리뷰
+- [ ] 배포 5곳·첫 코드
