@@ -1,7 +1,7 @@
 // =============================================================
 //  calm forest · 🔔 푸시 — 오늘 누구에게 무엇을 보낼지(순수)
 //  ------------------------------------------------------------
-//  유저당 하루 1통. 우선순위 🦝 밤손님 예고 > 🔥🫙 가공 완료 > 🌱 복귀.
+//  유저당 하루 1통. 우선순위 🦝 밤손님 예고 > 🔥🫙 가공 완료 > 🐟 연못 > 🌱 복귀.
 //  "돌아올 이유가 실제로 있는 날"에만 보낸다 — 이유 없는 날은 조용히(힐링 톤).
 //  날짜는 KST 기준(세이브의 날짜는 기기 로컬이지만 1차 유저는 한국).
 //  row 는 push_candidates RPC 한 줄(sql/migrations/migrate_push_tokens.sql).
@@ -40,7 +40,7 @@ export function nightInput(row, date, dates) {
   return { plotCount: cands.length, scarecrow, fence, blocked: blockedAnimals(row.truce, date) };
 }
 
-/** → { kind:'night' } | { kind:'craft', stations } | { kind:'return' } | null
+/** → { kind:'night' } | { kind:'craft', stations } | { kind:'pond' } | { kind:'return' } | null
  *  night: 이 유저의 judgeNight 결과(대상이 아니면 null) */
 export function pickPush(row, dates, night) {
   const lastMs = Date.parse(row.updated_at) || 0;

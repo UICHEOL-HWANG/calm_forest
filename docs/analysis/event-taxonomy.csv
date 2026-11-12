@@ -137,7 +137,7 @@ first_chop,onboarding,first_setup,1,N,active,482,120,2026-07-27,2026-10-24,tree_
 first_visit,ga4_auto,ga4,3,N,auto,721,714,2026-07-27,2026-10-24,campaign_id,,GA4 자동 수집: 처음 방문한 사용자의 첫 접속,
 fishing_cast,gathering,fishing,2,N,active,3535,63,2026-07-28,2026-10-24,,js/spaces/fishing.js:59,낚싯대를 던졌을 때,
 fishing_catch,gathering,fishing,1,Y,active,2759,59,2026-07-28,2026-10-24,fish|rarity|dda|rod|arm|ease|probe_v|season|exp_arm|assist,js/spaces/fishing.js:99,🎚️ 난이도 동봉 · assist=1 은 마당 채우기 안내의 보장된 첫 캐스팅(DDA 미반영),
-fishing_miss,gathering,fishing,2,N,active,258,30,2026-07-28,2026-10-24,ease|arm|rod|dda|probe_v,js/spaces/fishing.js:130,🎚️ 난이도 동봉,
+fishing_miss,gathering,fishing,2,N,active,258,30,2026-07-28,2026-10-24,ease|arm|rod|dda|probe_v|assist,js/spaces/fishing.js:130,🎚️ 난이도 동봉 · assist=1 은 마당 채우기 보장 캐스팅,
 forage_pick,gathering,forage,1,Y,active,1986,38,2026-08-12,2026-10-24,kind|weather|exp_arm,js/spaces/forest.js:173,채집 루프 KPI,
 forage_result,gathering,sea,2,N,not_fired,0,0,,,mode|run_id|items|coins|good|bad|rare|reason|duration_ms|ease|dda|arm|probe_v,js/spaces/mudflat.js:183,"바다터 갯벌 캐기·잠수 한 판이 끝났을 때 (items=담은 개수, good/bad=판정, reason=tide/dives, run_id로 forage_runs와 연결)",
 forage_start,gathering,sea,2,N,not_fired,0,0,,,mode|run_id|attempt_n|ease|dda|arm|probe_v,js/spaces/mudflat.js:174,"바다터 갯벌 캐기·잠수 한 판을 시작했을 때 (attempt_n=몇 번째 판, ease/arm=난이도 팔)",

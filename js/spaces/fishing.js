@@ -36,7 +36,7 @@ export function setFishAssist(on) {
 
 export function tryFish() {
   if (fishState === 'bite') { catchFish(); return; }        // 지금! 낚아채기
-  if (fishState === 'wait') { trackDiffAbandon('fish', fishDiff, 'wait'); resetFishing(); ui.toast?.('낚싯줄을 걷었어요'); return; }
+  if (fishState === 'wait') { if (!assisted) trackDiffAbandon('fish', fishDiff, 'wait'); resetFishing(); ui.toast?.('낚싯줄을 걷었어요'); return; }
   // idle → 캐스팅. 물가 근처여야 함
   const distLake = dist2D(LAKE, player.position);
   if (distLake > LAKE_R + 2.8) {
@@ -126,7 +126,7 @@ export function buildBobber() {
 
 export function updateFishing() {
   if (fishState === 'idle') return;
-  if (TOOLS[currentTool].id !== 'rod' || indoor) { trackDiffAbandon('fish', fishDiff, fishState); resetFishing(); return; } // 도구 바꾸면 취소 · 🎚️ bite 중이면 팔을 겪은 포기
+  if (TOOLS[currentTool].id !== 'rod' || indoor) { if (!assisted) trackDiffAbandon('fish', fishDiff, fishState); resetFishing(); return; } // 도구 바꾸면 취소 · 🎚️ bite 중이면 팔을 겪은 포기
   const now = clock.elapsedTime;
   if (fishState === 'wait') {
     bobber.position.y = 0.32 + Math.sin(now * 3) * 0.04; // 잔잔히 떠 있음
@@ -140,8 +140,8 @@ export function updateFishing() {
     bobber.position.y = 0.15 + Math.sin(now * 30) * 0.08; // 격하게 요동
     if (now > biteEnd) {
       ui.toast?.('놓쳤어요 🐟💨');
-      settleDifficulty('fish', 0);   // 🎚️ 실패 → DDA 가 조금 쉬워진다
-      trackEvent('fishing_miss', { rod: gameState.upgrades.rod ? 1 : 0, ...diffParams(fishDiff) });   // [GA4] 🎚️ 난이도 동봉
+      if (!assisted) settleDifficulty('fish', 0);   // 🎚️ 실패 → DDA 가 조금 쉬워진다
+      trackEvent('fishing_miss', { rod: gameState.upgrades.rod ? 1 : 0, ...diffParams(fishDiff), ...(assisted ? { assist: 1 } : {}) });   // [GA4] 🎚️ 난이도 동봉
       resetFishing();
     }
   }

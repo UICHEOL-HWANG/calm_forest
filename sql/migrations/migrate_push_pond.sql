@@ -1,3 +1,5 @@
+begin;
+
 do $$
 declare c text;
 begin
@@ -34,3 +36,5 @@ $$;
 
 revoke all on function public.push_candidates(date, int) from public, anon, authenticated;
 grant execute on function public.push_candidates(date, int) to service_role;
+
+commit;

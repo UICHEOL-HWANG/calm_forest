@@ -50,3 +50,38 @@ test('마당 채우기 연결', () => {
   assert.match(g, /if \(mode === 'play'\) yardGuide\?\.update\(dt\);/);
   assert.match(g, /otherGuide: \(\) => portGuideActive\(\) \|\| restaurantGuideActive\(\) \|\| auctionGuideActive\(\) \|\| !!yardGuide\?\.active\(\),/);
 });
+
+test('마당 안내: 시작 횟수·멈춤 종료·레거시 다리·시작 전 먹이 확인', () => {
+  const y = src('js/pond/yard-guide.js');
+  assert.match(y, /h\.yardTries = \(h\.yardTries \| 0\) \+ 1;/);
+  assert.match(y, /tries: h\.yardTries/);
+  assert.match(y, /guideStalled\(lastProgressAt, nowSec\)/);
+  assert.match(y, /bridge: bridgeDone\(s\)/);
+  assert.match(y, /if \(!deps\.pondPos\(\)\) deps\.setAssist\(true\);/);
+  assert.match(y, /h\.yardFill = true;\n\s*deps\.save\(\);\n\s*return;/);
+});
+
+test('항구·식당 안내는 마당 안내 중엔 시작하지 않는다', () => {
+  const g = src('js/game.js');
+  assert.match(g, /maybeStartPortGuide\([^;]*&& !yardGuide\?\.active\(\)\)/);
+  assert.match(g, /maybeStartRestaurantGuide\([^;]*&& !yardGuide\?\.active\(\)\)/);
+});
+
+test('수첩 바다 칸: 닫힌 바다는 이동 버튼 없이 문구만', () => {
+  const f = src('js/pond/feed.js');
+  assert.match(f, /if \(h\.kind === 'sea' && !isOpen\('sea'\)\) return \{ line: POND_COPY\.hintSeaLocked \};/);
+  assert.match(src('js/pond/copy.js'), /hintSeaLocked: '🌊 바다터가 열리면 낚을 수 있어요'/);
+  assert.match(src('js/i18n-en.js'), /'🌊 바다터가 열리면 낚을 수 있어요': '🌊 You can catch it once the sea spot opens'/);
+});
+
+test('보장 캐스팅은 놓침·포기에서도 DDA 를 안 움직인다', () => {
+  const f = src('js/spaces/fishing.js');
+  assert.match(f, /if \(!assisted\) settleDifficulty\('fish', 0\);/);
+  assert.match(f, /trackEvent\('fishing_miss', \{[^}]*\.\.\.\(assisted \? \{ assist: 1 \} : \{\}\) \}\)/);
+  assert.equal((f.match(/if \(!assisted\) trackDiffAbandon/g) || []).length, 2);
+});
+
+test('마이그레이션은 한 트랜잭션', () => {
+  const s = src('sql/migrations/migrate_push_pond.sql').trim();
+  assert.ok(s.startsWith('begin;') && s.endsWith('commit;'));
+});

@@ -68,7 +68,7 @@ test('messageFor — 확정 문구·장치 이름·영어', () => {
   assert.equal(messageFor({ kind: 'craft', stations: ['vat'] }, 'ko').title, '🫙 발효통에 넣어 둔 게 다 됐어요');
   assert.equal(messageFor({ kind: 'craft', stations: ['kiln', 'vat'] }, 'ko').title, '🔥🫙 화덕·발효통에 넣어 둔 게 다 됐어요');
   assert.deepEqual(messageFor({ kind: 'return' }, 'ko'), { title: '🍓 수확할 게 생겼을지도 몰라요', body: '숲이 조용히 기다리고 있어요.' });
-  for (const k of [{ kind: 'night' }, { kind: 'craft', stations: ['vat'] }, { kind: 'return' }]) {
+  for (const k of [{ kind: 'night' }, { kind: 'craft', stations: ['vat'] }, { kind: 'pond' }, { kind: 'return' }]) {
     const m = messageFor(k, 'en');
     assert.ok(m.title && m.body && !/[가-힣]/.test(m.title + m.body), `영어판에 한국어 혼입: ${k.kind}`);
   }
