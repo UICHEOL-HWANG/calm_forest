@@ -38,6 +38,14 @@ test('운영 설정의 Android W2 클릭은 Tenjin Android 링크로 보낸다',
   assert.equal(url.searchParams.get('campaign_name'), 'w2_general_origin_v2');
 });
 
+test('W3 이후 주차 광고 클릭도 Tenjin에 보낸다', () => {
+  const touch = { utm: { source: 'meta', campaign: 'webapp_202611', term: 'w3_general_v3', content: 'w3_general_v3' } };
+  const url = new URL(tenjinClickUrl('ios', cfg, touch));
+  assert.equal(url.searchParams.get('campaign_name'), 'w3_general_v3');
+  const later = { utm: { source: 'meta', content: 'w12_x' } };
+  assert.equal(new URL(tenjinClickUrl('android', TUNING.appBanner, later)).searchParams.get('creative_name'), 'w12_x');
+});
+
 test('비광고 방문과 W1은 Tenjin에 보내지 않고 기존 스토어 주소는 보존한다', () => {
   const old = captureTouch('?utm_source=meta&utm_content=w1_general_v1', null, 1, () => 'jid1');
   assert.equal(tenjinClickUrl('ios', cfg, old), null);
