@@ -23,3 +23,8 @@ Last Updated: 2026-11-13 02:38
 - 검사 스크립트(scratchpad): tdz.cjs(인라인 TDZ·미정의), modcheck.cjs(모듈 미정의), unused.cjs(안 쓰는 import).
 - 발견(기존 버그, 미수정): photos.js frameActionShot 의 `const t = new Date()` 가 i18n t 를 가려 TDZ → 공유 카드 합성이 늘 실패, 원본만 나감. origin/main 에도 있음.
 - 리뷰 LOW: installGameUi 안에서 패널 하나가 id 를 못 찾으면 월드 전체가 실패 화면으로 감(지금은 모든 id 존재).
+
+## 3단계 결과
+- 337KB → 330KB, 인라인 100KB → 93KB. 모듈 2개(guide-panel·house-exterior).
+- 함정: 모듈 최상위 선언이 $(...) 를 부르면 import 시점에 터진다(guide 의 guidePanel 등) → let 으로 두고 install 에서 대입. scratchpad evalcheck.cjs 로 전 모듈 검사.
+- 전체: 646KB(시작) → 330KB. 인라인 시작 스크립트 152KB → 93KB.

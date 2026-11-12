@@ -248,5 +248,5 @@ export function installPhotos(ctx) {
       }
     } catch (e) { /* 사용자 취소 등은 무시 */ }
   });
-  return {  };
+  return {};
 }

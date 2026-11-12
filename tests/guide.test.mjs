@@ -139,7 +139,7 @@ test('PC 블록 밖에는 키보드 키 표기가 없다', () => {
 });
 
 test('게임 안 로더: is-touch 로 dev-touch/dev-pc 를 붙이고 칩은 보이는 섹션만', () => {
-  const src = readFileSync(new URL('index.html', ROOT), 'utf8');
+  const src = readFileSync(new URL('js/game-ui/guide-panel.js', ROOT), 'utf8');
   assert.match(src, /classList\.contains\('is-touch'\) \? 'gd dev-touch' : 'gd dev-pc'/);
   assert.match(src, /filter\(s => !s\.dataset\.dev \|\| root\.classList\.contains\('dev-' \+ s\.dataset\.dev\)\)/);
   const css = readFileSync(new URL('guide/guide.css', ROOT), 'utf8');
@@ -153,7 +153,7 @@ for (const [lang, read] of BOTH) test(`[${lang}] 오른쪽 목차용 1부·2부 
 });
 
 test('오른쪽 목차: 게임 안 패널과 공개 페이지 둘 다 만들고, 좁은 화면에선 숨긴다', () => {
-  assert.match(readFileSync(new URL('index.html', ROOT), 'utf8'), /toc\.className = 'gd-toc'/);
+  assert.match(readFileSync(new URL('js/game-ui/guide-panel.js', ROOT), 'utf8'), /toc\.className = 'gd-toc'/);
   assert.match(readFileSync(new URL('scripts/lib/guide-page.mjs', ROOT), 'utf8'), /toc\.className = 'gd-toc'/);
   assert.match(readFileSync(new URL('guide/guide.css', ROOT), 'utf8'), /@media \(max-width: 1099px\) \{ \.gd-toc \{ display: none; \} \}/);
 });

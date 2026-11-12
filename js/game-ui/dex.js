@@ -82,5 +82,5 @@ export function installDex(ctx) {
   $('dex-tab').addEventListener('click', openDex);
   $('dex-close').addEventListener('click', () => $('dex-modal').classList.remove('show'));
   $('dex-modal').addEventListener('click', (e) => { if (e.target === $('dex-modal')) $('dex-modal').classList.remove('show'); });
-  return {  };
+  return {};
 }

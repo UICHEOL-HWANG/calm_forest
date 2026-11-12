@@ -6239,110 +6239,6 @@
     const closeFb = () => { fbModal.classList.remove('show'); };
     $('feedback-tab').addEventListener('click', openFb);
 
-    // ── 📖 초보자 안내서 패널 ──────────────────────────────────────
-    //  · fragment(guide/guide.html)를 fetch 해 DOM 에 직접 주입(iframe 금지: iOS 웹뷰 스크롤·X-Frame-Options)
-    //  · 열리면 body.guide-open 으로 HUD 숨김 + keydown capture 로 게임 입력 차단(Esc 만 닫기)
-    //  · 토스 번들은 CONFIG.GUIDE_BASE 가 웹 오리진 절대 URL 이라 같은 코드로 동작
-    const guidePanel = $('guide-panel'), guideBody = $('guide-body'), guideChips = $('guide-chips');
-    let guideLoaded = false, guideOpenedAt = 0, guideCurSec = '', guideScrollY = 0, guideSecTimer = null, guideCssLinked = false, guideIo = null;
-    const guideAbs = (rel) => new URL(rel, new URL(CONFIG.GUIDE_BASE, location.href)).href;
-    function buildGuideChips(root) {
-      guideChips.innerHTML = '';
-      const secs = [...root.querySelectorAll('section.gd-sec')].filter(s => !s.dataset.dev || root.classList.contains('dev-' + s.dataset.dev));
-      for (const sec of secs) {
-        const h2 = sec.querySelector('h2');
-        const b = document.createElement('button');
-        b.textContent = h2?.dataset.chip || h2?.textContent || sec.id;
-        b.dataset.sec = sec.id;
-        b.addEventListener('click', () => { sec.scrollIntoView({ block: 'start' }); });   // 즉시 이동 — 웹뷰·reduced-motion 에서도 확실히
-        guideChips.appendChild(b);
-      }
-      guidePanel.querySelector('.gd-toc')?.remove();
-      const toc = document.createElement('nav'), tocList = document.createElement('ol');
-      toc.className = 'gd-toc'; toc.setAttribute('aria-label', LANG === 'en' ? 'Contents' : '목차');
-      for (const sec of secs) {
-        const part = sec.querySelector('[data-part]')?.dataset.part;
-        if (part) { const li = document.createElement('li'); li.className = 'gd-toc-part'; li.textContent = part; tocList.appendChild(li); }
-        const li = document.createElement('li'), a = document.createElement('a'), label = document.createElement('span');
-        a.href = '#' + sec.id; a.dataset.sec = sec.id;
-        label.textContent = sec.querySelector('h2')?.dataset.chip || sec.id;
-        a.append(label, document.createElement('i'));
-        a.addEventListener('click', (e) => { e.preventDefault(); sec.scrollIntoView({ block: 'start' }); });
-        li.appendChild(a); tocList.appendChild(li);
-      }
-      toc.appendChild(tocList); guidePanel.appendChild(toc);
-      guideIo?.disconnect(); guideCurSec = '';
-      const io = guideIo = new IntersectionObserver((entries) => {
-        const hit = entries.filter(e => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-        if (!hit) return;
-        const id = hit.target.id;
-        if (id === guideCurSec) return;
-        guideCurSec = id;
-        for (const b of guideChips.children) b.classList.toggle('on', b.dataset.sec === id);
-        for (const a of toc.querySelectorAll('a')) a.classList.toggle('on', a.dataset.sec === id);
-        guideChips.querySelector('.on')?.scrollIntoView({ inline: 'center', block: 'nearest' });
-        clearTimeout(guideSecTimer);
-        guideSecTimer = setTimeout(() => trackEvent('guide_section', { id }), 800);   // 스크롤 훑기 중엔 안 쏨
-      }, { root: guideBody, rootMargin: '-8% 0px -80% 0px', threshold: 0 });
-      secs.forEach(s => io.observe(s));
-    }
-    async function loadGuide() {
-      guideBody.innerHTML = '<div class="gp-skel"><i></i><i></i><i></i></div>';
-      try {
-        if (!guideCssLinked) {   // 본문 스타일은 fragment 와 같은 곳에서 — 토스에서도 웹 오리진
-          const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = guideAbs('guide.css');
-          document.head.appendChild(l); guideCssLinked = true;
-        }
-        // 🌐 영어 모드는 영어판 fragment(guide/guide-en.html) — 본문 문장은 사전(i18n)으로 못 바꾸므로 파일을 따로 둔다
-        const res = await fetch(guideAbs(LANG === 'en' ? 'guide-en.html' : 'guide.html'));
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const wrap = document.createElement('div'); wrap.className = document.body.classList.contains('is-touch') ? 'gd dev-touch' : 'gd dev-pc'; wrap.innerHTML = await res.text();
-        wrap.querySelectorAll('img[src]').forEach(img => { img.src = guideAbs(img.getAttribute('src')); });
-        guideBody.replaceChildren(wrap);
-        buildGuideChips(wrap);
-        guideLoaded = true;
-      } catch (err) {
-        console.warn('[guide] 안내서 불러오기 실패:', err?.message || err);
-        guideBody.innerHTML = '<div class="gp-err"><p>안내서를 불러오지 못했어요.</p><button id="guide-retry">다시 시도</button></div>';
-        $('guide-retry').addEventListener('click', loadGuide);
-      }
-    }
-    function openGuide(src) {
-      if (guidePanel.classList.contains('show')) return;
-      $('topleft').classList.remove('open');
-      guidePanel.classList.add('show'); guidePanel.setAttribute('aria-hidden', 'false');
-      document.body.classList.add('guide-open');
-      guideOpenedAt = Date.now();
-      if (!guideLoaded) loadGuide(); else guideBody.scrollTop = guideScrollY;   // 세션 안에서는 읽던 자리로
-      trackEvent('guide_open', { src });
-    }
-    function closeGuide() {
-      if (!guidePanel.classList.contains('show')) return;
-      guideScrollY = guideBody.scrollTop;
-      guidePanel.classList.remove('show'); guidePanel.setAttribute('aria-hidden', 'true');
-      document.body.classList.remove('guide-open');
-      trackEvent('guide_close', { sec: guideCurSec, dur: Date.now() - guideOpenedAt });
-    }
-    // 📖 튜토리얼을 마치거나 건너뛴 직후 한 번만: 안내서가 있다는 걸 상단 컨텍스트 슬롯(hint-banner)으로 알린다.
-    //    졸업 토스트와 안 겹치게 3초 뒤. 저장 플래그(guideNudgeSeen)로 두 번 다시 안 뜬다.
-    function nudgeGuideOnce() {
-      if (Input.guideNudgeSeen()) return;
-      Input.markGuideNudgeSeen();
-      setTimeout(() => ui.showHintBanner({
-        ico: '📖', title: '초보자 안내서가 있어요', line: '눌러서 열기 · ☰ 메뉴 → 📖 에서 언제든',
-        near: () => true, attention: true, onTap: () => openGuide('nudge'),
-      }), 3000);
-    }
-    $('guide-close').addEventListener('click', closeGuide);
-    guideBody.addEventListener('click', (e) => {   // 안내서 첫 장 "튜토리얼 다시 보기" — 패널 닫고 환영 모달
-      if (!e.target.closest('[data-act="tutorial"]')) return;
-      closeGuide(); ui.showTutorial('help');
-    });
-    window.addEventListener('keydown', (e) => {   // 패널이 떠 있으면 어떤 키도 게임으로 안 간다(스크롤 등 브라우저 기본은 허용)
-      if (!guidePanel.classList.contains('show')) return;
-      if (e.key === 'Escape') { e.preventDefault(); closeGuide(); }
-      e.stopPropagation();
-    }, true);
     // 모바일 대화하기 버튼 → NPC 대화 실행(근처면 handleAction이 대화로 분기)
     $('talk-btn').addEventListener('click', () => Input.doTalk());
     // NPC 모달 바깥 클릭 시 닫기
@@ -6629,6 +6525,8 @@
     const renderBoatShop = (d) => gameUi.boat.renderBoatShop(d);
     const openLb = () => gameUi.lb.openLb();
     const renderBag = () => gameUi?.bag.renderBag();
+    const openGuide = (from) => gameUi.guide.openGuide(from);
+    const nudgeGuideOnce = () => gameUi?.guide.nudgeGuideOnce();
 
     // 로컬 개발 훅 — 콘솔에서 미니게임을 직접 구동(?give 처럼 localhost 전용, 실서비스 노출 안 됨)
     if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) {
@@ -6871,76 +6769,6 @@
     $('emote-sit').addEventListener('click', () => { Input.toggleSit(); emotePop.classList.remove('show'); });
 
 
-    // ── 집 외관 꾸미기 ──
-    const hex = (c) => '#' + c.toString(16).padStart(6, '0');
-    function renderExt() {
-      const { style, unlocked, roof, wall, door } = Input.getHouseStyle();
-      const rows = { roof: { box: 'ext-roof', cols: roof }, wall: { box: 'ext-wall', cols: wall }, door: { box: 'ext-door', cols: door } };
-      Object.entries(rows).forEach(([part, { box, cols }]) => {
-        const el = $(box); el.innerHTML = '';
-        cols.forEach((c, i) => {
-          const has = unlocked[part].includes(i);
-          const s = document.createElement('div');
-          s.className = 'ext-sw' + (style[part] === i ? ' sel' : '') + (has ? '' : ' locked');
-          s.style.background = has ? hex(c) : '#c8ccc8';
-          if (!has) s.textContent = '🔒';
-          s.addEventListener('click', () => {
-            if (!has) { ui.toast('아직 잠긴 색이에요. 낚시·수확·퀘스트로 얻어요 🎨'); return; }
-            Input.setHousePart(part, i); renderExt();
-          });
-          el.appendChild(s);
-        });
-      });
-      renderExpand();
-      renderAddons();
-    }
-    // 🧩 구성품 상점 — 지금 단계(+다음 단계는 🔒 예고)까지의 장식. 사면 코인이 빠지고 집에 바로 붙는다
-    function renderAddons() {
-      const box = $('ext-addons'); const info = Input.getHouseAddons();
-      const items = info.items.filter(i => i.stage <= info.stage + 1);
-      if (!items.length) { box.innerHTML = ''; return; }
-      const btn = (i) => i.owned ? '<button class="ad-btn done" disabled>✓ 설치됨</button>'
-        : i.locked ? `<button class="ad-btn" disabled>🔒 ${i.stage}단계부터</button>`
-        : `<button class="ad-btn" data-id="${i.id}" ${i.affordable ? '' : 'disabled'}>사기</button>`;
-      box.innerHTML = `<div class="ad-head"><span>🧩 구성품</span><span class="ad-coins">🪙 ${info.coins}</span></div><div class="ad-list">` +
-        items.map(i => `<div class="ad-row${i.owned ? ' owned' : ''}${i.locked ? ' locked' : ''}"><span class="ad-ico">${i.ico}</span>` +
-          `<span class="ad-txt"><b>${i.name}</b><small>${i.desc}</small></span>` +
-          `<span class="ad-price${!i.owned && !i.locked && !i.affordable ? ' lack' : ''}">${i.coins}🪙</span>${btn(i)}</div>`).join('') + '</div>';
-      box.querySelectorAll('.ad-btn[data-id]').forEach(b => b.addEventListener('click', () => {
-        const r = Input.buyHouseAddon(b.dataset.id);
-        if (r.msg) ui.toast(r.msg, 2600);
-        if (r.ok) renderAddons();   // 코인·설치 상태 갱신
-      }));
-    }
-    // 🏗️ 증축 섹션 — 다음 단계 비용·보유량 표시, 충족 시 버튼 활성화
-    let xpStyle = null;   // 🏡 7단계(정원 저택) 증축에서 고른 스타일 'modern'|'hanok' — 고른 뒤엔 바꿀 수 없어 증축 전까지만 기억
-    function renderExpand() {
-      const box = $('ext-expand'); const info = Input.getExpansion();
-      if (info.maxed) { box.innerHTML = '🏡 <b>정원 저택 완성!</b> 마을에서 가장 근사한 집이에요.'; return; }
-      if (!info.next) { box.innerHTML = ''; return; }
-      const rows = info.items.map(i => `<span class="${i.have < i.need ? 'xp-lack' : ''}">${i.label} ${i.have}/${i.need}</span>`).join(' · ');
-      const cards = info.needsStyle
-        ? '<div class="xp-hint">🎨 스타일을 골라 주세요 — 한 번 고르면 바꿀 수 없어요</div><div class="xp-styles">' +
-          Object.entries(info.next.styles).map(([id, st]) => `<button type="button" class="xp-style${xpStyle === id ? ' on' : ''}" data-style="${id}"><span class="xp-sico">${st.ico}</span><b>${st.name}</b><small>${st.desc}</small></button>`).join('') + '</div>'
-        : '';
-      const ready = info.affordable && (!info.needsStyle || xpStyle);
-      box.innerHTML = `🏗️ 다음 증축: <b>${info.next.ico} ${info.next.name}</b> — 집이 커지고 모양이 바뀌어요!<br>` +
-        `<span class="xp-cost">${rows}</span>` + cards +
-        `<button id="xp-btn" class="xp-btn" ${ready ? '' : 'disabled'}>${!info.affordable ? '재료를 더 모아요' : (info.needsStyle && !xpStyle) ? '스타일을 골라요' : '🔨 증축하기'}</button>`;
-      box.querySelectorAll('.xp-style').forEach(b => b.addEventListener('click', () => { xpStyle = b.dataset.style; renderExpand(); }));
-      $('xp-btn').addEventListener('click', () => {
-        const r = Input.expandHouse(xpStyle);
-        ui.toast(r.msg, 3200);
-        if (r.ok) { xpStyle = null; renderExt(); }   // 증축 후 정보 갱신(다음 단계 표시)
-      });
-    }
-    // 🎨 집 외관 꾸미기 — 완성된 집 근처에서만 뜨는 버튼(공간 기반 동선)
-    //    열린 동안엔 카메라가 집을 화면 위쪽(패널 위)에 두어 색이 바뀌는 게 가려지지 않게 한다
-    $('ext-btn').addEventListener('click', () => {
-      renderExt(); Input.setAnalog(0, 0); Input.setExtView(true);
-      $('ext-menu').classList.add('show'); document.body.classList.add('menu-open');
-    });
-    $('ext-close').addEventListener('click', () => { $('ext-menu').classList.remove('show'); document.body.classList.remove('menu-open'); Input.setExtView(false); });
 
     // 낮/밤은 늘 자동으로 흐른다 — 시간 바·이모지는 읽기 전용 시계다(드래그·클릭 조절 제거).
     $('fb-cancel').addEventListener('click', closeFb);

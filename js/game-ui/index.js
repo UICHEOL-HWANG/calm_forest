@@ -8,6 +8,8 @@ import { installLeaderboard } from './leaderboard.js';
 import { installDex } from './dex.js';
 import { installPhotos } from './photos.js';
 import { installBag } from './bag.js';
+import { installGuidePanel } from './guide-panel.js';
+import { installHouseExterior } from './house-exterior.js';
 
 export function installGameUi(ctx) {
   const cook = installCookCourse(ctx);
@@ -24,5 +26,7 @@ export function installGameUi(ctx) {
     dex: installDex(ctx),
     photos: installPhotos(ctx),
     bag: installBag(ctx),
+    guide: installGuidePanel(ctx),
+    ext: installHouseExterior(ctx),
   };
 }
