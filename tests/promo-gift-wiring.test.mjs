@@ -30,12 +30,13 @@ test('index.html — 마크업·메뉴·부팅·onPlay 순서·로그인 출구'
   for (const id of ['promo-gift-modal', 'promo-gift-seal', 'promo-gift-from', 'promo-gift-title', 'promo-gift-note', 'promo-gift-rule', 'promo-gift-list', 'promo-gift-set', 'promo-gift-ps', 'promo-gift-ok', 'promo-gift-cta', 'gift-code-modal', 'gift-code-title', 'gift-code-input', 'gift-code-msg', 'gift-code-submit', 'gift-code-close', 'gift-code-btn']) {
     assert.ok(html.includes(`id="${id}"`), id);
   }
-  assert.match(html, /import \{ bootPromoGift, linkInstallGift, promoGiftOnPlay, openGiftCodeEntry \} from '\.\/js\/promo-gift\/index\.js';/);
-  assert.match(html, /bootPromoGift\(\{ track: trackEvent \}\);/);
-  assert.match(html, /if \(referrerFresh\) linkInstallGift\(referrerP\);/);
-  assert.match(html, /promoGiftOnPlay\([\s\S]{0,400}\.finally\(\(\) => signupGiftOnPlay\(/);
+  assert.equal(html.split("import('./js/promo-gift/index.js')").length - 1, 1);
+  assert.doesNotMatch(html, /from '\.\/js\/promo-gift\/index\.js'/);
+  assert.match(html, /promoGift\(\)\.then\(m => m\.bootPromoGift\(\{ track: trackEvent \}\)\)/);
+  assert.match(html, /if \(referrerFresh\) promoGift\(\)\.then\(m => m\.linkInstallGift\(referrerP\)\)/);
+  assert.match(html, /promoGift\(\)\.then\(m => m\.promoGiftOnPlay\([\s\S]{0,400}\.finally\(\(\) => signupGiftOnPlay\(/);
   assert.match(html, /ui\.connectAccount = \(from\) => nudgeConnect\(from\);/);
-  assert.match(html, /\$\('gift-code-btn'\)\.addEventListener\('click', \(\) => openGiftCodeEntry\(/);
+  assert.match(html, /\$\('gift-code-btn'\)\.addEventListener\('click', \(\) => promoGift\(\)\.then\(m => m\.openGiftCodeEntry\(/);
 });
 
 test('grantItems — 인벤토리에 있는 양의 정수만, 경제 로그·저장·HUD', () => {

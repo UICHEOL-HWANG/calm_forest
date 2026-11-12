@@ -4106,7 +4106,7 @@
     import { loadGameModules, bootWorld, enterGame, requestSave, getGameState, isAtOrchard, mapLocked, npcAccept, npcClaim, Input, markNoticesSeen, resyncPurchases, grantItems, initPush, offerPush, playChestReveal, stopChestReveal, initControls, initCafeGuests, initNightVisit, initDuel, openDecorAlbum, villageMap, requestMapSnapshot } from './js/game-lazy.js';
     import { bootReferral, inviteBanner, inviteCodeLine, linkInstallInvite, referralOnPlay, openInviteSheet, referralEnabled } from './js/referral/index.js';   // 🤝 친구 초대
     import { signupGiftOnPlay } from './js/signup-gift/index.js';
-    import { bootPromoGift, linkInstallGift, promoGiftOnPlay, openGiftCodeEntry } from './js/promo-gift/index.js';
+    const promoGift = (() => { let p = null; return () => (p ??= import('./js/promo-gift/index.js')); })();
     import { nudgeView } from './js/signup-gift/copy.js';
     import { bootAppBanner, mountAppBanner } from './js/app-banner-ui.js';
     import { mountLoginStore } from './js/login-store-ui.js';
@@ -6209,7 +6209,7 @@
       try { initPush(); } catch (e) { console.warn('[push] init skipped', e); }   // 🔔 안드로이드만 — 허용한 사람 조용히 재등록·설정 토글
       // 🤝 친구 초대 — 초대받았으면 연결(하트핀), 내가 초대한 친구 정산. 기다리지 않는다(실패해도 게임 진행)
       referralOnPlay({ auth: authState, toast: (m) => ui.toast(m, 2800), track: trackEvent, resync: resyncPurchases });
-      promoGiftOnPlay({ auth: authState, track: trackEvent, ui, grant: (b) => grantItems(b) })
+      promoGift().then(m => m.promoGiftOnPlay({ auth: authState, track: trackEvent, ui, grant: (b) => grantItems(b) }))
         .then(r => { if (r.views.some(v => v.stage === 2)) return resyncPurchases('promo_gift', { quiet: true }); })
         .catch(() => null)
         .finally(() => signupGiftOnPlay({ auth: authState, track: trackEvent, resync: resyncPurchases, ui }));
@@ -6520,7 +6520,7 @@
     });
     $('invite-close').addEventListener('click', () => $('invite-modal').classList.remove('show'));
     $('invite-modal').addEventListener('click', (e) => { if (e.target.id === 'invite-modal') $('invite-modal').classList.remove('show'); });
-    $('gift-code-btn').addEventListener('click', () => openGiftCodeEntry({ auth: authState, track: trackEvent, ui, grant: (b) => grantItems(b) }));
+    $('gift-code-btn').addEventListener('click', () => promoGift().then(m => m.openGiftCodeEntry({ auth: authState, track: trackEvent, ui, grant: (b) => grantItems(b) })).catch(() => null));
     // 🐾 캐릭터·꾸미기 — 동물 바꾸기(진행 상황은 그대로) + 🧥 옷장·🐾 펫 탭(2026-09-29)
     $('char-btn').addEventListener('click', () => {
       $('topleft').classList.remove('open');
@@ -8618,7 +8618,7 @@
       if (IS_NATIVE) void bootTenjin();
       preloadSupabase().catch(() => {});
       bootReferral({ track: trackEvent });           // 🤝 ?invite= 보관 — 인증(구글 리다이렉트)이 쿼리를 지우기 전에
-      bootPromoGift({ track: trackEvent });
+      promoGift().then(m => m.bootPromoGift({ track: trackEvent })).catch(() => null);
       try { bootAppBanner(); } catch (e) { /* 저장소 없음 — 배너 연결만 빠진다 */ }   // 📲 jid·utm 보관 — 같은 이유로 인증 전에
       try { bootMetaPixel(); onTrack(metaFromTrack); } catch (e) { /* Pixel 실패해도 게임 진행 */ }   // 📣 fbclid 보관 — 같은 이유로 인증 전에
       if (PLATFORM === 'web') { try { trackHandoffArrival({ track: trackEvent, search: location.search, ua: navigator.userAgent, storage: sessionStorage }); } catch (e) { } }
@@ -8633,7 +8633,7 @@
           syncInstall = (auth) => syncInstallAttribution({ auth, storage, insert: insertInstallAttribution }).catch(() => {});
           referrerP = bootInstallReferrer({ plugin: capPlugin('InstallReferrer'), storage, track: trackEvent, setUserProps: setInstallUserProps });
           if (referrerFresh) linkInstallInvite(referrerP);
-          if (referrerFresh) linkInstallGift(referrerP);
+          if (referrerFresh) promoGift().then(m => m.linkInstallGift(referrerP)).catch(() => null);
           referrerP.then(() => syncInstall({ ...authState }))   // 로그인이 귀속보다 먼저 끝난 경우
             .catch(e => console.warn('[install-referrer] skipped', e));
         } catch (e) { /* 저장소 없음 — 귀속만 빠진다 */ }
