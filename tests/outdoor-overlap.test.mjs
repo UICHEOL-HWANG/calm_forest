@@ -43,7 +43,7 @@ test('딱 맞닿기만 하면 겹침이 아니다', () => {
 test('placeOutdoor 는 새로 놓을 때만 세계 충돌체와의 겹침을 막고, 장식끼리는 무시한다', () => {
   const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
   assert.match(src, /if \(!silent && !def\.farm && outdoorBlockedByWorld\(id, wx, wz, ry\)\)/);
-  assert.match(src, /outdoorMeshes\.map\(m => m\.userData\.solid\)/);
+  assert.match(src, /outdoorMeshes\.flatMap\(m => m\.userData\.solid \|\| \[\]\)/);
 });
 
 test('링크 선물 꾸미기 발자국 — 열기구는 말뚝 크기 원, 가방 더미는 회전에 맞춘 상자', () => {

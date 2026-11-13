@@ -25,6 +25,7 @@ import { buildNeighborIndoor } from '../neighbors/indoor-scene.js';
 import { STAIR_PROMPT_R, stairLayout } from './indoor.js';
 import { gardenDoorLocal } from '../house-floors.js';
 import { inVillage2 } from './doors.js';
+import { weeklyNote } from '../weekly/index.js';
 import { bindVillagePublicToggle, closePickerModal, hideNeighborHud, isPickerOpen, openBlockConfirm, openNbMenu, openPickerModal, openReportModal, openVisitorsModal, setHostBubble, setNeighborHudTitle, setPickerBusy, setVillagePublicUi, showNeighborHud } from '../neighbors/ui.js';
 
 let visit = null;          // { publicId, slot, revisit, view, built, t0, reacted, bubble:'ask'|'thanks', near, busy, viewReq, viewId, indoor:null|{f,t0,floors:Set,tags:Set}, indoorBuilt }
@@ -83,6 +84,7 @@ export function enterNeighbor(entry) {
   showNeighborHud(entry.view.nickname, exitNeighbor, (anchor) => openMore(entry.publicId, 'visit', anchor));
   Sound.blip();
   trackEvent(...evVisitStart(entry));                        // [GA4] host·slot·revisit·load_ms
+  if (!entry.revisit) weeklyNote('neighbor');
   startView(visit);                                          // [원장] village_views — 기다리지 않는다(입장을 막지 않음)
 }
 

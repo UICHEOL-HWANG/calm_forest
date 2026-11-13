@@ -100,3 +100,6 @@ dev/archive/halloween-coin-decor/look/mockups.html
 
 # 🔔🍎 Firebase iOS 설정(API 키 포함) — PUBLIC 저장소라 로컬에만 둔다(안드로이드 google-services.json 과 같은 규칙)
 ios/App/App/GoogleService-Info.plist
+
+sims/weekly-*
+sims/weekly-*/

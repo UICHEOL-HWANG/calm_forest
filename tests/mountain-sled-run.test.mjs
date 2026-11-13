@@ -8,7 +8,7 @@ import { COURSE, COURSE_V } from '../js/mountain/course.js';
 import { GHOST_V } from '../js/mountain/sled-extras.js';
 
 function run(day = '2026-10-20', mountain = undefined) {
-  const paid = [], saves = [], events = [], settled = [], rows = [], abandons = [], plays = [];
+  const paid = [], saves = [], events = [], settled = [], rows = [], abandons = [], plays = [], notes = [];
   const ctx = {
     gameState: { ...(mountain ? { mountain } : {}), firstDay: '2026-10-18' },
     today: day,
@@ -19,13 +19,14 @@ function run(day = '2026-10-20', mountain = undefined) {
     sendSledRun: row => rows.push(row),
     trackDiffAbandon: (...a) => abandons.push(a),
     onPlay: src => plays.push(src),
+    weeklyNote: type => notes.push(type),
     diffParams: r => ({ ease: r.ease, dda: r.dda, arm: r.arm, probe_v: 2 }),
     ddaOutcome, finalTimeMs, PHYS, PHYS_V, COURSE, COURSE_V, GHOST_V,
   };
   const c = vm.createContext({ ...ctx, todayStr: () => c.today });
   vm.runInContext(readFileSync(new URL('../js/mountain/sled-run.js', import.meta.url), 'utf8')
     .replace(/^import [\s\S]*?;\n/gm, '').replace(/^export /gm, ''), c);
-  return { c, paid, saves, events, settled, rows, abandons, plays };
+  return { c, paid, saves, events, settled, rows, abandons, plays, notes };
 }
 
 const plain = v => JSON.parse(JSON.stringify(v));
@@ -169,11 +170,12 @@ test('row records the sled id and the current physics version', () => {
 });
 
 test('every finished run rolls one decor drop, abandons do not', () => {
-  const { c, plays } = run();
+  const { c, plays, notes } = run();
   c.sledSettle(SLED(40000, 12), CTX, { fpsAvg: 58 });
   c.sledSettle(SLED(41000, 12), CTX, { fpsAvg: 58 });
   c.sledAbandon('sled', CTX, SLED(12000, 3));
   assert.deepEqual(plays, ['sled', 'sled']);
+  assert.deepEqual(notes, ['sled', 'sled']);
 });
 
 test('a new best saves the run path as the ghost, later plays keep it', () => {

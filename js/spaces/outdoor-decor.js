@@ -95,7 +95,7 @@ export function pickOutdoor(m) {
   if (rec.id === 'warehouse' && storageTotal(gameState.farm.storage) > 0 && farmBuildingRecs().filter(r => r.id === 'warehouse').length <= 1) { ui.toast?.('🧺 창고를 비워야 옮길 수 있어요 — 옆에서 액션으로 꺼내요', 2600); return false; }
   if (rec.id === 'trellis' && trellisHasGrapes(rec)) { ui.toast?.('🍇 포도를 수확한 뒤에 옮길 수 있어요', 2400); return false; }
   scene.remove(m); outdoorMeshes.splice(outdoorMeshes.indexOf(m), 1);
-  if (m.userData.solid) removeSolid(m.userData.solid);                       // 🚧 들어 올린 자리에 안 보이는 벽이 남지 않게
+  [].concat(m.userData.solid || []).forEach(removeSolid);                      // 🚧 들어 올린 자리에 안 보이는 벽이 남지 않게
   for (const ob of [].concat(m.userData.obstacle || [])) { const oi = obstacles.indexOf(ob); if (oi >= 0) obstacles.splice(oi, 1); }   // 시설은 칸마다 하나씩
   // 저장 레코드는 목록에 남긴다(들고 있는 동안 세이브돼도 분실 없음) — 놓으면 placeOutdoor 가 좌표만 갱신, 보관하면 storeOutdoor 가 뺀다
   m.traverse(o => { if (o.isMesh) { const hi = houseWindows.indexOf(o.material); if (hi >= 0) houseWindows.splice(hi, 1); } });   // 🏮 밤 점등 목록에서도 제거(다시 놓으면 새로 등록)

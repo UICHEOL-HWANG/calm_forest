@@ -16,6 +16,7 @@ import {
   spawnSparkle, syncBadges, syncStory, todayStr, triggerMoment, ui, woodMat,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
+import { weeklyNote } from '../weekly/index.js';
 import { buildAnimalHead } from '../animal-faces.js';
 import { findItem } from '../cosmetics/catalog.js';
 import { buy as buyCos, equip as equipCos } from '../cosmetics/equip.js';
@@ -1634,6 +1635,7 @@ export function finishCafeServe(guest, tier, { fromPantry = false, score = null 
   refreshCafeGuests();                                            // 만족한 손님은 자리를 뜸
   trackEvent('cafe_serve', { recipe: o.recipe.id, npc: o.id, pay, quality: tier.id, score,
     from_pantry: fromPantry ? 1 : 0, served_total: st.served, affinity: aff });   // [GA4] 접객 루프 KPI
+  weeklyNote('serve');
   syncStory('serve');                                             // 📖 3장(마을의 맛) 진행
   const complete = st.done.length >= CAFE_ORDERS && !st.bonus;
   if (complete) {                                                 // 🎉 오늘 영업 완주

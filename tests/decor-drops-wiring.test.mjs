@@ -66,9 +66,9 @@ test('dev force flag only in dev sessions', () => {
 test('granted set items show up in the decor menu only while stored', () => {
   const g = read('../js/game.js');
   const fn = g.slice(g.indexOf('getDecor() {'), g.indexOf('getKitchen()'));
-  assert.match(fn, /\[\.\.\.DECOR\.filter\(d => !d\.hidden\), \.\.\.DECOR\.filter\(d => d\.set && \(kept\[d\.id\] \|\| 0\) > 0\)\]/);
+  assert.match(fn, /\[\.\.\.DECOR\.filter\(d => !d\.hidden\), \.\.\.DECOR\.filter\(d => \(d\.set \|\| d\.keep\) && \(kept\[d\.id\] \|\| 0\) > 0\)\]/);
 });
 
 test('set items can only be placed from storage, never bought at cost 0', () => {
-  assert.match(read('../js/spaces/indoor.js'), /if \(def\.set && !fromStore && !silent && !free\) \{ return false; \}/);
+  assert.match(read('../js/spaces/indoor.js'), /if \(\(def\.set \|\| def\.keep\) && !fromStore && !silent && !free\) \{ return false; \}/);
 });

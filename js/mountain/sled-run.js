@@ -1,6 +1,7 @@
 import { diffParams, gameState, giveReward, requestSave, settleDifficulty, todayStr, trackDiffAbandon } from '../game.js';
 import { GHOST_V } from './sled-extras.js';
 import { trackEvent } from '../analytics.js';
+import { weeklyNote } from '../weekly/index.js';
 import { onPlay } from '../decor-drops/index.js';
 import { sendSledRun } from '../supabase-client.js';
 import { ddaOutcome } from '../difficulty.js';
@@ -128,6 +129,7 @@ export function sledSettle(sled, ctx, env = {}) {
     run_id: ctx.runId, drifts: moves.drift_count, jumps: moves.jump_count, tricks: moves.trick_ok, gusts: moves.gusts, shield: moves.shield_used,
   });
   onPlay('sled');
+  weeklyNote('sled');
   sendSledRun(sledRow(ctx, 'finish', null, sled, timeMs, { rewarded, coins, fpsAvg: env.fpsAvg }, st.best));
   return { timeMs, coins, rewarded, newBest, leftToday: Math.max(0, DAILY_REWARD_RUNS - doneAfter) };
 }

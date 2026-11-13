@@ -8,7 +8,8 @@ function box(x, z, hw, hd, ry) {
   return { x1: x - a, z1: z - b, x2: x + a, z2: z + b };
 }
 
-export function outdoorFootprint(id, x, z, ry, { cartBox, vatBox, cartId, suitcaseBox } = {}) {
+export function outdoorFootprint(id, x, z, ry, { cartBox, vatBox, cartId, suitcaseBox, defBox } = {}) {
+  if (defBox) return box(x, z, defBox[0] / 2, defBox[1] / 2, ry);
   if (id === 'kiln') return box(x, z, KILN_HALF[0], KILN_HALF[1], ry);
   if (cartBox && id === cartId) return box(x, z, cartBox.w / 2, cartBox.d / 2, ry);
   if (vatBox && id === 'vat') return box(x, z, vatBox.w / 2, vatBox.d / 2, ry);
@@ -16,6 +17,13 @@ export function outdoorFootprint(id, x, z, ry, { cartBox, vatBox, cartId, suitca
   if (SMALL.includes(id)) return { x, z, r: 0.22 };
   if (FLAT.includes(id)) return { x, z, r: 0.35 };
   return { x, z, r: 0.5 };
+}
+
+export function postCircles(posts, x, z, ry) {
+  return posts.map(([px, pz, r]) => {
+    const [a, b] = [[px, pz], [pz, -px], [-px, -pz], [-pz, px]][ry % 4];
+    return { x: +(x + a).toFixed(6), z: +(z + b).toFixed(6), r };
+  });
 }
 
 const isBox = (s) => s.x1 !== undefined;

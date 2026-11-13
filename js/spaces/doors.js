@@ -19,6 +19,7 @@ import { dive, diveHint, nearDiveExit, DIVE_COPY } from './dive.js';
 import { port, portPrompt, enterPort, guideHides } from '../port/index.js';
 import { plazaSpot } from '../plaza/index.js';
 import { auctionSpotNow, auctionPrompt } from '../auction/index.js';
+import { weeklySpotNow, weeklyPrompt } from '../weekly/index.js';
 import { delvePrompt, delveFloorNow } from './delve.js';
 import { trackEvent } from '../analytics.js';
 import { RESTAURANT_COPY, nearRestaurantDoor, nearRestaurantExit, updateRestaurantInteract } from './restaurant.js';
@@ -424,6 +425,7 @@ export function updateDoorInteract() {
   else if (plazaHere === 'stall') prompt = '🍂 수확제 좌판';
   else if (plazaHere === 'plaque') prompt = '🌾 광장 명판 보기';
   else if (nearMarket) { prompt = '📊 오늘의 시세'; firstHintBanner('market', '📊', '시세 전광판', '판매가가 매일 바뀌니 비쌀 때 파세요'); }
+  else if (inVillage && weeklySpotNow()) prompt = weeklyPrompt();
   else if (nearCoop) {
     prompt = gameState.coop.built ? '🐔 닭장' : '🐔 닭장 터';
     firstHintBanner('coop', '🐔', '닭장 터', '재료 모아 닭장 짓고 매일 🥚달걀 받기');
