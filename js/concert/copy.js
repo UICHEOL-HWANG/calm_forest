@@ -22,6 +22,6 @@ export const CONCERT_COPY = Object.freeze({
   earned: '음표 {0}개를 받았어요',
   noPay: '오늘 음표는 이미 다 받았어요. 연습으로 끝났어요',
   best: '최고 기록이에요',
-  again: '다시 하기', leave: '나가기',
+  again: '다시 하기', leave: '닫기',
   noteName: '음표',
 });
