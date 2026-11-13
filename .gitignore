@@ -103,3 +103,5 @@ ios/App/App/GoogleService-Info.plist
 
 sims/weekly-*
 sims/weekly-*/
+sims/concert-*
+sims/concert-*/
