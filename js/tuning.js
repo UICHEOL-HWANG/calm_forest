@@ -153,6 +153,7 @@ export const DIFFICULTY = {
   sled:  { arms: [0.85, 1.0, 1.15], target: 0.8, ddaOn: false },
   mudflat: { arms: [0.8, 1.0, 1.25], target: 0.7, ddaOn: false },
   dive:  { arms: [0.85, 1.0, 1.15], target: 0.7, ddaOn: false },
+  concert: { arms: [0.85, 1.0, 1.2], target: 0.75, ddaOn: true },
 };
 export const DIFF_K = 0.10;                 // DDA 한 판당 이동량 계수 — probe 보다 느리게 움직여야 한다
 export const DIFF_DDA_CLAMP = [0.7, 1.5];   // DDA 는 꼬리만 잡는다(목표값이 아직 잠정치라 좁게)
