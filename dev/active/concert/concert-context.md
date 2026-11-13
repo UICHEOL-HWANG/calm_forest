@@ -1,6 +1,6 @@
 # 마을 음악회 · 맥락
 
-Last Updated: 2026-11-14 (설계와 구현 계획 작성 완료, 구현 시작 전)
+Last Updated: 2026-11-14 (Task 5 문구 확정, 사용자 승인 반영)
 
 ## 상태
 
@@ -45,7 +45,34 @@ Last Updated: 2026-11-14 (설계와 구현 계획 작성 완료, 구현 시작 �
 
 ## 확정 문구
 
-Task 5 게이트에서 채운다.
+사용자가 2026-11-14에 승인했다. 추천안에서 `sub`, `subDone`, `equipped`, `short`, `guestBtn`, `practice`, `noPay` 일곱 개를 고친 형태다. 코드는 `js/concert/copy.js`, 영어는 `js/i18n-en.js`.
+
+- prompt: 음악회 열기
+- title: 마을 음악회
+- sub: 음표를 받는 공연이 오늘 {0}번 남았어요
+- subDone: 오늘 음표는 다 받았어요. 연주는 얼마든지 해도 돼요
+- tabSongs: 곡 / tabInst: 내 악기 / tabShop: 음표 교환
+- song: 숲의 아침 · 장터 행진 · 별빛 왈츠
+- level: 쉬움 · 보통 · 어려움
+- play: 연주하기
+- inst: 작은북 · 마라카스 · 핸드벨 · 큰북 · 통기타
+- equip: 이 악기로
+- equipped: 선택 중
+- buy: 음표 {0}개로 바꾸기
+- short: {0}개만 더 모으면 바꿀 수 있어요
+- owned: 보유 중
+- soon: 준비 중이에요
+- guest: 로그인하면 음표로 바꿀 수 있어요. 모은 음표는 그대로 남아요
+- guestBtn: 로그인하고 바꾸기
+- practice: 왼쪽 줄은 화면 왼쪽, 오른쪽 줄은 화면 오른쪽을 눌러요
+- judge: 딱 맞아요 · 좋아요 · 놓쳤어요
+- quit: 그만하기
+- resultTitle: 연주 끝
+- earned: 음표 {0}개를 받았어요
+- noPay: 오늘 음표는 이미 다 받았어요. 연습으로 끝났어요
+- best: 최고 기록이에요
+- again: 다시 하기 / leave: 나가기
+- noteName: 음표
 
 ## 고른 시안
 
