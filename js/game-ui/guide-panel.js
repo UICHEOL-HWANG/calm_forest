@@ -115,3 +115,5 @@ export function installGuidePanel(ctx) {
   }, true);
   return { openGuide, nudgeGuideOnce };
 }
+
+export const PANEL_IDS = ['guide-body', 'guide-chips', 'guide-close', 'guide-panel', 'topleft'];

@@ -144,3 +144,5 @@ export function installWorkbenchMenu(ctx) {
   $('cook-close').addEventListener('click', closeCook);
   return { renderBench, showCookTab, runBenchTour, closeCook };
 }
+
+export const PANEL_IDS = ['cook-close', 'cook-coin', 'cook-inv', 'cook-menu', 'forge-modal', 'wb-banner', 'wb-list', 'wb-sheet'];

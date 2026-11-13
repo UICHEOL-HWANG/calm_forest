@@ -16,3 +16,9 @@
 
 ## 3단계
 - [x] 안내서 패널·집 외관 꾸미기
+
+## 품질
+- [x] 영어 라벨 2개(Continue with Apple · Today's Log)
+- [x] 패널별 설치 격리: PANEL_IDS 사전 점검 + 의존 패널(작업대→조각, 주방→요리) 건너뛰기
+- [x] index.html 연결 함수 전부 gameUi?.패널?. 로 · isBGMOn 미사용 import 제거
+- [x] 브라우저: ext-close·cv-quit 끊은 빌드에서 해당 패널만 빠지고 가방·주방 정상, 전체 테스트 5275 통과

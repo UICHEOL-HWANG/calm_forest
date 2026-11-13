@@ -86,3 +86,5 @@ export function installCarveHud(ctx) {
   $('cvr-wrapgo').addEventListener('click', cvWrap);
   return { openCarveHud, cvProgress, cvDone, cvGem, getCV };
 }
+
+export const PANEL_IDS = ['cv-combo', 'cv-dmg', 'cv-gauge', 'cv-gem', 'cv-hint', 'cv-layer', 'cv-prog', 'cv-quit', 'cv-result', 'cv-title', 'cvr-choice', 'cvr-close', 'cvr-closebar', 'cvr-ico', 'cvr-keep', 'cvr-papers', 'cvr-plain', 'cvr-sell', 'cvr-stats', 'cvr-sub', 'cvr-title', 'cvr-wrapgo'];

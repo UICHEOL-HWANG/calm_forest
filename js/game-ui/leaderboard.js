@@ -86,3 +86,5 @@ export function installLeaderboard(ctx) {
   $('lb-btn').addEventListener('click', openLb);   // ☰메뉴 접힘은 util-btns 위임 핸들러가 처리
   return { openLb };
 }
+
+export const PANEL_IDS = ['lb-btn', 'lb-close', 'lb-list', 'lb-me', 'lb-modal', 'lb-sub', 'lb-tabs'];

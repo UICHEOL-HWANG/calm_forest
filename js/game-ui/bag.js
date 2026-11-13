@@ -93,3 +93,5 @@ export function installBag(ctx) {
   $('bag-backdrop').addEventListener('click', closeBag);
   return { renderBag };
 }
+
+export const PANEL_IDS = ['bag-backdrop', 'bag-close', 'bag-content', 'bag-menu', 'inv-hud'];

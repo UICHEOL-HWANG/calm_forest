@@ -4058,7 +4058,7 @@
     import { createNickStep } from './js/nickname-step.js';
     import { createSpotlight } from './js/hud/spotlight.js';
     import { pillHintKey, spotSteps, treeSteps } from './js/onboarding/spot-steps.js';
-    import { Sound, startBGM, toggleBGM, isBGMOn } from './js/sound.js';
+    import { Sound, startBGM, toggleBGM } from './js/sound.js';
     import { t, LANG, setLang, translateDom, watchDom } from './js/i18n.js';   // 🌐 i18n(한국어 원문 키 사전)
     import { TUNING, isBetaA, betaDay } from './js/tuning.js';
 
@@ -6507,26 +6507,26 @@
     window.addEventListener('resize', layoutQuestPanel);
 
     let gameUi = null;
-    const startCookCourse = (st) => gameUi.cook.startCookCourse(st);
-    const openCarveHud = (st) => gameUi.carve.openCarveHud(st);
-    const cvProgress = (p) => gameUi.carve.cvProgress(p);
-    const cvDone = (res) => gameUi.carve.cvDone(res);
-    const cvGem = () => gameUi.carve.cvGem();
-    const renderShop = () => gameUi?.shop.renderShop();
-    const openHomi = () => gameUi.shop.openHomi();
-    const showShopTab = (tab) => gameUi.shop.showShopTab(tab);
-    const renderBench = () => gameUi?.bench.renderBench();
-    const showCookTab = (tab) => gameUi.bench.showCookTab(tab);
-    const runBenchTour = () => gameUi.bench.runBenchTour();
-    const closeCook = () => gameUi.bench.closeCook();
-    const renderCraft = (d) => gameUi.kitchen.renderCraft(d);
-    const renderKitchen = (d) => gameUi?.kitchen.renderKitchen(d);
-    const closeKitchen = () => gameUi.kitchen.closeKitchen();
-    const renderBoatShop = (d) => gameUi.boat.renderBoatShop(d);
-    const openLb = () => gameUi.lb.openLb();
-    const renderBag = () => gameUi?.bag.renderBag();
-    const openGuide = (from) => gameUi.guide.openGuide(from);
-    const nudgeGuideOnce = () => gameUi?.guide.nudgeGuideOnce();
+    const startCookCourse = (st) => gameUi?.cook?.startCookCourse(st);
+    const openCarveHud = (st) => gameUi?.carve?.openCarveHud(st);
+    const cvProgress = (p) => gameUi?.carve?.cvProgress(p);
+    const cvDone = (res) => gameUi?.carve?.cvDone(res);
+    const cvGem = () => gameUi?.carve?.cvGem();
+    const renderShop = () => gameUi?.shop?.renderShop();
+    const openHomi = () => gameUi?.shop?.openHomi();
+    const showShopTab = (tab) => gameUi?.shop?.showShopTab(tab);
+    const renderBench = () => gameUi?.bench?.renderBench();
+    const showCookTab = (tab) => gameUi?.bench?.showCookTab(tab);
+    const runBenchTour = () => gameUi?.bench?.runBenchTour();
+    const closeCook = () => gameUi?.bench?.closeCook();
+    const renderCraft = (d) => gameUi?.kitchen?.renderCraft(d);
+    const renderKitchen = (d) => gameUi?.kitchen?.renderKitchen(d);
+    const closeKitchen = () => gameUi?.kitchen?.closeKitchen();
+    const renderBoatShop = (d) => gameUi?.boat?.renderBoatShop(d);
+    const openLb = () => gameUi?.lb?.openLb();
+    const renderBag = () => gameUi?.bag?.renderBag();
+    const openGuide = (from) => gameUi?.guide?.openGuide(from);
+    const nudgeGuideOnce = () => gameUi?.guide?.nudgeGuideOnce();
 
     // 로컬 개발 훅 — 콘솔에서 미니게임을 직접 구동(?give 처럼 localhost 전용, 실서비스 노출 안 됨)
     if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) {

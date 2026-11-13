@@ -233,3 +233,5 @@ export function installShopMenu(ctx) {
   });
   return { renderShop, openHomi, showShopTab };
 }
+
+export const PANEL_IDS = ['buy-items', 'homi-base', 'homi-close', 'homi-ico', 'homi-menu', 'homi-skin-go', 'homi-skin-wrap', 'homi-skins', 'homi-slots', 'homi-tiers', 'homi-tiles', 'sell-ad', 'sell-items', 'sell-sheet', 'shop-close', 'shop-coin', 'shop-menu'];

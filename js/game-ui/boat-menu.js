@@ -27,3 +27,5 @@ export function installBoatMenu(ctx) {
   });
   return { renderBoatShop };
 }
+
+export const PANEL_IDS = ['boat-quit', 'boat-result', 'boat-result-close', 'boat-shop', 'boat-skill', 'boat-view', 'br-again', 'bs-close', 'bs-dock'];

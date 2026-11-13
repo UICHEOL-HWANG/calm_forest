@@ -77,3 +77,5 @@ export function installHouseExterior(ctx) {
   $('ext-close').addEventListener('click', () => { $('ext-menu').classList.remove('show'); document.body.classList.remove('menu-open'); Input.setExtView(false); });
   return {};
 }
+
+export const PANEL_IDS = ['ext-addons', 'ext-btn', 'ext-close', 'ext-expand', 'ext-menu'];

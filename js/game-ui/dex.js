@@ -84,3 +84,5 @@ export function installDex(ctx) {
   $('dex-modal').addEventListener('click', (e) => { if (e.target === $('dex-modal')) $('dex-modal').classList.remove('show'); });
   return {};
 }
+
+export const PANEL_IDS = ['dex-close', 'dex-guest', 'dex-modal', 'dex-sections', 'dex-tab', 'dex-title'];

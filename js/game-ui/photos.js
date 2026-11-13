@@ -250,3 +250,5 @@ export function installPhotos(ctx) {
   });
   return {};
 }
+
+export const PANEL_IDS = ['album-btn', 'album-close', 'album-count', 'album-delete', 'album-grid', 'album-img', 'album-modal', 'album-share', 'album-view', 'album-view-close', 'photo-btn', 'photo-close', 'photo-cloud', 'photo-img', 'photo-modal', 'photo-save', 'photo-share', 'time-emoji', 'topleft'];

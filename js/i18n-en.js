@@ -788,6 +788,8 @@ export const EN = {
   '뱃사공의 창고': 'Boatman\'s Shed',
   '대화하기': 'Talk',
   'Google로 시작하기': 'Start with Google',
+  'Apple로 계속하기': 'Continue with Apple',
+  '오늘 일지': "Today's Log",
   '게스트로 둘러보기': 'Look around as a guest',
   '🌱 바로 시작하기': '🌱 Play now',
   '가입 없이 바로 플레이할 수 있어요': 'No sign-up needed. Play right away.',

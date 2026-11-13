@@ -453,3 +453,5 @@ export function installCookCourse(ctx) {
   ui.startCookCourse = startCookCourse;                     // ☕ 카페에서 손님 앞 조리를 열 때 game.js 가 부른다
   return { startCookCourse, mgTap, MG };
 }
+
+export const PANEL_IDS = ['mg-card', 'mg-combo', 'mg-gfill', 'mg-gzone', 'mg-judge', 'mg-layer', 'mg-needle', 'mg-quit', 'mg-result', 'mg-sfill', 'mg-shold', 'mg-step', 'mg-szone', 'mg-tap', 'mg-tip', 'mg-title', 'mg-zone', 'mgr-again', 'mgr-cafe', 'mgr-choice', 'mgr-close', 'mgr-eat', 'mgr-ico', 'mgr-stats', 'mgr-store', 'mgr-sub', 'mgr-taste', 'mgr-title'];

@@ -227,3 +227,5 @@ export function installKitchenMenu(ctx) {
   $('kt-close').addEventListener('click', closeKitchen);
   return { renderCraft, renderKitchen, closeKitchen };
 }
+
+export const PANEL_IDS = ['cmg-after', 'cmg-grade', 'cmg-ok', 'cmg-stage', 'cmg-tip', 'cmg-title', 'cmg-yield', 'craft-ask', 'craft-claim', 'craft-hint', 'craft-menu', 'craft-mg', 'craft-recipes', 'craft-slots', 'craft-title', 'kitchen-menu', 'kt-close', 'kt-items', 'kt-sub'];
