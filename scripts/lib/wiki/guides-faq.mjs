@@ -137,9 +137,17 @@ const visitorFaq = (entries) => [
   qa('어떤 손님이 올지 미리 알 수 있나요?', '야외 장식을 놓거나 옮길 때 그 자리에 어떤 손님이 올지 점수판이 알려 준다.'),
 ];
 
+const giftFaq = () => [
+  qa('선물 꾸미기는 어디서 살 수 있나요?', '살 수 없다. 가입, 친구 초대, 선물 코드가 담긴 링크로만 받는다.'),
+  qa('게스트도 받을 수 있나요?', '링크 선물의 첫날 선물인 코인, 고급 씨앗, 비료, 미끼는 게스트도 받지만 꾸미기는 로그인해야 도착한다.'),
+  qa('선물 코드는 어디에 넣나요?', '메뉴의 선물 코드를 누르고 코드를 넣으면 된다. 링크로 들어왔다면 따로 넣지 않아도 된다.'),
+  qa('받은 꾸미기는 어디에 있나요?', '작업대 보관함에 들어 있다. 꺼내서 마당에 놓으면 된다.'),
+  qa('기기를 바꾸면 꾸미기가 사라지나요?', '사라지지 않는다. 같은 계정으로 로그인하면 보관함으로 다시 돌아온다.'),
+];
+
 const FAQ = {
   fish: fishFaq, crop: cropFaq, ore: oreFaq, cook: cookFaq, npc: npcFaq, forage: forageFaq, bug: bugFaq,
-  track: trackFaq, dig: digFaq, river: riverFaq, spirit: spiritFaq, weather: weatherFaq, visitor: visitorFaq,
+  track: trackFaq, dig: digFaq, river: riverFaq, spirit: spiritFaq, weather: weatherFaq, visitor: visitorFaq, gift: giftFaq,
 };
 
 export function catFaq(cat, entries) {

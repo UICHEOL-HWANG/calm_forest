@@ -15,7 +15,7 @@ const ctx = { index, entries: wiki.entries, cats: wiki.cats, backlinks };
 const plainLen = (s) => s.replace(/\[\[[^\]|]+\|?([^\]]*)\]\]/g, '$1').replace(/\s/g, '').length;
 const catEntries = (id) => wiki.entries.filter(e => e.cat === id);
 
-test('분류 대문: 13개 모두 공략 절 8개 이상, 본문 1000자 이상', () => {
+test('분류 대문: 14개 모두 공략 절 8개 이상, 본문 1000자 이상', () => {
   for (const cat of WIKI_CATS) {
     const sections = categoryGuide(cat.id, catEntries(cat.id));
     assert.ok(sections.length >= 8, `${cat.id} 절 ${sections.length}`);
@@ -24,7 +24,7 @@ test('분류 대문: 13개 모두 공략 절 8개 이상, 본문 1000자 이상'
   }
 });
 
-test('개별 문서: 81개 모두 공략 메모 300자 이상, 페이지 전체 450자 이상', () => {
+test('개별 문서: 87개 모두 공략 메모 300자 이상, 페이지 전체 450자 이상', () => {
   for (const e of wiki.entries) {
     const total = entryGuide(e, wiki.entries, backlinks).reduce((n, p) => n + plainLen(p), 0);
     assert.ok(total >= 300, `${e.cat}/${e.id} 공략 ${total}자`);

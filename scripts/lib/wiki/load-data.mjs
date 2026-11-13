@@ -4,7 +4,8 @@ register('./three-hook.mjs', import.meta.url);
 
 export const WIKI_DATA_FILES = Object.freeze([
   'js/data/dex.js', 'js/data/catalog.js', 'js/data/places.js', 'js/dex-gates.js', 'js/museum.js',
-  'js/habitat.js', 'js/data/npcs.js', 'js/farm-crops.js', 'js/season.js', 'js/i18n-en.js', 'scripts/lib/wiki',
+  'js/habitat.js', 'js/data/npcs.js', 'js/farm-crops.js', 'js/season.js', 'js/i18n-en.js', 'js/data/reward-decor.js',
+  'js/referral/rules.js', 'scripts/lib/wiki',
 ]);
 
 export const WIKI_CATS = Object.freeze([
@@ -21,7 +22,10 @@ export const WIKI_CATS = Object.freeze([
   { id: 'spirit', name: '안개 정령', ico: '🌫️', place: '안개 낀 숲' },
   { id: 'weather', name: '날씨', ico: '🌦️', place: '마을' },
   { id: 'visitor', name: '텃밭 방문객', ico: '🦋', place: '내 텃밭' },
+  { id: 'gift', name: '선물 꾸미기', ico: '🎁', place: '마당' },
 ]);
+
+const GIFT_KIND = { signup: '가입 선물', referral: '친구 초대 보상', promo: '링크 선물' };
 
 const RES_KO = { crop: '작물', fish: '물고기', forage: '채집물', egg: '달걀', flour: '밀가루', juice: '과즙', seed: '씨앗', wood: '목재', stone: '돌', coal: '석탄', gem: '보석', coins: '코인', bug: '반딧불이' };
 const WEATHER_KO = { clear: '맑음', rain: '비', snow: '눈', fog: '안개' };
@@ -41,7 +45,7 @@ function gateFacts(gate, seasonName) {
 }
 
 export async function loadWiki() {
-  const [{ DEX }, catalog, places, { DEX_GATES }, { MUSEUM_FLOORS }, habitat, { NPCS }, { ADV_CROPS }, { SEASONS }, { EN }] = await Promise.all([
+  const [{ DEX }, catalog, places, { DEX_GATES }, { MUSEUM_FLOORS }, habitat, { NPCS }, { ADV_CROPS }, { SEASONS }, { EN }, { REWARD_DECOR }, { TIERS }] = await Promise.all([
     import('../../../js/data/dex.js'),
     import('../../../js/data/catalog.js'),
     import('../../../js/data/places.js'),
@@ -52,10 +56,17 @@ export async function loadWiki() {
     import('../../../js/farm-crops.js'),
     import('../../../js/season.js'),
     import('../../../js/i18n-en.js'),
+    import('../../../js/data/reward-decor.js'),
+    import('../../../js/referral/rules.js'),
   ]);
   const seasonName = (id) => SEASONS.find(s => s.id === id)?.name ?? id;
   const museumOf = (cat) => MUSEUM_FLOORS.find(f => f.cats.includes(cat))?.name ?? null;
   const sell = catalog.SELL_PRICE;
+  const giftWhen = (it) => ({
+    signup: '새 계정 가입',
+    referral: `초대한 친구 ${TIERS.find(t => t.item === it.id)?.need}명`,
+    promo: '선물 코드를 받은 뒤 로그인',
+  })[it.reward];
 
   const extra = {
     fish: (it) => {
@@ -100,11 +111,17 @@ export async function loadWiki() {
       const tags = (o) => Object.entries(o || {}).map(([k, n]) => `${habitat.TAG_LABEL[k] ?? k} ${n}`).join(' · ');
       return [['장소', '내 텃밭'], ['필요한 환경', tags(v.need)], ...(v.block ? [['싫어하는 것', tags(v.block)]] : []), ['나타나는 때', WHEN_KO[v.when] ?? v.when]];
     },
+    gift: (it) => [
+      ['구분', GIFT_KIND[it.reward]], ['받는 조건', giftWhen(it)],
+      ...(it.reward === 'signup' ? [['지급', `가입 선물 ${REWARD_DECOR.filter(d => d.reward === 'signup').length}가지 가운데 무작위 하나`]] : []),
+      ['보관', '작업대 🧺 보관함'], ['놓는 곳', '마당'], ['판매', '팔지 않음'],
+    ],
   };
+  const source = { gift: REWARD_DECOR };
 
   const entries = [];
   for (const cat of WIKI_CATS) {
-    for (const it of DEX[cat.id]) {
+    for (const it of source[cat.id] ?? DEX[cat.id]) {
       entries.push({ cat: cat.id, id: it.id, name: it.name, nameEn: EN[it.name] ?? null, ico: it.ico, facts: extra[cat.id](it), museum: museumOf(cat.id) });
     }
     if (cat.id === 'fish') {
