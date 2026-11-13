@@ -1,6 +1,6 @@
 # 마을 음악회 · 맥락
 
-Last Updated: 2026-11-14 (Task 5 문구 확정, 사용자 승인 반영)
+Last Updated: 2026-11-14 (Task 6 화면 시안 C 등불 선택, 창·두 줄 화면 구현)
 
 ## 상태
 
@@ -45,7 +45,7 @@ Last Updated: 2026-11-14 (Task 5 문구 확정, 사용자 승인 반영)
 
 ## 확정 문구
 
-사용자가 2026-11-14에 승인했다. 추천안에서 `sub`, `subDone`, `equipped`, `short`, `guestBtn`, `practice`, `noPay` 일곱 개를 고친 형태다. 코드는 `js/concert/copy.js`, 영어는 `js/i18n-en.js`.
+사용자가 2026-11-14에 승인했다. 추천안에서 `sub`, `subDone`, `equipped`, `short`, `guestBtn`, `practice`, `noPay` 일곱 개를 고친 형태다. 이후 `leave`를 닫기로 바꿨다. 나가기가 영어 사전에서 이미 "Log out"이기 때문이다. 코드는 `js/concert/copy.js`, 영어는 `js/i18n-en.js`.
 
 - prompt: 음악회 열기
 - title: 마을 음악회
@@ -71,12 +71,14 @@ Last Updated: 2026-11-14 (Task 5 문구 확정, 사용자 승인 반영)
 - earned: 음표 {0}개를 받았어요
 - noPay: 오늘 음표는 이미 다 받았어요. 연습으로 끝났어요
 - best: 최고 기록이에요
-- again: 다시 하기 / leave: 나가기
+- again: 다시 하기 / leave: 닫기
 - noteName: 음표
 
 ## 고른 시안
 
 Task 4, 6, 8, 9, 10 게이트에서 채운다.
+
+- 화면: C 등불 (2026-11-14 사용자 선택). 낮 화면의 아래쪽 어둠은 옅게 조정.
 
 ## 배포 때
 
