@@ -14,7 +14,8 @@ test('PC 좌판 창은 화면 높이 안에 들고, 목록만 스크롤되어 �
 });
 
 test('좌판 판매 탭 아이콘은 SELL_ICO_G 하나만 쓴다', () => {
-  assert.doesNotMatch(html, /const SELL_ICO = \{/);
-  assert.match(html, /import \{ SELL_ICO_G \} from '\.\/js\/data\/sell-icons\.js';/);
-  assert.match(html, /<span class="sl-ico">\$\{SELL_ICO_G\[it\.k\] \|\| '📦'\}<\/span>/);
+  const shop = readFileSync(new URL('../js/game-ui/shop-menu.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(html + shop, /const SELL_ICO = \{/);
+  assert.match(shop, /import \{ SELL_ICO_G \} from '\.\.\/data\/sell-icons\.js';/);
+  assert.match(shop, /<span class="sl-ico">\$\{SELL_ICO_G\[it\.k\] \|\| '📦'\}<\/span>/);
 });
