@@ -201,11 +201,12 @@ export function showLanes({ chart, instrument, practice, onTap, onQuit }) {
   };
   const onPointer = (e) => {
     if (e.target.closest?.('.cc-quit')) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
     e.preventDefault();
     onTap?.(e.clientX < window.innerWidth / 2 ? 0 : 1);
   };
   const onKey = (e) => {
-    if (!(e.code in KEYS)) return;
+    if (!(e.code in KEYS) || e.ctrlKey || e.metaKey || e.altKey) return;
     e.preventDefault();
     e.stopPropagation();
     if (e.repeat) return;
@@ -248,9 +249,13 @@ export function showLanes({ chart, instrument, practice, onTap, onQuit }) {
     }
   }
 
-  function flash(lane, kind) {
+  function flash(lane, kind, index) {
     flashes[lane] = { kind: kind || null, at: now() };
     if (!kind) return;
+    if (typeof index === 'number') {
+      if (index >= 0 && index < chart.length) hit[index] = 1;
+      return;
+    }
     let best = -1, bestD = Infinity;
     chart.forEach((n, i) => {
       if (n.lane !== lane || hit[i] || missed[i]) return;
