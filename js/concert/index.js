@@ -68,17 +68,28 @@ export const concertSpotNow = () => spot;
 export const concertPrompt = () => CONCERT_COPY.prompt;
 
 function startShow(songId, practice = !state().tutorial) {
+  if (show) closeShow();
   const s = state();
   const chart = practice ? practiceChart() : chartOf(songId);
   const diff = practice ? null : deps.roll();
-  const audio = (deps.createAudio || createConcertAudio)(deps.audio());
-  deps.stage.enter(s.equipped);
-  deps.bgm.pause();
-  const view = (deps.showLanes || showLanes)({ chart, instrument: s.equipped, practice, onTap: tapLane, onQuit: quitShow });
-  audio.start(practice ? practiceEvents() : backingEvents(songId));
+  const judge = makeJudge(chart, windowsFor(diff ? diff.ease : 1, minGapMs(chart)));
+  let audio = null;
+  let view = null;
+  try {
+    deps.stage.enter(s.equipped);
+    deps.bgm.pause();
+    audio = (deps.createAudio || createConcertAudio)(deps.audio());
+    view = (deps.showLanes || showLanes)({ chart, instrument: s.equipped, practice, onTap: tapLane, onQuit: quitShow });
+    audio.start(practice ? practiceEvents() : backingEvents(songId));
+  } catch (err) {
+    audio?.stop();
+    view?.close();
+    deps.stage.exit();
+    deps.bgm.resume();
+    throw err;
+  }
   show = {
-    songId, practice, chart, diff, audio, view,
-    judge: makeJudge(chart, windowsFor(diff ? diff.ease : 1, minGapMs(chart))),
+    songId, practice, chart, diff, audio, view, judge,
     endMs: practice ? PRACTICE_LENGTH_MS : lengthMs(songId),
   };
   if (!practice) trackStart(songId, s.equipped, PAID_PLAYS - paidLeft(s, deps.today()) + 1, deps.diffParams(diff));

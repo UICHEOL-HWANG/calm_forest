@@ -121,7 +121,9 @@ function drawLane(c, g, L, i, col, st) {
     c.save(); c.globalAlpha = n.a; lantern(c, cx, n.y, col, lit, n.late, g.s); c.restore();
   });
   if (fl && !fl.kind) {
-    c.save(); c.globalAlpha = 1 - fl.p; rr(c, L.x, g.top - 10, L.w, g.bot - g.top + 10, 18); c.fillStyle = `rgba(${NAVY},.22)`; c.fill(); c.restore();
+    const dr = hr * 2.4, dim = c.createRadialGradient(cx, g.hitY, hr * .5, cx, g.hitY, dr);
+    dim.addColorStop(0, `rgba(${NAVY},${(1 - fl.p) * .45})`); dim.addColorStop(1, `rgba(${NAVY},0)`);
+    c.save(); c.fillStyle = dim; c.fillRect(cx - dr, g.hitY - dr, dr * 2, dr * 2); c.restore();
   }
   const say = st.miss[i] && (!fl || st.miss[i].p < fl.p) ? { kind: 'miss', p: st.miss[i].p } : fl && fl.kind ? fl : null;
   if (say) judgeText(c, C.judge[say.kind], cx, g.hitY - hr - 26 - say.p * 10, clamp(2.4 - say.p * 2.4), say.kind === 'miss' ? null : lit, say.kind === 'miss');

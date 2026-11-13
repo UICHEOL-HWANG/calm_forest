@@ -153,6 +153,7 @@ const CSS = `
   .cc-decs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .cc-res { width: min(580px, 100%); grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 18px; padding-top: 40px; }
 }
+body.concert-open #topleft, body.concert-open #topright, body.concert-open #story-chip, body.concert-open #toast, body.concert-open #hint-banner { display: none !important; }
 @media (prefers-reduced-motion: reduce) {
   .cc-card *, .cc-card *::before, .cc-card *::after { animation: none !important; transition: none !important; }
 }

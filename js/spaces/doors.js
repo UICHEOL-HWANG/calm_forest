@@ -428,7 +428,6 @@ export function updateDoorInteract() {
   else if (nearMarket) { prompt = '📊 오늘의 시세'; firstHintBanner('market', '📊', '시세 전광판', '판매가가 매일 바뀌니 비쌀 때 파세요'); }
   else if (inVillage && weeklySpotNow()) prompt = weeklyPrompt();
   else if (inVillage && concertSpotNow()) prompt = concertPrompt();
-  else if (inVillage && concertSpotNow()) prompt = concertPrompt();
   else if (nearCoop) {
     prompt = gameState.coop.built ? '🐔 닭장' : '🐔 닭장 터';
     firstHintBanner('coop', '🐔', '닭장 터', '재료 모아 닭장 짓고 매일 🥚달걀 받기');

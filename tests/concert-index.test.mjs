@@ -110,6 +110,27 @@ test('quitting pays nothing, keeps the day count, and logs an abandon without mo
   assert.deepEqual(w.log.slice(-3), ['lanes-close', 'exit', 'bgm-on']);
 });
 
+test('a failed start rolls back the stage and leaves no show running', () => {
+  const w = world({ showLanes: () => { throw new Error('lanes failed'); } });
+  openAt(w);
+  assert.throws(() => w.hall.onPlay('morning'), /lanes failed/);
+  assert.ok(w.log.includes('exit'));
+  assert.ok(w.log.includes('bgm-on'));
+  updateConcert(0.016, true, near);
+  assert.equal(concertSpotNow(), true);
+});
+
+test('starting while a show runs closes the first one', () => {
+  const w = world();
+  w.state = { ...w.state, tutorial: true };
+  openAt(w);
+  w.hall.onPlay('morning');
+  w.hall.onPlay('march');
+  assert.equal(w.log.filter(l => l === 'exit').length, 1);
+  assert.equal(w.log.filter(l => l === 'lanes-close').length, 1);
+  assert.equal(w.log.filter(l => l.startsWith('enter:')).length, 2);
+});
+
 test('quitting during practice logs no abandon', () => {
   const w = world();
   openAt(w);

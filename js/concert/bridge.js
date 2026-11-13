@@ -14,8 +14,9 @@ export function makeConcertBridge(env) {
   };
 
   const hold = () => {
-    env.player.position.set(STAGE_POS.x, DECK_H, STAGE_POS.z);
-    env.player.rotation.y = 0;
+    const player = env.getPlayer();
+    player.position.set(STAGE_POS.x, DECK_H, STAGE_POS.z);
+    player.rotation.y = 0;
   };
 
   return {
@@ -29,14 +30,16 @@ export function makeConcertBridge(env) {
       },
       strike() {},
       update() {
-        if (active) hold();
+        if (!active) return;
+        env.hideTool(true);
+        hold();
       },
       exit() {
         active = false;
         env.setCameraRig(null);
         env.hideTool(false);
         document.body.classList.remove('mg-open', 'concert-open');
-        env.player.position.set(STAGE_POS.x, 0, STAGE_POS.z + EXIT_GAP);
+        env.getPlayer().position.set(STAGE_POS.x, 0, STAGE_POS.z + EXIT_GAP);
       },
     },
     bgm: {
