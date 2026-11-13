@@ -4114,7 +4114,7 @@
     import { guestFirst, E5_COPY } from './js/exp-e5.js';
     import { shareUrlNative } from './js/photo-native.js';   // 📱 앱: WebView 는 download·share 를 못 한다
     import { capPlugin } from './js/cap-bridge.js';
-    import { bootTenjin, identifyTenjinUser, trackTenjinGameStart } from './js/tenjin-native.js';
+    import { bootTenjin, identifyTenjinUser, trackTenjinGameStart, tenjinFromTrack, tenjinSignup, initTenjinOnce } from './js/tenjin-native.js';
     import { consumeExit, markExit } from './js/exit-flag.js';   // 🚪 나가기 직후엔 토스·플레이 앱 자동 연결을 건너뛴다 · 🗑️ 계정 삭제 뒤에도
     import { pickText, quoteLine, parseBody, leadEmoji, noticeTone } from './js/notices.js';   // 📮 소식함 — 언어별 본문·답장 원문 인용·'|' 표 파서
     import { isTouchDevice } from './js/touch-sim.js';
@@ -6195,6 +6195,7 @@
       shell.layoutLeft();
       trackLogin(via || authState.loginVia || authState.provider || 'offline');   // [GA4] 로그인 이벤트 — 수단 기준(🍎 구글 계정에 붙은 Apple 은 apple)
       authState.betaReady?.then(() => metaSignup({ userId: authState.userId, isGuest: authState.isGuest, createdAt: authState.createdAt })).catch(() => {});   // 📣 가입 직후 첫 진입만(createdAt 은 betaReady 가 채운다)
+      if (IS_NATIVE) authState.betaReady?.then(() => tenjinSignup({ userId: authState.userId, isGuest: authState.isGuest, createdAt: authState.createdAt })).catch(() => {});
 
       // 🧪 [베타 2차] 일지 버튼 — 베타 테스터(beta_*)에게만. 새 탭으로 열어 게임은 그대로 둔다.
       // 🧪 [베타 2차] 명단 조회(비동기)가 끝난 뒤에만 variant 를 믿는다 — enterPlay 는 조회 전에 돈다
@@ -6216,7 +6217,7 @@
 
       showLoginStatus(authState);
       await enterGame();                             // 저장 로드 + 조작/로깅 on
-      if (IS_NATIVE) void trackTenjinGameStart();
+      if (IS_NATIVE) { initTenjinOnce(!Input.needsTutorial()); void trackTenjinGameStart(); }
       maybeHudTour();
       try { initPush(); } catch (e) { console.warn('[push] init skipped', e); }   // 🔔 안드로이드만 — 허용한 사람 조용히 재등록·설정 토글
       // 🤝 친구 초대 — 초대받았으면 연결(하트핀), 내가 초대한 친구 정산. 기다리지 않는다(실패해도 게임 진행)
@@ -6890,7 +6891,7 @@
     });
 
     (async () => {
-      if (IS_NATIVE) void bootTenjin();
+      if (IS_NATIVE) { void bootTenjin(); onTrack(tenjinFromTrack); }
       preloadSupabase().catch(() => {});
       bootReferral({ track: trackEvent });           // 🤝 ?invite= 보관 — 인증(구글 리다이렉트)이 쿼리를 지우기 전에
       promoGift().then(m => m.bootPromoGift({ track: trackEvent })).catch(() => null);
