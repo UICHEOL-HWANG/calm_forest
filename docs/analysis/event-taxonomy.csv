@@ -470,3 +470,8 @@ weekly_quest_claim,economy,weekly,2,N,not_fired,0,0,,,week|quest_id|tickets,js/w
 market_open,economy,weekly,2,N,not_fired,0,0,,,week|tickets|is_guest,js/weekly/track.js:5,"주간 장터를 열었을 때 (week=주 번호, tickets=보유 티켓, is_guest=게스트 여부)",
 market_buy,economy,weekly,2,N,not_fired,0,0,,,week|item_id|cost,js/weekly/track.js:6,"주간 장터에서 장식을 샀을 때 (week=주 번호, item_id=장식, cost=티켓 값)",
 market_login_prompt,onboarding,weekly,2,N,not_fired,0,0,,,week|tickets,js/weekly/track.js:7,"게스트가 장터의 로그인 버튼을 눌렀을 때 (week=주 번호, tickets=보유 티켓)",
+concert_open,progression,concert,2,N,not_fired,0,0,,,notes|is_guest,js/concert/track.js:3,"마을 음악회 홀을 열었을 때 (notes=보유 음표, is_guest=게스트 여부)",
+concert_start,progression,concert,2,N,not_fired,0,0,,,song|instrument|nth|ease|dda|arm|probe_v,js/concert/track.js:4,"음악회 공연을 시작했을 때 (song=곡, instrument=악기, nth=오늘 몇 번째 유료 공연, ease·dda·arm·probe_v=난이도 배정)",
+concert_end,progression,concert,2,N,not_fired,0,0,,,song|stars|pct|notes|perfect|ease|dda|arm|probe_v,js/concert/track.js:5,"음악회 공연이 끝났을 때 (song=곡, stars=별, pct=적중률, notes=받은 음표, perfect=완벽 적중 수, ease·dda·arm·probe_v=난이도 배정)",
+concert_exchange,economy,concert,2,N,not_fired,0,0,,,item_id|cost|left,js/concert/track.js:6,"음표로 악기나 장식을 바꿨을 때 (item_id=품목, cost=음표 값, left=남은 음표)",
+concert_login_prompt,onboarding,concert,2,N,not_fired,0,0,,,notes,js/concert/track.js:7,"게스트가 음악회 교환소의 로그인 버튼을 눌렀을 때 (notes=보유 음표)",
