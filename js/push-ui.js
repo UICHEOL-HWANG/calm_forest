@@ -2,7 +2,7 @@
 //  🔔 푸시 알림 — 게임 연결부(안드로이드·🍎 iOS 앱). 순수 흐름은 js/push-native.js
 //  ------------------------------------------------------------
 //  ▶ 안내 카드(시안 B, 2026-10-12 확정): 수확한 적 있는 사람에게 수확 직후 1회.
-//    튜토리얼 중엔 소진하지 않고 졸업 뒤(endCoach)나 다음 수확 때 띄운다.
+//    튜토리얼 중에도 첫 수확 연출 직후 띄운다(수확한 사람 대부분이 졸업 전에 떠난다). 화살표 안내(spot) 중엔 미룬다.
 //  ▶ ⚙️ 설정 토글 #push-btn — localStorage cf_push('on'|'off') + 서버 enabled.
 //  ▶ 앱을 켤 때 이미 허용한 사람은 조용히 재등록(토큰 교체·계정 변경 반영).
 //  ▶ 트래킹: push_prompt{action} · push_permission{result, via} · push_toggle{on} · push_open{kind, send_id}
@@ -77,14 +77,14 @@ let offerTimer = null, retries = 0;
 export function offerPush() {
   if (!available() || offerTimer) return;
   if (gameState.hintsSeen?.pushAsk || !gameState.hintsSeen?.harvestZoom) return;   // 한 번만 · 수확해 본 사람만
+  retries = 0;
   offerTimer = setTimeout(showCard, SHOW_DELAY_MS);
 }
 
 function showCard() {
   offerTimer = null;
   if (gameState.hintsSeen.pushAsk) return;
-  if (ui.coachActive?.()) return;              // 튜토리얼 중엔 소진 안 함 — 졸업 직후(endCoach) 다시 부른다
-  if (mgView || duelActive || ui.anyModalOpen?.() || $('hint-modal')?.classList.contains('show')) {   // 🧪 E1 환영 모달 등 다른 창 위에 겹치지 않게
+  if (mgView || duelActive || ui.spotActive?.() || ui.anyModalOpen?.() || $('hint-modal')?.classList.contains('show')) {   // 🧪 E1 환영 모달 등 다른 창 위에 겹치지 않게
     if (++retries <= MAX_RETRY) offerTimer = setTimeout(showCard, RETRY_MS);
     return;
   }
