@@ -1,3 +1,5 @@
+import { HOUSE_GUIDE_WOOD } from '../house-guide-rules.js';
+
 export const GOALS = {
   tree: { ico: '🪓', label: '나무', title: '🪓 나무 베기' },
   cave: { ico: '⛏️', label: '동굴', title: '⛏️ 동굴 탐험하기' },
@@ -26,8 +28,12 @@ export const CINE_SUB = '다음 목적지';
 export const MERCHANT_WOOD = 5;
 export const MINER_COAL = 3;
 
-export function tutGoal(step, { wood = 0 } = {}) {
+export function tutGoal(step, { wood = 0, houseCompass = false } = {}) {
   if (step === 'sell') return wood < MERCHANT_WOOD ? { key: 'tree', cine: false } : null;
+  if (step === 'house1') {
+    if (wood < HOUSE_GUIDE_WOOD) return { key: 'tree', cine: false };
+    return houseCompass ? null : { key: 'house', cine: false };
+  }
   return TUT_KEYS[step] ? { key: TUT_KEYS[step], cine: true } : null;
 }
 

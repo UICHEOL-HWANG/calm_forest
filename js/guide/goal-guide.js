@@ -123,7 +123,8 @@ export function createGoalGuide(deps) {
     const gs = deps.state();
     if (deps.coaching()) {
       const step = gs.hintsSeen?.tutStep;
-      const g = tutGoal(step, { wood: gs.inventory.wood || 0 });
+      const houseCompass = gs.houseGuide?.arm === 'guide' && (gs.houseStage | 0) === 0 && deps.inVillage();
+      const g = tutGoal(step, { wood: gs.inventory.wood || 0, houseCompass });
       if (g) return { flow: 'tut', step, ...g };
     }
     if (deps.houseDue?.()) return { flow: 'house', step: `stage${gs.houseStage | 0}`, key: 'house', cine: false };

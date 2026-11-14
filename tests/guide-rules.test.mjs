@@ -2,12 +2,18 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { GOALS, tutGoal, minerGoal, edgeAnchor, onScreen, detourPoint, freshBranchTab, guideEventParams, rearmMerchant } from '../js/guide/guide-rules.js';
 
-test('튜토리얼 단계마다 목적지를 하나만 고르고 집 바닥은 실험에 맡긴다', () => {
+test('집 바닥 깔기: 목재가 모자라면 나무로, 다 모이면 집 터로, 집터 나침반 무리면 나침반에 맡긴다', () => {
+  assert.deepEqual(tutGoal('house1', { wood: 3 }), { key: 'tree', cine: false });
+  assert.deepEqual(tutGoal('house1', { wood: 3, houseCompass: true }), { key: 'tree', cine: false });
+  assert.deepEqual(tutGoal('house1', { wood: 15 }), { key: 'house', cine: false });
+  assert.equal(tutGoal('house1', { wood: 15, houseCompass: true }), null);
+});
+
+test('튜토리얼 단계마다 목적지를 하나만 고른다', () => {
   assert.deepEqual(tutGoal('chop', { wood: 0 }), { key: 'tree', cine: true });
   assert.deepEqual(tutGoal('sell', { wood: 2 }), { key: 'tree', cine: false });
   assert.equal(tutGoal('sell', { wood: 5 }), null);
   assert.deepEqual(tutGoal('mine', { wood: 0 }), { key: 'cave', cine: true });
-  assert.equal(tutGoal('house1', { wood: 15 }), null);
   assert.deepEqual(tutGoal('house2', {}), { key: 'wall', cine: true });
   assert.deepEqual(tutGoal('harvest', {}), { key: 'farm', cine: true });
   assert.deepEqual(tutGoal('build', {}), { key: 'roof', cine: true });
