@@ -43,3 +43,10 @@ test('the concert stage is on the village map', () => {
 test('the weekly wiring assertions still hold', () => {
   assert.ok(read('js/game.js').includes('const m = weeklyDecorMesh(THREE, id); if (m)'));
 });
+
+test('show-time bubble hiding does not undo the yard guide hiding', () => {
+  const n = read('js/spaces/npc.js');
+  assert.match(n, /glyphsHidden = hudHidden \|\| showHidden;/);
+  assert.match(n, /export function setNpcGlyphsShowHidden\(on\) \{ showHidden = !!on; applyGlyphs\(\); \}/);
+  assert.match(read('js/game.js'), /hideLabels: setNpcGlyphsShowHidden/);
+});

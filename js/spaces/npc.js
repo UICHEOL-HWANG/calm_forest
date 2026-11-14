@@ -366,11 +366,16 @@ export function npcGlyph(o) {
 }
 
 let glyphsHidden = false;
+let hudHidden = false;
+let showHidden = false;
 
-export function setNpcGlyphsHidden(on) {
-  glyphsHidden = !!on;
+function applyGlyphs() {
+  glyphsHidden = hudHidden || showHidden;
   for (const o of npcObjs) if (o.sprite) o.sprite.visible = !glyphsHidden && !!o.lastGlyph;
 }
+
+export function setNpcGlyphsHidden(on) { hudHidden = !!on; applyGlyphs(); }
+export function setNpcGlyphsShowHidden(on) { showHidden = !!on; applyGlyphs(); }
 
 export function updateNPCGlyph(o) {
   if (!o || !o.ctx) return;
