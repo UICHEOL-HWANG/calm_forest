@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { chipState, snapshot, progressed, sheetTab, sheetPlacement } from '../js/hud/quest-chips-model.js';
+import { chipState, snapshot, progressed, sheetTab, sheetPlacement, chipIntroNext, CHIP_INTRO_GAP_MS, CHIP_INTRO_MS, CHIP_INTRO_COPY, CHIP_INTRO_KEYS } from '../js/hud/quest-chips-model.js';
 import { questPanelView } from '../js/quest-panel-view.js';
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
@@ -120,6 +120,48 @@ test('시트가 열린 동안 화면 위 안내 화살표·칩·거리 표시를
   const src = read('js/hud/quest-chips.js');
   assert.match(src, /document\.body\.classList\.add\('quest-sheet-open'\)/);
   assert.match(src, /document\.body\.classList\.remove\('quest-sheet-open'\)/);
+});
+
+const idle = { hints: {}, shown: { q: true, a: true }, now: 60000, lastAt: -Infinity, busy: false };
+
+test('기존 유저는 의뢰 버튼이 보이면 전환 소개를 한 번 본다', () => {
+  assert.equal(chipIntroNext(idle), 'old');
+  assert.equal(chipIntroNext({ ...idle, hints: { chipOld: 1 } }), null);
+  assert.equal(chipIntroNext({ ...idle, shown: { q: false, a: false } }), null);
+});
+
+test('신규 유저는 의뢰 소개 다음에 친해지기 소개를 본다', () => {
+  const fresh = { ...idle, hints: { chipNew: 1 } };
+  assert.equal(chipIntroNext(fresh), 'q');
+  assert.equal(chipIntroNext({ ...fresh, shown: { q: false, a: false } }), null);
+  assert.equal(chipIntroNext({ ...fresh, hints: { chipNew: 1, chipQ: 1 } }), 'a');
+  assert.equal(chipIntroNext({ ...fresh, hints: { chipNew: 1, chipQ: 1 }, shown: { q: true, a: false } }), null);
+  assert.equal(chipIntroNext({ ...fresh, hints: { chipNew: 1, chipQ: 1, chipA: 1 } }), null);
+});
+
+test('의뢰 버튼이 없을 땐 친해지기 버튼부터 소개하고, 의뢰 버튼은 생길 때 소개한다', () => {
+  const onlyA = { ...idle, shown: { q: false, a: true } };
+  assert.equal(chipIntroNext(onlyA), 'a');
+  assert.equal(chipIntroNext({ ...onlyA, hints: { chipNew: 1 } }), 'a');
+  assert.equal(chipIntroNext({ ...idle, hints: { chipA: 1 } }), 'old');
+});
+
+test('전환을 본 기존 유저는 두 소개를 모두 본 것으로 친다', () => {
+  assert.equal(chipIntroNext({ ...idle, hints: { chipOld: 1 } }), null);
+});
+
+test('소개는 바쁠 때 기다리고 서로 10초 이상 떨어진다', () => {
+  const fresh = { ...idle, hints: { chipNew: 1, chipQ: 1 } };
+  assert.equal(chipIntroNext({ ...fresh, busy: true }), null);
+  assert.equal(chipIntroNext({ ...fresh, lastAt: idle.now - CHIP_INTRO_GAP_MS + 1 }), null);
+  assert.equal(chipIntroNext({ ...fresh, lastAt: idle.now - CHIP_INTRO_GAP_MS }), 'a');
+  assert.equal(CHIP_INTRO_MS, 8000);
+});
+
+test('소개 문구는 승인 시안 그대로이고 엠대시·놀다·화살표 이모지가 없다', () => {
+  assert.deepEqual({ ...CHIP_INTRO_COPY }, { old: '의뢰는 여기서 볼 수 있어요', q: '첫 의뢰가 왔어요', a: '주민과 친해지면 선물이 와요' });
+  for (const s of Object.values(CHIP_INTRO_COPY)) assert.doesNotMatch(s, /—|놀|[⬅➡⬆⬇]/u);
+  assert.deepEqual({ ...CHIP_INTRO_KEYS }, { old: 'chipOld', q: 'chipQ', a: 'chipA' });
 });
 
 test('새 요소는 의뢰 패널 안에 들어가 패널 숨김 규칙을 그대로 따른다', () => {

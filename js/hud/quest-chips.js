@@ -1,4 +1,4 @@
-import { chipState, snapshot, progressed, sheetTab, sheetPlacement } from './quest-chips-model.js';
+import { chipState, snapshot, progressed, sheetTab, sheetPlacement, CHIP_INTRO_COPY, CHIP_INTRO_MS } from './quest-chips-model.js';
 import { ICONS, QUEST_CHIPS_CSS } from './quest-chips-css.js';
 
 const GLOW_MS = 3000;
@@ -151,6 +151,39 @@ export function createQuestChips({ panel, t, trackEvent, tracker, unread }) {
     if (ups.length && !state.open) glow(ups[0]);
   }
 
+  function intro(kind) {
+    const k = kind === 'a' ? 'a' : 'q';
+    const btn = btns[k];
+    const r = btn.getBoundingClientRect();
+    const tip = el('div', { className: kind === 'old' ? 'qc-intro qc-late' : 'qc-intro' }, '<span class="qc-garr"></span>');
+    tip.append(el('span', { className: 'qc-hint', textContent: t(CHIP_INTRO_COPY[kind]) }));
+    Object.assign(tip.style, { left: Math.round(r.right + 8) + 'px', top: Math.round(r.top + r.height / 2) + 'px' });
+    const ghost = kind === 'old' ? el('div', { className: 'qc-ghost' }, '<i style="width:70%"></i><i style="width:90%"></i><i class="pk"></i>') : null;
+    if (ghost) Object.assign(ghost.style, { left: Math.round(r.left) + 'px', top: Math.round(r.top) + 'px' });
+    panel.style.setProperty('--sx', Math.round(r.left + r.width / 2) + 'px');
+    panel.style.setProperty('--sy', Math.round(r.top + r.height / 2) + 'px');
+    panel.append(...[ghost, tip].filter(Boolean));
+    btn.classList.add('qc-on');
+    panel.classList.add('qc-glow', 'qc-intro-on');
+    return new Promise((resolve) => {
+      let timer = 0;
+      const end = (how) => {
+        clearTimeout(timer);
+        btn.removeEventListener('click', onTap);
+        tip.remove();
+        ghost?.remove();
+        btn.classList.remove('qc-on');
+        panel.classList.remove('qc-glow', 'qc-intro-on');
+        resolve(how);
+      };
+      const onTap = () => end('tap');
+      btn.addEventListener('click', onTap);
+      timer = setTimeout(() => end('timeout'), CHIP_INTRO_MS + (ghost ? 1000 : 0));
+    });
+  }
+
+  const shown = () => ({ q: !btns.q.hidden && !!panel.getClientRects().length, a: !btns.a.hidden && !!panel.getClientRects().length });
+
   KEYS.forEach(k => {
     btns[k].addEventListener('click', (e) => { e.stopPropagation(); state.open === k ? close() : open(k, btns[k]); });
     tabBtns[k].addEventListener('click', (e) => { e.stopPropagation(); open(k); });
@@ -164,5 +197,5 @@ export function createQuestChips({ panel, t, trackEvent, tracker, unread }) {
   new MutationObserver(() => { if (state.open && !panel.getClientRects().length) close(); })
     .observe(document.body, { attributes: true, attributeFilter: ['class'] });
 
-  return { sync, close, isOpen: () => !!state.open };
+  return { sync, close, isOpen: () => !!state.open, intro, shown };
 }

@@ -1,5 +1,16 @@
 export const GAP = 8;
 export const CARD_W = 344;
+export const CHIP_INTRO_GAP_MS = 10000;
+export const CHIP_INTRO_MS = 8000;
+export const CHIP_INTRO_COPY = Object.freeze({ old: '의뢰는 여기서 볼 수 있어요', q: '첫 의뢰가 왔어요', a: '주민과 친해지면 선물이 와요' });
+export const CHIP_INTRO_KEYS = Object.freeze({ old: 'chipOld', q: 'chipQ', a: 'chipA' });
+
+export function chipIntroNext({ hints, shown, now, lastAt, busy }) {
+  if (busy || now - lastAt < CHIP_INTRO_GAP_MS) return null;
+  const seenQ = !!(hints.chipQ || hints.chipOld), seenA = !!(hints.chipA || hints.chipOld);
+  if (!seenQ && shown.q) return hints.chipNew ? 'q' : 'old';
+  return !seenA && shown.a ? 'a' : null;
+}
 
 const clamp01 = (n) => Math.max(0, Math.min(1, n || 0));
 const ratio = (q) => clamp01(q.pct != null ? q.pct : (q.target ? q.progress / q.target : 0));

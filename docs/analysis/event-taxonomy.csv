@@ -352,6 +352,7 @@ quest_autoskip,progression,quest,2,N,active,10,9,2026-09-14,2026-10-12,to|npc|fr
 quest_complete,progression,quest,1,Y,active,1166,75,2026-07-27,2026-10-24,npc|quest|quest_id|reward_coins|elapsed_sec|quest_type|exp_arm,js/game.js:7952,"주민 의뢰를 완료하고 보상을 받았을 때 (elapsed_sec=수락 후 소요 초, reward_coins)",
 quest_offered,progression,quest,1,N,active,2090,125,2026-08-06,2026-10-24,quest_id|npc|quest|quest_type,js/spaces/npc.js:796,"주민 대화에서 의뢰 제안 화면이 노출됐을 때 (quest_id, npc, quest_type)",
 quest_chip_open,ui,ui,2,N,not_fired,0,0,,,tab,js/hud/quest-chips.js:121,"터치 기기에서 의뢰·친해지기 버튼을 눌러 아래 시트를 열었을 때 (tab=q 의뢰, a 친해지기)",
+quest_chip_intro,onboarding,ui,2,N,not_fired,0,0,,,"kind,act",index.html:4699,"터치 기기에서 의뢰·친해지기 버튼 소개가 떴다·끝났을 때 (kind=old 기존 유저 전환, q 첫 의뢰, a 친해지기 / act=show·tap·timeout)",
 quest_panel_toggle,ui,ui,2,N,active,97,9,2026-10-15,2026-10-24,open,index.html:3778,"의뢰 패널을 접거나 펼쳤을 때 (open=펼침 1, 접힘 0)",
 rain_day,system,ops,3,N,retired,2,1,2026-08-06,2026-08-06,,,(삭제됨) 보내는 코드가 git 기록에도 없음. 초기 테스트 흔적으로 추정,
 recommendation_impression,system,ops,3,N,retired,1,1,2026-09-14,2026-09-14,recommendation_kind|arm|sound_state|target_action|target_area|recommendation_id|sound_requested,,(삭제됨) 보내는 코드가 git 기록에도 없음. 초기 테스트 흔적으로 추정,

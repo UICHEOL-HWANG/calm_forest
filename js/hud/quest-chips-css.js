@@ -58,5 +58,21 @@ body.quest-sheet-open #goal-arrow, body.quest-sheet-open #guide-card, body.quest
 .qc-body { margin-top: 16px; }
 body.is-touch #qc-sheet .q-how { display: block; }
 body.is-touch #qc-sheet #aff-track { margin-top: 0; }
-@media (prefers-reduced-motion: reduce) { .qc-rb.qc-on, #qc-sheet { animation: none; } }
+.qc-intro { position: fixed; z-index: 21; display: flex; align-items: center; gap: 8px; pointer-events: none; transform: translateY(-50%);
+  animation: qc-in .25s ease-out both; }
+.qc-intro.qc-late { animation-delay: 1s; }
+.qc-garr { position: relative; flex: none; width: 28px; height: 24px; filter: drop-shadow(0 2px 3px rgba(40,70,50,.35)); animation: qc-bob .9s ease-in-out infinite alternate; }
+.qc-garr::before, .qc-garr::after { content: ''; position: absolute; clip-path: polygon(0 50%, 48% 0, 48% 27%, 100% 27%, 100% 73%, 48% 73%, 48% 100%); }
+.qc-garr::before { inset: 0; background: #fff8e8; }
+.qc-garr::after { inset: 3px 3px 3px 4px; background: #f2c14e; }
+.qc-hint { height: 32px; padding: 0 12px; border-radius: 16px; background: #fff8e8; color: var(--ink); font-size: 14px; font-weight: 800; line-height: 32px;
+  white-space: nowrap; box-shadow: 0 0 0 2px #f2c14e, var(--shadow); }
+.qc-ghost { position: fixed; z-index: 21; box-sizing: border-box; width: 170px; height: 120px; padding: 12px; border-radius: 18px; pointer-events: none;
+  background: rgba(255,255,255,.72); box-shadow: var(--shadow); transform-origin: 0 0; animation: qc-shrink 1s ease-in forwards; }
+.qc-ghost i { display: block; height: 8px; border-radius: 4px; background: rgba(74,90,79,.18); margin-bottom: 8px; }
+.qc-ghost i.pk { height: 32px; background: #fde1e8; }
+@keyframes qc-in { from { opacity: 0; transform: translate(-6px, -50%); } }
+@keyframes qc-bob { to { transform: translateX(-6px); } }
+@keyframes qc-shrink { to { transform: scale(.28); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .qc-rb.qc-on, #qc-sheet, .qc-garr { animation: none; } .qc-ghost { animation-duration: .01s; } }
 `;
