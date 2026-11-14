@@ -26,6 +26,7 @@ import { STAIR_PROMPT_R, stairLayout } from './indoor.js';
 import { gardenDoorLocal } from '../house-floors.js';
 import { inVillage2 } from './doors.js';
 import { weeklyNote } from '../weekly/index.js';
+import { modalQueue } from '../guide/modal-queue.js';
 import { bindVillagePublicToggle, closePickerModal, hideNeighborHud, isPickerOpen, openBlockConfirm, openNbMenu, openPickerModal, openReportModal, openVisitorsModal, setHostBubble, setNeighborHudTitle, setPickerBusy, setVillagePublicUi, showNeighborHud } from '../neighbors/ui.js';
 
 let visit = null;          // { publicId, slot, revisit, view, built, t0, reacted, bubble:'ask'|'thanks', near, busy, viewReq, viewId, indoor:null|{f,t0,floors:Set,tags:Set}, indoorBuilt }
@@ -368,13 +369,12 @@ async function bootVisitors() {
   if (!r.ok) { trackEvent(...evFail('visitors', r.reason)); return; }   // 접속 직후라 토스트로 방해하지 않는다(GA4 로만)
   villagePublic = r.isPublic;
   setVillagePublicUi(villagePublic, true);
-  whenNoModal(() => {
-    if (r.total > 0) {
-      const view = noticeView(r, faceOf);
-      trackEvent(...evNotice(view.rows.length, view.total));   // [GA4] 보여 준 줄 수·전체 방문자 수
-      openVisitorsModal(view, () => { gameState.neighbors = markSeen(gameState.neighbors, asked); requestSave(); firstPublicNotice(); });
-    } else firstPublicNotice();
-  });
+  if (!(r.total > 0)) { whenNoModal(firstPublicNotice); return; }
+  modalQueue.request({ kind: 'neighbor', show: () => {
+    const view = noticeView(r, faceOf);
+    trackEvent(...evNotice(view.rows.length, view.total));   // [GA4] 보여 준 줄 수·전체 방문자 수
+    openVisitorsModal(view, () => { gameState.neighbors = markSeen(gameState.neighbors, asked); requestSave(); firstPublicNotice(); });
+  } });
 }
 
 function firstPublicNotice() {

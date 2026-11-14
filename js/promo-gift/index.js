@@ -6,8 +6,8 @@ import { getLang } from '../i18n.js';
 import { readGiftParam, giftFromReferrer, normalizeGiftCode } from './rules.js';
 import { captureCode, pendingCode, runPromoGift, pendingStages, checkVerdict, manualOutcome } from './flow.js';
 import { showLetter, openCodeEntry } from './ui.js';
+import { modalQueue } from '../guide/modal-queue.js';
 
-const BUSY = ['body.intro-open', '#char-modal.show', '#tutorial-modal.show', '#hint-modal.show', '#nudge-modal.show', '#gift-box-modal.show'];
 const SDK_WAIT_MS = 4000;
 const NONE = Object.freeze({ views: [], result: 'net_fail' });
 const memo = { track: () => {}, play: null, running: null, wake: null, closeEntry: null };
@@ -15,19 +15,14 @@ const memo = { track: () => {}, play: null, running: null, wake: null, closeEntr
 const enabled = () => !IS_DEV_SESSION && !!CONFIG.PROMO_GIFT_API;
 const store = () => { try { return localStorage; } catch (e) { return null; } };
 const withTimeout = (p, fallback) => Promise.race([p, new Promise(r => setTimeout(() => r(fallback), SDK_WAIT_MS))]);
-const busyWith = (ui) => () => BUSY.some(sel => document.querySelector(sel)) || !!ui?.coachActive?.() || !!ui?.anyModalOpen?.();
+const NO_RELEASE = () => {};
 
-function whenIdle(busy, { first = 1500, every = 700, maxMs = 120000 } = {}) {
-  return new Promise((resolve) => {
-    const t0 = Date.now();
-    let clear = 0;
-    const tick = () => {
-      clear = busy() ? 0 : clear + 1;
-      if (clear >= 2 || Date.now() - t0 >= maxMs) resolve();
-      else setTimeout(tick, every);
-    };
-    setTimeout(tick, first);
-  });
+async function waitTurn() {
+  const turn = modalQueue.turn('promo');
+  const woke = new Promise(r => { memo.wake = () => r(null); });
+  const release = await Promise.race([turn, woke]);
+  if (!release) turn.then(r => r());
+  return release || NO_RELEASE;
 }
 
 async function call(stage, code) {
@@ -78,18 +73,20 @@ function runNow(ctx, { wait = true } = {}) {
   if (memo.running) return memo.running;
   memo.running = (async () => {
     if (!pendingCode(s)) return NONE;
-    if (wait) {
-      await Promise.race([whenIdle(busyWith(ctx.ui)), new Promise(r => { memo.wake = r; })]);
-      memo.wake = null;
+    const release = wait ? await waitTurn() : NO_RELEASE;
+    memo.wake = null;
+    try {
+      const code = pendingCode(s);
+      let result = 'dup';
+      const track = (ev, p) => { if (ev === 'promo_gift_claim') result = p.result; ctx.track(ev, p); };
+      const views = await runPromoGift({
+        auth: ctx.auth, storage: s, call, grant: (b) => { try { ctx.grant(b); } catch (e) { return; } }, track,
+        show: (view) => { (memo.closeEntry || ctx.beforeShow)?.(); return showLetter(view, { track: ctx.track, connect: (from) => connectThenRerun(ctx, from), code, lang: getLang() }); },
+      });
+      return { views, result };
+    } finally {
+      release();
     }
-    const code = pendingCode(s);
-    let result = 'dup';
-    const track = (ev, p) => { if (ev === 'promo_gift_claim') result = p.result; ctx.track(ev, p); };
-    const views = await runPromoGift({
-      auth: ctx.auth, storage: s, call, grant: (b) => { try { ctx.grant(b); } catch (e) { return; } }, track,
-      show: (view) => { (memo.closeEntry || ctx.beforeShow)?.(); return showLetter(view, { track: ctx.track, connect: (from) => connectThenRerun(ctx, from), code, lang: getLang() }); },
-    });
-    return { views, result };
   })().catch(() => NONE).finally(() => { memo.running = null; memo.wake = null; memo.closeEntry = null; });
   return memo.running;
 }

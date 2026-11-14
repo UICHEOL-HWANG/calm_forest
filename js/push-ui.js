@@ -8,8 +8,8 @@
 //  ▶ 트래킹: push_prompt{action} · push_permission{result, via} · push_toggle{on} · push_open{kind, send_id}
 //  ⚠️ game.js 와 순환 import — 로딩 시점엔 game.js 값을 읽지 않는다(함수 안에서만).
 // =============================================================
-import { gameState, mgView, requestSave, ui } from './game.js';
-import { duelActive } from './spaces/night-visit.js';
+import { gameState, requestSave, ui } from './game.js';
+import { modalQueue } from './guide/modal-queue.js';
 import { IS_ANDROID, IS_IOS, PLATFORM } from './platform.js';
 import { capListen, capPlugin } from './cap-bridge.js';
 import { disablePush, enablePush, onPushOpen, refreshPush } from './push-native.js';
@@ -22,7 +22,6 @@ import { setIcon } from './icons/index.js';
 const PREF_KEY = 'cf_push';
 const TOKEN_KEY = 'cf_push_token';
 const SHOW_DELAY_MS = 2600;      // 🎉 첫 수확 밀착 연출이 끝난 뒤
-const RETRY_MS = 2500, MAX_RETRY = 20;
 
 const $ = id => document.getElementById(id);
 const store = {
@@ -73,21 +72,15 @@ async function askPush(via) {
 }
 
 // ── 안내 카드(시안 B — 실제 알림 미리보기) ──
-let offerTimer = null, retries = 0;
+let offerTimer = null;
 export function offerPush() {
   if (!available() || offerTimer) return;
   if (gameState.hintsSeen?.pushAsk || !gameState.hintsSeen?.harvestZoom) return;   // 한 번만 · 수확해 본 사람만
-  retries = 0;
-  offerTimer = setTimeout(showCard, SHOW_DELAY_MS);
+  offerTimer = setTimeout(() => { offerTimer = null; modalQueue.request({ kind: 'push', key: 'push', show: showCard }); }, SHOW_DELAY_MS);
 }
 
 function showCard() {
-  offerTimer = null;
   if (gameState.hintsSeen.pushAsk) return;
-  if (mgView || duelActive || ui.spotActive?.() || ui.anyModalOpen?.() || $('hint-modal')?.classList.contains('show')) {   // 🧪 E1 환영 모달 등 다른 창 위에 겹치지 않게
-    if (++retries <= MAX_RETRY) offerTimer = setTimeout(showCard, RETRY_MS);
-    return;
-  }
   gameState.hintsSeen.pushAsk = true;
   requestSave();
   trackEvent('push_prompt', { action: 'shown' });

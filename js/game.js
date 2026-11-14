@@ -240,7 +240,9 @@ import { clampToLandmark, clampToMountain, maybeRevealMountain, mountainAction, 
 import { applyObservatoryLight, clampToObservatory, observatoryAction, observatoryCamFocus, observatoryLensOpen, observatoryMinimapMarks, spawnObservatoryGate, updateObservatory, updateObservatoryStairs } from './spaces/observatory.js';   // 📦 🔭 천문대 — 별자리 리듬 실내 공간
 import { clampToNeighbor, initNeighbors, neighborAction, neighborIndoorElevated, neighborIndoorFrame, neighborMinimapMarks, neighborReturnPos, spawnNeighborGate, updateNeighbor } from './spaces/neighbor.js';   // 📦 🏡 이웃 마을 — 남의 앞마당 구경(js/neighbors/*)
 import { neighborsDefault, restoreNeighbors } from './neighbors/rules.js';
-import { applyE1, e1FirstScreen, enrollE1, updateE1Bubble } from './spaces/e1-start.js';   // 📦 🧪 E1 첫 5분 수확 실험 — 배정·처치 밭·첫 화면 말풍선
+import { applyE1, e1FirstScreen, e1Pending, enrollE1, updateE1Bubble } from './spaces/e1-start.js';
+import { modalQueue } from './guide/modal-queue.js';
+import { queueLoginNudge, touchNudgeClock } from './guide/nudge-cap.js';   // 📦 🧪 E1 첫 5분 수확 실험 — 배정·처치 밭·첫 화면 말풍선
 import { sanitizeE1 } from './exp-e1.js';
 import { DREAM_MAP, clampToDream, dreamAction, dreamCutActive, dreamMinimapMarks, dreamReturnPos, openSleepChoice, setDreamVisible, skipDreamCut, startDream, updateDream, updateDreamCut } from './spaces/dream.js';   // 📦 🌙 꿈의 숲 — 침대에서 꿈꾸기(js/dream/*)
 import { normalizeDream } from './dream/layout.js';   // 🏡 세이브 필드 neighbors { visited, seenAt }
@@ -1203,7 +1205,7 @@ function dexDiscover(cat, id) {
     ui.showHintModal?.({ ico: '📖', title: '도감 완성!', body: `마을의 모든 것 ${DEX_TOTAL}종을 발견했어요! 축하 보상 🪙150을 받았어요.` });
     trackEvent('dex_complete');                                      // [GA4]
   } else if (total === 5 || total === 12) {
-    ui.loginNudge?.('dex' + total);   // 게스트면 "로그인하면 영구 보존" 넛지(index.html 이 판단)
+    queueLoginNudge('dex' + total, ui);   // 게스트면 "로그인하면 영구 보존" 넛지(index.html 이 판단)
   }
   syncBadges();   // 🏅 날씨 4종·도감 완성 배지 즉시 반영
 }
@@ -1409,30 +1411,19 @@ function unlockMinutes() {
   const ms = t0 > 1e12 ? t0 : Date.parse(authState.createdAt || '');
   return Number.isFinite(ms) ? Math.max(0, Math.round((Date.now() - ms) / 60000)) : -1;
 }
-/** 이야기 모달을 줄 세운다 — 미니게임·승부·다른 모달이 떠 있으면 기다렸다가(최대 ~50초) 띄우고, 튜토리얼 중이면 토스트로만 */
-let storyModalsWaiting = 0;   // 줄 서 있는 이야기 모달 수 — afterModals 가 이들이 다 뜨고 닫힐 때까지 기다린다
+/** 이야기 모달을 모달 큐(js/guide/modal-queue.js)에 세운다 — 튜토리얼·미니게임·승부·조망샷·다른 모달이 끝날 때까지 시간 제한 없이 기다린다. 튜토리얼 중이면 토스트를 먼저 */
 let owlBridgeQueued = false;
-function queueStoryModal(opts, toastLine, tries = 0) {
-  if (tries) storyModalsWaiting--;
-  if (ui.coachActive?.()) {
-    if (!tries) ui.toast?.(toastLine, 3200);
-    storyModalsWaiting++; setTimeout(() => queueStoryModal(opts, toastLine, Math.max(1, tries)), 3000);
-    return;
-  }
-  // 🌳 세계수 조망샷이 줄 서 있거나 도는 중이면 짧게 기다린다 — 판 닫힘 → 조망샷 → 귀환 모달 순서(시도 횟수는 안 쓴다)
-  if (treeShotBusy()) { storyModalsWaiting++; setTimeout(() => queueStoryModal(opts, toastLine, Math.max(1, tries)), 400); return; }
-  if (mgView || duelActive || ui.anyModalOpen?.()) {
-    if (tries < 20) { storyModalsWaiting++; setTimeout(() => queueStoryModal(opts, toastLine, tries + 1), 2500); }
-    else ui.toast?.(toastLine, 3200);
-    return;
-  }
-  Sound.complete();
-  if (opts.seenKey) { gameState.hintsSeen[opts.seenKey] = true; requestSave(); }
-  ui.showHintModal?.(opts);
+function queueStoryModal(opts, toastLine) {
+  if (ui.coachActive?.()) ui.toast?.(toastLine, 3200);
+  modalQueue.request({ kind: 'story', show: () => {
+    Sound.complete();
+    if (opts.seenKey) { gameState.hintsSeen[opts.seenKey] = true; requestSave(); }
+    ui.showHintModal?.(opts);
+  } });
 }
 /** 모달이 다 닫힌 뒤 fn — 🧑‍🦳 귀환 모달을 읽은 다음에 📖 1장 완료 모달이 뜨게(줄 선 이야기 모달도 기다린다) */
 function afterModals(fn, tries = 0) {
-  if ((storyModalsWaiting > 0 || mgView || duelActive || ui.anyModalOpen?.() || treeShotBusy()) && tries < 120) { setTimeout(() => afterModals(fn, tries + 1), 700); return; }
+  if ((modalQueue.pending('story') || mgView || duelActive || ui.anyModalOpen?.() || treeShotBusy()) && tries < 120) { setTimeout(() => afterModals(fn, tries + 1), 700); return; }
   fn();
 }
 function showReturnModal(def) {
@@ -1558,7 +1549,8 @@ function checkDailyBonus() {
       weather: WEATHER, forecast: FORECAST, severe: SEVERE_TOMORROW, forecastInDex: !!gameState.dex.weather?.[FORECAST],
       season: SEASON_INFO.season, seasonLeft: SEASON_INFO.left, fish: sFish, fishOwned: seasonOwned(sFish), seasonNew,
     });
-    ui.showDailyCard?.(view, () => { if (pendingNotices.length) ui.showNotices?.(pendingNotices, 'new'); }, dailyAdButton(coins, d.streak));
+    const adBtn = dailyAdButton(coins, d.streak);
+    modalQueue.request({ kind: 'daily', show: () => ui.showDailyCard?.(view, () => { if (pendingNotices.length) ui.showNotices?.(pendingNotices, 'new'); }, adBtn) });
     return true;
   }
   ui.toast?.(`🎁 출석 보상 +${coins}🪙`, 1600, { afterDialog: true });                         // 신규 유저: 캐릭터 선택/튜토리얼과 안 겹치게 토스트만
@@ -2589,6 +2581,7 @@ function initRetentionGuidance() {
 // ① 로그인 화면 뒤에서 도는 "어트랙트" 씬 부팅 (플레이어 조작 X)
 export async function bootWorld(uiCallbacks) {
   ui = uiCallbacks || {};
+  modalQueue.addGate(() => mgView || duelActive || treeShotBusy() || !!intro || !gameState.tutorialSeen || e1Pending());
   ui.setHabitatLabels?.(TAG_LABEL, HABITAT_BLOCK_LINE);   // 🦋 미터 라벨·안내 문구는 js/habitat.js 가 단일 출처
   initRenderer();
   initScene();
@@ -3080,6 +3073,7 @@ export async function enterGame() {
     x: player.position.x, z: player.position.z,
   }));
   gameState.firstDay = ensureFirstDay(gameState.firstDay, todayStr());
+  touchNudgeClock();
   const bonusModal = checkDailyBonus(); // [출석] 오늘 첫 접속이면 보상 지급(모달 표시 여부 반환)
   if (WEATHER !== 'clear') {            // [날씨] 궂은 날 안내 + 세션 태깅
     if (!bonusModal) ui.toast?.(WEATHER_MSG[WEATHER], 2800, { afterDialog: true });   // 출석 모달에 이미 합쳐 안내했으면 생략

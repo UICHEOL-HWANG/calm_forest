@@ -23,7 +23,7 @@ import { clientId, t } from '../i18n.js';
 import { PLATFORM } from '../platform.js';
 import { createPlot, syncFarmCrops, syncFarmSoil } from './farm.js';
 import { enterFarm, startVisitors } from './visitors.js';
-import { nudgeWaiting, requestSignupNudge } from '../signup-gift/index.js';
+import { requestSignupNudge } from '../signup-gift/index.js';
 import * as THREE from 'three';
 
 const TOUCH = isTouchDevice();   // index.html TOUCH 와 같은 판정(둘째 카드 문구)
@@ -188,12 +188,12 @@ export function e1OnHarvest() {   // 환영 모달은 otherModalOpen() 이 빌 �
   document.body.classList.remove('e1-pending');
   hideBubble();
   if (atFarm) startVisitors();
-  if (ui.isGuestNow?.()) requestSignupNudge(gameState, 'harvest', ui, { first: E1_TUTORIAL_DELAY_MS });
+  if (ui.isGuestNow?.()) requestSignupNudge(gameState, 'harvest', ui);
   setTimeout(showTutorialWhenClear, E1_TUTORIAL_DELAY_MS);
 }
 
 // 수확 순간엔 '새 집 색'·과수원 의뢰 같은 기존 연출이 같이 뜬다 — 그 카드가 닫힌 뒤에 환영 모달을 연다(겹침 방지)
-function otherModalOpen() { return nudgeWaiting() || !!document.querySelector('.show > .tut-card, .show > .tk-box, #nudge-modal.show, #gift-box-modal.show'); }
+function otherModalOpen() { return !!document.querySelector('.show > .tut-card, .show > .tk-box, #nudge-modal.show, #gift-box-modal.show'); }
 function showTutorialWhenClear() {
   if (gameState.tutorialSeen) return;
   if (otherModalOpen()) { setTimeout(showTutorialWhenClear, 400); return; }

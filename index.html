@@ -4224,6 +4224,7 @@
     import { nicknameChecks } from './js/nickname-filter.js';
     import { createNickStep } from './js/nickname-step.js';
     import { createSpotlight } from './js/hud/spotlight.js';
+    import { modalQueue } from './js/guide/modal-queue.js';
     import { pillHintKey, spotSteps, treeSteps } from './js/onboarding/spot-steps.js';
     import { Sound, startBGM, toggleBGM } from './js/sound.js';
     import { t, LANG, setLang, translateDom, watchDom } from './js/i18n.js';   // 🌐 i18n(한국어 원문 키 사전)
@@ -4653,6 +4654,9 @@
     let hud = null, shell = null, chips = null, lastToolArgs = null, lastNpcText = null, lastDoorArgs = null, lastTargetIcon = null;
     const menuSheet = createMenuSheet({ Input, t, trackEvent, dotTarget: $('menu-btn'), onOpen: () => runMenuTour() });
     const spot = createSpotlight({ t, trackEvent, blocked: () => spotBlocked() });
+    const TUTORIAL_BODY = ['spot-on', 'intro-open', 'cine-open', 'e1-pending', 'coaching'];
+    const tutorialRunning = () => tutIdx >= 0 || !!spot.active() || TUTORIAL_BODY.some(c => document.body.classList.contains(c));
+    modalQueue.addGate(() => !document.body.classList.contains('playing') || tutorialRunning() || ui.anyModalOpen() || !!document.querySelector('.show > .tut-card'));
     const hintQueue = [];
     const nextHint = () => { if (hintQueue.length) setTimeout(() => { if (!$('hint-modal').classList.contains('show') && hintQueue.length) ui.showHintModal(hintQueue.shift()); }, 0); };
     const camSpotZone = document.createElement('div'); camSpotZone.id = 'cam-spot-zone'; document.body.appendChild(camSpotZone);
@@ -5770,7 +5774,7 @@
       $('npc-modal').classList.remove('show'); flushPendingToasts();
       const intro = lastNpcOpen && Input.affinityIntroFor(lastNpcOpen);
       lastNpcOpen = null;
-      if (intro) ui.showAffinityIntro(intro, 'npc');
+      if (intro) modalQueue.request({ kind: 'affinity', key: 'affintro', show: () => ui.showAffinityIntro(intro, 'npc') });
     };
 
     // ── 💬 주민과 잡담 ───────────────────────────────────────────
@@ -6185,6 +6189,7 @@
       hud?.setCoachStep(null);
       Input.setTutStep('done');
       document.body.classList.remove('coaching', 'coach-quest');   // 코치 종료 → 토스트 원위치
+      modalQueue.flush();
       if (done) {
         ui.toast('🎉 튜토리얼 졸업! 이제 마을을 자유롭게 가꿔보세요 🌿');
         Input.markHintsSeen?.(['shop', 'mineGate']);

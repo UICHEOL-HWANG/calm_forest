@@ -39,6 +39,7 @@ import { refreshCovers } from '../spaces/weather.js';
 import { e1OnHarvest, e1Pending } from '../spaces/e1-start.js';   // 🧪 E1 — 첫 수확이 처치 대기를 끝낸다
 import { sickleReach } from '../tool-tiers.js';
 import { starOf } from '../workbench/rules.js';
+import { modalQueue } from '../guide/modal-queue.js';
 import * as THREE from 'three';
 
 export const FARM_AUTO_R = 1.8;
@@ -366,7 +367,7 @@ export function catchUpWorkers() {
     + (tally.resting ? `\n😴 코인이 모자라 ${tally.resting}명이 쉬고 있어요` : '')
     + (tally.promoted?.length ? `\n🎉 ${tally.promoted.join(' · ')} 승급!` : '')
     + (tally.orchardUnlock ? '\n🍎 일꾼이 고급 작물을 거둬 마을 동쪽 과수원이 열렸어요!' : '');   // 🔒 오프라인 해금은 토스트 대신 여기 한 줄로
-  setTimeout(() => ui.showHintModal?.({ ico: '🧑‍🌾', title: '일꾼들이 일했어요', body }), 1400);
+  modalQueue.request({ kind: 'result', show: () => ui.showHintModal?.({ ico: '🧑‍🌾', title: '일꾼들이 일했어요', body }) });
   trackEvent('worker_offline', { steps, harvest: tally.harvest || 0, water: tally.water || 0, wage: tally.wage || 0 });   // [GA4] 오프라인 산출
   requestSave();
 }
@@ -387,11 +388,11 @@ export function catchUpCraft() {
   // 시설이 섞였으면 한쪽 이름으로 말하면 안 된다 — 발효통 것을 "구워졌다" 고 알리면 거짓말이다
   const kinds = [...new Set(ready.map(s => stationOf(s.item)))];
   const one = kinds.length === 1 ? stationDef(kinds[0]) : null;
-  setTimeout(() => ui.showHintModal?.({
+  modalQueue.request({ kind: 'result', show: () => ui.showHintModal?.({
     ico: one ? one.ico : '📦',
     title: one ? one.notice : '밤사이 가공이 다 됐어요',
     body: `${names.join(' · ')}\n${one ? one.go : '시설에 가서 받아 가세요'}`,
-  }), 2200);            // 일꾼 요약(1400) 뒤에 뜨도록
+  }) });
   requestSave();
 }
 
