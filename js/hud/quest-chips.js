@@ -118,6 +118,7 @@ export function createQuestChips({ panel, t, trackEvent, tracker, unread }) {
     dim.hidden = false;
     sheet.hidden = false;
     panel.classList.add('qc-open');
+    document.body.classList.add('quest-sheet-open');
     place();
     if (first) trackEvent?.('quest_chip_open', { tab: k });
     tabBtns[k].focus({ preventScroll: true });
@@ -131,6 +132,7 @@ export function createQuestChips({ panel, t, trackEvent, tracker, unread }) {
     dim.hidden = true;
     sheet.hidden = true;
     panel.classList.remove('qc-open');
+    document.body.classList.remove('quest-sheet-open');
     KEYS.forEach(o => btns[o].setAttribute('aria-expanded', 'false'));
     if (hadFocus && opener && !opener.hidden) opener.focus({ preventScroll: true });
     else if (hadFocus) document.activeElement?.blur?.();

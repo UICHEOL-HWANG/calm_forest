@@ -18,6 +18,7 @@ import { AUCTION_STAGE, AUCTION_STAGE_R, AUCTION_SPOTS, AUCTION_BIDDERS, AUCTION
 import { lotFor, joinMode, secondsUntilOpen, auctionOpenAt } from './rules.js';
 import { ONBOARD_COPY, BANNER_FAR, bannerLine, bannerTick, introNeeded } from './onboard.js';
 import { createAuctionGuide } from './guide.js';
+import { guideArbiter } from '../guide/arbiter.js';
 import { createAuctionIntro } from './intro.js';
 import { buildAuctionStage } from './stage.js';
 import { createActors, faceStage } from './actors.js';
@@ -99,7 +100,7 @@ function ensureGuide() {
     inside: p => Math.hypot(p.x, p.z) < walkLimit(Math.atan2(p.z, p.x)) - 1,
     open: () => auctionOpen() && auctionOpenAt(gameState.timeOfDay),
     inVillage: () => inVillage2(),
-    visible: () => cameraFree() && !uiBusy(),
+    visible: () => cameraFree() && !uiBusy() && guideArbiter.mayShow('auction'),
   });
   return guide;
 }
@@ -140,7 +141,7 @@ function showOpenBanner(day) {
 function tickBanner(inVillage) {
   const day = todayStr();
   const away = Math.hypot(player.position.x - AUCTION_ENTRY.x, player.position.z - AUCTION_ENTRY.z) > BANNER_FAR;
-  const ready = auctionOpen() && inVillage && !mgView && cameraFree() && !uiBusy() && !document.body.classList.contains('cine-open') && !guide?.active && !intro?.open;
+  const ready = auctionOpen() && inVillage && !mgView && cameraFree() && !uiBusy() && !document.body.classList.contains('cine-open') && !guide?.active && !intro?.open && guideArbiter.mayShow('auction');
   const r = bannerTick(gameState.auction, {
     open: auctionOpenAt(gameState.timeOfDay), day, joined: gameState.auction.lastDate === day, ready, far: away,
   });

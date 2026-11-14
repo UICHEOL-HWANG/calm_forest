@@ -1,0 +1,33 @@
+export const GUIDE_PRIORITY = Object.freeze({
+  coach: 100, house: 90, goal: 80, port: 70, restaurant: 60, yard: 50, affinity: 40, weekly: 30, concert: 20, auction: 10,
+});
+
+const claiming = (e) => !!e.active() || !!e.wants?.();
+
+export function createArbiter(table = GUIDE_PRIORITY) {
+  let entries = Object.freeze([]);
+
+  function register({ name, priority = table[name] ?? -Infinity, active, wants }) {
+    const entry = Object.freeze({ name, priority, active, wants });
+    entries = Object.freeze([...entries.filter(e => e.name !== name), entry]);
+    return () => { entries = Object.freeze(entries.filter(e => e !== entry)); };
+  }
+
+  function rankOf(name) {
+    const at = entries.findIndex(e => e.name === name);
+    return at < 0 ? { priority: table[name] ?? -Infinity, at: Infinity } : { priority: entries[at].priority, at };
+  }
+
+  const beats = (e, i, me) => e.priority > me.priority || (e.priority === me.priority && i < me.at);
+
+  function mayShow(name) {
+    const me = rankOf(name);
+    return !entries.some((e, i) => e.name !== name && beats(e, i, me) && claiming(e));
+  }
+
+  const anyActive = (except) => entries.some(e => e.name !== except && !!e.active());
+
+  return { register, mayShow, anyActive, busy: () => anyActive() };
+}
+
+export const guideArbiter = createArbiter();

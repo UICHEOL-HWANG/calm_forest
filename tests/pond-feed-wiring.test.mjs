@@ -48,7 +48,10 @@ test('마당 채우기 연결', () => {
   const g = src('js/game.js');
   assert.match(g, /yardGuide = installYardGuide\(\{/);
   assert.match(g, /if \(mode === 'play'\) yardGuide\?\.update\(dt\);/);
-  assert.match(g, /function guideBusy\(\) \{ return portGuideActive\(\) \|\| restaurantGuideActive\(\) \|\| auctionGuideActive\(\) \|\| affinityGuideActive\(\) \|\| !!yardGuide\?\.active\(\); \}/);
+  assert.match(g, /guideArbiter\.register\(\{ name: 'yard', active: \(\) => !!yardGuide\?\.active\(\) \}\);/);
+  assert.match(g, /free: \(\) => [^\n]*cameraFree\(\) && guideMay\('yard'\),/);
+  assert.match(g, /held: \(\) => !guideMay\('yard'\),/);
+  assert.match(y, /if \(deps\.held\?\.\(\)\) \{ suspend\(\); return; \}/);
 });
 
 test('마당 안내: 시작 횟수·멈춤 종료·레거시 다리·시작 전 먹이 확인', () => {
@@ -107,7 +110,7 @@ test('HUD 숨김 다듬기: 올빼미 배너·모드 전환·좌판 표시', () 
   assert.match(h, /body:not\(\.yard-guiding\):has\(#habitat-meter:not\(\[hidden\]\)\) #hint-banner/);
   assert.doesNotMatch(h, /body:has\(#habitat-meter:not\(\[hidden\]\)\) #hint-banner/);
   const y = src('js/pond/yard-guide.js');
-  assert.match(y, /suspend\(\) \{\s*lastProgressAt = performance\.now\(\) \/ 1000;/);
+  assert.match(y, /const suspend = \(\) => \{\s*lastProgressAt = performance\.now\(\) \/ 1000;/);
   assert.match(src('js/game.js'), /if \(mode === 'play'\) yardGuide\?\.update\(dt\); else yardGuide\?\.suspend\(\);/);
   const n = src('js/spaces/npc.js');
   assert.match(n, /shopCue\.visible = shopCueVisible\(\{ now: clock\.elapsedTime, until: shopCueUntil, hidden: glyphsHidden \}\);/);

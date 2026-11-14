@@ -97,7 +97,7 @@ function tickGuide(dt, inVillage) {
   const need = !guideOff && !show && guideNeed(state());
   const want = need && guideTarget({
     need, inVillage, pastOnboarding: env.pastOnboarding(),
-    cameraFree: env.cameraFree(), uiBusy: env.uiBusy(), otherGuide: env.otherGuide() || weeklyGuiding(),
+    cameraFree: env.cameraFree(), uiBusy: env.uiBusy(), otherGuide: env.otherGuide('concert') || weeklyGuiding(),
   });
   if (!want) {
     if (guide?.active) guide.cancel('gate');
@@ -108,6 +108,8 @@ function tickGuide(dt, inVillage) {
   guide.update(dt);
   if (!guide.active) guideOff = true;
 }
+
+export function concertGuideActive() { return !!guide?.active; }
 
 export function updateConcert(dt, inVillage, pos) {
   if (!deps) return;

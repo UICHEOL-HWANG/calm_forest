@@ -17,6 +17,7 @@ body.is-touch #quest-panel { width: 48px; padding: 0 !important; background: non
   backdrop-filter: none !important; -webkit-backdrop-filter: none !important; border-radius: 0 !important;
   max-width: none !important; max-height: none !important; overflow: visible !important; z-index: 9; }
 body.is-touch #quest-panel.qc-open { z-index: 20; }
+body.quest-sheet-open #goal-arrow, body.quest-sheet-open #guide-card, body.quest-sheet-open #guide-mark, body.quest-sheet-open #guide-edge, body.quest-sheet-open [id$="-guide-compass"], body.quest-sheet-open [id$="-guide-mark"], body.quest-sheet-open [id$="-guide-edge"] { display: none !important; }
 #qc-btns { position: relative; display: flex; flex-direction: column; gap: 8px; }
 .qc-rb { position: relative; display: block; width: 48px; height: 48px; padding: 4px; border: 0; border-radius: 50%; cursor: pointer;
   background: conic-gradient(var(--qc-ring) calc(var(--p, 0) * 1turn), #fff 0);

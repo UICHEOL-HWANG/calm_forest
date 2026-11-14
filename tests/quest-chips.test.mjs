@@ -111,6 +111,17 @@ test('새 문구는 영어 사전에 한 번씩만', () => {
   assert.match(en, /'닫기': 'Close'/);
 });
 
+test('시트가 열린 동안 화면 위 안내 화살표·칩·거리 표시를 가린다', async () => {
+  const { QUEST_CHIPS_CSS } = await import('../js/hud/quest-chips-css.js');
+  for (const sel of ['#goal-arrow', '#guide-card', '#guide-mark', '#guide-edge', '[id$="-guide-compass"]', '[id$="-guide-mark"]', '[id$="-guide-edge"]']) {
+    assert.ok(QUEST_CHIPS_CSS.includes(`body.quest-sheet-open ${sel}`), sel);
+  }
+  assert.match(QUEST_CHIPS_CSS, /body\.quest-sheet-open [^{]*\{ display: none !important; \}/);
+  const src = read('js/hud/quest-chips.js');
+  assert.match(src, /document\.body\.classList\.add\('quest-sheet-open'\)/);
+  assert.match(src, /document\.body\.classList\.remove\('quest-sheet-open'\)/);
+});
+
 test('새 요소는 의뢰 패널 안에 들어가 패널 숨김 규칙을 그대로 따른다', () => {
   const src = read('js/hud/quest-chips.js');
   assert.match(src, /panel\.append\(/);

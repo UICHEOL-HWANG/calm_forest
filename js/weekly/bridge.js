@@ -40,7 +40,7 @@ function makeGuideEnv(g) {
     cameraFree: () => g.cameraFree(),
     uiBusy,
     cine: () => body().contains('cine-open'),
-    otherGuide: () => g.otherGuide() || body().contains('coaching'),
+    otherGuide: (name) => g.otherGuide(name) || body().contains('coaching'),
     makeGuide: (name, spot, reach) => createAuctionGuide({
       name, THREE: g.THREE, scene: g.scene, camera: g.camera, player: g.player, t: g.t, track: () => {},
       follow: ONBOARD_COPY.follow, spot, reach,

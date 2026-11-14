@@ -131,7 +131,7 @@ function tickGuide(dt, inVillage, pos) {
   const s = state();
   if (s.week !== reachedWeek) { reachedWeek = s.week; reached.clear(); }
   const gates = { need: guideNeed(s, deps.now()), inVillage, pastOnboarding: env.pastOnboarding(), uiBusy: env.uiBusy() };
-  const target = guideTarget({ ...gates, cameraFree: env.cameraFree(), otherGuide: env.otherGuide() });
+  const target = guideTarget({ ...gates, cameraFree: env.cameraFree(), otherGuide: env.otherGuide('weekly') });
   const heard = guideTarget({ ...gates, cameraFree: true, otherGuide: false });
   if (live && (target !== live || !guides[live].active)) {
     const was = live;
@@ -154,6 +154,8 @@ function tickGuide(dt, inVillage, pos) {
 }
 
 export function weeklySpotNow() { return spot; }
+
+export function weeklyGuideActive() { return !!live && !!guides[live]?.active; }
 
 export function weeklyPrompt() {
   return spot === 'market' ? WEEKLY_COPY.prompt.market : WEEKLY_COPY.prompt.board;

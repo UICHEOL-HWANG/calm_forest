@@ -14,6 +14,7 @@ export function createHouseGuide(deps) {
   // Local QA can enter with ?dbg=1&give=wood:15&houseguide=guide without chopping five trees.
   let previousWood = (['control', 'guide'].includes(forcedArm) && startingWood >= HOUSE_GUIDE_WOOD) ? HOUSE_GUIDE_WOOD - 1 : startingWood;
   let cinematic = false;
+  let pointing = false;
   let elapsed = 0;
   let overlay = null;
   let compass = null;
@@ -149,19 +150,23 @@ export function createHouseGuide(deps) {
   function update() {
     const gs = deps.state(), state = gs.houseGuide;
     if (!state || state.arm !== 'guide' || gs.houseStage !== 0) {
+      pointing = false;
       hideCompass();
       return;
     }
-    if (!state.shown && gs.inventory.wood >= HOUSE_GUIDE_WOOD) start();
+    const may = deps.mayShow?.() ?? true;
+    const due = !state.shown && gs.inventory.wood >= HOUSE_GUIDE_WOOD;
+    if (due && may) start();
     if (state.shown && !compass) mount();
-    if (!compass || cinematic) { hideCompass(); return; }
+    if (!compass || cinematic) { pointing = cinematic || due; hideCompass(); return; }
     const distance = Math.hypot(deps.house.x - deps.player.position.x, deps.house.z - deps.player.position.z);
     if (!state.arrived && distance <= 3.2) {
       state.arrived = true;
       deps.track('house_guide_arrive', { arm: 'guide' });
       deps.save();
     }
-    if (distance <= 3.2 || document.hidden || !deps.inVillage() || !deps.cameraFree() || deps.modalOpen()) {
+    pointing = distance > 3.2 && deps.inVillage();
+    if (!may || distance <= 3.2 || document.hidden || !deps.inVillage() || !deps.cameraFree() || deps.modalOpen()) {
       hideCompass(); return;
     }
     const at = deps.projectPlayer();
@@ -196,5 +201,5 @@ export function createHouseGuide(deps) {
     if (cinematic) finish(true);
   }
 
-  return { onInventory, update, built, get cinematic() { return cinematic; } };
+  return { onInventory, update, built, get cinematic() { return cinematic; }, get pointing() { return pointing || cinematic; } };
 }

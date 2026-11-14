@@ -68,6 +68,7 @@ import { t, LANG, aiBucket, clientId } from './i18n.js';   // 🌐 i18n — DOM 
 import { createHouseGuide } from './spaces/house-guide.js';   // 🏠 목재 15개 → 집터 조망 + 방향 안내 50:50
 import { rearmMerchant, detourPoint } from './guide/guide-rules.js';
 import { createGoalGuide } from './guide/goal-guide.js';
+import { guideArbiter } from './guide/arbiter.js';
 import { e6Decision } from './exp-e6-boot.js';
 import { guideRevampOn } from './exp-e6.js';
 import { createHouseShort } from './guide/house-short.js';
@@ -83,9 +84,9 @@ import { initPlaza, updatePlaza, plazaSpotNow, openPlaza, plazaScatterBlocks, pl
 import { defaultToolStars, restoreToolStars, restoreForge, forgeCancel } from './workbench/rules.js';
 import { forgeView, forgeBegin, forgeAbort, forgeFinish, settleForge } from './workbench/forge.js';
 import { initAuction, updateAuction, auctionMapSpot, auctionSpotNow, openAuction, auctionScatterBlocks, auctionOutdoorMesh, auctionDefault, restoreAuction, auctionGuideActive } from './auction/index.js';
-import { initWeekly, updateWeekly, weeklyNote, weeklySpotNow, openWeekly, weeklyDefault, restoreWeekly, weeklyScatterBlocks, weeklyDecorMesh, weeklyDev } from './weekly/index.js';
+import { initWeekly, updateWeekly, weeklyNote, weeklySpotNow, openWeekly, weeklyDefault, restoreWeekly, weeklyScatterBlocks, weeklyDecorMesh, weeklyDev, weeklyGuideActive } from './weekly/index.js';
 import { makeWeeklyBridge } from './weekly/bridge.js';
-import { initConcert, updateConcert, concertSpotNow, openConcert, concertDefault, restoreConcert, concertScatterBlocks, concertDecorMesh, concertDev, STAGE_POS } from './concert/index.js';
+import { initConcert, updateConcert, concertSpotNow, openConcert, concertDefault, restoreConcert, concertScatterBlocks, concertDecorMesh, concertDev, STAGE_POS, concertGuideActive } from './concert/index.js';
 import { makeConcertBridge } from './concert/bridge.js';
 import { refreshPond, updatePond, pondScatterBlocks } from './pond/index.js';
 import { feedPond, openPondBook } from './pond/feed.js';
@@ -282,7 +283,7 @@ import {
   affinityChip, affinityIntroFor, affinityLetters, affinityTracker, affinityVisible, claimLetter, introNpcForStart, markIntroSeen, npcBook, onLettersChanged, owlDailyAffinity, readLetter,
   syncAffinityLetters, trackBookOpen, unreadLetterCount,
 } from './affinity/index.js';
-import { affinityGuideActive, startAffinityGuide, updateAffinityGuide } from './affinity/guide.js';
+import { affinityGuideActive, affinityGuidePending, startAffinityGuide, updateAffinityGuide } from './affinity/guide.js';
 import {
   rebuildFarm, spawnFarmGate, surveyBenchWorld, surveyDeskWorld,
 } from './spaces/farm-field.js';   // 📦 🪧 표지판·텃밭 게이트·측량소·텃밭 필드 (구역 머리말 — 분리 2단계)
@@ -1641,7 +1642,17 @@ const decorMeshes = [];    // 배치된 가구 메시
 
 let mode = 'attract';   // 'attract'(로그인 배경) | 'play'(플레이)
 let goalGuide = null;
-function guideBusy() { return portGuideActive() || restaurantGuideActive() || auctionGuideActive() || affinityGuideActive() || !!yardGuide?.active(); }
+const guideMay = (name) => guideArbiter.mayShow(name);
+guideArbiter.register({ name: 'coach', active: () => goalGuide?.pointing === 'tut' });
+guideArbiter.register({ name: 'house', active: () => !!houseGuidance?.pointing });
+guideArbiter.register({ name: 'goal', active: () => !!goalGuide?.cinematic || (!!goalGuide?.pointing && goalGuide.pointing !== 'tut') });
+guideArbiter.register({ name: 'port', active: portGuideActive });
+guideArbiter.register({ name: 'restaurant', active: restaurantGuideActive });
+guideArbiter.register({ name: 'yard', active: () => !!yardGuide?.active() });
+guideArbiter.register({ name: 'affinity', active: affinityGuideActive, wants: affinityGuidePending });
+guideArbiter.register({ name: 'weekly', active: weeklyGuideActive });
+guideArbiter.register({ name: 'concert', active: concertGuideActive });
+guideArbiter.register({ name: 'auction', active: auctionGuideActive });
 const guideRevamp = guideRevampOn(e6Decision());
 let houseShort = null;
 let yardGuide = null;
@@ -2965,7 +2976,7 @@ export async function enterGame() {
     stopAnalog: () => Input.setAnalog?.(0, 0),
     projectPlayer: () => projectToScreen(player.position, 0),
     playReminder: () => Sound.houseGuide(), whoosh: () => Sound.cineWhoosh(),
-    track: trackEvent, save: requestSave,
+    track: trackEvent, save: requestSave, mayShow: () => guideMay('house'),
   });
   rewarded = createRewarded({
     enabled: () => PREPASS_ON || PREPASS_DEV, provider: () => prepassProvider, forceArm: () => (PREPASS_DEV ? 'ad' : null),
@@ -2997,7 +3008,7 @@ export async function enterGame() {
     state: () => gameState, player, camera, scene,
     adButton: (slot, list) => shortAdButton(slot, list, null, CAFE_CAPS),
     adOpen: () => !!rewarded?.open(),
-    otherGuide: guideBusy,
+    otherGuide: (flow) => !guideMay(flow === 'tut' ? 'coach' : 'goal'),
     translate: t, track: trackEvent, save: requestSave,
     cameraFree, setCameraRig, defaultCamPose,
     inVillage: inVillage2, atMine: () => atMine && !delveFloorNow(),
@@ -3043,7 +3054,8 @@ export async function enterGame() {
   }) : null;
   yardGuide = installYardGuide({
     state: () => gameState, on: () => spaceLinkOn(e3Decision()), inVillage: inVillage2,
-    free: () => !ui.anyModalOpen?.() && !ui.coachActive?.() && !portGuideActive() && !restaurantGuideActive() && !auctionGuideActive() && !goalGuide?.cinematic && !houseGuidance?.cinematic && cameraFree(),
+    free: () => !ui.anyModalOpen?.() && !ui.coachActive?.() && !portGuideActive() && !restaurantGuideActive() && !auctionGuideActive() && !goalGuide?.cinematic && !houseGuidance?.cinematic && cameraFree() && guideMay('yard'),
+    held: () => !guideMay('yard'),
     scene, camera, player,
     route: (me, tgt) => detourPoint({ x: me.x, z: me.z }, { x: tgt.x, z: tgt.z }, colliders.filter(c => ('r' in c ? c.r >= 1.0 : true))),
     track: trackEvent, save: requestSave, today: kstDate,
@@ -3634,7 +3646,7 @@ function buildWorld() {
   spawnRankBoard();   // 🏆 랭킹 게시판(리더보드)
   initPlaza();                // 🌾 수확제 광장(시즌 터·돌길)
   initAuction();
-  const GE = { THREE, scene, lake: { x: LAKE.x, z: LAKE.z, r: LAKE_R }, get camera() { return camera; }, get player() { return player; }, get ui() { return ui; }, t, colliders, isOpen, cameraFree, project: projectToScreen, inVillage: inVillage2, otherGuide: guideBusy };
+  const GE = { THREE, scene, lake: { x: LAKE.x, z: LAKE.z, r: LAKE_R }, get camera() { return camera; }, get player() { return player; }, get ui() { return ui; }, t, colliders, isOpen, cameraFree, project: projectToScreen, inVillage: inVillage2, otherGuide: (name) => !guideMay(name) };
   { const wb = makeWeeklyBridge({ gameState: () => gameState, patch: (p) => Object.assign(gameState, p), questAvailable, questCtx, isOpen, guide: GE });
     { const cb = makeConcertBridge({ getPlayer: () => player, THREE, getPlayerRig: () => ({ anchor: playerAnchor, arms: playerArms, def: curAnimal }), setCameraRig, hideTool: (h) => { if (heldGroup) heldGroup.visible = !h; }, hideLabels: setNpcGlyphsShowHidden, isBgmOn: isBGMOn, startBgm: startBGM, stopBgm: stopBGM }); initConcert({ getState: () => gameState.concert, setState: (s) => { gameState.concert = s; }, requestSave, isGuest: () => authState.isGuest !== false, login: () => ui.loginNudge?.('shop'), ownsDecor: wb.owns, grantDecorItem: wb.grant, today: todayStr, stopMove: () => Input.setAnalog(0, 0), roll: () => rollDifficulty('concert'), settle: (o) => settleDifficulty('concert', o), diffParams, abandon: (r, stage, extra) => trackDiffAbandon('concert', r, stage, extra), audio: audioBus, stage: cb.stage, bgm: cb.bgm, night: () => nightLevel, scene, solidCircle, THREE, guideEnv: wb.guideEnv }); }
     initWeekly({ getState: () => gameState.weekly, setState: (s) => { gameState.weekly = s; }, canDo: wb.canDo, isGuest: () => authState.isGuest !== false, ownsDecor: wb.owns, grantDecorItem: wb.grant, now: () => DEV_NOW || Date.now(), night: () => nightLevel, stopMove: () => Input.setAnalog(0, 0), login: () => ui.loginNudge?.('shop'), requestSave, scene, solidCircle, THREE, guideEnv: wb.guideEnv }); }
@@ -6604,9 +6616,9 @@ function animate() {
   updateSeasonDrift(dt, t);   // 🌸🍂 꽃잎·낙엽
   updateSway(t);
   updateSeaVisuals(t);  // 🌊 일렁이는 수면(후미·바다터) + 등대 야간 빔
-  updatePortGuide(mode === 'play' && (inVillage2() || port.active));
-  updateRestaurantGuide(mode === 'play' && (inVillage2() || atRestaurant));
-  updateAffinityGuide(mode === 'play' && inVillage2());
+  updatePortGuide(mode === 'play' && (inVillage2() || port.active) && guideMay('port'));
+  updateRestaurantGuide(mode === 'play' && (inVillage2() || atRestaurant) && guideMay('restaurant'));
+  updateAffinityGuide(mode === 'play' && inVillage2() && guideMay('affinity'));
   updateGateCues(t, dt);
   updateTrees(dt);
   updateOreRocks();
@@ -6641,7 +6653,7 @@ function animate() {
   updateCatchItem(dt);   // 🎁 캐치 아이템(수확물/물고기 들어올리기)
   updateFloatTexts(dt);
   updateNPC(dt, t);
-  if (t - unlockTickAt > 1) { unlockTickAt = t; if (mode === 'play') { syncUnlocks(); maybeStartPortGuide(isOpen('port') && !atSea && !restaurantGuideActive() && !yardGuide?.active()); maybeStartRestaurantGuide(isOpen('restaurant') && !atSea && !portGuideActive() && !yardGuide?.active()); } }   // 🔓 매초 한 번 — 놓친 해금 지점이 있어도 1초 안에 맞춘다(꺼져 있으면 즉시 반환)
+  if (t - unlockTickAt > 1) { unlockTickAt = t; if (mode === 'play') { syncUnlocks(); maybeStartPortGuide(isOpen('port') && !atSea && !restaurantGuideActive() && guideMay('port') && !yardGuide?.active()); maybeStartRestaurantGuide(isOpen('restaurant') && !atSea && !portGuideActive() && guideMay('restaurant') && !yardGuide?.active()); } }   // 🔓 매초 한 번 — 놓친 해금 지점이 있어도 1초 안에 맞춘다(꺼져 있으면 즉시 반환)
   updateWorldTree(dt, t);    // 🌳 세계수 잎이 판 진척을 따라 자란다
   updateLightWorkshop();   // 🏷️ 반디 요정 이름표
   updateMerchantVisit(dt);   // 🧙 상인 방문 이벤트(1회)

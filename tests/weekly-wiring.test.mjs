@@ -7,7 +7,7 @@ const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 test('game.js only wires the weekly module', () => {
   const game = read('js/game.js');
   const lines = game.split('\n').filter(l => /weekly/i.test(l));
-  assert.ok(lines.length <= 16, `${lines.length} weekly lines:\n${lines.join('\n')}`);
+  assert.ok(lines.length <= 17,`${lines.length} weekly lines:\n${lines.join('\n')}`);
   assert.ok(game.includes('const m = weeklyDecorMesh(THREE, id); if (m)'));
   assert.ok(read('js/spaces/indoor.js').includes('weeklyDecorMesh(THREE, id)'));
   assert.ok(!/function\s+\w*weekly/i.test(game));
@@ -114,8 +114,9 @@ test('game.js passes the guide environment through the existing weekly lines', (
   const game = read('js/game.js');
   assert.match(game, /guide: GE/);
   assert.match(game, /guideEnv: wb\.guideEnv/);
-  assert.match(game, /function guideBusy\(\) \{ return portGuideActive\(\) \|\| restaurantGuideActive\(\) \|\| auctionGuideActive\(\) \|\| affinityGuideActive\(\) \|\| !!yardGuide\?\.active\(\); \}/);
-  assert.match(game, /otherGuide: guideBusy \};/);
+  assert.match(game, /otherGuide: \(name\) => !guideMay\(name\) \};/);
+  assert.match(game, /guideArbiter\.register\(\{ name: 'weekly', active: weeklyGuideActive \}\);/);
+  assert.match(read('js/weekly/index.js'), /export function weeklyGuideActive\(\) \{ return !!live && !!guides\[live\]\?\.active; \}/);
 });
 
 test('weekly index saves only from claim, buy and open', () => {
