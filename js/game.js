@@ -85,7 +85,7 @@ import { forgeView, forgeBegin, forgeAbort, forgeFinish, settleForge } from './w
 import { initAuction, updateAuction, auctionMapSpot, auctionSpotNow, openAuction, auctionScatterBlocks, auctionOutdoorMesh, auctionDefault, restoreAuction, auctionGuideActive } from './auction/index.js';
 import { initWeekly, updateWeekly, weeklyNote, weeklySpotNow, openWeekly, weeklyDefault, restoreWeekly, weeklyScatterBlocks, weeklyDecorMesh, weeklyDev } from './weekly/index.js';
 import { makeWeeklyBridge } from './weekly/bridge.js';
-import { initConcert, updateConcert, concertSpotNow, openConcert, concertDefault, restoreConcert, concertScatterBlocks, concertDecorMesh, concertDev } from './concert/index.js';
+import { initConcert, updateConcert, concertSpotNow, openConcert, concertDefault, restoreConcert, concertScatterBlocks, concertDecorMesh, concertDev, STAGE_POS } from './concert/index.js';
 import { makeConcertBridge } from './concert/bridge.js';
 import { refreshPond, updatePond, pondScatterBlocks } from './pond/index.js';
 import { onPlay, decorBanner, applySetFx } from './decor-drops/index.js';
@@ -6348,6 +6348,7 @@ const VILLAGE_PLACES = [
   { ico: '🌫️', name: '안개 숲',       x: MIST_GATE.x,   z: MIST_GATE.z,   pri: 1, map: 'mist' },
   { ico: '🌊', name: '바다터',        x: SEA_GATE.x,    z: SEA_GATE.z,    pri: 1, map: 'sea' },
   { ico: '🔨', name: '경매 무대', ...auctionMapSpot(), pri: 1 },
+  { ico: '🎵', name: '음악회 무대', x: STAGE_POS.x, z: STAGE_POS.z, pri: 1 },
   { ico: '🌾', name: '수확제 광장', x: 23, z: -4, pri: 1, need: 'plaza' },
   { ico: '🍎', name: '과수원',        x: ORCHARD_GATE.x, z: ORCHARD_GATE.z, pri: 1, map: 'orchard' },
 ];

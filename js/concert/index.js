@@ -13,7 +13,7 @@ import { hasConcertArt, concertDecorMesh } from './items.js';
 import { guideNeed, guideTarget } from './guide.js';
 import { makeThumbs } from '../weekly/thumbs.js';
 
-export { concertDefault, restoreConcert, concertDecorMesh };
+export { concertDefault, restoreConcert, concertDecorMesh, STAGE_POS };
 
 const SCATTER_R = 6;
 const LAMP_DAY = 0;

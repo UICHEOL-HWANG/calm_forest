@@ -34,6 +34,12 @@ test('concert modules stay out of game.js internals', () => {
   }
 });
 
+test('the concert stage is on the village map', () => {
+  const line = read('js/game.js').split('\n').find(l => l.includes("name: '음악회 무대'"));
+  assert.ok(line && line.includes('STAGE_POS.x'));
+  assert.ok(read('js/i18n-en.js').includes("'음악회 무대': 'Concert stage'"));
+});
+
 test('the weekly wiring assertions still hold', () => {
   assert.ok(read('js/game.js').includes('const m = weeklyDecorMesh(THREE, id); if (m)'));
 });

@@ -43,7 +43,7 @@ export const EN = {
   '작은 악사 무대': 'Little Busker Stage', '노래하기 좋은 야외 무대예요': 'An outdoor stage made for singing',
   '기타 받침대': 'Guitar Stand', '기타를 세워 두는 받침대예요': 'A stand to hold your guitar',
   '축음기': 'Gramophone', '나팔 달린 오래된 축음기예요': 'An old gramophone with a horn',
-  '음악회 열기': 'Open the concert', '마을 음악회': 'Village concert',
+  '음악회 열기': 'Open the concert', '마을 음악회': 'Village concert', '음악회 무대': 'Concert stage',
   '음표를 받는 공연이 오늘 {0}번 남았어요': 'You can earn notes from {0} more shows today',
   '오늘 음표는 다 받았어요. 연주는 얼마든지 해도 돼요': 'You have all of today\'s notes. Play as much as you like',
   '곡': 'Songs', '내 악기': 'My instruments', '음표 교환': 'Note shop',
