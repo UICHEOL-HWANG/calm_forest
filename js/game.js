@@ -2555,7 +2555,8 @@ function retentionGuidanceState() {
   //    retention-guidance.js 는 브라우저 전역을 안 쓰는 순수 모듈이라 여기서 재서 넘긴다.
   let touch = false;
   touch = isTouchDevice();   // 📱 controls.js·index.html 과 같은 판정(touchsim 포함)
-  return { ...buildRetentionGameStateSnapshot({ ...snap, closed: closedPlaces() }), touch };   // 🔓 잠긴 시설은 배너가 안 가리킨다
+  const nearAction = !!nearNPC || (inVillage2() && nearestTreeDist() < 8) || (atFarm && (snap.plantedUnwatered > 0 || plots.some(p => p.state === 'mature')));
+  return { ...buildRetentionGameStateSnapshot({ ...snap, closed: closedPlaces(), nearAction }), touch };   // 🔓 잠긴 시설은 배너가 안 가리킨다
 }
 
 function initRetentionGuidance() {
