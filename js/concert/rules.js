@@ -41,14 +41,16 @@ export function settle(state, { songId, ratio, today }) {
   const pays = left > 0;
   const earned = pays ? notesFor(stars) : 0;
   const paidToday = state.day === today ? state.paid : 0;
-  const bestUp = ratio > (state.best[songId] || 0);
+  const prevBest = state.best[songId] || 0;
+  const beaten = ratio > prevBest;
+  const bestUp = beaten && prevBest > 0;
   return {
     state: {
       ...state,
       notes: state.notes + earned,
       day: today,
       paid: paidToday + (pays ? 1 : 0),
-      best: bestUp ? { ...state.best, [songId]: ratio } : state.best,
+      best: beaten ? { ...state.best, [songId]: ratio } : state.best,
     },
     stars,
     earned,

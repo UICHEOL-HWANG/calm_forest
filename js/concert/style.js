@@ -154,7 +154,7 @@ const CSS = `
   .cc-res { width: min(580px, 100%); grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 18px; padding-top: 40px; }
 }
 body.concert-open #topleft, body.concert-open #topright, body.concert-open #story-chip, body.concert-open #toast, body.concert-open #hint-banner,
-body.concert-open #guide-card, body.concert-open #guide-mark, body.concert-open #guide-edge,
+body.concert-open #cam-reset-btn, body.concert-open #guide-card, body.concert-open #guide-mark, body.concert-open #guide-edge,
 body.concert-open [id$="-guide-compass"], body.concert-open [id$="-guide-mark"], body.concert-open [id$="-guide-edge"] { display: none !important; }
 @media (prefers-reduced-motion: reduce) {
   .cc-card *, .cc-card *::before, .cc-card *::after { animation: none !important; transition: none !important; }

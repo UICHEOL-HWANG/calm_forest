@@ -31,6 +31,7 @@ export function makeConcertBridge(env) {
         active = true;
         env.setCameraRig(rig);
         env.hideTool(true);
+        env.hideLabels(true);
         document.body.classList.add('mg-open', 'concert-open');
         hold();
         const p = env.getPlayerRig();
@@ -45,6 +46,7 @@ export function makeConcertBridge(env) {
       update(dt) {
         if (!active) return;
         env.hideTool(true);
+        env.hideLabels(true);
         hold();
         hit[0] = Math.max(0, hit[0] - dt * HIT_FADE);
         hit[1] = Math.max(0, hit[1] - dt * HIT_FADE);
@@ -60,6 +62,7 @@ export function makeConcertBridge(env) {
         hit[1] = 0;
         env.setCameraRig(null);
         env.hideTool(false);
+        env.hideLabels(false);
         document.body.classList.remove('mg-open', 'concert-open');
         env.getPlayer().position.set(STAGE_POS.x, 0, STAGE_POS.z + EXIT_GAP);
       },

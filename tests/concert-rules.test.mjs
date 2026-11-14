@@ -65,12 +65,24 @@ test('only the first three shows of a day pay notes', () => {
 test('best keeps the highest ratio per song and settle does not mutate', () => {
   const s0 = concertDefault();
   const a = settle(s0, { songId: 'march', ratio: 0.5, today: DAY });
-  assert.equal(a.bestUp, true);
+  assert.equal(a.state.best.march, 0.5);
   const b = settle(a.state, { songId: 'march', ratio: 0.4, today: DAY });
   assert.equal(b.bestUp, false);
   assert.equal(b.state.best.march, 0.5);
   assert.equal(s0.notes, 0);
   assert.equal(s0.best.march, 0);
+});
+
+test('the best badge needs a previous best that the new ratio beats', () => {
+  const first = settle(concertDefault(), { songId: 'march', ratio: 0.1, today: DAY });
+  assert.equal(first.bestUp, false);
+  assert.equal(first.state.best.march, 0.1);
+  const better = settle(first.state, { songId: 'march', ratio: 0.6, today: DAY });
+  assert.equal(better.bestUp, true);
+  assert.equal(better.state.best.march, 0.6);
+  const worse = settle(better.state, { songId: 'march', ratio: 0.3, today: DAY });
+  assert.equal(worse.bestUp, false);
+  assert.equal(worse.state.best.march, 0.6);
 });
 
 test('buyPlan refuses in a fixed order: no art, owned, guest, short', () => {
