@@ -36,7 +36,8 @@ import { finishOrchardQuest, maybeOfferOrchardQuest, tryHoe } from '../spaces/or
 import { maybeOfferCosQuest } from '../spaces/cos-quest.js';
 import { DIG_HIT_AT, DIG_RESTORE, digHit, expireDig, setPlotDug, trySeed, tryWater, updateDigFx } from '../spaces/shovel.js';
 import { refreshCovers } from '../spaces/weather.js';
-import { e1OnHarvest, e1Pending } from '../spaces/e1-start.js';   // 🧪 E1 — 첫 수확이 처치 대기를 끝낸다
+import { e1OnHarvest, e1Pending, e1RipeLeft } from '../spaces/e1-start.js';   // 🧪 E1 — 첫 수확이 처치 대기를 끝낸다
+import { e1KeepHarvesting } from '../exp-e1.js';
 import { sickleReach } from '../tool-tiers.js';
 import { starOf } from '../workbench/rules.js';
 import { modalQueue } from '../guide/modal-queue.js';
@@ -70,6 +71,11 @@ export function farmAutoAction() {
   const held = TOOLS[currentTool].id;
   const plot = farmAutoPlot(held);
   const wet = !!plot && clock.elapsedTime < (plot.wetUntil || 0);
+  if (e1KeepHarvesting({ pending: e1Pending(), ripeLeft: e1RipeLeft(), plotState: plot?.state })) {
+    if (held !== 'sickle') Input.selectTool(TOOLS.findIndex(t => t.id === 'sickle'));
+    ui.toast?.('🌾 텃밭에서 다 자란 작물 앞에 서서 낫으로 거둬요', 2400);
+    return;
+  }
   const want = farmToolFor(plot, wet);
   if (!want) {
     // 자라는 중인데 흙이 촉촉하면 도구를 바꾸지 않고 물조리개의 안내만(어떤 도구를 들었든 같은 말)

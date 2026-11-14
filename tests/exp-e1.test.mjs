@@ -3,8 +3,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  ARMS, ACQ_EVENTS, E1_PLATFORMS, E1_ROLLOUT, E1_PLOTS, E1_SPAWN, NEW_KINDS,
-  E1_BUBBLE_EMOJI, E1_INTRO_BUTTONS, armFor, decideE1, e1IntroCards, parseStored, sanitizeE1, seedCoinValue, shouldSeed, withExpArm,
+  ARMS, ACQ_EVENTS, E1_PLATFORMS, E1_ROLLOUT, E1_PLOTS, E1_SPAWN, NEW_KINDS, E1_AWAY_RELEASE_S,
+  E1_BUBBLE_EMOJI, E1_INTRO_BUTTONS, armFor, decideE1, e1IntroCards, e1KeepHarvesting, e1Release, parseStored, sanitizeE1, seedCoinValue, shouldSeed, withExpArm,
 } from '../js/exp-e1.js';
 import { readFileSync } from 'node:fs';
 import { EN } from '../js/i18n-en.js';
@@ -242,4 +242,23 @@ test('개정 1 — 처치 시작 안내 카드 3장(문구 A, 2026-10-12 확정)
 test('세이브 왕복 — 안내 카드를 봤는지(intro)도 남는다', () => {
   assert.deepEqual(sanitizeE1({ arm: 'harvest_start', seeded: true, harvested: false, intro: true }), { arm: 'harvest_start', seeded: true, harvested: false, intro: true, rollout: false });
   assert.equal(sanitizeE1({ arm: 'control' }).intro, false);
+});
+
+test('텃밭을 떠나면 당근을 다 캐지 않아도 튜토리얼로 넘긴다', () => {
+  const all = E1_PLOTS.length;
+  assert.equal(e1Release({ ripeLeft: 0, atFarm: true }), 'done');
+  assert.equal(e1Release({ ripeLeft: 2, atFarm: true }), null);
+  assert.equal(e1Release({ ripeLeft: all - 1, atFarm: false }), 'left');
+  assert.equal(e1Release({ ripeLeft: all, atFarm: false, awayS: 1 }), null);
+  assert.equal(e1Release({ ripeLeft: all, atFarm: false, awayS: E1_AWAY_RELEASE_S }), 'away');
+  assert.equal(e1Release({ ripeLeft: all, atFarm: true, awayS: 999 }), null);
+});
+
+test('첫 수확 뒤 다 자란 당근이 남아 있으면 빈 밭을 다시 심지 않고 낫을 든다', () => {
+  assert.equal(e1KeepHarvesting({ pending: true, ripeLeft: 3, plotState: 'empty' }), true);
+  assert.equal(e1KeepHarvesting({ pending: true, ripeLeft: 3, plotState: 'growing' }), true);
+  assert.equal(e1KeepHarvesting({ pending: true, ripeLeft: 3, plotState: undefined }), true);
+  assert.equal(e1KeepHarvesting({ pending: true, ripeLeft: 3, plotState: 'mature' }), false);
+  assert.equal(e1KeepHarvesting({ pending: true, ripeLeft: 0, plotState: 'empty' }), false);
+  assert.equal(e1KeepHarvesting({ pending: false, ripeLeft: 3, plotState: 'empty' }), false);
 });

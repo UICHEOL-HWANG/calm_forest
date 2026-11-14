@@ -17,7 +17,7 @@ import { FARM } from '../data/places.js';
 import { CROP_TYPES } from '../data/tools.js';
 import {
   E1_BUBBLE_EMOJI, E1_INTRO_BUTTONS, E1_CROP, E1_PLOTS, E1_SPAWN, E1_STORE_KEY, E1_TUTORIAL_DELAY_MS,
-  decideE1, e1IntroCards, isPending, parseStored, shouldSeed,
+  decideE1, e1IntroCards, e1Release, isPending, parseStored, shouldSeed,
 } from '../exp-e1.js';
 import { clientId, t } from '../i18n.js';
 import { PLATFORM } from '../platform.js';
@@ -159,10 +159,13 @@ function hideBubble() {
 }
 
 // 매 프레임(play) — 가장 가까운 다 자란 처치 밭 머리 위로 옮기고 🔍 처럼 통통 튀게 한다
+let awayS = 0;
 export function updateE1Bubble(dt, time) {
   if (!bubble) return;
+  awayS = atFarm ? 0 : awayS + dt;
+  const via = e1Release({ ripeLeft: e1RipeLeft(), atFarm, awayS });
+  if (via) { release(via); return; }
   const target = nearestRipe();
-  if (!target) { e1OnHarvest(); return; }   // 거두지 않고 밭이 사라져도 미뤄 둔 안내를 풀어 준다
   bubble.visible = atFarm;
   if (!atFarm) { ring.visible = false; return; }
   bubble.position.x = ring.position.x = target.x;
@@ -182,13 +185,24 @@ function nearestRipe() {
 }
 
 // ── 첫 수확(어느 밭이든) — 처치 대기를 끝내고 미뤄 둔 것들을 이어 준다 ──
+export function e1RipeLeft() {
+  return E1_PLOTS.filter(([dx, dz]) => plots.some(q => q.x === FARM.x + dx && q.z === FARM.z + dz && q.state === 'mature')).length;
+}
+
 export function e1OnHarvest() {   // 환영 모달은 otherModalOpen() 이 빌 때까지 기다린다(showTutorialWhenClear)
   if (!e1Pending() || nearestRipe()) return;
+  release('done');
+}
+
+function release(via) {
+  if (!e1Pending()) return;
   gameState.e1 = { ...gameState.e1, harvested: true };
   document.body.classList.remove('e1-pending');
   hideBubble();
+  awayS = 0;
+  trackEvent('e1_intro', { step: 5, via });
   if (atFarm) startVisitors();
-  if (ui.isGuestNow?.()) requestSignupNudge(gameState, 'harvest', ui);
+  if (via !== 'away' && ui.isGuestNow?.()) requestSignupNudge(gameState, 'harvest', ui);
   setTimeout(showTutorialWhenClear, E1_TUTORIAL_DELAY_MS);
 }
 
