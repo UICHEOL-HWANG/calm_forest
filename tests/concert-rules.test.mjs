@@ -107,3 +107,10 @@ test('spend, addInstrument, equip and markTutorial return new states', () => {
   assert.equal(markTutorial(t).tutorial, true);
   assert.equal(s.notes, 40);
 });
+
+test('seen defaults to false, survives a restore, and an old save without it is false', () => {
+  assert.equal(concertDefault().seen, false);
+  assert.equal(restoreConcert({ notes: 2, seen: true }).seen, true);
+  assert.equal(restoreConcert({ notes: 2 }).seen, false);
+  assert.equal(restoreConcert({ notes: 2, seen: 1 }).seen, false);
+});

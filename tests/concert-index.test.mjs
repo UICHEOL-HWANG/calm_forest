@@ -10,6 +10,7 @@ globalThis.navigator ??= { language: 'ko-KR', userAgent: 'node' };
 globalThis.window ??= globalThis;
 globalThis.addEventListener ??= () => {};
 globalThis.document ??= { createElement: () => ({}), head: { appendChild() {} }, addEventListener() {}, documentElement: {} };
+const { onTrack } = await import('../js/analytics.js');
 const { initConcert, updateConcert, concertSpotNow, openConcert, concertScatterBlocks } = await import('../js/concert/index.js');
 
 function world(over = {}) {
@@ -68,6 +69,7 @@ test('the spot is on only near the stage in the village', () => {
 
 test('the first show runs practice without a roll, then the song', () => {
   const w = world();
+  w.state = { ...w.state, seen: true };
   openAt(w);
   w.hall.onPlay('morning');
   assert.equal(w.lanes.practice, true);
@@ -82,7 +84,7 @@ test('the first show runs practice without a roll, then the song', () => {
 
 test('a perfect show pays four notes, saves once, and feeds the DDA', () => {
   const w = world();
-  w.state = { ...w.state, tutorial: true };
+  w.state = { ...w.state, tutorial: true, seen: true };
   openAt(w);
   w.hall.onPlay('morning');
   playAll(w, 'morning');
@@ -98,7 +100,7 @@ test('a perfect show pays four notes, saves once, and feeds the DDA', () => {
 
 test('quitting pays nothing, keeps the day count, and logs an abandon without moving the DDA', () => {
   const w = world();
-  w.state = { ...w.state, tutorial: true };
+  w.state = { ...w.state, tutorial: true, seen: true };
   openAt(w);
   w.hall.onPlay('march');
   w.lanes.onQuit();
@@ -154,7 +156,7 @@ test('a missed tap neither sounds nor moves the character', () => {
 
 test('buying an instrument spends notes and saves, equipping saves once', () => {
   const w = world();
-  w.state = { ...w.state, notes: 25 };
+  w.state = { ...w.state, notes: 25, seen: true };
   openAt(w);
   assert.deepEqual(w.hall.onBuy({ id: 'bells', cost: 25, type: 'instrument' }), { ok: true });
   assert.equal(w.state.notes, 0);
@@ -168,11 +170,81 @@ test('buying an instrument spends notes and saves, equipping saves once', () => 
 
 test('guests cannot exchange and keep their notes', () => {
   const g = world({ isGuest: () => true });
-  g.state = { ...g.state, notes: 99 };
+  g.state = { ...g.state, notes: 99, seen: true };
   openAt(g);
   assert.equal(g.hall.onBuy({ id: 'bells', cost: 25, type: 'instrument' }).reason, 'guest');
   assert.equal(g.state.notes, 99);
   assert.equal(g.saves, 0);
+});
+
+const events = [];
+onTrack((name, payload) => events.push([name, payload]));
+
+test('the guest login button tracks the prompt and opens the login', () => {
+  const g = world({ isGuest: () => true });
+  g.state = { ...g.state, notes: 7 };
+  events.length = 0;
+  openAt(g);
+  g.hall.onLogin();
+  assert.deepEqual(g.log, ['login']);
+  const hit = events.filter(e => e[0] === 'concert_login_prompt');
+  assert.equal(hit.length, 1);
+  assert.equal(hit[0][1].notes, 7);
+});
+
+test('the first hall open marks the stage seen and saves once, later opens do not', () => {
+  const w = world();
+  assert.equal(w.state.seen, false);
+  openAt(w);
+  assert.equal(w.state.seen, true);
+  assert.equal(w.saves, 1);
+  const before = w.state;
+  openAt(w);
+  assert.equal(w.saves, 1);
+  assert.equal(w.state, before);
+});
+
+test('a seen stage never starts the guide again', () => {
+  const { g } = guideWorld({ seen: true });
+  updateConcert(0.016, true, far);
+  assert.equal(g.starts, 0);
+});
+
+test('a throw while drawing ends the show once and restores the stage', () => {
+  const w = world({ showLanes: (l) => { w.lanes = l; return { draw() { throw new Error('draw failed'); }, flash() {}, miss() {}, close: () => w.log.push('lanes-close') }; } });
+  w.state = { ...w.state, tutorial: true, seen: true };
+  openAt(w);
+  w.hall.onPlay('morning');
+  assert.throws(() => updateConcert(0.016, true, near), /draw failed/);
+  assert.equal(w.log.filter(e => e === 'exit').length, 1);
+  assert.ok(w.log.includes('bgm-on'));
+  updateConcert(0.016, true, near);
+  assert.equal(w.log.filter(e => e === 'exit').length, 1);
+});
+
+test('the village music stays off from practice into the song and returns on every real exit', () => {
+  const w = world();
+  w.state = { ...w.state, seen: true };
+  openAt(w);
+  w.hall.onPlay('morning');
+  w.clock = PRACTICE_LENGTH_MS + 1;
+  updateConcert(0.016, true, near);
+  assert.equal(w.lanes.practice, false);
+  assert.equal(w.log.filter(e => e === 'bgm-off').length, 1);
+  assert.equal(w.log.filter(e => e === 'bgm-on').length, 0);
+  w.lanes.onQuit();
+  assert.equal(w.log.filter(e => e === 'bgm-on').length, 1);
+});
+
+test('the village music returns once when the song after practice ends', () => {
+  const w = world();
+  w.state = { ...w.state, seen: true };
+  openAt(w);
+  w.hall.onPlay('morning');
+  w.clock = PRACTICE_LENGTH_MS + 1;
+  updateConcert(0.016, true, near);
+  playAll(w, 'morning');
+  assert.equal(w.log.filter(e => e === 'bgm-on').length, 1);
 });
 
 test('decor without art is not sold', () => {

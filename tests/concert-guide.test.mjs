@@ -17,3 +17,7 @@ test('the guide yields to every other gate', () => {
   assert.equal(guideTarget({ ...ok, uiBusy: true }), false);
   assert.equal(guideTarget({ ...ok, otherGuide: true }), false);
 });
+
+test('the guide is not needed once the hall was opened', () => {
+  assert.equal(guideNeed({ ...concertDefault(), seen: true }), false);
+});

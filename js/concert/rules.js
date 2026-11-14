@@ -13,6 +13,7 @@ export function concertDefault() {
     day: '',
     paid: 0,
     tutorial: false,
+    seen: false,
   };
 }
 
@@ -28,6 +29,7 @@ export function restoreConcert(saved) {
     day: typeof saved.day === 'string' ? saved.day : '',
     paid: Math.min(PAID_PLAYS, count(saved.paid)),
     tutorial: saved.tutorial === true,
+    seen: saved.seen === true,
   };
 }
 

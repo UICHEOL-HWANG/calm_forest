@@ -120,7 +120,7 @@ export function updateConcert(dt, inVillage, pos) {
 export const concertSpotNow = () => spot;
 export const concertPrompt = () => CONCERT_COPY.prompt;
 
-function startShow(songId, practice = !state().tutorial) {
+function startShow(songId, practice = !state().tutorial, bgmPaused = false) {
   if (show) closeShow();
   const s = state();
   const chart = practice ? practiceChart() : chartOf(songId);
@@ -130,8 +130,8 @@ function startShow(songId, practice = !state().tutorial) {
   let view = null;
   try {
     deps.stage.enter(s.equipped);
-    deps.bgm.pause();
-    audio = (deps.createAudio || createConcertAudio)(deps.audio());
+    if (!bgmPaused) deps.bgm.pause();
+    audio =(deps.createAudio || createConcertAudio)(deps.audio());
     view = (deps.showLanes || showLanes)({ chart, instrument: s.equipped, practice, onTap: tapLane, onQuit: quitShow });
     audio.start(practice ? practiceEvents() : backingEvents(songId));
   } catch (err) {
@@ -159,6 +159,15 @@ function tapLane(lane) {
 }
 
 function tickShow(dt) {
+  try {
+    stepShow(dt);
+  } catch (err) {
+    quitShow();
+    throw err;
+  }
+}
+
+function stepShow(dt) {
   const now = show.audio.nowMs();
   for (const index of show.judge.sweep(now)) {
     show.view.miss(index);
@@ -173,13 +182,13 @@ function tickShow(dt) {
   if (now >= show.endMs) finishShow();
 }
 
-function closeShow() {
+function closeShow(keepBgm = false) {
   if (stage) stageCheer(stage, 0);
   showView(show.hidden);
   show.audio.stop();
   show.view.close();
   deps.stage.exit();
-  deps.bgm.resume();
+  if (!keepBgm) deps.bgm.resume();
   show = null;
 }
 
@@ -191,10 +200,10 @@ function quitShow() {
 
 function finishShow() {
   const { songId, practice, judge, diff } = show;
-  closeShow();
+  closeShow(practice);
   if (practice) {
     save(markTutorial(state()));
-    startShow(songId, false);
+    startShow(songId, false, true);
     return;
   }
   const summary = judge.summary();
@@ -217,7 +226,6 @@ function onBuy(item) {
     owned: isInstrument ? s.owned.includes(item.id) : deps.ownsDecor(item.id),
     hasArt: isInstrument || hasConcertArt(item.id),
   });
-  if (plan.reason === 'guest') trackLoginPrompt(s.notes);
   if (!plan.ok) return plan;
   if (!isInstrument && !deps.grantDecorItem(item)) return { ok: false, reason: 'grant_failed' };
   const paid = spend(state(), item.cost);
@@ -236,6 +244,7 @@ export function openConcert() {
   guideOff = true;
   if (guide?.active) guide.cancel('gate');
   const s = state();
+  if (!s.seen) save({ ...s, seen: true });
   trackOpen(s.notes, deps.isGuest());
   return (deps.showHall || showHall)({
     getState: state,
@@ -243,7 +252,10 @@ export function openConcert() {
     onPlay: (songId) => startShow(songId),
     onEquip,
     onBuy,
-    onLogin: () => deps.login?.(),
+    onLogin: () => {
+      trackLoginPrompt(state().notes);
+      deps.login?.();
+    },
     onOpen: deps.stopMove,
   });
 }
