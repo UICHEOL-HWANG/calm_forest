@@ -3,7 +3,7 @@ import { MARKET_POS, BOARD_POS, MARKET_THEMES, MARKET_ITEM_IDS, TICKET_CAP } fro
 import { trackBoardOpen, trackQuestClaim, trackMarketOpen, trackMarketBuy, trackLoginPrompt } from './track.js';
 import { showBoard, showMarket } from './ui.js';
 import { WEEKLY_COPY } from './copy.js';
-import { guideNeed, guideTarget, bannerDue } from './guide.js';
+import { guideNeed, guideTarget, bannerDue, countTry, guideStalled } from './guide.js';
 import { buildWeeklyMarket, disposeWeeklyMarket, WEEKLY_SOLIDS, MERCHANT_SOLID } from '../spaces/weekly-market-art.js';
 
 import { hasItemArt, weeklyDecorMesh } from './items.js';
@@ -20,7 +20,9 @@ let merchantSolid = null;
 const LAMP_DAY = 0.25, LAMP_NIGHT = 2.1;
 const guides = {};
 const reached = new Set();
+const tried = new Set();
 let live = null;
+let liveSec = 0;
 const BANNER_KEY = 'cf_weekly_banner_week';
 const SPOTS = { market: MARKET_POS, board: BOARD_POS };
 
@@ -96,6 +98,7 @@ export function initWeekly(d) {
   bannerMem = null;
   reachedWeek = null;
   reached.clear();
+  tried.clear();
   for (const k of Object.keys(guides)) delete guides[k];
   deps = d;
   if (!sceneReady()) return;
@@ -130,25 +133,32 @@ function tickGuide(dt, inVillage, pos) {
   if (!env) return;
   const s = state();
   if (s.week !== reachedWeek) { reachedWeek = s.week; reached.clear(); }
-  const gates = { need: guideNeed(s, deps.now()), inVillage, pastOnboarding: env.pastOnboarding(), uiBusy: env.uiBusy() };
+  const now = deps.now();
+  const gates = { need: guideNeed(s, now, tried), inVillage, pastOnboarding: env.pastOnboarding(), uiBusy: env.uiBusy() };
   const target = guideTarget({ ...gates, cameraFree: env.cameraFree(), otherGuide: env.otherGuide('weekly') });
-  const heard = guideTarget({ ...gates, cameraFree: true, otherGuide: false });
-  if (live && (target !== live || !guides[live].active)) {
+  if (live && (target !== live || !guides[live].active || guideStalled(liveSec))) {
     const was = live;
     const arrived = !guides[was].active && dist(pos, SPOTS[was]) < SPOT_R;
+    const stalled = guideStalled(liveSec);
     stopGuide();
-    if (arrived) reached.add(was);
+    if (arrived || stalled) reached.add(was);
   }
-  if (bannerDue({ target: heard, week: s.week, lastBannerWeek: lastBanner(), cine: env.cine() })) {
+  if (target && !reached.has(target)) runGuide(env, target, dt);
+  const gate = inVillage && gates.pastOnboarding && !gates.uiBusy;
+  if (bannerDue({ open: marketOpen(now), seenMarket: s.seenMarket, arrow: live, gate, week: s.week, lastBannerWeek: lastBanner(), cine: env.cine() })) {
     env.showBanner(() => markBanner(s.week));
   }
-  if (!target) return;
-  if (reached.has(target)) return;
+}
+
+function runGuide(env, target, dt) {
   if (!live) {
     guides[target] ??= env.makeGuide(`weekly-${target}`, SPOTS[target], SPOT_R);
     guides[target].start();
     live = target;
+    liveSec = 0;
+    if (!tried.has(target)) { tried.add(target); saveCommit(countTry(state(), target)); }
   }
+  liveSec += dt;
   guides[live].update(dt);
 }
 

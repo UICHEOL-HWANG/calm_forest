@@ -93,6 +93,8 @@ import { feedPond, openPondBook } from './pond/feed.js';
 import { POND_COPY } from './pond/copy.js';
 import { pondPos, pondNear } from './pond/index.js';
 import { installYardGuide } from './pond/yard-guide.js';
+import { yardIdle } from './pond/yard-steps.js';
+import { featureGuidesOpen, houseGoalDue, placeGuideReady, FIRST_VISIT } from './guide/feature-rules.js';
 import { spaceLinkOn } from './exp-e3.js';
 import { e3Decision } from './exp-e3-boot.js';
 import { kstDate } from './kst-date.js';
@@ -1577,22 +1579,14 @@ export function markNoticesSeen(list) {
 }
 
 // 스테이션 첫 접근 시 1회만 뜨는 카드 모달 안내(초보 온보딩)
-let firstHintRetries = {};   // key → 미룬 횟수(무한 재시도 방지)
 const hintPlace = () => [indoor, atFarm, atMine, atCafe, atRestaurant, atRiver, atMist, atSea, atMuseum, atObservatory, atMountain, atOrchard, atDream, atMirror].map(Number).join('');
 function firstHint(key, ico, title, body, place = hintPlace()) {
   if (gameState.hintsSeen[key]) return;
-  const away = place.includes('1') && place !== hintPlace();
-  // 🍳 미니게임(조리·조각) 무대 위에 모달을 띄우면 판을 통째로 덮어 버린다 —
-  //   버프 안내는 요리를 끝내고 먹은 뒤에 오는데, 바로 "🍳 한 번 더" 로 다음 판을 시작하면
-  //   800ms 뒤 도착한 안내가 새 판을 가렸다. 소진하지 말고 미룬다(announceMapOpens 와 같은 규칙).
-  //   🐗🦝 밤손님 대결도 같다 — '밤손님이 다녀갔어요' 안내가 가위바위보를 덮었다(2026-09-26).
-  if (away || mgView || duelActive || ui.coachActive?.() || ui.anyModalOpen?.() || treeShotBusy() || document.body.classList.contains('intro-open')) {
-    const n = ui.coachActive?.() ? (firstHintRetries[key] || 0) : (firstHintRetries[key] = (firstHintRetries[key] || 0) + 1);
-    if (n <= 20) setTimeout(() => firstHint(key, ico, title, body, place), 2500);
-    return;
-  }
-  gameState.hintsSeen[key] = true;
-  ui.showHintModal?.({ ico, title, body });
+  modalQueue.request({ kind: 'hint', key: 'hint-' + key, ready: () => !(place.includes('1') && place !== hintPlace()), show: () => {
+    if (gameState.hintsSeen[key]) return;
+    gameState.hintsSeen[key] = true;
+    ui.showHintModal?.({ ico, title, body });
+  } });
 }
 
 // 근접(지나가기) 안내 — 이동을 끊지 않는 비차단 배너(1회). 상세 규칙은 입장 후 모달/존 힌트 담당.
@@ -1651,6 +1645,28 @@ guideArbiter.register({ name: 'auction', active: auctionGuideActive });
 const guideRevamp = guideRevampOn(e6Decision());
 let houseShort = null;
 let yardGuide = null;
+let placeIdle = 0;
+const sceneFree = () => !ui.anyModalOpen?.() && !ui.coachActive?.() && !portGuideActive() && !restaurantGuideActive() && !auctionGuideActive() && !goalGuide?.cinematic && !houseGuidance?.cinematic && cameraFree();
+function countHint(key) {
+  gameState.hintsSeen = { ...gameState.hintsSeen, [key]: (gameState.hintsSeen[key] | 0) + 1 };
+  requestSave();
+}
+const FIRST_VISIT_AT = { weekly: () => weeklySpotNow() === 'board', concert: () => concertSpotNow(), auction: () => auctionSpotNow(), pond: () => inVillage2() && pondNear() };
+function tickFirstVisits() {
+  for (const [id, at] of Object.entries(FIRST_VISIT_AT)) {
+    const v = FIRST_VISIT[id];
+    if (!gameState.hintsSeen[v.key] && at()) firstHintBanner(v.key, v.ico, v.title, v.line);
+  }
+}
+function tickPlaceGuides(dt) {
+  placeIdle = yardIdle(placeIdle, dt, sceneFree() && inVillage2() && !atSea);
+  const gs = gameState, h = gs.hintsSeen;
+  const base = featureGuidesOpen(gs) && habitatDone(gs.tree, 'kitchen') && !yardGuide?.active();
+  const portReady = placeGuideReady({ eligible: base && !restaurantGuideActive() && guideMay('port'), done: !!gs.port?.guideDone, tries: h.portGuideTries, idleSec: placeIdle });
+  if (portReady && maybeStartPortGuide(true)) { placeIdle = 0; countHint('portGuideTries'); return; }
+  const restReady = placeGuideReady({ eligible: base && !portGuideActive() && guideMay('restaurant'), done: !!gs.restaurant?.guideDone || gs.restaurant?.services > 0, tries: h.restGuideTries, idleSec: placeIdle });
+  if (restReady && maybeStartRestaurantGuide(true)) { placeIdle = 0; countHint('restGuideTries'); }
+}
 let rewarded = null;
 let farmRush = null;
 const PREPASS_DEV = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) && new URLSearchParams(location.search).get('prepass') === '1';
@@ -3009,6 +3025,7 @@ export async function enterGame() {
     cameraFree, setCameraRig, defaultCamPose,
     inVillage: inVillage2, atMine: () => atMine && !delveFloorNow(),
     coaching: () => document.body.classList.contains('coaching'),
+    houseDue: () => houseGoalDue(gameState, document.body.classList.contains('coaching')),
     modalOpen: () => !!ui.anyModalOpen?.() || document.body.classList.contains('spot-on') || !!houseGuidance?.cinematic,
     stopAnalog: () => Input.setAnalog?.(0, 0), whoosh: () => Sound.cineWhoosh(),
     project: (pos, lift) => projectToScreen(pos, lift),
@@ -3032,7 +3049,7 @@ export async function enterGame() {
       const foot = bridgeFoot();
       const offIsle = dist2D(player.position, ISLE) > ISLE_R + 0.5 && dist2D(player.position, foot) > 2.5;
       return {
-        wall: { at: HOUSE_POS }, roof: { at: HOUSE_POS }, farm: { at: FARM_GATE }, cosShop: { at: SHOP_DOOR },
+        wall: { at: HOUSE_POS }, roof: { at: HOUSE_POS }, house: { at: HOUSE_POS }, farm: { at: FARM_GATE }, cosShop: { at: SHOP_DOOR },
         bridge: { at: foot },
         museum: { at: museumGoal(), via: offIsle && !bridgeBrokenNow() ? foot : null },
       };
@@ -3050,7 +3067,7 @@ export async function enterGame() {
   }) : null;
   yardGuide = installYardGuide({
     state: () => gameState, on: () => spaceLinkOn(e3Decision()), inVillage: inVillage2,
-    free: () => !ui.anyModalOpen?.() && !ui.coachActive?.() && !portGuideActive() && !restaurantGuideActive() && !auctionGuideActive() && !goalGuide?.cinematic && !houseGuidance?.cinematic && cameraFree() && guideMay('yard'),
+    free: () => sceneFree() && guideMay('yard'),
     held: () => !guideMay('yard'),
     scene, camera, player,
     route: (me, tgt) => detourPoint({ x: me.x, z: me.z }, { x: tgt.x, z: tgt.z }, colliders.filter(c => ('r' in c ? c.r >= 1.0 : true))),
@@ -3104,6 +3121,7 @@ export async function enterGame() {
   }
 
   // 신규: 캐릭터(동물) 미선택이면 선택 화면 → 그 뒤 튜토리얼. 이미 선택했으면 튜토리얼만.
+  if (!gameState.character || !gameState.tutorialSeen) gameState.hintsSeen = { ...gameState.hintsSeen, chipNew: 1 };
   if (!gameState.character) ui.showCharacterSelect?.();
   else if (Input.e1FirstScreen()) { /* 🧪 E1 처치 — 첫 수확 전 재접속: 다시 밭 앞에서 */ }
   else if (!gameState.tutorialSeen) { gameState.tutorialSeen = true; ui.showTutorial?.(); }
@@ -3643,7 +3661,7 @@ function buildWorld() {
   spawnRankBoard();   // 🏆 랭킹 게시판(리더보드)
   initPlaza();                // 🌾 수확제 광장(시즌 터·돌길)
   initAuction();
-  const GE = { THREE, scene, lake: { x: LAKE.x, z: LAKE.z, r: LAKE_R }, get camera() { return camera; }, get player() { return player; }, get ui() { return ui; }, t, colliders, isOpen, cameraFree, project: projectToScreen, inVillage: inVillage2, otherGuide: (name) => !guideMay(name) };
+  const GE = { THREE, scene, lake: { x: LAKE.x, z: LAKE.z, r: LAKE_R }, get camera() { return camera; }, get player() { return player; }, get ui() { return ui; }, t, colliders, isOpen, cameraFree, project: projectToScreen, inVillage: inVillage2, otherGuide: (name) => !guideMay(name), featureOpen: () => featureGuidesOpen(gameState), track: trackEvent };
   { const wb = makeWeeklyBridge({ gameState: () => gameState, patch: (p) => Object.assign(gameState, p), questAvailable, questCtx, isOpen, guide: GE });
     { const cb = makeConcertBridge({ getPlayer: () => player, THREE, getPlayerRig: () => ({ anchor: playerAnchor, arms: playerArms, def: curAnimal }), setCameraRig, hideTool: (h) => { if (heldGroup) heldGroup.visible = !h; }, hideLabels: setNpcGlyphsShowHidden, isBgmOn: isBGMOn, startBgm: startBGM, stopBgm: stopBGM }); initConcert({ getState: () => gameState.concert, setState: (s) => { gameState.concert = s; }, requestSave, isGuest: () => authState.isGuest !== false, login: () => ui.loginNudge?.('shop'), ownsDecor: wb.owns, grantDecorItem: wb.grant, today: todayStr, stopMove: () => Input.setAnalog(0, 0), roll: () => rollDifficulty('concert'), settle: (o) => settleDifficulty('concert', o), diffParams, abandon: (r, stage, extra) => trackDiffAbandon('concert', r, stage, extra), audio: audioBus, stage: cb.stage, bgm: cb.bgm, night: () => nightLevel, scene, solidCircle, THREE, guideEnv: wb.guideEnv }); }
     initWeekly({ getState: () => gameState.weekly, setState: (s) => { gameState.weekly = s; }, canDo: wb.canDo, isGuest: () => authState.isGuest !== false, ownsDecor: wb.owns, grantDecorItem: wb.grant, now: () => DEV_NOW || Date.now(), night: () => nightLevel, stopMove: () => Input.setAnalog(0, 0), login: () => ui.loginNudge?.('shop'), requestSave, scene, solidCircle, THREE, guideEnv: wb.guideEnv }); }
@@ -6650,7 +6668,7 @@ function animate() {
   updateCatchItem(dt);   // 🎁 캐치 아이템(수확물/물고기 들어올리기)
   updateFloatTexts(dt);
   updateNPC(dt, t);
-  if (t - unlockTickAt > 1) { unlockTickAt = t; if (mode === 'play') { syncUnlocks(); maybeStartPortGuide(isOpen('port') && !atSea && !restaurantGuideActive() && guideMay('port') && !yardGuide?.active()); maybeStartRestaurantGuide(isOpen('restaurant') && !atSea && !portGuideActive() && guideMay('restaurant') && !yardGuide?.active()); } }   // 🔓 매초 한 번 — 놓친 해금 지점이 있어도 1초 안에 맞춘다(꺼져 있으면 즉시 반환)
+  if (t - unlockTickAt > 1) { const gap = Math.min(2, t - unlockTickAt); unlockTickAt = t; if (mode === 'play') { syncUnlocks(); tickPlaceGuides(gap); tickFirstVisits(); } }   // 🔓 매초 한 번 — 놓친 해금 지점이 있어도 1초 안에 맞춘다(꺼져 있으면 즉시 반환)
   updateWorldTree(dt, t);    // 🌳 세계수 잎이 판 진척을 따라 자란다
   updateLightWorkshop();   // 🏷️ 반디 요정 이름표
   updateMerchantVisit(dt);   // 🧙 상인 방문 이벤트(1회)

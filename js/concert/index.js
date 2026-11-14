@@ -32,6 +32,7 @@ let solidsAdded = false;
 let onHidden = null;
 let guide = null;
 let guideOff = false;
+let guideCounted = false;
 let thumbFn = null;
 
 const state = () => deps.getState();
@@ -65,6 +66,7 @@ export function initConcert(d) {
   spot = false;
   guide = null;
   guideOff = false;
+  guideCounted = false;
   if (typeof document !== 'undefined' && !onHidden) {
     onHidden = () => { if (document.hidden) quitShow(); };
     document.addEventListener('visibilitychange', onHidden);
@@ -94,7 +96,7 @@ function tickGuide(dt, inVillage) {
   const env = deps.guideEnv;
   if (!env || guideOff) return;
   if (spot) guideOff = true;
-  const need = !guideOff && !show && guideNeed(state());
+  const need = !guideOff && !show && guideNeed(state(), guideCounted);
   const want = need && guideTarget({
     need, inVillage, pastOnboarding: env.pastOnboarding(),
     cameraFree: env.cameraFree(), uiBusy: env.uiBusy(), otherGuide: env.otherGuide('concert') || weeklyGuiding(),
@@ -105,6 +107,10 @@ function tickGuide(dt, inVillage) {
   }
   guide ??= env.makeGuide('concert', STAGE_POS, SPOT_R);
   if (!guide.active) guide.start();
+  if (!guideCounted) {
+    guideCounted = true;
+    save({ ...state(), guideTries: (state().guideTries | 0) + 1 });
+  }
   guide.update(dt);
   if (!guide.active) guideOff = true;
 }

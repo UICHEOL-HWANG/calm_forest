@@ -106,7 +106,7 @@ test('도착 반경은 그 목적지의 상호작용 거리보다 작다', async
     cave: 2.0, farm: 2.0,
     miner: 1.8, lift: 2.0,
     farmBranch: 2.4 + 2.3,
-    wall: 3.2, roof: 3.2,
+    wall: 3.2, roof: 3.2, house: 3.2,
     cosShop: 2.8, bridge: 2.2, museum: 2.4,
     exit: 1.7,
   };

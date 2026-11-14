@@ -140,6 +140,16 @@ test('restore tolerates missing and malformed saves', () => {
   assert.deepEqual(r.claimed, []);
 });
 
+test('restore keeps the guide tries and defaults them to zero', () => {
+  assert.equal(weeklyDefault().boardTries, 0);
+  assert.equal(weeklyDefault().marketTries, 0);
+  const r = restoreWeekly({ week: 2970, boardTries: 2, marketTries: 1 });
+  assert.equal(r.boardTries, 2);
+  assert.equal(r.marketTries, 1);
+  assert.equal(restoreWeekly({ week: 2970, boardTries: 'x', marketTries: -3 }).boardTries, 0);
+  assert.equal(restoreWeekly({ week: 2970, marketTries: -3 }).marketTries, 0);
+});
+
 test('restore dedupes quests, caps them at five and keeps claimed within quests', () => {
   const r = restoreWeekly({ week: 2970, quests: ['w_harvest', 'w_harvest', 'w_fish', 'w_cook', 'w_delve', 'w_gift', 'w_sell'], claimed: ['w_harvest', 'w_harvest', 'w_water'] });
   assert.deepEqual(r.quests, ['w_harvest', 'w_fish', 'w_cook', 'w_delve', 'w_gift']);

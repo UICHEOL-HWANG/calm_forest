@@ -14,6 +14,7 @@ export function concertDefault() {
     paid: 0,
     tutorial: false,
     seen: false,
+    guideTries: 0,
   };
 }
 
@@ -30,6 +31,7 @@ export function restoreConcert(saved) {
     paid: Math.min(PAID_PLAYS, count(saved.paid)),
     tutorial: saved.tutorial === true,
     seen: saved.seen === true,
+    guideTries: count(saved.guideTries),
   };
 }
 

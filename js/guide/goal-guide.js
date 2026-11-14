@@ -126,6 +126,7 @@ export function createGoalGuide(deps) {
       const g = tutGoal(step, { wood: gs.inventory.wood || 0 });
       if (g) return { flow: 'tut', step, ...g };
     }
+    if (deps.houseDue?.()) return { flow: 'house', step: `stage${gs.houseStage | 0}`, key: 'house', cine: false };
     if (!seen('guideFarmTab') && deps.farmBranchDue()) return { flow: 'tree', step: 'farm', key: 'farmBranch', cine: true };
     if (deps.atMine()) {
       const g = minerGoal(gs.delve, gs.inventory);

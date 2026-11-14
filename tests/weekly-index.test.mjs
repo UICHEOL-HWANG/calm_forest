@@ -2,6 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { weeklyDefault, progressOf } from '../js/weekly/rules.js';
 import { MARKET_THEMES, TICKET_CAP } from '../js/data/weekly.js';
+import { WEEKLY_STALL_SEC } from '../js/weekly/guide.js';
+
+const SEEN = () => ({ ...weeklyDefault(), seenBoard: 1, seenMarket: 1 });
 
 globalThis.location ??= { search: '', hostname: 'localhost', origin: 'http://localhost' };
 globalThis.localStorage ??= { getItem: () => null, setItem() {}, removeItem() {} };
@@ -154,7 +157,7 @@ const gate = (over = {}) => ({
   ...over,
 });
 
-test('guide starts once, banner once per week, and stops when the dialog is opened', () => {
+test('guide starts once with no banner on top, counts a try, and stops when the dialog is opened', () => {
   const store = new Map();
   globalThis.localStorage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v), removeItem: (k) => store.delete(k) };
   const clock = { t: FRIDAY };
@@ -166,10 +169,46 @@ test('guide starts once, banner once per week, and stops when the dialog is open
   assert.equal(env.made.length, 1);
   assert.equal(env.made[0].name, 'weekly-market');
   assert.equal(env.made[0].active, true);
-  assert.equal(env.banners, 1);
+  assert.equal(env.banners, 0);
+  assert.equal(box.state.marketTries, 1);
   box.state = { ...box.state, seenMarket: box.state.week };
   updateWeekly(0.1, true, { x: 0, z: 0 });
   assert.equal(env.made[0].active, false);
+});
+
+test('a later week has no arrows, only the market banner', () => {
+  globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
+  const box = { state: { ...weeklyDefault(), seenBoard: 1, seenMarket: 1 }, sets: 0 };
+  const env = gate();
+  initWeekly({ ...stateDeps(box, { t: FRIDAY }), guideEnv: env });
+  tickN(5);
+  assert.equal(env.made.length, 0);
+  assert.equal(env.banners, 1);
+});
+
+test('the arrow gives up after two sessions', () => {
+  globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
+  const box = { state: weeklyDefault(), sets: 0 };
+  for (let i = 0; i < 3; i++) {
+    const env = gate();
+    initWeekly({ ...stateDeps(box, { t: THURSDAY }), guideEnv: env });
+    tickN(2);
+    assert.equal(env.made.length, i < 2 ? 1 : 0, `session ${i + 1}`);
+  }
+  assert.equal(box.state.boardTries, 2);
+});
+
+test('an arrow that never arrives stops after the stall time', () => {
+  globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
+  const box = { state: weeklyDefault(), sets: 0 };
+  const env = gate();
+  initWeekly({ ...stateDeps(box, { t: THURSDAY }), guideEnv: env });
+  tickN(2);
+  assert.equal(env.made[0].active, true);
+  updateWeekly(WEEKLY_STALL_SEC, true, FAR);
+  tickN(2);
+  assert.equal(env.made[0].active, false);
+  assert.equal(env.made.length, 1);
 });
 
 test('lamps follow the night level and stay dim by day', () => {
@@ -225,7 +264,7 @@ const tickN = (n, pos = FAR) => { for (let i = 0; i < n; i++) updateWeekly(0.1, 
 
 test('banner shows once when storage throws on every call', () => {
   globalThis.localStorage = { getItem() { throw new Error('blocked'); }, setItem() { throw new Error('blocked'); }, removeItem() {} };
-  const box = { state: weeklyDefault(), sets: 0 };
+  const box = { state: SEEN(), sets: 0 };
   const env = gate();
   initWeekly({ ...stateDeps(box, { t: FRIDAY }), guideEnv: env });
   tickN(30);
@@ -235,7 +274,7 @@ test('banner shows once when storage throws on every call', () => {
 test('storage is read at most once and written exactly once', () => {
   const calls = { get: 0, set: 0 };
   globalThis.localStorage = { getItem() { calls.get += 1; return null; }, setItem() { calls.set += 1; }, removeItem() {} };
-  const box = { state: weeklyDefault(), sets: 0 };
+  const box = { state: SEEN(), sets: 0 };
   const env = gate();
   initWeekly({ ...stateDeps(box, { t: FRIDAY }), guideEnv: env });
   tickN(30);
@@ -246,7 +285,7 @@ test('storage is read at most once and written exactly once', () => {
 test('a banner shown in one week shows again the next week', () => {
   globalThis.localStorage = { getItem() { throw new Error('blocked'); }, setItem() { throw new Error('blocked'); }, removeItem() {} };
   const clock = { t: FRIDAY };
-  const box = { state: weeklyDefault(), sets: 0 };
+  const box = { state: SEEN(), sets: 0 };
   const env = gate();
   initWeekly({ ...stateDeps(box, clock), guideEnv: env });
   tickN(5);

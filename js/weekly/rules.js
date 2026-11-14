@@ -54,7 +54,7 @@ export function pickWeekly(index, canDo, prevIds = []) {
 }
 
 export function weeklyDefault() {
-  return { week: -1, quests: [], prev: [], counts: {}, claimed: [], tickets: 0, seenBoard: -1, seenMarket: -1 };
+  return { week: -1, quests: [], prev: [], counts: {}, claimed: [], tickets: 0, seenBoard: -1, seenMarket: -1, boardTries: 0, marketTries: 0 };
 }
 
 const int = (v, d = 0) => (Number.isInteger(v) ? v : d);
@@ -77,6 +77,8 @@ export function restoreWeekly(saved) {
     tickets: Math.max(0, Math.min(TICKET_CAP, int(saved.tickets))),
     seenBoard: int(saved.seenBoard, -1),
     seenMarket: int(saved.seenMarket, -1),
+    boardTries: Math.max(0, int(saved.boardTries)),
+    marketTries: Math.max(0, int(saved.marketTries)),
   };
 }
 

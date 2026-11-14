@@ -49,7 +49,8 @@ test('마당 채우기 연결', () => {
   assert.match(g, /yardGuide = installYardGuide\(\{/);
   assert.match(g, /if \(mode === 'play'\) yardGuide\?\.update\(dt\);/);
   assert.match(g, /guideArbiter\.register\(\{ name: 'yard', active: \(\) => !!yardGuide\?\.active\(\) \}\);/);
-  assert.match(g, /free: \(\) => [^\n]*cameraFree\(\) && guideMay\('yard'\),/);
+  assert.match(g, /free: \(\) => sceneFree\(\) && guideMay\('yard'\),/);
+  assert.match(g, /const sceneFree = \(\) => !ui\.anyModalOpen\?\.\(\) && !ui\.coachActive\?\.\(\) && !portGuideActive\(\) && !restaurantGuideActive\(\) && !auctionGuideActive\(\) && !goalGuide\?\.cinematic && !houseGuidance\?\.cinematic && cameraFree\(\);/);
   assert.match(g, /held: \(\) => !guideMay\('yard'\),/);
   assert.match(y, /if \(deps\.held\?\.\(\)\) \{ suspend\(\); return; \}/);
 });
@@ -66,8 +67,11 @@ test('마당 안내: 시작 횟수·멈춤 종료·레거시 다리·시작 전 
 
 test('항구·식당 안내는 마당 안내 중엔 시작하지 않는다', () => {
   const g = src('js/game.js');
-  assert.match(g, /maybeStartPortGuide\([^;]*&& !yardGuide\?\.active\(\)\)/);
-  assert.match(g, /maybeStartRestaurantGuide\([^;]*&& !yardGuide\?\.active\(\)\)/);
+  assert.match(g, /const base = featureGuidesOpen\(gs\) && habitatDone\(gs\.tree, 'kitchen'\) && !yardGuide\?\.active\(\);/);
+  assert.match(g, /const portReady = placeGuideReady\(\{ eligible: base && /);
+  assert.match(g, /const restReady = placeGuideReady\(\{ eligible: base && /);
+  assert.match(g, /if \(portReady && maybeStartPortGuide\(true\)\)/);
+  assert.match(g, /if \(restReady && maybeStartRestaurantGuide\(true\)\)/);
 });
 
 test('수첩 바다 칸: 닫힌 바다는 이동 버튼 없이 문구만', () => {

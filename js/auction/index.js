@@ -19,6 +19,7 @@ import { lotFor, joinMode, secondsUntilOpen, auctionOpenAt } from './rules.js';
 import { ONBOARD_COPY, BANNER_FAR, bannerLine, bannerTick, introNeeded } from './onboard.js';
 import { createAuctionGuide } from './guide.js';
 import { guideArbiter } from '../guide/arbiter.js';
+import { featureGuidesOpen } from '../guide/feature-rules.js';
 import { createAuctionIntro } from './intro.js';
 import { buildAuctionStage } from './stage.js';
 import { createActors, faceStage } from './actors.js';
@@ -141,12 +142,12 @@ function showOpenBanner(day, burn) {
 function tickBanner(inVillage) {
   const day = todayStr();
   const away = Math.hypot(player.position.x - AUCTION_ENTRY.x, player.position.z - AUCTION_ENTRY.z) > BANNER_FAR;
-  const ready = auctionOpen() && inVillage && !mgView && cameraFree() && !uiBusy() && !document.body.classList.contains('cine-open') && !guide?.active && !intro?.open && guideArbiter.mayShow('auction');
+  const ready = auctionOpen() && inVillage && !mgView && cameraFree() && !uiBusy() && !document.body.classList.contains('cine-open') && !guide?.active && !intro?.open && guideArbiter.mayShow('auction') && featureGuidesOpen(gameState);
   const r = bannerTick(gameState.auction, {
     open: auctionOpenAt(gameState.timeOfDay), day, joined: gameState.auction.lastDate === day, ready, far: away,
   });
   if (!r.act) return;
-  const save = () => { gameState.auction = { ...gameState.auction, bannerDate: r.state.bannerDate }; requestSave(); };
+  const save = () => { gameState.auction = { ...gameState.auction, bannerDate: r.state.bannerDate, bannerCount: r.state.bannerCount }; requestSave(); };
   if (r.act === 'show') showOpenBanner(day, save);
   else save();
 }
