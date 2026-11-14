@@ -116,7 +116,7 @@ export function createSpotlight({ t, trackEvent, blocked = () => false }) {
     raf = 0;
     if (!run) return;
     const s = run.steps[run.i];
-    if (!run.stuck && Date.now() - run.t > STUCK_MS) { run.stuck = true; $('.sp-next').classList.add('show'); }
+    if (!run.stuck && Date.now() - run.t > (s.wait ?? STUCK_MS)) { run.stuck = true; $('.sp-next').classList.add('show'); }
     if (s.done.startsWith('open:') && document.getElementById(s.done.slice(5))?.classList.contains('show')) { advance('act'); return; }
     if (s.done === 'menu' && document.getElementById('menu-sheet')?.classList.contains('show')) { advance('act'); return; }
     if (run.blocked?.()) { finish(); return; }

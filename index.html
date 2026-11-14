@@ -4229,6 +4229,8 @@
     import { modalQueue } from './js/guide/modal-queue.js';
     import { BANNER_STATS0, enqueueBanner, pickBanner, noteBannerShown } from './js/guide/banner-queue.js';
     import { pillHintKey, spotSteps, treeSteps } from './js/onboarding/spot-steps.js';
+    import { dueTip, tipsLeft, TIP_ARM } from './js/onboarding/jit-tips.js';
+    import { guideArbiter } from './js/guide/arbiter.js';
     import { Sound, startBGM, toggleBGM } from './js/sound.js';
     import { t, LANG, setLang, translateDom, watchDom } from './js/i18n.js';   // 🌐 i18n(한국어 원문 키 사전)
     import { TUNING, isBetaA, betaDay } from './js/tuning.js';
@@ -5766,6 +5768,7 @@
       // 인터랙티브 튜토리얼: 게임에서 행동 성공 시 호출 → 현재 단계면 진행
       act(type) {
         spot?.notify('act:' + type);
+        if (type === 'camtwo') camTried = true;
         if (tutIdx < 0) return;
         if (TUT_STEPS[tutIdx].key === type) {
           trackEvent('tutorial_step', { step: tutIdx + 1, key: TUT_STEPS[tutIdx].key }); // [①] 단계 완료
@@ -6180,7 +6183,7 @@
         Input.armTutorialMove();
         await spot.run(steps, { kind: 'full', startAt: src === 'help' ? 0 : left, skip: src === 'help' ? 'all' : 'optional', onStep: (s) => { Input.markHintsSeen(['spot_' + s.key]); requestSave(); } });
       }
-      Input.markHintsSeen(['spotV2', 'spot_cam']);
+      Input.markHintsSeen(['spotV2', TIP_ARM]);
       if ($('worldmap').classList.contains('show')) closeWorldMap();
       startCoach();
       showStoryMapOnce(null);
@@ -6202,10 +6205,11 @@
       Input.markHintsSeen(['spotTree']); requestSave();
       setTimeout(() => spot.run(treeSteps(plan), { kind: 'tree', skip: 'all', blocked: () => !$('tree-modal')?.classList.contains('show') }), 60);
     }
+    let camTried = false;
     function runCamTour() {
       if (!spot || Input.needsTutorial() || !Input.hintSeen('spotV2')) return false;
       if (Input.hintSeen('spot_cam')) return true;
-      if (spot.active() || spotBlocked()) return false;
+      if ((TOUCH && !camTried) || spot.active() || spotBlocked()) return false;
       Input.markHintsSeen(['spot_cam']); requestSave();
       spot.run(spotSteps('cam', TOUCH), { kind: 'cam', skip: 'all' });
       return true;
@@ -6216,6 +6220,24 @@
       Input.markHintsSeen([key]); requestSave();
       spot.run(spotSteps('pill', true, info), { kind: 'pill' });
     }
+    let tipDexBase = null;
+    function runTipTour() {
+      const seen = (k) => Input.hintSeen(k);
+      if (!spot || !tipsLeft(seen)) return;
+      const dexCount = Input.getDex().count;
+      tipDexBase ??= dexCount;
+      const name = dueTip({
+        coachStep: tutIdx >= 0 ? TUT_STEPS[tutIdx]?.key : null,
+        merchantMet: seen('merchantMet'),
+        dexCount, dexBase: tipDexBase,
+        busy: spot.active() || spotBlocked() || guideArbiter.anyActive('coach'),
+      }, seen);
+      if (!name) return;
+      const steps = spotSteps(name, TOUCH);
+      Input.markHintsSeen(steps.map(s => 'spot_' + s.key)); requestSave();
+      spot.run(steps, { kind: 'tip', skip: 'all' });
+    }
+    setInterval(runTipTour, 1500);
     function startCoach(fromKey) {
       applyBetaTutorialOrder();   // 명단 조회가 늦게 끝났을 때를 대비해 여기서도 한 번 더
       const key = TUT_OLD_KEYS[fromKey] || fromKey;
