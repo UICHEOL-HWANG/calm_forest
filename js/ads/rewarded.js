@@ -38,10 +38,12 @@ export function createRewarded(deps) {
   async function watch(slot, grant) {
     if (busy || !open()) return false;
     busy = true;
+    const now = deps.now || Date.now;
+    const t0 = now();
     let r = null;
     try { r = await deps.provider().show(slot); } catch (err) { r = { result: 'fail', reason: String(err?.message || err) }; }
     busy = false;
-    deps.track('prepass_ad_result', { slot, result: r?.result || 'fail', value_micros: Number.isFinite(r?.valueMicros) ? r.valueMicros : undefined });
+    deps.track('prepass_ad_result', { slot, result: r?.result || 'fail', value_micros: Number.isFinite(r?.valueMicros) ? r.valueMicros : undefined, sec: Math.round((now() - t0) / 1000) });
     if (r?.result === 'complete') { countView(); grant(); return true; }
     if (r?.result !== 'skip') deps.toast(deps.translate('지금은 광고를 볼 수 없어요'));
     return false;
