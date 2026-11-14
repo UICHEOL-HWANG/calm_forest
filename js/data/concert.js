@@ -28,5 +28,5 @@ export const STAR_CUTS = Object.freeze({
 export const JUDGE_MS = Object.freeze({ perfect: 70, good: 140 });
 export const OUTPUT_LAG_MS = 30;
 
-export const STAGE_POS = Object.freeze({ x: 6.5, z: 10.5 });
+export const STAGE_POS = Object.freeze({ x: -5, z: 17.5 });
 export const SPOT_R = 2.4;

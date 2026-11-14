@@ -3,7 +3,7 @@ import { DECK_H } from '../spaces/concert-stage-art.js';
 import { makeRig, relax } from './instruments/pose.js';
 import { buildInstrument } from './instruments/index.js';
 
-const EXIT_GAP = 2.6;
+const EXIT_GAP = 2.8;
 
 export function makeConcertBridge(env) {
   let bgmWasOn = false;

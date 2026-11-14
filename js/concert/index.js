@@ -8,14 +8,20 @@ import { resultView } from './views.js';
 import { showHall, showResult } from './ui.js';
 import { showLanes } from './lanes.js';
 import { trackOpen, trackStart, trackEnd, trackExchange, trackLoginPrompt } from './track.js';
-import { buildConcertStage, STAGE_SOLIDS } from '../spaces/concert-stage-art.js';
+import { buildConcertStage, STAGE_SOLIDS, stageCheer, stageSway } from '../spaces/concert-stage-art.js';
 import { hasConcertArt, concertDecorMesh } from './items.js';
+import { guideNeed, guideTarget } from './guide.js';
 
 export { concertDefault, restoreConcert, concertDecorMesh };
 
-const SCATTER_R = 2.6;
-const LAMP_DAY = 0.25;
+const SCATTER_R = 4.2;
+const LAMP_DAY = 0;
 const LAMP_NIGHT = 2.1;
+const FILL_NIGHT = 3;
+const CHEER_STREAK = 8;
+const SWAY_BEAT_MS = 500;
+const VIEW = Object.freeze({ half: 3.4, near: 1.9, far: 11 });
+const WEEKLY_GUIDE = /\bweekly-\w+-guide\b/;
 
 let deps = null;
 let spot = false;
@@ -23,18 +29,34 @@ let show = null;
 let stage = null;
 let solidsAdded = false;
 let onHidden = null;
+let guide = null;
+let guideOff = false;
 
 const state = () => deps.getState();
 const save = (next) => { deps.setState(next); deps.requestSave(); };
 
+const inView = (x, z, pad = 0) => Math.abs(x - STAGE_POS.x) < VIEW.half + pad
+  && z > STAGE_POS.z + VIEW.near - pad && z < STAGE_POS.z + VIEW.far + pad;
+
 export function concertScatterBlocks(x, z, pad = 1) {
-  return Math.hypot(x - STAGE_POS.x, z - STAGE_POS.z) < SCATTER_R + pad;
+  return Math.hypot(x - STAGE_POS.x, z - STAGE_POS.z) < SCATTER_R + pad || inView(x, z, pad);
 }
+
+function hideView() {
+  if (!deps.scene) return [];
+  const hit = deps.scene.children.filter(o => o.visible && o !== stage && !o.isLight && inView(o.position.x, o.position.z));
+  hit.forEach(o => { o.visible = false; });
+  return hit;
+}
+
+const showView = (hidden) => hidden.forEach(o => { o.visible = true; });
 
 export function initConcert(d) {
   if (show) closeShow();
   deps = d;
   spot = false;
+  guide = null;
+  guideOff = false;
   if (typeof document !== 'undefined' && !onHidden) {
     onHidden = () => { if (document.hidden) quitShow(); };
     document.addEventListener('visibilitychange', onHidden);
@@ -55,11 +77,31 @@ function lightStage() {
   const level = Math.max(0, Math.min(1, deps.night?.() || 0));
   const glow = LAMP_DAY + (LAMP_NIGHT - LAMP_DAY) * level;
   for (const mat of stage.userData?.lamps || []) mat.emissiveIntensity = glow;
+  if (stage.userData?.fill) stage.userData.fill.intensity = FILL_NIGHT * level;
+}
+
+const weeklyGuiding = () => typeof document !== 'undefined' && WEEKLY_GUIDE.test(document.body?.className || '');
+
+function tickGuide(dt, inVillage) {
+  const env = deps.guideEnv;
+  if (!env || guideOff) return;
+  const want = guideTarget({
+    need: guideNeed(state()) && !show && !spot, inVillage, pastOnboarding: env.pastOnboarding(),
+    cameraFree: env.cameraFree(), uiBusy: env.uiBusy(), otherGuide: env.otherGuide() || weeklyGuiding(),
+  });
+  if (!want) {
+    if (guide?.active) guide.cancel('gate');
+    return;
+  }
+  guide ??= env.makeGuide('concert', STAGE_POS, SPOT_R);
+  if (!guide.active) guide.start();
+  guide.update(dt);
 }
 
 export function updateConcert(dt, inVillage, pos) {
   if (!deps) return;
   lightStage();
+  tickGuide(dt, inVillage);
   spot = inVillage && !show && Math.hypot(pos.x - STAGE_POS.x, pos.z - STAGE_POS.z) < SPOT_R;
   if (show) tickShow(dt);
 }
@@ -89,7 +131,7 @@ function startShow(songId, practice = !state().tutorial) {
     throw err;
   }
   show = {
-    songId, practice, chart, diff, audio, view, judge,
+    songId, practice, chart, diff, audio, view, judge, streak: 0, hidden: hideView(),
     endMs: practice ? PRACTICE_LENGTH_MS : lengthMs(songId),
   };
   if (!practice) trackStart(songId, s.equipped, PAID_PLAYS - paidLeft(s, deps.today()) + 1, deps.diffParams(diff));
@@ -100,19 +142,29 @@ function tapLane(lane) {
   const hit = show.judge.tap(lane, show.audio.nowMs());
   show.view.flash(lane, hit ? hit.kind : null, hit ? hit.index : undefined);
   if (!hit) return;
+  show.streak = hit.kind === 'perfect' ? show.streak + 1 : 0;
   show.audio.hit(state().equipped, lane);
   deps.stage.strike(lane);
 }
 
 function tickShow(dt) {
   const now = show.audio.nowMs();
-  for (const index of show.judge.sweep(now)) show.view.miss(index);
+  for (const index of show.judge.sweep(now)) {
+    show.view.miss(index);
+    show.streak = 0;
+  }
   show.view.draw(now);
   deps.stage.update(dt);
+  if (stage) {
+    stageCheer(stage, Math.min(1, show.streak / CHEER_STREAK));
+    stageSway(stage, (now / SWAY_BEAT_MS) % 1);
+  }
   if (now >= show.endMs) finishShow();
 }
 
 function closeShow() {
+  if (stage) stageCheer(stage, 0);
+  showView(show.hidden);
   show.audio.stop();
   show.view.close();
   deps.stage.exit();
@@ -170,6 +222,8 @@ function onEquip(id) {
 
 export function openConcert() {
   if (!spot || show) return;
+  guideOff = true;
+  if (guide?.active) guide.cancel('gate');
   const s = state();
   trackOpen(s.notes, deps.isGuest());
   return (deps.showHall || showHall)({

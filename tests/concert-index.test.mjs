@@ -187,3 +187,8 @@ test('the stage blocks scatter around itself', () => {
   assert.equal(concertScatterBlocks(STAGE_POS.x, STAGE_POS.z), true);
   assert.equal(concertScatterBlocks(STAGE_POS.x + 30, STAGE_POS.z), false);
 });
+
+test('the show camera lane in front of the stage stays clear of scatter', () => {
+  assert.equal(concertScatterBlocks(STAGE_POS.x + 2, STAGE_POS.z + 9, 0), true);
+  assert.equal(concertScatterBlocks(STAGE_POS.x + 2, STAGE_POS.z - 9, 0), false);
+});
