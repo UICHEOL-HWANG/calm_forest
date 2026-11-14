@@ -11,9 +11,9 @@ const MARCH_P = ['L.R.L.R.', 'L.L.R.R.', 'L.R.L.R.', 'LRL.R.R.'];
 const MARCH_Q = ['L.LRL.R.', 'R.RLR.L.', 'L.R.LRL.', 'R.L.R.L.'];
 const WALTZ_S = ['L.R.R.', 'R.L.L.', 'L.R...', 'B.L.R.'];
 const WALTZ_U = ['L.RLR.', 'R.L.L.', 'B.R.L.', 'L.RLR.'];
-const LULLABY_A = ['L...R.', '..L.R.', 'L...R.', 'R.L...'];
-const LULLABY_A2 = ['L...R.', '..L.R.', 'L...R.', 'R.L.R.'];
-const LULLABY_B = ['R.L.R.', 'L...R.', 'R.L.R.', 'L.R...'];
+const LULLABY_A = ['L...R.', '..L.R.', 'L...R.', 'L.R...'];
+const LULLABY_A2 = ['L...R.', '..L.R.', 'L...R.', 'L.R.LR'];
+const LULLABY_B = ['L.R.L.', 'R.L.R.', 'L.R.L.', 'R.L.R.'];
 const POLKA_A = ['L.R.L.R.', 'L..RL..R', 'L.R.L.R.', 'LR.LR.L.'];
 const POLKA_B = ['L.LR.RL.', 'R.RL.LR.', 'L.LR.RL.', 'R.L.R.L.'];
 const FIREFLY_A = ['L.RL.RL.', 'R.LR.LR.', 'L.RL.RL.', 'LR.B..L.'];
@@ -34,7 +34,7 @@ export const SONGS = Object.freeze({
   }),
   lullaby: Object.freeze({
     id: 'lullaby', bpm: 84, slots: 6, chords: ['Dm', 'Bb', 'F', 'A'],
-    bars: join(LULLABY_A, LULLABY_A2, LULLABY_B, LULLABY_A, LULLABY_B, LULLABY_A2, ['L...R.', 'R...L.', 'L.....']),
+    bars: join(LULLABY_A, LULLABY_A2, LULLABY_B, LULLABY_A, LULLABY_B, LULLABY_A2, ['L...R.', 'L...R.', 'L.....']),
   }),
   polka: Object.freeze({
     id: 'polka', bpm: 120, slots: 8, chords: ['A', 'D', 'E', 'A'],

@@ -131,7 +131,7 @@ function startShow(songId, practice = !state().tutorial, bgmPaused = false) {
   try {
     deps.stage.enter(s.equipped);
     if (!bgmPaused) deps.bgm.pause();
-    audio =(deps.createAudio || createConcertAudio)(deps.audio());
+    audio = (deps.createAudio || createConcertAudio)(deps.audio());
     view = (deps.showLanes || showLanes)({ chart, instrument: s.equipped, practice, onTap: tapLane, onQuit: quitShow });
     audio.start(practice ? practiceEvents() : backingEvents(songId));
   } catch (err) {

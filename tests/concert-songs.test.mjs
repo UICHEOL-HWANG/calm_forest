@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { SONG_IDS, STAR_CUTS, JUDGE_MS } from '../js/data/concert.js';
+import { CONCERT_COPY } from '../js/concert/copy.js';
 import { SONGS, slotMs, chartOf, lengthMs, minGapMs, backingEvents, practiceChart, practiceEvents, PRACTICE_LENGTH_MS } from '../js/concert/songs.js';
 
 const sorted = (list) => list.every((e, i) => i === 0 || list[i - 1].t <= e.t);
@@ -44,7 +45,7 @@ test('same-lane notes are wider apart than two good windows', () => {
   }
 });
 
-test('song ids, songs and star cuts stay in step, one song per level', () => {
+test('song ids, songs and star cuts stay in step, new songs reuse the star cuts of their level', () => {
   assert.deepEqual([...SONG_IDS], Object.keys(SONGS));
   assert.deepEqual(Object.keys(STAR_CUTS), [...SONG_IDS]);
   assert.deepEqual(SONG_IDS.slice(3), ['lullaby', 'polka', 'firefly']);
@@ -75,10 +76,14 @@ test('the new songs end on a clear last bar and repeat their sections', () => {
   }
 });
 
-test('the easy song strictly alternates lanes and has no double notes', () => {
-  const chart = chartOf('morning');
-  assert.ok(SONGS.morning.bars.every(b => !b.includes('B')));
-  assert.ok(chart.every((e, i) => i === 0 || e.lane !== chart[i - 1].lane));
+test('every easy song strictly alternates lanes and has no double notes', () => {
+  const easy = SONG_IDS.filter(id => CONCERT_COPY.level[id] === '쉬움');
+  assert.ok(easy.includes('morning') && easy.includes('lullaby'));
+  for (const id of easy) {
+    const chart = chartOf(id);
+    assert.ok(SONGS[id].bars.every(b => !b.includes('B')), id);
+    assert.ok(chart.every((e, i) => i === 0 || e.lane !== chart[i - 1].lane), id);
+  }
 });
 
 test('double notes belong to the hard song, apart from the march closing accent', () => {
