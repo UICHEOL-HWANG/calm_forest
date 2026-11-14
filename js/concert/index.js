@@ -14,13 +14,13 @@ import { guideNeed, guideTarget } from './guide.js';
 
 export { concertDefault, restoreConcert, concertDecorMesh };
 
-const SCATTER_R = 4.2;
+const SCATTER_R = 6;
 const LAMP_DAY = 0;
 const LAMP_NIGHT = 2.1;
 const FILL_NIGHT = 3;
 const CHEER_STREAK = 8;
 const SWAY_BEAT_MS = 500;
-const VIEW = Object.freeze({ half: 3.4, near: 1.9, far: 11 });
+const VIEW = Object.freeze({ half: 4, near: 1.9, far: 11 });
 const WEEKLY_GUIDE = /\bweekly-\w+-guide\b/;
 
 let deps = null;
@@ -85,8 +85,10 @@ const weeklyGuiding = () => typeof document !== 'undefined' && WEEKLY_GUIDE.test
 function tickGuide(dt, inVillage) {
   const env = deps.guideEnv;
   if (!env || guideOff) return;
-  const want = guideTarget({
-    need: guideNeed(state()) && !show && !spot, inVillage, pastOnboarding: env.pastOnboarding(),
+  if (spot) guideOff = true;
+  const need = !guideOff && !show && guideNeed(state());
+  const want = need && guideTarget({
+    need, inVillage, pastOnboarding: env.pastOnboarding(),
     cameraFree: env.cameraFree(), uiBusy: env.uiBusy(), otherGuide: env.otherGuide() || weeklyGuiding(),
   });
   if (!want) {
@@ -96,6 +98,7 @@ function tickGuide(dt, inVillage) {
   guide ??= env.makeGuide('concert', STAGE_POS, SPOT_R);
   if (!guide.active) guide.start();
   guide.update(dt);
+  if (!guide.active) guideOff = true;
 }
 
 export function updateConcert(dt, inVillage, pos) {

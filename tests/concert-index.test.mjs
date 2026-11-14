@@ -183,12 +183,94 @@ test('decor without art is not sold', () => {
   assert.equal(w.state.notes, 99);
 });
 
-test('the stage blocks scatter around itself', () => {
-  assert.equal(concertScatterBlocks(STAGE_POS.x, STAGE_POS.z), true);
-  assert.equal(concertScatterBlocks(STAGE_POS.x + 30, STAGE_POS.z), false);
+test('scatter keeps a clearing of about 7 around the stage', () => {
+  const at = (dx, dz) => concertScatterBlocks(STAGE_POS.x + dx, STAGE_POS.z + dz);
+  for (const [dx, dz] of [[0, 0], [-6.9, 0], [6.9, 0], [0, -6.9], [-4.8, -4.8]]) assert.equal(at(dx, dz), true, `${dx},${dz}`);
+  for (const [dx, dz] of [[-7.2, 0], [7.2, 0], [0, -7.2], [5.2, -5.2], [30, 0]]) assert.equal(at(dx, dz), false, `${dx},${dz}`);
 });
 
 test('the show camera lane in front of the stage stays clear of scatter', () => {
-  assert.equal(concertScatterBlocks(STAGE_POS.x + 2, STAGE_POS.z + 9, 0), true);
-  assert.equal(concertScatterBlocks(STAGE_POS.x + 2, STAGE_POS.z - 9, 0), false);
+  const at = (dx, dz) => concertScatterBlocks(STAGE_POS.x + dx, STAGE_POS.z + dz);
+  assert.equal(at(4.8, 9), true);
+  assert.equal(at(-4.8, 11.8), true);
+  assert.equal(at(4.8, 12.5), false);
+  assert.equal(at(5.3, 9), false);
+});
+
+const thing = (dx, dz, visible = true) => ({ visible, position: { x: STAGE_POS.x + dx, z: STAGE_POS.z + dz } });
+
+function viewWorld(over = {}) {
+  const inLane = thing(1, 5);
+  const outside = thing(8, -3);
+  const hiddenBefore = thing(-1, 6, false);
+  const w = world({ scene: { children: [inLane, outside, hiddenBefore] }, ...over });
+  w.state = { ...w.state, tutorial: true };
+  return { w, inLane, outside, hiddenBefore };
+}
+
+const seen = (v) => [v.inLane.visible, v.outside.visible, v.hiddenBefore.visible];
+
+test('a show hides what stands in the camera lane and restores it after the song', () => {
+  const v = viewWorld();
+  openAt(v.w);
+  v.w.hall.onPlay('morning');
+  assert.deepEqual(seen(v), [false, true, false]);
+  playAll(v.w, 'morning');
+  assert.deepEqual(seen(v), [true, true, false]);
+});
+
+test('quitting restores the camera lane', () => {
+  const v = viewWorld();
+  openAt(v.w);
+  v.w.hall.onPlay('march');
+  v.w.lanes.onQuit();
+  assert.deepEqual(seen(v), [true, true, false]);
+});
+
+test('a failed start hides nothing', () => {
+  const v = viewWorld({ showLanes: () => { throw new Error('lanes failed'); } });
+  openAt(v.w);
+  assert.throws(() => v.w.hall.onPlay('morning'), /lanes failed/);
+  assert.deepEqual(seen(v), [true, true, false]);
+});
+
+test('re-initialising mid-show restores the camera lane', () => {
+  const v = viewWorld();
+  openAt(v.w);
+  v.w.hall.onPlay('morning');
+  world();
+  assert.deepEqual(seen(v), [true, true, false]);
+});
+
+function guideWorld(state) {
+  const g = { checks: 0, starts: 0 };
+  const guide = { active: false, start() { this.active = true; g.starts += 1; }, update() {}, cancel() { this.active = false; } };
+  const count = (v) => () => { g.checks += 1; return v; };
+  const guideEnv = {
+    pastOnboarding: count(true), cameraFree: count(true), uiBusy: count(false), otherGuide: count(false),
+    makeGuide: () => guide,
+  };
+  const w = world({ guideEnv });
+  w.state = { ...w.state, ...state };
+  return { w, g, guide };
+}
+
+const far = { x: STAGE_POS.x + 20, z: STAGE_POS.z };
+
+test('players who no longer need the guide skip the other gates', () => {
+  const { g } = guideWorld({ notes: 3 });
+  updateConcert(0.016, true, far);
+  assert.equal(g.checks, 0);
+  assert.equal(g.starts, 0);
+});
+
+test('the guide does not come back after the player reached the stage once', () => {
+  const { g, guide } = guideWorld({});
+  updateConcert(0.016, true, far);
+  assert.equal(guide.active, true);
+  updateConcert(0.016, true, near);
+  updateConcert(0.016, true, far);
+  updateConcert(0.016, true, far);
+  assert.equal(guide.active, false);
+  assert.equal(g.starts, 1);
 });
