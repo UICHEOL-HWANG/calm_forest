@@ -2259,6 +2259,7 @@ export const Input = {
   affinityChip(npcId) { return affinityChip(npcId); },
   affinityVisible(npcId) { return affinityVisible(npcId); },
   affinityTracker(compact) { return affinityTracker(compact); },
+  unreadLetterCount() { return unreadLetterCount(); },
   affinityIntroFor(npcId, force) { return affinityIntroFor(npcId, force); },
   introNpcForStart() { return introNpcForStart(); },
   markIntroSeen(npcId, from) { markIntroSeen(npcId, from); },

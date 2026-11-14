@@ -247,7 +247,7 @@ export function affinityTracker(compact = false) {
   const { npc, value, next } = pick;
   const nextIdx = stageIndex(value) + 1;
   return {
-    npc, face: npcDef(npc).emoji, decor: BEST_ITEMS[npc]?.decor || null, pct: Math.min(1, value / next),
+    npc, value, face: npcDef(npc).emoji, decor: BEST_ITEMS[npc]?.decor || null, pct: Math.min(1, value / next),
     ...trackerLines({ name: nameOf(npc), nameEn: t(nameOf(npc)), value, next, nextIdx, reward: rewardLabel(npc, nextIdx), giftLeft: GIFT_DAILY_CAP - giftHeartsToday(npc), compact, lang: lang() }),
   };
 }
