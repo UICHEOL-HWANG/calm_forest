@@ -149,7 +149,7 @@ test('scene work: colliders once, one group, rebuild on the Friday flip, idempot
 
 const gate = (over = {}) => ({
   pastOnboarding: () => true, cameraFree: () => true, uiBusy: () => false, cine: () => false, otherGuide: () => false,
-  showBanner() { this.banners += 1; }, banners: 0, made: [],
+  showBanner(burn) { this.banners += 1; burn?.(); }, banners: 0, made: [],
   makeGuide(name) { const g = { name, active: false, ups: 0, start() { g.active = true; }, update() { g.ups += 1; }, cancel() { g.active = false; } }; this.made.push(g); return g; },
   ...over,
 });

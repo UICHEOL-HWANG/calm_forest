@@ -94,6 +94,15 @@ test('pending(kind) reports only that kind', () => {
   assert.equal(q.pending(), true);
 });
 
+test('due() ignores items that are not ready yet', () => {
+  const { q } = harness();
+  q.addGate(() => true);
+  q.request({ kind: 'nudge', ready: () => false, show: () => {} });
+  assert.equal(q.due(), false);
+  q.request({ kind: 'daily', show: () => {} });
+  assert.equal(q.due(), true);
+});
+
 test('turn() holds the queue until the caller releases it', async () => {
   const { q, advance } = harness();
   const shown = [];

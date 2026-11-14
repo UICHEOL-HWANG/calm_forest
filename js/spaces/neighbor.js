@@ -352,10 +352,10 @@ function dailyBanner() {
   if (!bannerDue(readBannerDay(), Date.now())) return;
   whenNoModal(() => {
     if (visit || !inVillage2() || ui.anyModalOpen?.()) return;   // 실내·다른 공간·30초 넘게 창이 떠 있으면 오늘 몫을 쓰지 않고 다음 접속에 다시
-    try { localStorage.setItem(BANNER_KEY, kstDay(Date.now())); } catch { /* 저장 못 해도 배너는 띄운다 */ }
     ui.showHintBanner?.({
       ico: '🏡', title: '오늘의 이웃이 기다려요', line: '눌러서 이웃 마을 구경 가기',
-      near: () => true, attention: true,
+      near: () => true, attention: true, kind: 'feature', key: 'neighbor-daily',
+      burn: () => { try { localStorage.setItem(BANNER_KEY, kstDay(Date.now())); } catch { /* 저장 못 해도 배너는 띄운다 */ } },
       onShow: () => trackEvent(...evBanner('show')),   // [GA4] 배너 노출 → 탭 전환율
       onTap: () => { trackEvent(...evBanner('tap')); openNeighborPicker('banner'); },
       onDismiss: (reason) => { if (reason !== 'tap') trackEvent(...evBanner('dismiss')); },   // 탭은 done('tap') 이 먼저 부른다

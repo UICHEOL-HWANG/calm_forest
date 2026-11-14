@@ -159,7 +159,7 @@ export function maybeOfferOrchardQuest({ needHarvested = false } = {}) {
     p.orchardQuest = 'plant';
     giveReward({ ...ONBOARD_SEEDS }, 'orchard_quest', 'wheat');
     gameState.farm.seedSel = 'wheat'; syncSeedToolIcon();     // 🌰 도구를 밀로 — 고르는 법을 몰라도 바로 심는다
-    ui.showHintBanner?.({ ico: '🧑‍🌾', title: ONBOARD_LINES.title, line: ONBOARD_LINES.offer, near: () => true, attention: true });
+    ui.showHintBanner?.({ ico: '🧑‍🌾', title: ONBOARD_LINES.title, line: ONBOARD_LINES.offer, near: () => true, attention: true, kind: 'quest', key: 'orchard-offer' });
     onboardStep('offer');
   } else if (needsRefill(p, gameState.inventory)) {
     p.orchardRefill = true;
@@ -178,7 +178,7 @@ function owlNextStep(needHarvested) {
   if (!owlCanShow({ tutorialSeen: gameState.tutorialSeen, modalOpen: ui.anyModalOpen?.() })) return;
   if (needHarvested && !Object.keys(gameState.dex?.crop || {}).length) return;   // 튜토리얼 끝 호출인데 아직 안 거뒀다
   hs.owlAfterHarvest = true;
-  ui.showHintBanner?.({ ico: '🦉', title: OWL_NEXT_LINES.title, line: owlNextLine(gameState.houseStage), near: () => true, attention: true });
+  ui.showHintBanner?.({ ico: '🦉', title: OWL_NEXT_LINES.title, line: owlNextLine(gameState.houseStage), near: () => true, attention: true, kind: 'quest', key: 'owl-next' });
   trackEvent('orchard_quest', { step: 'owl_next' });   // [GA4] 같은 퍼널에 — 농부 대신 올빼미가 받은 사람 수
   requestSave();
 }

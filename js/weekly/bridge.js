@@ -51,6 +51,6 @@ function makeGuideEnv(g) {
       inVillage: () => g.inVillage(),
       visible: () => g.cameraFree() && !uiBusy(),
     }),
-    showBanner: () => g.ui.showHintBanner?.({ ico: '🛒', title: WEEKLY_COPY.market.title, line: WEEKLY_COPY.banner, near: () => true, attention: true, slotQuest: true }),
+    showBanner: (burn) => g.ui.showHintBanner?.({ ico: '🛒', title: WEEKLY_COPY.market.title, line: WEEKLY_COPY.banner, near: () => true, attention: true, slotQuest: true, kind: 'feature', key: 'weekly-market', burn }),
   };
 }

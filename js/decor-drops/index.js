@@ -56,15 +56,17 @@ export function decorBanner(src) {
   if (!def || !gameState.house) return;
   const today = todayStr();
   if (!bannerDue(gameState.drops, granted(), def.set, today)) return;
-  const drops = gameState.drops || {};
-  gameState.drops = { ...drops, banner: { ...(drops.banner || {}), [def.set]: today } };
+  const burn = () => {
+    const drops = gameState.drops || {};
+    gameState.drops = { ...drops, banner: { ...(drops.banner || {}), [def.set]: today } };
+    requestSave();
+  };
   const c = bannerCopy(def.set, src);
   const set = DECOR_SETS.find(s => s.id === def.set);
   ui.showHintBanner?.({
-    ico: '🎁', img: set.thumb, title: c.title, line: `${c.line} ${c.go}`,
+    ico: '🎁', img: set.thumb, title: c.title, line: `${c.line} ${c.go}`, kind: 'feature', key: `decor-${def.set}`, burn,
     onShow: () => trackEvent('decor_banner', { set: def.set, act: 'show' }),
     onTap: () => { trackEvent('decor_banner', { set: def.set, act: 'tap' }); openDecorAlbum('banner'); },
     onDismiss: (reason) => { if (reason !== 'tap') trackEvent('decor_banner', { set: def.set, act: 'dismiss' }); },
   });
-  requestSave();
 }

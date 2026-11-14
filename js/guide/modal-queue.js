@@ -80,7 +80,9 @@ export function createModalQueue({
 
   const pending = (kind) => kind ? items.some(i => i.kind === kind) : items.length > 0 || holding();
 
-  return { request, turn, addGate, flush: wake, pending };
+  const due = () => holding() || items.some(i => !i.ready || !!safe(i.ready));
+
+  return { request, turn, addGate, flush: wake, pending, due };
 }
 
 export const modalQueue = createModalQueue();

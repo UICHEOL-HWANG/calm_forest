@@ -17,7 +17,7 @@ export function maybeOfferCosQuest({ via = 'tutorial' } = {}) {
   const p = gameState.progress;
   if (!shouldOffer({ tutorialSeen: gameState.tutorialSeen, owned: gameState.cosmetics?.owned, stage: p.cosQuest, houseStage: gameState.houseStage })) return;
   p.cosQuest = 'visit';
-  if (!ui.coachActive?.()) ui.showHintBanner?.({ ico: '🎀', title: COS_LINES.title, line: COS_LINES.offer, near: () => true });
+  if (!ui.coachActive?.()) ui.showHintBanner?.({ ico: '🎀', title: COS_LINES.title, line: COS_LINES.offer, near: () => true, kind: 'quest', key: 'cos-offer' });
   step('offered', { via });
   refreshQuestPanel(); requestSave();
 }

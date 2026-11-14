@@ -140,8 +140,7 @@ function tickGuide(dt, inVillage, pos) {
     if (arrived) reached.add(was);
   }
   if (bannerDue({ target: heard, week: s.week, lastBannerWeek: lastBanner(), cine: env.cine() })) {
-    markBanner(s.week);
-    env.showBanner();
+    env.showBanner(() => markBanner(s.week));
   }
   if (!target) return;
   if (reached.has(target)) return;

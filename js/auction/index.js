@@ -123,12 +123,12 @@ function bannerLive(day) {
     && document.body.classList.contains('playing');
 }
 
-function showOpenBanner(day) {
+function showOpenBanner(day, burn) {
   const lot = lotFor(day);
   const name = catalogDef(lot.id)?.name || lot.id;
   ui.showHintBanner?.({
     ico: ONBOARD_COPY.ico, title: ONBOARD_COPY.title, line: bannerLine(name, t),
-    near: () => true, attention: true, slotQuest: true,
+    near: () => true, attention: true, slotQuest: true, kind: 'feature', key: 'auction', burn,
     onShow: () => trackEvent('auction_banner', { act: 'shown', item: lot.id }),
     onTap: () => {
       trackEvent('auction_banner', { act: 'tap', item: lot.id });
@@ -146,9 +146,9 @@ function tickBanner(inVillage) {
     open: auctionOpenAt(gameState.timeOfDay), day, joined: gameState.auction.lastDate === day, ready, far: away,
   });
   if (!r.act) return;
-  gameState.auction = r.state;
-  requestSave();
-  if (r.act === 'show') showOpenBanner(day);
+  const save = () => { gameState.auction = { ...gameState.auction, bannerDate: r.state.bannerDate }; requestSave(); };
+  if (r.act === 'show') showOpenBanner(day, save);
+  else save();
 }
 
 function tickOnboard(dt, inVillage) {

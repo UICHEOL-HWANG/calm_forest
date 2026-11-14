@@ -1597,15 +1597,18 @@ function firstHint(key, ico, title, body, place = hintPlace()) {
 
 // 근접(지나가기) 안내 — 이동을 끊지 않는 비차단 배너(1회). 상세 규칙은 입장 후 모달/존 힌트 담당.
 // 튜토리얼(코치) 진행 중엔 억제하고 '본 것' 처리도 안 함 — 코치 지시와 겹치지 않게, 졸업 후 첫 접근 때 보여준다.
+const placeBannersQueued = new Set();
 /** 띄웠으면 true — 호출부가 "처음 도달"을 계측할 수 있게(🌊 sea_gate_hint). */
 function firstHintBanner(key, ico, title, line) {
   if (gameState.hintsSeen[key]) return false;
   if (ui.coachActive?.()) return false;
-  gameState.hintsSeen[key] = true;
+  if (placeBannersQueued.has(key)) return false;
+  placeBannersQueued.add(key);
   // 발동 지점을 기억해 "표시 차례가 왔을 때 아직 그 앞에 있는지"를 UI 가 판정할 수 있게 —
   // 여러 시설을 연달아 지나치면 이미 떠난 곳의 배너는 짧게 흘려보낸다(큐 적체 방지)
   const at = { x: player.position.x, z: player.position.z };
-  ui.showHintBanner?.({ ico, title, line, near: () => dist2D(at, player.position) < 3.5 });
+  ui.showHintBanner?.({ ico, title, line, near: () => dist2D(at, player.position) < 3.5,
+    kind: 'place', key: 'place-' + key, burn: () => { gameState.hintsSeen[key] = true; requestSave(); } });
   return true;
 }
 
@@ -2420,7 +2423,7 @@ function announceMapOpens() {
     const ico = sp < 0 ? '' : head.slice(0, sp);
     const title = sp < 0 ? head : head.slice(sp + 1);
     gameState.hintsSeen[key] = true;   // 실제로 배너를 띄우는 순간에만 소진
-    ui.showHintBanner?.({ ico, title, line, near: () => true });
+    ui.showHintBanner?.({ ico, title, line, near: () => true, kind: 'feature', key });
     trackEvent('map_opened', { map, day });
   }
 }
@@ -2477,7 +2480,7 @@ function initChurnPredictor() {
       show: (b) => {
         // 🎯 주목 신호 — 짧은 "띠링"(효과음 토글 존중) + 안드로이드 진동 30ms. 실패해도 배너는 뜬다.
         if (b.attention) { try { Sound.nudge?.(); navigator.vibrate?.(30); } catch (e) { /* 무시 */ } }
-        ui.showHintBanner?.({ ico: b.ico, title: b.title, line: b.line, near: () => true, attention: !!b.attention });
+        ui.showHintBanner?.({ ico: b.ico, title: b.title, line: b.line, near: () => true, attention: !!b.attention, kind: 'feature', key: 'churn' });
       },
     }),
     track: (n, p) => trackEvent(n, p),
@@ -2555,7 +2558,7 @@ function initRetentionGuidance() {
     showBanner: (b) => {
       if (b.attention) { try { Sound.nudge?.(); navigator.vibrate?.(30); } catch (e) { /* 무시 */ } }
       ui.showHintBanner?.({
-        ico: b.ico, title: b.title, line: b.line, near: () => true, attention: !!b.attention,
+        ico: b.ico, title: b.title, line: b.line, near: () => true, attention: !!b.attention, kind: 'feature', key: 'retention',
         // 🌿 상단 슬롯은 캔버스에 그려지는 월드 라벨(NPC 이름표·간판)을 가린다.
         //    좁은 화면에선 프롬프트 줄 위로 내린다(#hint-banner.slot-bottom).
         //    🪧 시설 배너는 "이 앞에 뭐가 있다"는 안내라 대상 근처인 상단이 맞아서 안 내린다.
@@ -3052,7 +3055,7 @@ export async function enterGame() {
     scene, camera, player,
     route: (me, tgt) => detourPoint({ x: me.x, z: me.z }, { x: tgt.x, z: tgt.z }, colliders.filter(c => ('r' in c ? c.r >= 1.0 : true))),
     track: trackEvent, save: requestSave, today: kstDate,
-    banner: line => ui.showHintBanner?.({ ico: '🦉', title: POND_COPY.owlTitle, line, near: () => true, attention: true }),
+    banner: line => ui.showHintBanner?.({ ico: '🦉', title: POND_COPY.owlTitle, line, near: () => true, attention: true, kind: 'feature', key: 'yard-owl' }),
     setAssist: setFishAssist, setHudHidden: setNpcGlyphsHidden, pondPos, pondNear,
     nearLake: () => dist2D(LAKE, player.position) <= LAKE_R + 2.8,
     fishing: () => fishState !== 'idle',
