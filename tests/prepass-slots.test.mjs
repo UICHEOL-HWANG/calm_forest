@@ -100,6 +100,15 @@ test('버튼이 떠 있는 동안 팝업이 끼어도 누른 광고는 볼 수 �
   assert.equal(got, true);
 });
 
+test('광고는 켜져 있고 토스는 토스 광고, 웹은 공급자 없음', async () => {
+  const { PREPASS_ON } = await import('../js/tuning.js');
+  assert.equal(PREPASS_ON, true);
+  const { createRewardedAds } = await import('../js/ads/rewarded-native.js');
+  for (const platform of ['web', 'toss']) assert.equal(createRewardedAds({ platform, plugin: {}, listen: () => {} }).available, false, platform);
+  const game = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  assert.match(game, /setPrepassProvider\(IS_TOSS \? createTossRewarded\(/);
+});
+
 test('game.js 는 같은 저장 키에 주 번호와 조용함 판정을 넘긴다', () => {
   const game = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
   assert.match(game, /week: \(\) => weekIndex\(DEV_NOW \|\| Date\.now\(\)\)/);
