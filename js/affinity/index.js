@@ -7,7 +7,7 @@ import { BEST_ITEMS, letterOf } from '../data/npc-letters.js';
 import { blueprintOfNpc } from '../tool-blueprints.js';
 import {
   AFFINITY_NPCS, STAGES, GIFT_DAILY_CAP, isAffinityNpc, stageIndex, stageProgress,
-  lettersToIssue, markIssued, letterKey, giftGain, owlDailyGain, pickTracker,
+  lettersToIssue, markIssued, letterKey, giftGain, owlDailyGain, pickTracker, allMaxed,
 } from './stages.js';
 import { refreshQuestPanel, updateNPCGlyph } from '../spaces/npc.js';
 import { chipText, giftCapToast, introBody, introTitle, letterRowText, letterTitle, nextRewardText, retroToast, stageLabel, stageUpToast, trackerLines, trackerStart } from './copy.js';
@@ -149,6 +149,11 @@ export function affinityLetters() {
   return [...(hints().affOrder || [])].reverse().map(letterView).filter(Boolean);
 }
 
+export function affinityHouseReady() {
+  const n = unreadLetterCount();
+  if (n) ui.toast?.(retroToast(n, lang()), 3600, { afterDialog: true });
+}
+
 export function unreadLetterCount() {
   return affinityLetters().filter(l => !l.read).length;
 }
@@ -164,7 +169,7 @@ export function readLetter(key) {
 
 export function claimLetter(key) {
   const v = letterView(key);
-  if (!v || v.claimed) return null;
+  if (!v || v.claimed || !v.gift) return null;
   if (v.gift?.decor && !$w.grantDecor(v.gift.decor)) return null;
   setHints({ affClaim: { ...(hints().affClaim || {}), [key]: 1 } });
   if (v.gift && !v.gift.decor) giveReward({ ...v.gift }, 'affinity_letter', key);
@@ -238,7 +243,7 @@ function rewardLabel(id, idx) {
 export function affinityTracker(compact = false) {
   if (!houseDone()) return null;
   const pick = pickTracker(gameState.affinity, visibleIds());
-  if (!pick) return { start: true, text: trackerStart(lang()) };
+  if (!pick) return allMaxed(gameState.affinity, visibleIds()) ? null : { start: true, text: trackerStart(lang()) };
   const { npc, value, next } = pick;
   const nextIdx = stageIndex(value) + 1;
   return {

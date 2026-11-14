@@ -65,6 +65,11 @@ export function owlDailyGain(lastDay, today) {
   return { gain: lastDay === today ? 0 : 1, day: today };
 }
 
+export function allMaxed(affinity, visibleIds) {
+  const top = STAGES[STAGES.length - 1].min;
+  return visibleIds.length > 0 && visibleIds.every(id => (affinity?.[id] || 0) >= top);
+}
+
 export function pickTracker(affinity, visibleIds) {
   let best = null;
   for (const npc of visibleIds) {

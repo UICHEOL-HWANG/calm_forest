@@ -18,6 +18,7 @@ import { HOUSE_ADDONS, addonState } from '../house/addons.js';
 import { buildHouseModel, mountHouseAddons } from '../house/index.js';
 import { t } from '../i18n.js';
 import { maybeOfferCosQuest } from './cos-quest.js';
+import { affinityHouseReady } from '../affinity/index.js';
 import { logEcon } from '../metrics.js';
 import { Sound } from '../sound.js';
 import { expandWoodOf } from '../tool-tiers.js';
@@ -220,6 +221,7 @@ export function buildHouseStage(stage, silent = false) {
       maybeOfferCosQuest({ via: 'house' });
       triggerMoment();                           // 📷 순간 줌인
       tryUnlockDrop(1);                          // 🎨 집 완성 보상: 랜덤 색 1개 확정
+      affinityHouseReady();
       trackEvent('house_complete');              // [GA4] 집 완성 이벤트
       syncBadges();                              // 🏅 내 집 마련 배지
     } else if (stage >= 4) {
