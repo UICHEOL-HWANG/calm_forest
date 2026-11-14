@@ -9,6 +9,7 @@
 - [x] T4 새 장소·기능 안내 규칙 (8c4ac079, 0f867180) — 남음: M5 중복 카드 숨김, 연못 첫 방문 한 줄 브라우저 미확인, 새 문구 사용자 검수
 - [x] T5 신규 15분 보완 (757aa8e7, 760d25a0, 4f09f383) — 스포트라이트 9→2장 제안은 사용자 선택 대기, 가로 화면 시점 안내 '다음' 버튼 화면 밖(y=-17) 버그 미수정
 - [x] T6 아이콘 온보딩 (0f867180)
-- [ ] T7 보상형 광고: 튜토리얼 숨김, 자리별 하루 제한, PREPASS_ON(50:50), 새 자리 9개
+- [ ] T5b 첫 HUD 안내 9→2장(사용자 선택 2026-11-15 "2장으로 줄여"), 나머지 7장은 처음 쓸 때, 가로 시점 안내 '다음' 화면 밖 버그 수정
+- [x] T7 보상형 광고: 튜토리얼 숨김, 자리별 하루 제한, PREPASS_ON(50:50), 새 자리 10개(affinity_heart·concert_play·weekly_ticket·orchard_grow·forge_rush·quest_reroll·drop_reroll_mine/firefly·restaurant_double·bait_box), 캡처 sims/quest-chips/t7/ — 남음: 새 문구 사용자 검수, 실기기(AdMob·토스) 확인
 - [x] T8 텐진 광고 여정 이벤트 매핑 (75b5d2d9, 목록은 tenjin-events.md, 앱 새 빌드 필요)
 - [ ] T9 봇 검증(신규·기존 legacy/비legacy·중간 유저, 세로·가로, 음소거), 전체 리뷰
