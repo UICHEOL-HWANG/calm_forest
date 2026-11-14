@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>호감도 보여 주기 시안</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 22px; background: #eef1ec; color: #2c2418; font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", sans-serif; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  h2 { font-size: 18px; margin: 30px 0 4px; }
+  .rec { font-size: 12px; font-weight: 800; color: #fff; background: #48914a; border-radius: 999px; padding: 3px 10px; margin-left: 8px; vertical-align: 2px; }
+  .lead, .sub { margin: 0 0 10px; color: #555; max-width: 1120px; }
+  .warn { display: inline-block; font-size: 12.5px; color: #8a5a20; background: #fff3dc; border-radius: 8px; padding: 4px 10px; margin-bottom: 12px; }
+  .row { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
+  .cap { font-size: 12px; color: #666; margin: 6px 0 0; text-align: center; }
+  .stage { position: relative; overflow: hidden; border-radius: 14px; background: url(npc-affinity/bg.jpg) center/cover; box-shadow: 0 6px 20px rgba(0,0,0,0.15); }
+  .pc { width: 720px; height: 450px; }
+  .mo { width: 300px; height: 620px; background-position: 40% center; }
+  .dim::before { content: ''; position: absolute; inset: 0; background: rgba(20,40,30,0.35); }
+
+  .mini { position: absolute; left: 12px; top: 12px; width: 92px; height: 92px; border-radius: 16px; background: #cfe3c0; box-shadow: 0 0 0 3px #fff, 0 4px 10px rgba(0,0,0,.2); }
+  .mo .mini { width: 72px; height: 72px; }
+  .tr { position: absolute; right: 12px; top: 12px; display: flex; gap: 8px; }
+  .tr span { width: 40px; height: 40px; border-radius: 12px; background: rgba(255,250,241,.95); display: grid; place-items: center; font-size: 18px; box-shadow: 0 3px 8px rgba(0,0,0,.18); position: relative; }
+  .tr span.dot::after { content: ''; position: absolute; top: -2px; right: -2px; width: 10px; height: 10px; border-radius: 50%; background: #e86f3c; box-shadow: 0 0 0 2px #fff; }
+  .joy { position: absolute; left: 22px; bottom: 90px; width: 96px; height: 96px; border-radius: 50%; background: rgba(255,255,255,.35); box-shadow: inset 0 0 0 3px rgba(255,255,255,.6); }
+  .act { position: absolute; right: 22px; bottom: 96px; width: 74px; height: 74px; border-radius: 50%; background: rgba(255,250,241,.92); display: grid; place-items: center; font-size: 28px; box-shadow: 0 4px 10px rgba(0,0,0,.2); }
+  .hot { position: absolute; left: 50%; transform: translateX(-50%); bottom: 14px; display: flex; gap: 5px; padding: 6px; border-radius: 16px; background: rgba(255,250,241,.9); }
+  .hot span { width: 32px; height: 32px; border-radius: 9px; background: #f3ece0; display: grid; place-items: center; font-size: 16px; }
+
+  .qp { position: absolute; left: 12px; top: 116px; width: 230px; background: rgba(255,250,241,.96); border-radius: 16px; padding: 9px 11px; box-shadow: 0 4px 12px rgba(0,0,0,.18); font-size: 12px; }
+  .mo .qp { top: 96px; width: 186px; font-size: 11px; padding: 8px 9px; }
+  .qp .qh { font-weight: 800; font-size: 12.5px; margin-bottom: 4px; }
+  .qp .q { display: flex; justify-content: space-between; padding: 3px 0; border-top: 1px dashed #eadfcb; }
+  .qp .aff { margin-top: 6px; padding: 7px 8px; border-radius: 12px; background: #fff2f5; box-shadow: 0 0 0 1.5px #f2b8c8; display: flex; gap: 8px; align-items: center; }
+  .qp .aff img { width: 38px; height: 38px; border-radius: 10px; background: #fbe4da; }
+  .mo .qp .aff img { width: 32px; height: 32px; }
+  .qp .aff b { display: block; font-size: 12px; }
+  .qp .aff small { display: block; color: #8a6a58; font-size: 11px; line-height: 1.35; }
+  .bar { height: 6px; border-radius: 3px; background: rgba(0,0,0,.08); overflow: hidden; margin-top: 3px; }
+  .bar i { display: block; height: 100%; width: 66%; background: linear-gradient(90deg, #f29bb4, #e6789a); }
+
+  .npc { position: absolute; text-align: center; transform: translateX(-50%); }
+  .npc .body { font-size: 38px; line-height: 1; filter: drop-shadow(0 3px 3px rgba(0,0,0,.3)); }
+  .npc .tag { display: inline-block; font-size: 11px; font-weight: 800; color: #fff; padding: 1px 8px; border-radius: 8px; margin-top: 2px; }
+  .bub { display: inline-block; background: #fff; border-radius: 14px; padding: 2px 8px; font-size: 18px; box-shadow: 0 3px 8px rgba(0,0,0,.2); position: relative; margin-bottom: 4px; }
+  .bub::after { content: ''; position: absolute; left: 50%; bottom: -5px; margin-left: -5px; border: 5px solid transparent; border-top-color: #fff; border-bottom: 0; }
+
+  .card { position: absolute; left: 50%; transform: translateX(-50%); background: #fffaf1; border-radius: 22px; padding: 16px 16px 14px; box-shadow: 0 0 0 3px #fff, 0 8px 0 #e0663c, 0 14px 26px rgba(30,20,10,.25); color: #3c3326; }
+  .card .ch { display: flex; gap: 10px; align-items: center; font-weight: 800; font-size: 15px; color: #b8492a; }
+  .card .ch span { font-size: 26px; }
+  .card .hero { display: flex; gap: 12px; align-items: center; margin: 10px 0; }
+  .card .hero img { width: 120px; height: 120px; border-radius: 16px; background: #fbe4da; flex: none; }
+  .mo .card .hero img { width: 92px; height: 92px; }
+  .card p { margin: 0; font-size: 13.5px; line-height: 1.55; word-break: keep-all; }
+  .card .ways { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .card .ways span { font-size: 12px; font-weight: 700; background: #f3ece0; border-radius: 999px; padding: 3px 9px; }
+  .card .go { margin-top: 12px; display: block; text-align: center; border-radius: 14px; padding: 10px; font-weight: 800; color: #fff; background: #b8492a; box-shadow: 0 3px 0 #8a3520; }
+
+  .goal { position: absolute; left: 50%; transform: translateX(-50%); top: 12px; background: rgba(255,250,241,.97); border-radius: 14px; padding: 8px 14px; font-size: 13px; font-weight: 800; box-shadow: 0 4px 12px rgba(0,0,0,.2); white-space: nowrap; display: flex; gap: 8px; align-items: center; }
+  .goal small { font-weight: 700; color: #8a7a66; }
+  .mo .goal { top: 96px; white-space: normal; width: 86%; }
+  .arrow { position: absolute; width: 0; height: 0; border-left: 15px solid transparent; border-right: 15px solid transparent; border-top: 22px solid #f2b928; filter: drop-shadow(0 2px 2px rgba(0,0,0,.35)); animation: bob 1s ease-in-out infinite; }
+  .ring { position: absolute; width: 64px; height: 22px; border-radius: 50%; border: 3px solid #f2b928; box-shadow: 0 0 10px #f2d06a; }
+  .dist { position: absolute; font-size: 11px; font-weight: 800; color: #fff; background: rgba(0,0,0,.45); border-radius: 8px; padding: 1px 6px; }
+  .bench { position: absolute; font-size: 34px; filter: drop-shadow(0 3px 3px rgba(0,0,0,.3)); }
+  @keyframes bob { 50% { transform: translateY(6px); } }
+</style>
+</head>
+<body>
+<h1>👀 호감도를 게임 중에 어떻게 보여 줄까</h1>
+<p class="lead">지금(P1)은 대화창 칩·☰ 수첩·단계 오름 토스트처럼 <b>이미 선물을 준 사람</b>에게만 보여요. 데이터상 집을 3단계 이상 지은 사람 중 87%가 호감도를 한 번도 올리지 않았고, 선물을 만드는 곳(작업대)도 안내가 없어요. 그래서 "몰라서 안 하는" 사람에게 닿는 세 가지를 그렸어요. 셋은 함께 쓸 수 있어요.</p>
+<span class="warn">렌더 중… 잠시 기다려 주세요</span>
+<div id="out"></div>
+
+<script type="importmap">{ "imports": { "three": "../vendor/three/three.module.js" } }</script>
+<script type="module">
+import * as THREE from 'three';
+import { ITEMS_C2 } from './npc-affinity-items-models.js';
+
+function thumb(id) {
+  const r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+  r.toneMapping = THREE.ACESFilmicToneMapping; r.outputColorSpace = THREE.SRGBColorSpace; r.setSize(240, 240, false);
+  const s = new THREE.Scene();
+  s.add(new THREE.HemisphereLight(0xffffff, 0xbfe8c9, 0.95));
+  const d = new THREE.DirectionalLight(0xffe9c4, 1.1); d.position.set(4, 8, 6); s.add(d);
+  const g = ITEMS_C2.find(i => i.id === id).build(THREE, []); g.rotation.y = 0.35; s.add(g);
+  const b = new THREE.Box3().setFromObject(g); const h = b.max.y, w = b.max.x - b.min.x;
+  const dist = Math.max(h, w * 0.8) * 2.0;
+  const c = new THREE.PerspectiveCamera(32, 1, 0.1, 100); c.position.set(dist * 0.55, dist * 0.55 + h * 0.42, dist); c.lookAt(0, h * 0.42, 0);
+  r.render(s, c);
+  const url = r.domElement.toDataURL('image/png'); r.dispose();
+  return url;
+}
+const CHAIR = thumb('chair');
+
+const hud = (mo, dot = false) => `<div class="mini"></div><div class="tr"><span>🎒</span><span>📖</span><span class="${dot ? 'dot' : ''}">☰</span></div>`
+  + (mo ? '<div class="joy"></div><div class="act">💬</div>' : '')
+  + '<div class="hot"><span>🌾</span><span>⛏️</span><span>🌰</span><span>💧</span><span>🪓</span></div>';
+const npc = (x, y, face, name, color, bubble = '') => `<div class="npc" style="left:${x}px;top:${y}px">${bubble ? `<div class="bub">${bubble}</div><br>` : ''}<div class="body">${face}</div><span class="tag" style="background:${color}">${name}</span></div>`;
+
+const A1 = (mo) => hud(mo) + `<div class="card" style="${mo ? 'top:150px;width:90%' : 'top:60px;width:440px'}">
+  <div class="ch"><span>👷</span>목수 아저씨와 친해져 보세요</div>
+  <div class="hero"><img src="${CHAIR}"><p>친해질수록 편지가 오고, <b>💛 단짝</b>이 되면 목수 아저씨가 직접 짠 <b>🪑 흔들의자</b>를 보내 줘요.</p></div>
+  <div class="ways"><span>🎁 선물 주기 (하루 ❤️2)</span><span>🔁 반복 의뢰 ❤️+1</span></div>
+  <span class="go">🎁 선물 만들러 가기</span></div>`;
+const A2 = (mo) => hud(mo) + (mo
+  ? `<div class="goal">🎁 작업대에서 꽃다발 만들기 <small>1/2</small></div><div class="bench" style="left:175px;top:300px">🛠️</div><div class="arrow" style="left:178px;top:262px"></div><div class="ring" style="left:162px;top:338px"></div><div class="dist" style="left:176px;top:240px">6m</div>`
+  : `<div class="goal">🎁 작업대에서 꽃다발 만들기 <small>1/2</small></div><div class="bench" style="left:470px;top:190px">🛠️</div><div class="arrow" style="left:473px;top:152px"></div><div class="ring" style="left:457px;top:228px"></div><div class="dist" style="left:470px;top:130px">6m</div>`)
+  + npc(mo ? 110 : 300, mo ? 380 : 250, '👷', '목수 아저씨', '#e0663c');
+
+const B1 = (mo) => hud(mo) + `<div class="qp"><div class="qh">📜 의뢰</div>
+  <div class="q"><span>🦉 오늘의 벌목</span><span>3/5</span></div>
+  <div class="q"><span>🧙 오늘의 장사</span><span>8/8</span></div>
+  <div class="aff"><img src="${CHAIR}"><div><b>💛 목수 아저씨 ❤️7/10</b><small>🪑 흔들의자까지 ❤️3<br>오늘 선물 🎁 2번 더</small><div class="bar"><i></i></div></div></div></div>`
+  + npc(mo ? 210 : 420, mo ? 360 : 230, '👷', '목수 아저씨', '#e0663c');
+
+const C1 = (mo) => hud(mo, true)
+  + npc(mo ? 70 : 250, mo ? 330 : 200, '👷', '목수 아저씨', '#e0663c', '💛')
+  + npc(mo ? 230 : 430, mo ? 260 : 150, '🧙', '방랑 상인', '#8a5cd0', '🎁')
+  + npc(mo ? 160 : 600, mo ? 470 : 300, '🦉', '의뢰 올빼미', '#e0a52e', '💌');
+
+const rows = [
+  ['A · 첫 소개 + 길 안내 (한 번만)', true,
+   '집을 다 지은 뒤 주민과 처음 대화할 때 한 번, 그 주민이 줄 전용 아이템을 3D로 먼저 보여 줘요(왼쪽). [선물 만들러 가기]를 누르면 "작업대에서 꽃다발 만들기 1/2 → 목수 아저씨에게 건네기 2/2"를 금색 화살표로 끝까지 데려가고, 첫 선물에서 바로 👋 아는 사이 토스트가 떠요(오른쪽). "몰라서 안 하는" 87%에 가장 직접 닿아요. 꽃다발 재료(작물 2)가 모자라면 안내 첫 단계에서 1회분을 줘서 첫 시도가 꼭 성공하게 해요.',
+   [[A1, '① 소개 카드', true], [A2, '② 길 안내', false]]],
+  ['B · 의뢰 패널에 다음 보상 한 줄 (상시)', true,
+   '플레이 중 늘 보이는 의뢰 패널 맨 아래에, 다음 보상에 가장 가까운 주민 한 명을 썸네일과 함께 고정해요. "흔들의자까지 ❤️3 · 오늘 선물 2번 더"처럼 오늘 할 일이 숫자로 보여서 매일 들를 이유가 돼요. 누르면 📒 주민 수첩이 그 주민으로 열려요. 호감도를 시작하기 전에는 A의 소개를 다시 여는 줄("🎁 주민과 친해지면 선물이 와요")이 대신 들어가요.',
+   [[B1, '상시 줄', false]]],
+  ['C · 주민 머리 위 이모지 신호', false,
+   '말풍선은 이모지만 써요(마을 규칙). 💛 = 다음 단계까지 한 걸음, 🎁 = 오늘 선물 하트가 남음, 💌 = 그 주민 편지가 소식함에 와 있음. 돌아다니다 눈에 띄면 다가가게 만드는 장치예요. 단독으로는 뜻을 배워야 해서 A나 B와 함께 쓸 때 힘을 내요. 기존 퀘스트 말풍선(! … ✓)과 자리가 겹치므로, 퀘스트 표시가 있을 땐 그쪽이 먼저예요.',
+   [[C1, '월드 신호', false]]],
+];
+let html = '';
+for (const [title, rec, sub, frames] of rows) {
+  html += `<h2>${title}${rec ? '<span class="rec">추천</span>' : ''}</h2><p class="sub">${sub}</p><div class="row">`;
+  for (const [fn, cap, dimmed] of frames) {
+    const dim = dimmed ? ' dim' : '';
+    html += `<div><div class="stage pc${dim}">${fn(false)}</div><p class="cap">PC · ${cap}</p></div><div><div class="stage mo${dim}">${fn(true)}</div><p class="cap">모바일 · ${cap}</p></div>`;
+  }
+  html += '</div>';
+}
+html += `<h2>추천 조합</h2><p class="sub"><b>A + B</b>를 기본으로 하고 C는 💌(편지 도착)만 넣는 걸 추천해요. A가 "처음 한 번 성공"을, B가 "매일 다시 오는 이유"를 맡아요. C의 💛·🎁는 마을이 말풍선으로 붐빌 수 있어 데이터를 본 뒤 더해요. A는 집 완성 뒤에만 떠서 E3·E6(첫날 구간)과 겹치지 않아요.</p>`;
+document.getElementById('out').innerHTML = html;
+document.querySelector('.warn').textContent = '화면 속 문구는 모두 가안이에요. 고른 뒤 문구는 따로 검수받을게요.';
+window.__done = true;
+</script>
+</body>
+</html>

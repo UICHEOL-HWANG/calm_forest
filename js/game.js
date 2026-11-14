@@ -272,6 +272,11 @@ import {
   withdrawWarehouse,
 } from './spaces/outdoor-decor.js';   // 📦 🪵 야외 장식·창고·선물 (구역 머리말 — 분리 2단계)
 import {
+  affinityChip, affinityIntroFor, affinityLetters, affinityTracker, affinityVisible, claimLetter, introNpcForStart, markIntroSeen, npcBook, onLettersChanged, owlDailyAffinity, readLetter,
+  syncAffinityLetters, trackBookOpen, unreadLetterCount,
+} from './affinity/index.js';
+import { affinityGuideActive, startAffinityGuide, updateAffinityGuide } from './affinity/guide.js';
+import {
   rebuildFarm, spawnFarmGate, surveyBenchWorld, surveyDeskWorld,
 } from './spaces/farm-field.js';   // 📦 🪧 표지판·텃밭 게이트·측량소·텃밭 필드 (구역 머리말 — 분리 2단계)
 import {
@@ -341,6 +346,8 @@ import { PROMO_DECOR_IDS } from './promo-gift/rules.js';
 import { requestSignupNudge } from './signup-gift/index.js';
 import { FRIEND_ARCH_ID, buildFriendArch } from './spaces/friend-arch-art.js';   // 🌈 무지개 우정 아치(🤝 초대 보상)
 import { MINE_CART_ID, MINE_CART_BOX, buildMineCart } from './delve/cart-art.js';
+import { AFF_ART_IDS, buildAffinityOutdoor } from './affinity/art.js';
+import { AFF_BOX, AFF_SOLID_K } from './data/affinity-decor.js';
 import { outdoorFootprint, blockedByWorld, postCircles } from './world/outdoor-overlap.js';
 // 🔁 js/spaces/* 가 game.js 의 let 에 쓸 때 거치는 접근자(읽기는 import 한 live binding) — tools/refactor/extract-module.mjs 가 만든다
 export const $w = {
@@ -1557,12 +1564,13 @@ async function prefetchNotices() {
   const since = gameState.noticeSeenId || 0;
   const rows = await fetchNotices(since, { ascending: true });   // 오래된 순 — 20건 넘게 밀려도 읽음 id 가 건너뛰지 않게
   pendingNotices = unreadNotices(rows, since);
-  ui.setUnread?.(pendingNotices.length);
+  refreshUnread();
 }
+function refreshUnread() { ui.setUnread?.(pendingNotices.length + unreadLetterCount()); }
 export function markNoticesSeen(list) {
   const id = maxId(list);
   pendingNotices = pendingNotices.filter(n => n.id > id);
-  ui.setUnread?.(pendingNotices.length);
+  refreshUnread();
   if (id <= (gameState.noticeSeenId || 0)) return;
   gameState.noticeSeenId = id;
   requestSave();
@@ -1626,7 +1634,7 @@ const decorMeshes = [];    // 배치된 가구 메시
 
 let mode = 'attract';   // 'attract'(로그인 배경) | 'play'(플레이)
 let goalGuide = null;
-function guideBusy() { return portGuideActive() || restaurantGuideActive() || auctionGuideActive(); }
+function guideBusy() { return portGuideActive() || restaurantGuideActive() || auctionGuideActive() || affinityGuideActive(); }
 const guideRevamp = guideRevampOn(e6Decision());
 let houseShort = null;
 let rewarded = null;
@@ -2235,6 +2243,18 @@ export const Input = {
   craftGift(id) { return craftGift(id); },              // 선물 제작
   giveGift(id) { return giveGift(id); },                // 근처 주민에게 선물
   affinityOf(npcId) { return gameState.affinity[npcId] || 0; }, // 친밀도
+  affinityChip(npcId) { return affinityChip(npcId); },
+  affinityVisible(npcId) { return affinityVisible(npcId); },
+  affinityTracker(compact) { return affinityTracker(compact); },
+  affinityIntroFor(npcId, force) { return affinityIntroFor(npcId, force); },
+  introNpcForStart() { return introNpcForStart(); },
+  markIntroSeen(npcId, from) { markIntroSeen(npcId, from); },
+  startAffinityGuide(npcId) { return startAffinityGuide(npcId); },
+  npcBook() { return npcBook(); },
+  affinityLetters() { return affinityLetters(); },
+  readLetter(key) { readLetter(key); },
+  claimLetter(key) { return claimLetter(key); },
+  trackBookOpen(from, npc) { trackBookOpen(from, npc); },
   // ── 💬 잡담 ────────────────────────────────────────────────
   //  보상이 없다. 친밀도도 코인도 안 준다 — 선물(재료를 쓴다)·접객의 가치를 희석하지 않기 위해서다.
   //  하루 주민당 TALK_PER_DAY 번. 다 쓰면 그 주민은 작별 문구만 남긴다.
@@ -2621,6 +2641,8 @@ export async function enterGame() {
   refreshStations();
   catchUpCraft();                      // 🔥 자는 사이 다 구워진 게 있으면 알린다
   settleForge(false);
+  onLettersChanged(refreshUnread);
+  syncAffinityLetters();
   prefetchNotices();                   // 📮 안 읽은 소식을 미리 받아 둔다(await 안 함 — 출석 모달을 닫을 때 준비돼 있으면 이어서 띄운다)
   // 테스트: ?house=4|5|6 — 증축 단계 미리보기(?weather= 와 같은 개발용 파라미터)
   const _hq = parseInt(_wq.get('house') || '', 10);
@@ -5913,6 +5935,8 @@ function outdoorMesh(id) {
     g.add(buildHalloween(THREE, id, HALLOWEEN_STYLE[id], makeCtx(THREE, (m) => houseWindows.push(m))));
   } else if (id === MINE_CART_ID) {
     g.add(buildMineCart(THREE));
+  } else if (AFF_ART_IDS.includes(id)) {
+    g.add(buildAffinityOutdoor(id, (m) => houseWindows.push(m)));
   } else if (id === FRIEND_ARCH_ID) {   // 🌈 무지개 우정 아치 — 걸어서 통과(충돌체 없음) · 밤 반짝이는 houseWindows
     g.add(buildFriendArch(THREE, (m) => houseWindows.push(m)));
   } else if (SIGNUP_GIFT_IDS.includes(id)) {
@@ -6053,6 +6077,10 @@ function placeOutdoor(wx, wz, silent = false, id = placingOutdoor, rot = null) {
       obstacles.pop(); ob = { x: wx, z: wz, r: 1.2 }; obstacles.push(ob);   // 밭·나무 금지 반경도 몸집에 맞춘다
     } else if (id === MINE_CART_ID) {
       const [hw, hd] = (ry % 2) ? [MINE_CART_BOX.d / 2, MINE_CART_BOX.w / 2] : [MINE_CART_BOX.w / 2, MINE_CART_BOX.d / 2];
+      solid = solidBox(wx - hw, wz - hd, wx + hw, wz + hd);
+    } else if (AFF_BOX[id]) {
+      const b = AFF_BOX[id], k = AFF_SOLID_K;
+      const [hw, hd] = (ry % 2) ? [b.d * k / 2, b.w * k / 2] : [b.w * k / 2, b.d * k / 2];
       solid = solidBox(wx - hw, wz - hd, wx + hw, wz + hd);
     } else if (id === 'vat') {
       // 🫙 발효통 — 화덕과 같은 문법. 반치수는 조형 모듈이 준 발자국(VAT_BOX)의 절반
@@ -6553,6 +6581,7 @@ function animate() {
   updateSeaVisuals(t);  // 🌊 일렁이는 수면(후미·바다터) + 등대 야간 빔
   updatePortGuide(mode === 'play' && (inVillage2() || port.active));
   updateRestaurantGuide(mode === 'play' && (inVillage2() || atRestaurant));
+  updateAffinityGuide(mode === 'play' && inVillage2());
   updateGateCues(t, dt);
   updateTrees(dt);
   updateOreRocks();
@@ -8366,7 +8395,7 @@ const RES_LABEL = { ...FORAGE_LABEL, charcoal: '⚫숯', flour: '🌾밀가루',
   sap_persimmon: '🍊감나무 묘목', sap_chestnut: '🌰밤나무 묘목', leaf: '🍂단풍잎' };   // 🌾 고급 작물·씨앗 · 🍯꿀(벌통) · 🍎 과수원(js/orchard.js)
 
 
-function makeNameTag(def) {
+function makeNameTag(def, prefix = '') {
   // 캔버스는 가장 긴 이름(낚시꾼 할아버지)까지 여유 있게. 스프라이트 배율은 이 비율에 맞춘다.
   const W = 384, H = 96;
   const FONT = (px) => `bold ${px}px -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif`;
@@ -8375,7 +8404,7 @@ function makeNameTag(def) {
   // 🧑‍🌾 같은 ZWJ 결합 이모지는 웹뷰마다 폭이 달라(한 글자/두 글자) 이름표에 큰 공백이 생겼다 → 마지막 조각(🌾)만 쓴다.
   //   폭이 실측 그대로라 배지가 글자에 딱 맞고 가운데 정렬된다. 대화창 등 다른 곳의 def.emoji 는 그대로.
   const tagEmoji = def.emoji.includes('\u200D') ? def.emoji.split('\u200D').pop() : def.emoji;
-  const label = `${tagEmoji} ${t(def.name)}`;
+  const label = `${prefix}${tagEmoji} ${t(def.name)}`;
 
   // ⚠️ textAlign='center' 에 기대지 않는다 — 토스 웹뷰에서 가운데 정렬이 안 먹어 글자가
   //    배지 밖으로 밀려 나갔다(2026-09-09 실기기 보고). 왼쪽 기준으로 x 를 직접 계산한다.
@@ -8504,7 +8533,8 @@ export function npcClaim() {
       st.hidden = false;
       ui.toast?.(`📜 ${bp.name} 도면을 받았어요! 작업대 🔧 도구 탭에서 만들 수 있어요`, 3200);
       trackEvent('hidden_quest_clear', { npc: o.def.id, tool: q.tool });   // [GA4] 문턱 도달 → 발견 → 완료 퍼널
-    } else if (repeating) st.repeat.done = true; else st.idx++;
+    } else if (repeating) st.repeat.done = true;
+    else { st.idx++; if (o.def.daily && st.idx === DAILY_COUNT) owlDailyAffinity(); }
     st.given = false; st.progress = 0; st.readyToasted = false; st.acceptedAt = null;
     gameState.story.q = (gameState.story.q || 0) + 1; syncStory('quest');   // 📖 2장(이웃들) 진행
     if (!currentQuest(o.def, st)) { st.allDone = true; syncBadges(); } // 🏅 체인 완료 배지(패널은 아래 refreshQuestPanel 이 다시 그린다)

@@ -16,6 +16,7 @@ import { OUTDOOR } from '../data/catalog.js';
 import { GIFTS } from '../data/npcs.js';
 import { CARVE_DESIGNS } from './carving.js';
 import { addGift, giftLove, parseKeptGift, takeGift } from './carve-gift.js';
+import { gainAffinity, giftAffinity } from '../affinity/index.js';
 import { CELL as FARM_CELL, FARM_BUILDINGS, buildingCells, rotatedFp, storageTotal } from '../farm-building.js';
 import { OUTDOOR_TAP_REACH, outdoorDistance } from '../outdoor-move.js';
 import { Sound } from '../sound.js';
@@ -137,17 +138,8 @@ export function craftGift(id) {
   return { ok: true, name: g.name };
 }
 
-// 근처 주민에게 선물 주기 → 친밀도↑ (3개마다 감사 보상)
-// ❤️ 친밀도 올리기 — 선물(giveGift)과 🔁반복 의뢰 보상이 함께 쓴다.
-//   친밀 3단계마다 답례. +2 증가로 배수를 "건너뛴" 경우도 통과하도록 몫을 비교한다.
-//   답례를 줬으면 그 보상을 돌려준다(없으면 null).
 export function addAffinity(id, amount = 1) {
-  const before = gameState.affinity[id] || 0;
-  gameState.affinity[id] = before + amount;
-  if (Math.floor(gameState.affinity[id] / 3) <= Math.floor(before / 3)) return null;
-  const reward = { seed: 3, crop: 1 };
-  giveReward(reward, 'affinity_gift', id);
-  return reward;
+  return gainAffinity(id, amount, 'repeat');
 }
 
 export function giveGift(giftId) {
@@ -161,10 +153,10 @@ export function giveGift(giftId) {
   const id = o.def.id;
   refreshInventoryUI();
   Sound.harvest();
-  spawnFloatText(o.group.position.x, 2.2, o.group.position.z, (kept?.paper ? '🎁' : '') + '❤️'.repeat(love), '#e6789a');
+  const { gain, capped, toasted } = giftAffinity(id, love);
+  spawnFloatText(o.group.position.x, 2.2, o.group.position.z, (kept?.paper ? '🎁' : '') + (gain ? '❤️'.repeat(gain) : '🎁'), '#e6789a');
   spawnSparkle(o.group.position.x, 1.4, o.group.position.z, kept?.paper ? 22 : 14);
-  const reward = addAffinity(id, love);
   questEvent('gift');                                  // 🦉 의뢰(주민에게 선물)
   trackEvent('gift_give', { npc: id, gift: giftId });  // [GA4]
-  return { ok: true, npc: o.def.name, ico: g.ico + (kept?.paper ? '🎀' : ''), love, affinity: gameState.affinity[id], reward: reward ? rewardText(reward) : null };
+  return { ok: true, npc: o.def.name, ico: g.ico + (kept?.paper ? '🎀' : ''), love: gain, affinity: gameState.affinity[id], capped, toasted };
 }

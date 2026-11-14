@@ -1,3 +1,4 @@
+import { AFF_BOX, AFF_SOLID_K } from '../data/affinity-decor.js';
 const SMALL = ['postlamp', 'scarecrow', 'spiritlamp', 'ghostlamp', 'pumpkinlamp', 'harvestscarecrow', 'promoballoon'];
 const FLAT = ['path', 'flowerbed'];
 const KILN_HALF = [1.01, 0.58];
@@ -14,6 +15,7 @@ export function outdoorFootprint(id, x, z, ry, { cartBox, vatBox, cartId, suitca
   if (cartBox && id === cartId) return box(x, z, cartBox.w / 2, cartBox.d / 2, ry);
   if (vatBox && id === 'vat') return box(x, z, vatBox.w / 2, vatBox.d / 2, ry);
   if (suitcaseBox && id === 'promosuitcase') return box(x, z, suitcaseBox.w / 2, suitcaseBox.d / 2, ry);
+  if (AFF_BOX[id]) return box(x, z, AFF_BOX[id].w * AFF_SOLID_K / 2, AFF_BOX[id].d * AFF_SOLID_K / 2, ry);
   if (SMALL.includes(id)) return { x, z, r: 0.22 };
   if (FLAT.includes(id)) return { x, z, r: 0.35 };
   return { x, z, r: 0.5 };

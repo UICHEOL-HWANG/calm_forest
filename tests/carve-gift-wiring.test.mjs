@@ -36,7 +36,7 @@ test('new events send at most five params', () => {
 test('carved gifts flow through the shared gift map and give love by tier and wrap', () => {
   const od = read('js/spaces/outdoor-decor.js');
   assert.match(od, /const love = giftLove\(giftId, GIFTS\);/);
-  assert.match(od, /addAffinity\(id, love\)/);
+  assert.match(od, /giftAffinity\(id, love\)/);
   assert.doesNotMatch(od, /'목재';/);
 });
 

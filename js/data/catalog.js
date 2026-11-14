@@ -10,6 +10,7 @@ import { BENCH, KITCHEN, SHOP, MARKET, RANK, FARM_GATE, MINE_GATE, COOP, CAFE_GA
 import { NPCS } from './npcs.js';
 import { STATIONS } from '../craft/recipes.js';
 import { REWARD_DECOR } from './reward-decor.js';
+import { AFF_FRAMES, AFF_OUTDOOR } from './affinity-decor.js';
 import { FORAGE_SELL } from '../forage/logic.js';
 import { HOMI_TIERS } from '../forage/homi.js';
 import { iconById } from '../icons/index.js';
@@ -116,6 +117,7 @@ export const DECOR = [
   { id: 'musicstand', name: '보면대', ico: '🎼', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.48, 0.32] },
   { id: 'metronome', name: '메트로놈', ico: '⏱️', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.25, 0.22], sm: true, h: 0.4 },
   { id: 'musicbox', name: '오르골', ico: '🎹', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.36, 0.46], sm: true, h: 0.47 },
+  ...AFF_FRAMES,
 ];
 
 export const FISH_KINDS = [
@@ -270,6 +272,7 @@ export const OUTDOOR = [
   { id: 'noteflags', name: '음표 깃발 줄', ico: '🎶', cost: { coins: 9999 }, desc: '음표 모양 기둥에 깃발을 걸었어요', hidden: true, box: [2.5, 0.5], posts: [[-0.97, 0, 0.3], [0.85, 0, 0.2]] },
   { id: 'hornpost', name: '나팔 기둥', ico: '📢', cost: { coins: 9999 }, desc: '마을 소식을 알리는 나팔이에요', hidden: true, box: [1.04, 0.64], posts: [[0, 0, 0.22]] },
   { id: 'reedorgan', name: '작은 풍금', ico: '🎹', cost: { coins: 9999 }, desc: '마당에서 한 곡 쳐 보고 싶어져요', hidden: true, box: [1.1, 0.62] },
+  ...AFF_OUTDOOR,
   ...REWARD_DECOR,   // 🤝 친구 초대 보상 장식(js/data/reward-decor.js) — 원장이 보관함에 넣어 준다 · 서버 가드 대상
   { id: 'mine_cart', name: '광산 수레', ico: '🛒', cost: { coins: 9999 }, desc: '광부 아저씨가 준 수레 · 지하 20층 도달 보상', hidden: true, quest: 'delve' },
   // 🎃 할로윈 한정 코인 장식 — 직접 구매(작업대 목록, 기간 한정). hidden 과 다르다: hidden 은 영구 비판매, sale 은 기간 판매
