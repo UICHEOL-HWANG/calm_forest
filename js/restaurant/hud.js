@@ -274,8 +274,9 @@ export function mountHud(doc) {
       el.remove();
       stEls.delete(id);
     },
-    result(view, onDone) {
+    result(view, onDone, ad = null) {
       card.querySelector('.box').innerHTML = resultHtml(view);
+      if (ad) card.querySelector('.box .foot')?.before(ad);
       onClose = onDone; cardMode = 'result';
       card.classList.add('show');
     },

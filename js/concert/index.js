@@ -1,5 +1,5 @@
 import { STAGE_POS, SPOT_R, PAID_PLAYS, CONCERT_DECOR, CONCERT_DECOR_IDS } from '../data/concert.js';
-import { concertDefault, restoreConcert, settle, buyPlan, spend, addInstrument, equip, markTutorial, paidLeft } from './rules.js';
+import { concertDefault, restoreConcert, settle, buyPlan, spend, addInstrument, equip, markTutorial, paidLeft, extraPlay } from './rules.js';
 import { windowsFor, makeJudge } from './judge.js';
 import { chartOf, lengthMs, minGapMs, backingEvents, practiceChart, practiceEvents, PRACTICE_LENGTH_MS } from './songs.js';
 import { createConcertAudio } from './audio.js';
@@ -223,6 +223,7 @@ function finishShow() {
     view: resultView({ stars: r.stars, earned: r.earned, bestUp: r.bestUp, summary }),
     onAgain: () => startShow(songId),
     onLeave: () => {},
+    ad: r.left === 0 ? deps.adButton?.(() => save(extraPlay(state(), deps.today()))) || null : null,
   });
 }
 

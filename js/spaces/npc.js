@@ -8,7 +8,7 @@
 import {
   $w, IS_MOBILE, atMine, RAIN_DAY, churnTrigger, clayMat, clock, currentQuest, dateHash, dexDiscover, dist2D, farmActionFirst,
   gameState, lerpAngle, makeNameTag, mode, nearNPC, npcDialogState, npcObjs, obstacles, onPlotArea, player, plots,
-  questCtx, questEvent, refreshInventoryUI, roundRect, scene, solidCircle, spawnFloatText, spawnSparkle, syncBadges, syncUnlocks, todayStr, unlocksOn,
+  questCtx, questEvent, questRerollAd, refreshInventoryUI, roundRect, scene, solidCircle, spawnFloatText, spawnSparkle, syncBadges, syncUnlocks, todayStr, unlocksOn,
   ui,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
@@ -842,6 +842,10 @@ export function talkToNPC() {
       trackEvent('ferry_quiz_offer', { quiz_date: todayStr(), available: view.quiz.available ? 1 : 0, reason: view.quiz.available ? 'ok' : 'done' });   // [GA4] 노출
     }
     Sound.blip(); ui.openNPCModal?.(view); ui.act?.('talk'); // 튜토리얼
+    if (view.npc.daily && (view.mode === 'offer' || view.mode === 'progress')) {
+      const b = questRerollAd((ok) => { if (ok) ui.openNPCModal?.(npcDialogState()); });
+      if (b) document.getElementById('npc-actions')?.appendChild(b);
+    }
     if (view.npc.id === 'curator') ui.act?.('curator');
     dexDiscover('npc', view.npc.id);                         // 📖 도감(이웃 첫 대화)
     // [GA4] 대화 이벤트 — 주민별 대화 횟수 / mode(offer·progress·claim·done)로 대화→수락 전환 분석.

@@ -3,8 +3,8 @@ import { IS_DEV_SESSION } from '../config.js';
 import { trackEvent } from '../analytics.js';
 import { DECOR } from '../data/catalog.js';
 import { DROP_SOURCES, DECOR_SETS } from '../data/decor-sets.js';
-import { rollDrop, setProgress, daysSince, bannerDue } from './rules.js';
-import { dropToast, setCompleteToast, bannerCopy } from './copy.js';
+import { rollDrop, setProgress, daysSince, bannerDue, extraRoll, extraRollOpen } from './rules.js';
+import { dropToast, setCompleteToast, bannerCopy, extraMissToast } from './copy.js';
 import { albumView, albumHtml } from './album.js';
 
 const forceNext = () => IS_DEV_SESSION && new URLSearchParams(location.search).get('drop') === 'force';
@@ -31,7 +31,22 @@ export function onPlay(src) {
   if (!def || !gameState.house) return;
   const r = rollDrop(gameState.drops, granted(), src, Math.random(), forceNext());
   gameState.drops = r.drops;
-  if (!r.hit) return;
+  if (r.hit) land(r, def, src);
+}
+
+export const extraRollReady = (src) => !!gameState.house && extraRollOpen(gameState.drops, granted(), src);
+
+export function onExtraRoll(src) {
+  const def = DROP_SOURCES[src];
+  if (!def || !extraRollReady(src)) return;
+  const r = extraRoll(gameState.drops, granted(), src, forceNext() ? 0 : Math.random());
+  gameState.drops = r.drops;
+  if (r.hit) { land(r, def, src); return; }
+  ui.toast?.(extraMissToast(), 2600);
+  requestSave();
+}
+
+function land(r, def, src) {
   grant(r.item);
   const prog = setProgress(granted(), def.set);
   ui.toast?.(dropToast(nameOf(r.item), def.set, prog.n), 2800);

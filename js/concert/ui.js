@@ -270,7 +270,7 @@ export function showHall({ getState, env, onPlay, onEquip, onBuy, onLogin, onOpe
   return { render, close: dlg.close };
 }
 
-export function showResult({ view, onAgain, onLeave }) {
+export function showResult({ view, onAgain, onLeave, ad = null }) {
   const leave = () => { dlg.close(); onLeave?.(); };
   const dlg = makeDialog('concert-result-modal', leave);
   const c = card('cc-res', view.title);
@@ -281,6 +281,7 @@ export function showResult({ view, onAgain, onLeave }) {
   if (paid) l1.innerHTML = NOTE;
   l1.append(first);
   top.append(el('h3', null, view.title), stars(view.stars), l1, ...rest.map(l => el('p', 'cc-l2', l)));
+  if (ad) top.append(ad);
   const cnt = el('div', 'cc-cnt');
   [[view.perfect, C.judge.perfect], [view.good, C.judge.good], [view.miss, C.judge.miss]].forEach(([n, label]) => {
     const d = el('div');

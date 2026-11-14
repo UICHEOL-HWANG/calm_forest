@@ -14,7 +14,7 @@ function card(n, onPick) {
   return c;
 }
 
-function detail(n, { t, onBack, onLetter }) {
+function detail(n, { t, onBack, onLetter, ad }) {
   const d = el('div', 'nbk-detail');
   const head = el('div', 'nbk-dhead');
   const back = el('button', 'nbk-back', '‹'); back.type = 'button'; back.setAttribute('aria-label', t('뒤로'));
@@ -24,6 +24,7 @@ function detail(n, { t, onBack, onLetter }) {
   head.appendChild(who);
   d.appendChild(head);
   d.appendChild(el('p', 'nbk-gift', `${t('오늘 선물 하트')} ${n.giftToday}/${n.giftCap}`));
+  if (ad) { ad.style.margin = '0 0 10px'; d.appendChild(ad); }
   const list = el('ol', 'nbk-rows');
   n.rows.forEach((r, i) => {
     const li = el('li', i < n.idx ? 'done' : i === n.idx ? 'now' : '');
@@ -48,7 +49,11 @@ export function renderBook({ root, Input, t, focusId = null, onLetter }) {
     root.innerHTML = '';
     const book = Input.npcBook();
     const pick = id && book.find(n => n.id === id);
-    if (pick) { root.appendChild(detail(pick, { t, onBack: () => draw(null), onLetter })); return; }
+    if (pick) {
+      const ad = Input.affinityAdButton?.(id, (ok) => { if (ok) draw(id); }) || null;
+      root.appendChild(detail(pick, { t, onBack: () => draw(null), onLetter, ad }));
+      return;
+    }
     const grid = el('div', 'nbk-grid');
     book.forEach(n => grid.appendChild(card(n, draw)));
     root.appendChild(grid);

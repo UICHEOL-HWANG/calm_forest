@@ -112,6 +112,8 @@ function renderShop() {
         ui.toast(`🛍️ ${r.name} 구매!`); renderShop();
       });
       box.appendChild(el);
+      const ad = it.id === 'bait5' ? Input.baitAdButton?.((ok) => { if (ok) renderShop(); }) : null;
+      if (ad) { const row = document.createElement('div'); row.style.cssText = 'flex:0 0 100%;text-align:center'; row.appendChild(ad); box.appendChild(row); }
     });
     const next = document.createElement('div');
     next.className = 'market-hint';

@@ -78,11 +78,11 @@ import { createTossRewarded } from './ads/toss-rewarded.js';
 import { warmShaders } from './render/shader-warm.js';
 import { warmBeforeReveal } from './render/reveal-warm.js';
 import { createFarmRush } from './ads/farm-rush.js';
-import { repeatOpen, rushSlots, sellBonus, houseShort as houseShortOf, bridgeShort, farmStageShort, prepassGrant, shortAdParts, CAFE_CAPS, adQuiet } from './guide/prepass-rules.js';
+import { repeatOpen, rushSlots, sellBonus, houseShort as houseShortOf, bridgeShort, farmStageShort, prepassGrant, shortAdParts, CAFE_CAPS, adQuiet, AD_PARTS } from './guide/prepass-rules.js';
 import { sanitizeHouseGuide } from './house-guide-rules.js';
 import { initPlaza, updatePlaza, plazaSpotNow, openPlaza, plazaScatterBlocks, plazaDefault, restorePlaza, refreshPlaza, plazaDecorMesh, plazaMapVisible } from './plaza/index.js';
 import { defaultToolStars, restoreToolStars, restoreForge, forgeCancel } from './workbench/rules.js';
-import { forgeView, forgeBegin, forgeAbort, forgeFinish, settleForge } from './workbench/forge.js';
+import { forgeView, forgeBegin, forgeAbort, forgeFinish, settleForge, forgeRushReady } from './workbench/forge.js';
 import { initAuction, updateAuction, auctionMapSpot, auctionSpotNow, openAuction, auctionScatterBlocks, auctionOutdoorMesh, auctionDefault, restoreAuction, auctionGuideActive } from './auction/index.js';
 import { initWeekly, updateWeekly, weeklyNote, weeklySpotNow, openWeekly, weeklyDefault, restoreWeekly, weeklyScatterBlocks, weeklyDecorMesh, weeklyDev, weeklyGuideActive, weekIndex } from './weekly/index.js';
 import { makeWeeklyBridge } from './weekly/bridge.js';
@@ -98,12 +98,12 @@ import { featureGuidesOpen, houseGoalDue, placeGuideReady, FIRST_VISIT } from '.
 import { spaceLinkOn } from './exp-e3.js';
 import { e3Decision } from './exp-e3-boot.js';
 import { kstDate } from './kst-date.js';
-import { onPlay, decorBanner, applySetFx } from './decor-drops/index.js';
+import { onPlay, decorBanner, applySetFx, extraRollReady, onExtraRoll } from './decor-drops/index.js';
 import { updateSetFx } from './decor-drops/fx.js';
 import { normalizeDrops } from './decor-drops/rules.js';
 import { welcomeOffer, topPriceLine, fertBlockedByWatering } from './first-loop.js';   // 🪙 코인 첫 루프 규칙
 import { farmToolFor, farmActionIsNoop, FARM_AUTO_TOOLS } from './farm-auto.js';   // 🌾 농사 도구 자동 전환 규칙(밭 상태→도구)
-import { questAvailable, pickGated, repeatNPCsFor, repeatQuestFor, questIdFor, pickCurrent, activeQuestList, dailyExtendPlan, pickDailyExtra, renumberDailyLine } from './quests.js';   // 🦉 의뢰 공급 규칙(전제조건 게이트·시드 추첨·주민 반복 의뢰)
+import { questAvailable, pickGated, repeatNPCsFor, repeatQuestFor, questIdFor, pickCurrent, activeQuestList, dailyExtendPlan, pickDailyExtra, renumberDailyLine, rerollPick } from './quests.js';   // 🦉 의뢰 공급 규칙(전제조건 게이트·시드 추첨·주민 반복 의뢰)
 import { buildAnimalHead, plushMat } from './animal-faces.js';   // 🎭 플러시 스타일 머리(sims/face-style-sim.html 검수값)
 import { PLOT_CAP, popScale, poppingPlots } from './farm-render.js';   // 🌾 밭 인스턴싱 규칙
 import { CELL, CELL_SEG, SPRIG_PER_PLOT, mottleAt, reliefAt, mottleMix, nextSunk, seamAt, soilSignature, soilSink, sprigOffsets, vertsPerCell, indicesPerCell } from './farm-soil.js';   // 🌾 A안 이어진 얼룩 흙 + 포기
@@ -116,7 +116,7 @@ import { buyBlocked, catalogVisible, SALE_ENDED_MSG, saleTagOf } from './shop/sa
 import { isNicknameBlocked } from './nickname-filter.js';   // 🛡️ 닉네임 금칙어(이웃 마을이 남에게 보여 준다 — UGC 자율 관리)
 import { checkNickname, NICK_FAIL_MSG } from './nickname-filter.js';
 import { makeChickenState, stepChickens } from './coop-chickens.js';   // 🐔 닭 배회·오두막 출입(벽 통과 금지)
-import { ORCHARD_AUTO_TOOLS, orchardToolFor, FRUITS, TREE_SLOTS, YIELD_PER_DAY, ORCHARD_STREAM_LOCAL, ORCHARD_SLOTS_LOCAL, fruitOf, fruitKeyOf, sapKeyOf, nearStream, harvestable, settleTrees, chopHit, freeSlots, daysBetween } from './orchard.js';   // 🍎 과수원 규칙(과일 표·물·수확·베기·빈 자리·정산)
+import { ORCHARD_AUTO_TOOLS, orchardToolFor, FRUITS, TREE_SLOTS, YIELD_PER_DAY, ORCHARD_STREAM_LOCAL, ORCHARD_SLOTS_LOCAL, fruitOf, fruitKeyOf, sapKeyOf, nearStream, harvestable, settleTrees, chopHit, freeSlots, daysBetween, growOneTree } from './orchard.js';   // 🍎 과수원 규칙(과일 표·물·수확·베기·빈 자리·정산)
 import { restoreStage } from './orchard-onboard.js';
 import { defaultDelve, sanitizeDelve } from './delve/rules.js';
 import { defaultPort, sanitizePort } from './port/rules.js';
@@ -285,7 +285,7 @@ import {
 } from './spaces/outdoor-decor.js';   // 📦 🪵 야외 장식·창고·선물 (구역 머리말 — 분리 2단계)
 import {
   affinityChip, affinityIntroFor, affinityLetters, affinityTracker, affinityVisible, claimLetter, introNpcForStart, markIntroSeen, npcBook, onLettersChanged, owlDailyAffinity, readLetter,
-  syncAffinityLetters, trackBookOpen, unreadLetterCount,
+  syncAffinityLetters, trackBookOpen, unreadLetterCount, heartAdReady, heartAd,
 } from './affinity/index.js';
 import { affinityGuideActive, affinityGuidePending, startAffinityGuide, updateAffinityGuide } from './affinity/guide.js';
 import {
@@ -1039,6 +1039,31 @@ function dailyEntry(q, i) {
   };
 }
 
+function dailyRerollTarget() {
+  const def = NPCS.find(n => n.daily);
+  const st = def && npcState(def.id);
+  const q = Array.isArray(st?.quests) && st.date === todayStr() ? st.quests[st.idx] : null;
+  return q && (st.progress || 0) < q.target ? { def, st } : null;
+}
+
+function rerollDailyQuest() {
+  const cur = dailyRerollTarget();
+  const pick = cur && rerollPick(DAILY_POOL, cur.st.quests, dateHash('daily-reroll'), questCtx());
+  if (!pick) return null;
+  const { def, st } = cur;
+  st.quests = st.quests.map((q, i) => (i === st.idx ? dailyEntry(pick, st.idx) : q));
+  st.progress = 0; st.readyToasted = false;
+  def.quests = st.special ? [...st.quests, st.special] : st.quests;
+  refreshQuestPanel(); requestSave();
+  return pick;
+}
+
+export function questRerollAd(done) {
+  const cur = dailyRerollTarget();
+  if (!cur || !rerollPick(DAILY_POOL, cur.st.quests, dateHash('daily-reroll'), questCtx())) return null;
+  return adPill('quest_reroll', () => { const q = rerollDailyQuest(); if (q) ui.toast?.(`🦉 ${t('새 의뢰')} · ${t(q.title)}`, 2400); }, done);
+}
+
 // ── 🦉 AI 의뢰 — 서버(/api/daily-quests)가 만든 오늘의 의뢰로 조용히 갈아끼운다 ──
 //   8~10초(2026-09-14: fog 8.63s · rain 10.10s)라 6초로는 그날 첫 접속이 거의 다 놓쳤다.
 //   upgradeDailyQuestsAI() 는 로컬 의뢰를 채운 뒤 백그라운드로 도는 데다, 진행이 시작됐으면
@@ -1669,6 +1694,7 @@ function tickPlaceGuides(dt) {
 }
 let rewarded = null;
 let farmRush = null;
+let placePills = [];
 const PREPASS_DEV = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) && new URLSearchParams(location.search).get('prepass') === '1';
 let prepassProvider = PREPASS_DEV
   ? { available: () => true, show: async () => ({ result: 'complete', valueMicros: 0 }) }
@@ -2079,6 +2105,21 @@ export function pondFeedAdButton(onDone) {
   return rewarded.button('pond_feed_more', ['광고 보고', ' ', POND_COPY.adMore], () => feedPond('ad'), (ok, btn) => onDone?.(ok, btn));
 }
 
+function orchardGrowGrant() {
+  const st = gameState.orchard;
+  const out = st && growOneTree(st.trees || [], orchardStreamWorld());
+  if (!out) return;
+  st.trees = out.trees;
+  for (const m of out.matured) trackEvent('tree_mature', m);
+  rebuildOrchard(); requestSave();
+  ui.toast?.(`🌳 ${t('나무가 하루 자랐어요')}`, 2200);
+}
+
+export function adPill(slot, grant, done) {
+  if (!repeatOpen(gameState.houseStage)) return null;
+  return rewarded?.pill(slot, AD_PARTS[slot], grant, done) ?? null;
+}
+
 function farmRushGrant(list) {
   const live = list.filter(p => plots.includes(p) && p.state === 'growing');
   for (const p of live) {
@@ -2236,6 +2277,7 @@ export const Input = {
   forgeBegin(tool) { return forgeBegin(tool); },
   forgeAbort() { return forgeAbort(); },
   forgeFinish(score) { return forgeFinish(score); },
+  forgeAdButton(done) { return forgeRushReady() ? adPill('forge_rush', () => settleForge(true), done) : null; },
   getOutdoor() { return OUTDOOR.filter(o => catalogVisible(o, { stored: gameState.outdoorStored?.[o.id] || 0 })).map(o => ({ ...o, tag: saleTagOf(o) })); },   // 야외 장식 목록(+🏗️ 밭 시설 farm:true) · 🎃 기간 밖 한정품 숨김
   isAtFarm() { return atFarm; },
   selectOutdoor(id) { if (pickedOutdoor) stopOutdoorPlacing(true); placingOutdoor = id; outdoorTarget.pinned = false; buildDecorGhost(id, true); },   // 야외 장식 선택(설치 대기 — 발밑에 🫥미리보기). 들고 있던 장식은 제자리로(안 그러면 새 장식이 "옮김"으로 공짜 설치됨)
@@ -2270,6 +2312,7 @@ export const Input = {
   getShopBuy() { return SHOP_BUY; },                    // 구매 목록
   sellAdButton(k, gain, onDone) { return sellAdButton(k, gain, onDone); },
   craftAdButton(station, onDone) { return craftAdButton(station, onDone); },
+  baitAdButton(done) { return adPill('bait_box', () => { giveReward({ bait: 2 }, 'bait_box'); requestSave(); }, done); },
   sellItem(k, req) { return sellItem(k, req); },        // 자원 판매
   getMarket() { return marketData(); },
   buyShop(id) { return buyShop(id); },                  // 아이템 구매
@@ -2287,6 +2330,7 @@ export const Input = {
   markIntroSeen(npcId, from) { markIntroSeen(npcId, from); },
   startAffinityGuide(npcId) { return startAffinityGuide(npcId); },
   npcBook() { return npcBook(); },
+  affinityAdButton(id, done) { return heartAdReady(id) ? adPill('affinity_heart', () => heartAd(id), done) : null; },
   affinityLetters() { return affinityLetters(); },
   readLetter(key) { readLetter(key); },
   claimLetter(key) { return claimLetter(key); },
@@ -2998,7 +3042,7 @@ export async function enterGame() {
     quiet: () => {
       const b = document.body.classList;
       return adQuiet({
-        tutorial: !gameState.tutorialSeen || !b.contains('playing'),
+        tutorial: !gameState.tutorialSeen || !b.contains('playing') || ![undefined, null, 'done'].includes(gameState.hintsSeen?.tutStep),
         coaching: b.contains('coaching') || !!document.querySelector('.show > .tut-card'),
         spotlight: b.contains('spot-on'),
         e1: e1Pending() || b.contains('e1-pending'),
@@ -3023,13 +3067,20 @@ export async function enterGame() {
     topInset: () => { const c = document.getElementById('coach'); const r = c?.classList.contains('show') ? c.getBoundingClientRect() : null; return r && r.height ? Math.round(r.bottom + 30) : 0; },
     refreshInventory: () => refreshInventoryUI(), toast: (m) => ui.toast?.(m, 2400),
   }) : null;
-  farmRush = createFarmRush({
-    rewarded, state: () => gameState, plots: () => plots, atFarm: () => atFarm, grant: farmRushGrant,
+  const rushBase = {
+    rewarded, state: () => gameState,
     modalOpen: () => !!ui.anyModalOpen?.() || document.body.classList.contains('spot-on'),
     bottomInset: () => { const r = document.getElementById('tool-btn')?.getBoundingClientRect(); return r && r.height ? Math.round(innerHeight - r.top + 16) : 0; },
-    unit: () => (LANG === 'en' ? '' : '칸'),
-  });
-  if (PREPASS_DEV) { window.__houseShort = houseShort; window.__farmRush = farmRush; window.__liveState = () => gameState; window.__dailyAd = () => dailyAdButton(30, 1); window.__craftData = (st) => craftPanelData(st); window.__plots = () => plots; }
+  };
+  const rollPill = (src, at) => createFarmRush({ ...rushBase, slot: `drop_reroll_${src}`, id: `${src}-roll`, atFarm: at, targets: () => (extraRollReady(src) ? [src] : []), parts: () => AD_PARTS[`drop_reroll_${src}`], grant: () => onExtraRoll(src) });
+  farmRush = createFarmRush({ ...rushBase, plots: () => plots, atFarm: () => atFarm, grant: farmRushGrant, unit: () => (LANG === 'en' ? '' : '칸') });
+  placePills = [
+    farmRush,
+    createFarmRush({ ...rushBase, slot: 'orchard_grow', id: 'orchard-rush', atFarm: () => atOrchard, targets: () => (gameState.orchard?.trees || []).filter(tr => tr.stage === 'sapling' || tr.stage === 'growing'), parts: () => AD_PARTS.orchard_grow, grant: orchardGrowGrant }),
+    rollPill('mine', () => atMine && !delveFloorNow()),
+    rollPill('firefly', () => inVillage2() && dist2D(player.position, GLADE) < GLADE_R + 2),
+  ];
+  if (PREPASS_DEV) { window.__houseShort = houseShort; window.__farmRush = farmRush; window.__placePills = placePills; window.__liveState = () => gameState; window.__dailyAd = () => dailyAdButton(30, 1); window.__craftData = (st) => craftPanelData(st); window.__plots = () => plots; }
   goalGuide = guideRevamp ? createGoalGuide({
     state: () => gameState, player, camera, scene,
     adButton: (slot, list) => shortAdButton(slot, list, null, CAFE_CAPS),
@@ -3677,8 +3728,8 @@ function buildWorld() {
   initAuction();
   const GE = { THREE, scene, lake: { x: LAKE.x, z: LAKE.z, r: LAKE_R }, get camera() { return camera; }, get player() { return player; }, get ui() { return ui; }, t, colliders, isOpen, cameraFree, project: projectToScreen, inVillage: inVillage2, otherGuide: (name) => !guideMay(name), featureOpen: () => featureGuidesOpen(gameState), track: trackEvent };
   { const wb = makeWeeklyBridge({ gameState: () => gameState, patch: (p) => Object.assign(gameState, p), questAvailable, questCtx, isOpen, guide: GE });
-    { const cb = makeConcertBridge({ getPlayer: () => player, THREE, getPlayerRig: () => ({ anchor: playerAnchor, arms: playerArms, def: curAnimal }), setCameraRig, hideTool: (h) => { if (heldGroup) heldGroup.visible = !h; }, hideLabels: setNpcGlyphsShowHidden, isBgmOn: isBGMOn, startBgm: startBGM, stopBgm: stopBGM }); initConcert({ getState: () => gameState.concert, setState: (s) => { gameState.concert = s; }, requestSave, isGuest: () => authState.isGuest !== false, login: () => ui.loginNudge?.('shop'), ownsDecor: wb.owns, grantDecorItem: wb.grant, today: todayStr, stopMove: () => Input.setAnalog(0, 0), roll: () => rollDifficulty('concert'), settle: (o) => settleDifficulty('concert', o), diffParams, abandon: (r, stage, extra) => trackDiffAbandon('concert', r, stage, extra), audio: audioBus, stage: cb.stage, bgm: cb.bgm, night: () => nightLevel, scene, solidCircle, THREE, guideEnv: wb.guideEnv }); }
-    initWeekly({ getState: () => gameState.weekly, setState: (s) => { gameState.weekly = s; }, canDo: wb.canDo, isGuest: () => authState.isGuest !== false, ownsDecor: wb.owns, grantDecorItem: wb.grant, now: () => DEV_NOW || Date.now(), night: () => nightLevel, stopMove: () => Input.setAnalog(0, 0), login: () => ui.loginNudge?.('shop'), requestSave, scene, solidCircle, THREE, guideEnv: wb.guideEnv }); }
+    { const cb = makeConcertBridge({ getPlayer: () => player, THREE, getPlayerRig: () => ({ anchor: playerAnchor, arms: playerArms, def: curAnimal }), setCameraRig, hideTool: (h) => { if (heldGroup) heldGroup.visible = !h; }, hideLabels: setNpcGlyphsShowHidden, isBgmOn: isBGMOn, startBgm: startBGM, stopBgm: stopBGM }); initConcert({ getState: () => gameState.concert, setState: (s) => { gameState.concert = s; }, requestSave, isGuest: () => authState.isGuest !== false, login: () => ui.loginNudge?.('shop'), ownsDecor: wb.owns, grantDecorItem: wb.grant, today: todayStr, stopMove: () => Input.setAnalog(0, 0), roll: () => rollDifficulty('concert'), settle: (o) => settleDifficulty('concert', o), diffParams, abandon: (r, stage, extra) => trackDiffAbandon('concert', r, stage, extra), audio: audioBus, stage: cb.stage, bgm: cb.bgm, night: () => nightLevel, scene, solidCircle, THREE, guideEnv: wb.guideEnv, adButton: (grant) => adPill('concert_play', grant) }); }
+    initWeekly({ getState: () => gameState.weekly, setState: (s) => { gameState.weekly = s; }, canDo: wb.canDo, isGuest: () => authState.isGuest !== false, ownsDecor: wb.owns, grantDecorItem: wb.grant, now: () => DEV_NOW || Date.now(), night: () => nightLevel, stopMove: () => Input.setAnalog(0, 0), login: () => ui.loginNudge?.('shop'), requestSave, scene, solidCircle, THREE, guideEnv: wb.guideEnv, adButton: (grant, done) => adPill('weekly_ticket', grant, done) }); }
   lockFrom('market'); spawnMarketBoard(); lockTo(); // 📊 시세 전광판(상점 옆)
   spawnFarmGate();    // 텃밭 입구 게이트
   rebuildFarm(true);  // 개인 텃밭 필드(1단계) — 세이브에 단계가 있으면 applySave 가 다시 짓는다
@@ -6695,7 +6746,7 @@ function animate() {
   updateShopCue(t);          // 🛒 좌판 안내 스프라이트
   if (mode === 'play') goalGuide?.update(dt);
   if (mode === 'play') yardGuide?.update(dt); else yardGuide?.suspend();
-  if (mode === 'play') { houseShort?.update(dt); farmRush?.update(dt); }
+  if (mode === 'play') { houseShort?.update(dt); for (const p of placePills) p.update(dt); }
   houseGuidance?.update();   // 🏠 조망샷은 다른 카메라 연출·모달이 비었을 때만 시작
   // 집 터 안내판/마커: 플레이 중 + 미완성일 때만 (로그인 화면에선 숨김)
   const showHouseCue = (mode === 'play' && gameState.houseStage < 3 && !document.body.classList.contains('concert-open'));

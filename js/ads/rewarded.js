@@ -1,7 +1,7 @@
 import { prepassArm, PREPASS_DAILY_CAP, dayCount, bumpDay, slotLeft } from '../guide/prepass-rules.js';
 
 const CSS = `
-.rw-ad{pointer-events:auto;position:relative;isolation:isolate;overflow:hidden;display:inline-block;text-align:center;border:0;border-radius:14px;padding:8px 14px 8px 8px;font:inherit;font-weight:700;font-size:13px;line-height:1.2;color:#fbf6e6;cursor:pointer;background:linear-gradient(180deg,#3d6b4a,#2f5a3a);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 6px 14px -6px rgba(31,74,44,.6);transition:transform .2s cubic-bezier(.16,1,.3,1)}
+.rw-ad,.tk-acts .rw-ad{pointer-events:auto;position:relative;isolation:isolate;overflow:hidden;display:inline-block;text-align:center;border:0;border-radius:14px;padding:8px 14px 8px 8px;font:inherit;font-weight:700;font-size:13px;line-height:1.2;color:#fbf6e6;cursor:pointer;background:linear-gradient(180deg,#3d6b4a,#2f5a3a);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 6px 14px -6px rgba(31,74,44,.6);transition:transform .2s cubic-bezier(.16,1,.3,1)}
 .rw-ad::after{content:'';position:absolute;top:0;bottom:0;width:36%;left:-60%;background:linear-gradient(100deg,transparent,rgba(255,226,140,.5),transparent);transform:skewX(-18deg);animation:rw-sweep 3.8s cubic-bezier(.45,0,.2,1) infinite;pointer-events:none}
 .rw-ad:active{transform:translateY(1px) scale(.98)}
 .rw-ad:disabled{opacity:.6;cursor:default}
@@ -82,5 +82,10 @@ export function createRewarded(deps) {
     return btn;
   }
 
-  return { offer, open, watch, button, label, arm };
+  function pill(slot, parts, grant, done) {
+    if (!offer(slot)) return null;
+    return button(slot, parts, grant, (ok, btn) => { if (ok) btn.remove(); done?.(ok, btn); });
+  }
+
+  return { offer, open, watch, button, label, arm, pill };
 }

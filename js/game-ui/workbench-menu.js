@@ -26,6 +26,7 @@ function forgeGameOf() {
     onAbort: () => Input.forgeAbort(),
     onFinish: (score) => Input.forgeFinish(score),
     onHit: (pts) => (pts ? Sound.chop() : Sound.blip()),
+    adButton: () => Input.forgeAdButton?.(),
     onClose: (tool) => { wbSel.tool = tool || wbSel.tool; ui.openCook('tool'); },
   });
   return forgeGame;

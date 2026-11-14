@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {
-  $w, camera, cameraFree, colliders, gameState, makeSignpost, obstacles, player, projectToScreen, refreshInventoryUI, requestSave, scene,
+  $w, adPill, camera, cameraFree, colliders, gameState, giveReward, makeSignpost, obstacles, player, projectToScreen, refreshInventoryUI, requestSave, scene,
   setFogExempt, setSpaceVisible, snapCamera, solidBox, solidCircle, spawnFloatText, ui,
 } from '../game.js';
 import { createAuctionGuide } from '../auction/guide.js';
@@ -144,6 +144,7 @@ export function buildRestaurantHall() {
     sessionOpts: () => (restaurantGuideActive() ? { first: true } : {}),
     onChopStart: () => { if (chopHinted) return; chopHinted = true; ui.toast?.(RESTAURANT_COPY.chop); },
     onFinish: () => syncSolids(),
+    adButton: (coins) => (coins > 0 ? adPill('restaurant_double', () => { giveReward({ coins }, 'restaurant_double', 'restaurant'); requestSave(); }) : null),
     onStockGuide: () => { exitRestaurant(); ensureStockGuide().start(); },
   });
   runtime.refresh();

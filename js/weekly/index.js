@@ -1,4 +1,4 @@
-import { weekIndex, marketOpen, themeFor, weeklyDefault, restoreWeekly, rollover, note, claim, buyPlan, spend, progressOf, questById } from './rules.js';
+import { weekIndex, marketOpen, themeFor, weeklyDefault, restoreWeekly, rollover, note, claim, buyPlan, spend, progressOf, questById, adTicketOpen, adTicket } from './rules.js';
 import { MARKET_POS, BOARD_POS, MARKET_THEMES, MARKET_ITEM_IDS, TICKET_CAP } from '../data/weekly.js';
 import { trackBoardOpen, trackQuestClaim, trackMarketOpen, trackMarketBuy, trackLoginPrompt } from './track.js';
 import { showBoard, showMarket } from './ui.js';
@@ -238,5 +238,6 @@ export function openWeekly() {
   }
   trackBoardOpen(s.week, s.quests.filter(id => progressOf(s, id).done).length);
   if (s.seenBoard !== s.week) saveCommit({ ...s, seenBoard: s.week });
-  return showBoard({ state, onClaim, onOpen: deps.stopMove });
+  const adFor = (redraw) => (adTicketOpen(state()) ? deps.adButton?.(() => saveCommit(adTicket(state())), (ok) => { if (ok) redraw(); }) || null : null);
+  return showBoard({ state, onClaim, onOpen: deps.stopMove, adFor });
 }
