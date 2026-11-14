@@ -5835,6 +5835,7 @@ function outdoorMesh(id) {
   { const m = souvenirOutdoorMesh(THREE, id); if (m) return m; }
   { const m = auctionOutdoorMesh(id); if (m) return m; }
   { const m = weeklyDecorMesh(THREE, id); if (m) { houseWindows.push(...m.userData.lamps); return m; } }
+  { const m = concertDecorMesh(THREE, id); if (m) { houseWindows.push(...m.userData.lamps); return m; } }
   const g = new THREE.Group();
   if (isFarmBuilding(id)) {   // 🏗️ 밭 시설 7종 — 배치·고스트 둘 다 이 함수를 쓴다(여기 없으면 투명하게 놓인다)
     farmBuildingMesh(id, g);

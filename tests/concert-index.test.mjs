@@ -179,7 +179,7 @@ test('decor without art is not sold', () => {
   const w = world();
   w.state = { ...w.state, notes: 99 };
   openAt(w);
-  assert.equal(w.hall.onBuy({ id: 'musicstand', cost: 10, kind: 'indoor', type: 'decor' }).reason, 'soon');
+  assert.equal(w.hall.onBuy({ id: 'nope', cost: 10, kind: 'indoor', type: 'decor' }).reason, 'soon');
   assert.equal(w.state.notes, 99);
 });
 

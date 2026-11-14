@@ -62,6 +62,10 @@ export const EN = {
   '음표 {0}개를 받았어요': 'You got {0} notes',
   '오늘 음표는 이미 다 받았어요. 연습으로 끝났어요': 'You already have all of today\'s notes. This one counts as practice',
   '최고 기록이에요': 'New best',
+  '보면대': 'Music stand', '메트로놈': 'Metronome', '오르골': 'Music box',
+  '음표 깃발 줄': 'Note bunting', '음표 모양 기둥에 깃발을 걸었어요': 'Flags hang between two note-shaped posts',
+  '나팔 기둥': 'Horn post', '마을 소식을 알리는 나팔이에요': 'A horn that announces village news',
+  '작은 풍금': 'Little reed organ', '마당에서 한 곡 쳐 보고 싶어져요': 'Makes you want to play a tune in the yard',
   // ── ⛏️ 동굴 파기(js/spaces/delve.js · js/data/delve.js · js/delve/miner-card.js) ─────────────
   '조각 도둑': 'Bit thieves',
   '가방은 안전해요. 조각만 노려요': 'Only dropped bits get taken. Your bag is safe',

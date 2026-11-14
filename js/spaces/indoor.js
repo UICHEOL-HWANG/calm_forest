@@ -39,6 +39,7 @@ import { IDS as KITCHEN_SET_IDS, build as buildKitchenSet } from '../decor-drops
 import { IDS as NIGHT_SET_IDS, build as buildNightSet } from '../decor-drops/art-night.js';
 import { SOUVENIR_INDOOR_IDS, buildSouvenir } from '../mountain/souvenir-art.js';
 import { hasItemArt, weeklyDecorMesh } from '../weekly/items.js';
+import { hasConcertArt, concertDecorMesh } from '../concert/items.js';
 import { MIRROR_DECOR_IDS, buildMirrorDecor } from '../mirror/decor-art.js';
 import { CANDY_DECOR_IDS, buildCandyDecor } from '../halloween/decor-art.js';   // 🪞 거울 장식 4종
 import { T as MirrorT } from '../mirror/track.js';
@@ -457,6 +458,8 @@ export function decorMesh(id) {
     g.add(buildSouvenir(THREE, id));
   } else if (hasItemArt(id)) {
     g.add(weeklyDecorMesh(THREE, id));
+  } else if (hasConcertArt(id)) {
+    g.add(concertDecorMesh(THREE, id));
   } else if (HALLOWEEN_INDOOR_IDS.includes(id)) {   // 🎃 할로윈 코인 장식 3종 — 조형은 halloween-art.js (시안 HTML 과 같은 코드)
     g.add(buildHalloween(THREE, id, HALLOWEEN_STYLE[id], makeCtx(THREE)));
   } else if (id === 'nightstand') {

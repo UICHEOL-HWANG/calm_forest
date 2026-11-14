@@ -1,4 +1,4 @@
-import { STAGE_POS, SPOT_R, PAID_PLAYS } from '../data/concert.js';
+import { STAGE_POS, SPOT_R, PAID_PLAYS, CONCERT_DECOR, CONCERT_DECOR_IDS } from '../data/concert.js';
 import { concertDefault, restoreConcert, settle, buyPlan, spend, addInstrument, equip, markTutorial, paidLeft } from './rules.js';
 import { windowsFor, makeJudge } from './judge.js';
 import { chartOf, lengthMs, minGapMs, backingEvents, practiceChart, practiceEvents, PRACTICE_LENGTH_MS } from './songs.js';
@@ -11,6 +11,7 @@ import { trackOpen, trackStart, trackEnd, trackExchange, trackLoginPrompt } from
 import { buildConcertStage, STAGE_SOLIDS, stageCheer, stageSway } from '../spaces/concert-stage-art.js';
 import { hasConcertArt, concertDecorMesh } from './items.js';
 import { guideNeed, guideTarget } from './guide.js';
+import { makeThumbs } from '../weekly/thumbs.js';
 
 export { concertDefault, restoreConcert, concertDecorMesh };
 
@@ -31,9 +32,15 @@ let solidsAdded = false;
 let onHidden = null;
 let guide = null;
 let guideOff = false;
+let thumbFn = null;
 
 const state = () => deps.getState();
 const save = (next) => { deps.setState(next); deps.requestSave(); };
+const thumbsNow = () => {
+  if (!deps.THREE) return {};
+  thumbFn ??= makeThumbs(deps.THREE, concertDecorMesh);
+  return thumbFn(CONCERT_DECOR_IDS.filter(hasConcertArt));
+};
 
 const inView = (x, z, pad = 0) => Math.abs(x - STAGE_POS.x) < VIEW.half + pad
   && z > STAGE_POS.z + VIEW.near - pad && z < STAGE_POS.z + VIEW.far + pad;
@@ -54,6 +61,7 @@ const showView = (hidden) => hidden.forEach(o => { o.visible = true; });
 export function initConcert(d) {
   if (show) closeShow();
   deps = d;
+  thumbFn = null;
   spot = false;
   guide = null;
   guideOff = false;
@@ -231,7 +239,7 @@ export function openConcert() {
   trackOpen(s.notes, deps.isGuest());
   return (deps.showHall || showHall)({
     getState: state,
-    env: () => ({ today: deps.today(), isGuest: deps.isGuest(), ownsDecor: deps.ownsDecor, hasArt: hasConcertArt, thumbs: {} }),
+    env: () => ({ today: deps.today(), isGuest: deps.isGuest(), ownsDecor: deps.ownsDecor, hasArt: hasConcertArt, thumbs: thumbsNow() }),
     onPlay: (songId) => startShow(songId),
     onEquip,
     onBuy,
@@ -248,6 +256,10 @@ export function concertDev() {
     own: (id) => { deps.setState(addInstrument(state(), id)); return state().owned; },
     use: (id) => { deps.setState(equip(state(), id)); return state().equipped; },
     play: (songId) => startShow(songId, false),
+    grant: (id) => {
+      const item = CONCERT_DECOR.find(d => d.id === id);
+      return !!item && !!deps.grantDecorItem(item);
+    },
     quit: quitShow,
   };
 }
