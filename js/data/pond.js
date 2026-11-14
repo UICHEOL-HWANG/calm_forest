@@ -7,3 +7,4 @@ export const POND_SPOTS = Object.freeze([
 ]);
 export const POND_VIEW_R = 5;
 export const POND_VIEW_SEC = 3;
+export const POND_ACT_R = 3.4;

@@ -3,10 +3,11 @@ import { emojiSprite } from '../spaces/kitchen-stage.js';
 import { trackEvent } from '../analytics.js';
 import { FISH_KINDS } from '../data/catalog.js';
 import { SEA_SPECIES, HOUSE_POS } from '../data/places.js';
-import { POND_R, POND_SPOTS, POND_VIEW_R, POND_VIEW_SEC } from '../data/pond.js';
+import { POND_R, POND_SPOTS, POND_VIEW_R, POND_VIEW_SEC, POND_ACT_R } from '../data/pond.js';
 import { pondView, pondChanges, pickPondSpot, pondBlocks, pondToastDue, shouldTrackCreated } from './rules.js';
 import { buildPond } from './build.js';
 import { POND_COPY } from './copy.js';
+import { kstDate } from '../kst-date.js';
 import { e3Decision } from '../exp-e3-boot.js';
 import { spaceLinkOn } from '../exp-e3.js';
 
@@ -45,6 +46,7 @@ export function refreshPond(trigger) {
         trackEvent('pond_created', { trigger: trigger === 'load' ? 'existing' : trigger, species: c.species });
       }
       if (!gameState.hintsSeen.pond) { toastPending = true; toastWait = 0; }
+      if (trigger !== 'load' && !gameState.hintsSeen.pondDay) { gameState.hintsSeen.pondDay = kstDate(); requestSave(); }
     } else {
       trackEvent('pond_fish_added', { species: c.species, kind: c.type === 'sea' ? 'sea' : 'river', count: view.fish.length + (view.sea ? 1 : 0) });
       if (trigger !== 'load') pond.pop(c.type === 'sea' ? '🌊' : '🐟');
@@ -78,4 +80,24 @@ export function updatePond(dt, inVillage) {
 
 export function pondScatterBlocks(x, z, pad = 0) {
   return pondBlocks(POND_SPOTS, HOUSE_POS, x, z, POND_R, pad);
+}
+
+export function pondExists() {
+  return !!pond && !!last?.has;
+}
+
+export function pondPos() {
+  return pondExists() ? { x: pond.group.position.x, z: pond.group.position.z } : null;
+}
+
+export function pondNear() {
+  return pondExists() && pond.group.visible && dist2D(player.position, pond.group.position) < POND_ACT_R;
+}
+
+export function pondCount() {
+  return (last?.fish.length ?? 0) + (last?.sea ? 1 : 0);
+}
+
+export function pondGather() {
+  pond?.gather(2);
 }

@@ -73,8 +73,25 @@ test('messageFor — 확정 문구·장치 이름·영어', () => {
   assert.equal(messageFor({ kind: 'craft', stations: ['kiln', 'vat'] }, 'ko').title, '🔥🫙 화덕·발효통에 넣어 둔 게 다 됐어요');
   assert.deepEqual(messageFor({ kind: 'return' }, 'ko'), { title: '🍓 수확할 게 생겼을지도 몰라요', body: '숲이 조용히 기다리고 있어요.' });
   assert.deepEqual(messageFor({ kind: 'return', bare: true }, 'ko'), { title: '🌿 숲이 조용히 기다리고 있어요', body: '오늘의 출석 선물이 준비돼 있어요.' });
-  for (const k of [{ kind: 'night' }, { kind: 'craft', stations: ['vat'] }, { kind: 'return' }, { kind: 'return', bare: true }]) {
+  for (const k of [{ kind: 'night' }, { kind: 'craft', stations: ['vat'] }, { kind: 'pond' }, { kind: 'return' }, { kind: 'return', bare: true }]) {
     const m = messageFor(k, 'en');
     assert.ok(m.title && m.body && !/[가-힣]/.test(m.title + m.body), `영어판에 한국어 혼입: ${k.kind}`);
   }
+});
+
+test('🐟 연못 — 어제 연못을 만들고 오늘 아직 안 들어온 사람', () => {
+  const away = { updated_at: '2026-10-12T05:00:00Z', plots: [], pond_day: '2026-10-12' };
+  assert.deepEqual(pickPush(row(away), D, null), { kind: 'pond' });
+  assert.equal(pickPush(row({ ...away, pond_day: '2026-10-11' }), D, null), null, '그저께 만든 연못은 안 보낸다');
+  assert.equal(pickPush(row({ ...away, pond_day: null }), D, null), null);
+  assert.equal(pickPush(row({ pond_day: '2026-10-12', plots: [] }), D, null), null, '오늘 이미 들어왔다');
+});
+
+test('🐟 연못 — 밤손님이 먼저', () => {
+  assert.deepEqual(pickPush(row({ updated_at: '2026-10-12T05:00:00Z', pond_day: '2026-10-12' }), D, { visited: true }), { kind: 'night' });
+});
+
+test('🐟 연못 문구', () => {
+  assert.deepEqual(messageFor({ kind: 'pond' }, 'ko'), { title: '🐟 연못 물고기들이 기다려요', body: '오늘 먹이를 주러 와 주세요 🌿' });
+  assert.deepEqual(messageFor({ kind: 'pond' }, 'en'), { title: '🐟 Your pond fish are waiting', body: 'Come feed them today 🌿' });
 });

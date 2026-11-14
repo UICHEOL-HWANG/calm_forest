@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pond Grow Stages</title>
+<style>
+  :root { --bg: #f4efe6; --ink: #2b2118; --muted: #6b5b4a; --card: #fffaf2; --line: #e2d6c4; --btn: #4e7f9a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Pretendard", "Apple SD Gothic Neo", sans-serif; }
+  header { padding: 16px 20px 4px; max-width: 1400px; }
+  h1 { margin: 0 0 4px; font-size: 20px; }
+  header p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; padding: 14px 20px 8px; max-width: 1400px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
+  .card h2 { margin: 0; padding: 10px 12px 2px; font-size: 16px; }
+  .card .how { margin: 0; padding: 0 12px 8px; color: var(--muted); font-size: 12px; line-height: 1.5; min-height: 5.2em; }
+  .view { position: relative; border-top: 2px solid var(--line); }
+  .view canvas { display: block; width: 100%; }
+  .tag { position: absolute; left: 8px; top: 8px; background: rgba(43,33,24,.72); color: #fff; font-size: 11px; padding: 3px 7px; border-radius: 6px; }
+  .gets { padding: 10px 12px; font-size: 12px; border-top: 2px solid var(--line); }
+  .gets b { display: block; margin-bottom: 4px; font-size: 12px; }
+  .gets ul { margin: 0; padding-left: 16px; line-height: 1.6; }
+  .cost { padding: 10px 12px 12px; font-size: 12px; background: #f3ead8; margin-top: auto; }
+  .cost b { display: block; margin-bottom: 6px; }
+  .req { display: flex; gap: 6px; flex-wrap: wrap; }
+  .req span { background: #fffaf2; border-radius: 8px; padding: 3px 8px; border: 1px solid var(--line); }
+  .req span.ok { border-color: #8fbf7a; background: #eef6e8; }
+  .req span.no { border-color: #e0a58a; background: #fbeee6; }
+  .panelwrap { padding: 4px 20px 24px; max-width: 1400px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .mock { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+  .mock h3 { margin: 0 0 8px; font-size: 15px; }
+  .ui { background: rgba(255,250,242,.98); border: 2px solid #c9d6dc; border-radius: 14px; padding: 12px; font-size: 12px; max-width: 420px; box-shadow: 0 6px 18px rgba(43,33,24,.15); }
+  .ui .top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .ui .top b { font-size: 14px; }
+  .ui .top small { color: var(--muted); }
+  .ui .line { display: flex; justify-content: space-between; padding: 6px 8px; border-radius: 8px; background: #e6eff2; margin-bottom: 5px; }
+  .ui .line.no { background: #fbeee6; }
+  .ui .foot { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; color: var(--muted); }
+  .btn { background: var(--btn); color: #fff; border-radius: 9px; padding: 6px 12px; font-weight: 700; font-size: 12px; }
+  .btn.off { background: #c9c2b6; }
+  .ad { display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 8px; background: #fff6dc; border: 2px solid #e8b84a; box-shadow: 0 0 0 2px rgba(232,184,74,.35); font-weight: 700; font-size: 11px; }
+  .note { margin: 8px 0 0; font-size: 11px; color: var(--muted); line-height: 1.5; }
+  @media (max-width: 900px) { .grid, .panelwrap { grid-template-columns: 1fr; padding: 12px 16px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>연못 넓히기 · 3단계</h1>
+  <p>밭 넓히기와 같은 틀(단계 표 + 목재·돌·코인) 위에 "물고기 수첩 n종" 조건을 하나 더 · 지금 연못 = 1단계 그대로라 기존 유저는 잃는 게 없다 · 같은 카메라 거리로 세 단계 비교</p>
+</header>
+<div class="grid" id="grid"></div>
+<div class="panelwrap">
+  <div class="mock">
+    <h3>넓히기 창 (연못 🐟 버튼 → 수첩 아래 "넓히기")</h3>
+    <div class="ui">
+      <div class="top"><b>🌊 넓은 연못으로</b><small>1 → 2단계</small></div>
+      <div class="line"><span>📒 물고기 수첩</span><span>5 / 4종 ✓</span></div>
+      <div class="line"><span>🪨 돌</span><span>26 / 20 ✓</span></div>
+      <div class="line no"><span>🪵 목재</span><span>12 / 20 <span class="ad">🎬 광고 보고 🪵 8개 받기</span></span></div>
+      <div class="line"><span>🪙 코인</span><span>310 / 200 ✓</span></div>
+      <div class="foot"><span>🪵 목재는 숲에서 나무를 베면 나와요</span><span class="btn off">넓히기</span></div>
+    </div>
+    <p class="note">모자란 재료 줄 옆에만 광고 버튼(prepass 처치 무리, slot pond2·pond3). 지급량은 비용표에서 계산. 코인 줄에는 광고 없음(코인 소비처 보호)</p>
+  </div>
+  <div class="mock">
+    <h3>넓힌 순간</h3>
+    <div class="ui">
+      <div class="top"><b>🌊 연못이 넓어졌어요</b><small>2단계</small></div>
+      <div class="line"><span>🐋 바다 대어 자리</span><span>1 → 4마리</span></div>
+      <div class="line"><span>🪷 꾸미기 자리</span><span>0 → 2칸</span></div>
+      <div class="foot"><span>다음: 큰 연못(수첩 8종)</span><span class="btn">좋아요</span></div>
+    </div>
+    <p class="note">넓히는 연출은 물가 돌이 바깥으로 밀려나며 물이 차오르는 2초. 카메라는 연못 쪽으로 살짝만</p>
+  </div>
+</div>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+const clayMat = (c, flat = true) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.95, metalness: 0, flatShading: flat });
+const M = c => clayMat(c, false);
+const waterMat = () => new THREE.MeshStandardMaterial({ color: 0x4aa6d0, transparent: true, opacity: 0.32, roughness: 0.25, emissive: 0x184a63, emissiveIntensity: 0.45, depthWrite: false });
+const RIVER = [0x9fb4c8, 0xe06a5a, 0x7ae0ff, 0xe8743c, 0xf5a9c4, 0xf2d16b, 0xbfe4f2];
+const SEA = [0x4a6f8f, 0x6f8fa8, 0x7a8896, 0x33628f];
+
+function fishMesh(col, s) {
+  const g = new THREE.Group(); const mat = M(col);
+  g.add(new THREE.Mesh(new THREE.SphereGeometry(0.26, 8, 6).scale(1.6, 0.9, 0.7), mat));
+  g.add(new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.3, 6).rotateZ(Math.PI / 2).translate(-0.52, 0, 0), mat));
+  g.scale.setScalar(s); return g;
+}
+function animal(col) {
+  const g = new THREE.Group(); const fur = M(col);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.42, 12, 10).scale(1, 1.15, 0.9), fur); body.position.y = 0.5; g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.36, 12, 10), fur); head.position.y = 1.15; g.add(head);
+  [-0.22, 0.22].forEach(x => { const e = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 6), fur); e.position.set(x, 1.45, 0); g.add(e); });
+  const sn = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), M(0xf0dcc0)); sn.position.set(0, 1.08, 0.3); g.add(sn);
+  return g;
+}
+function cottage() {
+  const g = new THREE.Group();
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(5, 2.8, 4.2), clayMat(0xf3e3c8)); wall.position.y = 1.4; g.add(wall);
+  const roof = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 3.4, 1.7, 4, 1), clayMat(0xc4574a));
+  roof.rotation.y = Math.PI / 4; roof.scale.set(1.05, 1, 0.86); roof.position.y = 3.65; g.add(roof);
+  const door = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.6, 0.1), clayMat(0x8a5a36)); door.position.set(-0.9, 0.8, 2.11); g.add(door);
+  return g;
+}
+function ring(g, r, n) {
+  for (let i = 0; i < n; i++) {
+    const a = i / n * Math.PI * 2;
+    const s = new THREE.Mesh(new THREE.DodecahedronGeometry(0.26 + (i % 3) * 0.05, 0), clayMat(i % 2 ? 0xb8b0a4 : 0xa39a8e));
+    s.position.set(Math.cos(a) * r, 0.08, Math.sin(a) * r * 0.85); s.scale.y = 0.6; g.add(s);
+  }
+}
+function lotusPads(g, list) { list.forEach(([x, z]) => { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.02, 10, 1, false, 0.4, Math.PI * 1.75), clayMat(0x5fbf7a)); p.position.set(x, 0.07, z); g.add(p); }); }
+function slot(g, x, z) {
+  const s = new THREE.Mesh(new THREE.RingGeometry(0.3, 0.4, 20), new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.75, side: THREE.DoubleSide }));
+  s.rotation.x = -Math.PI / 2; s.position.set(x, 0.03, z); g.add(s);
+}
+function pondStage(stage) {
+  const g = new THREE.Group();
+  const R = [0, 2.0, 2.9, 3.9][stage];
+  const bed = new THREE.Mesh(new THREE.CylinderGeometry(R - 0.1, R - 0.1, 0.06, 28), clayMat(0x3f7f96)); bed.position.y = -0.18; bed.scale.z = 0.85; g.add(bed);
+  const water = new THREE.Mesh(new THREE.CylinderGeometry(R - 0.05, R - 0.05, 0.04, 32), waterMat()); water.position.y = 0.04; water.scale.z = 0.85; g.add(water);
+  ring(g, R + 0.1, Math.round(R * 7));
+  lotusPads(g, stage === 1 ? [[-0.8, -0.6], [0.9, 0.7]] : stage === 2 ? [[-1.4, -0.9], [1.5, 0.9], [0.3, -1.6]] : [[-2.2, -1.2], [2.3, 1.1], [0.4, -2.2], [-1.6, 1.4]]);
+  const nRiver = 7;
+  const perSpecies = stage === 3 ? 2 : 1;
+  let k = 0;
+  for (let i = 0; i < nRiver; i++) for (let j = 0; j < perSpecies; j++, k++) {
+    const a = k / (nRiver * perSpecies) * Math.PI * 2 + j * 0.3;
+    const rr = (R * 0.55) * (0.7 + (k % 3) * 0.15);
+    const f = fishMesh(RIVER[i], 0.75); f.position.set(Math.cos(a) * rr, -0.05, Math.sin(a) * rr * 0.8); f.rotation.y = -a - Math.PI / 2; g.add(f);
+  }
+  const nSea = stage === 1 ? 1 : 4;
+  for (let i = 0; i < nSea; i++) {
+    const a = i / nSea * Math.PI * 2 + 0.8;
+    const f = fishMesh(SEA[i], 1.15); f.position.set(Math.cos(a) * R * 0.25, -0.08, Math.sin(a) * R * 0.22); f.rotation.y = -a; g.add(f);
+  }
+  if (stage >= 2) { slot(g, -R - 0.9, -0.6); slot(g, R + 0.9, -0.4); }
+  if (stage === 3) {
+    slot(g, -R * 0.6, R * 0.95); slot(g, R * 0.6, R * 0.95);
+    const isle = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.0, 0.3, 12), clayMat(0x8fbf5a)); isle.position.set(1.6, 0.05, -1.2); g.add(isle);
+    const tree = new THREE.Mesh(new THREE.ConeGeometry(0.45, 1.2, 7), clayMat(0x4f9a5a)); tree.position.set(1.6, 0.85, -1.2); g.add(tree);
+    for (let i = 0; i < 4; i++) { const st = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.28, 0.12, 8), clayMat(0xd9cfc0)); st.position.set(-0.2 + i * 0.5, 0.08, 0.2 - i * 0.38); g.add(st); }
+  }
+  return g;
+}
+function makeScene(stage) {
+  const s = new THREE.Scene(); s.background = new THREE.Color(0xbfe3f2);
+  s.add(new THREE.HemisphereLight(0xfff6e6, 0x8a7a66, 0.9));
+  const sun = new THREE.DirectionalLight(0xfff1d6, 1.5); sun.position.set(6, 12, 8); s.add(sun);
+  const gr = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), clayMat(0x9cc96b)); gr.rotation.x = -Math.PI / 2; s.add(gr);
+  const h = cottage(); h.position.set(-3.5, 0, -4); s.add(h);
+  const p = pondStage(stage); p.position.set(3.2, 0, 0.6); s.add(p);
+  const pl = animal(0xb98a5e); pl.position.set(-0.6, 0, 2.6); pl.rotation.y = Math.PI * 0.75; s.add(pl);
+  return s;
+}
+
+const STAGES = [
+  { n: 1, title: '1단계 · 연못 (지금 그대로)', how: '첫 물고기를 낚으면 생긴다. 강 물고기 7종이 한 마리씩, 바다 대어는 가장 무거운 1마리만', gets: ['강 물고기 7칸', '바다 대어 1마리', '수첩·먹이 주기·이름 붙이기'], cost: null },
+  { n: 2, title: '2단계 · 넓은 연못', how: '연못이 1.5배로 넓어지고 바다 대어 자리가 4마리로 늘어난다. 물가에 꾸미기 자리 2칸(흰 고리)이 생긴다', gets: ['바다 대어 4마리', '꾸미기 자리 2칸 (징검다리·석등…)'], cost: [['📒 수첩 4종', 'ok'], ['🪨 돌 20', 'ok'], ['🪵 목재 20', 'no'], ['🪙 200', 'ok']] },
+  { n: 3, title: '3단계 · 큰 연못', how: '가운데 작은 섬과 징검다리 길. 같은 종도 낚은 만큼 마리 수가 늘어나(최대 종당 2마리) 연못이 붐빈다. 꾸미기 자리 4칸', gets: ['작은 섬 + 징검다리', '종당 최대 2마리', '꾸미기 자리 4칸'], cost: [['📒 수첩 8종', 'no'], ['🪨 돌 60', 'no'], ['🪵 목재 40', 'no'], ['🪙 500', 'no']] },
+];
+
+const CAM = { pos: new THREE.Vector3(1.4, 13, 15.5), look: new THREE.Vector3(1.6, 0, 0.8), fov: 42 };
+const W = 640, H = 400;
+const grid = document.getElementById('grid');
+for (const st of STAGES) {
+  const card = document.createElement('div'); card.className = 'card';
+  card.innerHTML = `<h2>${st.title}</h2><p class="how">${st.how}</p>
+    <div class="view"><span class="tag">게임 카메라 거리</span></div>
+    <div class="gets"><b>생기는 것</b><ul>${st.gets.map(g => `<li>${g}</li>`).join('')}</ul></div>
+    <div class="cost"><b>${st.cost ? '넓히는 데 필요한 것 (초안 값)' : '조건'}</b><div class="req">${st.cost ? st.cost.map(([t, k]) => `<span class="${k}">${t}</span>`).join('') : '<span class="ok">🎣 첫 물고기</span>'}</div></div>`;
+  grid.appendChild(card);
+  const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  r.setPixelRatio(2); r.setSize(W, H, false);
+  card.querySelector('.view').insertBefore(r.domElement, card.querySelector('.view').firstChild);
+  const cam = new THREE.PerspectiveCamera(CAM.fov, W / H, 0.1, 200); cam.position.copy(CAM.pos); cam.lookAt(CAM.look);
+  r.render(makeScene(st.n), cam);
+}
+window.__ready = true;
+</script>
+</body>
+</html>

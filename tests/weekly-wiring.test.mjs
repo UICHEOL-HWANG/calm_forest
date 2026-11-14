@@ -114,7 +114,7 @@ test('game.js passes the guide environment through the existing weekly lines', (
   const game = read('js/game.js');
   assert.match(game, /guide: GE/);
   assert.match(game, /guideEnv: wb\.guideEnv/);
-  assert.match(game, /function guideBusy\(\) \{ return portGuideActive\(\) \|\| restaurantGuideActive\(\) \|\| auctionGuideActive\(\) \|\| affinityGuideActive\(\); \}/);
+  assert.match(game, /function guideBusy\(\) \{ return portGuideActive\(\) \|\| restaurantGuideActive\(\) \|\| auctionGuideActive\(\) \|\| affinityGuideActive\(\) \|\| !!yardGuide\?\.active\(\); \}/);
   assert.match(game, /otherGuide: guideBusy \};/);
 });
 

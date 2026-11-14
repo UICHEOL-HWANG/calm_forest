@@ -66,7 +66,7 @@ import { logEcon, startMetrics } from './metrics.js';            // [계측] 경
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme, audioBus, isBGMOn, startBGM, stopBGM } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
 import { t, LANG, aiBucket, clientId } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
 import { createHouseGuide } from './spaces/house-guide.js';   // 🏠 목재 15개 → 집터 조망 + 방향 안내 50:50
-import { rearmMerchant } from './guide/guide-rules.js';
+import { rearmMerchant, detourPoint } from './guide/guide-rules.js';
 import { createGoalGuide } from './guide/goal-guide.js';
 import { e6Decision } from './exp-e6-boot.js';
 import { guideRevampOn } from './exp-e6.js';
@@ -88,6 +88,13 @@ import { makeWeeklyBridge } from './weekly/bridge.js';
 import { initConcert, updateConcert, concertSpotNow, openConcert, concertDefault, restoreConcert, concertScatterBlocks, concertDecorMesh, concertDev, STAGE_POS } from './concert/index.js';
 import { makeConcertBridge } from './concert/bridge.js';
 import { refreshPond, updatePond, pondScatterBlocks } from './pond/index.js';
+import { feedPond, openPondBook } from './pond/feed.js';
+import { POND_COPY } from './pond/copy.js';
+import { pondPos, pondNear } from './pond/index.js';
+import { installYardGuide } from './pond/yard-guide.js';
+import { spaceLinkOn } from './exp-e3.js';
+import { e3Decision } from './exp-e3-boot.js';
+import { kstDate } from './kst-date.js';
 import { onPlay, decorBanner, applySetFx } from './decor-drops/index.js';
 import { updateSetFx } from './decor-drops/fx.js';
 import { normalizeDrops } from './decor-drops/rules.js';
@@ -296,7 +303,7 @@ import {
   craftCover, refreshCovers, resolveWeatherEvent, weatherPrepView,
 } from './spaces/weather.js';   // 📦 🌡️ 날씨 이벤트 — 서리·태풍 예고를 보고 하루 안에 대비하는 재방문 훅
 import {
-  tryChop, tryFish, updateFishing,
+  tryChop, tryFish, updateFishing, setFishAssist,
 } from './spaces/fishing.js';   // 📦 낚시: 호수 물가에서 던지기 → 물면 낚아채기(반응 미니게임)
 import {
   _fmM, buildFarmInstances, createPlot, cycleSeedSel, farmHintMeshes, seedSelCrop, syncFarmCrops, syncFarmSoil,
@@ -321,7 +328,7 @@ import {
   _chipGeo, _confGeo, _dropGeo, _leafGeo, makeParticle, rndSpin, updateFloatTexts, updateParticles, updatePops,
 } from './spaces/fx.js';   // 📦 팝 애니메이션(밭/작물/집 부재 톡 튀어오름)
 import {
-  PLOT_KEEP_OUT, badgeColor, buildNPCs, merchantVisit, npcState, questView, refreshQuestPanel, setNpcHidden, shadeToLum, startNpcReturn,
+  PLOT_KEEP_OUT, badgeColor, buildNPCs, merchantVisit, npcState, questView, refreshQuestPanel, setNpcGlyphsHidden, setNpcHidden, shadeToLum, startNpcReturn,
   talkToNPC, updateMerchantVisit, updateNPC, updateNPCGlyph, updateNPCInteract, updateOwlVisit, updateShopCue,
 } from './spaces/npc.js';   // 📦 NPC (마을 주민 다중) + 퀘스트 체인
 import { restoreAura } from './aura/recipe.js';
@@ -1634,9 +1641,10 @@ const decorMeshes = [];    // 배치된 가구 메시
 
 let mode = 'attract';   // 'attract'(로그인 배경) | 'play'(플레이)
 let goalGuide = null;
-function guideBusy() { return portGuideActive() || restaurantGuideActive() || auctionGuideActive() || affinityGuideActive(); }
+function guideBusy() { return portGuideActive() || restaurantGuideActive() || auctionGuideActive() || affinityGuideActive() || !!yardGuide?.active(); }
 const guideRevamp = guideRevampOn(e6Decision());
 let houseShort = null;
+let yardGuide = null;
 let rewarded = null;
 let farmRush = null;
 const PREPASS_DEV = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) && new URLSearchParams(location.search).get('prepass') === '1';
@@ -2042,6 +2050,11 @@ export function guideShortAd(slot, list, onDone, caps) { return shortAdButton(sl
 function dailyAdButton(coins, streak) {
   if (!coins || !repeatOpen(gameState.houseStage) || !rewarded?.offer('daily_double')) return null;
   return rewarded.button('daily_double', ['광고 보고', ' ', `🪙 ${coins}`, ' ', '더 받기'], () => { giveReward({ coins }, 'daily_double', 'day' + streak); requestSave(); }, (ok, btn) => { if (ok) btn.remove(); });
+}
+
+export function pondFeedAdButton(onDone) {
+  if (!repeatOpen(gameState.houseStage) || !rewarded?.offer('pond_feed_more')) return null;
+  return rewarded.button('pond_feed_more', ['광고 보고', ' ', POND_COPY.adMore], () => feedPond('ad'), (ok, btn) => onDone?.(ok, btn));
 }
 
 function farmRushGrant(list) {
@@ -3027,6 +3040,17 @@ export async function enterGame() {
     },
     farmBranchDue: () => unlocksOn() && !gameState.unlocks?.legacy && habitatDone(gameState.tree, 'water') && !habitatDone(gameState.tree, 'farm'),
   }) : null;
+  yardGuide = installYardGuide({
+    state: () => gameState, on: () => spaceLinkOn(e3Decision()), inVillage: inVillage2,
+    free: () => !ui.anyModalOpen?.() && !ui.coachActive?.() && !portGuideActive() && !restaurantGuideActive() && !auctionGuideActive() && !goalGuide?.cinematic && !houseGuidance?.cinematic && cameraFree(),
+    scene, camera, player,
+    route: (me, tgt) => detourPoint({ x: me.x, z: me.z }, { x: tgt.x, z: tgt.z }, colliders.filter(c => ('r' in c ? c.r >= 1.0 : true))),
+    track: trackEvent, save: requestSave, today: kstDate,
+    banner: line => ui.showHintBanner?.({ ico: '🦉', title: POND_COPY.owlTitle, line, near: () => true, attention: true }),
+    setAssist: setFishAssist, setHudHidden: setNpcGlyphsHidden, pondPos, pondNear,
+    nearLake: () => dist2D(LAKE, player.position) <= LAKE_R + 2.8,
+    fishing: () => fishState !== 'idle',
+  });
   if (_wq.has('dbg')) window.__guide = goalGuide;
   houseGuidance.onInventory();          // 로컬 강제 시안(?houseguide=)만 부팅 보유량으로 시험; 실제 배정은 플레이 중 15개 도달
   movedOnce = false;
@@ -6616,7 +6640,7 @@ function animate() {
   updateCatchItem(dt);   // 🎁 캐치 아이템(수확물/물고기 들어올리기)
   updateFloatTexts(dt);
   updateNPC(dt, t);
-  if (t - unlockTickAt > 1) { unlockTickAt = t; if (mode === 'play') { syncUnlocks(); maybeStartPortGuide(isOpen('port') && !atSea && !restaurantGuideActive()); maybeStartRestaurantGuide(isOpen('restaurant') && !atSea && !portGuideActive()); } }   // 🔓 매초 한 번 — 놓친 해금 지점이 있어도 1초 안에 맞춘다(꺼져 있으면 즉시 반환)
+  if (t - unlockTickAt > 1) { unlockTickAt = t; if (mode === 'play') { syncUnlocks(); maybeStartPortGuide(isOpen('port') && !atSea && !restaurantGuideActive() && !yardGuide?.active()); maybeStartRestaurantGuide(isOpen('restaurant') && !atSea && !portGuideActive() && !yardGuide?.active()); } }   // 🔓 매초 한 번 — 놓친 해금 지점이 있어도 1초 안에 맞춘다(꺼져 있으면 즉시 반환)
   updateWorldTree(dt, t);    // 🌳 세계수 잎이 판 진척을 따라 자란다
   updateLightWorkshop();   // 🏷️ 반디 요정 이름표
   updateMerchantVisit(dt);   // 🧙 상인 방문 이벤트(1회)
@@ -6628,6 +6652,7 @@ function animate() {
   updatePond(dt, inVillage2());
   updateShopCue(t);          // 🛒 좌판 안내 스프라이트
   if (mode === 'play') goalGuide?.update(dt);
+  if (mode === 'play') yardGuide?.update(dt); else yardGuide?.suspend();
   if (mode === 'play') { houseShort?.update(dt); farmRush?.update(dt); }
   houseGuidance?.update();   // 🏠 조망샷은 다른 카메라 연출·모달이 비었을 때만 시작
   // 집 터 안내판/마커: 플레이 중 + 미완성일 때만 (로그인 화면에선 숨김)
@@ -7751,6 +7776,7 @@ function handleAction() {
   if (nearDoor === 'warehouse') return withdrawWarehouse();
   if (nearDoor === 'hireboard') return hireBoardInteract();   // 📋 일꾼 게시판 → 고용 창   // 🧺 작물 창고 옆에서 액션 = 내용물 꺼내기
   if (nearDoor === 'trace') { const tr = traceTarget(); if (tr) return investigateTrace(tr); }
+  if (nearDoor === 'pond') return openPondBook();
   if (nearDoor === 'pet') return commandPet();   // 🐾 밭 근처에서 액션 = 맡기기(물·잡초·해충 최대 5칸)
   if (nearDoor === 'mine') return enterMine();
   if (typeof nearDoor === 'string' && nearDoor.startsWith('delve_') && handleDelveDoor(nearDoor)) return;
