@@ -10,6 +10,8 @@
 // =============================================================
 
 export const EN = {
+  '의뢰': 'Quests',
+  '친해지기': 'Friends',
   '의뢰판 보기': 'View quest board', '장터 둘러보기': 'Browse the market',
   '오늘부터 일요일까지 주말 장터가 열려요': 'The weekend market is open from today through Sunday',
   '이번 주 의뢰': 'Weekly quests', '하나 끝낼 때마다 장터 표 {0#}장을 받아요': 'Earn {0} market tickets for every quest you finish',
