@@ -113,8 +113,8 @@ function card(cls, label) {
   return c;
 }
 
-function songRow(song, i, pick) {
-  const r = el('article', `cc-row cc-song cc-lv${i}`);
+function songRow(song, pick) {
+  const r = el('article', `cc-row cc-song cc-lv${song.tier}`);
   const meta = el('div', 'cc-meta');
   meta.append(el('span', 'cc-lv', song.level), stars(song.stars));
   const info = el('div', 'cc-info');
@@ -232,7 +232,7 @@ function hallBody(v, tab, act) {
   const body = el('div', 'cc-body');
   if (tab === 'songs') {
     const list = el('div', 'cc-list cc-songs');
-    list.append(...v.songs.map((s, i) => songRow(s, i, act.play)));
+    list.append(...v.songs.map(s => songRow(s, act.play)));
     body.append(list);
     return body;
   }

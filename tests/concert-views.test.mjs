@@ -1,16 +1,24 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { INSTRUMENTS, CONCERT_DECOR } from '../js/data/concert.js';
+import { INSTRUMENTS, CONCERT_DECOR, SONG_IDS } from '../js/data/concert.js';
 import { concertDefault } from '../js/concert/rules.js';
 import { hallView, resultView, LANE_COLORS, noteY } from '../js/concert/views.js';
 
 const DAY = '2026-11-14';
 const env = (over = {}) => ({ today: DAY, isGuest: false, ownsDecor: () => false, hasArt: () => true, thumbs: {}, ...over });
 
-test('hall shows three songs with stars from the best ratio', () => {
-  const v = hallView({ ...concertDefault(), best: { morning: 0.9, march: 0.61, waltz: 0 } }, env());
-  assert.deepEqual(v.songs.map(s => s.stars), [3, 2, 0]);
-  assert.equal(v.songs.length, 3);
+test('hall shows every song with stars from the best ratio', () => {
+  const v = hallView({ ...concertDefault(), best: { ...concertDefault().best, morning: 0.9, march: 0.61, waltz: 0 } }, env());
+  assert.deepEqual(v.songs.map(s => s.stars), [3, 2, ...SONG_IDS.slice(2).map(() => 0)]);
+  assert.equal(v.songs.length, SONG_IDS.length);
+});
+
+test('the song icon tier follows the level, not the row position', () => {
+  const tier = Object.fromEntries(hallView(concertDefault(), env()).songs.map(s => [s.id, s.tier]));
+  assert.deepEqual([tier.morning, tier.march, tier.waltz], [0, 1, 2]);
+  assert.equal(tier.lullaby, tier.morning);
+  assert.equal(tier.polka, tier.march);
+  assert.equal(tier.firefly, tier.waltz);
 });
 
 test('instrument status covers equipped, owned, buy, short and guest', () => {

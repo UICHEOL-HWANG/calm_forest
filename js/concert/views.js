@@ -2,6 +2,7 @@ import { INSTRUMENTS, CONCERT_DECOR, SONG_IDS } from '../data/concert.js';
 import { CONCERT_COPY as C } from './copy.js';
 import { starsFor, paidLeft, buyPlan } from './rules.js';
 
+const TIERS = Object.freeze(['쉬움', '보통', '어려움']);
 const fill = (line, n) => line.replace('{0}', n);
 
 export const LANE_COLORS = Object.freeze({
@@ -22,7 +23,7 @@ export function hallView(state, { today, isGuest, ownsDecor, hasArt, thumbs }) {
   return {
     notes: state.notes,
     sub: left > 0 ? fill(C.sub, left) : C.subDone,
-    songs: SONG_IDS.map(id => ({ id, name: C.song[id], level: C.level[id], stars: starsFor(id, state.best[id] || 0) })),
+    songs: SONG_IDS.map(id => ({ id, name: C.song[id], level: C.level[id], tier: TIERS.indexOf(C.level[id]), stars: starsFor(id, state.best[id] || 0) })),
     instruments: INSTRUMENTS.map(item => {
       const owned = state.owned.includes(item.id);
       const s = owned
