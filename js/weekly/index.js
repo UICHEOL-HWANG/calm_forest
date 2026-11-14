@@ -6,6 +6,8 @@ import { WEEKLY_COPY } from './copy.js';
 import { guideNeed, guideTarget, bannerDue, countTry, guideStalled } from './guide.js';
 import { buildWeeklyMarket, disposeWeeklyMarket, WEEKLY_SOLIDS, MERCHANT_SOLID } from '../spaces/weekly-market-art.js';
 
+export { weekIndex };
+
 import { hasItemArt, weeklyDecorMesh } from './items.js';
 import { makeThumbs } from './thumbs.js';
 

@@ -78,13 +78,13 @@ import { createTossRewarded } from './ads/toss-rewarded.js';
 import { warmShaders } from './render/shader-warm.js';
 import { warmBeforeReveal } from './render/reveal-warm.js';
 import { createFarmRush } from './ads/farm-rush.js';
-import { repeatOpen, rushSlots, sellBonus, houseShort as houseShortOf, bridgeShort, farmStageShort, prepassGrant, shortAdParts, CAFE_CAPS } from './guide/prepass-rules.js';
+import { repeatOpen, rushSlots, sellBonus, houseShort as houseShortOf, bridgeShort, farmStageShort, prepassGrant, shortAdParts, CAFE_CAPS, adQuiet } from './guide/prepass-rules.js';
 import { sanitizeHouseGuide } from './house-guide-rules.js';
 import { initPlaza, updatePlaza, plazaSpotNow, openPlaza, plazaScatterBlocks, plazaDefault, restorePlaza, refreshPlaza, plazaDecorMesh, plazaMapVisible } from './plaza/index.js';
 import { defaultToolStars, restoreToolStars, restoreForge, forgeCancel } from './workbench/rules.js';
 import { forgeView, forgeBegin, forgeAbort, forgeFinish, settleForge } from './workbench/forge.js';
 import { initAuction, updateAuction, auctionMapSpot, auctionSpotNow, openAuction, auctionScatterBlocks, auctionOutdoorMesh, auctionDefault, restoreAuction, auctionGuideActive } from './auction/index.js';
-import { initWeekly, updateWeekly, weeklyNote, weeklySpotNow, openWeekly, weeklyDefault, restoreWeekly, weeklyScatterBlocks, weeklyDecorMesh, weeklyDev, weeklyGuideActive } from './weekly/index.js';
+import { initWeekly, updateWeekly, weeklyNote, weeklySpotNow, openWeekly, weeklyDefault, restoreWeekly, weeklyScatterBlocks, weeklyDecorMesh, weeklyDev, weeklyGuideActive, weekIndex } from './weekly/index.js';
 import { makeWeeklyBridge } from './weekly/bridge.js';
 import { initConcert, updateConcert, concertSpotNow, openConcert, concertDefault, restoreConcert, concertScatterBlocks, concertDecorMesh, concertDev, STAGE_POS, concertGuideActive } from './concert/index.js';
 import { makeConcertBridge } from './concert/bridge.js';
@@ -2994,6 +2994,19 @@ export async function enterGame() {
   rewarded = createRewarded({
     enabled: () => PREPASS_ON || PREPASS_DEV, provider: () => prepassProvider, forceArm: () => (PREPASS_DEV ? 'ad' : null),
     clientId, platform: PLATFORM, track: trackEvent, translate: t, toast: (m) => ui.toast?.(m, 2400),
+    week: () => weekIndex(DEV_NOW || Date.now()),
+    quiet: () => {
+      const b = document.body.classList;
+      return adQuiet({
+        tutorial: !gameState.tutorialSeen || !b.contains('playing'),
+        coaching: b.contains('coaching') || !!document.querySelector('.show > .tut-card'),
+        spotlight: b.contains('spot-on'),
+        e1: e1Pending() || b.contains('e1-pending'),
+        cutscene: !!intro || b.contains('intro-open') || b.contains('cine-open') || !!goalGuide?.cinematic || !!houseGuidance?.cinematic,
+        charSelect: !!document.querySelector('#char-modal.show'),
+        modalQueue: modalQueue.due() && !ui.anyModalOpen?.(),
+      });
+    },
     today: todayStr,
     dayRecord: { get: () => JSON.parse(localStorage.getItem('cf_prepass_day') || 'null'), set: (v) => localStorage.setItem('cf_prepass_day', JSON.stringify(v)) },
   });
