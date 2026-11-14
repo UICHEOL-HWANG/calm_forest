@@ -48,6 +48,7 @@ export const EN = {
   '오늘 음표는 다 받았어요. 연주는 얼마든지 해도 돼요': 'You have all of today\'s notes. Play as much as you like',
   '곡': 'Songs', '내 악기': 'My instruments', '음표 교환': 'Note shop',
   '장터 행진': 'Market March', '별빛 왈츠': 'Starlight Waltz',
+  '호숫가 자장가': 'Lakeside Lullaby', '수확제 폴카': 'Harvest Polka', '반딧불 춤': 'Firefly Dance',
   '쉬움': 'Easy', '어려움': 'Hard',
   '연주하기': 'Play',
   '작은북': 'Snare drum', '마라카스': 'Maracas', '핸드벨': 'Handbells', '큰북': 'Bass drum', '통기타': 'Acoustic guitar',

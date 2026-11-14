@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { SONG_IDS, JUDGE_MS } from '../js/data/concert.js';
+import { SONG_IDS, STAR_CUTS, JUDGE_MS } from '../js/data/concert.js';
 import { SONGS, slotMs, chartOf, lengthMs, minGapMs, backingEvents, practiceChart, practiceEvents, PRACTICE_LENGTH_MS } from '../js/concert/songs.js';
 
 const sorted = (list) => list.every((e, i) => i === 0 || list[i - 1].t <= e.t);
@@ -26,15 +26,53 @@ test('charts are time ordered and start after the count-in bar', () => {
 });
 
 test('note counts and lengths sit in the planned ranges', () => {
-  const n = (id) => chartOf(id).length;
-  assert.ok(n('morning') >= 60 && n('morning') <= 80, `morning ${n('morning')}`);
-  assert.ok(n('march') >= 100 && n('march') <= 125, `march ${n('march')}`);
-  assert.ok(n('waltz') >= 140 && n('waltz') <= 170, `waltz ${n('waltz')}`);
-  for (const id of SONG_IDS) assert.ok(lengthMs(id) >= 55000 && lengthMs(id) <= 75000, `${id} ${lengthMs(id)}`);
+  const ranges = {
+    morning: [60, 80], march: [100, 125], waltz: [140, 170],
+    lullaby: [55, 70], polka: [110, 130], firefly: [160, 185],
+  };
+  for (const id of SONG_IDS) {
+    const n = chartOf(id).length;
+    assert.ok(n >= ranges[id][0] && n <= ranges[id][1], `${id} ${n}`);
+    assert.ok(lengthMs(id) >= 55000 && lengthMs(id) <= 75000, `${id} ${lengthMs(id)}`);
+  }
 });
 
 test('same-lane notes are wider apart than two good windows', () => {
-  for (const id of SONG_IDS) assert.ok(minGapMs(chartOf(id)) > JUDGE_MS.good * 2, `${id} ${minGapMs(chartOf(id))}`);
+  for (const id of SONG_IDS) {
+    assert.ok(minGapMs(chartOf(id)) > JUDGE_MS.good * 2, `${id} ${minGapMs(chartOf(id))}`);
+    assert.ok(minGapMs(chartOf(id)) >= 290, `${id} ${minGapMs(chartOf(id))}`);
+  }
+});
+
+test('song ids, songs and star cuts stay in step, one song per level', () => {
+  assert.deepEqual([...SONG_IDS], Object.keys(SONGS));
+  assert.deepEqual(Object.keys(STAR_CUTS), [...SONG_IDS]);
+  assert.deepEqual(SONG_IDS.slice(3), ['lullaby', 'polka', 'firefly']);
+  assert.deepEqual(STAR_CUTS.lullaby, STAR_CUTS.morning);
+  assert.deepEqual(STAR_CUTS.polka, STAR_CUTS.march);
+  assert.deepEqual(STAR_CUTS.firefly, STAR_CUTS.waltz);
+});
+
+test('every song has its own chord progression and playable backing pitches', () => {
+  const seen = new Set();
+  for (const id of SONG_IDS) {
+    const key = SONGS[id].chords.join(' ');
+    assert.ok(!seen.has(key), `${id} repeats ${key}`);
+    seen.add(key);
+    for (const e of backingEvents(id)) {
+      for (const m of e.midis ?? (e.midi === undefined ? [] : [e.midi])) assert.ok(Number.isFinite(m) && m >= 24 && m <= 96, `${id} ${m}`);
+    }
+  }
+});
+
+test('the new songs end on a clear last bar and repeat their sections', () => {
+  for (const id of ['lullaby', 'polka', 'firefly']) {
+    const bars = SONGS[id].bars;
+    assert.ok(bars.at(-1).replace(/\./g, '').length <= 2, id);
+    const counts = new Map();
+    for (const b of bars) counts.set(b, (counts.get(b) || 0) + 1);
+    assert.ok([...counts.values()].some(c => c >= 4), id);
+  }
 });
 
 test('the easy song strictly alternates lanes and has no double notes', () => {
@@ -46,6 +84,9 @@ test('the easy song strictly alternates lanes and has no double notes', () => {
 test('double notes belong to the hard song, apart from the march closing accent', () => {
   assert.ok(SONGS.march.bars.slice(0, -1).every(b => !b.includes('B')));
   assert.ok(SONGS.waltz.bars.some(b => b.includes('B')));
+  assert.ok(SONGS.firefly.bars.some(b => b.includes('B')));
+  assert.ok(SONGS.lullaby.bars.every(b => !b.includes('B')));
+  assert.ok(SONGS.polka.bars.slice(0, -1).every(b => !b.includes('B')));
 });
 
 test('backing events are ordered, tick through the count-in, and lead on every chart time', () => {

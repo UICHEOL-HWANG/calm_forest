@@ -1,4 +1,4 @@
-export const SONG_IDS = Object.freeze(['morning', 'march', 'waltz']);
+export const SONG_IDS = Object.freeze(['morning', 'march', 'waltz', 'lullaby', 'polka', 'firefly']);
 export const BASE_INSTRUMENT = 'drum';
 
 export const INSTRUMENTS = Object.freeze([
@@ -24,6 +24,9 @@ export const STAR_CUTS = Object.freeze({
   morning: Object.freeze([0.3, 0.6, 0.85]),
   march: Object.freeze([0.3, 0.6, 0.85]),
   waltz: Object.freeze([0.3, 0.6, 0.8]),
+  lullaby: Object.freeze([0.3, 0.6, 0.85]),
+  polka: Object.freeze([0.3, 0.6, 0.85]),
+  firefly: Object.freeze([0.3, 0.6, 0.8]),
 });
 export const JUDGE_MS = Object.freeze({ perfect: 70, good: 140 });
 export const OUTPUT_LAG_MS = 30;

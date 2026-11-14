@@ -3,11 +3,12 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { SONG_IDS, INSTRUMENTS } from '../js/data/concert.js';
 import { CONCERT_COPY } from '../js/concert/copy.js';
+import { SONGS } from '../js/concert/songs.js';
 
 const flat = (o) => Object.values(o).flatMap(v => (typeof v === 'string' ? [v] : flat(v)));
 
 test('every song and instrument has a name', () => {
-  for (const id of SONG_IDS) { assert.ok(CONCERT_COPY.song[id]); assert.ok(CONCERT_COPY.level[id]); }
+  for (const id of [...SONG_IDS, ...Object.keys(SONGS)]) { assert.ok(CONCERT_COPY.song[id], id); assert.ok(CONCERT_COPY.level[id], id); }
   for (const { id } of INSTRUMENTS) assert.ok(CONCERT_COPY.inst[id]);
 });
 
