@@ -109,6 +109,9 @@ export function claim(state, questId) {
   return { ok: true, state: { ...state, claimed: [...state.claimed, questId], tickets }, gained: tickets - state.tickets };
 }
 
+export const adTicketOpen = (state) => state.tickets < TICKET_CAP;
+export const adTicket = (state) => ({ ...state, tickets: Math.min(TICKET_CAP, state.tickets + 1) });
+
 export function buyPlan(state, item, ctx) {
   if (!ctx.open) return { ok: false, reason: 'closed' };
   if (ctx.isGuest) return { ok: false, reason: 'guest' };

@@ -107,6 +107,8 @@ export function pickDailyExtra(pool, existing, n, seed, ctx = {}) {
   return pickGated(pool.filter(q => !have.has(q.type)), n, seed, ctx);
 }
 
+export const rerollPick = (pool, quests, seed, ctx = {}) => pickDailyExtra(pool, quests, 1, seed, ctx)[0] || null;
+
 /** "[오늘의 의뢰 2/3]" · "[Request 2/3]" 의 분모만 바꾼다. 접두사가 없으면 그대로.
  *  ⚠️ 접두사 모양은 game.js 의 dailyEntry(로컬)·upgradeDailyQuestsAI(AI) 두 곳이 만든다 — 바꾸면 여기도. */
 export function renumberDailyLine(line, count) {

@@ -61,6 +61,15 @@ export function giftGain(state, today, npc, love) {
   return { gain, state: { d: today, by: { ...by, [npc]: used + gain } } };
 }
 
+const giftUsed = (state, today, npc) => (state?.d === today && state.by && typeof state.by === 'object' ? asCount(state.by[npc]) : 0);
+
+export const heartAdOpen = (state, today, npc) => giftUsed(state, today, npc) === GIFT_DAILY_CAP;
+
+export function heartAdGain(state, today, npc) {
+  if (!heartAdOpen(state, today, npc)) return { gain: 0, state };
+  return { gain: 1, state: { d: today, by: { ...state.by, [npc]: GIFT_DAILY_CAP + 1 } } };
+}
+
 export function owlDailyGain(lastDay, today) {
   return { gain: lastDay === today ? 0 : 1, day: today };
 }

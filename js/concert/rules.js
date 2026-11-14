@@ -39,6 +39,8 @@ export const starsFor = (songId, ratio) => (STAR_CUTS[songId] || STAR_CUTS.morni
 export const notesFor = (stars) => 1 + stars;
 export const paidLeft = (state, today) => (state.day === today ? Math.max(0, PAID_PLAYS - state.paid) : PAID_PLAYS);
 
+export const extraPlay = (state, today) => (state.day === today && paidLeft(state, today) === 0 ? { ...state, paid: PAID_PLAYS - 1 } : state);
+
 export function settle(state, { songId, ratio, today }) {
   const stars = starsFor(songId, ratio);
   const left = paidLeft(state, today);
