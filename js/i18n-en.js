@@ -622,7 +622,7 @@ export const EN = {
   '재료가 모였어요. 집터에서 바로 시작하면 돼요.': "You've got the materials. Just head to the house site.",
   '집 터로 가서 망치로 집을 지어보아요!': 'Go to the house site and build your home with the hammer!',
   '화살표를 따라가요!': 'Follow the arrow!',
-  '주간 의뢰판으로 가요': 'To the weekly board', '주말 장터로 가요': 'To the weekend market',
+  '주간 의뢰판': 'Weekly board', '주간 의뢰판으로 가요': 'To the weekly board', '주말 장터로 가요': 'To the weekend market',
   '음악회 무대로 가요': 'To the concert stage', '저녁 경매로 가요': 'To the evening auction', '집 터로 가요': 'To the house site',
   '저녁 경매': 'Evening auction', '내 연못': 'My pond',
   '의뢰를 하고 티켓을 모아 장터에서 바꿔요': 'Finish quests for tickets to spend at the market',

@@ -112,6 +112,8 @@ export function initWeekly(d) {
   syncMarket();
 }
 
+export { BOARD_POS, MARKET_POS };
+
 export function weeklyNote(type, n = 1) {
   if (!deps) return;
   setIfChanged(note(current(), type, n));

@@ -84,7 +84,7 @@ import { initPlaza, updatePlaza, plazaSpotNow, openPlaza, plazaScatterBlocks, pl
 import { defaultToolStars, restoreToolStars, restoreForge, forgeCancel } from './workbench/rules.js';
 import { forgeView, forgeBegin, forgeAbort, forgeFinish, settleForge, forgeRushReady } from './workbench/forge.js';
 import { initAuction, updateAuction, auctionMapSpot, auctionSpotNow, openAuction, auctionScatterBlocks, auctionOutdoorMesh, auctionDefault, restoreAuction, auctionGuideActive } from './auction/index.js';
-import { initWeekly, updateWeekly, weeklyNote, weeklySpotNow, openWeekly, weeklyDefault, restoreWeekly, weeklyScatterBlocks, weeklyDecorMesh, weeklyDev, weeklyGuideActive, weekIndex } from './weekly/index.js';
+import { initWeekly, updateWeekly, weeklyNote, weeklySpotNow, openWeekly, weeklyDefault, restoreWeekly, weeklyScatterBlocks, weeklyDecorMesh, weeklyDev, weeklyGuideActive, weekIndex, BOARD_POS, MARKET_POS } from './weekly/index.js';
 import { makeWeeklyBridge } from './weekly/bridge.js';
 import { initConcert, updateConcert, concertSpotNow, openConcert, concertDefault, restoreConcert, concertScatterBlocks, concertDecorMesh, concertDev, STAGE_POS, concertGuideActive } from './concert/index.js';
 import { makeConcertBridge } from './concert/bridge.js';
@@ -6495,6 +6495,8 @@ const VILLAGE_PLACES = [
   { ico: '🌊', name: '바다터',        x: SEA_GATE.x,    z: SEA_GATE.z,    pri: 1, map: 'sea' },
   { ico: '🔨', name: '경매 무대', ...auctionMapSpot(), pri: 1 },
   { ico: '🎵', name: '음악회 무대', x: STAGE_POS.x, z: STAGE_POS.z, pri: 1 },
+  { ico: '📋', name: '주간 의뢰판', x: BOARD_POS.x, z: BOARD_POS.z, pri: 2 },
+  { ico: '🛒', name: '주말 장터', x: MARKET_POS.x, z: MARKET_POS.z, pri: 2 },
   { ico: '🌾', name: '수확제 광장', x: 23, z: -4, pri: 1, need: 'plaza' },
   { ico: '🍎', name: '과수원',        x: ORCHARD_GATE.x, z: ORCHARD_GATE.z, pri: 1, map: 'orchard' },
 ];
