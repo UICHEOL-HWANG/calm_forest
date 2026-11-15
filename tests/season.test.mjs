@@ -9,6 +9,13 @@ import { readFileSync } from 'node:fs';
 const src = f => readFileSync(new URL('../js/data/' + f, import.meta.url), 'utf8');
 const FISH_KINDS = new Function('return ' + src('catalog.js').match(/export const FISH_KINDS = (\[[\s\S]*?\n\]);/)[1])();
 const DEX = { fish: new Function('return ' + src('dex.js').match(/^  fish: (\[[\s\S]*?\n  \]),/m)[1])() };
+const dexCat = cat => new Function('return ' + src('dex.js').match(new RegExp('^  ' + cat + ': (\\[[\\s\\S]*?\\n  \\]),', 'm'))[1])();
+DEX.bug = dexCat('bug');
+DEX.forage = dexCat('forage');
+const placesTable = name => new Function('return ' + src('places.js').match(new RegExp('export const ' + name + ' = (\\[[\\s\\S]*?\\n\\]);'))[1])();
+const BUG_KINDS = placesTable('BUG_KINDS');
+const FORAGE_KINDS = placesTable('FORAGE_KINDS');
+const SEASON_IDS = SEASONS.map(s => s.id);
 
 const addDays = (date, n) => new Date(Date.parse(date + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10);
 
@@ -120,6 +127,54 @@ test('안내 문구는 영어 사전 패턴으로 덮인다', () => {
                      '{0} {1} · {2}일 남음 — 이번 계절 한정: {3}', '{0} {1} · {2}일 남음 — 이번 계절 한정 {3}도 낚았어요 ✅']) {
     assert.ok(en.includes(`'${key}'`), key);
   }
+});
+
+test('season-limited bugs: exactly one per season, table/dex/gate agree', () => {
+  for (const id of SEASON_IDS) {
+    const kinds = BUG_KINDS.filter(k => k.season === id);
+    assert.equal(kinds.length, 1, `${id} should have exactly one seasonal bug`);
+    const k = kinds[0], i = BUG_KINDS.indexOf(k);
+    assert.equal(k.p, i ? BUG_KINDS[i - 1].p : 0);
+    assert.ok(DEX.bug.find(d => d.id === k.id), `${k.id} missing from DEX.bug`);
+    assert.deepEqual(DEX_GATES.bug[k.id].season, [id]);
+    assert.ok(DEX_GATES.bug[k.id].p > 0);
+  }
+});
+
+test('season-limited bugs: only roll in their season, other seasons keep the old distribution', () => {
+  const N = 4000;
+  const count = (season) => {
+    const seen = {};
+    for (let i = 0; i < N; i++) {
+      const k = rollKind(BUG_KINDS, 'bug', { weather: 'clear', season, night: true }, () => (i + 0.5) / N);
+      seen[k.id] = (seen[k.id] || 0) + 1;
+    }
+    return seen;
+  };
+  const spring = count('spring');
+  assert.ok(Math.abs(spring.petal / N - 0.14) < 0.012);
+  assert.equal(spring.ember, undefined);
+  assert.equal(spring.rainbow, undefined);
+  const none = count(undefined);
+  for (const id of ['petal', 'ember', 'amber', 'frost']) assert.equal(none[id], undefined);
+  assert.ok(Math.abs(none.green / N - 0.16 / 0.94) < 0.012);
+});
+
+test('season-limited entries do not shift the weather-biased odds of the existing rare kinds', () => {
+  const N = 4000;
+  const odds = (kinds, cat, id, sit, bias) => {
+    let hit = 0;
+    for (let i = 0; i < N; i++) {
+      const a = (i + 0.5) / N, b = ((i * 7919) % N + 0.5) / N;
+      if (keyOf(rollKind(kinds, cat, sit, () => bias(a, b))) === id) hit++;
+    }
+    return hit / N;
+  };
+  const keyOf = k => k.id ?? k.rarity;
+  const rain = { weather: 'rain', season: 'spring', night: true };
+  const plain = kinds => kinds.filter(k => !k.season);
+  assert.equal(odds(BUG_KINDS, 'bug', 'rainbow', rain, Math.min), odds(plain(BUG_KINDS), 'bug', 'rainbow', rain, Math.min));
+  assert.equal(odds(FORAGE_KINDS, 'forage', 'herb', rain, Math.max), odds(plain(FORAGE_KINDS), 'forage', 'herb', rain, Math.max));
 });
 
 // ── 🎨 풍경 · 🌸🍂 흩날림 ─────────────────────────────────────

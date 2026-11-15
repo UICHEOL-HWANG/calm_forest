@@ -104,6 +104,10 @@ const BUG = {
   blue: () => jar([0x6ab8ff, 0x6ab8ff]),
   green: () => jar([0x8aff7a, 0x8aff7a]),
   rainbow: () => jar([0xff6a8a, 0xffd24a, 0x6aff9a, 0x6ab8ff, 0xc08aff]),
+  petal: () => jar([0xffb3d1, 0xffb3d1, 0xfff0f6]),
+  ember: () => jar([0xffa35c, 0xffa35c, 0xff6a3a]),
+  amber: () => jar([0xf0c060, 0xf0c060, 0xd9783a]),
+  frost: () => jar([0xd6f1ff, 0xd6f1ff, 0xffffff]),
 };
 
 // ── 🐾 흔적 · 🪏 땅속 ────────────────────────────────────────────

@@ -71,6 +71,10 @@ export const LIGHT_WORKSHOP_POND = { x: -2.3, z: 2.3, r: 0.9 };   // 공방 연�
 // 종류 — p는 누적 확률(FISH_KINDS 와 동일 규칙: roll <= p 인 첫 항목)
 export const BUG_KINDS = [
   { id: 'rainbow', name: '무지개반디', ico: '🌈', color: 0xffc0f0, p: 0.06 },
+  { id: 'petal',   name: '꽃잎반디',   ico: '🌸', color: 0xffb3d1, p: 0.06, season: 'spring' },
+  { id: 'ember',   name: '불씨반디',   ico: '🔥', color: 0xffa35c, p: 0.06, season: 'summer' },
+  { id: 'amber',   name: '단풍반디',   ico: '🍁', color: 0xf0c060, p: 0.06, season: 'autumn' },
+  { id: 'frost',   name: '눈꽃반디',   ico: '❄️', color: 0xd6f1ff, p: 0.06, season: 'winter' },
   { id: 'green',   name: '초록반디',   ico: '🟢', color: 0xa8ffb0, p: 0.22 },
   { id: 'blue',    name: '푸른반디',   ico: '🔵', color: 0x9ad8ff, p: 0.48 },
   { id: 'yellow',  name: '노랑반디',   ico: '🟡', color: 0xfff2a8, p: 1.00 },

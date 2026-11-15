@@ -1276,9 +1276,9 @@ function syncBadges() {
   if (done === chains.length) awardBadge('all_chains');
   if (gameState.daily.streak >= 7) awardBadge('streak7');
   if (DEX.weather.every(w => gameState.dex.weather?.[w.id])) awardBadge('weather_all');
-  if (DEX.bug.every(b => gameState.dex.bug?.[b.id])) awardBadge('night_owl');   // 🌟 반딧불이 4종
+  if (DEX.bug.filter(b => !b.season).every(b => gameState.dex.bug?.[b.id])) awardBadge('night_owl');   // 🌟 반딧불이 4종
   if ((gameState.cafe.served || 0) >= 15) awardBadge('barista');                // ☕ 누적 15잔 서빙
-  if (DEX.forage.every(f => gameState.dex.forage?.[f.id])) awardBadge('forager'); // 🍄 채집 4종
+  if (DEX.forage.filter(f => !f.season).every(f => gameState.dex.forage?.[f.id])) awardBadge('forager'); // 🍄 채집 4종
   if ((gameState.boat?.clears || 0) >= 1) awardBadge('ferryman');                 // 🛶 강 완주
   if ((gameState.boat?.perfect || 0) >= 1) awardBadge('river_master');            // 🌊 무피해 완주
   if ((gameState.mist?.purifyTotal || 0) >= 1) awardBadge('purifier');             // 🌫️ 첫 정화
