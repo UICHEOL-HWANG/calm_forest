@@ -127,13 +127,13 @@ export function createGoalGuide(deps) {
       const g = tutGoal(step, { wood: gs.inventory.wood || 0, houseCompass });
       if (g) return { flow: 'tut', step, ...g };
     }
-    if (deps.houseDue?.()) return { flow: 'house', step: `stage${gs.houseStage | 0}`, key: 'house', cine: false };
     if (!seen('guideFarmTab') && deps.farmBranchDue()) return { flow: 'tree', step: 'farm', key: 'farmBranch', cine: true };
     if (deps.atMine()) {
       const g = minerGoal(gs.delve, gs.inventory);
       if (g) return { flow: 'mine', step: `stage${gs.delve.stage}`, ...g };
     }
     if (storyMemo && storyMemo.where !== 'board') return { flow: 'story', step: storyMemo.rule, key: `story_${storyMemo.where}`, story: storyMemo, cine: false };
+    if (deps.houseDue?.() && deps.inVillage()) return { flow: 'house', step: `stage${gs.houseStage | 0}`, key: 'house', cine: false };
     return null;
   }
 

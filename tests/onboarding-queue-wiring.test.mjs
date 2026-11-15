@@ -36,6 +36,15 @@ test('first-visit lines use the place banner once per place', () => {
 
 test('a skipped player without a house gets the house goal', () => {
   assert.match(game, /houseDue: \(\) => houseGoalDue\(gameState, document\.body\.classList\.contains\('coaching'\)\),/);
-  assert.match(read('js/guide/goal-guide.js'), /if \(deps\.houseDue\?\.\(\)\) return \{ flow: 'house'/);
   assert.match(game, /house: \{ at: HOUSE_POS \}/);
+});
+
+test('the house goal waits behind mine and story goals and stays in the village', () => {
+  const src = read('js/guide/goal-guide.js');
+  const at = (re) => src.search(re);
+  const house = at(/if \(deps\.houseDue\?\.\(\) && deps\.inVillage\(\)\) return \{ flow: 'house'/);
+  assert.ok(house > 0);
+  assert.ok(at(/if \(deps\.atMine\(\)\) \{/) < house);
+  assert.ok(at(/if \(storyMemo && storyMemo\.where !== 'board'\)/) < house);
+  assert.ok(at(/deps\.farmBranchDue\(\)\) return/) < house);
 });
