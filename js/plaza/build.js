@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { mergeGeos, houseWindows, paintGeo, vtxMat } from '../game.js';
 import { PLAZA, PLAZA_R, PLAZA_BOX, PLAZA_STALL_POS } from '../data/plaza.js';
-import { SCARECROW } from './solids.js';
+import { SCARECROW, streetLamps } from './solids.js';
 
 // 🎨 디자인 게이트 A(2026-09-27): 시안 c — 붉은 단풍·짙은 나무(가을 강조) 확정
 //   dirt 는 마을 길(0xded0b4)보다 한 톤 어두운 낮은 채도 흙 — 주황이면 화면에서 가장 튀어 자재 더미를 묻는다(A2 피드백)
@@ -33,19 +33,21 @@ function stage1(add) {
   add('stone', ball(0.35, 2.4, 0.25, 0.2)); add('stoneDark', ball(0.28, 2.9, 0.2, 0.5)); add('stone', ball(0.25, 2.6, 0.45, 0.35));   // 돌 무더기(좌판 뒤에 가리지 않게) — 밝은 stone 위주: stoneDark 는 흙색과 명도가 비슷해 묻힌다
 }
 
-function stage2(add) {
+function stage2(add, opts = {}) {
   add('stone', cyl(PLAZA_R, PLAZA_R, 0.08, 0, 0.04, 0, 32));
   add('stoneDark', ringFlat(3.2, 3.35, 0.09)); add('stoneDark', ringFlat(1.6, 1.75, 0.09));
   for (const s of [-1, 1]) {                                      // 벤치 2개(동·서) + 가로등
     add('wood', box(0.5, 0.08, 1.6, s * 3.6, 0.45, 0));
     add('woodDark', box(0.08, 0.45, 0.08, s * 3.6, 0.22, -0.65)); add('woodDark', box(0.08, 0.45, 0.08, s * 3.6, 0.22, 0.65));
-    add('woodDark', box(0.1, 2.4, 0.1, s * 3.0, 1.2, -2.6));
-    add('lamp', ball(0.2, s * 3.0, 2.5, -2.6));
+  }
+  for (const [x, z] of streetLamps(opts)) {
+    add('woodDark', box(0.1, 2.4, 0.1, x, 1.2, z));
+    add('lamp', ball(0.2, x, 2.5, z));
   }
 }
 
 function stage3(add, opts = {}) {
-  stage2(add);
+  stage2(add, opts);
   add('straw', cyl(0.45, 0.45, 0.6, -3.3, 0.3, 2.4));            // 볏단
   add('straw', cyl(0.4, 0.4, 0.55, -2.6, 0.28, 2.9));
   if (!opts.winter) {

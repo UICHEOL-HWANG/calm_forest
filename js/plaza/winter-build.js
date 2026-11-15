@@ -1,12 +1,14 @@
 import * as THREE from 'three';
-import { mergeGeos, houseWindows, paintGeo, vtxMat } from '../game.js';
+import { mergeGeos, paintGeo, vtxMat } from '../game.js';
 import { PLAZA, PLAZA_R, WINTER_LAMPS } from '../data/plaza.js';
 import { lampSpot, lampLit } from './winter-rules.js';
 import { buildFountain } from './fountain.js';
 import { FOUNTAIN_LAST_STAGE } from './fountain-stages.js';
 
-const PAL = { snow: 0xe6eef0, pole: 0x5a5148, off: 0x8f8a7d, cap: 0xf6faf9, ribbon: 0xc8453a, lit: 0xffe28a };
+const PAL = { snow: 0xe6eef0, pole: 0x5a5148, off: 0x59626c, cap: 0xf6faf9, ribbon: 0xc8453a, lit: 0xffd36a, halo: 0xffc45a };
 const SNOW_H = 0.1;
+const SHADE_Y = 1.5;
+const HALO_SIZE = 1.5;
 const YARD_SCALE = 0.55;
 const FW_PERIOD = 2.4;
 const BURSTS = [[-2.6, 3.6, -2.5, 0xffd36a], [2.8, 4.0, -3.2, 0x9fe3ff], [0.1, 4.6, -4.5, 0xffa3c4]];
@@ -22,28 +24,25 @@ function assemble(fillParts) {
   const group = new THREE.Group();
   const mats = [];
   for (const [b, geos] of buckets) {
-    const mat = b === 'lamp'
-      ? new THREE.MeshStandardMaterial({ color: PAL.lit, emissive: 0xffca70, emissiveIntensity: 0, roughness: 0.6 })
-      : vtxMat();
+    const mat = b === 'lamp' ? new THREE.MeshBasicMaterial({ color: PAL.lit, fog: false }) : vtxMat();
     const merged = mergeGeos(geos);
     for (const g of geos) g.dispose();
     const m = new THREE.Mesh(merged, mat);
     m.castShadow = b === 'solid'; m.receiveShadow = b !== 'lamp';
     group.add(m); mats.push(mat);
-    if (b === 'lamp') houseWindows.push(mat);
   }
   return {
     group,
     dispose() {
       for (const m of group.children) m.geometry.dispose();
-      for (const mat of mats) { const i = houseWindows.indexOf(mat); if (i >= 0) houseWindows.splice(i, 1); mat.dispose(); }
+      for (const mat of mats) mat.dispose();
     },
   };
 }
 
 function lampGeos(add, lit, x, z) {
   add('pole', new THREE.CylinderGeometry(0.06, 0.08, 1.4, 6).translate(x, 0.7, z));
-  add(lit ? 'lit' : 'off', new THREE.IcosahedronGeometry(0.2, 0).translate(x, 1.5, z));
+  add(lit ? 'lit' : 'off', new THREE.IcosahedronGeometry(0.2, 0).translate(x, SHADE_Y, z));
   add('cap', new THREE.SphereGeometry(0.15, 8, 5, 0, Math.PI * 2, 0, Math.PI / 2).translate(x, 1.66, z));
   if (lit) add('ribbon', new THREE.TorusGeometry(0.1, 0.03, 5, 10).rotateX(Math.PI / 2).translate(x, 1.22, z));
 }
@@ -55,7 +54,19 @@ export function buildWinterPlaza(lit) {
   });
   out.group.name = 'plazaWinter';
   out.group.position.set(PLAZA.x, 0, PLAZA.z);
-  return out;
+  const spots = Array.from({ length: WINTER_LAMPS }, (_, i) => i).filter(i => lampLit(i, lit)).map(lampSpot);
+  if (!spots.length) return out;
+  const halo = lampHalo(spots);
+  out.group.add(halo.points);
+  return { group: out.group, dispose() { out.dispose(); halo.dispose(); } };
+}
+
+function lampHalo(spots) {
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(spots.flatMap(p => [p.x, SHADE_Y, p.z]), 3));
+  const tex = dotTexture();
+  const mat = new THREE.PointsMaterial({ size: HALO_SIZE, color: PAL.halo, map: tex, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+  return { points: new THREE.Points(geo, mat), dispose() { mat.dispose(); tex.dispose(); } };
 }
 
 export function yardFountainMesh() {

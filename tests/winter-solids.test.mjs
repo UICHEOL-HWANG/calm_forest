@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { plazaPropSolids, winterPropSolids, SCARECROW, PUMPKIN_PILE, FOUNTAIN_BASIN_R } from '../js/plaza/solids.js';
+import { plazaPropSolids, winterPropSolids, streetLamps, SCARECROW, PUMPKIN_PILE, LAMP_POSTS, FOUNTAIN_BASIN_R } from '../js/plaza/solids.js';
 import { lampSpot } from '../js/plaza/winter-rules.js';
 import { PLAZA, PLAZA_BOX, PLAZA_FOUNTAIN } from '../js/data/plaza.js';
 
@@ -31,5 +31,14 @@ test('분수 충돌 원은 명판·벤치·나무와 겹치지 않는다', () =>
   const f = w(PLAZA_FOUNTAIN.x, PLAZA_FOUNTAIN.z);
   for (const [x, z, r] of [[PLAZA_BOX.x, PLAZA_BOX.z, 0.6], [...w(3.6, 0), 0.5], [...w(0, 0), 1.0]]) {
     assert.ok(Math.hypot(f[0] - x, f[1] - z) > FOUNTAIN_BASIN_R + r, `${x},${z}`);
+  }
+});
+
+test('가로등: 수확제는 그대로 세우고 겨울은 빼며 충돌체도 따라간다', () => {
+  assert.deepEqual(streetLamps(), LAMP_POSTS);
+  assert.deepEqual(streetLamps({ winter: true }), []);
+  for (const [x, z] of LAMP_POSTS) {
+    assert.ok(has(plazaPropSolids(4, 'after'), ...w(x, z)), `수확제 가로등 ${x}`);
+    assert.ok(!has(winterPropSolids(), ...w(x, z)), `겨울 가로등 ${x}`);
   }
 });

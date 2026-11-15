@@ -16,6 +16,8 @@ export const PUMPKIN_PILE = { x: 3.55, z: 1.6, r: 0.75 };            // 호박 �
 
 const world = (x, z, r) => [PLAZA.x + x, PLAZA.z + z, r];
 
+export const streetLamps = ({ winter = false } = {}) => (winter ? [] : LAMP_POSTS);
+
 /** 광장 안 기물 — stage 0~4, phase 'before'|'active'|'after' */
 export function plazaPropSolids(stage, phase, { winter = false } = {}) {
   if (stage < 1) return [];
@@ -31,7 +33,7 @@ export function plazaPropSolids(stage, phase, { winter = false } = {}) {
   }
   if (stage >= 2) {
     out.push(world(-3.6, 0, 0.5), world(3.6, 0, 0.5));               // 벤치
-    for (const [x, z] of LAMP_POSTS) out.push(world(x, z, 0.15));
+    for (const [x, z] of streetLamps({ winter })) out.push(world(x, z, 0.15));
   }
   if (stage >= 3) {
     out.push(world(SCARECROW.x, SCARECROW.z, 0.25));
