@@ -73,7 +73,7 @@ export function openSleepChoice() {
 /** 🛏️ 밤에 꿈을 안 꿔 본 사람이 침대 옆에 오면 한 번 — js/spaces/doors.js 침대 프롬프트에서 부른다 */
 export function dreamNightHint() {
   if ((gameState.dream?.visits || 0) > 0) return;   // 매 프레임 불린다 — 꿈 꿔 본 사람은 정리 없이 바로 나간다
-  if (firstHintBanner('dreamNight', '🌙', '꿈꾸기', '밤엔 침대에서 꿈의 숲에 갈 수 있어요')) trackEvent('dream_hint', { step: 'night' });
+  firstHintBanner('dreamNight', '🌙', '꿈꾸기', '밤엔 침대에서 꿈의 숲에 갈 수 있어요', () => trackEvent('dream_hint', { step: 'night' }));
 }
 
 // ── 들어가기(컷신) ───────────────────────────────────────────
@@ -188,7 +188,7 @@ function collect(id, g) {
   Sound.starPick?.();
   trackEvent('dream_shard', { shard_id: id, island: islandOf(id), nth_today: d.got.length, elapsed_s: nowS() });
   onPlay('dream');
-  if (firstHintBanner('dreamShard', '✨', '꿈 조각', '구름 침대에 누우면 아침에 깨어나요')) trackEvent('dream_hint', { step: 'shard' });
+  firstHintBanner('dreamShard', '✨', '꿈 조각', '구름 침대에 누우면 아침에 깨어나요', () => trackEvent('dream_hint', { step: 'shard' }));
   if (d.got.length >= SHARDS_PER_DAY) ui.toast?.('오늘 꿈 조각은 다 모았어요 · 내일 또 와요', 2600);
   syncHud();
   requestSave();
@@ -235,7 +235,7 @@ function wakeUp() {
     ui.toast?.(shards > 0 ? `☀️ 잘 잤어요 · 꿈 조각 ✨${shards}개` : '☀️ 잘 잤어요. 아침이에요', 2600);
     setTimeout(() => {
       $w.sleeping = false;
-      if (firstHintBanner('dreamWake', '✨', '꿈 장식', '🛋️ 꾸미기에서 꿈 조각으로 바꿔요')) trackEvent('dream_hint', { step: 'wake' });
+      firstHintBanner('dreamWake', '✨', '꿈 장식', '🛋️ 꾸미기에서 꿈 조각으로 바꿔요', () => trackEvent('dream_hint', { step: 'wake' }));
     }, 700);
   }, 750);
 }

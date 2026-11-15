@@ -201,8 +201,9 @@ test('limited outdoor pieces keep sale label and date apart', async () => {
 test('bench tour runs once, yields to other tours and pauses under other windows', async () => {
   const { readFileSync } = await import('node:fs');
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  const s = html.indexOf('function runBenchTour()');
-  const body = html.slice(s, html.indexOf('\n    }\n', s));
+  const bench = readFileSync(new URL('../js/game-ui/workbench-menu.js', import.meta.url), 'utf8');
+  const s = bench.indexOf('function runBenchTour()');
+  const body = bench.slice(s, bench.indexOf('\n}\n', s));
   assert.match(body, /Input\.hintSeen\('spotBench'\) \|\| spot\.active\(\)/);
   assert.match(body, /markHintsSeen\(\['spotBench'\]\)/);
   assert.match(body, /kind: 'bench'/);

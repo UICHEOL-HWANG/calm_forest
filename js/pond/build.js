@@ -36,6 +36,8 @@ export function buildPond({ fishMesh, mergeGeos, paintGeo, emojiSprite }) {
   let swimmers = [];
   const pops = [];
   let t = 0;
+  let gatherT = 0;
+  const GATHER_Z = POND_R * 0.55;
 
   const addFish = (mesh, i, scale) => {
     mesh.scale.setScalar(scale);
@@ -61,13 +63,20 @@ export function buildPond({ fishMesh, mergeGeos, paintGeo, emojiSprite }) {
       const sp = emojiSprite(emoji, 0.7);
       sp.position.set(0, 1.2, 0); group.add(sp); pops.push({ sp, age: 0 });
     },
+    gather(sec) {
+      gatherT = Math.max(gatherT, sec);
+    },
     update(dt) {
       t += dt;
-      for (const f of swimmers) {
+      const g = Math.min(1, gatherT / 0.6);
+      gatherT = Math.max(0, gatherT - dt);
+      swimmers.forEach((f, i) => {
         const a = t * f.speed + f.phase;
-        f.mesh.position.set(f.cx + Math.cos(a) * f.rx, -0.05 + Math.sin(a * 2) * 0.03, f.cz + Math.sin(a) * f.rz);
+        const sx = f.cx + Math.cos(a) * f.rx, sz = f.cz + Math.sin(a) * f.rz;
+        const gx = Math.cos(i * 2.1) * 0.35, gz = GATHER_Z + Math.sin(i * 2.1) * 0.2;
+        f.mesh.position.set(sx + (gx - sx) * g, -0.05 + Math.sin(a * 2) * 0.03 + g * 0.06, sz + (gz - sz) * g);
         f.mesh.rotation.y = -a - (Math.PI / 2) * Math.sign(f.speed);
-      }
+      });
       for (let i = pops.length - 1; i >= 0; i--) {
         const p = pops[i]; p.age += dt;
         p.sp.position.y = 1.2 + p.age * 0.6; p.sp.material.opacity = Math.max(0, 1 - p.age / 1.6);

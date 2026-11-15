@@ -3,6 +3,7 @@ import {
   setSpaceVisible, situation, snapCamera, solidCircle, spawnDust, spawnFloatText, spawnSparkle, ui, todayStr,
 } from '../game.js';
 import { trackEvent } from '../analytics.js';
+import { weeklyNote } from '../weekly/index.js';
 import { DELVE, MINE, MINE_HALF } from '../data/places.js';
 import { DELVE_HALF, DELVE_CHEST_FLOORS, PEST_COPY } from '../data/delve.js';
 import {
@@ -151,6 +152,7 @@ export function enterFloor(floor, via) {
   player.rotation.y = 0;
   $w.nearDoor = null; ui.setDoorPrompt?.(null); snapCamera(); setSpaceVisible();
   trackEvent('delve_floor', { floor, via, stops: stopsOpen(gameState.delve).length, sec: prevSec, rocks: prevRocks });
+  if (via === 'ladder') weeklyNote('delve');
   if (floor === 1) $w.firstHintBanner?.('delve_common', PEST_COPY.common.ico, PEST_COPY.common.title, PEST_COPY.common.line);
   $w.refreshQuestPanel?.();
 }

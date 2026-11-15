@@ -112,7 +112,7 @@ function onArrive(id, mesh, at) {
   const v = visitorOf(id);
   if (gameState.dex.visitor?.[id]) { Sound.starGood?.(2); return; }
   Sound.starUnlock?.();
-  ui.showHintBanner?.({ ico: '✨', title: t(ARRIVE_COPY), line: `${v.ico} ${t(v.name)}`, attention: true });
+  ui.showHintBanner?.({ ico: '✨', title: t(ARRIVE_COPY), line: `${v.ico} ${t(v.name)}`, attention: true, kind: 'place', key: `visitor-${id}`, live: () => atFarm });
   edgeWatch = { mesh, x: at.x, z: at.z, ico: v.ico, left: EDGE_SEC };
 }
 
@@ -180,7 +180,7 @@ export function enterFarm() {
   if (!e1Pending()) firstHint('farmInside', '🌾', '내 텃밭 · 심고 키우기', { steps: [{ ico: '⛏️', label: '갈기' }, { ico: '🌰', label: '심기' }, { ico: '💧', label: '물' }], note: '나갈 땐 남쪽 문' });   // 🧪 E1 처치는 '눌러서 수확하기' 하나만
   if (!e1Pending()) startVisitors();   // 🦋 텃밭 체류 중에만 방문객이 뜬다 · 🧪 E1 처치는 첫 수확 뒤(e1OnHarvest)
   Sound.blip(); trackEvent('enter_farm', { stage: gameState.farm.stage }); // [GA4] 밭 단계별 방문 분포
-  decorBanner('crop');
+  if (!e1Pending()) decorBanner('crop');
 }
 
 export function exitFarm() {

@@ -16,6 +16,7 @@ import { OUTDOOR } from '../data/catalog.js';
 import { GIFTS } from '../data/npcs.js';
 import { CARVE_DESIGNS } from './carving.js';
 import { addGift, giftLove, parseKeptGift, takeGift } from './carve-gift.js';
+import { gainAffinity, giftAffinity } from '../affinity/index.js';
 import { CELL as FARM_CELL, FARM_BUILDINGS, buildingCells, rotatedFp, storageTotal } from '../farm-building.js';
 import { OUTDOOR_TAP_REACH, outdoorDistance } from '../outdoor-move.js';
 import { Sound } from '../sound.js';
@@ -95,7 +96,7 @@ export function pickOutdoor(m) {
   if (rec.id === 'warehouse' && storageTotal(gameState.farm.storage) > 0 && farmBuildingRecs().filter(r => r.id === 'warehouse').length <= 1) { ui.toast?.('🧺 창고를 비워야 옮길 수 있어요 — 옆에서 액션으로 꺼내요', 2600); return false; }
   if (rec.id === 'trellis' && trellisHasGrapes(rec)) { ui.toast?.('🍇 포도를 수확한 뒤에 옮길 수 있어요', 2400); return false; }
   scene.remove(m); outdoorMeshes.splice(outdoorMeshes.indexOf(m), 1);
-  if (m.userData.solid) removeSolid(m.userData.solid);                       // 🚧 들어 올린 자리에 안 보이는 벽이 남지 않게
+  [].concat(m.userData.solid || []).forEach(removeSolid);                      // 🚧 들어 올린 자리에 안 보이는 벽이 남지 않게
   for (const ob of [].concat(m.userData.obstacle || [])) { const oi = obstacles.indexOf(ob); if (oi >= 0) obstacles.splice(oi, 1); }   // 시설은 칸마다 하나씩
   // 저장 레코드는 목록에 남긴다(들고 있는 동안 세이브돼도 분실 없음) — 놓으면 placeOutdoor 가 좌표만 갱신, 보관하면 storeOutdoor 가 뺀다
   m.traverse(o => { if (o.isMesh) { const hi = houseWindows.indexOf(o.material); if (hi >= 0) houseWindows.splice(hi, 1); } });   // 🏮 밤 점등 목록에서도 제거(다시 놓으면 새로 등록)
@@ -137,17 +138,8 @@ export function craftGift(id) {
   return { ok: true, name: g.name };
 }
 
-// 근처 주민에게 선물 주기 → 친밀도↑ (3개마다 감사 보상)
-// ❤️ 친밀도 올리기 — 선물(giveGift)과 🔁반복 의뢰 보상이 함께 쓴다.
-//   친밀 3단계마다 답례. +2 증가로 배수를 "건너뛴" 경우도 통과하도록 몫을 비교한다.
-//   답례를 줬으면 그 보상을 돌려준다(없으면 null).
 export function addAffinity(id, amount = 1) {
-  const before = gameState.affinity[id] || 0;
-  gameState.affinity[id] = before + amount;
-  if (Math.floor(gameState.affinity[id] / 3) <= Math.floor(before / 3)) return null;
-  const reward = { seed: 3, crop: 1 };
-  giveReward(reward, 'affinity_gift', id);
-  return reward;
+  return gainAffinity(id, amount, 'repeat');
 }
 
 export function giveGift(giftId) {
@@ -161,10 +153,10 @@ export function giveGift(giftId) {
   const id = o.def.id;
   refreshInventoryUI();
   Sound.harvest();
-  spawnFloatText(o.group.position.x, 2.2, o.group.position.z, (kept?.paper ? '🎁' : '') + '❤️'.repeat(love), '#e6789a');
+  const { gain, capped, toasted } = giftAffinity(id, love);
+  spawnFloatText(o.group.position.x, 2.2, o.group.position.z, (kept?.paper ? '🎁' : '') + (gain ? '❤️'.repeat(gain) : '🎁'), '#e6789a');
   spawnSparkle(o.group.position.x, 1.4, o.group.position.z, kept?.paper ? 22 : 14);
-  const reward = addAffinity(id, love);
   questEvent('gift');                                  // 🦉 의뢰(주민에게 선물)
   trackEvent('gift_give', { npc: id, gift: giftId });  // [GA4]
-  return { ok: true, npc: o.def.name, ico: g.ico + (kept?.paper ? '🎀' : ''), love, affinity: gameState.affinity[id], reward: reward ? rewardText(reward) : null };
+  return { ok: true, npc: o.def.name, ico: g.ico + (kept?.paper ? '🎀' : ''), love: gain, affinity: gameState.affinity[id], capped, toasted };
 }

@@ -1,7 +1,8 @@
 # =============================================================
 #  🤝 migrate_referrals.sql 셀프테스트 — 마이그레이션 + 검사를 한 트랜잭션에서 하고 ROLLBACK(잔여 0)
-#  실행: python3 sql/tests/referrals_selftest.py [--apply]
+#  실행: python3 sql/tests/referrals_selftest.py [--apply | --live]
 #        --apply 없으면 운영 DB 에 아무것도 남지 않는다. --apply 는 검사 통과 후 마이그레이션만 커밋.
+#        --live 는 마이그레이션을 다시 돌리지 않고 지금 운영 함수 그대로 검사한다(이후 마이그레이션과 충돌 방지).
 #  비밀번호: SUPABASE_DB_PASSWORD (.env — 워크트리엔 없으니 CALM_ENV 로 경로 지정 가능)
 #  검사:
 #   ⓪ 코드 발급 멱등·익명 거절  ① bind 거절 사유 6종(anonymous · not_new · self · bad_code · already_bound · cycle) + 성공 시 웰컴 핀 원장
@@ -159,10 +160,14 @@ def run_checks(con):
 
 def main():
     apply = '--apply' in sys.argv
+    live = '--live' in sys.argv
+    if apply and live:
+        raise SystemExit('--live 와 --apply 는 같이 쓸 수 없다')
     con = connect()
     con.run('begin')
     try:
-        con.run(migration_body())
+        if not live:
+            con.run(migration_body())
         ok = run_checks(con)
     finally:
         con.run('rollback')

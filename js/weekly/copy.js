@@ -1,0 +1,98 @@
+import { fill } from '../plaza/copy.js';
+
+export { fill };
+
+const item = (name, desc) => Object.freeze({ name, desc });
+
+export const WEEKLY_COPY = Object.freeze({
+  prompt: Object.freeze({ board: '의뢰판 보기', market: '장터 둘러보기' }),
+  banner: '오늘부터 일요일까지 주말 장터가 열려요',
+  close: '닫기',
+  board: Object.freeze({
+    title: '이번 주 의뢰',
+    sub: '하나 끝낼 때마다 장터 표 {0}장을 받아요',
+    claim: '표 {0}장 받기',
+    claimed: '받았어요',
+    cap: '표는 {0}장까지 모을 수 있어요',
+    capNo: '표가 {0}장 가득 찼어요. 장터에서 쓰고 받아 주세요',
+  }),
+  market: Object.freeze({
+    title: '주말 장터',
+    sub: '이번 주 물건 3가지예요. 일요일 밤까지 열려요',
+    buy: '표 {0}장으로 사기',
+    short: '표가 {0}장 모자라요',
+    owned: '보유 중',
+    guest: '로그인하면 장터에서 살 수 있어요. 모은 표는 그대로 남아요',
+    loginBtn: '🔐 로그인 후 구매 가능',
+    closed: '금요일부터 일요일까지 주말 장터가 열려요',
+  }),
+  quests: Object.freeze({
+    w_harvest: '밭 25칸 수확하기',
+    w_water: '물 40번 주기',
+    w_forage: '숲에서 15개 채집하기',
+    w_fish: '물고기 15마리 낚기',
+    w_fish_rare: '희귀 물고기 2마리 낚기',
+    w_cook: '요리 8번 하기',
+    w_serve: '카페 손님 6명 대접하기',
+    w_carve: '나무 조각 2개 완성하기',
+    w_delve: '동굴 5층 내려가기',
+    w_sled: '썰매 2번 완주하기',
+    w_star: '별자리 1개 잇기',
+    w_gift: '주민에게 선물 3번 하기',
+    w_neighbor: '이웃 마을 3곳 구경하기',
+    w_daily: '일일 의뢰 10건 끝내기',
+    w_sell: '물건 30개 팔기',
+    f_harvest: '밭 25칸 수확하기',
+    f_fish: '물고기 15마리 낚기',
+    f_chop: '도끼질 30번 하기',
+    f_sell: '물건 30개 팔기',
+    f_daily: '일일 의뢰 10건 끝내기',
+  }),
+  items: Object.freeze({
+    teadeck: item('찻상 놓인 평상', '마당에서 차 한잔 쉬어 가요'),
+    teacups: item('찻잔 세트', '집 안 선반에 두는 찻잔이에요'),
+    bojagi: item('보자기 꾸러미', '매듭 묶은 보자기 한 덩이예요'),
+    flowercart: item('꽃 파는 수레', '마당에 세워 두는 꽃 수레예요'),
+    flowerpail: item('꽃 양동이', '꽃을 꽂아 둔 양철 양동이예요'),
+    driedflowers: item('말린 꽃 리스', '이젤에 올려 둔 말린 꽃 리스예요'),
+    shellshade: item('조개 풍경 그늘막', '조개 풍경이 흔들리는 그늘막이에요'),
+    glassbuoy: item('유리 부표', '바다 빛 유리로 만든 부표예요'),
+    conchpot: item('소라 화분', '소라 껍데기에 심은 작은 화분이에요'),
+    bookstall: item('헌책 좌판', '헌책이 쌓인 야외 좌판이에요'),
+    globe: item('지구본', '책상 위에 올려 두는 지구본이에요'),
+    inkquill: item('잉크병과 깃펜', '책상에 두는 잉크병과 깃펜이에요'),
+    breadcart: item('빵 굽는 손수레', '빵 냄새가 나는 야외 손수레예요'),
+    baguettes: item('바게트 바구니', '바게트가 담긴 바구니예요'),
+    jamshelf: item('잼 병 선반', '잼 병이 줄지어 놓인 선반이에요'),
+    buskerstage: item('작은 악사 무대', '노래하기 좋은 야외 무대예요'),
+    guitarstand: item('기타 받침대', '기타를 세워 두는 받침대예요'),
+    gramophone: item('축음기', '나팔 달린 오래된 축음기예요'),
+  }),
+});
+
+const art = (ic, th) => Object.freeze({ ic, th });
+
+export const WEEKLY_ART = Object.freeze({
+  groups: Object.freeze({ field: '🌾', water: '🎣', craft: '🍳', explore: '⛏️', village: '🏡' }),
+  typeGroup: Object.freeze({ harvest: 'field', fish: 'water', chop: 'field', sell: 'village', daily: 'village' }),
+  items: Object.freeze({
+    teadeck: art('🍵', '#e8cf9f'),
+    teacups: art('🫖', '#cfe3c6'),
+    bojagi: art('🎁', '#f1cfc6'),
+    flowercart: art('💐', '#f4d3dc'),
+    flowerpail: art('🪣', '#d5e4ef'),
+    driedflowers: art('🌾', '#efdcaa'),
+    shellshade: art('🐚', '#f6d9c9'),
+    glassbuoy: art('🔮', '#cde6ea'),
+    conchpot: art('🪴', '#d6e8c9'),
+    bookstall: art('📚', '#e8cf9f'),
+    globe: art('🌍', '#cde6ea'),
+    inkquill: art('🪶', '#dcd5ee'),
+    breadcart: art('🥖', '#f1d6a6'),
+    baguettes: art('🧺', '#efdcaa'),
+    jamshelf: art('🍓', '#f4cfd0'),
+    buskerstage: art('🎤', '#dcd5ee'),
+    guitarstand: art('🎸', '#f1d6a6'),
+    gramophone: art('📻', '#d9d2c4'),
+  }),
+});

@@ -64,9 +64,25 @@ export function initHudShell({ Input, t, trackEvent, menu }) {
     clearTimeout(coinTimer); coinTimer = setTimeout(() => coinPop.classList.remove('show'), 1400);
   }
 
+  function placeCam(m) {
+    const cb = $('cam-reset-btn');
+    if (cb) { cb.style.left = Math.round((m.width ? m.right : 12) + 8) + 'px'; cb.style.top = Math.round(m.width ? m.top : 10) + 'px'; }
+  }
+  function layoutTouch(qp, mm, chip) {
+    mm.style.top = '';
+    const m = mm.getBoundingClientRect();
+    qp.style.left = m.width ? Math.round(m.left) + 'px' : '';
+    qp.style.top = m.height ? Math.round(m.bottom + 8) + 'px' : '';
+    const q = qp.getBoundingClientRect();
+    document.documentElement.style.setProperty('--qp-bottom', '0px');
+    placeCam(m);
+    const below = q.height ? q.bottom : m.height ? m.bottom : 0;
+    if (chip) chip.style.top = below ? Math.round(below + 8) + 'px' : '';
+  }
   function layoutLeft() {
     const qp = $('quest-panel'), mm = $('minimap'), chip = $('story-chip');
     if (!qp || !mm) return;
+    if (qp.querySelector('#qc-btns')) { layoutTouch(qp, mm, chip); return; }
     qp.style.top = '';
     qp.style.maxWidth = '';
     const tr = $('topright')?.getBoundingClientRect();
@@ -78,8 +94,7 @@ export function initHudShell({ Input, t, trackEvent, menu }) {
     document.documentElement.style.setProperty('--qp-bottom', q.height ? Math.round(q.bottom + 8) + 'px' : '0px');
     mm.style.top = q.height ? Math.round(q.bottom + 8) + 'px' : '';
     const m = mm.getBoundingClientRect();
-    const cb = $('cam-reset-btn');
-    if (cb) { cb.style.left = Math.round((m.width ? m.right : 12) + 8) + 'px'; cb.style.top = Math.round(m.width ? m.top : 10) + 'px'; }
+    placeCam(m);
     const below = m.height ? m.bottom : q.height ? q.bottom : 0;
     if (chip) chip.style.top = below ? Math.round(below + 8) + 'px' : '';
   }

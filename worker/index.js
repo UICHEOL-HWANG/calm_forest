@@ -32,19 +32,21 @@ import { onRequestPost as gaMp } from '../functions/api/ga-mp.js';
 import { onRequestPost as clientLogs } from '../functions/api/logs.js';   // 🧯 클라이언트 오류 로그
 import { onRequestPost as referral } from '../functions/api/referral.js';
 import { onRequestPost as signupGift } from '../functions/api/signup-gift.js';
+import { onRequestPost as promoGift } from '../functions/api/promo-gift.js';
 import { onRequest as auraOrder } from '../functions/api/aura-order.js';
 import { onRequestPost as cardsIngest } from '../functions/api/cards-ingest.js';
 import { onRequestGet as cardsTopicsGet, onRequestPatch as cardsTopicsPatch } from '../functions/api/cards-topics.js';
 import { onRequestGet as cardsBundlesGet, onRequestPost as cardsBundlesPost, onRequestPatch as cardsBundlesPatch } from '../functions/api/cards-bundles.js';
 import { runNpcGenCron } from '../functions/npc-gen-cron.js';
 import { runAiPregen } from '../functions/ai-pregen-cron.js';
-import { runPush, isPushTick } from '../functions/push-cron.js';
+import { runPushTick, isPushTick } from '../functions/push-cron.js';
 import { runAuraCron } from '../functions/aura-cron.js';
 import { runLinePool, isLinePoolTick } from '../functions/line-pool-cron.js';
 import { onRequestGet as cardnewsImg } from '../functions/cardnews-img.js';
 import { onRequestGet as rssFeed } from '../functions/rss.js';
 import { onRequestGet as newsPages } from '../functions/news.js';
 import { onRequestGet as appLink } from '../functions/app-link.js';
+import { onRequestGet as inviteLink, onGiftRequestGet as giftLink, wellKnown } from '../functions/invite-link.js';
 import { onRequestGet as utmLinksGet, onRequestPost as utmLinksPost } from '../functions/api/utm-links.js';
 import { handleGo } from '../functions/go-redirect.js';
 
@@ -66,6 +68,11 @@ export default {
         const res = await routeApi(pathname, { request, env, ctx });
         if (res) return withCors(res);
       }
+
+      if (pathname.startsWith('/i/')) return await inviteLink({ request });
+      if (pathname.startsWith('/g/')) return await giftLink({ request });
+
+      if (pathname === '/.well-known/apple-app-site-association') return await wellKnown({ request, env });
 
       if (pathname === '/app' || pathname === '/app/') {
         if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method Not Allowed', { status: 405 });
@@ -125,7 +132,7 @@ export default {
     //    (ai-pregen 혼자 44 를 쓰므로 같은 실행에 얹으면 넘친다).
     if (event.cron === '0,10,20,30,40,50 11-13 * * *') {
       if (isPushTick(event.scheduledTime)) {
-        ctx.waitUntil(runPush(env).then(r => {
+        ctx.waitUntil(runPushTick(env, { scheduledTime: event.scheduledTime }).then(r => {
           console.log(JSON.stringify({ message: 'push cron', cron: event.cron, ...r }));
         }));
         return;
@@ -262,6 +269,11 @@ async function routeApi(pathname, { request, env, ctx }) {
   if (pathname === '/api/signup-gift') {
     if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
     return await signupGift({ request, env });
+  }
+
+  if (pathname === '/api/promo-gift') {
+    if (request.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
+    return await promoGift({ request, env });
   }
 
   if (pathname === '/api/aura-order') {   // 🏮 빛 공방 주문·조회·수령

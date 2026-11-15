@@ -63,11 +63,12 @@ import { MUSEUM_FLOORS, floorEntries, floorProgress, openFloors, nextFloorNeed, 
   SPECIAL_EXHIBITS, specialFor, noteSpecial, sanitizeSpecial, initialMaxFloor, bestAfterCatch, sanitizeBest } from './museum.js';
 import { buildMuseumExtras } from './museum/extras.js';   // 🏛️ 1층 ✨조건부 전시(조형)   // 🏛️ 증축은 수집률로 열린다   // 🪓 도구 등급(0 기본 / 1 업그레이드 / 2 히든) — 색·판정은 이 모듈이 단일 출처
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
-import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
+import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme, audioBus, isBGMOn, startBGM, stopBGM } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
 import { t, LANG, aiBucket, clientId } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
 import { createHouseGuide } from './spaces/house-guide.js';   // 🏠 목재 15개 → 집터 조망 + 방향 안내 50:50
-import { rearmMerchant } from './guide/guide-rules.js';
+import { rearmMerchant, detourPoint, farmPlotTarget } from './guide/guide-rules.js';
 import { createGoalGuide } from './guide/goal-guide.js';
+import { guideArbiter } from './guide/arbiter.js';
 import { e6Decision } from './exp-e6-boot.js';
 import { guideRevampOn } from './exp-e6.js';
 import { createHouseShort } from './guide/house-short.js';
@@ -77,19 +78,32 @@ import { createTossRewarded } from './ads/toss-rewarded.js';
 import { warmShaders } from './render/shader-warm.js';
 import { warmBeforeReveal } from './render/reveal-warm.js';
 import { createFarmRush } from './ads/farm-rush.js';
-import { repeatOpen, rushSlots, sellBonus, houseShort as houseShortOf, bridgeShort, farmStageShort, prepassGrant, shortAdParts, CAFE_CAPS } from './guide/prepass-rules.js';
+import { repeatOpen, rushSlots, sellBonus, houseShort as houseShortOf, bridgeShort, farmStageShort, prepassGrant, shortAdParts, CAFE_CAPS, adQuiet, AD_PARTS } from './guide/prepass-rules.js';
 import { sanitizeHouseGuide } from './house-guide-rules.js';
 import { initPlaza, updatePlaza, plazaSpotNow, openPlaza, plazaScatterBlocks, plazaDefault, restorePlaza, refreshPlaza, plazaDecorMesh, plazaMapVisible } from './plaza/index.js';
 import { defaultToolStars, restoreToolStars, restoreForge, forgeCancel } from './workbench/rules.js';
-import { forgeView, forgeBegin, forgeAbort, forgeFinish, settleForge } from './workbench/forge.js';
+import { forgeView, forgeBegin, forgeAbort, forgeFinish, settleForge, forgeRushReady } from './workbench/forge.js';
 import { initAuction, updateAuction, auctionMapSpot, auctionSpotNow, openAuction, auctionScatterBlocks, auctionOutdoorMesh, auctionDefault, restoreAuction, auctionGuideActive } from './auction/index.js';
+import { initWeekly, updateWeekly, weeklyNote, weeklySpotNow, openWeekly, weeklyDefault, restoreWeekly, weeklyScatterBlocks, weeklyDecorMesh, weeklyDev, weeklyGuideActive, weekIndex } from './weekly/index.js';
+import { makeWeeklyBridge } from './weekly/bridge.js';
+import { initConcert, updateConcert, concertSpotNow, openConcert, concertDefault, restoreConcert, concertScatterBlocks, concertDecorMesh, concertDev, STAGE_POS, concertGuideActive } from './concert/index.js';
+import { makeConcertBridge } from './concert/bridge.js';
 import { refreshPond, updatePond, pondScatterBlocks } from './pond/index.js';
-import { onPlay, decorBanner, applySetFx } from './decor-drops/index.js';
+import { feedPond, openPondBook } from './pond/feed.js';
+import { POND_COPY } from './pond/copy.js';
+import { pondPos, pondNear } from './pond/index.js';
+import { installYardGuide } from './pond/yard-guide.js';
+import { yardIdle } from './pond/yard-steps.js';
+import { featureGuidesOpen, houseGoalDue, placeGuideReady, FIRST_VISIT } from './guide/feature-rules.js';
+import { spaceLinkOn } from './exp-e3.js';
+import { e3Decision } from './exp-e3-boot.js';
+import { kstDate } from './kst-date.js';
+import { onPlay, decorBanner, applySetFx, extraRollReady, onExtraRoll } from './decor-drops/index.js';
 import { updateSetFx } from './decor-drops/fx.js';
 import { normalizeDrops } from './decor-drops/rules.js';
 import { welcomeOffer, topPriceLine, fertBlockedByWatering } from './first-loop.js';   // 🪙 코인 첫 루프 규칙
 import { farmToolFor, farmActionIsNoop, FARM_AUTO_TOOLS } from './farm-auto.js';   // 🌾 농사 도구 자동 전환 규칙(밭 상태→도구)
-import { questAvailable, pickGated, repeatNPCsFor, repeatQuestFor, questIdFor, pickCurrent, activeQuestList, dailyExtendPlan, pickDailyExtra, renumberDailyLine } from './quests.js';   // 🦉 의뢰 공급 규칙(전제조건 게이트·시드 추첨·주민 반복 의뢰)
+import { questAvailable, pickGated, repeatNPCsFor, repeatQuestFor, questIdFor, pickCurrent, activeQuestList, dailyExtendPlan, pickDailyExtra, renumberDailyLine, rerollPick } from './quests.js';   // 🦉 의뢰 공급 규칙(전제조건 게이트·시드 추첨·주민 반복 의뢰)
 import { buildAnimalHead, plushMat } from './animal-faces.js';   // 🎭 플러시 스타일 머리(sims/face-style-sim.html 검수값)
 import { PLOT_CAP, popScale, poppingPlots } from './farm-render.js';   // 🌾 밭 인스턴싱 규칙
 import { CELL, CELL_SEG, SPRIG_PER_PLOT, mottleAt, reliefAt, mottleMix, nextSunk, seamAt, soilSignature, soilSink, sprigOffsets, vertsPerCell, indicesPerCell } from './farm-soil.js';   // 🌾 A안 이어진 얼룩 흙 + 포기
@@ -102,7 +116,7 @@ import { buyBlocked, catalogVisible, SALE_ENDED_MSG, saleTagOf } from './shop/sa
 import { isNicknameBlocked } from './nickname-filter.js';   // 🛡️ 닉네임 금칙어(이웃 마을이 남에게 보여 준다 — UGC 자율 관리)
 import { checkNickname, NICK_FAIL_MSG } from './nickname-filter.js';
 import { makeChickenState, stepChickens } from './coop-chickens.js';   // 🐔 닭 배회·오두막 출입(벽 통과 금지)
-import { ORCHARD_AUTO_TOOLS, orchardToolFor, FRUITS, TREE_SLOTS, YIELD_PER_DAY, ORCHARD_STREAM_LOCAL, ORCHARD_SLOTS_LOCAL, fruitOf, fruitKeyOf, sapKeyOf, nearStream, harvestable, settleTrees, chopHit, freeSlots, daysBetween } from './orchard.js';   // 🍎 과수원 규칙(과일 표·물·수확·베기·빈 자리·정산)
+import { ORCHARD_AUTO_TOOLS, orchardToolFor, FRUITS, TREE_SLOTS, YIELD_PER_DAY, ORCHARD_STREAM_LOCAL, ORCHARD_SLOTS_LOCAL, fruitOf, fruitKeyOf, sapKeyOf, nearStream, harvestable, settleTrees, chopHit, freeSlots, daysBetween, growOneTree } from './orchard.js';   // 🍎 과수원 규칙(과일 표·물·수확·베기·빈 자리·정산)
 import { restoreStage } from './orchard-onboard.js';
 import { defaultDelve, sanitizeDelve } from './delve/rules.js';
 import { defaultPort, sanitizePort } from './port/rules.js';
@@ -228,7 +242,9 @@ import { clampToLandmark, clampToMountain, maybeRevealMountain, mountainAction, 
 import { applyObservatoryLight, clampToObservatory, observatoryAction, observatoryCamFocus, observatoryLensOpen, observatoryMinimapMarks, spawnObservatoryGate, updateObservatory, updateObservatoryStairs } from './spaces/observatory.js';   // 📦 🔭 천문대 — 별자리 리듬 실내 공간
 import { clampToNeighbor, initNeighbors, neighborAction, neighborIndoorElevated, neighborIndoorFrame, neighborMinimapMarks, neighborReturnPos, spawnNeighborGate, updateNeighbor } from './spaces/neighbor.js';   // 📦 🏡 이웃 마을 — 남의 앞마당 구경(js/neighbors/*)
 import { neighborsDefault, restoreNeighbors } from './neighbors/rules.js';
-import { applyE1, e1FirstScreen, enrollE1, updateE1Bubble } from './spaces/e1-start.js';   // 📦 🧪 E1 첫 5분 수확 실험 — 배정·처치 밭·첫 화면 말풍선
+import { applyE1, e1FirstScreen, e1Pending, enrollE1, updateE1Bubble } from './spaces/e1-start.js';   // 📦 🧪 E1 첫 5분 수확 실험 — 배정·처치 밭·첫 화면 말풍선
+import { modalQueue } from './guide/modal-queue.js';
+import { queueLoginNudge, touchNudgeClock } from './guide/nudge-cap.js';
 import { sanitizeE1 } from './exp-e1.js';
 import { DREAM_MAP, clampToDream, dreamAction, dreamCutActive, dreamMinimapMarks, dreamReturnPos, openSleepChoice, setDreamVisible, skipDreamCut, startDream, updateDream, updateDreamCut } from './spaces/dream.js';   // 📦 🌙 꿈의 숲 — 침대에서 꿈꾸기(js/dream/*)
 import { normalizeDream } from './dream/layout.js';   // 🏡 세이브 필드 neighbors { visited, seenAt }
@@ -268,6 +284,11 @@ import {
   withdrawWarehouse,
 } from './spaces/outdoor-decor.js';   // 📦 🪵 야외 장식·창고·선물 (구역 머리말 — 분리 2단계)
 import {
+  affinityChip, affinityIntroFor, affinityLetters, affinityTracker, affinityVisible, claimLetter, introNpcForStart, markIntroSeen, npcBook, onLettersChanged, owlDailyAffinity, readLetter,
+  syncAffinityLetters, trackBookOpen, unreadLetterCount, heartAdReady, heartAd,
+} from './affinity/index.js';
+import { affinityGuideActive, affinityPriority, startAffinityGuide, updateAffinityGuide } from './affinity/guide.js';
+import {
   rebuildFarm, spawnFarmGate, surveyBenchWorld, surveyDeskWorld,
 } from './spaces/farm-field.js';   // 📦 🪧 표지판·텃밭 게이트·측량소·텃밭 필드 (구역 머리말 — 분리 2단계)
 import {
@@ -287,7 +308,7 @@ import {
   craftCover, refreshCovers, resolveWeatherEvent, weatherPrepView,
 } from './spaces/weather.js';   // 📦 🌡️ 날씨 이벤트 — 서리·태풍 예고를 보고 하루 안에 대비하는 재방문 훅
 import {
-  tryChop, tryFish, updateFishing,
+  tryChop, tryFish, updateFishing, setFishAssist,
 } from './spaces/fishing.js';   // 📦 낚시: 호수 물가에서 던지기 → 물면 낚아채기(반응 미니게임)
 import {
   _fmM, buildFarmInstances, createPlot, cycleSeedSel, farmHintMeshes, seedSelCrop, syncFarmCrops, syncFarmSoil,
@@ -312,7 +333,7 @@ import {
   _chipGeo, _confGeo, _dropGeo, _leafGeo, makeParticle, rndSpin, updateFloatTexts, updateParticles, updatePops,
 } from './spaces/fx.js';   // 📦 팝 애니메이션(밭/작물/집 부재 톡 튀어오름)
 import {
-  PLOT_KEEP_OUT, badgeColor, buildNPCs, merchantVisit, npcState, questView, refreshQuestPanel, setNpcHidden, shadeToLum, startNpcReturn,
+  PLOT_KEEP_OUT, badgeColor, buildNPCs, merchantVisit, npcState, questView, refreshQuestPanel, setNpcGlyphsHidden, setNpcGlyphsShowHidden, setNpcHidden, shadeToLum, startNpcReturn,
   talkToNPC, updateMerchantVisit, updateNPC, updateNPCGlyph, updateNPCInteract, updateOwlVisit, updateShopCue,
 } from './spaces/npc.js';   // 📦 NPC (마을 주민 다중) + 퀘스트 체인
 import { restoreAura } from './aura/recipe.js';
@@ -332,10 +353,14 @@ import { restoreMountain } from './mountain/save.js';
 import { onMountainside } from './mountain/landmark.js';
 import { souvenirOutdoorMesh } from './mountain/souvenir-art.js';
 import { SIGNUP_GIFT_IDS, buildSignupGift } from './spaces/signup-gift-art.js';
+import { buildPromoGift, PROMO_SUITCASE_BOX } from './spaces/promo-gift-art.js';
+import { PROMO_DECOR_IDS } from './promo-gift/rules.js';
 import { requestSignupNudge } from './signup-gift/index.js';
 import { FRIEND_ARCH_ID, buildFriendArch } from './spaces/friend-arch-art.js';   // 🌈 무지개 우정 아치(🤝 초대 보상)
 import { MINE_CART_ID, MINE_CART_BOX, buildMineCart } from './delve/cart-art.js';
-import { outdoorFootprint, blockedByWorld } from './world/outdoor-overlap.js';
+import { AFF_ART_IDS, buildAffinityOutdoor } from './affinity/art.js';
+import { AFF_BOX, AFF_SOLID_K } from './data/affinity-decor.js';
+import { outdoorFootprint, blockedByWorld, postCircles } from './world/outdoor-overlap.js';
 // 🔁 js/spaces/* 가 game.js 의 let 에 쓸 때 거치는 접근자(읽기는 import 한 live binding) — tools/refactor/extract-module.mjs 가 만든다
 export const $w = {
   get _hintAnyPrev() { return _hintAnyPrev; }, set _hintAnyPrev(v) { _hintAnyPrev = v; },
@@ -1014,6 +1039,31 @@ function dailyEntry(q, i) {
   };
 }
 
+function dailyRerollTarget() {
+  const def = NPCS.find(n => n.daily);
+  const st = def && npcState(def.id);
+  const q = Array.isArray(st?.quests) && st.date === todayStr() ? st.quests[st.idx] : null;
+  return q && (st.progress || 0) < q.target ? { def, st } : null;
+}
+
+function rerollDailyQuest() {
+  const cur = dailyRerollTarget();
+  const pick = cur && rerollPick(DAILY_POOL, cur.st.quests, dateHash('daily-reroll'), questCtx());
+  if (!pick) return null;
+  const { def, st } = cur;
+  st.quests = st.quests.map((q, i) => (i === st.idx ? dailyEntry(pick, st.idx) : q));
+  st.progress = 0; st.readyToasted = false; st.qsrc = 'reroll';
+  def.quests = st.special ? [...st.quests, st.special] : st.quests;
+  refreshQuestPanel(); requestSave();
+  return pick;
+}
+
+export function questRerollAd(done) {
+  const cur = dailyRerollTarget();
+  if (!cur || !rerollPick(DAILY_POOL, cur.st.quests, dateHash('daily-reroll'), questCtx())) return null;
+  return adPill('quest_reroll', () => { const q = rerollDailyQuest(); if (q) ui.toast?.(`🦉 ${t('새 의뢰')} · ${t(q.title)}`, 2400); }, done);
+}
+
 // ── 🦉 AI 의뢰 — 서버(/api/daily-quests)가 만든 오늘의 의뢰로 조용히 갈아끼운다 ──
 //   8~10초(2026-09-14: fog 8.63s · rain 10.10s)라 6초로는 그날 첫 접속이 거의 다 놓쳤다.
 //   upgradeDailyQuestsAI() 는 로컬 의뢰를 채운 뒤 백그라운드로 도는 데다, 진행이 시작됐으면
@@ -1021,7 +1071,7 @@ function dailyEntry(q, i) {
 async function upgradeDailyQuestsAI() {
   const def = NPCS.find(n => n.daily); if (!def) return;
   const st = npcState(def.id);
-  if (st.qsrc === 'ai') return;                                   // 오늘은 이미 AI 의뢰
+  if (st.qsrc) return;                                            // 오늘은 이미 AI 의뢰
   if (st.given || st.idx > 0 || st.progress > 0) return;          // 진행이 시작됨 → 건드리지 않는다
   let raw;
   try {
@@ -1046,7 +1096,7 @@ async function upgradeDailyQuestsAI() {
     line: `[${LANG === 'en' ? `Request ${i + 1}/${DAILY_COUNT}` : `오늘의 의뢰 ${i + 1}/${DAILY_COUNT}`}] ${String(q.line || '').trim()}`,
   }));
   if (!validDailyQuests(built) || built.some(q => !q.title || !q.line)) return;
-  if (st.given || st.idx > 0 || st.progress > 0) return;           // 받아오는 사이에 시작했을 수 있다
+  if (st.qsrc || st.given || st.idx > 0 || st.progress > 0) return;           // 받아오는 사이에 시작했을 수 있다
   st.quests = built; st.qsrc = 'ai';                               // 세이브에 고정
   def.quests = st.special ? [...built, st.special] : built;        // ✨특별 의뢰가 붙어 있으면 유지(지금은 idx>0 에서 빠져나가 도달 못 하지만, 조건이 바뀌어도 안 사라지게)
   const owl = npcObjs.find(o => o.def.id === def.id);
@@ -1151,6 +1201,8 @@ const gameState = {
   story: { ch: 0, q: 0, started: {}, v: STORY_V }, // 📖 메인 퀘스트 { 현재 장(0=1장 진행중), 누적 의뢰 완료 수, 장별 시작 기록 }
   plaza: plazaDefault(),               // 🌾 수확제 광장 { lastStage, claimed, invited, converted, seen }
   auction: auctionDefault(),
+  weekly: weeklyDefault(),
+  concert: concertDefault(),
   neighbors: neighborsDefault(),       // 🏡 이웃 마을 { visited: 다녀온 횟수(📖 9장), seenAt: 다녀간 이웃 알림을 마지막으로 확인한 시각(ms) }
   unlocks: defaultUnlocks(),           // 🔓 마을 해금 { v, legacy, flags } — 새 세이브만 legacy:false. 판정은 js/world/unlocks.js(저장 안 하고 계산)
   tree: defaultTree(),                 // 🌳 세계수 판 { v, branches: { water|farm|kitchen|forest|snow: { tiles, given, habitat, bundles } } } — js/world/tree-board.js
@@ -1180,7 +1232,7 @@ function dexDiscover(cat, id) {
     ui.showHintModal?.({ ico: '📖', title: '도감 완성!', body: `마을의 모든 것 ${DEX_TOTAL}종을 발견했어요! 축하 보상 🪙150을 받았어요.` });
     trackEvent('dex_complete');                                      // [GA4]
   } else if (total === 5 || total === 12) {
-    ui.loginNudge?.('dex' + total);   // 게스트면 "로그인하면 영구 보존" 넛지(index.html 이 판단)
+    queueLoginNudge('dex' + total, ui);   // 게스트면 "로그인하면 영구 보존" 넛지(index.html 이 판단)
   }
   syncBadges();   // 🏅 날씨 4종·도감 완성 배지 즉시 반영
 }
@@ -1295,6 +1347,7 @@ let unlockOpen = null;          // 지금 열린 id 집합 — syncUnlocks 가 �
 let unlockBooted = false;       // enterGame 의 첫 동기화 전엔 연출·GA4 없이 상태만 맞춘다(세이브 복원은 '돌아온' 게 아니다)
 let unlockQC = null, unlockQCFor = null;
 const unlockTracked = new Set();   // [GA4] 한 세션에 id 당 한 번 — 상인 방문이 취소됐다 다시 와도 두 번 세지 않게
+const DEV_NOW = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) ? Number(_wq.get('weeknow')) || 0 : 0;
 function unlocksOn() { return (UNLOCKS_FORCED || CONFIG.UNLOCKS) === 'on'; }
 /** 이 장소·이웃이 지금 마을에 있는가 — 해금 표에 없는 id 는 늘 true */
 function isOpen(id) {
@@ -1386,29 +1439,18 @@ function unlockMinutes() {
   return Number.isFinite(ms) ? Math.max(0, Math.round((Date.now() - ms) / 60000)) : -1;
 }
 /** 이야기 모달을 줄 세운다 — 미니게임·승부·다른 모달이 떠 있으면 기다렸다가(최대 ~50초) 띄우고, 튜토리얼 중이면 토스트로만 */
-let storyModalsWaiting = 0;   // 줄 서 있는 이야기 모달 수 — afterModals 가 이들이 다 뜨고 닫힐 때까지 기다린다
 let owlBridgeQueued = false;
-function queueStoryModal(opts, toastLine, tries = 0) {
-  if (tries) storyModalsWaiting--;
-  if (ui.coachActive?.()) {
-    if (!tries) ui.toast?.(toastLine, 3200);
-    storyModalsWaiting++; setTimeout(() => queueStoryModal(opts, toastLine, Math.max(1, tries)), 3000);
-    return;
-  }
-  // 🌳 세계수 조망샷이 줄 서 있거나 도는 중이면 짧게 기다린다 — 판 닫힘 → 조망샷 → 귀환 모달 순서(시도 횟수는 안 쓴다)
-  if (treeShotBusy()) { storyModalsWaiting++; setTimeout(() => queueStoryModal(opts, toastLine, Math.max(1, tries)), 400); return; }
-  if (mgView || duelActive || ui.anyModalOpen?.()) {
-    if (tries < 20) { storyModalsWaiting++; setTimeout(() => queueStoryModal(opts, toastLine, tries + 1), 2500); }
-    else ui.toast?.(toastLine, 3200);
-    return;
-  }
-  Sound.complete();
-  if (opts.seenKey) { gameState.hintsSeen[opts.seenKey] = true; requestSave(); }
-  ui.showHintModal?.(opts);
+function queueStoryModal(opts, toastLine) {
+  if (ui.coachActive?.()) ui.toast?.(toastLine, 3200);
+  modalQueue.request({ kind: 'story', show: () => {
+    Sound.complete();
+    if (opts.seenKey) { gameState.hintsSeen[opts.seenKey] = true; requestSave(); }
+    ui.showHintModal?.(opts);
+  } });
 }
 /** 모달이 다 닫힌 뒤 fn — 🧑‍🦳 귀환 모달을 읽은 다음에 📖 1장 완료 모달이 뜨게(줄 선 이야기 모달도 기다린다) */
 function afterModals(fn, tries = 0) {
-  if ((storyModalsWaiting > 0 || mgView || duelActive || ui.anyModalOpen?.() || treeShotBusy()) && tries < 120) { setTimeout(() => afterModals(fn, tries + 1), 700); return; }
+  if ((modalQueue.pending('story') || mgView || duelActive || ui.anyModalOpen?.() || treeShotBusy()) && tries < 120) { setTimeout(() => afterModals(fn, tries + 1), 700); return; }
   fn();
 }
 function showReturnModal(def) {
@@ -1534,7 +1576,7 @@ function checkDailyBonus() {
       weather: WEATHER, forecast: FORECAST, severe: SEVERE_TOMORROW, forecastInDex: !!gameState.dex.weather?.[FORECAST],
       season: SEASON_INFO.season, seasonLeft: SEASON_INFO.left, fish: sFish, fishOwned: seasonOwned(sFish), seasonNew,
     });
-    ui.showDailyCard?.(view, () => { if (pendingNotices.length) ui.showNotices?.(pendingNotices, 'new'); }, dailyAdButton(coins, d.streak));
+    modalQueue.request({ kind: 'daily', show: () => ui.showDailyCard?.(view, () => { if (pendingNotices.length) ui.showNotices?.(pendingNotices, 'new'); }, dailyAdButton(coins, d.streak)) });
     return true;
   }
   ui.toast?.(`🎁 출석 보상 +${coins}🪙`, 1600, { afterDialog: true });                         // 신규 유저: 캐릭터 선택/튜토리얼과 안 겹치게 토스트만
@@ -1548,47 +1590,43 @@ async function prefetchNotices() {
   const since = gameState.noticeSeenId || 0;
   const rows = await fetchNotices(since, { ascending: true });   // 오래된 순 — 20건 넘게 밀려도 읽음 id 가 건너뛰지 않게
   pendingNotices = unreadNotices(rows, since);
-  ui.setUnread?.(pendingNotices.length);
+  refreshUnread();
 }
+function refreshUnread() { ui.setUnread?.(pendingNotices.length + unreadLetterCount()); }
 export function markNoticesSeen(list) {
   const id = maxId(list);
   pendingNotices = pendingNotices.filter(n => n.id > id);
-  ui.setUnread?.(pendingNotices.length);
+  refreshUnread();
   if (id <= (gameState.noticeSeenId || 0)) return;
   gameState.noticeSeenId = id;
   requestSave();
 }
 
 // 스테이션 첫 접근 시 1회만 뜨는 카드 모달 안내(초보 온보딩)
-let firstHintRetries = {};   // key → 미룬 횟수(무한 재시도 방지)
 const hintPlace = () => [indoor, atFarm, atMine, atCafe, atRestaurant, atRiver, atMist, atSea, atMuseum, atObservatory, atMountain, atOrchard, atDream, atMirror].map(Number).join('');
 function firstHint(key, ico, title, body, place = hintPlace()) {
   if (gameState.hintsSeen[key]) return;
-  const away = place.includes('1') && place !== hintPlace();
-  // 🍳 미니게임(조리·조각) 무대 위에 모달을 띄우면 판을 통째로 덮어 버린다 —
-  //   버프 안내는 요리를 끝내고 먹은 뒤에 오는데, 바로 "🍳 한 번 더" 로 다음 판을 시작하면
-  //   800ms 뒤 도착한 안내가 새 판을 가렸다. 소진하지 말고 미룬다(announceMapOpens 와 같은 규칙).
-  //   🐗🦝 밤손님 대결도 같다 — '밤손님이 다녀갔어요' 안내가 가위바위보를 덮었다(2026-09-26).
-  if (away || mgView || duelActive || ui.coachActive?.() || ui.anyModalOpen?.() || treeShotBusy() || document.body.classList.contains('intro-open')) {
-    const n = ui.coachActive?.() ? (firstHintRetries[key] || 0) : (firstHintRetries[key] = (firstHintRetries[key] || 0) + 1);
-    if (n <= 20) setTimeout(() => firstHint(key, ico, title, body, place), 2500);
-    return;
-  }
-  gameState.hintsSeen[key] = true;
-  ui.showHintModal?.({ ico, title, body });
+  modalQueue.request({ kind: 'hint', key: 'hint-' + key, ready: () => !(place.includes('1') && place !== hintPlace()), show: () => {
+    if (gameState.hintsSeen[key]) return;
+    gameState.hintsSeen[key] = true;
+    ui.showHintModal?.({ ico, title, body });
+  } });
 }
 
 // 근접(지나가기) 안내 — 이동을 끊지 않는 비차단 배너(1회). 상세 규칙은 입장 후 모달/존 힌트 담당.
 // 튜토리얼(코치) 진행 중엔 억제하고 '본 것' 처리도 안 함 — 코치 지시와 겹치지 않게, 졸업 후 첫 접근 때 보여준다.
+const placeBannersQueued = new Set();
 /** 띄웠으면 true — 호출부가 "처음 도달"을 계측할 수 있게(🌊 sea_gate_hint). */
-function firstHintBanner(key, ico, title, line) {
+function firstHintBanner(key, ico, title, line, onShown) {
   if (gameState.hintsSeen[key]) return false;
   if (ui.coachActive?.()) return false;
-  gameState.hintsSeen[key] = true;
+  if (placeBannersQueued.has(key)) return false;
+  placeBannersQueued.add(key);
   // 발동 지점을 기억해 "표시 차례가 왔을 때 아직 그 앞에 있는지"를 UI 가 판정할 수 있게 —
   // 여러 시설을 연달아 지나치면 이미 떠난 곳의 배너는 짧게 흘려보낸다(큐 적체 방지)
   const at = { x: player.position.x, z: player.position.z };
-  ui.showHintBanner?.({ ico, title, line, near: () => dist2D(at, player.position) < 3.5 });
+  ui.showHintBanner?.({ ico, title, line, near: () => dist2D(at, player.position) < 3.5,
+    kind: 'place', key: 'place-' + key, burn: () => { gameState.hintsSeen[key] = true; requestSave(); onShown?.(); } });
   return true;
 }
 
@@ -1617,10 +1655,46 @@ const decorMeshes = [];    // 배치된 가구 메시
 
 let mode = 'attract';   // 'attract'(로그인 배경) | 'play'(플레이)
 let goalGuide = null;
+const guideMay = (name) => guideArbiter.mayShow(name);
+guideArbiter.register({ name: 'coach', active: () => goalGuide?.pointing === 'tut' });
+guideArbiter.register({ name: 'house', active: () => !!houseGuidance?.pointing });
+guideArbiter.register({ name: 'goal', active: () => !!goalGuide?.cinematic || (!!goalGuide?.pointing && goalGuide.pointing !== 'tut') });
+guideArbiter.register({ name: 'port', active: portGuideActive });
+guideArbiter.register({ name: 'restaurant', active: restaurantGuideActive });
+guideArbiter.register({ name: 'yard', active: () => !!yardGuide?.active() });
+guideArbiter.register({ name: 'affinity', active: affinityGuideActive, priority: affinityPriority });
+guideArbiter.register({ name: 'weekly', active: weeklyGuideActive });
+guideArbiter.register({ name: 'concert', active: concertGuideActive });
+guideArbiter.register({ name: 'auction', active: auctionGuideActive });
 const guideRevamp = guideRevampOn(e6Decision());
 let houseShort = null;
+let yardGuide = null;
+let placeIdle = 0;
+const sceneFree = () => !ui.anyModalOpen?.() && !ui.coachActive?.() && !portGuideActive() && !restaurantGuideActive() && !auctionGuideActive() && !goalGuide?.cinematic && !houseGuidance?.cinematic && cameraFree();
+function countHint(key) {
+  gameState.hintsSeen = { ...gameState.hintsSeen, [key]: (gameState.hintsSeen[key] | 0) + 1 };
+  requestSave();
+}
+const FIRST_VISIT_AT = { weekly: () => weeklySpotNow() === 'board', concert: () => concertSpotNow(), auction: () => auctionSpotNow(), pond: () => inVillage2() && pondNear() };
+function tickFirstVisits() {
+  if (!featureGuidesOpen(gameState)) return;
+  for (const [id, at] of Object.entries(FIRST_VISIT_AT)) {
+    const v = FIRST_VISIT[id];
+    if (!gameState.hintsSeen[v.key] && at()) firstHintBanner(v.key, v.ico, v.title, v.line);
+  }
+}
+function tickPlaceGuides(dt) {
+  placeIdle = yardIdle(placeIdle, dt, sceneFree() && inVillage2() && !atSea);
+  const gs = gameState, h = gs.hintsSeen;
+  const base = featureGuidesOpen(gs) && habitatDone(gs.tree, 'kitchen') && !yardGuide?.active();
+  const portReady = placeGuideReady({ eligible: base && !restaurantGuideActive() && guideMay('port'), done: !!gs.port?.guideDone, tries: h.portGuideTries, idleSec: placeIdle });
+  if (portReady && maybeStartPortGuide(true)) { placeIdle = 0; countHint('portGuideTries'); return; }
+  const restReady = placeGuideReady({ eligible: base && !portGuideActive() && guideMay('restaurant'), done: !!gs.restaurant?.guideDone || gs.restaurant?.services > 0, tries: h.restGuideTries, idleSec: placeIdle });
+  if (restReady && maybeStartRestaurantGuide(true)) { placeIdle = 0; countHint('restGuideTries'); }
+}
 let rewarded = null;
 let farmRush = null;
+let placePills = [];
 const PREPASS_DEV = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) && new URLSearchParams(location.search).get('prepass') === '1';
 let prepassProvider = PREPASS_DEV
   ? { available: () => true, show: async () => ({ result: 'complete', valueMicros: 0 }) }
@@ -2026,6 +2100,26 @@ function dailyAdButton(coins, streak) {
   return rewarded.button('daily_double', ['광고 보고', ' ', `🪙 ${coins}`, ' ', '더 받기'], () => { giveReward({ coins }, 'daily_double', 'day' + streak); requestSave(); }, (ok, btn) => { if (ok) btn.remove(); });
 }
 
+export function pondFeedAdButton(onDone) {
+  if (!repeatOpen(gameState.houseStage) || !rewarded?.offer('pond_feed_more')) return null;
+  return rewarded.button('pond_feed_more', ['광고 보고', ' ', POND_COPY.adMore], () => feedPond('ad'), (ok, btn) => onDone?.(ok, btn));
+}
+
+function orchardGrowGrant() {
+  const st = gameState.orchard;
+  const out = st && growOneTree(st.trees || [], orchardStreamWorld());
+  if (!out) return;
+  st.trees = out.trees;
+  for (const m of out.matured) trackEvent('tree_mature', m);
+  rebuildOrchard(); requestSave();
+  ui.toast?.(`🌳 ${t('나무가 하루 자랐어요')}`, 2200);
+}
+
+export function adPill(slot, grant, done) {
+  if (!repeatOpen(gameState.houseStage)) return null;
+  return rewarded?.pill(slot, AD_PARTS[slot], grant, done) ?? null;
+}
+
 function farmRushGrant(list) {
   const live = list.filter(p => plots.includes(p) && p.state === 'growing');
   for (const p of live) {
@@ -2086,7 +2180,7 @@ export const Input = {
   armTutorialMove() { movedOnce = false; },  // 튜토리얼 시작 시 이동 스텝 재감지
   getDecor() {   // 🏠 층별 해금 — 잠긴 것도 목록엔 보이되 locked 로 흐리게(살 목표가 보여야 싱크가 된다)
     const st = gameState.houseStage, kept = gameState.house.stored || {};
-    return [...DECOR.filter(d => !d.hidden), ...DECOR.filter(d => d.set && (kept[d.id] || 0) > 0)]
+    return [...DECOR.filter(d => !d.hidden), ...DECOR.filter(d => (d.set || d.keep) && (kept[d.id] || 0) > 0)]
       .filter(d => catalogVisible(d, { stored: kept[d.id] || 0 }))   // 🎃 기간 밖 한정품은 안 산 사람에겐 숨긴다(보관분은 계속 보인다)
       .filter(d => !d.dream || (gameState.dream?.visits || 0) > 0 || (kept[d.id] || 0) > 0)   // 🌙 꿈을 꿔 보기 전엔 ✨ 화폐가 뭔지 모른다 — 숨긴다
       .filter(d => !d.mirror || (gameState.mirror?.visits || 0) > 0 || (kept[d.id] || 0) > 0)   // 🪞 거울 마을을 다녀오기 전엔 🪞 화폐가 뭔지 모른다
@@ -2183,6 +2277,7 @@ export const Input = {
   forgeBegin(tool) { return forgeBegin(tool); },
   forgeAbort() { return forgeAbort(); },
   forgeFinish(score) { return forgeFinish(score); },
+  forgeAdButton(done) { return forgeRushReady() ? adPill('forge_rush', () => settleForge(true), done) : null; },
   getOutdoor() { return OUTDOOR.filter(o => catalogVisible(o, { stored: gameState.outdoorStored?.[o.id] || 0 })).map(o => ({ ...o, tag: saleTagOf(o) })); },   // 야외 장식 목록(+🏗️ 밭 시설 farm:true) · 🎃 기간 밖 한정품 숨김
   isAtFarm() { return atFarm; },
   selectOutdoor(id) { if (pickedOutdoor) stopOutdoorPlacing(true); placingOutdoor = id; outdoorTarget.pinned = false; buildDecorGhost(id, true); },   // 야외 장식 선택(설치 대기 — 발밑에 🫥미리보기). 들고 있던 장식은 제자리로(안 그러면 새 장식이 "옮김"으로 공짜 설치됨)
@@ -2217,6 +2312,7 @@ export const Input = {
   getShopBuy() { return SHOP_BUY; },                    // 구매 목록
   sellAdButton(k, gain, onDone) { return sellAdButton(k, gain, onDone); },
   craftAdButton(station, onDone) { return craftAdButton(station, onDone); },
+  baitAdButton(done) { return adPill('bait_box', () => { giveReward({ bait: 2 }, 'bait_box'); requestSave(); }, done); },
   sellItem(k, req) { return sellItem(k, req); },        // 자원 판매
   getMarket() { return marketData(); },
   buyShop(id) { return buyShop(id); },                  // 아이템 구매
@@ -2225,6 +2321,20 @@ export const Input = {
   craftGift(id) { return craftGift(id); },              // 선물 제작
   giveGift(id) { return giveGift(id); },                // 근처 주민에게 선물
   affinityOf(npcId) { return gameState.affinity[npcId] || 0; }, // 친밀도
+  affinityChip(npcId) { return affinityChip(npcId); },
+  affinityVisible(npcId) { return affinityVisible(npcId); },
+  affinityTracker(compact) { return affinityTracker(compact); },
+  unreadLetterCount() { return unreadLetterCount(); },
+  affinityIntroFor(npcId, force) { return affinityIntroFor(npcId, force); },
+  introNpcForStart() { return introNpcForStart(); },
+  markIntroSeen(npcId, from) { markIntroSeen(npcId, from); },
+  startAffinityGuide(npcId) { return startAffinityGuide(npcId); },
+  npcBook() { return npcBook(); },
+  affinityAdButton(id, done) { return heartAdReady(id) ? adPill('affinity_heart', () => heartAd(id), done) : null; },
+  affinityLetters() { return affinityLetters(); },
+  readLetter(key) { readLetter(key); },
+  claimLetter(key) { return claimLetter(key); },
+  trackBookOpen(from, npc) { trackBookOpen(from, npc); },
   // ── 💬 잡담 ────────────────────────────────────────────────
   //  보상이 없다. 친밀도도 코인도 안 준다 — 선물(재료를 쓴다)·접객의 가치를 희석하지 않기 위해서다.
   //  하루 주민당 TALK_PER_DAY 번. 다 쓰면 그 주민은 작별 문구만 남긴다.
@@ -2373,7 +2483,7 @@ function announceMapOpens() {
     const ico = sp < 0 ? '' : head.slice(0, sp);
     const title = sp < 0 ? head : head.slice(sp + 1);
     gameState.hintsSeen[key] = true;   // 실제로 배너를 띄우는 순간에만 소진
-    ui.showHintBanner?.({ ico, title, line, near: () => true });
+    ui.showHintBanner?.({ ico, title, line, near: () => true, kind: 'feature', key });
     trackEvent('map_opened', { map, day });
   }
 }
@@ -2430,7 +2540,7 @@ function initChurnPredictor() {
       show: (b) => {
         // 🎯 주목 신호 — 짧은 "띠링"(효과음 토글 존중) + 안드로이드 진동 30ms. 실패해도 배너는 뜬다.
         if (b.attention) { try { Sound.nudge?.(); navigator.vibrate?.(30); } catch (e) { /* 무시 */ } }
-        ui.showHintBanner?.({ ico: b.ico, title: b.title, line: b.line, near: () => true, attention: !!b.attention });
+        ui.showHintBanner?.({ ico: b.ico, title: b.title, line: b.line, near: () => true, attention: !!b.attention, kind: 'feature', key: 'churn' });
       },
     }),
     track: (n, p) => trackEvent(n, p),
@@ -2489,7 +2599,8 @@ function retentionGuidanceState() {
   //    retention-guidance.js 는 브라우저 전역을 안 쓰는 순수 모듈이라 여기서 재서 넘긴다.
   let touch = false;
   touch = isTouchDevice();   // 📱 controls.js·index.html 과 같은 판정(touchsim 포함)
-  return { ...buildRetentionGameStateSnapshot({ ...snap, closed: closedPlaces() }), touch };   // 🔓 잠긴 시설은 배너가 안 가리킨다
+  const nearAction = !!nearNPC || (inVillage2() && nearestTreeDist() < 8) || (atFarm && (snap.plantedUnwatered > 0 || plots.some(p => p.state === 'mature')));
+  return { ...buildRetentionGameStateSnapshot({ ...snap, closed: closedPlaces(), nearAction }), touch };   // 🔓 잠긴 시설은 배너가 안 가리킨다
 }
 
 function initRetentionGuidance() {
@@ -2508,7 +2619,7 @@ function initRetentionGuidance() {
     showBanner: (b) => {
       if (b.attention) { try { Sound.nudge?.(); navigator.vibrate?.(30); } catch (e) { /* 무시 */ } }
       ui.showHintBanner?.({
-        ico: b.ico, title: b.title, line: b.line, near: () => true, attention: !!b.attention,
+        ico: b.ico, title: b.title, line: b.line, near: () => true, attention: !!b.attention, kind: 'feature', key: 'retention',
         // 🌿 상단 슬롯은 캔버스에 그려지는 월드 라벨(NPC 이름표·간판)을 가린다.
         //    좁은 화면에선 프롬프트 줄 위로 내린다(#hint-banner.slot-bottom).
         //    🪧 시설 배너는 "이 앞에 뭐가 있다"는 안내라 대상 근처인 상단이 맞아서 안 내린다.
@@ -2534,6 +2645,7 @@ function initRetentionGuidance() {
 // ① 로그인 화면 뒤에서 도는 "어트랙트" 씬 부팅 (플레이어 조작 X)
 export async function bootWorld(uiCallbacks) {
   ui = uiCallbacks || {};
+  modalQueue.addGate(() => mgView || duelActive || treeShotBusy() || !!intro || !gameState.tutorialSeen || e1Pending());
   ui.setHabitatLabels?.(TAG_LABEL, HABITAT_BLOCK_LINE);   // 🦋 미터 라벨·안내 문구는 js/habitat.js 가 단일 출처
   initRenderer();
   initScene();
@@ -2611,6 +2723,8 @@ export async function enterGame() {
   refreshStations();
   catchUpCraft();                      // 🔥 자는 사이 다 구워진 게 있으면 알린다
   settleForge(false);
+  onLettersChanged(refreshUnread);
+  syncAffinityLetters();
   prefetchNotices();                   // 📮 안 읽은 소식을 미리 받아 둔다(await 안 함 — 출석 모달을 닫을 때 준비돼 있으면 이어서 띄운다)
   // 테스트: ?house=4|5|6 — 증축 단계 미리보기(?weather= 와 같은 개발용 파라미터)
   const _hq = parseInt(_wq.get('house') || '', 10);
@@ -2731,6 +2845,8 @@ export async function enterGame() {
     // 🌫️ __mistTest() — 오늘 정화를 무른 셈 치고 다시(코스 아님이라 리롤 유인 없음)
     window.__mistTest = () => { gameState.mist.date = null; gameState.mist.purified = false; return mistDaily(); };
     window.__mist = mist;   // 🎓 연습 모드·갈림길 검수용(로컬 전용) — 정령 좌표·♪ phase 를 콘솔에서 본다
+    window.__weekly = weeklyDev();
+    window.__concert = concertDev();
     // 🌙 꿈의 숲 검수(로컬 전용) — 집 안 침대 옆 밤을 만들고 선택 창·꿈길·조각 줍기를 콘솔에서 몬다
     window.__dream = {
       night: () => { timeOfDay = 0.8; dayPaused = true; return isNight(); },
@@ -2917,11 +3033,24 @@ export async function enterGame() {
     stopAnalog: () => Input.setAnalog?.(0, 0),
     projectPlayer: () => projectToScreen(player.position, 0),
     playReminder: () => Sound.houseGuide(), whoosh: () => Sound.cineWhoosh(),
-    track: trackEvent, save: requestSave,
+    track: trackEvent, save: requestSave, mayShow: () => guideMay('house'),
   });
   rewarded = createRewarded({
     enabled: () => PREPASS_ON || PREPASS_DEV, provider: () => prepassProvider, forceArm: () => (PREPASS_DEV ? 'ad' : null),
     clientId, platform: PLATFORM, track: trackEvent, translate: t, toast: (m) => ui.toast?.(m, 2400),
+    week: () => weekIndex(DEV_NOW || Date.now()),
+    quiet: () => {
+      const b = document.body.classList;
+      return adQuiet({
+        tutorial: !gameState.tutorialSeen || !b.contains('playing') || ![undefined, null, 'done'].includes(gameState.hintsSeen?.tutStep),
+        coaching: b.contains('coaching') || !!document.querySelector('.show > .tut-card'),
+        spotlight: b.contains('spot-on'),
+        e1: e1Pending() || b.contains('e1-pending'),
+        cutscene: !!intro || b.contains('intro-open') || b.contains('cine-open') || !!goalGuide?.cinematic || !!houseGuidance?.cinematic,
+        charSelect: !!document.querySelector('#char-modal.show'),
+        modalQueue: modalQueue.due() && !ui.anyModalOpen?.(),
+      });
+    },
     today: todayStr,
     dayRecord: { get: () => JSON.parse(localStorage.getItem('cf_prepass_day') || 'null'), set: (v) => localStorage.setItem('cf_prepass_day', JSON.stringify(v)) },
   });
@@ -2938,22 +3067,30 @@ export async function enterGame() {
     topInset: () => { const c = document.getElementById('coach'); const r = c?.classList.contains('show') ? c.getBoundingClientRect() : null; return r && r.height ? Math.round(r.bottom + 30) : 0; },
     refreshInventory: () => refreshInventoryUI(), toast: (m) => ui.toast?.(m, 2400),
   }) : null;
-  farmRush = createFarmRush({
-    rewarded, state: () => gameState, plots: () => plots, atFarm: () => atFarm, grant: farmRushGrant,
+  const rushBase = {
+    rewarded, state: () => gameState,
     modalOpen: () => !!ui.anyModalOpen?.() || document.body.classList.contains('spot-on'),
     bottomInset: () => { const r = document.getElementById('tool-btn')?.getBoundingClientRect(); return r && r.height ? Math.round(innerHeight - r.top + 16) : 0; },
-    unit: () => (LANG === 'en' ? '' : '칸'),
-  });
-  if (PREPASS_DEV) { window.__houseShort = houseShort; window.__farmRush = farmRush; window.__liveState = () => gameState; window.__dailyAd = () => dailyAdButton(30, 1); window.__craftData = (st) => craftPanelData(st); window.__plots = () => plots; }
+  };
+  const rollPill = (src, at) => createFarmRush({ ...rushBase, slot: `drop_reroll_${src}`, id: `${src}-roll`, atFarm: at, targets: () => (extraRollReady(src) ? [src] : []), parts: () => AD_PARTS[`drop_reroll_${src}`], grant: () => onExtraRoll(src) });
+  farmRush = createFarmRush({ ...rushBase, plots: () => plots, atFarm: () => atFarm, grant: farmRushGrant, unit: () => (LANG === 'en' ? '' : '칸') });
+  placePills = [
+    farmRush,
+    createFarmRush({ ...rushBase, slot: 'orchard_grow', id: 'orchard-rush', atFarm: () => atOrchard, targets: () => (gameState.orchard?.trees || []).filter(tr => tr.stage === 'sapling' || tr.stage === 'growing'), parts: () => AD_PARTS.orchard_grow, grant: orchardGrowGrant }),
+    rollPill('mine', () => atMine && !delveFloorNow()),
+    rollPill('firefly', () => inVillage2() && dist2D(player.position, GLADE) < GLADE_R + 2),
+  ];
+  if (PREPASS_DEV) { window.__houseShort = houseShort; window.__farmRush = farmRush; window.__placePills = placePills; window.__liveState = () => gameState; window.__dailyAd = () => dailyAdButton(30, 1); window.__craftData = (st) => craftPanelData(st); window.__plots = () => plots; }
   goalGuide = guideRevamp ? createGoalGuide({
     state: () => gameState, player, camera, scene,
     adButton: (slot, list) => shortAdButton(slot, list, null, CAFE_CAPS),
     adOpen: () => !!rewarded?.open(),
-    otherGuide: () => portGuideActive() || restaurantGuideActive() || auctionGuideActive(),
+    otherGuide: (flow) => !guideMay(flow === 'tut' ? 'coach' : 'goal'),
     translate: t, track: trackEvent, save: requestSave,
     cameraFree, setCameraRig, defaultCamPose,
     inVillage: inVillage2, atMine: () => atMine && !delveFloorNow(),
     coaching: () => document.body.classList.contains('coaching'),
+    houseDue: () => houseGoalDue(gameState, document.body.classList.contains('coaching')),
     modalOpen: () => !!ui.anyModalOpen?.() || document.body.classList.contains('spot-on') || !!houseGuidance?.cinematic,
     stopAnalog: () => Input.setAnalog?.(0, 0), whoosh: () => Sound.cineWhoosh(),
     project: (pos, lift) => projectToScreen(pos, lift),
@@ -2963,7 +3100,7 @@ export async function enterGame() {
     trees: () => trees, oreRocks: () => oreRocks, mineSpots: delveGuideSpots,
     npcSpots: () => npcObjs.filter(o => !o.hidden).map(o => o.group.position),
     solids: () => colliders.filter(c => ('r' in c ? c.r >= 1.0 : true)),
-    mineGate: MINE_GATE, worldTree: WORLD_TREE,
+    mineGate: { x: MINE_GATE.x, z: MINE_GATE.z + 1.1 }, worldTree: WORLD_TREE,
     storySnap: () => {
       const c = curStory()[Number(gameState.story?.ch) || 0];
       const rule = c ? (c.rule || c.id) : null;
@@ -2977,12 +3114,13 @@ export async function enterGame() {
       const foot = bridgeFoot();
       const offIsle = dist2D(player.position, ISLE) > ISLE_R + 0.5 && dist2D(player.position, foot) > 2.5;
       return {
-        wall: { at: HOUSE_POS }, roof: { at: HOUSE_POS }, farm: { at: FARM_GATE }, cosShop: { at: SHOP_DOOR },
+        wall: { at: HOUSE_POS }, roof: { at: HOUSE_POS }, house: { at: HOUSE_POS }, farm: { at: FARM_GATE }, cosShop: { at: SHOP_DOOR },
         bridge: { at: foot },
         museum: { at: museumGoal(), via: offIsle && !bridgeBrokenNow() ? foot : null },
       };
     },
     atFarm: () => atFarm,
+    farmPlot: () => farmPlotTarget(plots, { x: FARM.x, z: FARM.z }),
     exitSpot: () => {
       if (indoor) return houseFloor === 0 ? { x: INT.x, z: INT.z - INT_HALF } : null;
       if (atFarm) return { x: FARM.x, z: FARM.z + farmHalf() };
@@ -2993,6 +3131,18 @@ export async function enterGame() {
     },
     farmBranchDue: () => unlocksOn() && !gameState.unlocks?.legacy && habitatDone(gameState.tree, 'water') && !habitatDone(gameState.tree, 'farm'),
   }) : null;
+  yardGuide = installYardGuide({
+    state: () => gameState, on: () => spaceLinkOn(e3Decision()), inVillage: inVillage2,
+    free: () => sceneFree() && guideMay('yard'),
+    held: () => !guideMay('yard'),
+    scene, camera, player,
+    route: (me, tgt) => detourPoint({ x: me.x, z: me.z }, { x: tgt.x, z: tgt.z }, colliders.filter(c => ('r' in c ? c.r >= 1.0 : true))),
+    track: trackEvent, save: requestSave, today: kstDate,
+    banner: line => ui.showHintBanner?.({ ico: '🦉', title: POND_COPY.owlTitle, line, near: () => true, attention: true, kind: 'feature', key: 'yard-owl' }),
+    setAssist: setFishAssist, setHudHidden: setNpcGlyphsHidden, pondPos, pondNear,
+    nearLake: () => dist2D(LAKE, player.position) <= LAKE_R + 2.8,
+    fishing: () => fishState !== 'idle',
+  });
   if (_wq.has('dbg')) window.__guide = goalGuide;
   houseGuidance.onInventory();          // 로컬 강제 시안(?houseguide=)만 부팅 보유량으로 시험; 실제 배정은 플레이 중 15개 도달
   movedOnce = false;
@@ -3009,6 +3159,7 @@ export async function enterGame() {
     x: player.position.x, z: player.position.z,
   }));
   gameState.firstDay = ensureFirstDay(gameState.firstDay, todayStr());
+  touchNudgeClock();
   const bonusModal = checkDailyBonus(); // [출석] 오늘 첫 접속이면 보상 지급(모달 표시 여부 반환)
   if (WEATHER !== 'clear') {            // [날씨] 궂은 날 안내 + 세션 태깅
     if (!bonusModal) ui.toast?.(WEATHER_MSG[WEATHER], 2800, { afterDialog: true });   // 출석 모달에 이미 합쳐 안내했으면 생략
@@ -3036,6 +3187,7 @@ export async function enterGame() {
   }
 
   // 신규: 캐릭터(동물) 미선택이면 선택 화면 → 그 뒤 튜토리얼. 이미 선택했으면 튜토리얼만.
+  if (!gameState.character || !gameState.tutorialSeen) gameState.hintsSeen = { ...gameState.hintsSeen, chipNew: 1 };
   if (!gameState.character) ui.showCharacterSelect?.();
   else if (Input.e1FirstScreen()) { /* 🧪 E1 처치 — 첫 수확 전 재접속: 다시 밭 앞에서 */ }
   else if (!gameState.tutorialSeen) { gameState.tutorialSeen = true; ui.showTutorial?.(); }
@@ -3232,6 +3384,8 @@ function applySave(saved) {
   if (saved.gifts) gameState.gifts = restoreGifts(saved.gifts);             // 보유 선물 복원
   gameState.plaza = restorePlaza(saved.plaza);   // 🌾 광장(옛 세이브=기본값)
   gameState.auction = restoreAuction(saved.auction);
+  gameState.weekly = restoreWeekly(saved.weekly);
+  gameState.concert = restoreConcert(saved.concert);
   gameState.neighbors = restoreNeighbors(saved.neighbors);   // 🏡 이웃 마을(옛 세이브=기본값)
   if (saved.affinity) gameState.affinity = { ...saved.affinity };    // 친밀도 복원
   // 💬 대화 횟수 복원 — 날짜가 오늘이 아니면 버린다(어제 소진이 오늘까지 남지 않게).
@@ -3299,6 +3453,16 @@ function grantDecor(id) {
   } else return false;
   requestSave();
   return true;
+}
+
+export function grantItems(bundle, source = 'promo_gift') {
+  for (const [k, v] of Object.entries(bundle || {})) {
+    if (!(k in gameState.inventory) || !Number.isInteger(v) || v <= 0) continue;
+    gameState.inventory[k] += v;
+    logEcon(source, k, v, gameState.inventory[k]);
+  }
+  requestSave();
+  refreshInventoryUI();
 }
 
 export function getGameState() {
@@ -3549,6 +3713,7 @@ function buildWorld() {
       || dist2D({ x, z }, MARKET) < 2.5 // 📊 시세판도(새 자리는 호숫가 잔디라 나무 링 안)
       || PARK_BENCHES.some(([bx, bz]) => dist2D({ x, z }, { x: bx, z: bz }) < 3)   // 공원 벤치가 나무에 가리지 않게
       || plazaScatterBlocks(x, z)
+      || weeklyScatterBlocks(x, z) || concertScatterBlocks(x, z)
       || auctionScatterBlocks(x, z)
       || pondScatterBlocks(x, z, 1.2)
       || NPCS.some(n => dist2D({ x, z }, { x: n.pos[0], z: n.pos[2] }) < 2.6));    // 주민 자리에 나무가 박혀 갇히지 않게
@@ -3562,6 +3727,10 @@ function buildWorld() {
   spawnRankBoard();   // 🏆 랭킹 게시판(리더보드)
   initPlaza();                // 🌾 수확제 광장(시즌 터·돌길)
   initAuction();
+  const GE = { THREE, scene, lake: { x: LAKE.x, z: LAKE.z, r: LAKE_R }, get camera() { return camera; }, get player() { return player; }, get ui() { return ui; }, t, colliders, isOpen, cameraFree, project: projectToScreen, inVillage: inVillage2, otherGuide: (name) => !guideMay(name), featureOpen: () => featureGuidesOpen(gameState), track: trackEvent };
+  { const wb = makeWeeklyBridge({ gameState: () => gameState, patch: (p) => Object.assign(gameState, p), questAvailable, questCtx, isOpen, guide: GE });
+    { const cb = makeConcertBridge({ getPlayer: () => player, THREE, getPlayerRig: () => ({ anchor: playerAnchor, arms: playerArms, def: curAnimal }), setCameraRig, hideTool: (h) => { if (heldGroup) heldGroup.visible = !h; }, hideLabels: setNpcGlyphsShowHidden, isBgmOn: isBGMOn, startBgm: startBGM, stopBgm: stopBGM }); initConcert({ getState: () => gameState.concert, setState: (s) => { gameState.concert = s; }, requestSave, isGuest: () => authState.isGuest !== false, login: () => ui.loginNudge?.('shop'), ownsDecor: wb.owns, grantDecorItem: wb.grant, today: todayStr, stopMove: () => Input.setAnalog(0, 0), roll: () => rollDifficulty('concert'), settle: (o) => settleDifficulty('concert', o), diffParams, abandon: (r, stage, extra) => trackDiffAbandon('concert', r, stage, extra), audio: audioBus, stage: cb.stage, bgm: cb.bgm, night: () => nightLevel, scene, solidCircle, THREE, guideEnv: wb.guideEnv, adButton: (grant) => adPill('concert_play', grant) }); }
+    initWeekly({ getState: () => gameState.weekly, setState: (s) => { gameState.weekly = s; }, canDo: wb.canDo, isGuest: () => authState.isGuest !== false, ownsDecor: wb.owns, grantDecorItem: wb.grant, now: () => DEV_NOW || Date.now(), night: () => nightLevel, stopMove: () => Input.setAnalog(0, 0), login: () => ui.loginNudge?.('shop'), requestSave, scene, solidCircle, THREE, guideEnv: wb.guideEnv, adButton: (grant, done) => adPill('weekly_ticket', grant, done) }); }
   lockFrom('market'); spawnMarketBoard(); lockTo(); // 📊 시세 전광판(상점 옆)
   spawnFarmGate();    // 텃밭 입구 게이트
   rebuildFarm(true);  // 개인 텃밭 필드(1단계) — 세이브에 단계가 있으면 applySave 가 다시 짓는다
@@ -3586,6 +3755,7 @@ function buildWorld() {
     if (restaurantScatterBlocks(x, z)) continue;
     if (dist2D({ x, z }, LIGHT_WORKSHOP) < 3.2) continue;            // 🏮 빛 공방 받침도 같은 이유
     if (plazaScatterBlocks(x, z, 0.5)) continue;
+    if (weeklyScatterBlocks(x, z) || concertScatterBlocks(x, z)) continue;
     if (auctionScatterBlocks(x, z)) continue;
     if (pondScatterBlocks(x, z, 0.5)) continue;
     grassBuckets[i % 3].push({ x, y: 0.35, z, ph: Math.random() * Math.PI * 2 });
@@ -5216,6 +5386,7 @@ function buildEnvironment() {
     if (restaurantScatterBlocks(x, z)) continue;
     if (dist2D({ x, z }, NEIGHBOR_GATE) < 1.5) continue;             // 🏡 이웃 마을 팻말 밑
     if (plazaScatterBlocks(x, z, 1)) continue;
+    if (weeklyScatterBlocks(x, z) || concertScatterBlocks(x, z)) continue;
     if (auctionScatterBlocks(x, z)) continue;
     if (pondScatterBlocks(x, z, 1)) continue;
     makeFlower(x, z, flowerCols[i % flowerCols.length]);
@@ -5803,6 +5974,8 @@ function outdoorMesh(id) {
   { const m = plazaDecorMesh(id); if (m) return m; }   // 🌾 광장 장식 4종(js/plaza/decor.js)
   { const m = souvenirOutdoorMesh(THREE, id); if (m) return m; }
   { const m = auctionOutdoorMesh(id); if (m) return m; }
+  { const m = weeklyDecorMesh(THREE, id); if (m) { houseWindows.push(...m.userData.lamps); return m; } }
+  { const m = concertDecorMesh(THREE, id); if (m) { houseWindows.push(...m.userData.lamps); return m; } }
   const g = new THREE.Group();
   if (isFarmBuilding(id)) {   // 🏗️ 밭 시설 7종 — 배치·고스트 둘 다 이 함수를 쓴다(여기 없으면 투명하게 놓인다)
     farmBuildingMesh(id, g);
@@ -5880,10 +6053,14 @@ function outdoorMesh(id) {
     g.add(buildHalloween(THREE, id, HALLOWEEN_STYLE[id], makeCtx(THREE, (m) => houseWindows.push(m))));
   } else if (id === MINE_CART_ID) {
     g.add(buildMineCart(THREE));
+  } else if (AFF_ART_IDS.includes(id)) {
+    g.add(buildAffinityOutdoor(id, (m) => houseWindows.push(m)));
   } else if (id === FRIEND_ARCH_ID) {   // 🌈 무지개 우정 아치 — 걸어서 통과(충돌체 없음) · 밤 반짝이는 houseWindows
     g.add(buildFriendArch(THREE, (m) => houseWindows.push(m)));
   } else if (SIGNUP_GIFT_IDS.includes(id)) {
     g.add(buildSignupGift(THREE, id, (m) => houseWindows.push(m)));
+  } else if (PROMO_DECOR_IDS.includes(id)) {
+    g.add(buildPromoGift(THREE, id));
   } else if (id === 'kiln') {
     // 🔥 화덕 — sims/kiln-sim.html 에서 확정한 C안(낮은 아궁이). 상판이 표시 면이라
     //    완성물이 쌓이면 가까이 가지 않아도 "다 구워졌다" 가 읽힌다.
@@ -5959,8 +6136,8 @@ function outdoorMesh(id) {
 // 야외 장식 설치 (플레이어 위치에). silent=true 면 저장 복원 · 들어 올린 걸 다시 놓으면(pickedOutdoor) 값 없음 · 🧺 보관분이 있으면 값 없이 꺼내 놓는다
 const OVERLAP_PLACE_MSG = '🌳 나무나 건물과 겹쳐서 놓을 수 없어요';
 function outdoorBlockedByWorld(id, x, z, ry) {
-  const ignore = new Set(outdoorMeshes.map(m => m.userData.solid).filter(Boolean));
-  const fp = outdoorFootprint(id, x, z, ry, { cartBox: MINE_CART_BOX, vatBox: VAT_BOX, cartId: MINE_CART_ID });
+  const ignore = new Set(outdoorMeshes.flatMap(m => m.userData.solid || []));
+  const fp = outdoorFootprint(id, x, z, ry, { cartBox: MINE_CART_BOX, vatBox: VAT_BOX, cartId: MINE_CART_ID, suitcaseBox: PROMO_SUITCASE_BOX, defBox: OUTDOOR.find(d => d.id === id)?.box });
   return blockedByWorld(fp, colliders, ignore);
 }
 function placeOutdoor(wx, wz, silent = false, id = placingOutdoor, rot = null) {
@@ -6019,12 +6196,24 @@ function placeOutdoor(wx, wz, silent = false, id = placingOutdoor, rot = null) {
     } else if (id === MINE_CART_ID) {
       const [hw, hd] = (ry % 2) ? [MINE_CART_BOX.d / 2, MINE_CART_BOX.w / 2] : [MINE_CART_BOX.w / 2, MINE_CART_BOX.d / 2];
       solid = solidBox(wx - hw, wz - hd, wx + hw, wz + hd);
+    } else if (AFF_BOX[id]) {
+      const b = AFF_BOX[id], k = AFF_SOLID_K;
+      const [hw, hd] = (ry % 2) ? [b.d * k / 2, b.w * k / 2] : [b.w * k / 2, b.d * k / 2];
+      solid = solidBox(wx - hw, wz - hd, wx + hw, wz + hd);
     } else if (id === 'vat') {
       // 🫙 발효통 — 화덕과 같은 문법. 반치수는 조형 모듈이 준 발자국(VAT_BOX)의 절반
       const [hw, hd] = (ry % 2) ? [VAT_BOX.d / 2, VAT_BOX.w / 2] : [VAT_BOX.w / 2, VAT_BOX.d / 2];
       solid = solidBox(wx - hw, wz - hd, wx + hw, wz + hd);
       obstacles.pop(); ob = { x: wx, z: wz, r: 1.2 }; obstacles.push(ob);
-    } else solid = ['fence', 'stonewall', 'postlamp', 'brazier', 'scarecrow', 'spiritlamp', 'ghostlamp', 'gravefence', 'haybale', 'pumpkins', 'pumpkinlamp', 'harvestscarecrow', 'moonswing', 'lanternarch', 'starvane'].includes(id) ? solidCircle(wx, wz, ['postlamp', 'scarecrow', 'spiritlamp', 'ghostlamp', 'pumpkinlamp', 'harvestscarecrow', 'starvane'].includes(id) ? 0.22 : 0.5) : null;   // 🎃 거미줄 아치(webarch)는 걸어서 통과한다 · 🌾 수확제 4종은 목록에 없어 통과했다(2026-10-09)
+    } else if (id === 'promosuitcase') {
+      const [hw, hd] = (ry % 2) ? [PROMO_SUITCASE_BOX.d / 2, PROMO_SUITCASE_BOX.w / 2] : [PROMO_SUITCASE_BOX.w / 2, PROMO_SUITCASE_BOX.d / 2];
+      solid = solidBox(wx - hw, wz - hd, wx + hw, wz + hd);
+    } else if (def.posts) {
+      solid = postCircles(def.posts, wx, wz, ry).map(c => solidCircle(c.x, c.z, c.r));
+    } else if (def.box) {
+      const [hw, hd] = (ry % 2) ? [def.box[1] / 2, def.box[0] / 2] : [def.box[0] / 2, def.box[1] / 2];
+      solid = solidBox(wx - hw, wz - hd, wx + hw, wz + hd);
+    } else solid = ['fence', 'stonewall', 'postlamp', 'brazier', 'scarecrow', 'spiritlamp', 'ghostlamp', 'gravefence', 'haybale', 'pumpkins', 'pumpkinlamp', 'harvestscarecrow', 'moonswing', 'lanternarch', 'starvane', 'promoballoon'].includes(id) ? solidCircle(wx, wz, ['postlamp', 'scarecrow', 'spiritlamp', 'ghostlamp', 'pumpkinlamp', 'harvestscarecrow', 'starvane', 'promoballoon'].includes(id) ? 0.22 : 0.5) : null;   // 🎃 거미줄 아치(webarch)는 걸어서 통과한다 · 🌾 수확제 4종은 목록에 없어 통과했다(2026-10-09)
   }
   m.userData.rec = rec; m.userData.obstacle = ob; m.userData.solid = solid;   // 🪵 들어 올릴 때 레코드·밭 금지 구역·충돌체를 같이 뺀다(시설은 obstacle 이 배열)
   if (STATION_IDS.includes(id)) {
@@ -6305,6 +6494,7 @@ const VILLAGE_PLACES = [
   { ico: '🌫️', name: '안개 숲',       x: MIST_GATE.x,   z: MIST_GATE.z,   pri: 1, map: 'mist' },
   { ico: '🌊', name: '바다터',        x: SEA_GATE.x,    z: SEA_GATE.z,    pri: 1, map: 'sea' },
   { ico: '🔨', name: '경매 무대', ...auctionMapSpot(), pri: 1 },
+  { ico: '🎵', name: '음악회 무대', x: STAGE_POS.x, z: STAGE_POS.z, pri: 1 },
   { ico: '🌾', name: '수확제 광장', x: 23, z: -4, pri: 1, need: 'plaza' },
   { ico: '🍎', name: '과수원',        x: ORCHARD_GATE.x, z: ORCHARD_GATE.z, pri: 1, map: 'orchard' },
 ];
@@ -6507,8 +6697,9 @@ function animate() {
   updateSeasonDrift(dt, t);   // 🌸🍂 꽃잎·낙엽
   updateSway(t);
   updateSeaVisuals(t);  // 🌊 일렁이는 수면(후미·바다터) + 등대 야간 빔
-  updatePortGuide(mode === 'play' && (inVillage2() || port.active));
-  updateRestaurantGuide(mode === 'play' && (inVillage2() || atRestaurant));
+  updatePortGuide(mode === 'play' && (inVillage2() || port.active) && guideMay('port'));
+  updateRestaurantGuide(mode === 'play' && (inVillage2() || atRestaurant) && guideMay('restaurant'));
+  updateAffinityGuide(mode === 'play' && inVillage2() && guideMay('affinity'));
   updateGateCues(t, dt);
   updateTrees(dt);
   updateOreRocks();
@@ -6543,20 +6734,23 @@ function animate() {
   updateCatchItem(dt);   // 🎁 캐치 아이템(수확물/물고기 들어올리기)
   updateFloatTexts(dt);
   updateNPC(dt, t);
-  if (t - unlockTickAt > 1) { unlockTickAt = t; if (mode === 'play') { syncUnlocks(); maybeStartPortGuide(isOpen('port') && !atSea && !restaurantGuideActive()); maybeStartRestaurantGuide(isOpen('restaurant') && !atSea && !portGuideActive()); } }   // 🔓 매초 한 번 — 놓친 해금 지점이 있어도 1초 안에 맞춘다(꺼져 있으면 즉시 반환)
+  if (t - unlockTickAt > 1) { const gap = Math.min(2, t - unlockTickAt); unlockTickAt = t; if (mode === 'play') { syncUnlocks(); tickPlaceGuides(gap); tickFirstVisits(); } }   // 🔓 매초 한 번 — 놓친 해금 지점이 있어도 1초 안에 맞춘다(꺼져 있으면 즉시 반환)
   updateWorldTree(dt, t);    // 🌳 세계수 잎이 판 진척을 따라 자란다
   updateLightWorkshop();   // 🏷️ 반디 요정 이름표
   updateMerchantVisit(dt);   // 🧙 상인 방문 이벤트(1회)
   updateOwlVisit(dt);        // 🦉 일일 3건 완료 → 특별 의뢰를 물고 날아옴
   updatePlaza(dt, inVillage2());   // 🌾 광장 근처면 진행률 재조회
   updateAuction(dt, inVillage2());
+  updateWeekly(dt, inVillage2(), player.position);
+  updateConcert(dt, inVillage2(), player.position);
   updatePond(dt, inVillage2());
   updateShopCue(t);          // 🛒 좌판 안내 스프라이트
   if (mode === 'play') goalGuide?.update(dt);
-  if (mode === 'play') { houseShort?.update(dt); farmRush?.update(dt); }
+  if (mode === 'play') yardGuide?.update(dt); else yardGuide?.suspend();
+  if (mode === 'play') { houseShort?.update(dt); for (const p of placePills) p.update(dt); }
   houseGuidance?.update();   // 🏠 조망샷은 다른 카메라 연출·모달이 비었을 때만 시작
   // 집 터 안내판/마커: 플레이 중 + 미완성일 때만 (로그인 화면에선 숨김)
-  const showHouseCue = (mode === 'play' && gameState.houseStage < 3);
+  const showHouseCue = (mode === 'play' && gameState.houseStage < 3 && !document.body.classList.contains('concert-open'));
   if (houseSign) { houseSign.visible = showHouseCue; if (showHouseCue) houseSign.position.y = 3.3 + Math.sin(t * 2) * 0.12; }
   if (houseGhost) { houseGhost.visible = showHouseCue; if (showHouseCue) houseGhost.scale.setScalar(1 + Math.sin(t * 2) * 0.03); }
   if (!observatoryLensOpen() && !holdRender) composer.render();   // 🔭 불투명 렌즈 뷰가 덮는 동안엔 3D 를 그리지 않는다
@@ -7676,6 +7870,7 @@ function handleAction() {
   if (nearDoor === 'warehouse') return withdrawWarehouse();
   if (nearDoor === 'hireboard') return hireBoardInteract();   // 📋 일꾼 게시판 → 고용 창   // 🧺 작물 창고 옆에서 액션 = 내용물 꺼내기
   if (nearDoor === 'trace') { const tr = traceTarget(); if (tr) return investigateTrace(tr); }
+  if (nearDoor === 'pond') return openPondBook();
   if (nearDoor === 'pet') return commandPet();   // 🐾 밭 근처에서 액션 = 맡기기(물·잡초·해충 최대 5칸)
   if (nearDoor === 'mine') return enterMine();
   if (typeof nearDoor === 'string' && nearDoor.startsWith('delve_') && handleDelveDoor(nearDoor)) return;
@@ -7750,6 +7945,8 @@ function handleAction() {
   if (nearRank) return ui.openLeaderboard?.();  // 🏆 랭킹 게시판 → 리더보드 모달
   if (plazaSpotNow()) return openPlaza();   // 🌾 기부함·좌판·명판
   if (auctionSpotNow()) return openAuction();
+  if (weeklySpotNow()) return openWeekly();
+  if (concertSpotNow()) return openConcert();
   if (nearCoop) return coopInteract();     // 🐔 닭장 → 건설/모이/달걀
   if (nearLightWorkshop) {                 // 🏮 빛 공방 → 주문·수령·다듬기
     trackEvent('aura_workshop_open', { night: isNight() ? 1 : 0 });
@@ -7907,7 +8104,7 @@ function farmActionFirst() {
   if (toolPage === 'none') return false;                    // ✋ 맨손 — 언제든 대화(탈출로)
   // handleAction 에서 이 분기보다 먼저 처리되는 것들 — 여기서 true 를 내면 프롬프트가 거짓말이 된다
   //   (예: 시세판 옆 밭 위 → Space 는 시세판을 연다. 밭일도 대화도 아니다)
-  if (nearDoor || nearKitchen || nearBench || nearShop || nearMarket || nearRank || nearCoop || nearCosShop || nearHomiStall || nearLightWorkshop || !!plazaSpotNow() || auctionSpotNow()) return false;
+  if (nearDoor || nearKitchen || nearBench || nearShop || nearMarket || nearRank || nearCoop || nearCosShop || nearHomiStall || nearLightWorkshop || !!plazaSpotNow() || auctionSpotNow() || !!weeklySpotNow() || concertSpotNow()) return false;
   // 🍄채집·🐾흔적 조사도 위에서 먼저 처리된다. 특히 밤손님 흔적은 작물을 빼앗긴 밭 좌표 위에 그대로
   //   생기므로(그 밭은 empty 가 된다) 이걸 빼면 "밭일이 먼저"라고 해놓고 흔적 조사가 나가는 조합이 생긴다.
   if (forageTarget() || traceTarget() || visitorTarget()) return false;   // 🔍 방문객 살펴보기도 먼저 처리된다
@@ -8318,7 +8515,7 @@ const RES_LABEL = { ...FORAGE_LABEL, charcoal: '⚫숯', flour: '🌾밀가루',
   sap_persimmon: '🍊감나무 묘목', sap_chestnut: '🌰밤나무 묘목', leaf: '🍂단풍잎' };   // 🌾 고급 작물·씨앗 · 🍯꿀(벌통) · 🍎 과수원(js/orchard.js)
 
 
-function makeNameTag(def) {
+function makeNameTag(def, prefix = '') {
   // 캔버스는 가장 긴 이름(낚시꾼 할아버지)까지 여유 있게. 스프라이트 배율은 이 비율에 맞춘다.
   const W = 384, H = 96;
   const FONT = (px) => `bold ${px}px -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif`;
@@ -8327,7 +8524,7 @@ function makeNameTag(def) {
   // 🧑‍🌾 같은 ZWJ 결합 이모지는 웹뷰마다 폭이 달라(한 글자/두 글자) 이름표에 큰 공백이 생겼다 → 마지막 조각(🌾)만 쓴다.
   //   폭이 실측 그대로라 배지가 글자에 딱 맞고 가운데 정렬된다. 대화창 등 다른 곳의 def.emoji 는 그대로.
   const tagEmoji = def.emoji.includes('\u200D') ? def.emoji.split('\u200D').pop() : def.emoji;
-  const label = `${tagEmoji} ${t(def.name)}`;
+  const label = `${prefix}${tagEmoji} ${t(def.name)}`;
 
   // ⚠️ textAlign='center' 에 기대지 않는다 — 토스 웹뷰에서 가운데 정렬이 안 먹어 글자가
   //    배지 밖으로 밀려 나갔다(2026-09-09 실기기 보고). 왼쪽 기준으로 x 를 직접 계산한다.
@@ -8447,6 +8644,7 @@ export function npcClaim() {
     // [퍼널③] 완료 — 수락→완료 소요시간(초). acceptedAt 없는 옛 세이브는 null.
     const elapsed = st.acceptedAt ? Math.round((Date.now() - st.acceptedAt) / 1000) : null;
     trackEvent('quest_complete', { quest: q.title, npc: o.def.id, quest_id: qid, elapsed_sec: elapsed, reward_coins: q.reward.coins || 0, quest_type: q.type }); // [GA4]
+    if (o.def.daily) weeklyNote('daily');
     churnTrigger('quest');   // [🎯 이탈 예측]
     // ⚠️ 반복 의뢰에서는 st.idx 를 올리지 않는다 — 체인 길이를 넘어가면 그 주민 대화가 깨진다
     if (q.hidden) {   // 🔨 📜 도면 — 체인 포인터는 건드리지 않는다
@@ -8455,7 +8653,8 @@ export function npcClaim() {
       st.hidden = false;
       ui.toast?.(`📜 ${bp.name} 도면을 받았어요! 작업대 🔧 도구 탭에서 만들 수 있어요`, 3200);
       trackEvent('hidden_quest_clear', { npc: o.def.id, tool: q.tool });   // [GA4] 문턱 도달 → 발견 → 완료 퍼널
-    } else if (repeating) st.repeat.done = true; else st.idx++;
+    } else if (repeating) st.repeat.done = true;
+    else { st.idx++; if (o.def.daily && st.idx === DAILY_COUNT) owlDailyAffinity(); }
     st.given = false; st.progress = 0; st.readyToasted = false; st.acceptedAt = null;
     gameState.story.q = (gameState.story.q || 0) + 1; syncStory('quest');   // 📖 2장(이웃들) 진행
     if (!currentQuest(o.def, st)) { st.allDone = true; syncBadges(); } // 🏅 체인 완료 배지(패널은 아래 refreshQuestPanel 이 다시 그린다)
@@ -8466,6 +8665,7 @@ export function npcClaim() {
 
 // 이벤트형 퀘스트 진행(벌목/수확/물주기/심기/건축) — 모든 주민 검사
 function questEvent(type, amount = 1) {
+  weeklyNote(type, amount);
   for (const o of npcObjs) {
     if (o.hidden) continue;   // 🔓 아직 안 돌아온 이웃
     const st = npcState(o.def.id);

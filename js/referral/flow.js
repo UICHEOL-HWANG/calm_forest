@@ -11,9 +11,50 @@
 //    활성화·지급의 진실은 서버 테이블(referrals·purchases) — GA4 는 퍼널 보조.
 //  ▶ 테스트: tests/referral-flow.test.mjs
 // =============================================================
-import { INVITE_STORE_KEY, TIERS, readInviteParam, shouldBind, bindMessage, keepPendingAfter } from './rules.js';
+import { INVITE_STORE_KEY, TIERS, readInviteParam, inviteFromReferrer, shouldBind, bindMessage, keepPendingAfter } from './rules.js';
+
+export const INVITE_BOUND_KEY = 'cf_invite_bound';
+const LINK_SEEN_KEY = 'cf_invite_link_seen';
 
 const safe = (fn, fallback = null) => { try { return fn(); } catch (e) { return fallback; } };
+const inFlight = new Set();
+
+export function captureNativeInvite({ launchUrl, referrerRaw, storage, track }) {
+  if (safe(() => storage.getItem(INVITE_BOUND_KEY))) return null;
+  const kept = safe(() => storage.getItem(INVITE_STORE_KEY));
+  const fromLink = readInviteParam(launchUrl);
+  if (fromLink) {
+    if (fromLink === kept) return kept;
+    if (fromLink === safe(() => storage.getItem(LINK_SEEN_KEY))) return kept || null;
+    safe(() => storage.setItem(INVITE_STORE_KEY, fromLink));
+    safe(() => storage.setItem(LINK_SEEN_KEY, fromLink));
+    track('invite_land', { from: 'link' });
+    return fromLink;
+  }
+  if (kept) return kept;
+  const fromInstall = inviteFromReferrer(referrerRaw);
+  if (!fromInstall) return null;
+  safe(() => storage.setItem(INVITE_STORE_KEY, fromInstall));
+  track('invite_land', { from: 'install' });
+  return fromInstall;
+}
+
+export async function bindWithCode(deps) {
+  if (inFlight.has(deps.code)) return null;
+  inFlight.add(deps.code);
+  try { return await bindOnce(deps); } finally { inFlight.delete(deps.code); }
+}
+
+async function bindOnce({ code, storage, call, toast, track, resync, platform, manual = false }) {
+  const res = await call('bind', { code, platform });
+  track('referral_bind', { result: !res || res.error ? 'net_fail' : res.ok ? 'ok' : String(res.reason || 'unknown') });
+  const msg = bindMessage(res, { manual });
+  if (msg) toast(msg);
+  if (!keepPendingAfter(res)) safe(() => storage.removeItem(INVITE_STORE_KEY));
+  if (res?.ok || res?.reason === 'already_bound') safe(() => storage.setItem(INVITE_BOUND_KEY, '1'));
+  if (res?.ok) await resync('referral_bind', { quiet: true });
+  return res;
+}
 
 /** 부팅 즉시 — ?invite= 를 보관(구글 OAuth 가 쿼리를 지운다). 보관 중인 코드를 돌려준다 */
 export function captureInvite({ search, storage, track }) {
@@ -35,12 +76,7 @@ export async function runOnPlay({ storage, call, toast, track, resync, platform,
 
   const code = pendingInvite(storage);
   if (shouldBind({ pendingCode: code, isGuest: auth.isGuest, provider: auth.provider })) {
-    const res = await call('bind', { code, platform });
-    track('referral_bind', { result: !res || res.error ? 'net_fail' : res.ok ? 'ok' : String(res.reason || 'unknown') });
-    const msg = bindMessage(res);
-    if (msg) toast(msg);
-    if (!keepPendingAfter(res)) safe(() => storage.removeItem(INVITE_STORE_KEY));
-    if (res?.ok) await resync('referral_bind', { quiet: true });   // 하트핀 문구를 방금 띄웠다 — 도착 토스트 겹침 방지
+    await bindWithCode({ code, storage, call, toast, track, resync, platform });
   }
 
   return claimAndApply({ call, track, resync });

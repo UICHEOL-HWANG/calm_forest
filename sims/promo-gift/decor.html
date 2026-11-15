@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>홍보 링크 선물 꾸미기 시안</title>
+<style>
+  body { margin: 0; padding: 20px; background: #2b2118; color: #fff; font-family: -apple-system, "Apple SD Gothic Neo", "Pretendard", sans-serif; width: 1500px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .lead { font-size: 13px; color: rgba(255,255,255,.7); margin: 0 0 18px; }
+  .row { display: flex; gap: 22px; }
+  .col { width: 480px; }
+  h2 { margin: 0 0 4px; font-size: 18px; }
+  p { margin: 0 0 10px; font-size: 13px; color: rgba(255,255,255,.78); line-height: 1.45; min-height: 56px; word-break: keep-all; }
+  canvas { display: block; width: 480px; border-radius: 12px; margin-bottom: 4px; }
+  .tag { font-size: 11px; color: rgba(255,255,255,.6); margin: 0 0 10px; }
+</style>
+</head>
+<body>
+<h1>홍보 링크 선물 · 로그인 전용 꾸미기 세트 시안</h1>
+<p class="lead">세트 = 마당 장식 2개. 위 = 게임 카메라 거리, 아래 = 가까이. 기존 우체통·환영 등불·우정 아치와 겹치지 않는 주제로 잡았어요.</p>
+<div class="row" id="row"></div>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+const clay = (c, flat = true) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.95, metalness: 0, flatShading: flat });
+const tint = (c, k) => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: k, roughness: 0.6 });
+const glass = (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.15, metalness: 0, transparent: true, opacity: 0.45 });
+const mesh = (g, m, x = 0, y = 0, z = 0) => { const o = new THREE.Mesh(g, m); o.position.set(x, y, z); return o; };
+const lathe = (pr, m, seg = 14) => new THREE.Mesh(new THREE.LatheGeometry(pr.map(([x, y]) => new THREE.Vector2(x, y)), seg), m);
+
+function yard(scene) {
+  scene.background = new THREE.Color(0xe9e4da);
+  scene.fog = new THREE.Fog(0xe9e4da, 18, 40);
+  scene.add(new THREE.HemisphereLight(0xfff6e6, 0x7d8a66, 1.15));
+  const sun = new THREE.DirectionalLight(0xfff1d6, 1.0); sun.position.set(5, 11, 7); scene.add(sun);
+  scene.add(mesh(new THREE.BoxGeometry(30, 0.1, 30), clay(0xb7c99a), 0, -0.05, 0));
+  [[-1.2, 2.4], [-0.4, 2.9], [0.5, 3.3], [1.5, 3.6]].forEach(([x, z]) => scene.add(mesh(new THREE.CylinderGeometry(0.34, 0.38, 0.06, 7), clay(0xd8ccb6), x, 0.01, z)));
+  scene.add(mesh(new THREE.BoxGeometry(5, 2.4, 3), clay(0xefe2c8), -4.2, 1.2, -2.8));
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(3.6, 1.4, 4), clay(0xc0674a)); roof.rotation.y = Math.PI / 4; roof.position.set(-4.2, 3.1, -2.8); roof.scale.set(1, 1, 0.68); scene.add(roof);
+  for (let i = 0; i < 9; i++) scene.add(mesh(new THREE.BoxGeometry(0.12, 0.7, 0.12), clay(0xc9a072), 0.2 + i * 0.55, 0.35, -2.6));
+  scene.add(mesh(new THREE.BoxGeometry(4.7, 0.08, 0.06), clay(0xc9a072), 2.4, 0.52, -2.6));
+  [[4.6, 1.4, 1.1], [5.6, -1.2, 1.3]].forEach(([x, z, s]) => {
+    scene.add(mesh(new THREE.CylinderGeometry(0.16 * s, 0.2 * s, 0.9 * s, 6), clay(0x9a7350), x, 0.45 * s, z));
+    scene.add(mesh(new THREE.DodecahedronGeometry(0.9 * s, 0), clay(0x8fae7a), x, 1.4 * s, z));
+  });
+  const fox = new THREE.Group(); const fur = clay(0xc97a3e, false);
+  fox.add(mesh(new THREE.SphereGeometry(0.52, 14, 12).scale(1, 1.05, 0.95), fur, 0, 0.55, 0));
+  fox.add(mesh(new THREE.SphereGeometry(0.3, 10, 8).scale(1, 0.75, 0.9), clay(0xf3e6d2, false), 0, 0.42, 0.3));
+  [-0.26, 0.26].forEach(x => fox.add(mesh(new THREE.ConeGeometry(0.12, 0.26, 4), fur, x, 1.12, 0)));
+  fox.position.set(-2.4, 0, 1.6); fox.rotation.y = 0.5; scene.add(fox);
+}
+
+function giftBox(w, h, d, body, ribbon) {
+  const g = new THREE.Group();
+  g.add(mesh(new THREE.BoxGeometry(w, h, d), clay(body), 0, h / 2, 0));
+  g.add(mesh(new THREE.BoxGeometry(w + 0.04, 0.08, d + 0.04), clay(body), 0, h - 0.02, 0));
+  g.add(mesh(new THREE.BoxGeometry(0.08, h + 0.02, d + 0.03), clay(ribbon), 0, h / 2, 0));
+  g.add(mesh(new THREE.BoxGeometry(w + 0.03, h + 0.02, 0.08), clay(ribbon), 0, h / 2, 0));
+  [-1, 1].forEach(s => { const loop = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.035, 6, 10), clay(ribbon)); loop.position.set(s * 0.09, h + 0.1, 0); loop.rotation.set(0, 0, s * 0.6); loop.scale.set(1, 0.8, 1.6); g.add(loop); });
+  return g;
+}
+
+function giftTower() {
+  const g = new THREE.Group();
+  const a = giftBox(0.9, 0.55, 0.9, 0xf2ead8, 0xd9574a); g.add(a);
+  const b = giftBox(0.66, 0.45, 0.66, 0x7fb37a, 0xf4cf62); b.position.set(0.04, 0.58, 0.02); b.rotation.y = 0.35; g.add(b);
+  const c = giftBox(0.42, 0.36, 0.42, 0xf6b7a6, 0xffffff); c.position.set(-0.02, 1.08, 0); c.rotation.y = -0.3; g.add(c);
+  const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.11, 0), tint(0xf4cf62, 0.4)); star.position.set(0, 1.62, 0); star.scale.set(1, 1.4, 0.5); g.add(star);
+  const tag = new THREE.Group();
+  tag.add(mesh(new THREE.BoxGeometry(0.3, 0.18, 0.02), clay(0xfff6e0), 0, 0, 0));
+  tag.add(mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.025, 6), clay(0xd9574a), -0.1, 0.04, 0.015));
+  tag.position.set(0.48, 0.32, 0.38); tag.rotation.set(0, -0.6, -0.25); g.add(tag);
+  return g;
+}
+
+function bunting() {
+  const g = new THREE.Group();
+  [-0.9, 0.9].forEach(x => {
+    g.add(mesh(new THREE.CylinderGeometry(0.06, 0.08, 1.7, 6), clay(0xa77c52), x, 0.85, 0));
+    g.add(mesh(new THREE.SphereGeometry(0.09, 8, 6), clay(0xf4cf62), x, 1.74, 0));
+  });
+  const pts = []; for (let i = 0; i <= 16; i++) { const t = i / 16; pts.push(new THREE.Vector3(-0.9 + 1.8 * t, 1.6 - Math.sin(Math.PI * t) * 0.32, 0)); }
+  const curve = new THREE.CatmullRomCurve3(pts);
+  g.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 30, 0.012, 4), clay(0x6b4a33)));
+  const cols = [0xd9574a, 0xf4cf62, 0x7fb37a, 0xf6b7a6, 0x8fb7d9];
+  for (let i = 0; i < 7; i++) {
+    const p = curve.getPoint((i + 0.5) / 7);
+    const s = new THREE.Shape(); s.moveTo(-0.1, 0); s.lineTo(0.1, 0); s.lineTo(0, -0.22); s.closePath();
+    const f = new THREE.Mesh(new THREE.ExtrudeGeometry(s, { depth: 0.015, bevelEnabled: false }), clay(cols[i % cols.length]));
+    f.position.set(p.x, p.y, 0); g.add(f);
+  }
+  return g;
+}
+
+function jarPost() {
+  const g = new THREE.Group();
+  g.add(mesh(new THREE.CylinderGeometry(0.28, 0.34, 0.12, 8), clay(0xb7ad9c), 0, 0.06, 0));
+  g.add(mesh(new THREE.CylinderGeometry(0.06, 0.08, 1.5, 6), clay(0x7a5638), 0, 0.85, 0));
+  [-1, 1].forEach(s => {
+    g.add(mesh(new THREE.BoxGeometry(0.5, 0.05, 0.05), clay(0x7a5638), s * 0.25, 1.48 - (s > 0 ? 0.18 : 0), 0));
+    const jar = new THREE.Group();
+    jar.add(mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.14, 4), clay(0x4a3a2a), 0, 0.08, 0));
+    jar.add(lathe([[0, -0.2], [0.13, -0.19], [0.15, -0.1], [0.15, 0.06], [0.1, 0.12], [0.1, 0.16], [0, 0.16]], glass(0xdcefe6), 12));
+    jar.add(mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.04, 10), clay(0xc9a072), 0, 0.16, 0));
+    for (let i = 0; i < 4; i++) jar.add(mesh(new THREE.SphereGeometry(0.03, 6, 4), tint(0xf6e27a, 1.2), Math.sin(i * 2.1) * 0.07, -0.1 + i * 0.05, Math.cos(i * 2.1) * 0.07));
+    jar.position.set(s * 0.46, 1.48 - (s > 0 ? 0.18 : 0) - 0.18, 0); g.add(jar);
+  });
+  const vine = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(Array.from({ length: 11 }, (_, i) => { const a = i * 0.9; return new THREE.Vector3(Math.cos(a) * 0.08, 0.2 + i * 0.09, Math.sin(a) * 0.08); })), 30, 0.016, 5), clay(0x5f9a52));
+  g.add(vine);
+  return g;
+}
+
+function logBench() {
+  const g = new THREE.Group();
+  const seat = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 1.5, 9, 1, false, 0, Math.PI), clay(0xa77c52)); seat.rotation.set(0, 0, Math.PI / 2); seat.position.set(0, 0.42, 0); g.add(seat);
+  g.add(mesh(new THREE.BoxGeometry(1.5, 0.02, 0.4), clay(0xc9a072), 0, 0.425, 0));
+  [-0.55, 0.55].forEach(x => g.add(mesh(new THREE.CylinderGeometry(0.17, 0.19, 0.3, 8), clay(0x8a5a3a), x, 0.15, 0)));
+  [-0.55, 0.55].forEach(x => { const r = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.02, 4, 12), clay(0xd8b58a)); r.rotation.x = Math.PI / 2; r.position.set(x, 0.305, 0); g.add(r); });
+  const cushion = mesh(new THREE.BoxGeometry(0.42, 0.08, 0.34), clay(0x8fb7d9), -0.3, 0.48, 0); cushion.rotation.y = 0.1; g.add(cushion);
+  const mush = new THREE.Group();
+  mush.add(mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.12, 6), clay(0xf3e6d2), 0, 0.06, 0));
+  mush.add(mesh(new THREE.SphereGeometry(0.08, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2), clay(0xd9574a), 0, 0.11, 0));
+  mush.position.set(0.72, 0, 0.18); g.add(mush);
+  return g;
+}
+
+function balloon() {
+  const g = new THREE.Group();
+  g.add(mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.12, 6), clay(0x9a7350), 0, 0.06, 0));
+  g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0.1, 0), new THREE.Vector3(0.12, 0.6, 0.05), new THREE.Vector3(0.05, 1.05, 0)]), 16, 0.008, 4), clay(0x6b4a33)));
+  const basket = new THREE.Group();
+  basket.add(lathe([[0, 0], [0.2, 0], [0.24, 0.22], [0.25, 0.26], [0, 0.26]], clay(0xc9a072), 10));
+  basket.add(lathe([[0.235, 0.18], [0.26, 0.2], [0.26, 0.26], [0.24, 0.27]], clay(0x8a5a3a), 10));
+  [0, 1, 2, 3].forEach(i => { const a = i * Math.PI / 2 + Math.PI / 4; basket.add(mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.5, 4), clay(0x6b4a33), Math.cos(a) * 0.22, 0.5, Math.sin(a) * 0.22)); });
+  const env = mesh(new THREE.BoxGeometry(0.14, 0.1, 0.02), clay(0xfff6e0), 0.07, 0.31, 0.17); env.rotation.z = 0.2; basket.add(env);
+  basket.position.set(0.05, 1.05, 0); g.add(basket);
+  const cols = [0xd9574a, 0xf6e7c8];
+  const bal = new THREE.Group();
+  for (let i = 0; i < 12; i++) {
+    const seg = new THREE.Mesh(new THREE.SphereGeometry(0.62, 6, 14, (i / 12) * Math.PI * 2, Math.PI * 2 / 12, 0, Math.PI * 0.82), clay(cols[i % 2]));
+    bal.add(seg);
+  }
+  bal.add(mesh(new THREE.CylinderGeometry(0.2, 0.26, 0.12, 12), clay(0xf4cf62), 0, -0.6, 0));
+  bal.scale.set(1, 1.15, 1); bal.position.set(0.05, 2.2, 0); g.add(bal);
+  return g;
+}
+
+function suitcases() {
+  const g = new THREE.Group();
+  const caseBox = (w, h, d, col, x, y, z, ry) => {
+    const c = new THREE.Group();
+    c.add(mesh(new THREE.BoxGeometry(w, h, d), clay(col), 0, h / 2, 0));
+    [-1, 1].forEach(s => c.add(mesh(new THREE.BoxGeometry(0.05, h + 0.01, d + 0.01), clay(0x6b4a33), s * w * 0.3, h / 2, 0)));
+    const handle = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.02, 4, 10, Math.PI), clay(0x6b4a33)); handle.position.set(0, h + 0.005, 0); c.add(handle);
+    c.add(mesh(new THREE.BoxGeometry(0.14, 0.1, 0.01), clay(0xfff6e0), w * 0.15, h * 0.55, d / 2 + 0.006));
+    c.position.set(x, y, z); c.rotation.y = ry; g.add(c); return c;
+  };
+  caseBox(0.9, 0.3, 0.55, 0x7fb37a, 0, 0, 0, 0.1);
+  caseBox(0.7, 0.26, 0.45, 0xe7a77a, 0.04, 0.3, 0.02, -0.2);
+  caseBox(0.42, 0.42, 0.22, 0x8fb7d9, 0.6, 0, 0.35, -0.5);
+  const map = mesh(new THREE.BoxGeometry(0.3, 0.01, 0.22), clay(0xf6ead2), -0.05, 0.565, 0.02); map.rotation.y = 0.4; g.add(map);
+  return g;
+}
+
+const CANDS = [
+  { name: 'A · 선물 상자 탑 + 환영 깃발 줄', desc: '리본 묶은 상자 세 개를 쌓고 꼭대기에 금빛 별. 옆에 오색 삼각 깃발 줄. 받자마자 "선물 받았다"가 보이는 쪽', items: [[giftTower, 0.2, 0.4, -0.3], [bunting, 2.1, -0.2, -0.15]] },
+  { name: 'B · 반딧불 유리병 기둥 + 통나무 벤치', desc: '덩굴 감긴 기둥에 반딧불 유리병 두 개. 밤에 노랗게 빛남. 옆에 쿠션 올린 통나무 벤치. 차분하고 숲다운 쪽', items: [[jarPost, 0.2, 0.2, -0.3], [logBench, 2.0, 0.4, -0.25]] },
+  { name: 'C · 꼬마 열기구 + 여행 가방 더미', desc: '말뚝에 매어 둔 빨강·크림 줄무늬 열기구(바구니에 편지). 옆에 꼬리표 붙은 가방 더미. "링크 타고 날아왔다"는 이야기', items: [[balloon, 0.4, 0.2, -0.3], [suitcases, 2.1, 0.6, -0.35]] },
+];
+const VIEWS = [
+  { tag: '게임 카메라 거리', pos: [1.6, 10.5, 9.5], look: [1.0, 0.6, 0.4], fov: 40, h: 300 },
+  { tag: '가까이', pos: [2.4, 2.9, 5.6], look: [1.1, 1.0, 0.2], fov: 40, h: 360 },
+];
+
+const row = document.getElementById('row');
+for (const c of CANDS) {
+  const col = document.createElement('div'); col.className = 'col';
+  col.innerHTML = `<h2>${c.name}</h2><p>${c.desc}</p>`;
+  row.appendChild(col);
+  for (const v of VIEWS) {
+    const W = 480, H = v.h;
+    const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    r.setPixelRatio(2); r.setSize(W, H); r.outputColorSpace = THREE.SRGBColorSpace;
+    const scene = new THREE.Scene(); yard(scene);
+    for (const [build, x, z, ry] of c.items) { const it = build(); it.scale.setScalar(1.25); it.position.set(x, 0, z); it.rotation.y = ry; scene.add(it); }
+    const cam = new THREE.PerspectiveCamera(v.fov, W / H, 0.1, 100); cam.position.set(...v.pos); cam.lookAt(...v.look);
+    r.render(scene, cam);
+    const tag = document.createElement('div'); tag.className = 'tag'; tag.textContent = v.tag;
+    col.appendChild(r.domElement); col.appendChild(tag);
+  }
+}
+document.body.dataset.ready = '1';
+</script>
+</body>
+</html>

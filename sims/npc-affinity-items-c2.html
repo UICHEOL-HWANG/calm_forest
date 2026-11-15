@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>호감도 보상 아이템 시안</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 22px; background: #f3efe6; color: #2f3a2c; font: 14px/1.55 -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
+  h1 { font-size: 21px; margin: 0 0 4px; }
+  h2 { font-size: 18px; margin: 30px 0 4px; }
+  .rec { font-size: 12px; font-weight: 800; color: #fff; background: #48914a; border-radius: 999px; padding: 3px 10px; margin-left: 8px; vertical-align: 2px; }
+  .lead, .sub { margin: 0 0 12px; color: #6b7563; max-width: 1180px; }
+  .shots { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+  figure { margin: 0; }
+  figcaption { font-size: 12px; color: #6b7563; margin-top: 3px; }
+  img { display: block; border-radius: 10px; box-shadow: 0 6px 16px rgba(0,0,0,.15); background: #ddd; }
+  .warn { display: inline-block; font-size: 12.5px; color: #8a5a20; background: #fff3dc; border-radius: 8px; padding: 4px 10px; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+<h1>🎁 기념물형 다듬기 + 가족 액자 F2</h1>
+<p class="lead">고르신 기념물형(C)을 다듬었어요. 공통 돌 받침과 이끼, 작은 꽃, 주민 색 명패를 둬서 11종이 한 세트로 보이게 했고, 각진 곳을 둥글게, 소품(러그·화분·편지·고사리·반딧불)을 더했어요. 위쪽은 이전 C와 다듬은 C 비교, 아래는 주민 11명 액자(F2)예요.</p>
+<span class="warn">렌더 중… 잠시 기다려 주세요</span>
+<div id="out"></div>
+<script type="importmap">{ "imports": { "three": "../vendor/three/three.module.js" } }</script>
+<script type="module">
+import * as THREE from 'three';
+import { ITEMS, ITEMS_C2, PORTRAIT_IDS, buildItem, buildFrameF2 } from './npc-affinity-items-models.js';
+const NAMES = { farmer: '농부 삼촌', builder: '목수 아저씨', merchant: '방랑 상인', angler: '낚시꾼 할아버지', chef: '요리사 판다', forager: '숲지기 오소리', stargazer: '별 보는 아이', ferryman: '사공 오리', rancher: '목장 아주머니', curator: '큐레이터 할아버지', courier: '의뢰 올빼미' };
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+function makeScene(night) {
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(night ? 0x3a4a78 : 0xcfe6c4);
+  scene.add(new THREE.HemisphereLight(night ? 0x8899cc : 0xffffff, night ? 0x40553a : 0xbfe8c9, night ? 0.75 : 0.9));
+  const sun = new THREE.DirectionalLight(night ? 0x9fb4ff : 0xffe9c4, night ? 0.45 : 1.1);
+  sun.position.set(8, 14, 6); sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, { left: -8, right: 8, top: 8, bottom: -8, near: 1, far: 40 });
+  scene.add(sun);
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.MeshStandardMaterial({ color: night ? 0x5f8452 : 0x9cc97a, roughness: 1 }));
+  ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+  return scene;
+}
+
+function addRefs(scene) {
+  const wood = new THREE.MeshStandardMaterial({ color: 0x9a6a3e, roughness: 0.9, flatShading: true });
+  const f = new THREE.Group(); f.position.set(-3.3, 0, -0.6);
+  for (const x of [-0.5, 0.5]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.6, 0.12), wood); p.position.set(x, 0.3, 0); p.castShadow = true; f.add(p); }
+  for (const y of [0.22, 0.42]) { const r = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.1, 0.08), wood); r.position.y = y; r.castShadow = true; f.add(r); }
+  scene.add(f);
+  const ghost = new THREE.MeshStandardMaterial({ color: 0xd7d2c8, roughness: 1, transparent: true, opacity: 0.85 });
+  const n = new THREE.Group(); n.position.set(3.2, 0, -0.4);
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.34, 0.45, 4, 10), ghost); body.position.y = 0.58; body.castShadow = true; n.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.38, 12, 10), ghost); head.position.y = 1.15; head.castShadow = true; n.add(head);
+  scene.add(n);
+}
+
+function shot(scene, cam, w, h) {
+  renderer.setSize(w, h, false);
+  cam.aspect = w / h; cam.updateProjectionMatrix();
+  renderer.render(scene, cam);
+  return renderer.domElement.toDataURL('image/png');
+}
+
+function setNight(nightMats, on) { for (const m of nightMats) m.emissiveIntensity = on ? 1.6 : 0.15; }
+
+function yard(style, night) {
+  const scene = makeScene(night);
+  addRefs(scene);
+  const nightMats = [];
+  ITEMS.forEach((it, i) => {
+    const g = buildItem(THREE, it.id, style, nightMats);
+    g.position.set(-1.6 + i * 1.6, 0, i === 1 ? -0.3 : 0.2);
+    g.rotation.y = 0.35;
+    scene.add(g);
+  });
+  setNight(nightMats, night);
+  if (night) for (const p of [[-1.6, 0.2], [0, -0.3], [1.6, 0.2]]) { const l = new THREE.PointLight(0xffc864, 1.4, 3.5, 2); l.position.set(p[0], 1.2, p[1] + 0.3); scene.add(l); }
+  return scene;
+}
+
+const gameCam = () => { const c = new THREE.PerspectiveCamera(42, 1, 0.1, 200); c.position.set(0, 14 * 0.62, 16 * 0.62); c.lookAt(0, 0.4, 0); return c; };
+const closeCam = (y, d) => { const c = new THREE.PerspectiveCamera(32, 1, 0.1, 100); c.position.set(d * 0.55, d * 0.55 + y, d); c.lookAt(0, y, 0); return c; };
+
+function itemClose(style, id, night) {
+  const scene = makeScene(night);
+  const nightMats = [];
+  const g = buildItem(THREE, id, style, nightMats); g.rotation.y = 0.35; scene.add(g);
+  setNight(nightMats, night);
+  if (night) { const l = new THREE.PointLight(0xffc864, 1.6, 3, 2); l.position.set(0.3, 1.0, 0.5); scene.add(l); }
+  const h = new THREE.Box3().setFromObject(g).max.y;
+  return shot(scene, closeCam(h * 0.45, Math.max(2.4, h * 2.2)), 220, 220);
+}
+
+function frameClose(style, mobile) {
+  const scene = makeScene(false);
+  scene.background = new THREE.Color(0xf1e3cc);
+  scene.children.find(o => o.isMesh).material.color.setHex(0xd9b98c);
+  const tm = new THREE.MeshStandardMaterial({ color: 0xb88a58, roughness: 0.9, flatShading: true });
+  const table = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.06, 0.9), tm);
+  table.position.y = 0.6; table.castShadow = true; table.receiveShadow = true; scene.add(table);
+  for (const [x, z] of [[-0.6, -0.36], [0.6, -0.36], [-0.6, 0.36], [0.6, 0.36]]) { const l = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.6, 0.06), tm); l.position.set(x, 0.3, z); scene.add(l); }
+  const g = buildFrame(THREE, style, []); g.position.set(0, 0.63, 0); g.scale.setScalar(1.5); scene.add(g);
+  const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.06, 0.12, 10), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 })); cup.position.set(0.42, 0.69, 0.15); scene.add(cup);
+  const c = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
+  c.position.set(0.9, 1.85, 2.4); c.lookAt(0, 0.98, 0);
+  return mobile ? shot(scene, c, 300, 300) : shot(scene, c, 420, 300);
+}
+
+
+const buildC2 = (id, night) => ITEMS_C2.find(i => i.id === id).build(THREE, night);
+
+function yardC2(night) {
+  const scene = makeScene(night);
+  addRefs(scene);
+  const nightMats = [];
+  ITEMS_C2.forEach((it, i) => {
+    const g = buildC2(it.id, nightMats);
+    g.position.set(-1.9 + i * 1.9, 0, i === 1 ? -0.3 : 0.2);
+    g.rotation.y = 0.3;
+    scene.add(g);
+  });
+  setNight(nightMats, night);
+  if (night) for (const p of [[-1.9, 0.2], [0, -0.3], [1.9, 0.2]]) { const l = new THREE.PointLight(0xffc864, 1.4, 3.5, 2); l.position.set(p[0], 1.2, p[1] + 0.3); scene.add(l); }
+  return scene;
+}
+
+function closeOf(g, nightMats, night) {
+  const scene = makeScene(night);
+  g.rotation.y = 0.3; scene.add(g);
+  setNight(nightMats, night);
+  if (night) { const l = new THREE.PointLight(0xffc864, 1.6, 3, 2); l.position.set(0.3, 1.0, 0.6); scene.add(l); }
+  const b = new THREE.Box3().setFromObject(g); const h = b.max.y, w = b.max.x - b.min.x;
+  return shot(scene, closeCam(h * 0.42, Math.max(2.4, Math.max(h, w * 0.8) * 2.1)), 260, 260);
+}
+
+function frameRow(id, w, h) {
+  const scene = makeScene(false);
+  scene.background = new THREE.Color(0xf1e3cc);
+  scene.children.find(o => o.isMesh).material.color.setHex(0xd9b98c);
+  const g = buildFrameF2(THREE, id); g.scale.setScalar(1.6); scene.add(g);
+  const c = new THREE.PerspectiveCamera(30, 1, 0.1, 50); c.position.set(0.35, 0.75, 1.65); c.lookAt(0, 0.38, 0);
+  return shot(scene, c, w, h);
+}
+
+function frameOnTable(id, w, h) {
+  const scene = makeScene(false);
+  scene.background = new THREE.Color(0xf1e3cc);
+  scene.children.find(o => o.isMesh).material.color.setHex(0xd9b98c);
+  const tm = new THREE.MeshStandardMaterial({ color: 0xb88a58, roughness: 0.9, flatShading: true });
+  const table = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.06, 0.9), tm); table.position.y = 0.6; table.castShadow = true; table.receiveShadow = true; scene.add(table);
+  for (const [x, z] of [[-0.6, -0.36], [0.6, -0.36], [-0.6, 0.36], [0.6, 0.36]]) { const l = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.6, 0.06), tm); l.position.set(x, 0.3, z); scene.add(l); }
+  const g = buildFrameF2(THREE, id); g.position.set(-0.15, 0.63, 0); g.scale.setScalar(1.5); scene.add(g);
+  const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.06, 0.12, 10), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 })); cup.position.set(0.35, 0.69, 0.15); scene.add(cup);
+  const c = new THREE.PerspectiveCamera(30, 1, 0.1, 50); c.position.set(0.9, 1.85, 2.4); c.lookAt(0, 0.98, 0);
+  return shot(scene, c, w, h);
+}
+
+const out = document.getElementById('out');
+const fig = (src, cap, w, h) => `<figure><img src="${src}" width="${w}" height="${h}"><figcaption>${cap}</figcaption></figure>`;
+let html = '<h2>① 이전 C ↔ 다듬은 C (근접, 낮·밤)</h2><p class="sub">각 줄 왼쪽 둘이 이전, 오른쪽 둘이 다듬은 버전이에요.</p>';
+for (const it of ITEMS) {
+  const n1 = [], n2 = [], n3 = [], n4 = [];
+  html += `<h2 style="font-size:15px;margin-top:12px">${it.name}</h2><div class="shots">`
+    + fig(closeOf(buildItem(THREE, it.id, 'C', n1), n1, false), '이전 낮', 200, 200)
+    + fig(closeOf(buildItem(THREE, it.id, 'C', n2), n2, true), '이전 밤', 200, 200)
+    + fig(closeOf(buildC2(it.id, n3), n3, false), '다듬은 낮', 260, 260)
+    + fig(closeOf(buildC2(it.id, n4), n4, true), '다듬은 밤', 260, 260) + '</div>';
+}
+const day = yardC2(false), night = yardC2(true);
+html += `<h2>② 다듬은 C, 게임 카메라</h2><p class="sub">울타리 한 칸과 주민 크기 실루엣이 기준이에요.</p><div class="shots">${fig(shot(day, gameCam(), 720, 405), 'PC 낮', 720, 405)}${fig(shot(day, gameCam(), 300, 560), '모바일 낮', 300, 560)}<div>${fig(shot(night, gameCam(), 360, 203), 'PC 밤', 360, 203)}</div></div>`;
+html += `<h2>③ 가족 액자 F2, 주민 11명</h2><p class="sub">같은 금테 틀에 얼굴만 바뀌어요. 얼굴은 각 주민의 모자·털색·소품을 따라 그렸어요.</p><div class="shots">`;
+for (const id of PORTRAIT_IDS) html += fig(frameRow(id, 170, 200), NAMES[id], 170, 200);
+html += `</div><h2 style="font-size:15px">식탁 위 (PC · 모바일)</h2><div class="shots">${fig(frameOnTable('courier', 420, 300), 'PC 근접', 420, 300)}${fig(frameOnTable('builder', 300, 300), '모바일 근접', 300, 300)}</div>`;
+out.innerHTML = html;
+document.querySelector('.warn').remove();
+window.__done = true;
+</script>
+</body>
+</html>

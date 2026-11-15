@@ -3,7 +3,7 @@ import { once } from './boot-order.js';
 let mods = null;
 
 export const loadGameModules = once(async () => {
-  const [game, duel, chest, controls, push, cafe, night, decor, vmap, snap] = await Promise.all([
+  const [game, duel, chest, controls, push, cafe, night, decor, vmap, snap, gameUi] = await Promise.all([
     import('./game.js'),
     import('./duel/index.js'),
     import('./boat-chest-reveal.js'),
@@ -14,8 +14,9 @@ export const loadGameModules = once(async () => {
     import('./decor-drops/index.js'),
     import('./world/village-map.js'),
     import('./world/map-snapshot.js'),
+    import('./game-ui/index.js'),
   ]);
-  mods = { game, duel, chest, controls, push, cafe, night, decor, vmap, snap };
+  mods = { game, duel, chest, controls, push, cafe, night, decor, vmap, snap, gameUi };
   return mods;
 });
 
@@ -35,6 +36,7 @@ export const Input = new Proxy({}, {
 
 export const villageMap = () => need().vmap;
 export const requestMapSnapshot = (...a) => need().snap.requestMapSnapshot(...a);
+export const installGameUi = (...a) => need().gameUi.installGameUi(...a);
 export const bootWorld = (...a) => need().game.bootWorld(...a);
 export const enterGame = (...a) => need().game.enterGame(...a);
 export const requestSave = (...a) => need().game.requestSave(...a);
@@ -45,6 +47,7 @@ export const npcAccept = (...a) => need().game.npcAccept(...a);
 export const npcClaim = (...a) => need().game.npcClaim(...a);
 export const markNoticesSeen = (...a) => need().game.markNoticesSeen(...a);
 export const resyncPurchases = (...a) => need().game.resyncPurchases(...a);
+export const grantItems = (...a) => need().game.grantItems(...a);
 
 export const initDuel = (...a) => need().duel.initDuel(...a);
 export const playChestReveal = (...a) => need().chest.playChestReveal(...a);

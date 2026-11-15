@@ -25,6 +25,8 @@ import { buildNeighborIndoor } from '../neighbors/indoor-scene.js';
 import { STAIR_PROMPT_R, stairLayout } from './indoor.js';
 import { gardenDoorLocal } from '../house-floors.js';
 import { inVillage2 } from './doors.js';
+import { weeklyNote } from '../weekly/index.js';
+import { modalQueue } from '../guide/modal-queue.js';
 import { bindVillagePublicToggle, closePickerModal, hideNeighborHud, isPickerOpen, openBlockConfirm, openNbMenu, openPickerModal, openReportModal, openVisitorsModal, setHostBubble, setNeighborHudTitle, setPickerBusy, setVillagePublicUi, showNeighborHud } from '../neighbors/ui.js';
 
 let visit = null;          // { publicId, slot, revisit, view, built, t0, reacted, bubble:'ask'|'thanks', near, busy, viewReq, viewId, indoor:null|{f,t0,floors:Set,tags:Set}, indoorBuilt }
@@ -83,6 +85,7 @@ export function enterNeighbor(entry) {
   showNeighborHud(entry.view.nickname, exitNeighbor, (anchor) => openMore(entry.publicId, 'visit', anchor));
   Sound.blip();
   trackEvent(...evVisitStart(entry));                        // [GA4] host·slot·revisit·load_ms
+  if (!entry.revisit) weeklyNote('neighbor');
   startView(visit);                                          // [원장] village_views — 기다리지 않는다(입장을 막지 않음)
 }
 
@@ -349,10 +352,10 @@ function dailyBanner() {
   if (!bannerDue(readBannerDay(), Date.now())) return;
   whenNoModal(() => {
     if (visit || !inVillage2() || ui.anyModalOpen?.()) return;   // 실내·다른 공간·30초 넘게 창이 떠 있으면 오늘 몫을 쓰지 않고 다음 접속에 다시
-    try { localStorage.setItem(BANNER_KEY, kstDay(Date.now())); } catch { /* 저장 못 해도 배너는 띄운다 */ }
     ui.showHintBanner?.({
       ico: '🏡', title: '오늘의 이웃이 기다려요', line: '눌러서 이웃 마을 구경 가기',
-      near: () => true, attention: true,
+      near: () => true, attention: true, kind: 'feature', key: 'neighbor-daily',
+      burn: () => { try { localStorage.setItem(BANNER_KEY, kstDay(Date.now())); } catch { /* 저장 못 해도 배너는 띄운다 */ } },
       onShow: () => trackEvent(...evBanner('show')),   // [GA4] 배너 노출 → 탭 전환율
       onTap: () => { trackEvent(...evBanner('tap')); openNeighborPicker('banner'); },
       onDismiss: (reason) => { if (reason !== 'tap') trackEvent(...evBanner('dismiss')); },   // 탭은 done('tap') 이 먼저 부른다
@@ -366,13 +369,12 @@ async function bootVisitors() {
   if (!r.ok) { trackEvent(...evFail('visitors', r.reason)); return; }   // 접속 직후라 토스트로 방해하지 않는다(GA4 로만)
   villagePublic = r.isPublic;
   setVillagePublicUi(villagePublic, true);
-  whenNoModal(() => {
-    if (r.total > 0) {
-      const view = noticeView(r, faceOf);
-      trackEvent(...evNotice(view.rows.length, view.total));   // [GA4] 보여 준 줄 수·전체 방문자 수
-      openVisitorsModal(view, () => { gameState.neighbors = markSeen(gameState.neighbors, asked); requestSave(); firstPublicNotice(); });
-    } else firstPublicNotice();
-  });
+  if (!(r.total > 0)) { whenNoModal(firstPublicNotice); return; }
+  modalQueue.request({ kind: 'neighbor', show: () => {
+    const view = noticeView(r, faceOf);
+    trackEvent(...evNotice(view.rows.length, view.total));   // [GA4] 보여 준 줄 수·전체 방문자 수
+    openVisitorsModal(view, () => { gameState.neighbors = markSeen(gameState.neighbors, asked); requestSave(); firstPublicNotice(); });
+  } });
 }
 
 function firstPublicNotice() {

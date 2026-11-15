@@ -1,3 +1,6 @@
+import { HOUSE_GUIDE_WOOD } from '../house-guide-rules.js';
+import { BUILD_STAGES } from '../house-cost.js';
+
 export const GOALS = {
   tree: { ico: '🪓', label: '나무', title: '🪓 나무 베기' },
   cave: { ico: '⛏️', label: '동굴', title: '⛏️ 동굴 탐험하기' },
@@ -9,25 +12,50 @@ export const GOALS = {
   wall: { ico: '🔨', label: '집 터', title: '🔨 벽 세우기' },
   farm: { ico: '🌾', label: '밭', title: '🌾 밭 가꾸기' },
   roof: { ico: '🏠', label: '집 터', title: '🏠 지붕 올리기' },
+  house: { ico: '🏠', label: '집 터', title: '🏠 집 짓기' },
   cosShop: { ico: '🎀', label: '꾸미기 가게', title: '🎀 새 옷 고르기' },
   bridge: { ico: '🌉', label: '다리', title: '🌉 다리 고치기' },
   museum: { ico: '🏛️', label: '박물관', title: '🧑‍🦳 할아버지 만나기' },
   exit: { ico: '🚪', label: '나가는 문', title: '🚪 마을로 나가기' },
 };
 
-export const VILLAGE_KEYS = new Set(['tree', 'cave', 'farmBranch', 'wall', 'roof', 'farm', 'cosShop', 'bridge', 'museum', 'story_worldTree', 'story_cafeDoor']);
+export const VILLAGE_KEYS = new Set(['tree', 'cave', 'farmBranch', 'wall', 'roof', 'house', 'farm', 'cosShop', 'bridge', 'museum', 'story_worldTree', 'story_cafeDoor']);
 
 const TUT_KEYS = { chop: 'tree', mine: 'cave', house2: 'wall', harvest: 'farm', build: 'roof', dress: 'cosShop', bridge: 'bridge', curator: 'museum' };
 
-export const ARRIVE = { tree: 2.3, cave: 1.6, stone: 2.2, farmBranch: 4.2, coal: 2.2, miner: 1.5, lift: 1.8, wall: 2.4, roof: 2.4, farm: 1.6, cosShop: 1.8, bridge: 1.8, museum: 2.0, exit: 1.5, story_worldTree: 4.2, story_cafeDoor: 1.6, story_cafeGuest: 2.0 };
+export const ARRIVE = { tree: 2.3, cave: 1.6, stone: 2.2, farmBranch: 4.2, coal: 2.2, miner: 1.5, lift: 1.8, wall: 2.4, roof: 2.4, house: 2.4, farm: 1.6, cosShop: 1.8, bridge: 1.8, museum: 2.0, exit: 1.5, story_worldTree: 4.2, story_cafeDoor: 1.6, story_cafeGuest: 2.0 };
 
 export const CINE_SUB = '다음 목적지';
 export const MERCHANT_WOOD = 5;
 export const MINER_COAL = 3;
 
-export function tutGoal(step, { wood = 0 } = {}) {
+const WALL_COST = BUILD_STAGES[1].cost;
+const ROOF_COST = BUILD_STAGES[2].cost;
+
+function buildGoal(cost, site, { wood, stone, coins }) {
+  if (wood < cost.wood) return { key: 'tree', cine: false };
+  if (stone < (cost.stone || 0)) return { key: 'cave', cine: false };
+  if (coins < (cost.coins || 0)) return { key: 'farm', cine: false };
+  return { key: site, cine: true };
+}
+
+export function tutGoal(step, { wood = 0, stone = 0, coins = 0, houseCompass = false } = {}) {
+  const inv = { wood, stone, coins };
   if (step === 'sell') return wood < MERCHANT_WOOD ? { key: 'tree', cine: false } : null;
+  if (step === 'house1') {
+    if (wood < HOUSE_GUIDE_WOOD) return { key: 'tree', cine: false };
+    return houseCompass ? null : { key: 'house', cine: false };
+  }
+  if (step === 'house2') return buildGoal(WALL_COST, 'wall', inv);
+  if (step === 'build') return buildGoal(ROOF_COST, 'roof', inv);
+  if (step === 'harvest' && coins >= ROOF_COST.coins) return buildGoal(ROOF_COST, 'roof', inv);
   return TUT_KEYS[step] ? { key: TUT_KEYS[step], cine: true } : null;
+}
+
+export function farmPlotTarget(plots, center) {
+  if (!plots.length) return center;
+  const p = plots.find(q => q.state === 'mature') || plots.find(q => q.state === 'empty') || plots.find(q => q.state === 'growing' && !q.watered);
+  return p ? { x: p.x, z: p.z } : null;
 }
 
 export function minerGoal(d, inv = {}) {

@@ -8,15 +8,16 @@
 // =============================================================
 import { CONFIG, IS_DEV_SESSION } from '../config.js';
 import { getAccessToken } from '../supabase-client.js';
-import { PLATFORM, IS_TOSS, loadTossSDK } from '../platform.js';
-import { captureInvite, runOnPlay, pendingInvite, claimAndApply } from './flow.js';
-import { MSG, tossInvitePath } from './rules.js';
+import { PLATFORM, IS_TOSS, IS_NATIVE, loadTossSDK } from '../platform.js';
+import { capPlugin, capListen } from '../cap-bridge.js';
+import { captureInvite, runOnPlay, pendingInvite, claimAndApply, captureNativeInvite, bindWithCode, INVITE_BOUND_KEY } from './flow.js';
+import { MSG, tossInvitePath, shouldBind, canEnterCode, normalizeInviteCode } from './rules.js';
 import { t } from '../i18n.js';
 import { renderInviteSheet } from './ui.js';
 
 const enabled = () => !!CONFIG.REFERRAL_ON && !IS_DEV_SESSION;
 const store = () => { try { return window.localStorage; } catch (e) { return null; } };
-const memo = { claim: null, tossBoot: null };
+const memo = { claim: null, tossBoot: null, nativeLaunch: null, nativeBoot: null, track: null, play: null };
 // 토스 공유 링크 미리보기(토스앱 Android 5.240·iOS 5.239 이상만 적용) — index.html og:image 와 같은 그림
 const OG_IMAGE = 'https://calmforest.cloud/preview.jpg';
 /** SDK 호출이 끝나지 않을 때 기다리는 한도 — 넘으면 fallback 으로 넘어간다(시트가 '…' 에 갇히지 않게) */
@@ -51,7 +52,52 @@ export function bootReferral({ track }) {
   // 🟦 토스 공유 링크(intoss://calmforest?invite=…)로 들어오면 코드는 주소창이 아니라 진입 스킴 URL 에 있다.
   //    SDK 를 기다려야 해서 비동기 — referralOnPlay 가 연결(bind) 전에 이 약속을 기다린다.
   if (IS_TOSS) memo.tossBoot = captureTossEntry({ storage: s, track });
+  if (IS_NATIVE) {
+    memo.track = track;
+    memo.nativeLaunch = readLaunchUrl();
+    memo.nativeBoot = settleNative({ storage: s, track, installP: null });
+    listenAppLinks({ storage: s, track });
+  }
   return captureInvite({ search: location.search, storage: s, track });
+}
+
+function readLaunchUrl() {
+  const app = capPlugin('App');
+  if (!app) return Promise.resolve(null);
+  return withTimeout(Promise.resolve(app.getLaunchUrl()).then(r => r?.url || null).catch(() => null), null);
+}
+
+async function settleNative({ storage, track, installP }) {
+  const [launchUrl, attr] = await Promise.all([memo.nativeLaunch, installP ? withTimeout(installP, null) : null]);
+  return captureNativeInvite({ launchUrl, referrerRaw: attr?.raw, storage, track });
+}
+
+export function linkInstallInvite(installP) {
+  if (!enabled() || !IS_NATIVE || !installP) return;
+  const s = store();
+  if (!s || !memo.track) return;
+  memo.nativeBoot = settleNative({ storage: s, track: memo.track, installP });
+}
+
+function listenAppLinks({ storage, track }) {
+  try {
+    capListen('App', 'appUrlOpen', (ev) => {
+      const code = captureNativeInvite({ launchUrl: ev?.url, referrerRaw: null, storage, track });
+      const p = memo.play;
+      if (!code || !p || !shouldBind({ pendingCode: code, isGuest: p.auth.isGuest, provider: p.auth.provider })) return;
+      bindWithCode({ code, storage, call, toast: p.toast, track, resync: p.resync, platform: PLATFORM })
+        .catch(e => console.warn('[referral] 앱 링크 연결 실패(무시):', e?.message || e));
+    });
+  } catch (e) {
+    console.warn('[referral] 앱 링크 리스너 실패(무시):', e?.message || e);
+  }
+}
+
+export function inviteCodeLine() {
+  if (!enabled()) return null;
+  const s = store();
+  const code = s && pendingInvite(s);
+  return code ? MSG.bannerCode.replace('{0}', code) : null;
 }
 
 async function captureTossEntry({ storage, track }) {
@@ -127,6 +173,8 @@ export async function referralOnPlay({ auth, toast, track, resync }) {
   if (!s) return;
   const quietToast = (m) => afterOnboarding(() => toast(m));
   if (memo.tossBoot) await withTimeout(memo.tossBoot, null);   // 토스 진입 URL 의 초대 코드가 보관된 뒤에 연결한다(SDK 가 멈춰도 정산은 진행)
+  if (memo.nativeBoot) await withTimeout(memo.nativeBoot, null);
+  memo.play = { auth, toast: quietToast, resync };
   try {
     memo.claim = await runOnPlay({ storage: s, call, toast: quietToast, track, resync, platform: PLATFORM, auth });
   } catch (e) {
@@ -137,8 +185,19 @@ export async function referralOnPlay({ auth, toast, track, resync }) {
 /** ☰ 친구 초대 — 시트를 그린다. 코드는 처음 열 때 발급받는다 */
 export async function openInviteSheet({ box, auth, toast, track, shareNative, resync }) {
   const guest = !auth || auth.isGuest || auth.provider === 'offline' || auth.provider === 'anonymous';
-  const view = { guest, loading: !guest, error: false, code: null, active: memo.claim?.active ?? 0, pending: memo.claim?.pending ?? 0 };
+  const s = store();
+  const bound = !!(s && (() => { try { return s.getItem(INVITE_BOUND_KEY); } catch (e) { return null; } })());
+  const entry = enabled() && !!s && canEnterCode({ isGuest: guest, provider: auth?.provider, createdAt: auth?.createdAt, bound });
+  const view = { guest, loading: !guest, error: false, code: null, entry, active: memo.claim?.active ?? 0, pending: memo.claim?.pending ?? 0 };
   const on = {
+    enter: async (text) => {
+      const code = normalizeInviteCode(text);
+      if (!code) { toast(MSG.entryBad); return false; }
+      const res = await bindWithCode({ code, storage: s, call, toast, track, resync: resync || (async () => {}), platform: PLATFORM, manual: true });
+      const done = !!(res?.ok || res?.reason === 'already_bound');
+      if (done) view.entry = false;
+      return done;
+    },
     copy: async (url) => {
       toast(await copyText(`${MSG.shareText} ${url}`) ? MSG.copied : url);
       track('invite_share', { channel: 'copy' });
@@ -166,7 +225,7 @@ export async function openInviteSheet({ box, auth, toast, track, shareNative, re
   const code = res?.code ?? null;
   const url = code && IS_TOSS ? await tossShareUrl(code) : null;   // 토스 → 토스 공유 링크 · 그 외(또는 실패) → ui 가 웹 링크
   renderInviteSheet(box, {
-    ...view, loading: false, error: !res?.ok, code, url,
+    ...view, entry: view.entry, loading: false, error: !res?.ok, code, url,
     active: memo.claim?.active ?? 0, pending: memo.claim?.pending ?? 0,
   }, on);
 }

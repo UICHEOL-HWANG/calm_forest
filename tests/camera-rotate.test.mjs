@@ -122,13 +122,13 @@ test('게임 배선: 이동 회전·튜토리얼 신호·미니맵 시야·되�
   assert.match(shell, /cam-reset-btn/);
 });
 
-test('투어 단계 목록: 새 유저 full 과 기존 유저 cam 투어 모두 회전 단계를 가진다', async () => {
+test('투어 단계 목록: 회전 단계는 첫 시점 조작 때 뜨는 cam 투어에만 있다', async () => {
   const { spotSteps } = await import('../js/onboarding/spot-steps.js');
   for (const touch of [true, false]) {
-    assert.ok(spotSteps('full', touch).some(s => s.key === 'cam' && !s.core));
+    assert.ok(!spotSteps('full', touch).some(s => s.key === 'cam'));
     assert.ok(spotSteps('cam', touch).some(s => s.key === 'cam' && s.done === 'act:camrotate'));
   }
   assert.equal(spotSteps('cam', false).length, 1);
-  assert.equal(spotSteps('cam', true).length, 3);
+  assert.equal(spotSteps('cam', true).length, 2);
   assert.equal(spotSteps('cam', true)[0].target, '#cam-spot-zone');
 });

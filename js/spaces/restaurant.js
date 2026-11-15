@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {
-  $w, camera, cameraFree, colliders, gameState, makeSignpost, obstacles, player, projectToScreen, refreshInventoryUI, requestSave, scene,
+  $w, adPill, camera, cameraFree, colliders, gameState, giveReward, makeSignpost, obstacles, player, projectToScreen, refreshInventoryUI, requestSave, scene,
   setFogExempt, setSpaceVisible, snapCamera, solidBox, solidCircle, spawnFloatText, ui,
 } from '../game.js';
 import { createAuctionGuide } from '../auction/guide.js';
@@ -21,6 +21,7 @@ import { createRestaurantRuntime } from '../restaurant/runtime.js';
 import { restaurantGuideSteps, guideStage, shownStep, villageVia, hallVia } from '../restaurant/guide-steps.js';
 import { createGuide } from '../guide/runner.js';
 import { createGuideView } from '../guide/view.js';
+import { guideStalled } from '../pond/yard-steps.js';
 import { createNav } from '../guide/path.js';
 import { STOP_SOLIDS } from '../restaurant/nav-solids.js';
 import { CAFE_GATE } from '../data/places.js';
@@ -143,6 +144,7 @@ export function buildRestaurantHall() {
     sessionOpts: () => (restaurantGuideActive() ? { first: true } : {}),
     onChopStart: () => { if (chopHinted) return; chopHinted = true; ui.toast?.(RESTAURANT_COPY.chop); },
     onFinish: () => syncSolids(),
+    adButton: (coins) => (coins > 0 ? adPill('restaurant_double', () => { giveReward({ coins }, 'restaurant_double', 'restaurant'); requestSave(); }) : null),
     onStockGuide: () => { exitRestaurant(); ensureStockGuide().start(); },
   });
   runtime.refresh();
@@ -222,9 +224,20 @@ const gCtx = { inside: false, running: false, served: 0, held: null, pan: null, 
 
 export const restaurantGuideActive = () => !!guide?.active();
 
+let stepSeen = -1, stepAt = 0;
+function guideStall() {
+  const now = performance.now() / 1000;
+  if (guide.index() !== stepSeen) { stepSeen = guide.index(); stepAt = now; }
+  if (!guideStalled(stepAt, now)) return false;
+  trackEvent('guide_step', { flow: 'restaurant', step: guide.index() + 1, act: 'stall' });
+  guide = null; view?.hide(); setPoint(null);
+  return true;
+}
+
 export function maybeStartRestaurantGuide(ok) {
   const r = gameState.restaurant;
-  if (!ok || guide || !runtime || r.guideDone || r.services > 0) return;
+  if (!ok || guide || !runtime || r.guideDone || r.services > 0) return false;
+  stepSeen = -1;
   view ??= createGuideView({ scene, camera, root: document.body });
   guide = createGuide({
     flow: 'restaurant', steps: GUIDE_STEPS, now: () => performance.now(),
@@ -235,6 +248,7 @@ export function maybeStartRestaurantGuide(ok) {
       if (DBG) window.__restGuide = { step: null };
     },
   });
+  return true;
 }
 
 function guideCtx() {
@@ -320,7 +334,7 @@ export function updateRestaurantGuide(visible) {
   if (!guide) return;
   const ctx = guideCtx();
   guide.tick(ctx);
-  if (!guide) return;
+  if (!guide || guideStall()) return;
   const step = shownStep(GUIDE_STEPS, guide.index(), ctx.stage);
   if (!visible || !step) { view.hide(); setPoint(null); return; }
   const idx = step.id === 'trash' ? guide.index() : Math.min(guide.index(), Math.max(0, ctx.stage));

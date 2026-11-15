@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>주민 호감도 문구 검수</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px; background: #eef1ec; font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", sans-serif; color: #2c2418; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  h2 { font-size: 19px; margin: 34px 0 6px; padding-top: 16px; border-top: 2px dashed #cfd6cc; }
+  .lead { margin: 0 0 10px; font-size: 14px; color: #555; line-height: 1.6; max-width: 1080px; }
+  table { border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; font-size: 13px; width: 100%; max-width: 1180px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
+  th, td { padding: 8px 10px; border-bottom: 1px solid #eee; text-align: left; vertical-align: top; line-height: 1.5; word-break: keep-all; }
+  th { background: #f6f1e7; font-size: 12.5px; white-space: nowrap; }
+  td.rec { background: #eef7ee; font-weight: 700; color: #2f6b38; }
+  td.en { color: #6a6a6a; font-size: 12.5px; }
+  td.memo { color: #7a6a58; font-size: 12px; }
+  td.no { color: #999; width: 34px; }
+  .letters { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 14px; max-width: 1180px; }
+  .lt { background: #fffdf6; border-radius: 16px; padding: 13px 15px; box-shadow: 0 0 0 2px #fff, 0 4px 0 #d8ccb6, 0 8px 16px rgba(0,0,0,0.08); }
+  .lt .lh { display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 800; }
+  .lt .tone { font-size: 11px; color: #8a7a66; font-weight: 600; }
+  .lt p { margin: 7px 0 8px; font-size: 13.5px; line-height: 1.65; word-break: keep-all; }
+  .lt .att { font-size: 12px; font-weight: 800; border-radius: 9px; padding: 4px 9px; display: inline-block; background: #f3ece0; color: #7a5a30; }
+  .lt .alt { margin-top: 9px; padding-top: 8px; border-top: 1px dashed #e4d8c4; font-size: 12.5px; line-height: 1.6; color: #5a4a38; }
+  .lt .alt b { font-size: 11.5px; color: #8a7a66; display: block; }
+  .lt .n { font-size: 11px; color: #aaa; }
+  .measure { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+  .vp { background: #8fa898; border-radius: 14px; padding: 12px 0; position: relative; }
+  .vp .lbl { font-size: 12px; font-weight: 800; color: #fff; text-align: center; margin-bottom: 8px; }
+  .toast { display: flex; align-items: center; gap: 8px; background: rgba(28,44,35,.92); color: #fff; border-radius: 22px; padding: 8px 16px 8px 12px; width: max-content; font-size: 14px; line-height: 1.5; word-break: keep-all; text-wrap: balance; margin: 0 auto 8px; font-family: 'Segoe UI', system-ui, sans-serif; }
+  .toast .ic { font-size: 1.2em; flex: none; }
+  .toast .tx { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-width: 0; }
+  .toast .tx b { font-weight: 800; }
+  .toast .tx span { opacity: .75; font-weight: 600; font-size: .92em; }
+  .card { margin: 26px 8px 8px; background: #fffaf1; border-radius: 24px; padding: 14px 13px; position: relative; box-shadow: 0 0 0 3px #fff, 0 8px 0 #e0663c; font-family: 'Segoe UI', system-ui, sans-serif; }
+  .card .face { position: absolute; left: 12px; top: -26px; width: 52px; height: 52px; border-radius: 50%; background: #fbe4da; display: grid; place-items: center; font-size: 25px; border: 3px solid #fff; }
+  .card .head { padding-left: 58px; min-height: 22px; display: flex; align-items: center; gap: 4px 8px; flex-wrap: wrap; }
+  .card .nm { font-size: 18px; font-weight: 800; color: #b8492a; white-space: nowrap; }
+  .card .chip { font-size: 12px; font-weight: 800; border-radius: 999px; padding: 3px 9px; background: #fbe4da; color: #b8492a; white-space: nowrap; }
+  .res { font-size: 11.5px; font-weight: 800; padding: 2px 8px; border-radius: 6px; margin: 0 8px 6px; display: inline-block; }
+  .ok { background: #e2f3e4; color: #2f6b38; }
+  .bad { background: #fde3e0; color: #a33a2a; }
+</style>
+</head>
+<body>
+<h1>✍️ 주민 호감도 문구 검수 (P1)</h1>
+<p class="lead">초록 칸이 추천안이에요. 바꾸고 싶은 칸은 번호로 말씀해 주시면 돼요(예: "6번은 후보 2", "L3은 이렇게"). 엠대시와 "놀다"는 넣지 않았어요. 편지 말투는 잡담 생성기에 정해 둔 주민별 말투(반말·하오체·하게체·해요체·합쇼체)를 따랐어요. 꾸러미 개수는 아직 재계산 전이라 편지 본문에는 숫자를 넣지 않았어요.</p>
+
+<h2>① 화면 문구</h2>
+<table id="ui"></table>
+
+<h2>② 모바일 실측 (추천안, 세로 폰)</h2>
+<p class="lead">지금 게임의 토스트(14px, 화면 폭 92%까지, 두 줄 형식)와 대화창 머리(얼굴 52px 옆)를 그대로 옮겨 가장 긴 이름으로 재었어요. 320px에서는 이름이 긴 주민의 칩이 한 줄에 안 들어가서, 칩이 이름 아래 줄로 내려가게 했어요(구현 때 대화창 머리에 줄바꿈 허용).</p>
+<div class="measure" id="measure"></div>
+
+<h2>③ 편지 22통 (이웃 ❤️3 · 친구 ❤️6)</h2>
+<p class="lead">친구 편지는 도면 의뢰를 여는 편지예요. 도면을 이미 받은 사람(기존 유저)에게는 점선 아래 갈래가 가요. 판다·올빼미는 도면 대신 💎를 보내요.</p>
+<div class="letters" id="letters"></div>
+
+<h2>④ 단짝 아이템 이름 (P2에서 만들지만 이름은 지금 같이)</h2>
+<table id="items"></table>
+
+<script>
+const UI = [
+  ['단계 이름 5개', '아는 사이 · 이웃 · 친구 · 단짝 · 가족', '첫인사 · 이웃 · 친구 · 절친 · 한 식구', '낯선 이웃 · 동네 이웃 · 친구 · 단짝 · 가족', 'Acquaintance · Neighbor · Friend · Best Friend · Family', '칩에 들어가니 2~4글자. "절친"은 줄임말 느낌'],
+  ['대화창 칩 (진행 중)', '🤝 친구 ❤️7/10', '🤝 친구 · 다음까지 ❤️3', '🤝 친구 ❤️7', '🤝 Friend ❤️7/10', '추천안은 다음 문턱까지 보여 줌'],
+  ['대화창 칩 (0일 때)', '❤️0 · 선물로 시작', '👋 아직 첫인사 전', '🎁 선물 하나면 아는 사이', '❤️0 · Start with a gift', '"어떻게 시작하나"가 바로 보이게'],
+  ['대화창 칩 (가족, 15 넘음)', '🌳 가족 ❤️18', '🌳 가족 ❤️ 가득', '🌳 가족', '🌳 Family ❤️18', ''],
+  ['수첩 이름 (☰ 메뉴·제목)', '📒 주민 수첩', '💌 이웃 수첩', '📒 마을 친구들', '📒 Villager Book', '📖 도감과 헷갈리지 않게 📒'],
+  ['수첩 카드: 다음 보상', '다음 ❤️10 🪑', '❤️10에 🪑', '🪑까지 ❤️3', 'Next ❤️10 🪑', ''],
+  ['수첩 카드: 아직 0', '선물 하나면 시작', '아직 인사 전', '🎁로 첫인사', 'One gift to start', ''],
+  ['수첩 상세: 오늘 선물 하트', '오늘 선물 하트 1/2', '🎁 오늘 ❤️ 1/2', '오늘 더 오를 하트 1', 'Gift hearts today 1/2', '하루 +2 상한을 미리 알려 헛선물을 막음'],
+  ['단계 오름 토스트 1줄', '🤝 목수 아저씨와 친구가 됐어요!', '🤝 목수 아저씨가 친구가 됐어요', '🤝 목수 아저씨와 한층 가까워졌어요', '🤝 You and the Carpenter are now Friends!', '단계 이름을 그대로 말해야 수첩과 이어짐'],
+  ['단계 오름 토스트 2줄', '✉️ 소식함에 편지가 왔어요', '✉️ 편지가 왔어요. ☰ → 📮 소식함', '✉️ 편지 도착 · 📮', '✉️ A letter is in your Inbox', '아는 사이(❤️1)는 편지가 없어 2줄 없음'],
+  ['기존 유저 소급 토스트', '✉️ 주민들에게서 편지 4통이 와 있어요', '✉️ 그동안 친해진 주민들이 편지 4통을 보냈어요', '✉️ 편지 4통 · 📮 소식함', '✉️ 4 letters from villagers are waiting', '첫 접속 때 한 번'],
+  ['선물 하트 상한 토스트', '🎁 전했어요! 오늘 목수 아저씨 하트는 다 찼어요', '🎁 고마워해요. 하트는 내일 다시 올라요', '❤️ 오늘은 2/2. 내일 또 건네 보세요', '🎁 Given! Hearts with the Carpenter are full for today', '선물은 받고 하트만 안 오름'],
+  ['올빼미 +1 토스트', '🦉 오늘 의뢰 다 끝! 올빼미 ❤️+1', '🦉 올빼미가 고마워해요 ❤️+1', '🦉 의뢰 5건 완료 · ❤️+1', '🦉 All requests done! Owl ❤️+1', '하루 한 번'],
+  ['소식함 탭', '📮 소식 / ✉️ 편지', '공지 / 편지', '📮 마을 소식 / ✉️ 주민 편지', '📮 News / ✉️ Letters', ''],
+  ['편지 목록 한 줄', '목수 아저씨 · 🤝 친구', '목수 아저씨의 편지', '🤝 목수 아저씨', 'Carpenter · 🤝 Friend', ''],
+  ['편지 받기 버튼', '받기 → 받았어요', '선물 받기 → 받은 선물', '꺼내기 → 꺼냈어요', 'Claim → Claimed', ''],
+  ['받은 뒤 토스트', '🎒 가방에 넣었어요 / 🧺 보관함에 넣었어요', '🎁 받았어요', '🎒 챙겼어요', 'Added to your bag / storage', '꾸러미는 가방, 꾸미기는 보관함'],
+];
+document.getElementById('ui').innerHTML = '<tr><th>#</th><th>자리</th><th>추천</th><th>후보 2</th><th>후보 3</th><th>영어(추천)</th><th>메모</th></tr>' +
+  UI.map((r, i) => `<tr><td class="no">${i + 1}</td><td>${r[0]}</td><td class="rec">${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td class="en">${r[4]}</td><td class="memo">${r[5]}</td></tr>`).join('');
+
+const LETTERS = [
+  ['🧑‍🌾', '농부 삼촌', '반말, 푸근', '#48914a',
+    '요즘 밭에 자주 들러 줘서 고마워. 올해 씨앗이 잘 여물어서 조금 나눠 담았어. 네 밭에도 뿌려 보고, 싹 올라오면 나한테도 보여 줘.', '🌰 씨앗 · 🥕 작물',
+    '이제 우리 그냥 이웃은 아니지? 창고 정리하다가 오래된 낫 도면을 찾았어. 금빛으로 벼린 낫이야. 밭에 오면 얘기해 줄게.',
+    '금빛 낫은 잘 쓰고 있어? 네가 밭에 서 있으면 멀리서도 반짝여서 금방 알아봐. 이제 우리 그냥 이웃은 아니지?'],
+  ['👷', '목수 아저씨', '반말, 힘 있게', '#b8492a',
+    '망치질하다 보면 네 집 지붕이 눈에 들어와. 손 많이 갔더라! 남는 목재 좀 묶어 보냈어. 다음에 증축할 때 보태 쓰라고.', '🪵 목재',
+    '이야, 이제 우리 손발이 척척 맞잖아! 내 작업 노트에 금빛 망치 도면이 있거든. 나 있는 데로 와. 보여 줄게!',
+    '금빛 망치 소리는 멀리서도 들려! 그걸로 뭘 지을지 궁금해서 요즘 자꾸 네 마당 쪽을 보게 돼.'],
+  ['🧙', '방랑 상인', '하오체', '#7044b0',
+    '먼 길을 다니다 보면 반가운 얼굴이 드물다오. 그대는 그 드문 얼굴 가운데 하나요. 장사하고 남은 동전 몇 닢 넣어 보내니 요긴하게 쓰시오.', '🪙 코인',
+    '이제 그대와는 셈을 따지지 않는 사이가 됐구려. 내 보따리 깊은 곳에 금빛 씨앗 주머니 도면이 있소. 좌판에 들르면 꺼내 보여 주겠소.',
+    '금빛 주머니에서 씨앗 꺼내는 모습을 봤소. 내 물건이 제 주인을 찾은 듯해 흐뭇했다오. 이제 그대와는 셈을 따지지 않는 사이요.'],
+  ['🎣', '낚시꾼 할아버지', '하게체, 허허', '#2f6fae',
+    '허허, 요즘 호수에서 자네 그림자를 자주 보네. 물고기는 기다리는 사람한테 오는 법이지. 미끼 조금하고 오늘 잡은 놈들 좀 보내네.', '🪱 미끼 · 🐟 물고기',
+    '자네랑 나란히 앉아 있으면 시간 가는 줄 모르겠네. 젊을 적 쓰던 금빛 낚싯대 도면이 있는데, 이제 자네한테 넘길 때가 된 것 같구먼. 호숫가로 오게나.',
+    '금빛 낚싯대가 물살에 반짝이는 걸 보니 내 젊을 때 생각이 나더군. 허허, 자네랑 나란히 앉아 있으면 시간 가는 줄 모르겠네.'],
+  ['🐼', '요리사 판다', '반말, 들뜸', '#5a5a52',
+    '있지, 네가 준 선물 덕에 새 메뉴가 떠올랐어! 밀가루랑 꿀 조금 보낼게. 빵 구울 때 넣으면 딱이야!', '🌾 밀가루 · 🍯 꿀',
+    '우리 이제 진짜 친구지? 친구한테는 아끼는 걸 줘야 해! 요리하다 찾은 반짝이는 보석 하나 넣었어. 밀가루도 넉넉히 담았고!', null],
+  ['🦡', '숲지기 오소리', '반말, 부드럽게', '#5a5249',
+    '숲에서 주운 것들을 나눠 담았어. 혼자 먹기엔 많고, 너랑 나누면 딱 좋더라. 바구니 비면 또 말해 줘.', '🍄 채집물',
+    '요즘 숲길을 걷다 보면 네 발자국이 먼저 나 있더라. 그게 참 좋아. 내가 아끼던 금빛 도끼 도면, 이제 너한테 보여 줄게. 숲 입구로 와 줘.',
+    '금빛 도끼 소리가 숲 입구까지 들려. 요즘 숲길에 네 발자국이 먼저 나 있는 게 참 좋아.'],
+  ['⭐', '별 보는 아이', '해요체, 아이', '#4a5cb8',
+    '어젯밤에 반딧불이를 잡아서 병에 담았어요! 다 드릴게요. 밤에 뚜껑을 열면 방이 반짝반짝해져요.', '🌟 반딧불이',
+    '이제 우리 진짜 친구예요! 비밀 하나 알려 드릴게요. 포충망을 금빛으로 만드는 도면이 있어요. 계곡 입구로 오면 보여 드릴게요!',
+    '금빛 포충망 쓰는 거 봤어요! 반딧불이들도 좋아하는 것 같았어요. 이제 우리 진짜 친구예요!'],
+  ['🦆', '사공 오리', '하게체, 뱃사람', '#a87a10',
+    '물때 맞춰 나루에 들르는 게 이제 자네 버릇이 됐구먼. 오늘 건진 물고기하고 배 고치고 남은 널 몇 장 보내네.', '🐟 물고기 · 🪵 목재',
+    '뱃사람은 아무한테나 뱃길 얘기를 안 하네. 자네는 이제 아무나가 아니게야. 금빛 물조리개 도면이 있는데, 나루로 오시게.',
+    '금빛 물조리개로 밭에 물 주는 걸 강 건너에서도 봤네. 뱃사람은 아무한테나 뱃길 얘기를 안 하는데, 자네는 다르지.'],
+  ['🐔', '목장 아주머니', '해요체, 살뜰', '#a8452f',
+    '아침마다 닭장에 들러 줘서 고마워요. 오늘 아침에 낳은 달걀이에요. 따뜻할 때 부쳐 먹으면 제일 맛있어요.', '🥚 달걀',
+    '이제 우리 서로 아침상 걱정해 주는 사이죠? 제가 아끼는 금빛 삽 도면이 있어요. 목장에 오면 보여 줄게요.',
+    '금빛 삽으로 밭 고르는 거 봤어요. 손이 야무지네요. 이제 우리 서로 아침상 걱정해 주는 사이죠?'],
+  ['🧑‍🦳', '큐레이터 할아버지', '합쇼체, 정중', '#4a5a7a',
+    '전시실에 오실 때마다 무언가를 새로 알아보시더군요. 표본을 다듬고 남은 돌과 석탄을 보내 드립니다. 요긴하게 쓰시길 바랍니다.', '🪨 돌 · ⚫ 석탄',
+    '오래 지켜보았습니다만, 이제는 친구라 불러도 되겠지요. 수장고에 금빛 괭이 도면이 한 장 있습니다. 박물관 앞으로 오시면 보여 드리지요.',
+    '금빛 괭이는 박물관에 걸어 두어도 손색없을 물건이지요. 오래 지켜보았습니다만, 이제는 친구라 불러도 되겠지요.'],
+  ['🦉', '의뢰 올빼미', '하게체, 차분', '#a87a10',
+    '의뢰를 맡길 때마다 믿음이 가더군. 마을 사람들이 건넨 사례금을 조금 따로 모아 두었네. 자네 몫이야.', '🪙 코인',
+    '이렇게 편지를 직접 쓰는 건 오랜만이네. 의뢰를 꾸준히 끝내 준 자네에게 마을이 고마워하고 있어. 둥지에서 찾은 보석 하나와 사례금을 보내네.', null],
+];
+let n = 0;
+document.getElementById('letters').innerHTML = LETTERS.map(([f, name, tone, c, nb, natt, fr, frAlt]) => {
+  const card = (stage, body, att, alt) => `<div class="lt"><div class="lh"><span style="color:${c}">✉️ ${f} ${name}의 편지 · ${stage}</span><span class="n">L${++n}</span></div>
+    <div class="tone">${tone}</div><p>${body}</p><span class="att">🎁 ${att}</span>
+    ${alt ? `<div class="alt"><b>도면을 이미 받은 사람</b>${alt}</div>` : ''}</div>`;
+  const frAtt = frAlt === null ? '💎 보석 · ' + (name.includes('판다') ? '🌾 밀가루' : '🪙 코인') : '📜 금빛 도구 도면 의뢰가 열려요';
+  return card('🏡 이웃', nb, natt) + card('🤝 친구', fr, frAtt, frAlt);
+}).join('');
+
+const ITEMS = [
+  ['🧑‍🌾 농부 삼촌', '🥕 채소 수레', '🛒 농부의 손수레', 'Veggie Cart'],
+  ['👷 목수 아저씨', '🪑 목수의 흔들의자', '🪑 손수 짠 흔들의자', "Carpenter's Rocking Chair"],
+  ['🧙 방랑 상인', '⛺ 보라 천막', '⛺ 떠돌이 좌판', 'Purple Tent'],
+  ['🎣 낚시꾼 할아버지', '🎣 낚시 쉼터', '🪑 할아버지 낚시 의자', 'Fishing Nook'],
+  ['🐼 요리사 판다', '🎋 대나무 찜기 탁자', '🥟 판다 찜기 화로', 'Bamboo Steamer Table'],
+  ['🦡 숲지기 오소리', '🍄 버섯 등불', '🍄 숲지기 버섯등', 'Mushroom Lamp'],
+  ['⭐ 별 보는 아이', '🔭 꼬마 망원경', '🔭 별 보는 망원경', 'Little Telescope'],
+  ['🦆 사공 오리', '🛶 꽃배 화분', '🛶 나룻배 꽃밭', 'Flower Boat Planter'],
+  ['🐔 목장 아주머니', '🐣 병아리 둥지', '🐣 볏짚 병아리 집', 'Chick Nest'],
+  ['🧑‍🦳 큐레이터 할아버지', '🏺 유리 진열장', '🏺 작은 전시대', 'Glass Display Case'],
+  ['🦉 의뢰 올빼미', '📮 올빼미 우체통', '📮 깃털 우체통', 'Owl Mailbox'],
+  ['가족 액자 (11명 공통 틀)', '🖼️ 목수 아저씨 액자', '🖼️ 목수 아저씨와 찍은 사진', "Carpenter's Photo Frame"],
+];
+document.getElementById('items').innerHTML = '<tr><th>#</th><th>주민</th><th>추천</th><th>후보 2</th><th>영어(추천)</th></tr>' +
+  ITEMS.map((r, i) => `<tr><td class="no">I${i + 1}</td><td>${r[0]}</td><td class="rec">${r[1]}</td><td>${r[2]}</td><td class="en">${r[3]}</td></tr>`).join('');
+
+const M = document.getElementById('measure');
+for (const w of [320, 375]) {
+  const vp = document.createElement('div');
+  vp.className = 'vp'; vp.style.width = w + 'px';
+  const tmax = Math.min(560, w * 0.92);
+  vp.innerHTML = `<div class="lbl">${w}px</div>
+    <div class="toast" style="max-width:${tmax}px"><span class="ic">🤝</span><span class="tx"><b>낚시꾼 할아버지와 친구가 됐어요!</b><span>✉️ 소식함에 편지가 왔어요</span></span></div>
+    <div class="toast" style="max-width:${tmax}px"><span class="ic">🎁</span><span class="tx"><b>전했어요! 오늘 큐레이터 할아버지 하트는 다 찼어요</b></span></div>
+    <div class="toast" style="max-width:${tmax}px"><span class="ic">✉️</span><span class="tx"><b>주민들에게서 편지 4통이 와 있어요</b></span></div>
+    <div class="card"><div class="face">🧑‍🦳</div><div class="head"><span class="nm">큐레이터 할아버지</span><span class="chip">🤝 친구 ❤️7/10</span></div></div>
+    <div class="card"><div class="face">🎣</div><div class="head"><span class="nm">낚시꾼 할아버지</span><span class="chip">❤️0 · 선물로 시작</span></div></div>
+    <div class="out"></div>`;
+  M.appendChild(vp);
+  requestAnimationFrame(() => {
+    const lines = (el) => Math.round(el.getBoundingClientRect().height / 21);
+    const res = [];
+    vp.querySelectorAll('.toast b').forEach((b, i) => res.push(`토스트${i + 1} 굵은 줄 ${lines(b)}줄`));
+    vp.querySelectorAll('.card').forEach((c, i) => {
+      const head = c.querySelector('.head');
+      const over = head.scrollWidth > head.clientWidth + 1;
+      const two = head.querySelector('.chip').offsetTop > head.querySelector('.nm').offsetTop + 4;
+      res.push(`대화창${i + 1} ${over ? '넘침' : two ? '칩이 아랫줄로 (넘침 없음)' : '한 줄 OK'}`);
+    });
+    vp.querySelector('.out').innerHTML = res.map(r => `<span class="res ${/넘침|3줄/.test(r) ? 'bad' : 'ok'}">${r}</span>`).join('');
+  });
+}
+</script>
+</body>
+</html>

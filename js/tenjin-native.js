@@ -4,6 +4,10 @@ import { IS_ANDROID, IS_IOS } from './platform.js';
 import { IS_DEV_SESSION } from './config.js';
 import { requestTrackingConsent } from './tracking-consent.js';
 import { admobImpressionJson } from './tenjin-ad-revenue.js';
+import { tenjinEventFor, onceSeed, bumpTally, tallyEvents } from './tenjin-events.js';
+import { isFreshSignup } from './meta-pixel-rules.js';
+
+const ONCE_KEY = 'cf_tj_once';
 
 const SDK_KEYS = {
   ios: 'GN4VXMC8WVUBHYVNTW6XZINFV2DFU97E',
@@ -53,6 +57,57 @@ export async function trackTenjinAdImpression(paid) {
   const sdk = await bootTenjin();
   if (sdk) await sdk.eventAdImpressionAdMob({ json }).catch((error) =>
     console.warn('[tenjin] ad impression failed', error));
+}
+
+const sessionOnce = new Set();
+
+function readOnce() {
+  try {
+    const list = JSON.parse(localStorage.getItem(ONCE_KEY));
+    return Array.isArray(list) ? list : null;
+  } catch { return null; }
+}
+
+function writeOnce(list) {
+  try { localStorage.setItem(ONCE_KEY, JSON.stringify(list)); } catch { return; }
+}
+
+export function initTenjinOnce(established) {
+  if (!readOnce()) writeOnce(onceSeed(established));
+}
+
+async function sendTenjinEvent(ev) {
+  if (ev.once) {
+    if (sessionOnce.has(ev.name) || readOnce()?.includes(ev.name)) return;
+    sessionOnce.add(ev.name);
+  }
+  const sdk = await bootTenjin();
+  if (!sdk) { sessionOnce.delete(ev.name); return; }
+  try {
+    await ('value' in ev
+      ? sdk.eventWithNameAndValue({ name: ev.name, value: String(ev.value) })
+      : sdk.eventWithName({ name: ev.name }));
+    if (ev.once) writeOnce([...(readOnce() || []), ev.name]);
+  } catch (error) {
+    sessionOnce.delete(ev.name);
+    console.warn('[tenjin] event failed', ev.name, error);
+  }
+}
+
+function expandTally(ev) {
+  if (!ev.tally) return [ev];
+  try { return tallyEvents(bumpTally(localStorage)); } catch { return []; }
+}
+
+export function tenjinFromTrack(name, payload) {
+  const ev = tenjinEventFor(name, payload);
+  if (!ev) return;
+  for (const one of [ev].flat().flatMap(expandTally)) void sendTenjinEvent(one);
+}
+
+export function tenjinSignup({ userId, isGuest, createdAt } = {}) {
+  if (!userId || isGuest || !isFreshSignup(createdAt, Date.now())) return;
+  void sendTenjinEvent({ name: 'signup', once: true });
 }
 
 export async function trackTenjinGameStart() {

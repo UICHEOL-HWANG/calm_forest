@@ -1,8 +1,8 @@
 // =============================================================
 //  calm forest · 🔔 푸시 — 오늘 누구에게 무엇을 보낼지(순수)
 //  ------------------------------------------------------------
-//  유저당 하루 1통. 우선순위 🦝 밤손님 예고 > 🔥🫙 가공 완료 > 🌱 복귀.
-//  "돌아올 이유가 실제로 있는 날"에만 보낸다 — 이유 없는 날은 조용히(힐링 톤).
+//  유저당 하루 1통. 우선순위 🦝 밤손님 예고 > 🔥🫙 가공 완료 > 🐟 연못 > 🌱 복귀.
+//  "돌아올 이유가 실제로 있는 날"에만 보낸다 — 이유 없는 날은 조용히(힐링 톤). 🌱 는 밭이 비었으면 출석 선물 문구(bare).
 //  날짜는 KST 기준(세이브의 날짜는 기기 로컬이지만 1차 유저는 한국).
 //  row 는 push_candidates RPC 한 줄(sql/migrations/migrate_push_tokens.sql).
 //  (테스트: node --test tests/push-pick.test.mjs)
@@ -40,7 +40,7 @@ export function nightInput(row, date, dates) {
   return { plotCount: cands.length, scarecrow, fence, blocked: blockedAnimals(row.truce, date) };
 }
 
-/** → { kind:'night' } | { kind:'craft', stations } | { kind:'return' } | null
+/** → { kind:'night' } | { kind:'craft', stations } | { kind:'pond' } | { kind:'return', bare? } | null
  *  night: 이 유저의 judgeNight 결과(대상이 아니면 null) */
 export function pickPush(row, dates, night) {
   const lastMs = Date.parse(row.updated_at) || 0;
@@ -55,9 +55,10 @@ export function pickPush(row, dates, night) {
     const stations = [...new Set(ready.map(s => stationOf(s.item)).filter(Boolean))].sort();
     if (stations.length) return { kind: 'craft', stations };
   }
+  if (lastMs < dates.todayStartMs && row.pond_day === dates.yesterday) return { kind: 'pond' };
 
-  if (awayDays >= RETURN_AFTER_DAYS && sprouting(row.plots).length && (row.returns_7d | 0) < RETURN_MAX_7D) {
-    return { kind: 'return' };
+  if (awayDays >= RETURN_AFTER_DAYS && (row.returns_7d | 0) < RETURN_MAX_7D) {
+    return sprouting(row.plots).length ? { kind: 'return' } : { kind: 'return', bare: true };
   }
   return null;
 }
@@ -79,6 +80,14 @@ export function messageFor(pick, lang = 'ko') {
     const ico = st.map(s => s[0]).join('');
     if (en) return { title: `${ico} Your ${st.map(s => s[1]).join(' & ')} is done`, body: 'Come pick it up 🌿' };
     return { title: `${ico} ${st.map(s => s[1]).join('·')}에 넣어 둔 게 다 됐어요`, body: '꺼내러 와 주세요 🌿' };
+  }
+  if (pick.kind === 'pond') {
+    return en ? { title: '🐟 Your pond fish are waiting', body: 'Come feed them today 🌿' }
+              : { title: '🐟 연못 물고기들이 기다려요', body: '오늘 먹이를 주러 와 주세요 🌿' };
+  }
+  if (pick.bare) {
+    return en ? { title: '🌿 The forest is quietly waiting', body: "Today's check-in gift is ready." }
+              : { title: '🌿 숲이 조용히 기다리고 있어요', body: '오늘의 출석 선물이 준비돼 있어요.' };
   }
   return en ? { title: '🍓 There might be something to harvest', body: 'The forest is quietly waiting.' }
             : { title: '🍓 수확할 게 생겼을지도 몰라요', body: '숲이 조용히 기다리고 있어요.' };

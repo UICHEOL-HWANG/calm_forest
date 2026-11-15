@@ -29,7 +29,7 @@ test('proxy whitelists sled', () => {
 });
 
 test('client board formats the negated score back to seconds', () => {
-  const html = read('index.html');
+  const html = read('js/game-ui/leaderboard.js');
   assert.match(html, /id:\s*'sled'/);
   assert.match(html, /\(-v \/ 1000\)\.toFixed\(2\)/);
   assert.ok(EN['🛷 썰매']);
@@ -37,7 +37,7 @@ test('client board formats the negated score back to seconds', () => {
 });
 
 test('sled is a daily board in the subtitle logic', () => {
-  const html = read('index.html');
+  const html = read('js/game-ui/leaderboard.js');
   assert.match(html, /id:\s*'sled'[^\n]*daily: true/);
   assert.match(html, /meta\.daily \? ''/);
   assert.doesNotMatch(html, /board === 'boat' \|\| board === 'sea' \? ''/);
@@ -46,7 +46,8 @@ test('sled is a daily board in the subtitle logic', () => {
 
 test('eight leaderboard tabs wrap instead of overflowing on a phone', () => {
   const html = read('index.html');
-  const boards = html.slice(html.indexOf('const LB_BOARDS = ['), html.indexOf('];', html.indexOf('const LB_BOARDS = [')));
+  const lb = read('js/game-ui/leaderboard.js');
+  const boards = lb.slice(lb.indexOf('const LB_BOARDS = ['), lb.indexOf('];', lb.indexOf('const LB_BOARDS = [')));
   assert.equal((boards.match(/\{ id: '/g) || []).length, 8);
   assert.match(html, /#lb-tabs \{ display: flex; flex-wrap: wrap;/);
   assert.doesNotMatch(html.match(/#lb-tabs \{[^}]*\}/)[0], /overflow|nowrap/);

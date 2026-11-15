@@ -162,7 +162,17 @@ export function preloadSupabase() {
   return isSupabaseConfigured() ? loadSupabaseLib() : Promise.resolve(null);
 }
 
-export async function initAuth(onStatusChange, { keepGuest = false } = {}) {
+let heldAnon = null;
+
+export function resumeHeldGuest() {
+  if (!heldAnon) return null;
+  const s = heldAnon;
+  heldAnon = null;
+  applySession(s);
+  return { online: true };
+}
+
+export async function initAuth(onStatusChange, { keepGuest = false, holdGuest = false } = {}) {
   statusCb = onStatusChange;
   state.variant = assignVariant();   // 실험 off면 'control', 켜지면 client_id 해시로 A/B
 
@@ -203,6 +213,7 @@ export async function initAuth(onStatusChange, { keepGuest = false } = {}) {
       return { needLogin: false, offline: false };
     }
     if (s && isAnon(s)) {
+      if (holdGuest && !IS_TOSS && !IS_NATIVE) { heldAnon = s; return { needLogin: true, offline: false }; }
       if (keepGuest && !IS_TOSS && !IS_NATIVE) { applySession(s); return { needLogin: false, offline: false }; }
       // 🔵 토스·📱 플레이 앱: 자동 연결이 안 돼 게스트로 플레이했던 진행도를 잠시 들고 있는다.
       //    익명 세션을 정리하면 그 계정의 저장을 더는 읽을 수 없으므로(RLS) 로그아웃 전에 읽어야 한다.
@@ -254,6 +265,7 @@ export async function verifyEmailCode(email, token) {
       console.warn('[이메일 코드 확인 실패]', error?.code || error?.status, error?.message || 'no session');
       return { ok: false, error: error || { message: 'no session' } };
     }
+    heldAnon = null;
     takeHeldGuest();
     applySession(data.session);
     devLog('[이메일] 세션 연결 완료', state.userId);

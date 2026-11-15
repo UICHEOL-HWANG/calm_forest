@@ -45,8 +45,8 @@ test('단계 — 1·3·5명 · 보상 id 가 카탈로그/보상 장식에 있�
   assert.deepEqual(tierView(0).map(t => t.done), [false, false, false]);
 });
 
-test('inviteUrl — 웹 오리진의 ?invite= 링크(토스·앱 유저가 보내도 웹으로 열린다)', () => {
-  assert.equal(inviteUrl('ABCD2345'), 'https://calmforest.cloud/?invite=ABCD2345');
+test('inviteUrl — 웹 오리진의 /i/ 링크(앱이 깔려 있으면 앱이, 아니면 Worker 가 웹 ?invite= 로)', () => {
+  assert.equal(inviteUrl('ABCD2345'), 'https://calmforest.cloud/i/ABCD2345');
 });
 
 test('bindMessage — 결과별 문구, 조용히 넘길 것은 null', () => {
