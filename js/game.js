@@ -1052,7 +1052,7 @@ function rerollDailyQuest() {
   if (!pick) return null;
   const { def, st } = cur;
   st.quests = st.quests.map((q, i) => (i === st.idx ? dailyEntry(pick, st.idx) : q));
-  st.progress = 0; st.readyToasted = false;
+  st.progress = 0; st.readyToasted = false; st.qsrc = 'reroll';
   def.quests = st.special ? [...st.quests, st.special] : st.quests;
   refreshQuestPanel(); requestSave();
   return pick;
@@ -1071,7 +1071,7 @@ export function questRerollAd(done) {
 async function upgradeDailyQuestsAI() {
   const def = NPCS.find(n => n.daily); if (!def) return;
   const st = npcState(def.id);
-  if (st.qsrc === 'ai') return;                                   // 오늘은 이미 AI 의뢰
+  if (st.qsrc) return;                                            // 오늘은 이미 AI 의뢰
   if (st.given || st.idx > 0 || st.progress > 0) return;          // 진행이 시작됨 → 건드리지 않는다
   let raw;
   try {
@@ -1096,7 +1096,7 @@ async function upgradeDailyQuestsAI() {
     line: `[${LANG === 'en' ? `Request ${i + 1}/${DAILY_COUNT}` : `오늘의 의뢰 ${i + 1}/${DAILY_COUNT}`}] ${String(q.line || '').trim()}`,
   }));
   if (!validDailyQuests(built) || built.some(q => !q.title || !q.line)) return;
-  if (st.given || st.idx > 0 || st.progress > 0) return;           // 받아오는 사이에 시작했을 수 있다
+  if (st.qsrc || st.given || st.idx > 0 || st.progress > 0) return;           // 받아오는 사이에 시작했을 수 있다
   st.quests = built; st.qsrc = 'ai';                               // 세이브에 고정
   def.quests = st.special ? [...built, st.special] : built;        // ✨특별 의뢰가 붙어 있으면 유지(지금은 idx>0 에서 빠져나가 도달 못 하지만, 조건이 바뀌어도 안 사라지게)
   const owl = npcObjs.find(o => o.def.id === def.id);
@@ -1576,8 +1576,7 @@ function checkDailyBonus() {
       weather: WEATHER, forecast: FORECAST, severe: SEVERE_TOMORROW, forecastInDex: !!gameState.dex.weather?.[FORECAST],
       season: SEASON_INFO.season, seasonLeft: SEASON_INFO.left, fish: sFish, fishOwned: seasonOwned(sFish), seasonNew,
     });
-    const adBtn = dailyAdButton(coins, d.streak);
-    modalQueue.request({ kind: 'daily', show: () => ui.showDailyCard?.(view, () => { if (pendingNotices.length) ui.showNotices?.(pendingNotices, 'new'); }, adBtn) });
+    modalQueue.request({ kind: 'daily', show: () => ui.showDailyCard?.(view, () => { if (pendingNotices.length) ui.showNotices?.(pendingNotices, 'new'); }, dailyAdButton(coins, d.streak)) });
     return true;
   }
   ui.toast?.(`🎁 출석 보상 +${coins}🪙`, 1600, { afterDialog: true });                         // 신규 유저: 캐릭터 선택/튜토리얼과 안 겹치게 토스트만

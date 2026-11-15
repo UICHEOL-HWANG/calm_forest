@@ -101,3 +101,13 @@ test('꾸미기 한 번 더 뽑기는 확정 보장 카운터를 건드리지 �
   assert.equal(hit.drops.tries.mine, 1);
   assert.equal(extraRoll(missed, [def.item], 'mine', 0).hit, false);
 });
+
+test('a rerolled daily request is marked so the late AI upgrade leaves it alone', async () => {
+  const { readFileSync } = await import('node:fs');
+  const game = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  const reroll = game.slice(game.indexOf('function rerollDailyQuest('), game.indexOf('export function questRerollAd('));
+  assert.match(reroll, /st\.progress = 0; st\.readyToasted = false; st\.qsrc = 'reroll';/);
+  const ai = game.slice(game.indexOf('async function upgradeDailyQuestsAI('), game.indexOf('function rollLuckyBox('));
+  assert.match(ai, /if \(st\.qsrc\) return;/);
+  assert.match(ai, /if \(st\.qsrc \|\| st\.given \|\| st\.idx > 0 \|\| st\.progress > 0\) return;[^\n]*\n\s+st\.quests = built;/);
+});

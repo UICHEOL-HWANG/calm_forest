@@ -49,6 +49,14 @@ test('판매 웃돈 광고는 받은 뒤 버튼을 넘겨 상점이 지울 수 �
   assert.match(shop, /Input\.sellAdButton\(k, gain, \(ok\) => \{ if \(!ok\) return; box\.replaceChildren\(\); renderShop\(\); \}\)/);
 });
 
+test('the daily card builds its ad button when the queued card is shown', async () => {
+  const { readFileSync } = await import('node:fs');
+  const game = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  const fn = game.slice(game.indexOf('function checkDailyBonus('), game.indexOf('ui.toast?.(`🎁 출석 보상'));
+  assert.doesNotMatch(fn, /const adBtn = dailyAdButton/);
+  assert.match(fn, /show: \(\) => ui\.showDailyCard\?\.\(view, \(\) => \{[^\n]*\}, dailyAdButton\(coins, d\.streak\)\) \}\);/);
+});
+
 test('부족 줄 광고 버튼: 세계수 판·카페 손님 카드가 같은 shortAdButton 을 쓴다', async () => {
   const { readFileSync } = await import('node:fs');
   const read = p => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
