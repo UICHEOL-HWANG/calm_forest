@@ -12,4 +12,11 @@
 - [x] T5b 첫 HUD 안내 9→2장(사용자 선택 2026-11-15 "2장으로 줄여"), 나머지 7장은 처음 쓸 때, 가로 시점 안내 '다음' 화면 밖 버그 수정
 - [x] T7 보상형 광고: 튜토리얼 숨김, 자리별 하루 제한, PREPASS_ON(50:50), 새 자리 10개(affinity_heart·concert_play·weekly_ticket·orchard_grow·forge_rush·quest_reroll·drop_reroll_mine/firefly·restaurant_double·bait_box), 캡처 sims/quest-chips/t7/ — 남음: 새 문구 사용자 검수, 실기기(AdMob·토스) 확인
 - [x] T8 텐진 광고 여정 이벤트 매핑 (75b5d2d9, 목록은 tenjin-events.md, 앱 새 빌드 필요)
-- [ ] T9 봇 검증(신규·기존 legacy/비legacy·중간 유저, 세로·가로, 음소거), 전체 리뷰
+- [x] T9 봇 검증·전체 리뷰(review-final.md) → 수정 10커밋(5bf83835..4cf08ea3), 전체 5929/5930(알려진 1건)
+
+## 남은 것 (사용자 몫·후속)
+- 새 문구 검수(T4 화살표·첫 방문, T7 광고 버튼)
+- 텐진 대시보드 UA 리포트에 rv_* 퍼널 추가, 앱 새 빌드 뒤 이벤트 도착 확인
+- 광고 하루 횟수 서버 검증(지금은 기기 저장소)
+- 실기기 AdMob·토스 광고 송출, 가로·PC 레이아웃 최종 확인
+- 5곳 동시 배포(새 저장 칸: weekly·concert·auction 횟수, 의뢰 바꾸기 등)
