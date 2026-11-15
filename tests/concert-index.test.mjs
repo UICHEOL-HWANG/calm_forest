@@ -362,3 +362,22 @@ test('the guide does not come back after the player reached the stage once', () 
   assert.equal(guide.active, false);
   assert.equal(g.starts, 1);
 });
+
+const bb = (x0, x1, z0, z1, y0 = 0, y1 = 3) => ({ min: { x: STAGE_POS.x + x0, y: y0, z: STAGE_POS.z + z0 }, max: { x: STAGE_POS.x + x1, y: y1, z: STAGE_POS.z + z1 } });
+const mesh = (box, visible = true) => ({ isMesh: true, visible, bb: box, position: { x: 999, z: 999 }, children: [] });
+const fakeThree = { Box3: class { setFromObject(o) { this.min = o.bb.min; this.max = o.bb.max; return this; } } };
+
+test('a show also hides nested meshes and big objects whose origin is outside the lane', () => {
+  const wall = mesh(bb(2, 6, 4, 6));
+  const decor = mesh(bb(-1, 0, 7, 8));
+  const ground = mesh(bb(-40, 40, -40, 40, -0.1, 0));
+  const behind = mesh(bb(-1, 1, -6, -4));
+  const group = { visible: true, position: { x: 999, z: 999 }, children: [decor, ground, behind] };
+  const w = world({ scene: { children: [wall, group] }, THREE: fakeThree });
+  w.state = { ...w.state, tutorial: true };
+  openAt(w);
+  w.hall.onPlay('morning');
+  assert.deepEqual([wall.visible, decor.visible, ground.visible, behind.visible, group.visible], [false, false, true, true, true]);
+  w.lanes.onQuit();
+  assert.deepEqual([wall.visible, decor.visible, ground.visible, behind.visible, group.visible], [true, true, true, true, true]);
+});
