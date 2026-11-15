@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>시세판 시안 비교</title>
+<style>
+  :root { --ink: #4a5a4f; --up: #2f9a5f; --down: #d05a4a; --line: #e6ece6; --soft: #f2f6f0; }
+  body { margin: 0; padding: 20px; background: #dfe9e1; font-family: 'Segoe UI', system-ui, sans-serif; color: var(--ink); }
+  .wrap { display: grid; grid-template-columns: repeat(3, auto); gap: 28px; justify-content: center; }
+  .col > h3 { margin: 0 0 10px; font-size: 15px; }
+  .pair { display: flex; gap: 14px; align-items: flex-start; }
+  .cap { font-size: 11px; opacity: .65; margin: 0 0 4px; }
+  .card { background: #fff; border-radius: 24px; box-shadow: 0 20px 60px rgba(30,50,40,.25); padding: 22px 20px 16px; overflow-y: auto; box-sizing: border-box; font-variant-numeric: tabular-nums; }
+  .pc { width: 440px; max-height: 720px; }
+  .mo { width: 345px; max-height: 720px; padding: 18px 14px 14px; }
+  .head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+  .head h2 { margin: 0; font-size: 20px; letter-spacing: -.02em; }
+  .head .when { font-size: 11.5px; opacity: .6; white-space: nowrap; }
+  .hint { font-size: 12.5px; opacity: .75; margin: 0 0 12px; text-align: left; }
+  .fore { font-size: 12.5px; background: #fff6dc; border-radius: 12px; padding: 9px 12px; margin: 12px 0 10px; text-align: left; }
+  .close { display: block; margin-left: auto; border: none; border-radius: 10px; padding: 8px 14px; font-weight: 600; font-size: 13px; background: #eef2ee; color: var(--ink); }
+  .pill { font-weight: 700; font-size: 12px; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+  .pill.up { color: var(--up); background: #e3f4ea; } .pill.down { color: var(--down); background: #fbe9e5; } .pill.flat { opacity: .5; background: var(--soft); }
+  .price { font-weight: 800; white-space: nowrap; } .price small { font-weight: 600; opacity: .55; font-size: 11px; margin-right: 2px; }
+  .sec { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; margin: 14px 0 6px; text-align: left; }
+  .sec::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+  .sec i { font-style: normal; font-weight: 600; opacity: .55; }
+
+  .a-top { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .a-top div { background: linear-gradient(180deg, #eaf7ee, #f6fbf6); border-radius: 16px; padding: 12px 6px 10px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .a-top .ico { font-size: 28px; line-height: 1.1; } .a-top .nm { font-size: 13px; font-weight: 700; } .a-top .price { font-size: 16px; }
+  .a-row { display: grid; grid-template-columns: 26px 1fr auto 52px; align-items: center; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .a-row:last-child { border-bottom: none; }
+  .a-row .ico { font-size: 19px; text-align: center; } .a-row .nm { font-weight: 600; text-align: left; } .a-row .price { text-align: right; }
+
+  .a-row .nm em { font-style: normal; font-weight: 600; font-size: 11.5px; opacity: .55; margin-left: 4px; }
+  .tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; background: var(--soft); border-radius: 12px; padding: 4px; margin: 14px 0 4px; }
+  .tabs b { font-size: 12.5px; font-weight: 600; padding: 7px 0; border-radius: 9px; opacity: .65; }
+  .tabs b.on { background: #fff; opacity: 1; font-weight: 700; box-shadow: 0 1px 4px rgba(60,90,70,.15); }
+  .scroll { max-height: 216px; overflow: hidden; -webkit-mask-image: linear-gradient(#000 80%, transparent); mask-image: linear-gradient(#000 80%, transparent); }
+  .chips { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .chip { display: grid; grid-template-columns: 20px 1fr auto auto; align-items: center; gap: 6px; background: var(--soft); border-radius: 12px; padding: 8px 10px; font-size: 13px; }
+  .chip .ico { font-size: 16px; } .chip .nm { font-weight: 600; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chip .rate { font-size: 11.5px; font-weight: 700; } .chip.up .rate { color: var(--up); } .chip.down .rate { color: var(--down); }
+  .more { display: block; width: 100%; margin-top: 10px; border: 1px solid var(--line); background: #fff; border-radius: 12px; padding: 10px; font-size: 13px; font-weight: 600; color: var(--ink); font-family: inherit; }
+  .more span { opacity: .5; }
+  .b-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .b-tile { background: var(--soft); border-radius: 14px; padding: 10px 12px; display: grid; grid-template-columns: 30px 1fr; column-gap: 8px; align-items: center; text-align: left; }
+  .b-tile .ico { font-size: 24px; grid-row: span 2; } .b-tile .nm { font-size: 13px; font-weight: 600; }
+  .b-tile .line { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+  .b-tile.up { background: #edf7f0; } .b-tile.down { background: #fbf1ee; }
+  .b-tile .rate { font-size: 11.5px; font-weight: 700; } .b-tile.up .rate { color: var(--up); } .b-tile.down .rate { color: var(--down); } .b-tile.flat .rate { opacity: .5; }
+
+  .c-row { display: grid; grid-template-columns: 26px 78px 1fr 44px 46px; align-items: center; gap: 8px; padding: 8px 2px; font-size: 14px; }
+  .mo .c-row { grid-template-columns: 24px 66px 1fr 42px 42px; gap: 6px; }
+  .c-row .ico { font-size: 19px; text-align: center; } .c-row .nm { font-weight: 600; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .c-row .bar { height: 8px; border-radius: 4px; background: var(--soft); position: relative; }
+  .c-row .bar b { position: absolute; top: 0; bottom: 0; border-radius: 4px; }
+  .c-row .bar b.up { left: 50%; background: #7fcf9f; } .c-row .bar b.down { right: 50%; background: #eda093; }
+  .c-row .bar::after { content: ''; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: #c9d4cb; }
+  .c-row .rate { font-size: 12px; font-weight: 700; text-align: right; } .c-row .rate.up { color: var(--up); } .c-row .rate.down { color: var(--down); } .c-row .rate.flat { opacity: .5; }
+  .c-row .price { text-align: right; }
+</style>
+<div class="wrap" id="wrap"></div>
+<script>
+const ITEMS = [
+  ['🥐','빵',34,30],['🥫','사과잼',16,30],['🌽','옥수수',26,30],['🌾','밀',19,27],['🐚','맛조개',5,27],['🐙','문어',10,26],
+  ['🪵','목재',2,21],['🍑','복숭아',15,18],['💎','보석',47,17],['🍐','배',12,17],['🥕','작물',6,16],['🍷','포도즙',44,11],
+  ['🌰','밤',22,11],['🐟','물고기',8,4],['🥚','달걀',6,0],['🍯','꿀',12,0],['🪨','돌',3,-4],['🍎','사과',7,-9],
+  ['🍇','포도',26,-13],['⚫','숯',8,-14],['🧱','벽돌',10,-17],['🔮','수정',20,-21],['🌰','군밤',23,-24],['🍡','곶감',18,-26],
+].map(([ico, name, price, rate]) => ({ ico, name, price, rate, cls: rate > 0 ? 'up' : rate < 0 ? 'down' : 'flat' }));
+const sign = (r) => (r > 0 ? `+${r}%` : r < 0 ? `${r}%` : '보통');
+const arrow = (r) => (r > 0 ? '▲ ' : r < 0 ? '▼ ' : '');
+const price = (p) => `<span class="price"><small>🪙</small>${p}</span>`;
+const ups = ITEMS.filter(i => i.rate > 0), flats = ITEMS.filter(i => i.rate === 0), downs = ITEMS.filter(i => i.rate < 0);
+const head = `<div class="head"><h2>오늘의 시세판</h2><span class="when">자정에 바뀌어요</span></div>`;
+const foot = `<div class="fore">🔮 내일은 비가 올 것 같아요. 물 주기를 쉬어도 돼요.</div><button class="close">닫기</button>`;
+const sec = (t, n) => `<div class="sec">${t} <i>${n}</i></div>`;
+
+const A = () => {
+  const row = (i) => `<div class="a-row"><span class="ico">${i.ico}</span><span class="nm">${i.name}</span><span class="pill ${i.cls}">${arrow(i.rate)}${sign(i.rate)}</span>${price(i.price)}</div>`;
+  return head + `<div class="hint">지금 팔면 가장 이득인 세 가지예요.</div>
+    <div class="a-top">${ups.slice(0, 3).map(i => `<div><span class="ico">${i.ico}</span><span class="nm">${i.name}</span>${price(i.price)}<span class="pill up">▲ ${sign(i.rate)}</span></div>`).join('')}</div>
+    ${sec('오늘 비싸요', ups.length - 3)}${ups.slice(3).map(row).join('')}
+    ${sec('평소 가격', flats.length)}${flats.map(row).join('')}
+    ${sec('오늘 싸요', downs.length)}${downs.map(row).join('')}` + foot;
+};
+const B = () => {
+  const tile = (i) => `<div class="b-tile ${i.cls}"><span class="ico">${i.ico}</span><div class="line"><span class="nm">${i.name}</span><span class="rate">${arrow(i.rate)}${sign(i.rate)}</span></div><div class="line">${price(i.price)}</div></div>`;
+  return head + `<div class="hint">비쌀 때 파는 게 이득이에요.</div>
+    ${sec('오늘 비싸요', ups.length)}<div class="b-grid">${ups.map(tile).join('')}</div>
+    ${sec('평소 가격', flats.length)}<div class="b-grid">${flats.map(tile).join('')}</div>
+    ${sec('오늘 싸요', downs.length)}<div class="b-grid">${downs.map(tile).join('')}</div>` + foot;
+};
+const C = () => {
+  const row = (i) => `<div class="c-row"><span class="ico">${i.ico}</span><span class="nm">${i.name}</span><span class="bar">${i.rate ? `<b class="${i.cls}" style="width:${Math.abs(i.rate) / 30 * 50}%"></b>` : ''}</span><span class="rate ${i.cls}">${sign(i.rate)}</span>${price(i.price)}</div>`;
+  return head + `<div class="hint">막대가 오른쪽으로 길수록 비싸게 팔려요.</div>${ITEMS.map(row).join('')}` + foot;
+};
+const col = (t, fn) => `<div class="col"><h3>${t}</h3><div class="pair"><div><p class="cap">PC 440</p><div class="card pc">${fn()}</div></div><div><p class="cap">모바일 375</p><div class="card mo">${fn()}</div></div></div></div>`;
+const aRow = (i) => `<div class="a-row"><span class="ico">${i.ico}</span><span class="nm">${i.name}${i.have ? ` <em>${i.have}개</em>` : ''}</span><span class="pill ${i.cls}">${arrow(i.rate)}${sign(i.rate)}</span>${price(i.price)}</div>`;
+const hero = `<div class="a-top">${ups.slice(0, 3).map(i => `<div><span class="ico">${i.ico}</span><span class="nm">${i.name}</span>${price(i.price)}<span class="pill up">▲ ${sign(i.rate)}</span></div>`).join('')}</div>`;
+const chip = (i) => `<div class="chip ${i.cls}"><span class="ico">${i.ico}</span><span class="nm">${i.name}</span><span class="rate">${sign(i.rate)}</span>${price(i.price)}</div>`;
+const more = (t) => `<button class="more">${t} <span>▾</span></button>`;
+const A1 = () => head + `<div class="hint">지금 팔면 가장 이득인 세 가지예요.</div>${hero}
+  <div class="tabs"><b class="on">비싸요 ${ups.length - 3}</b><b>보통 ${flats.length}</b><b>싸요 ${downs.length}</b></div>
+  <div class="scroll">${ups.slice(3).map(aRow).join('')}</div>` + foot;
+const A2 = () => head + `<div class="hint">지금 팔면 가장 이득인 세 가지예요.</div>${hero}
+  ${sec('이것도 비싸요', 6)}<div class="chips">${ups.slice(3, 9).map(chip).join('')}</div>
+  ${more(`나머지 ${ITEMS.length - 9}개 시세 보기`)}` + foot;
+const HAVE = { '밀': 12, '목재': 48, '작물': 23, '돌': 31, '사과': 6 };
+const mine = ITEMS.filter(i => HAVE[i.name]).map(i => ({ ...i, have: HAVE[i.name] }));
+const A3 = () => head + `<div class="hint">지금 팔면 가장 이득인 세 가지예요.</div>${hero}
+  ${sec('내 가방에 있는 것', mine.length)}${mine.map(aRow).join('')}
+  ${more(`전체 시세 ${ITEMS.length}개 보기`)}` + foot;
+document.getElementById('wrap').innerHTML = col('A1 · 탭으로 나누기', A1) + col('A2 · 작은 칩 6개 + 접기', A2) + col('A3 · 내 가방 것만 + 접기', A3);
+</script>
+</html>
