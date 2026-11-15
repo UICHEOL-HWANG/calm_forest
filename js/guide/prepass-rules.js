@@ -12,6 +12,7 @@ export const SLOT_CAPS = Object.freeze({
   orchard_grow: 1, forge_rush: 1,
   quest_reroll: 1, drop_reroll_mine: 1, drop_reroll_firefly: 1,
   restaurant_double: 1, bait_box: 1,
+  fountain_short: 2, fountain_double: 2,
 });
 const WEEKLY_SLOTS = Object.freeze(['weekly_ticket']);
 export const AD_PARTS = Object.freeze({
@@ -25,6 +26,8 @@ export const AD_PARTS = Object.freeze({
   drop_reroll_firefly: ['광고 보고', ' ', '한 번 더 뽑기'],
   restaurant_double: ['광고 보고', ' ', '코인 2배'],
   bait_box: ['광고 보고', ' ', '🪱 2', ' ', '미끼 받기'],
+  fountain_short: ['광고 보고', ' ', '재료 채우기'],
+  fountain_double: ['광고 보고', ' ', '한 번 더 받기'],
 });
 const AD_QUIET_KEYS = Object.freeze(['tutorial', 'coaching', 'spotlight', 'e1', 'cutscene', 'charSelect', 'modalQueue']);
 export const adQuiet = (s = {}) => AD_QUIET_KEYS.some(k => !!s[k]);

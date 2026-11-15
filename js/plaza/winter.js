@@ -1,4 +1,4 @@
-import { gameState, player, dist2D, ui, scene, solidCircle, removeSolid, obstacles, giveReward, refreshInventoryUI, requestSave, mode, nightLevel } from '../game.js';
+import { gameState, player, dist2D, ui, scene, solidCircle, removeSolid, obstacles, giveReward, refreshInventoryUI, requestSave, mode, nightLevel, adPill } from '../game.js';
 import { trackEvent } from '../analytics.js';
 import { state as authState } from '../supabase-client.js';
 import { modalQueue } from '../guide/modal-queue.js';
@@ -14,7 +14,7 @@ import { buildFountain } from './fountain.js';
 import { buildWinterPlaza, buildFireworks } from './winter-build.js';
 import { winterPropSolids, plazaPathSolids } from './solids.js';
 import { winterDefault, myStage, stageRows, todayLeft, recordGive, recordCap, syncToday, markFull, kstDay, villageStage, litLamps,
-         lampClaims, lampPlan, decorPlan, settleOwed, fireworksDue, myTotal, FOUNTAIN_DONE } from './winter-rules.js';
+         lampClaims, lampPlan, decorPlan, settleOwed, fireworksDue, myTotal, FOUNTAIN_DONE, shortFill, doubleOpen, markDoubled, lampGrant } from './winter-rules.js';
 import { WINTER_COPY, winterToast } from './winter-copy.js';
 import { fill, stagePct } from './copy.js';
 import { openPlazaModal, renderPlazaModal } from './ui.js';
@@ -172,10 +172,31 @@ async function onGive(item, qty) {
   }
 }
 
+function adShort() {
+  if (!economy() || winterPhase() !== 'active' || myStage(st()) >= FOUNTAIN_DONE) return null;
+  const stage = myStage(st());
+  return adPill('fountain_short', () => {
+    const give = shortFill(stageRows(st()), gameState.inventory);
+    if (!Object.keys(give).length) return;
+    giveReward(give, 'fountain_short', `stage${stage}`);
+    requestSave();
+  }, render);
+}
+
+function adDouble(k) {
+  if (!economy() || !doubleOpen(st(), k)) return null;
+  return adPill('fountain_double', () => {
+    const g = lampGrant(k).give;
+    if (!g) return;
+    giveReward(g, 'fountain_double', `lamp${k}`);
+    commit(markDoubled(st(), k));
+  }, render);
+}
+
 const ctx = () => ({
   kind: 'fountain', stage: stageNow(), rows: stageRows(st()), todayLeft: todayLeft(st(), dayNow()),
   inv: gameState.inventory, busy, guest: guest(), phase: winterPhase(), total: total(), lamps: st().lamps,
-  adShort: () => null, adDouble: () => null,
+  adShort, adDouble,
   onDonate: onGive, onClose: () => { open = false; },
 });
 
