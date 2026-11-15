@@ -52,7 +52,7 @@ import { BUILD_STAGES, buildInfo, STAGE_NAMES, EXPANSIONS, MAX_HOUSE_STAGE } fro
 import { VISITORS, ENV_TAG, TAG_LABEL, envAt, matchVisitors, nearMiss, spotInfo, visitorOf } from './habitat.js';   // 🦋 텃밭 방문객 서식 규칙(판정의 단일 출처)
 import { createVisitors } from './farm-visitors.js';                                                      // 🦋 스폰·근접 등록
 import { DEX_GATES, gateOf, gateOpen, weatherOpen, rollKind } from './dex-gates.js';                      // 📖 희귀종 해금 게이트(판정의 단일 출처)
-import { SEASON_IDS, applySeasonPalette, seasonById, seasonInfo, seasonOf, seasonStatusLine, weatherFromRoll } from './season.js';   // 🍂 4계절 순환(날짜 → 계절)
+import { SEASON_IDS, applySeasonPalette, seasonById, seasonInfo, seasonLimited, seasonOf, seasonStatusLine, weatherFromRoll } from './season.js';   // 🍂 4계절 순환(날짜 → 계절)
 import { dailyCardView } from './daily-card.js';
 import { bridgeTiles } from './ui-cards.js';
 import { createSeasonDrift } from './season-fx.js';                                                        // 🌸🍂 꽃잎·낙엽 흩날림(InstancedMesh 1개)
@@ -1548,11 +1548,9 @@ function forecastDexNudge() { return gameState.dex.weather?.[FORECAST] ? '' : ' 
 
 // 🍂 계절 안내 — 문장은 js/season.js(seasonNotice·seasonStatusLine), 여기선 상태만 모아 넘긴다.
 //   ⚠️ 출석 모달은 실제 날짜의 계절만 본다(?season 강제값은 표시 테스트용이라 저장에 남기지 않는다).
-function seasonFish(id) {
-  const k = FISH_KINDS.find(f => f.season === id);
-  return k ? { id: k.rarity, name: k.name, ico: DEX.fish.find(f => f.id === k.rarity)?.ico || '🐟' } : null;
+function seasonList(id) {
+  return seasonLimited(id, { fish: FISH_KINDS, bug: BUG_KINDS, forage: FORAGE_KINDS, dex: DEX }).map(x => ({ ...x, owned: !!gameState.dex[x.cat]?.[x.id] }));
 }
-function seasonOwned(fish) { return !!(fish && gameState.dex.fish?.[fish.id]); }
 
 // ── 출석 보상 — 하루 1회, 연속 출석(streak)일수록 커짐. 7일마다 보석 보너스 ──
 function checkDailyBonus() {
@@ -1568,13 +1566,12 @@ function checkDailyBonus() {
   if (d.streak > 0 && d.streak % 7 === 0) reward.gem = 1;        // 7일 연속마다 💎
   giveReward(reward, 'daily_bonus', 'day' + d.streak);           // [원장] 출석 코인
   trackEvent('daily_bonus', { streak: d.streak, coins });         // [GA4] 리텐션 KPI
-  const sFish = seasonFish(SEASON_INFO.season.id);
   if (seasonNew) trackEvent('season_start_seen', { season: d.season });   // [GA4] 계절 넘어가고 첫 접속
   if (gameState.character && gameState.tutorialSeen) {
     const view = dailyCardView({
       streak: d.streak, reward, coinsTable: DAILY_COINS,
       weather: WEATHER, forecast: FORECAST, severe: SEVERE_TOMORROW, forecastInDex: !!gameState.dex.weather?.[FORECAST],
-      season: SEASON_INFO.season, seasonLeft: SEASON_INFO.left, fish: sFish, fishOwned: seasonOwned(sFish), seasonNew,
+      season: SEASON_INFO.season, seasonLeft: SEASON_INFO.left, limited: seasonList(SEASON_INFO.season.id), seasonNew,
     });
     modalQueue.request({ kind: 'daily', show: () => ui.showDailyCard?.(view, () => { if (pendingNotices.length) ui.showNotices?.(pendingNotices, 'new'); }, dailyAdButton(coins, d.streak)) });
     return true;
@@ -2359,7 +2356,7 @@ export const Input = {
     return used + 1;
   },
   talkWeather() { return WEATHER; },             // 첫인사를 고를 때 쓴다
-  seasonStatus() { const f = seasonFish(SEASON); return seasonStatusLine({ season: seasonById(SEASON), left: SEASON_INFO.left }, f, seasonOwned(f)); },   // 🍂 HUD 계절 아이콘 탭
+  seasonStatus() { return seasonStatusLine({ season: seasonById(SEASON), left: SEASON_INFO.left }, seasonList(SEASON)); },   // 🍂 HUD 계절 아이콘 탭
   seasonIco() { return seasonById(SEASON).ico; },
   capturePhoto() { try { composer.render(); return renderer.domElement.toDataURL('image/png'); } catch (e) { return null; } }, // 사진 캡처(현재 화면 그대로)
   captureActionShot() { return startActionShot(); },  // 📷 밀착 액션샷(포즈 정점 캡처, Promise<dataURL>)
