@@ -16,6 +16,14 @@ export function pickQuestGuide(states, night, from, npcPos, prev = null) {
   return best ? { id: best.id, mode: 'ask' } : null;
 }
 
+const FISHER_STEPS = Object.freeze({ collect: Object.freeze({ quest: 'port_quest', npc: 'port:fisher' }), turnin: Object.freeze({ quest: 'port_quest', npc: 'port:fisher' }) });
+
+export function portFocus(mainStep, pick) {
+  if (mainStep) return FISHER_STEPS[mainStep] ?? null;
+  if (!pick) return null;
+  return pick.mode === 'run' ? { quest: 'port_quest', npc: `port:${pick.id}` } : { npc: `port:${pick.id}` };
+}
+
 export function questSteps(q) {
   return [
     { id: 'collect', text: c => `${q.hint} (${c.got}/${q.need})`, target: c => c.item, done: c => c.state !== 'active' || c.got >= q.need, expect: ['port_pick'] },

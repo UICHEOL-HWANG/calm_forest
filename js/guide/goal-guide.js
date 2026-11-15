@@ -4,6 +4,7 @@ import { regionFrame } from '../world/region-cine.js';
 import { ARRIVE, CINE_SUB, GOALS, detourPoint, edgeAnchor, exitFirst, guideEventParams, minerGoal, tutGoal } from './guide-rules.js';
 import { storyStep } from './story-steps.js';
 import { fillStepCard, stepSignature } from './step-card.js';
+import { goalFocus } from './quiet.js';
 
 const CINE_HOLD = 1.6;
 const CINE_DELAY = 0.6;
@@ -335,5 +336,10 @@ export function createGoalGuide(deps) {
     return { goal: goal && { flow: goal.flow, key: goal.key, step: goal.step, arrived: goal.arrived, near: !!goal.near }, at: r?.at ? { x: r.at.x, z: r.at.z } : null, wp, cine: !!cine, exit: !!r?.exit, story: storyMemo && storyMemo.key };
   }
 
-  return { update, boardTab, boardHint, skip, debug, get cinematic() { return !!cine; }, get pointing() { return pointing && goal ? goal.flow : null; } };
+  function focus() {
+    if (!goal || !arrow?.classList.contains('show')) return null;
+    return goalFocus(goal, goal.story?.title || cached?.r?.g?.title);
+  }
+
+  return { update, boardTab, boardHint, skip, debug, get focus() { return focus(); }, get cinematic() { return !!cine; }, get pointing() { return pointing && goal ? goal.flow : null; } };
 }

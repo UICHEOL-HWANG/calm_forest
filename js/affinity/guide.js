@@ -38,6 +38,7 @@ const nearSolids = (me) => obstacles
   .map(o => [{ x: o.x, z: o.z }, o.r]);
 
 export const affinityGuideActive = () => !!guide?.active();
+export const affinityFocus = () => (affinityGuideActive() && guide.current()?.id === 'give' ? { npc: npcId } : null);
 export const affinityPriority = () => (asking || affinityGuideActive() ? GUIDE_PRIORITY.goal + 5 : GUIDE_PRIORITY.affinity);
 
 export function startAffinityGuide(id) {

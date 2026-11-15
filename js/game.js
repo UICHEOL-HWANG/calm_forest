@@ -69,6 +69,7 @@ import { createHouseGuide } from './spaces/house-guide.js';   // 🏠 목재 15�
 import { rearmMerchant, detourPoint, farmPlotTarget } from './guide/guide-rules.js';
 import { createGoalGuide } from './guide/goal-guide.js';
 import { guideArbiter } from './guide/arbiter.js';
+import { focusKey, sameGoal } from './guide/quiet.js';
 import { e6Decision } from './exp-e6-boot.js';
 import { guideRevampOn } from './exp-e6.js';
 import { createHouseShort } from './guide/house-short.js';
@@ -227,7 +228,7 @@ import {
   buildSea, enterSea, exitSea, seaAction, seaCamera, seaPrompt, spawnSeaCove, spawnSeaGate, updateSea, updateSeaVisuals,
 } from './spaces/sea.js';   // 📦 🌊 바다터 — 대형 낚시 (docs/design/SEA_FISHING_PLAN.md · 프로토타입 sims/sea-sim.html)
 import { spawnPortPier } from './port/pier.js';
-import { port, enterPort, portAction, clampPort, portOwnsMovement, bindPortEnv, updatePortGuide, maybeStartPortGuide, guideActive as portGuideActive } from './port/index.js';
+import { port, enterPort, portAction, clampPort, portOwnsMovement, bindPortEnv, updatePortGuide, maybeStartPortGuide, guideActive as portGuideActive, guideFocus as portGuideFocus } from './port/index.js';
 import { openSeaPick } from './spaces/sea-pick.js';
 import { mudflat, mudflatAction, mudflatSpeedMult, clampMudflat, enterMudflat, mudflatDebug, setMudflatCam } from './spaces/mudflat.js';
 import { dive, diveAction, diveSpeedMult, clampDive, enterDive, diveAtmosphere, diveDebug } from './spaces/dive.js';
@@ -287,7 +288,7 @@ import {
   affinityChip, affinityIntroFor, affinityLetters, affinityTracker, affinityVisible, claimLetter, introNpcForStart, markIntroSeen, npcBook, onLettersChanged, owlDailyAffinity, readLetter,
   syncAffinityLetters, trackBookOpen, unreadLetterCount, heartAdReady, heartAd,
 } from './affinity/index.js';
-import { affinityGuideActive, affinityPriority, startAffinityGuide, updateAffinityGuide } from './affinity/guide.js';
+import { affinityFocus, affinityGuideActive, affinityPriority, startAffinityGuide, updateAffinityGuide } from './affinity/guide.js';
 import {
   rebuildFarm, spawnFarmGate, surveyBenchWorld, surveyDeskWorld,
 } from './spaces/farm-field.js';   // 📦 🪧 표지판·텃밭 게이트·측량소·텃밭 필드 (구역 머리말 — 분리 2단계)
@@ -333,7 +334,7 @@ import {
   _chipGeo, _confGeo, _dropGeo, _leafGeo, makeParticle, rndSpin, updateFloatTexts, updateParticles, updatePops,
 } from './spaces/fx.js';   // 📦 팝 애니메이션(밭/작물/집 부재 톡 튀어오름)
 import {
-  PLOT_KEEP_OUT, badgeColor, buildNPCs, merchantVisit, npcState, questView, refreshQuestPanel, setNpcGlyphsHidden, setNpcGlyphsShowHidden, setNpcHidden, shadeToLum, startNpcReturn,
+  PLOT_KEEP_OUT, badgeColor, buildNPCs, merchantVisit, npcState, questView, refreshQuestPanel, setNpcGlyphQuiet, setNpcGlyphsHidden, setNpcGlyphsShowHidden, setNpcHidden, shadeToLum, startNpcReturn,
   talkToNPC, updateMerchantVisit, updateNPC, updateNPCGlyph, updateNPCInteract, updateOwlVisit, updateShopCue,
 } from './spaces/npc.js';   // 📦 NPC (마을 주민 다중) + 퀘스트 체인
 import { restoreAura } from './aura/recipe.js';
@@ -1658,11 +1659,22 @@ let goalGuide = null;
 const guideMay = (name) => guideArbiter.mayShow(name);
 guideArbiter.register({ name: 'coach', active: () => goalGuide?.pointing === 'tut' });
 guideArbiter.register({ name: 'house', active: () => !!houseGuidance?.pointing });
-guideArbiter.register({ name: 'goal', active: () => !!goalGuide?.cinematic || (!!goalGuide?.pointing && goalGuide.pointing !== 'tut') });
-guideArbiter.register({ name: 'port', active: portGuideActive });
+guideArbiter.register({ name: 'goal', active: () => !!goalGuide?.cinematic || (!!goalGuide?.pointing && goalGuide.pointing !== 'tut'), target: () => goalGuide?.focus ?? null });
+guideArbiter.register({ name: 'port', active: portGuideActive, target: portGuideFocus });
 guideArbiter.register({ name: 'restaurant', active: restaurantGuideActive });
 guideArbiter.register({ name: 'yard', active: () => !!yardGuide?.active() });
-guideArbiter.register({ name: 'affinity', active: affinityGuideActive, priority: affinityPriority });
+guideArbiter.register({ name: 'affinity', active: affinityGuideActive, priority: affinityPriority, target: affinityFocus });
+let quietKey = '';
+function tickGuideQuiet() {
+  const focus = guideArbiter.focus();
+  const key = focusKey(focus);
+  if (key === quietKey) return;
+  quietKey = key;
+  const sv = focus?.text ? storyView() : null;
+  document.body.classList.toggle('goal-same', !!focus && (!!focus.story || sameGoal(focus.text, sv?.chapters?.[sv.ch]?.goal)));
+  setNpcGlyphQuiet(focus?.npc);
+  refreshQuestPanel();
+}
 guideArbiter.register({ name: 'weekly', active: weeklyGuideActive });
 guideArbiter.register({ name: 'concert', active: concertGuideActive });
 guideArbiter.register({ name: 'auction', active: auctionGuideActive });
@@ -6702,6 +6714,7 @@ function animate() {
   updatePortGuide(mode === 'play' && (inVillage2() || port.active) && guideMay('port'));
   updateRestaurantGuide(mode === 'play' && (inVillage2() || atRestaurant) && guideMay('restaurant'));
   updateAffinityGuide(mode === 'play' && inVillage2() && guideMay('affinity'));
+  tickGuideQuiet();
   updateGateCues(t, dt);
   updateTrees(dt);
   updateOreRocks();
