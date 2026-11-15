@@ -27,7 +27,7 @@ test('올빼미 착지 훅: 특별 의뢰 경로는 그대로, 광장은 별도 
   assert.ok(/export function sendOwlToPlayer\(/.test(npc));
   assert.ok(/special:\s*\(o\)\s*=>\s*deliverOwlSpecial\(o\)/.test(npc), '특별 의뢰 착지가 훅 표에 없다');
   assert.ok(/f\.deliver === true \? 'special'/.test(npc), '예전 호출(true)이 특별 의뢰로 매핑돼야 한다');
-  assert.ok(!/plaza/i.test(npc.split('\n').filter(l => !l.includes('fountainCard')).join('\n')), 'npc.js 는 광장을 몰라야 한다 — 훅 등록은 js/plaza/invite.js');
+  assert.ok(!/plaza/i.test(npc.replace("import { fountainCard } from '../plaza/winter-card.js';", '').replace('fountainCard(gameState.plaza, Date.now(), featureGuidesOpen(gameState))', '')), 'npc.js 는 광장을 몰라야 한다 — 훅 등록은 js/plaza/invite.js');
 });
 
 test('초대 문구가 확정됐다', () => {

@@ -53,6 +53,10 @@ test('연결: 중재 등록·첫 방문·의뢰 패널', () => {
   assert.ok(read('js/spaces/npc.js').includes('fountainCard(gameState.plaza, Date.now(), featureGuidesOpen(gameState))'));
 });
 
+test('첫 방문 칸은 시즌 중에만 열린다', () => {
+  assert.ok(read('js/plaza/winter.js').includes("export const fountainSpotNow = () => spot === 'fountain' && debugStage === null && winterPhase() === 'active';"));
+});
+
 test('화살표 도착 반경은 분수 칸 안쪽이다', () => {
   assert.ok(FOUNTAIN_ARROW_REACH < FOUNTAIN_SPOT_R);
 });

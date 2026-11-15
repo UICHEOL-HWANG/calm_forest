@@ -225,7 +225,7 @@ export function winterSpot(pos) {
 }
 
 export const winterSpotNow = () => spot;
-export const fountainSpotNow = () => spot === 'fountain';
+export const fountainSpotNow = () => spot === 'fountain' && debugStage === null && winterPhase() === 'active';
 
 export function initWinter(seasonDef, ge, debug) {
   def = seasonDef;
