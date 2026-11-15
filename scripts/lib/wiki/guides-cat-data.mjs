@@ -17,6 +17,12 @@ const overview = (cat, entries) => {
   return [`${cat.name} 도감 한눈에 보기`, `${cat.name} 분류에는 모두 ${entries.length}종이 실려 있다. ${condPart}${museumLine(entries)} 처음 접하는 분류라면 아래 조건 정리와 수치 비교를 먼저 훑어본 뒤, 이름을 눌러 개별 문서에서 얻는 법과 쓰임새를 확인하자.`];
 };
 
+const giftOverview = (cat, entries) => {
+  const parts = [...byGroup(entries, e => fact(e, '구분'))].map(([kind, items]) => `${kind} ${items.length}가지`);
+  return [`${cat.name} 한눈에 보기`, `${cat.name} 분류에는 모두 ${entries.length}가지 장식이 실려 있다. ${josa(list(parts), '으로/로')} 나뉘며, 어느 것도 상점이나 작업대에서 살 수 없고 받은 뒤에는 작업대 보관함에서 꺼내 마당에 놓는다. 아래에서 갈래마다 받는 조건을 확인하고, 이름을 눌러 개별 문서에서 생김새와 놓는 요령을 살펴보자.`];
+};
+const OVERVIEW = { gift: giftOverview };
+
 const conditionSection = (entries) => {
   const groups = [...byGroup(entries, condText)];
   if (groups.length < 2) return null;
@@ -96,11 +102,16 @@ const weatherCompare = (entries) => ['날씨별 효과 요약', `${list(entries.
 
 const visitorCompare = (entries) => ['방문객별 필요한 환경', `${list(entries.map(e => `${lnk(e, '은/는')} ${josa(fact(e, '필요한 환경'), '이/가')} 있어야 ${fact(e, '나타나는 때')}에 찾아오고${fact(e, '싫어하는 것') ? `, ${josa(fact(e, '싫어하는 것'), '이/가')} 있으면 오지 않는다` : ''}`))}. 환경 수치는 서로 달라서 한 종류씩 차근차근 완성하는 것이 좋다.`];
 
+const giftCompare = (entries) => {
+  const lines = [...byGroup(entries, e => fact(e, '구분'))].map(([kind, items]) => `${kind}인 ${refs(items)}의 받는 조건은 ${josa(fact(items[0], '받는 조건'), '이다/다')}`);
+  return ['갈래별 받는 조건 비교', `${lines.join('. ')}. 세 갈래는 서로 따로 주는 선물이라 한 계정이 가입 선물, 친구 초대 보상, 링크 선물을 모두 받을 수 있다. 다만 가입 선물은 셋 가운데 하나만 오고, 같은 선물은 계정마다 한 번뿐이다.`];
+};
+
 const COMPARE = {
   fish: fishCompare, crop: cropCompare, ore: oreCompare, cook: cookCompare, npc: npcCompare, forage: forageCompare,
-  bug: bugCompare, track: trackCompare, dig: digCompare, river: riverCompare, spirit: spiritCompare, weather: weatherCompare, visitor: visitorCompare,
+  bug: bugCompare, track: trackCompare, dig: digCompare, river: riverCompare, spirit: spiritCompare, weather: weatherCompare, visitor: visitorCompare, gift: giftCompare,
 };
 
 export function catData(cat, entries) {
-  return [overview(cat, entries), conditionSection(entries), COMPARE[cat.id]?.(entries)].filter(Boolean);
+  return [(OVERVIEW[cat.id] ?? overview)(cat, entries), conditionSection(entries), COMPARE[cat.id]?.(entries)].filter(Boolean);
 }

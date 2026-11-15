@@ -6,9 +6,38 @@ import { farmStageInfo } from '../farm-stage.js';
 export const PREPASS_CAPS = Object.freeze({ wood: 10, stone: 6, coal: 1, coins: 40 });
 export const CAFE_CAPS = Object.freeze({ crop: 3, forage: 3, fish: 2, egg: 2, flour: 2, juice: 1 });
 export const PREPASS_DAILY_CAP = 30;
+export const SLOT_CAPS = Object.freeze({
+  sell_bonus: 5, farm_rush: 3, craft_rush: 2,
+  affinity_heart: 1, concert_play: 1, weekly_ticket: 3,
+  orchard_grow: 1, forge_rush: 1,
+  quest_reroll: 1, drop_reroll_mine: 1, drop_reroll_firefly: 1,
+  restaurant_double: 1, bait_box: 1,
+});
+const WEEKLY_SLOTS = Object.freeze(['weekly_ticket']);
+export const AD_PARTS = Object.freeze({
+  affinity_heart: ['광고 보고', ' ', '하트 +1'],
+  concert_play: ['광고 보고', ' ', '한 번 더'],
+  weekly_ticket: ['광고 보고', ' ', '티켓 +1'],
+  orchard_grow: ['광고 보고', ' ', '하루 당기기'],
+  forge_rush: ['광고 보고', ' ', '바로 완성'],
+  quest_reroll: ['광고 보고', ' ', '의뢰 바꾸기'],
+  drop_reroll_mine: ['광고 보고', ' ', '한 번 더 뽑기'],
+  drop_reroll_firefly: ['광고 보고', ' ', '한 번 더 뽑기'],
+  restaurant_double: ['광고 보고', ' ', '코인 2배'],
+  bait_box: ['광고 보고', ' ', '🪱 2', ' ', '미끼 받기'],
+});
+const AD_QUIET_KEYS = Object.freeze(['tutorial', 'coaching', 'spotlight', 'e1', 'cutscene', 'charSelect', 'modalQueue']);
+export const adQuiet = (s = {}) => AD_QUIET_KEYS.some(k => !!s[k]);
 export const dayCount = (rec, day) => (rec?.d === day ? rec.n || 0 : 0);
-export const bumpDay = (rec, day) => ({ d: day, n: dayCount(rec, day) + 1 });
-export const REPEAT_SLOTS = Object.freeze(['farm_rush', 'craft_rush', 'daily_double', 'sell_bonus']);
+const periodOf = (slot, at) => (WEEKLY_SLOTS.includes(slot) ? `w${at.week}` : at.day);
+const slotUsed = (rec, slot, at) => { const e = rec?.s?.[slot]; return e && e.p === periodOf(slot, at) ? e.n || 0 : 0; };
+export const slotLeft = (rec, slot, at) => (slot in SLOT_CAPS ? Math.max(0, SLOT_CAPS[slot] - slotUsed(rec, slot, at)) : Infinity);
+export function bumpDay(rec, day, slot, at = { day }) {
+  const base = { d: day, n: dayCount(rec, day) + 1 };
+  const s = slot in SLOT_CAPS ? { ...(rec?.s || {}), [slot]: { p: periodOf(slot, at), n: slotUsed(rec, slot, at) + 1 } } : rec?.s;
+  return s ? { ...base, s } : base;
+}
+export const REPEAT_SLOTS = Object.freeze(['farm_rush', 'craft_rush', 'daily_double', 'sell_bonus', 'pond_feed_more']);
 const HOUSE_DONE = 3;
 const ARMS = ['ad', 'control'];
 

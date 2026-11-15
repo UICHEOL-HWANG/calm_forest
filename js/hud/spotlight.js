@@ -1,4 +1,4 @@
-import { holeRect, bars, bubblePos } from './spot-geom.js';
+import { holeRect, bars, calloutPos } from './spot-geom.js';
 
 const CSS = `
 #spot-layer { position: fixed; inset: 0; z-index: 48; pointer-events: none; display: none; }
@@ -116,7 +116,7 @@ export function createSpotlight({ t, trackEvent, blocked = () => false }) {
     raf = 0;
     if (!run) return;
     const s = run.steps[run.i];
-    if (!run.stuck && Date.now() - run.t > STUCK_MS) { run.stuck = true; $('.sp-next').classList.add('show'); }
+    if (!run.stuck && Date.now() - run.t > (s.wait ?? STUCK_MS)) { run.stuck = true; $('.sp-next').classList.add('show'); }
     if (s.done.startsWith('open:') && document.getElementById(s.done.slice(5))?.classList.contains('show')) { advance('act'); return; }
     if (s.done === 'menu' && document.getElementById('menu-sheet')?.classList.contains('show')) { advance('act'); return; }
     if (run.blocked?.()) { finish(); return; }
@@ -156,10 +156,11 @@ export function createSpotlight({ t, trackEvent, blocked = () => false }) {
       hand.style.top = Math.round((h.t + h.b) / 2 - 4) + 'px';
       const bub = $('.sp-bub');
       const bw = bub.offsetWidth || 240, bh = bub.offsetHeight || 48;
-      const p = s.target ? bubblePos(h, bw, bh, vw, vh, 14) : { x: (vw - bw) / 2, y: vh * 0.62, side: 'below' };
-      bub.style.left = Math.round(p.x) + 'px'; bub.style.top = Math.round(p.y) + 'px';
       const nx = $('.sp-next');
-      nx.style.left = Math.round(p.x) + 'px'; nx.style.top = Math.round(p.side === 'above' ? p.y - 40 : p.y + bh + 8) + 'px';
+      const nh = nx.offsetHeight || 26;
+      const p = s.target ? calloutPos(h, bw, bh, nh, vw, vh, 14) : { x: (vw - bw) / 2, bubY: vh * 0.62, nextY: vh * 0.62 + bh + 8 };
+      bub.style.left = Math.round(p.x) + 'px'; bub.style.top = Math.round(p.bubY) + 'px';
+      nx.style.left = Math.round(p.x) + 'px'; nx.style.top = Math.round(p.nextY) + 'px';
     }
     raf = requestAnimationFrame(loop);
   }

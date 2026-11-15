@@ -53,6 +53,19 @@ test('처치 대기 중엔 다른 첫 안내를 미룬다', () => {
   assert.match(HTML, /body\.e1-pending \.pg-tip/);
 });
 
+test('텃밭을 떠나면 e1Release 로 튜토리얼을 이어 가고, 그 경로를 e1_intro step 5 via 로 남긴다', () => {
+  const upd = fnBody(E1START, 'export function updateE1Bubble(');
+  assert.match(upd, /e1Release\(/);
+  assert.match(E1START, /trackEvent\('e1_intro', \{ step: 5, via \}\)/);
+  assert.match(fnBody(VISITORS, 'export function enterFarm()'), /if \(!e1Pending\(\)\) decorBanner\('crop'\)/);
+});
+
+test('첫 수확 뒤 남은 당근이 있으면 빈 밭을 다시 심지 않는다', () => {
+  const body = fnBody(FARM_AUTO, 'export function farmAutoAction()');
+  assert.match(body, /e1KeepHarvesting\(/);
+  assert.ok(body.indexOf('e1KeepHarvesting(') < body.indexOf('const want = farmToolFor('), '도구 고르기 전에');
+});
+
 test('수확하면 E1 에 알린다', () => {
   const body = fnBody(FARM_AUTO, 'export function tryHarvest(');
   assert.match(body, /e1OnHarvest\(\)/);

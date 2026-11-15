@@ -87,6 +87,7 @@ export function ddaOutcome(game, res = {}) {
   }
   if (game === 'sled') return res.abandoned ? null : Math.max(0, Math.min(12, res.flagsPassed || 0)) / 12;
   if (game === 'mudflat') { const n = (res.good || 0) + (res.bad || 0); return res.abandoned || !n ? null : (res.good || 0) / n; }
+  if (game === 'concert') return res.abandoned ? null : Math.max(0, Math.min(1, Number(res.ratio) || 0));
   return null;
 }
 

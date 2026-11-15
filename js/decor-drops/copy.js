@@ -28,7 +28,8 @@ const hasFinal = (w) => {
 const eul = (w) => w + (hasFinal(w) ? '을' : '를');
 
 export const dropToast = (item, setId, n) => `🎁 ${eul(item)} 찾았어요. ${SET_NAMES[setId]} ${n}/2`;
-export const setCompleteToast = (setId) => `✨ ${SET_NAMES[setId]} 완성! ${SET_EFFECT[setId]}`;
+export const extraMissToast = () => '이번엔 안 나왔어요. 확정 보장은 그대로예요';
+export const setCompleteToast =(setId) => `✨ ${SET_NAMES[setId]} 완성! ${SET_EFFECT[setId]}`;
 export const bannerCopy = (setId, src) => ({
   title: `🎁 ${SET_NAMES[setId]}`,
   line: `${SRC_PLACE[src]}에서 일정 확률로 나와요!`,

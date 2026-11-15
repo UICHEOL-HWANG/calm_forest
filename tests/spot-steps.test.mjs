@@ -9,10 +9,11 @@ const SRC = ['js/hud/hud-shell.js', 'js/hud/tool-fan.js', 'js/hud/mobile-hud.js'
   .map((p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8')).join('\n') + HTML;
 
 const all = [
-  ['full', true, 10], ['full', false, 9], ['new', true, 3], ['new', false, 3], ['menu', true, 3], ['menu', false, 3], ['pill', true, 1], ['cam', true, 3], ['cam', false, 1],
+  ['full', true, 2], ['full', false, 2], ['new', true, 3], ['new', false, 3], ['menu', true, 3], ['menu', false, 3], ['pill', true, 1], ['cam', true, 2], ['cam', false, 1],
+  ['bag', true, 1], ['bag', false, 1], ['dex', true, 1], ['dex', false, 1],
 ];
 
-test('단계 수 — 모바일 10·PC 9·바뀐 점 3·메뉴 3·근접 알약 1·시점 회전 모바일 3·PC 1', () => {
+test('단계 수 — 첫 안내 2·바뀐 점 3·메뉴 3·근접 알약 1·시점 모바일 2·PC 1·가방/도감 팁 1', () => {
   for (const [kind, touch, n] of all) assert.equal(spotSteps(kind, touch).length, n, `${kind}/${touch}`);
 });
 
@@ -39,16 +40,22 @@ test('모바일 단계엔 키보드 이야기가 없고, PC 첫 단계는 방향
 });
 
 test('문구는 모두 영어 사전에 있다', () => {
-  for (const [kind, touch] of all) for (const s of spotSteps(kind, touch)) assert.ok(EN[s.text], s.text);
+  for (const [kind, touch] of all) for (const s of spotSteps(kind, touch)) for (const line of s.text.split('\n')) assert.ok(EN[line], line);
 });
 
-test('모바일 시점 회전은 두 손가락 올리기 → 비틀기 → 🧭 되돌리기 3단계', () => {
+test('모바일 시점 안내는 두 손가락·비틀기를 한 장으로 → 🧭 되돌리기', () => {
   const cam = spotSteps('cam', true);
-  assert.deepEqual(cam.map((s) => s.key), ['cam_two', 'cam', 'cam_reset']);
-  assert.deepEqual(cam.map((s) => s.done), ['act:camtwo', 'act:camrotate', 'click']);
-  assert.deepEqual(cam.map((s) => s.hand), ['two', 'twist', 'tap']);
-  assert.equal(cam[2].target, '#cam-reset-btn');
-  assert.deepEqual(spotSteps('full', true).filter((s) => s.key.startsWith('cam')).map((s) => s.key), ['cam_two', 'cam', 'cam_reset']);
+  assert.deepEqual(cam.map((s) => s.key), ['cam', 'cam_reset']);
+  assert.deepEqual(cam.map((s) => s.done), ['act:camrotate', 'click']);
+  assert.deepEqual(cam.map((s) => s.hand), ['twist', 'tap']);
+  assert.deepEqual(cam[0].text.split('\n'), ['✌️ 화면에 손가락 두 개를 올려 보세요', '🔄 그대로 동그랗게 비틀면 시점이 돌아가요']);
+  assert.equal(cam[1].target, '#cam-reset-btn');
+  assert.ok(!spotSteps('full', true).some((s) => s.key.startsWith('cam')));
+});
+
+test('가방·도감 팁은 예전 투어 카드 키를 그대로 쓴다', () => {
+  assert.deepEqual(['bag', 'dex'].map((k) => spotSteps(k, true)[0].key), ['t_bag', 't_dex']);
+  assert.deepEqual(['bag', 'dex'].map((k) => spotSteps(k, false)[0].key), ['pc_bag', 'pc_dex']);
 });
 
 test('두 손가락이 캔버스에 닿으면 camtwo 신호를 보낸다', () => {
@@ -58,9 +65,13 @@ test('두 손가락이 캔버스에 닿으면 camtwo 신호를 보낸다', () =>
   assert.match(game, /onTwo: \(\) => ui\.act\?\.\('camtwo'\)/);
 });
 
-test('첫 실행 핵심 조작(걷기·도구 고르기·쓰기)만 core', () => {
-  assert.deepEqual(spotSteps('full', true).filter((s) => s.core).map((s) => s.key), ['t_move', 't_tool', 't_use']);
-  assert.deepEqual(spotSteps('full', false).filter((s) => s.core).map((s) => s.key), ['pc_move', 'pc_set', 'pc_pick', 'pc_use']);
+test('첫 안내는 걷기·큰 버튼 두 장뿐, 둘 다 core 이고 다음 버튼은 6초 뒤', () => {
+  assert.deepEqual(spotSteps('full', true).map((s) => s.key), ['t_move', 't_use']);
+  assert.deepEqual(spotSteps('full', false).map((s) => s.key), ['pc_move', 'pc_use']);
+  for (const touch of [true, false]) for (const s of spotSteps('full', touch)) {
+    assert.ok(s.core, s.key);
+    assert.equal(s.wait, 6000, s.key);
+  }
 });
 
 test('동그라미 안내 문구는 동그라미가 하는 일에 맞춘다', async () => {

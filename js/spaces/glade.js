@@ -17,6 +17,7 @@ import { BUG_KINDS, CAFE_GATE, GLADE, GLADE_R, LIGHT_WORKSHOP, LIGHT_WORKSHOP_PO
 import { PAL } from '../data/world.js';
 import { NIGHT_MIN } from '../daynight.js';
 import { rollKind } from '../dex-gates.js';
+import { concertScatterBlocks } from '../concert/index.js';
 import { netBonus } from '../workbench/rules.js';
 import { Sound } from '../sound.js';
 import * as THREE from 'three';
@@ -43,6 +44,7 @@ export function buildGlade() {
     if (dist2D({ x: tx, z: tz }, CAFE_GATE) < 5.5) continue;   // ☕ 카페 시야를 가리지 않게 비움
     // 🏮 빛 공방 — 오두막에 박히는 나무만 비우고 옆 나무는 남긴다(숲 가장자리 느낌) · 연못 위도 비움
     if (dist2D({ x: tx, z: tz }, LIGHT_WORKSHOP) < 2.8) continue;
+    if (concertScatterBlocks(tx, tz)) continue;
     if (dist2D({ x: tx, z: tz }, { x: LIGHT_WORKSHOP.x + LIGHT_WORKSHOP_POND.x, z: LIGHT_WORKSHOP.z + LIGHT_WORKSHOP_POND.z }) < LIGHT_WORKSHOP_POND.r + 0.6) continue;
     spawnTree(tx, tz);
   }

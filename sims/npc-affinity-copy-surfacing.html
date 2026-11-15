@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>호감도 보여 주기 문구 검수</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px; background: #eef1ec; font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", sans-serif; color: #2c2418; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  h2 { font-size: 18px; margin: 28px 0 8px; }
+  .lead { margin: 0 0 12px; font-size: 14px; color: #555; line-height: 1.6; max-width: 1080px; }
+  table { border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; font-size: 13px; width: 100%; max-width: 1180px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
+  th, td { padding: 8px 10px; border-bottom: 1px solid #eee; text-align: left; vertical-align: top; line-height: 1.5; word-break: keep-all; }
+  th { background: #f6f1e7; font-size: 12.5px; white-space: nowrap; }
+  td.rec { background: #eef7ee; font-weight: 700; color: #2f6b38; }
+  td.en { color: #6a6a6a; font-size: 12.5px; }
+  td.memo { color: #7a6a58; font-size: 12px; }
+  td.no { color: #999; width: 40px; }
+  .measure { display: flex; gap: 22px; flex-wrap: wrap; align-items: flex-start; }
+  .qp { background: rgba(255,250,241,.98); border-radius: 16px; padding: 9px 11px; box-shadow: 0 4px 12px rgba(0,0,0,.18); font-size: 12px; font-family: 'Segoe UI', system-ui, sans-serif; }
+  .aff { padding: 7px 8px; border-radius: 12px; background: #fff2f5; box-shadow: 0 0 0 1.5px #f2b8c8; display: flex; gap: 8px; align-items: center; }
+  .aff .th { width: 34px; height: 34px; border-radius: 10px; background: #fbe4da; flex: none; display: grid; place-items: center; font-size: 18px; }
+  .aff b { display: block; font-size: 12px; white-space: nowrap; }
+  .aff small { display: block; color: #8a6a58; font-size: 11px; line-height: 1.35; white-space: nowrap; }
+  .aff .tx { min-width: 0; }
+  .cap { font-size: 12px; color: #555; margin-bottom: 6px; font-weight: 700; }
+  .res { font-size: 11.5px; font-weight: 800; padding: 2px 8px; border-radius: 6px; margin-top: 6px; display: inline-block; }
+  .ok { background: #e2f3e4; color: #2f6b38; }
+  .bad { background: #fde3e0; color: #a33a2a; }
+</style>
+</head>
+<body>
+<h1>✍️ 호감도 보여 주기 문구 검수 (A 소개·길 안내 · B 의뢰 패널 줄)</h1>
+<p class="lead">초록 칸이 추천안이에요. 고칠 칸은 번호로 말씀해 주세요(예: "S3은 후보 2"). {주민}·{아이템} 자리에는 실제 이름이 들어가고, 조사(와/과, 을/를)는 받침에 맞춰 바뀌어요. C(💌)는 머리 위 이모지 말풍선이라 글자가 없어요. 엠대시와 "놀다"는 넣지 않았어요.</p>
+<table id="t"></table>
+<h2>B 의뢰 패널 줄 실측 (추천안, 가장 긴 이름)</h2>
+<p class="lead">지금 게임의 의뢰 패널 폭: PC 230px, 375px 폰 195px(화면의 52%), 320px 폰 166px.</p>
+<div class="measure" id="m"></div>
+<script>
+const ROWS = [
+  ['A 소개 카드: 제목', '{주민}와 친해져 보세요', '{주민}와 친해지면 선물이 와요', '{주민}의 단짝이 되어 보세요', 'Get to know {Name}', '예: 목수 아저씨와 친해져 보세요'],
+  ['A 소개 카드: 본문', '친해질수록 편지가 오고, 💛 단짝이 되면 {아이템}을 보내 줘요.', '선물을 건네면 친해져요. 💛 단짝이 되면 {아이템}을 받아요.', '❤️10이 되면 {아이템}이 내 마당에 와요.', 'The closer you get, the more letters arrive. Become 💛 Best Friends and they will send you {Item}.', '3D 아이템 썸네일이 왼쪽에 함께 보여요'],
+  ['A 소개 카드: 방법 칩 2개', '🎁 선물 주기 (하루 ❤️2) · 🔁 반복 의뢰 ❤️+1', '🎁 선물 · 🔁 의뢰', '🎁 선물로 친해지기 · 🔁 부탁 들어주기', '🎁 Give gifts (❤️2 a day) · 🔁 Repeat requests ❤️+1', ''],
+  ['A 소개 카드: 주 버튼', '🎁 선물 만들러 가기', '🎁 선물 주러 가기', '어떻게 해요?', '🎁 Make a gift', '누르면 길 안내 시작'],
+  ['A 소개 카드: 보조 버튼', '나중에', '닫기', '다음에 할게요', 'Later', '기존 의뢰창과 같은 말'],
+  ['A 길 안내 1단계', '🎁 작업대에서 꽃다발 만들기', '🛠️ 작업대에서 선물 만들기', '🎁 꽃다발 하나 만들기', '🎁 Make a bouquet at the workbench', '옆에 1/2'],
+  ['A 길 안내 2단계', '{주민}에게 꽃다발 건네기', '{주민}에게 선물 건네기', '🎁 {주민}에게 가기', 'Give the bouquet to {Name}', '옆에 2/2'],
+  ['A 재료 보충 토스트', '🥕 꽃다발 재료(작물 2개)를 챙겨 드렸어요', '🥕 작물 2개를 받았어요', '🎁 첫 선물 재료를 드렸어요', '🥕 Here are 2 crops for the bouquet', '작물이 모자랄 때만, 한 번'],
+  ['B 줄 1행 (진행 중)', 'PC: 💛 목수 아저씨 ❤️7/10 · 폰: 💛 목수 아저씨', '목수 아저씨 · 💛까지 ❤️3', '💛 목수 아저씨 7/10', '💛 Carpenter ❤️7/10', '아이콘은 다음 단계. 폰은 폭이 좁아 숫자를 빼고 진행 막대로 보여요(실측 아래)'],
+  ['B 줄 2행 (다음 보상)', '{아이템}까지 ❤️3', '다음 {아이템} · ❤️3 남음', '❤️3 더 모으면 {아이템}', '{Item} in ❤️3', ''],
+  ['B 줄 3행 (오늘 선물)', '오늘 선물 🎁 2번 더', '오늘 🎁 ❤️2 더', '선물은 내일 다시', 'Gifts today: 🎁 2 more', '0이면 "선물은 내일 다시"'],
+  ['B 줄 (시작 전)', '🎁 주민과 친해지면 선물이 와요', '🎁 주민 선물 받는 법', '💛 주민과 친해지기', '🎁 Befriend villagers for gifts', '누르면 A 소개 카드가 다시 열려요'],
+];
+document.getElementById('t').innerHTML = '<tr><th>#</th><th>자리</th><th>추천</th><th>후보 2</th><th>후보 3</th><th>영어(추천)</th><th>메모</th></tr>' +
+  ROWS.map((r, i) => `<tr><td class="no">S${i + 1}</td><td>${r[0]}</td><td class="rec">${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td class="en">${r[4]}</td><td class="memo">${r[5]}</td></tr>`).join('');
+
+const CASES = [
+  ['큐레이터 할아버지', '💛', '❤️7/10', '🏺', '유리 진열장까지 ❤️3', '오늘 선물 🎁 2번 더'],
+  ['낚시꾼 할아버지', '🤝', '❤️4/6', '📜', '도면까지 ❤️2', '선물은 내일 다시'],
+];
+const M = document.getElementById('m');
+for (const [w, label] of [[230, 'PC 230px'], [195, '375px 폰 195px'], [166, '320px 폰 166px']]) {
+  const wrap = document.createElement('div');
+  const phone = w < 200;
+  wrap.innerHTML = `<div class="cap">${label}</div>` + CASES.map(([n, ico, v, th, l2, l3]) =>
+    `<div class="qp" style="width:${w}px;margin-bottom:8px"><div class="aff">${phone ? '' : `<span class="th">${th}</span>`}<div class="tx"><b>${ico} ${n}${phone ? '' : ' ' + v}</b><small>${l2}</small><small>${l3}</small><div style="height:5px;border-radius:3px;background:rgba(0,0,0,.08);margin-top:3px;overflow:hidden"><i style="display:block;height:100%;width:66%;background:linear-gradient(90deg,#f29bb4,#e6789a)"></i></div></div></div></div>`).join('') + '<div class="out"></div>';
+  M.appendChild(wrap);
+  requestAnimationFrame(() => {
+    const over = [...wrap.querySelectorAll('.tx > b, .tx > small')].filter(el => el.scrollWidth > el.clientWidth + 1);
+    wrap.querySelector('.out').innerHTML = `<span class="res ${over.length ? 'bad' : 'ok'}">${over.length ? `넘침 ${over.length}줄` : '모두 들어감'}</span>`;
+  });
+}
+</script>
+</body>
+</html>

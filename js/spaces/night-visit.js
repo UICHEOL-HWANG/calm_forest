@@ -21,6 +21,7 @@ import { ADV_CROPS } from '../farm-crops.js';
 import { t } from '../i18n.js';
 import { animateBubble, makeRing, onTop } from '../bubble-fx.js';
 import { Sound } from '../sound.js';
+import { modalQueue } from '../guide/modal-queue.js';
 import * as THREE from 'three';
 
 // 🐗🦝 승부 중 — 카메라·조작을 무대(js/duel/stage.js)에 넘긴다.
@@ -254,8 +255,8 @@ export async function resolveNightVisit() {
   const lossText = `${a.ico} 밤사이 ${a.name}가 ${stolen.join('·')} ${stolen.length}개를 가져갔어요… 🐾 흔적을 조사해보세요`;
   setTimeout(() => {   // 출석 모달·날씨 토스트와 겹치지 않게 한 박자 늦게
     ui.toast?.(lossText, 3800);
-    firstHint('night', a.ico, '밤손님이 다녀갔어요',
-      { steps: [{ ico: '🐾', label: '파헤친 흙 조사' }, { ico: '🎁', label: '수집품' }], note: '🎃 허수아비·🪵 울타리로 피해 줄이기' });
+    modalQueue.request({ kind: 'result', key: 'night', show: () => firstHint('night', a.ico, '밤손님이 다녀갔어요',
+      { steps: [{ ico: '🐾', label: '파헤친 흙 조사' }, { ico: '🎁', label: '수집품' }], note: '🎃 허수아비·🪵 울타리로 피해 줄이기' }) });
   }, 1200);
   if (nightNoteFetcher) {
     const firstCrop = cands[(v.stolenIdx || [])[0]]?.p?.cropType?.id || '';

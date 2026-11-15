@@ -145,7 +145,7 @@ export function mirrorVillagePrompt() {
   const night = isNight(), key = `${todayStr()}:${+night}`;
   if (stopShownKey !== key) { stopShownKey = key; T.stopShown({ prior_visits: mirrorState().visits, night }); }
   if (night) return { nd: null, prompt: '🌙 막차가 끊겼어요 · 꿈의 숲은 침대에서' };
-  if (firstHintBanner('mirrorStop', '🚏', '마차 정류장', '낮엔 🪞 거울 마을에 갈 수 있어요')) T.onboard({ step: 'stop' });
+  firstHintBanner('mirrorStop', '🚏', '마차 정류장', '낮엔 🪞 거울 마을에 갈 수 있어요', () => T.onboard({ step: 'stop' }));
   return { nd: 'mirrorgo', prompt: '🪞 거울 마을행 타기' };
 }
 
@@ -231,7 +231,7 @@ function backHome({ skipped, atS, short }) {
   const m = mirrorState();
   T.cutsceneEnd({ dir: 'back', skipped, at_s: atS, short });
   T.leave({ left_today: QUESTS_PER_DAY - m.done, elapsed_s: secs(arrivedAt) });
-  if (firstHintBanner('mirrorReturn', '🪞', '거울 장식', '🛋️ 꾸미기에서 거울 조각으로 바꿔요')) T.onboard({ step: 'return' });
+  firstHintBanner('mirrorReturn', '🪞', '거울 장식', '🛋️ 꾸미기에서 거울 조각으로 바꿔요', () => T.onboard({ step: 'return' }));
   requestSave();
 }
 
@@ -312,7 +312,7 @@ function talk() {
   active = { q, heardAt: performance.now(), hinted: used, hintShown: used };
   openTalk(q, 'clue');
   T.clue({ quest_n: q.n, npc: q.npc, spot_id: q.spot, flipped: q.flipped });
-  if (q.n === 2 && firstHintBanner('mirrorFlip', '🪞', '거울 말', '여기 주민들은 좌우를 반대로 말해요')) T.onboard({ step: 'flip' });
+  if (q.n === 2) firstHintBanner('mirrorFlip', '🪞', '거울 말', '여기 주민들은 좌우를 반대로 말해요', () => T.onboard({ step: 'flip' }));
   refreshWorld();
 }
 function useHint() {

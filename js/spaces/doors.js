@@ -18,7 +18,11 @@ import { mudflat, mudflatHint, nearMudflatExit, MUDFLAT_COPY } from './mudflat.j
 import { dive, diveHint, nearDiveExit, DIVE_COPY } from './dive.js';
 import { port, portPrompt, enterPort, guideHides } from '../port/index.js';
 import { plazaSpot } from '../plaza/index.js';
+import { pondNear } from '../pond/index.js';
+import { POND_COPY } from '../pond/copy.js';
 import { auctionSpotNow, auctionPrompt } from '../auction/index.js';
+import { weeklySpotNow, weeklyPrompt } from '../weekly/index.js';
+import { concertSpotNow, concertPrompt } from '../concert/index.js';
 import { delvePrompt, delveFloorNow } from './delve.js';
 import { trackEvent } from '../analytics.js';
 import { RESTAURANT_COPY, nearRestaurantDoor, nearRestaurantExit, updateRestaurantInteract } from './restaurant.js';
@@ -356,8 +360,8 @@ export function updateDoorInteract() {
     const locked = mapLocked('sea');   // 🧪 [베타 2차] 프레임당 한 번만 판정(프롬프트·배너 억제 공용)
     if (locked) { nd = 'sea'; prompt = lockLine('sea', mapOpenDay(authState.mapOrder, 'sea')); }
     // [GA4] 입구 첫 도달(세이브당 1회) — sea_enter 와 짝지어 "왔는데 안 들어갔나"를 본다
-    if (!locked && firstHintBanner('seaGate', '🌊', '바다터', '먼 바다 대형 물고기와 줄다리기 낚시'))
-      trackEvent('sea_gate_hint', { night: isNight(), weather: WEATHER });
+    if (!locked) firstHintBanner('seaGate', '🌊', '바다터', '먼 바다 대형 물고기와 줄다리기 낚시',
+      () => trackEvent('sea_gate_hint', { night: isNight(), weather: WEATHER }));
   } else if (!indoor && isOpen('orchard') && dist2D(player.position, ORCHARD_GATE) < ORCHARD_PROMPT_R) {
     nd = 'orchard';
     const locked = mapLocked('orchard');
@@ -424,6 +428,8 @@ export function updateDoorInteract() {
   else if (plazaHere === 'stall') prompt = '🍂 수확제 좌판';
   else if (plazaHere === 'plaque') prompt = '🌾 광장 명판 보기';
   else if (nearMarket) { prompt = '📊 오늘의 시세'; firstHintBanner('market', '📊', '시세 전광판', '판매가가 매일 바뀌니 비쌀 때 파세요'); }
+  else if (inVillage && weeklySpotNow()) prompt = weeklyPrompt();
+  else if (inVillage && concertSpotNow()) prompt = concertPrompt();
   else if (nearCoop) {
     prompt = gameState.coop.built ? '🐔 닭장' : '🐔 닭장 터';
     firstHintBanner('coop', '🐔', '닭장 터', '재료 모아 닭장 짓고 매일 🥚달걀 받기');
@@ -477,6 +483,7 @@ export function updateDoorInteract() {
   //   ⚠️ 안내는 **프롬프트 줄에만** — 월드 라벨로 띄우면 다른 라벨을 가린다(🎀가게와 같은 규칙).
   //   🔍 텃밭 방문객을 살펴볼 수 있으면 그게 먼저 — farmActionFirst 는 손님이 있으면 false 라 그것만으론 못 막는다.
   //      안 비키면 handleAction 맨 위의 문 분기가 commandPet 으로 채가서 손님을 못 살펴봤다(2026-10-12).
+  if (!prompt && pondNear()) { $w.nearDoor = 'pond'; prompt = POND_COPY.prompt; }
   if (!prompt && !farmActionFirst() && !visitorTarget() && petChoresNear()) { $w.nearDoor = 'pet'; prompt = '🐾 맡기기'; }
   if (placingOutdoor) prompt = null;
   if (prompt !== lastDoorPrompt) { $w.lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt); }

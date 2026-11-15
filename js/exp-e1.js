@@ -89,6 +89,17 @@ export function isPending(e1State) {
   return !!(e1State && e1State.arm === 'harvest_start' && e1State.seeded && !e1State.harvested);
 }
 
+export const E1_AWAY_RELEASE_S = 20;
+
+export function e1Release({ ripeLeft, atFarm, awayS = 0 }) {
+  if (ripeLeft <= 0) return 'done';
+  if (atFarm) return null;
+  if (ripeLeft < E1_PLOTS.length) return 'left';
+  return awayS >= E1_AWAY_RELEASE_S ? 'away' : null;
+}
+
+export const e1KeepHarvesting = ({ pending, ripeLeft, plotState }) => !!pending && ripeLeft > 0 && plotState !== 'mature';
+
 // 처치 밭의 판매가(코인) — 경제 가드레일. 기본 작물 1개 = SELL_PRICE.crop
 export function seedCoinValue(sellPrice) {
   return E1_PLOTS.length * (sellPrice?.crop || 0);

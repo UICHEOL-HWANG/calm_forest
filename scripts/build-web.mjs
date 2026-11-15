@@ -50,6 +50,8 @@ const INCLUDE = [
   ['assets/favicon/apple-touch-icon.png', 'apple-touch-icon.png'], // iOS 홈화면 아이콘
   // 📱 PWA(웹 설치) — 원본은 assets/pwa/, 공개 URL 은 루트. sw.js 는 스코프 때문에 루트에 둔다.
   ['assets/pwa/manifest.webmanifest', 'manifest.webmanifest'],
+  ['assets/well-known/assetlinks.json', '.well-known/assetlinks.json'],
+  ['assets/well-known/apple-app-site-association', '.well-known/apple-app-site-association'],
   ['assets/pwa/icon-192.png', 'icon-192.png'],
   ['assets/pwa/icon-512.png', 'icon-512.png'],
   ['assets/pwa/icon-maskable-512.png', 'icon-maskable-512.png'],

@@ -35,6 +35,10 @@ export function initSound() {
   });
 }
 
+export function audioBus() {
+  return { ctx: ensureCtx(), out: master, on: enabled };
+}
+
 export function toggleSound(on) {
   enabled = on;
   if (!on) stopRainSound();   // 사운드 끄면 빗소리 루프도 정지

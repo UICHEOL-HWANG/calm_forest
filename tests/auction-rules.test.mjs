@@ -61,7 +61,7 @@ test('joinMode', () => {
 });
 
 test('restoreAuction sanitizes', () => {
-  const blank = { lastDate: '', wins: 0, bannerDate: '', introSeen: false };
+  const blank = { lastDate: '', wins: 0, bannerDate: '', introSeen: false, bannerCount: 0 };
   assert.deepEqual(auctionDefault(), blank);
   assert.deepEqual(restoreAuction(undefined), blank);
   assert.deepEqual(restoreAuction({ lastDate: 3, wins: -2 }), blank);
@@ -72,7 +72,9 @@ test('restoreAuction keeps the banner date and the intro flag', () => {
   const r = restoreAuction({ lastDate: '', wins: 0, bannerDate: '2026-11-10', introSeen: true });
   assert.equal(r.bannerDate, '2026-11-10');
   assert.equal(r.introSeen, true);
-  assert.deepEqual(restoreAuction({ bannerDate: 7, introSeen: 'yes' }), { lastDate: '', wins: 0, bannerDate: '', introSeen: false });
+  assert.deepEqual(restoreAuction({ bannerDate: 7, introSeen: 'yes' }), { lastDate: '', wins: 0, bannerDate: '', introSeen: false, bannerCount: 0 });
+  assert.equal(restoreAuction({ bannerCount: 2 }).bannerCount, 2);
+  assert.equal(restoreAuction({ bannerCount: -1 }).bannerCount, 0);
 });
 
 test('bidderMaxes covers only the bidders it is given', () => {

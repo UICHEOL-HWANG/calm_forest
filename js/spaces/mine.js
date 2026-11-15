@@ -160,7 +160,7 @@ function showGemFogBanner() {
   const b = gemFogBanner(sit.weather, nextFogOffset(weatherOf), todayStr);
   if (!b) return;
   gemFogShownDay = today;
-  ui.showHintBanner?.({ ...b, slotQuest: true, onShow: () => trackEvent('gem_fog_hint', { weather: sit.weather }) });
+  ui.showHintBanner?.({ ...b, slotQuest: true, kind: 'place', key: 'gem-fog', live: () => $w.atMine, onShow: () => trackEvent('gem_fog_hint', { weather: sit.weather }) });
 }
 
 export function exitMine() {

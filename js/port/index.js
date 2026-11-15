@@ -7,6 +7,7 @@ import { tubBoat, buildPortShops, setPortNight, mat, glow } from './models.js';
 import { rollCatch, addToPantry, acceptQuest, pickItem, claimQuest, boardGate, sellCatch, hasCatch, sellPreview } from './rules.js';
 import { disarmPortPier, nearPortPier, portPierBoat } from './pier.js';
 import { createGuide } from '../guide/runner.js';
+import { guideStalled } from '../pond/yard-steps.js';
 import { createGuideView } from '../guide/view.js';
 import { createNav } from '../guide/path.js';
 import { islandWalkable, PIER_WALK } from './nav.js';
@@ -603,7 +604,22 @@ export function startPortGuide() {
     onDone: () => { const g = env.gameState(); g.port = { ...g.port, guideDone: true }; env.requestSave(); view.hide(); setPoint(null); guide = null; if (DBG) window.__portGuide = { step: null }; } });
 }
 
-export function maybeStartPortGuide(ok) { if (ok) startPortGuide(); }
+export function maybeStartPortGuide(ok) {
+  if (!ok || guide) return false;
+  startPortGuide();
+  stepSeen = -1;
+  return !!guide;
+}
+
+let stepSeen = -1, stepAt = 0;
+function guideStall() {
+  const now = performance.now() / 1000;
+  if (guide.index() !== stepSeen) { stepSeen = guide.index(); stepAt = now; }
+  if (!guideStalled(stepAt, now)) return false;
+  env.trackEvent('guide_step', { flow: 'port', step: guide.index() + 1, act: 'stall' });
+  guide = null; view?.hide(); setPoint(null);
+  return true;
+}
 
 function nearest(list, ok, pos, from) {
   let best = null, bd = Infinity;
@@ -723,7 +739,7 @@ export function updatePortGuide(visible) {
   if (!guide) return updateQuestGuide(visible);
   const ctx = guideCtx();
   guide.tick(ctx);
-  if (!guide) return;
+  if (!guide || guideStall()) return;
   const step = guide.current(), island = port.active && P.phase === 'island';
   const me = port.active && P.phase === 'sail' ? boat.position : env.player.position;
   const sol = island ? islandRoute : NO_SOLIDS;

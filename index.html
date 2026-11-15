@@ -181,6 +181,14 @@
   #invite-box .inv-note { margin: 4px 0 8px; font-size: 12.5px; line-height: 1.5; opacity: .75; }
   #invite-box .inv-link { width: 100%; box-sizing: border-box; margin: 10px 0 8px; padding: 9px 10px; border: 1px solid #e3dccb; border-radius: 10px; font-size: 13px; background: #fffaf0; color: var(--ink); }
   #invite-box .inv-actions { display: flex; gap: 8px; }
+  #invite-box .inv-entry { margin: 4px 0 14px; padding: 10px 12px; border-radius: 12px; background: #fffaf0; border: 1px solid #e3dccb; }
+  #invite-box .inv-entry-title { margin: 0 0 8px; font-size: 13px; font-weight: 800; color: var(--ink); word-break: keep-all; }
+  #invite-box .inv-entry-row { display: flex; gap: 8px; }
+  #invite-box .inv-code { flex: 1; min-width: 0; box-sizing: border-box; padding: 9px 10px; border: 1px solid #e3dccb; border-radius: 10px; font-size: 16px; letter-spacing: 1px; text-transform: uppercase; background: #fff; color: var(--ink); }
+  #invite-box .inv-code::placeholder { font-size: 13px; letter-spacing: 0; text-transform: none; }
+  #invite-box .inv-enter { flex: none; border: none; border-radius: 10px; padding: 0 16px; font-weight: 800; font-size: 14px; cursor: pointer; background: #ffe0a8; color: var(--ink); box-shadow: var(--shadow); }
+  #invite-box .inv-enter:disabled { opacity: .5; cursor: default; }
+  #login-invite .inv-code-line { display: block; margin-top: 6px; font-size: 12px; font-weight: 700; letter-spacing: .3px; }
   #invite-box .inv-actions button { flex: 1; border: none; border-radius: 12px; padding: 11px 8px; font-weight: 800; font-size: 14px; cursor: pointer; background: #ffe0a8; color: var(--ink); box-shadow: var(--shadow); }
   #invite-close { margin-top: 12px; width: 100%; border: none; border-radius: 12px; padding: 11px 16px; background: var(--mint); color: var(--ink); font-weight: 800; font-size: 14px; cursor: pointer; box-shadow: var(--shadow); }
   #login-invite { display: none; margin: 0 0 12px; padding: 10px 12px; border-radius: 12px; background: rgba(255,240,246,.95); color: #8a3a5a; font-size: 13px; font-weight: 700; line-height: 1.45; white-space: pre-line; word-break: keep-all; }   /* '우정 하트핀' 앞에서 줄을 나눈다(MSG.banner 의 \n) — '하트핀/을'로 쪼개지던 것 */
@@ -545,8 +553,8 @@
     #boat-shop .dm-actions button { padding: 5px 14px; }
   }
   /* 튜토리얼 / 씨앗 안내 모달 (공통 카드 스타일) */
-  #tutorial-modal, #seed-modal, #hint-modal, #photo-modal, #char-modal, #notice-modal, #settings-modal, #invite-modal, #daily-modal { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
-  #tutorial-modal.show, #seed-modal.show, #hint-modal.show, #photo-modal.show, #char-modal.show, #notice-modal.show, #settings-modal.show, #invite-modal.show, #daily-modal.show { display: grid; }
+  #tutorial-modal, #seed-modal, #hint-modal, #photo-modal, #char-modal, #notice-modal, #npcbook-modal, #affintro-modal, #settings-modal, #invite-modal, #daily-modal { position: fixed; inset: 0; z-index: 32; display: none; place-items: center; background: rgba(20,40,30,0.55); }
+  #tutorial-modal.show, #seed-modal.show, #hint-modal.show, #photo-modal.show, #char-modal.show, #notice-modal.show, #npcbook-modal.show, #affintro-modal.show, #settings-modal.show, #invite-modal.show, #daily-modal.show { display: grid; }
   #daily-modal { z-index: 44; }
   #daily-modal .daily-card { width: min(380px, 94vw); background: #f6f0e4; border-radius: 28px; padding: 14px; text-align: left; }
   #hint-modal .tut-card.as-card, #nudge-modal .daily-card { width: min(380px, 94vw); background: #f6f0e4; border-radius: 28px; padding: 14px; text-align: left; }
@@ -582,6 +590,54 @@
   #gift-box-modal #gift-box-sub { margin: 6px 0 14px; font-size: 13px; color: #5b6b60; word-break: keep-all; }
   #gift-box-modal #gift-box-ok { width: 100%; }
   #gift-box-modal #gift-box-ok[hidden] { display: none; }
+  #promo-gift-modal, #gift-code-modal { position: fixed; inset: 0; z-index: 33; display: none; place-items: center; background: rgba(20,40,30,0.55); }
+  #promo-gift-modal.show, #gift-code-modal.show { display: grid; }
+  #promo-gift-modal [hidden], .pg-btns [hidden] { display: none; }
+  #promo-gift-modal .pg-env { position: relative; width: min(344px, 92vw); max-height: calc(100vh - 16px); max-height: calc(100dvh - 16px); overflow-y: auto; overscroll-behavior: contain; animation: giftPop .45s ease-out; }
+  #promo-gift-modal .pg-flap { height: 92px; background: linear-gradient(180deg, #e9d9b8, #dcc79f); border-radius: 22px 22px 0 0; clip-path: polygon(0 0, 100% 0, 100% 40%, 50% 100%, 0 40%); }
+  #promo-gift-modal .pg-seal { position: absolute; left: 50%; top: 52px; transform: translateX(-50%); width: 50px; height: 50px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #e0675a, #c9483c); box-shadow: 0 3px 0 #9b3328; display: grid; place-items: center; font-size: 22px; z-index: 2; }
+  #promo-gift-modal .pg-letter { margin-top: -34px; background: #fffaf0; border-radius: 0 0 22px 22px; padding: 46px 16px 16px; text-align: center; box-shadow: 0 0 0 3px #e9d9b8 inset; color: #2b3a30; }
+  #promo-gift-modal .pg-from { font-size: 11px; font-weight: 800; letter-spacing: .5px; color: #9a7a52; word-break: keep-all; }
+  #promo-gift-modal .pg-title { font-size: 18px; font-weight: 800; margin: 4px 0; word-break: keep-all; }
+  #promo-gift-modal .pg-note { font-size: 13px; color: #5b6b60; margin: 0 0 12px; line-height: 1.5; word-break: keep-all; }
+  #promo-gift-modal .pg-rule { border: none; border-top: 1.5px dashed #e3d4b6; margin: 0 0 10px; }
+  #promo-gift-modal .pg-row { display: flex; justify-content: space-between; font-size: 13px; line-height: 1.9; padding: 0 6px; text-align: left; }
+  #promo-gift-modal .pg-ico { margin-right: 4px; }
+  #promo-gift-modal .pg-row b { color: #7a8a7f; }
+  #promo-gift-modal .pg-set { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  #promo-gift-modal .pg-tile { padding: 14px 4px 10px; border-radius: 14px; background: linear-gradient(160deg, #fff, #fdf3dc); border: 2px solid #f0c96a; }
+  #promo-gift-modal .pg-tile i { display: block; font-style: normal; font-size: 38px; line-height: 1.1; }
+  #promo-gift-modal .pg-tile b { display: block; font-size: 13px; margin-top: 3px; }
+  #promo-gift-modal .pg-ps { text-align: left; margin-top: 8px; font-size: 12.5px; font-weight: 700; color: #6b4a12; background: #fff8e8; border-radius: 12px; padding: 9px 11px; word-break: keep-all; }
+  .pg-btns { display: flex; gap: 8px; margin-top: 12px; }
+  .pg-btns .pg-cta { flex: 1; border: none; border-radius: 16px; padding: 13px 8px; background: var(--mint); color: #2d4a37; font-size: 14px; font-weight: 800; font-family: inherit; cursor: pointer; }
+  .pg-btns .pg-ghost { flex: none; border: none; border-radius: 16px; padding: 13px 14px; background: #ebe3d3; color: #6b5b4a; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer; }
+  #promo-gift-modal.solo .pg-ghost { flex: 1; background: var(--mint); color: #2d4a37; font-weight: 800; }
+  #gift-code-modal .gift-code-card { width: min(320px, 90vw); text-align: center; }
+  #gift-code-modal #gift-code-title { display: block; font-size: 17px; margin-bottom: 10px; word-break: keep-all; }
+  #gift-code-modal #gift-code-input { width: 100%; box-sizing: border-box; padding: 11px 12px; border: 1px solid #e3dccb; border-radius: 12px; font-size: 16px; letter-spacing: 1px; text-transform: uppercase; text-align: center; }
+  #gift-code-modal #gift-code-input::placeholder { letter-spacing: 0; text-transform: none; }
+  #gift-code-modal #gift-code-msg { min-height: 18px; margin: 8px 0 0; font-size: 13px; color: #a6452f; word-break: keep-all; }
+  @media (max-height: 480px) {
+    #promo-gift-modal .pg-env { width: min(440px, 92vw); }
+    #promo-gift-modal .pg-flap { height: 56px; }
+    #promo-gift-modal .pg-seal { top: 24px; width: 40px; height: 40px; font-size: 18px; }
+    #promo-gift-modal .pg-letter { margin-top: -22px; padding: 34px 14px 12px; }
+    #promo-gift-modal .pg-note { margin-bottom: 8px; }
+    #promo-gift-modal .pg-rule { margin-bottom: 6px; }
+    #promo-gift-modal .pg-list { display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; }
+    #promo-gift-modal .pg-row { line-height: 1.7; }
+    #promo-gift-modal .pg-ps { margin-top: 6px; padding: 7px 10px; }
+    #promo-gift-modal .pg-tile { padding: 8px 4px 6px; }
+    #promo-gift-modal .pg-tile i { font-size: 28px; }
+    #promo-gift-modal .pg-btns { margin-top: 8px; }
+  }
+  @media (max-height: 700px) {
+    #gift-code-modal { place-items: start center; padding-top: 10vh; padding-top: 10dvh; }
+  }
+  @media (max-height: 480px) {
+    #gift-code-modal { padding-top: 8px; }
+  }
   @keyframes giftWobble { 0%, 100% { transform: rotate(0); } 20% { transform: rotate(-8deg); } 40% { transform: rotate(7deg); } 60% { transform: rotate(-4deg); } 80% { transform: rotate(2deg); } }
   @keyframes giftPop { 0% { transform: scale(.4); } 70% { transform: scale(1.15); } 100% { transform: scale(1); } }
   #toast.panel { display: flex; align-items: center; gap: 8px; background: rgba(28,44,35,.92); color: #fff; border-radius: 22px; padding: 8px 16px 8px 12px; box-shadow: 0 10px 24px rgba(0,0,0,.3); width: max-content; max-width: min(560px, 92vw); line-height: 1.5; word-break: keep-all; text-wrap: balance; }
@@ -627,6 +683,63 @@
     .dc-season { font-size: 11.5px; }
   }
   #notice-modal { padding-top: var(--top-inset); box-sizing: border-box; }
+  .nb-tabs { display: flex; gap: 6px; padding: 0 16px 8px 18px; }
+  .nb-tabs[hidden] { display: none; }
+  .nb-tabs button { border: 1.5px solid #f0e6d4; background: #fff; color: #6f6250; border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; }
+  .nb-tabs button.on { background: #2f3a33; border-color: #2f3a33; color: #fffaf1; }
+  .nb-att { margin: 10px 0 0; display: inline-block; font-size: 13px; font-weight: 800; color: #7a5a30; background: #f3ece0; border-radius: 10px; padding: 6px 10px; }
+  .nb-claim { flex: 0 0 auto; margin: 0 16px 16px; border: none; border-radius: 14px; padding: 13px; background: #2f3a33; color: #fffaf1; font-weight: 800; font-size: 15px; cursor: pointer; }
+  .nb-claim:disabled { opacity: .5; cursor: default; }
+  #npcbook-modal { padding-top: var(--top-inset); box-sizing: border-box; }
+  .afi { width: min(440px, 92vw); padding: 16px 16px 14px; --nc: #e0663c; }
+  .afi-h { display: flex; gap: 10px; align-items: center; font-size: 16px; color: var(--ni, #b8492a); }
+  .afi-face { font-size: 28px; }
+  .afi-hero { display: flex; gap: 12px; align-items: center; margin: 10px 0; }
+  .afi-hero #afi-img { width: 120px; height: 120px; border-radius: 16px; background: var(--nt, #fbe4da); flex: none; object-fit: contain; }
+  .afi-hero p { margin: 0; font-size: 14px; line-height: 1.55; word-break: keep-all; }
+  .afi-ways { display: flex; gap: 6px; flex-wrap: wrap; }
+  .afi-ways > span { font-size: 12px; font-weight: 700; background: #f3ece0; border-radius: 999px; padding: 3px 10px; }
+  .afi-acts { display: flex; gap: 8px; margin-top: 12px; }
+  .afi-acts button { flex: 1; border: 0; border-radius: 14px; padding: 11px; font: inherit; font-weight: 800; cursor: pointer; background: #fff; color: #4a4438; box-shadow: 0 0 0 2px #eadfcb, 0 3px 0 #d8ccb6; }
+  .afi-acts #afi-go { flex: 2; background: var(--ni, #b8492a); color: #fff; box-shadow: 0 0 0 2px var(--ni, #b8492a), 0 3px 0 var(--nd, #8a3520); }
+  @media (max-width: 480px) { .afi-hero #afi-img { width: 92px; height: 92px; } }
+  #aff-track { display: flex; gap: 8px; align-items: center; width: 100%; margin-top: 6px; padding: 7px 8px; border: 0; border-radius: 12px; background: #fff2f5; box-shadow: 0 0 0 1.5px #f2b8c8; font: inherit; color: #3c3326; text-align: left; cursor: pointer; }
+  #aff-track[hidden] { display: none; }
+  #aff-track .at-th { width: 38px; height: 38px; border-radius: 10px; background: #fbe4da; flex: none; object-fit: contain; }
+  #aff-track .at-tx { min-width: 0; flex: 1; }
+  #aff-track b { display: block; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #aff-track small { display: block; font-size: 11px; line-height: 1.35; color: #8a6a58; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #aff-track .at-bar { height: 5px; border-radius: 3px; background: rgba(0,0,0,.08); margin-top: 3px; overflow: hidden; }
+  #aff-track .at-bar i { display: block; height: 100%; background: linear-gradient(90deg, #f29bb4, #e6789a); }
+  #aff-track.start b { white-space: normal; }
+  .nbk { width: min(560px, 94vw); max-height: min(640px, calc(100dvh - 24px - var(--top-inset))); display: flex; flex-direction: column; background: #fffaf1; color: #2f3a33; border-radius: 26px; overflow: hidden; box-shadow: 0 24px 60px rgba(30, 40, 30, .35); }
+  .nbk-head { display: flex; align-items: center; gap: 8px; padding: 18px 16px 10px 18px; }
+  .nbk-head h2 { margin: 0; font-size: 21px; font-weight: 900; letter-spacing: -.03em; }
+  #npcbook-body { overflow-y: auto; padding: 4px 16px 18px; }
+  .nbk-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .nbk-card { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 6px; border: 1.5px solid #f0e6d4; border-radius: 16px; background: #fff; font: inherit; color: inherit; cursor: pointer; text-align: center; word-break: keep-all; }
+  .nbk-card.fresh { background: #faf6ee; }
+  .nbk-face { font-size: 26px; line-height: 1.1; }
+  .nbk-face.big { font-size: 34px; }
+  .nbk-name { font-size: 12.5px; font-weight: 800; }
+  .nbk-stage { font-size: 11.5px; font-weight: 800; color: #b0563a; }
+  .nbk-next { font-size: 11px; color: #8a7a66; }
+  .nbk-dhead { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .nbk-back { width: 34px; height: 34px; border: none; border-radius: 50%; background: #f3ece0; font-size: 18px; cursor: pointer; }
+  .nbk-who { display: flex; flex-direction: column; gap: 3px; }
+  .nbk-who b { font-size: 17px; }
+  .nbk-chip, .npc-chip { display: inline-block; font-size: 12px; font-weight: 800; border-radius: 999px; padding: 3px 10px; background: var(--nt, #f3ece0); color: var(--ni, #6f6250); white-space: nowrap; }
+  .nbk-gift { margin: 6px 0 10px; font-size: 13px; font-weight: 700; color: #7a6a58; }
+  .nbk-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+  .nbk-rows li { display: flex; align-items: center; gap: 8px; border-radius: 12px; padding: 7px 10px; background: #f3ece0; color: #7a6a58; font-size: 13px; }
+  .nbk-rows li.done { background: #fbe4da; color: #b0563a; }
+  .nbk-rows li.now { background: #2f3a33; color: #fffaf1; }
+  .nbk-rl { font-weight: 800; }
+  .nbk-rr { margin-left: auto; font-weight: 700; text-align: right; }
+  .nbk-letters { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .nbk-letter { position: relative; border: 1.5px solid #f0e6d4; background: #fff; border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 12.5px; font-weight: 800; cursor: pointer; }
+  .nbk-letter.unread::after { content: ''; position: absolute; top: 2px; right: 2px; width: 7px; height: 7px; border-radius: 50%; background: #e86f3c; }
+  @media (max-width: 480px) { .nbk-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; } }
   .nb { position: relative; width: min(420px, 94vw); height: min(640px, calc(100dvh - 24px - var(--top-inset))); display: flex; background: #fffaf1; color: #2f3a33; border-radius: 26px; overflow: hidden; box-shadow: 0 24px 60px rgba(20,40,30,.4); text-align: left; animation: floatUp .45s ease both; }
   .nb-list { flex: 1; min-width: 0; display: flex; flex-direction: column; }
   .nb-head { display: flex; align-items: center; gap: 8px; padding: 18px 16px 10px 18px; }
@@ -1162,7 +1275,7 @@
     body.coaching #habitat-meter,
     body.decor-guide #habitat-meter { display: none !important; }
     body:has(#habitat-meter:not([hidden])) #story-chip,
-    body:has(#habitat-meter:not([hidden])) #hint-banner { display: none !important; }
+    body:not(.yard-guiding):has(#habitat-meter:not([hidden])) #hint-banner { display: none !important; }
   }
   /* 📏 세로가 짧은 화면 — 토스 상단 52px 까지 밀리면 미터 아래가 #door-prompt 와 겹친다.
      실측(320×568 + 토스): 슬롯 top 214, 문 프롬프트 top 307 → **여유 93px**. */
@@ -1763,6 +1876,7 @@
     body.coaching #toast { top: calc(162px + var(--top-inset) + var(--coach-h, 110px) + 16px); }   /* 코치 카드 실측 아래 */
     #hint-banner { top: calc(162px + var(--top-inset)); left: 12px; transform: none; max-width: calc(100vw - 12px - 150px); }
     body:has(#hint-banner.show) #story-chip { display: none !important; }   /* 배너가 떠 있는 1.4~3초만 칩을 비켜준다 */
+    body.hb-chain #story-chip { display: none !important; }
     body.coaching #hint-banner { top: auto; bottom: calc(282px + env(safe-area-inset-bottom)); }   /* 코치가 슬롯을 쓰면 배너는 프롬프트 줄 위로 */
     /* 🌿 리텐션 안내는 상시 프롬프트 줄 위로 — 상단 슬롯은 캔버스에 그려지는 월드 라벨(NPC 이름표·
        간판)을 가린다. 코치 자리와 같은 282px(검증된 값): 배너 83px 기준 y 447~530 으로,
@@ -2654,8 +2768,9 @@
   #npc-modal { z-index: 30; }
   .npc-card { width: min(640px, 100%); padding: 16px 18px 16px 92px; }
   .npc-card .tk-scroll { max-height: calc(100dvh - 72px - var(--top-inset, 0px)); overflow-y: auto; padding: 2px 4px 5px 3px; margin: -2px -4px -5px -3px; }
-  .npc-head { display: flex; align-items: center; gap: 8px; }
-  #npc-hearts { font-size: 12px; letter-spacing: 1px; }
+  .npc-head { display: flex; align-items: center; gap: 4px 8px; flex-wrap: wrap; }
+  .npc-chip { border: none; font-family: inherit; cursor: pointer; }
+  .npc-chip:empty { display: none; }
   #npc-line { margin: 4px 0 10px; font-size: 15px; line-height: 1.5; word-break: keep-all; }
   #npc-quest { background: var(--nt); border-radius: 14px; padding: 9px 12px; margin-bottom: 12px; }
   #npc-quest.hidden { display: none; }
@@ -3024,7 +3139,9 @@
       <button id="album-btn"><span class="uico">📸</span><span class="ulbl">사진첩</span></button>
       <button id="decor-set-btn"><span class="uico">🎁</span><span class="ulbl">꾸미기 세트</span></button>
       <button id="inbox-btn"><span class="uico">📮</span><span class="ulbl">소식함</span></button>
+      <button id="npcbook-btn"><span class="uico">📒</span><span class="ulbl">주민 수첩</span></button>
       <button id="invite-btn" style="display:none;"><span class="uico">🤝</span><span class="ulbl">친구 초대</span></button>
+      <button id="gift-code-btn"><span class="uico">🎁</span><span class="ulbl">선물 코드</span></button>
       <hr class="util-sep">
       <button id="lb-btn"><span class="uico">🏆</span><span class="ulbl">리더보드</span></button>
       <button id="stats-btn"><span class="uico">📊</span><span class="ulbl">활동 기록</span></button>
@@ -3098,6 +3215,7 @@
   <!-- 📜 진행 중 의뢰 목록 — 한 명만 그리면 다른 의뢰를 완료했을 때 살아 있는 의뢰가 사라진다(베타 r5) -->
   <div id="quest-panel" class="panel">
     <div id="quest-list"></div>
+    <button id="aff-track" type="button" hidden></button>
     <div id="quest-foot"><div class="q-more" id="quest-more"></div><button id="quest-toggle" type="button"></button></div>
   </div>
 
@@ -3486,6 +3604,36 @@
       <button id="gift-box-ok" class="dex-google-btn" type="button" hidden>확인</button>
     </div>
   </div>
+  <div id="promo-gift-modal" role="dialog" aria-modal="true" aria-labelledby="promo-gift-title">
+    <div class="pg-env">
+      <div class="pg-flap"></div>
+      <div class="pg-seal" id="promo-gift-seal">🌲</div>
+      <div class="pg-letter">
+        <div class="pg-from" id="promo-gift-from"></div>
+        <div class="pg-title" id="promo-gift-title"></div>
+        <p class="pg-note" id="promo-gift-note"></p>
+        <hr class="pg-rule" id="promo-gift-rule">
+        <div class="pg-list" id="promo-gift-list"></div>
+        <div class="pg-set" id="promo-gift-set" hidden></div>
+        <div class="pg-ps" id="promo-gift-ps"></div>
+        <div class="pg-btns">
+          <button id="promo-gift-ok" class="pg-ghost" type="button"></button>
+          <button id="promo-gift-cta" class="pg-cta" type="button"></button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="gift-code-modal" role="dialog" aria-modal="true" aria-labelledby="gift-code-title">
+    <div class="tut-card daily-card gift-code-card">
+      <b id="gift-code-title"></b>
+      <input id="gift-code-input" type="text" autocomplete="off" autocapitalize="characters" maxlength="20" enterkeyhint="go">
+      <p id="gift-code-msg" role="status"></p>
+      <div class="pg-btns">
+        <button id="gift-code-close" class="pg-ghost" type="button"></button>
+        <button id="gift-code-submit" class="pg-cta" type="button"></button>
+      </div>
+    </div>
+  </div>
 
   <!-- 📊 시세판 모달 (전광판 상호작용) -->
   <div id="market-modal">
@@ -3787,7 +3935,7 @@
     <div class="npc-card tk-box">
       <div class="tk-face" id="npc-emoji">🙂</div>
       <div class="tk-scroll">
-        <div class="npc-head"><span id="npc-name" class="tk-name"></span><span id="npc-hearts"></span></div>
+        <div class="npc-head"><span id="npc-name" class="tk-name"></span><button id="npc-hearts" class="npc-chip" type="button"></button></div>
         <p id="npc-line"></p>
         <div id="npc-quest">
           <div class="nq-title" id="npc-qtitle"></div>
@@ -3873,10 +4021,27 @@
     <div id="notice-box" class="nb">
       <div class="nb-list">
         <div class="nb-head"><h2 id="notice-title">📮 새 소식</h2><span id="notice-count" class="nb-count"></span><button id="notice-x" class="nb-x" type="button" aria-label="닫기">✕</button></div>
+        <div id="notice-tabs" class="nb-tabs" hidden><button type="button" data-tab="news" class="on">📮 소식</button><button type="button" data-tab="letters">✉️ 편지</button></div>
         <div id="notice-list" class="nb-items"></div>
         <button id="notice-ok">알겠어요 🌱</button>
       </div>
       <div id="notice-detail" class="nb-det"></div>
+    </div>
+  </div>
+
+  <div id="affintro-modal">
+    <div class="afi tk-box">
+      <div class="afi-h"><span class="afi-face" id="afi-face"></span><b id="afi-title"></b></div>
+      <div class="afi-hero"><img id="afi-img" alt=""><p id="afi-body"></p></div>
+      <div class="afi-ways"><span>🎁 선물 주기 (하루 ❤️2)</span><span>🔁 반복 의뢰 ❤️+1</span></div>
+      <div class="afi-acts"><button id="afi-go" type="button">🎁 선물 만들러 가기</button><button id="afi-later" type="button">나중에</button></div>
+    </div>
+  </div>
+
+  <div id="npcbook-modal">
+    <div class="nbk">
+      <div class="nbk-head"><h2>📒 주민 수첩</h2><button id="npcbook-x" class="nb-x" type="button" aria-label="닫기">✕</button></div>
+      <div id="npcbook-body"></div>
     </div>
   </div>
 
@@ -4016,42 +4181,35 @@
 
   <script type="module">
     import { hasStoredAuthSession, loginFirst } from './js/boot-order.js';
-    import { preloadSupabase, initAuth, signInWithGoogle, signInWithApple, requestEmailCode, verifyEmailCode, holdGuestForLogin, signInWithToss, signInWithPlayGames, signInWithGameCenter, deleteMyAccount, signInAsGuest, startLocalGuest, loadGame, signOut, submitFeedback, state as authState, getAccessToken, listPhotos, insertPhotoRow, deletePhotoRow, fetchNotices, insertInstallAttribution, insertInstallSurvey } from './js/supabase-client.js';
+    import { preloadSupabase, initAuth, signInWithGoogle, signInWithApple, requestEmailCode, verifyEmailCode, holdGuestForLogin, resumeHeldGuest, signInWithToss, signInWithPlayGames, signInWithGameCenter, deleteMyAccount, signInAsGuest, startLocalGuest, loadGame, signOut, submitFeedback, state as authState, fetchNotices, insertInstallAttribution, insertInstallSurvey } from './js/supabase-client.js';
     import { renderDailyCard } from './js/daily-card.js';
-    import { hydrateIcons, setIcon, iconText, iconHtml, iconById, startEmojiIcons } from './js/icons/index.js';
+    import { hydrateIcons, setIcon, iconHtml, startEmojiIcons } from './js/icons/index.js';
     import { renderToast, renderTiles, buffTiles, fillTiles } from './js/ui-cards.js';
     import { mountEmailLogin } from './js/auth/email-login.js';   // ✉️ 이메일 코드 로그인(웹·itch)
+    import { requestEmailHandoff, pendingEmailHandoff, takeEmailHandoff } from './js/auth/email-handoff.js';
     import { mountInAppLogin, INAPP_COPY, trackHandoffArrival } from './js/auth/in-app-login.js';
     import { e5Decision } from './js/exp-e5-boot.js';
     import { guestFirst, E5_COPY } from './js/exp-e5.js';
-    import { savePhotoNative, sharePhotoNative, shareUrlNative } from './js/photo-native.js';   // 📱 앱: WebView 는 download·share 를 못 한다
+    import { shareUrlNative } from './js/photo-native.js';   // 📱 앱: WebView 는 download·share 를 못 한다
     import { capPlugin } from './js/cap-bridge.js';
-    import { bootTenjin, identifyTenjinUser, trackTenjinGameStart } from './js/tenjin-native.js';
-    import { SELL_ICO_G } from './js/data/sell-icons.js';
-    import { sellList, clampQty, itemName } from './js/shop/sell-rules.js';
-    import { FORAGE_KEYS, FORAGE_META } from './js/forage/logic.js';
+    import { bootTenjin, identifyTenjinUser, trackTenjinGameStart, tenjinFromTrack, tenjinSignup, initTenjinOnce } from './js/tenjin-native.js';
     import { consumeExit, markExit } from './js/exit-flag.js';   // 🚪 나가기 직후엔 토스·플레이 앱 자동 연결을 건너뛴다 · 🗑️ 계정 삭제 뒤에도
     import { pickText, quoteLine, parseBody, leadEmoji, noticeTone } from './js/notices.js';   // 📮 소식함 — 언어별 본문·답장 원문 인용·'|' 표 파서
     import { isTouchDevice } from './js/touch-sim.js';
     import { toneById, applyTone } from './js/ui/npc-tone.js';
     import { PLATFORM, IS_TOSS, IS_ITCH, IS_ANDROID, IS_IOS, IS_NATIVE } from './js/platform.js';   // 🔵 앱인토스 웹뷰 여부(로그인 버튼 전환) · 🎮 itch iframe 여부 · 📱 구글 플레이 앱
-    import { loadGameModules, bootWorld, enterGame, requestSave, getGameState, isAtOrchard, mapLocked, npcAccept, npcClaim, Input, markNoticesSeen, resyncPurchases, initPush, offerPush, playChestReveal, stopChestReveal, initControls, initCafeGuests, initNightVisit, initDuel, openDecorAlbum, villageMap, requestMapSnapshot } from './js/game-lazy.js';
-    import { bootReferral, inviteBanner, referralOnPlay, openInviteSheet, referralEnabled } from './js/referral/index.js';   // 🤝 친구 초대
+    import { loadGameModules, installGameUi, bootWorld, enterGame, requestSave, getGameState, isAtOrchard, mapLocked, npcAccept, npcClaim, Input, markNoticesSeen, resyncPurchases, grantItems, initPush, offerPush, playChestReveal, stopChestReveal, initControls, initCafeGuests, initNightVisit, initDuel, openDecorAlbum, villageMap, requestMapSnapshot } from './js/game-lazy.js';
+    import { bootReferral, inviteBanner, inviteCodeLine, linkInstallInvite, referralOnPlay, openInviteSheet, referralEnabled } from './js/referral/index.js';   // 🤝 친구 초대
     import { signupGiftOnPlay } from './js/signup-gift/index.js';
+    const promoGift = (() => { let p = null; return () => (p ??= import('./js/promo-gift/index.js')); })();
     import { nudgeView } from './js/signup-gift/copy.js';
     import { bootAppBanner, mountAppBanner } from './js/app-banner-ui.js';
     import { mountLoginStore } from './js/login-store-ui.js';
     import { createLoginDwell } from './js/login-dwell.js';
-    import { renderDock } from './js/boat/dock-ui.js';
     import { resultCardHtml } from './js/boat/result-card.js';
     import { BOATS } from './js/boat/boats.js';
     import { RIVER_LEN } from './js/boat/consts.js';
     import { questPanelView } from './js/quest-panel-view.js';
-    import { createForgeGame } from './js/workbench/forge-ui.js';
-    import { toolView, outView, giftView, carveView, pickSel, allItems, tourPick } from './js/workbench/bench-view.js';
-    import { listHtml, sheetHtml } from './js/workbench/bench-ui.js';
-    import { benchSteps } from './js/onboarding/bench-steps.js';
-    import { FORGE_COPY } from './js/workbench/copy.js';
     import { trackLogin, trackEvent, setGaUser, onTrack, setInstallUserProps, setSurveyUserProps } from './js/analytics.js';
     import { bootMetaPixel, metaFromTrack, metaSignup } from './js/meta-pixel.js';   // 📣 Meta Pixel(웹 전용) — 광고 → 가입 → 결제 여정
     import { bootInstallReferrer, syncInstallAttribution, cachedInstallAttribution } from './js/install-referrer-boot.js';   // 📲 안드로이드 설치 채널(Play Install Referrer)
@@ -4062,12 +4220,18 @@
     import { CONFIG, IS_DEV_SESSION } from './js/config.js';
     import { initMobileHud } from './js/hud/mobile-hud.js';
     import { initHudShell } from './js/hud/hud-shell.js';
+    import { createQuestChips } from './js/hud/quest-chips.js';
+    import { chipIntroNext, CHIP_INTRO_KEYS } from './js/hud/quest-chips-model.js';
     import { createMenuSheet } from './js/hud/menu-sheet.js';
     import { nicknameChecks } from './js/nickname-filter.js';
     import { createNickStep } from './js/nickname-step.js';
     import { createSpotlight } from './js/hud/spotlight.js';
+    import { modalQueue } from './js/guide/modal-queue.js';
+    import { BANNER_STATS0, enqueueBanner, pickBanner, noteBannerShown, yieldedBanner } from './js/guide/banner-queue.js';
     import { pillHintKey, spotSteps, treeSteps } from './js/onboarding/spot-steps.js';
-    import { Sound, startBGM, toggleBGM, isBGMOn } from './js/sound.js';
+    import { dueTip, tipsLeft, TIP_ARM } from './js/onboarding/jit-tips.js';
+    import { guideArbiter } from './js/guide/arbiter.js';
+    import { Sound, startBGM, toggleBGM } from './js/sound.js';
     import { t, LANG, setLang, translateDom, watchDom } from './js/i18n.js';   // 🌐 i18n(한국어 원문 키 사전)
     import { TUNING, isBetaA, betaDay } from './js/tuning.js';
 
@@ -4184,7 +4348,9 @@
     // 🪧 시설 배너 큐 — 그 앞에 있으면 3초(읽을 시간), 이미 지나쳤으면 1.4초로 빠르게 흘림.
     //    읽는 중 자리를 뜨면 최소 1.4초만 채우고 조기 페이드아웃 — 연속으로 지나쳐도 큐가 안 밀린다
     //    (실기기 피드백: 5초/2.2초는 안내가 한참 뒤에 떠서 답답했음)
-    const hintBQ = []; let hintBShowing = false;
+    let hintBQ = Object.freeze([]); let hintBShowing = false;
+    let hintBRetry = 0, hintBChainT = 0, hintBStats = BANNER_STATS0, hintBSession = 0;
+    let chipIntroAt = -Infinity, chipIntroLive = false;
     const HINT_B_MIN = 1400, HINT_B_FULL = 3000, HINT_B_ATTN = 8000;   // attention 배너는 시선이 늦게 가도 읽게 8초
     function swapIntoLeftSlot(el) {
       if (!document.body.classList.contains('is-touch') || document.body.classList.contains('coaching')) return null;
@@ -4198,12 +4364,31 @@
       target.style.visibility = 'hidden';
       return () => { target.style.visibility = ''; el.classList.remove('slot-swap'); el.style.top = ''; el.style.left = ''; };
     }
+    function bannerVisibleNow() {
+      const b = document.body.classList;
+      if (!hintBSession || !b.contains('playing') || b.contains('quest-sheet-open') || chipIntroLive || ui.anyModalOpen()) return false;
+      return getComputedStyle($('hint-banner')).display !== 'none';
+    }
+    function bannerCtx() {
+      const now = Date.now();
+      return { visible: bannerVisibleNow(), tutorial: tutorialRunning(), modalDue: modalQueue.due(), now, sessionStart: hintBSession || now, ...hintBStats };
+    }
     function nextHintBanner() {
-      const item = hintBQ.shift();
-      if (!item) { hintBShowing = false; document.body.classList.remove('hintbanner'); return; }
+      clearTimeout(hintBRetry);
+      const pick = hintBQ.length ? pickBanner(hintBQ, bannerCtx()) : null;
+      if (pick && !pick.item) hintBQ = pick.rest;
+      if (!pick?.item) {
+        hintBShowing = false; document.body.classList.remove('hintbanner');
+        if (hintBQ.length) hintBRetry = setTimeout(nextHintBanner, 500);
+        return;
+      }
+      const item = pick.item;
+      hintBQ = pick.rest;
       hintBShowing = true;
-      if (item.slotQuest && document.body.classList.contains('cine-open')) { hintBQ.unshift(item); setTimeout(nextHintBanner, 400); return; }
-      document.body.classList.add('hintbanner');
+      hintBStats = noteBannerShown(hintBStats, item, Date.now());
+      try { item.burn?.(); } catch (e) { console.warn('banner burn failed', e); }
+      clearTimeout(hintBChainT);
+      document.body.classList.add('hintbanner', 'hb-chain');
       $('hb-ico').textContent = item.ico || '🌿';
       $('hb-img').hidden = !item.img;
       if (item.img) $('hb-img').src = item.img;
@@ -4218,20 +4403,26 @@
       el.classList.toggle('tap', !!item.onTap);
       const near = item.near || (() => true);   // 판정 없는 배너는 기존처럼 3초
       const t0 = Date.now();
-      let timer, watch, settled = false;
+      let timer, watch, yieldT, settled = false;
       try { item.onShow?.(); } catch (e) { /* 계측 실패가 배너를 막지 않게 */ }
-      const done = (reason = 'timeout') => {
+      const done = (reason = 'timeout', quiet = false) => {
         if (settled) return;
         settled = true;
-        clearTimeout(timer); clearInterval(watch); el.onclick = null;
+        clearTimeout(timer); clearInterval(watch); clearInterval(yieldT); el.onclick = null;
         el.classList.remove('show', 'tap');
         if (swapped) setTimeout(swapped, 250);
-        try { item.onDismiss?.(reason); } catch (e) { /* 계측 실패가 큐를 막지 않게 */ }
+        hintBChainT = setTimeout(() => document.body.classList.remove('hb-chain'), 1000);
+        if (!quiet) try { item.onDismiss?.(reason); } catch (e) { /* 계측 실패가 큐를 막지 않게 */ }
         setTimeout(nextHintBanner, 250);
       };
       el.onclick = item.onTap ? () => { const f = item.onTap; done('tap'); f(); } : null;   // 한 번 탭하면 배너를 걷고 실행
       const hold = item.attention ? HINT_B_ATTN : (near() ? HINT_B_FULL : HINT_B_MIN);
       timer = setTimeout(done, hold);
+      yieldT = setInterval(() => {
+        if (!ui.anyModalOpen()) return;
+        hintBQ = enqueueBanner(hintBQ, yieldedBanner(item));
+        done('modal', true);
+      }, 300);
       if (hold > HINT_B_MIN && !item.attention) watch = setInterval(() => {   // attention 은 조기 종료 없이 8초   // 조기 페이드아웃 감시
         if (Date.now() - t0 >= HINT_B_MIN && !near()) done();
       }, 400);
@@ -4475,6 +4666,7 @@
       el.appendChild(box);
     }
 
+    let noticeArgs = { list: [], kind: 'inbox', seenId: 0 };
     let noticeShown = [];   // 📮 지금 소식 창에 띄운 목록 — 닫을 때 가장 큰 id 를 읽음으로 기록
     let questLast = null;
     const questBarLast = new Map();
@@ -4491,9 +4683,28 @@
       ui.setQuest(questLast);
     });
     questPhoneMQ.addEventListener?.('change', () => { questOpen = !questPhoneMQ.matches && readQuestOpen(); ui.setQuest(questLast); });
-    let hud = null, shell = null, lastToolArgs = null, lastNpcText = null, lastDoorArgs = null, lastTargetIcon = null;
+    let hud = null, shell = null, chips = null, lastToolArgs = null, lastNpcText = null, lastDoorArgs = null, lastTargetIcon = null;
     const menuSheet = createMenuSheet({ Input, t, trackEvent, dotTarget: $('menu-btn'), onOpen: () => runMenuTour() });
     const spot = createSpotlight({ t, trackEvent, blocked: () => spotBlocked() });
+    const TUTORIAL_BODY = ['spot-on', 'intro-open', 'cine-open', 'e1-pending', 'coaching'];
+    const tutorialRunning = () => tutIdx >= 0 || !!spot.active() || !!Input.needsTutorial?.() || TUTORIAL_BODY.some(c => document.body.classList.contains(c));
+    modalQueue.addGate(() => !document.body.classList.contains('playing') || tutorialRunning() || ui.anyModalOpen() || !!document.querySelector('.show > .tut-card'));
+    const CHIP_BUSY_BODY = ['quest-sheet-open', 'mg-open', 'menu-open', 'cine-open', 'intro-open', 'hintbanner'];
+    const chipBusy = () => chipIntroLive || !document.body.classList.contains('playing') || tutorialRunning() || ui.anyModalOpen() || modalQueue.due()
+      || CHIP_BUSY_BODY.some(c => document.body.classList.contains(c));
+    function tickChipIntro() {
+      if (!chips) return;
+      const hints = Object.fromEntries(['chipNew', 'chipOld', 'chipQ', 'chipA'].map(k => [k, Input.hintSeen(k)]));
+      const kind = chipIntroNext({ hints, shown: chips.shown(), now: Date.now(), lastAt: chipIntroAt, busy: chipBusy() });
+      if (!kind) return;
+      chipIntroLive = true;
+      Input.markHintsSeen([CHIP_INTRO_KEYS[kind]]); requestSave();
+      trackEvent('quest_chip_intro', { kind, act: 'show' });
+      chips.intro(kind).then((how) => { chipIntroLive = false; chipIntroAt = Date.now(); trackEvent('quest_chip_intro', { kind, act: how }); });
+    }
+    setInterval(tickChipIntro, 500);
+    const hintQueue = [];
+    const nextHint = () => { if (hintQueue.length) setTimeout(() => { if (!$('hint-modal').classList.contains('show') && hintQueue.length) ui.showHintModal(hintQueue.shift()); }, 0); };
     const camSpotZone = document.createElement('div'); camSpotZone.id = 'cam-spot-zone'; document.body.appendChild(camSpotZone);
     const nickStep = createNickStep({ track: trackEvent });
     addEventListener('pagehide', () => nickStep.leave($('nick-input')?.value || ''));
@@ -4537,9 +4748,11 @@
       },
       // 🪧 시설 첫 접근 비차단 배너 — 입력을 안 받아 이동이 안 끊긴다(상세 규칙은 입장 후 모달 담당)
       openDecorAlbum(html) { $('topleft').classList.remove('open'); $('decor-body').innerHTML = html; $('decor-body').scrollTop = 0; $('decor-album').classList.add('show'); $('decor-album').setAttribute('aria-hidden', 'false'); document.body.classList.add('decor-open'); },
-      showHintBanner({ ico, img, title, line, near, attention, onTap, onShow, onDismiss, slotBottom, slotQuest }) { hintBQ.push({ ico, img, title, line, near, attention, onTap, onShow, onDismiss, slotBottom, slotQuest }); if (!hintBShowing) nextHintBanner(); },
+      showHintBanner({ ico, img, title, line, near, attention, onTap, onShow, onDismiss, slotBottom, slotQuest, kind = 'misc', key, burn, live }) { hintBQ = enqueueBanner(hintBQ, { ico, img, title, line, near, attention, onTap, onShow, onDismiss, slotBottom, slotQuest, kind, key, burn, live }); if (!hintBShowing) nextHintBanner(); },
       // 튜토리얼 코치 진행 중 여부 — game.js 가 근접 배너를 억제할 때 확인
       coachActive() { return tutIdx >= 0 || !!spot?.active(); },
+      spotActive() { return !!spot?.active(); },
+      tutorialOverlay() { return !!spot?.active() || ['spot-on', 'intro-open', 'cine-open', 'e1-pending'].some(c => document.body.classList.contains(c)) || !!document.querySelector('.show > .tut-card'); },
       setInventory(inv) {
         lastInv = inv;
         const set = (id, v) => { const e = $(id); if (e) e.textContent = v; };
@@ -4638,12 +4851,12 @@
         const p = $('quest-panel');
         const list = (!v ? [] : Array.isArray(v.items) ? v.items : Array.isArray(v) ? v : [v]).filter(q => q && q.title);
         const more = (v && !Array.isArray(v) && v.more) || 0;
-        if (!list.length) { p.classList.remove('show', 'collapsible'); document.body.classList.remove('quest-open'); $('quest-list').textContent = ''; $('quest-more').textContent = ''; $('quest-toggle').textContent = ''; return; }
+        if (!list.length) { p.classList.remove('show', 'collapsible'); document.body.classList.remove('quest-open'); $('quest-list').textContent = ''; $('quest-more').textContent = ''; $('quest-toggle').textContent = ''; renderAffTrack(); chips?.sync(list); return; }
         p.classList.add('show');
         const box = $('quest-list'); box.textContent = '';
         //  세로가 아주 짧은 화면(폰 가로·분할 화면)에선 펼친 카드 한 장도 안 들어간다 → 전부 요약형으로.
         //  요약형은 주민 이름을 진행도 줄이 물고 있어서, 줄여도 "누구 의뢰인지" 는 남는다.
-        const view = questPanelView(list, { phone: questPhoneMQ.matches, open: questOpen, short: window.innerHeight < 560, more });
+        const view = questPanelView(list, { phone: questPhoneMQ.matches, open: questOpen, short: window.innerHeight < 560, more, sheet: !!chips });
         p.classList.toggle('collapsible', !!view.toggle);
         document.body.classList.toggle('quest-open', view.toggle === '접기');
         view.items.forEach(({ q, mode }) => {
@@ -4684,6 +4897,8 @@
         });
         $('quest-more').textContent = view.more ? `+ ${view.more}건 더` : '';
         $('quest-toggle').textContent = view.toggle || '';
+        renderAffTrack();
+        chips?.sync(list);
       },
       // 낚시 프롬프트(던지는 중 / 물었어요!)
       setFishPrompt(text) {
@@ -4708,8 +4923,10 @@
         $('npc-emoji').textContent = view.npc.emoji || '🙂';
         applyTone(document.querySelector('#npc-modal .tk-box'), toneById(view.npc.id));
         $('npc-name').textContent = view.npc.name;
-        const aff = Input.affinityOf(view.npc.id);
-        $('npc-hearts').textContent = aff > 0 ? ('❤️'.repeat(Math.min(aff, 5)) + (aff > 5 ? `×${aff}` : '')) : '';
+        const chipNpc = view.npc.id;
+        lastNpcOpen = chipNpc;
+        $('npc-hearts').textContent = Input.affinityVisible(chipNpc) ? Input.affinityChip(chipNpc) : '';
+        $('npc-hearts').onclick = () => { lastNpcOpen = null; closeNpc(); ui.openNpcBook(chipNpc, 'chip'); };
         $('npc-line').textContent = view.line;
         const quest = $('npc-quest');
         if (view.mode === 'done') {
@@ -5027,6 +5244,7 @@
       },
       // 시설 첫 접근 안내 카드 모달
       showHintModal({ ico, title, body, ok, alt, preview }) {
+        if ($('hint-modal').classList.contains('show') && (alt || !$('hint-alt').hidden)) { hintQueue.push({ ico, title, body, ok, alt, preview }); return; }
         $('hint-emoji').textContent = ico || '🌿';
         $('hint-title').textContent = title || '';
         // 🔔 preview: 알림 미리보기 블록(푸시 안내 카드) — 다른 안내가 덮어쓸 땐 숨긴다
@@ -5060,14 +5278,28 @@
         const nextOk = ok?.onClick ? () => ok.onClick() : null;
         okb.onclick = (prevOk && nextOk) ? () => { prevOk(); nextOk(); } : (nextOk || prevOk);
         altb.hidden = !alt;
-        if (alt) { altb.textContent = alt.label; altb.onclick = () => { $('hint-modal').classList.remove('show'); alt.onClick?.(); }; }
+        if (alt) { altb.textContent = alt.label; altb.onclick = () => { $('hint-modal').classList.remove('show'); alt.onClick?.(); nextHint(); }; }
         Input.setAnalog(0, 0);   // 모달 뜨는 동안 이동 정지
         $('hint-modal').classList.add('show');
       },
       // 📮 소식함 — kind 'new'(출석 직후: 안 읽은 것만) / 'inbox'(메뉴: 최근 목록). 닫으면 notice-ok 리스너가 읽음 처리
       //    유저·관리자 문자열은 전부 textContent 로만 넣는다(innerHTML 금지). 영어 모드 본문은 pickText 가 *_en 우선
-      showNotices(list, kind = 'inbox', seenId = 0) {
+      showNotices(list, kind = 'inbox', seenId = 0, opts = {}) {
         $('notice-title').textContent = kind === 'new' ? '📮 새 소식' : '📮 소식함';
+        const tabs = $('notice-tabs');
+        tabs.hidden = kind !== 'inbox';
+        noticeArgs = { list, kind, seenId };
+        const letterTab = kind === 'inbox' && opts.tab === 'letters';
+        tabs.querySelectorAll('button').forEach(b => b.classList.toggle('on', (b.dataset.tab === 'letters') === letterTab));
+        if (letterTab) {
+          import('./js/affinity/letters-ui.js').then(({ renderLetters }) => {
+            renderLetters({ box: $('notice-box'), wrap: $('notice-list'), det: $('notice-detail'), countEl: $('notice-count'),
+              Input, t, toast: (m) => ui.toast(m, 2000), focusKey: opts.key || null, wide: () => matchMedia('(min-width: 720px)').matches });
+            Input.setAnalog(0, 0);
+            $('notice-modal').classList.add('show');
+          });
+          return;
+        }
         const box = $('notice-box'), wrap = $('notice-list'), det = $('notice-detail');
         wrap.innerHTML = ''; det.innerHTML = '';
         box.classList.remove('open');
@@ -5264,7 +5496,7 @@
         const el = $('door-prompt');
         nearDoorNow = !!text && !opts?.info;   // 안내만 있는 줄(누를 게 없음)은 액션 버튼을 문으로 바꾸지 않는다 — 🪞 단서 줄이 🚪 로 떠 "뭔지 모르겠다"(2026-10-09)
         const t = text || '';
-        doorIcon = /^(❗|⛏️|🍄|🛗|🪜|🧰|🪞|🚏|💬|💧|🎁|🔙|🎃|🪏|🍽️|🍽|✋|🫳|🔪|🍳|🗑️)/u.test(t) ? t.match(/^(❗|⛏️|🍄|🛗|🪜|🧰|🪞|🚏|💬|💧|🎁|🔙|🎃|🪏|🍽️|🍽|✋|🫳|🔪|🍳|🗑️)/u)[1]   // 🪞 거울 마을 — 문구 첫 이모지 = 버튼 아이콘(영어판도 같다). 키워드 사슬보다 먼저(「요리사 판다」가 🍳 로 떴다)
+        doorIcon = /^(❗|⛏️|🍄|🛗|🪜|🧰|🪞|🚏|💬|💧|🎁|🔙|🎃|🪏|🍽️|🍽|✋|🫳|🔪|🍳|🗑️|🐟)/u.test(t) ? t.match(/^(❗|⛏️|🍄|🛗|🪜|🧰|🪞|🚏|💬|💧|🎁|🔙|🎃|🪏|🍽️|🍽|✋|🫳|🔪|🍳|🗑️|🐟)/u)[1]   // 🪞 거울 마을 — 문구 첫 이모지 = 버튼 아이콘(영어판도 같다). 키워드 사슬보다 먼저(「요리사 판다」가 🍳 로 떴다)
           : t.includes('비료') ? '🌱' : t.includes('주문판') ? '📋'
           : (t.includes('서빙') || t.includes('재료 부족') || t.includes('카페')) ? '☕'
           : t.includes('요리') ? '🍳' : t.includes('만들기') ? '🔧' : t.includes('상점') ? '🛒' : t.includes('일차에 열려요') ? '🔒' : t.includes('랭킹') ? '🏆' : t.includes('닭장') ? '🐔'
@@ -5537,6 +5769,7 @@
       // 인터랙티브 튜토리얼: 게임에서 행동 성공 시 호출 → 현재 단계면 진행
       act(type) {
         spot?.notify('act:' + type);
+        if (type === 'camtwo') camTried = true;
         if (tutIdx < 0) return;
         if (TUT_STEPS[tutIdx].key === type) {
           trackEvent('tutorial_step', { step: tutIdx + 1, key: TUT_STEPS[tutIdx].key }); // [①] 단계 완료
@@ -5584,7 +5817,13 @@
         showWhenReady();
       },
     };
-    const closeNpc = () => { $('npc-modal').classList.remove('show'); flushPendingToasts(); };
+    let lastNpcOpen = null;
+    const closeNpc = () => {
+      $('npc-modal').classList.remove('show'); flushPendingToasts();
+      const intro = lastNpcOpen && Input.affinityIntroFor(lastNpcOpen);
+      lastNpcOpen = null;
+      if (intro) modalQueue.request({ kind: 'affinity', key: 'affintro', show: () => ui.showAffinityIntro(intro, 'npc') });
+    };
 
     // ── 💬 주민과 잡담 ───────────────────────────────────────────
     //  의뢰와 무관한 순수 플레이버다. 보상이 0 — 선물(재료를 쓴다)·접객의 가치를
@@ -5801,7 +6040,7 @@
         b.addEventListener('click', () => {
           const res = Input.giveGift(g.id);
           if (!res.ok) { ui.toast(res.msg || '줄 수 없어요'); return; }
-          ui.toast(`${res.ico} 선물 전달! ${res.npc} ❤️${res.affinity}` + (res.reward ? ` · 답례 ${res.reward}` : ''));
+          if (!res.toasted) ui.toast(`${res.ico} 선물 전달! ${res.npc} ❤️${res.affinity}`);
           closeNpc();
         });
         actions.appendChild(b);
@@ -5911,8 +6150,11 @@
     function placeCoach() {
       const r = $('minimap')?.getBoundingClientRect();
       if (!r || !r.height) return;
-      document.body.style.setProperty('--coach-top', Math.round(r.bottom + 8) + 'px');
-      document.body.style.setProperty('--coach-left', Math.round(r.left) + 'px');
+      const qb = $('qc-btns')?.getBoundingClientRect();
+      const side = qb?.height && innerWidth > innerHeight;
+      const top = side ? qb.top : Math.max(r.bottom, qb?.height ? qb.bottom : 0) + 8;
+      document.body.style.setProperty('--coach-top', Math.round(top) + 'px');
+      document.body.style.setProperty('--coach-left', Math.round(side ? qb.right + 8 : r.left) + 'px');
     }
     window.addEventListener('resize', () => { if (tutIdx >= 0) placeCoach(); });
     // 카드 실제 높이를 CSS 로 넘긴다 — 토스트가 이 값을 기준으로 아래에 선다.
@@ -5942,7 +6184,7 @@
         Input.armTutorialMove();
         await spot.run(steps, { kind: 'full', startAt: src === 'help' ? 0 : left, skip: src === 'help' ? 'all' : 'optional', onStep: (s) => { Input.markHintsSeen(['spot_' + s.key]); requestSave(); } });
       }
-      Input.markHintsSeen(['spotV2', 'spot_cam']);
+      Input.markHintsSeen(['spotV2', TIP_ARM]);
       if ($('worldmap').classList.contains('show')) closeWorldMap();
       startCoach();
       showStoryMapOnce(null);
@@ -5964,10 +6206,11 @@
       Input.markHintsSeen(['spotTree']); requestSave();
       setTimeout(() => spot.run(treeSteps(plan), { kind: 'tree', skip: 'all', blocked: () => !$('tree-modal')?.classList.contains('show') }), 60);
     }
+    let camTried = false;
     function runCamTour() {
       if (!spot || Input.needsTutorial() || !Input.hintSeen('spotV2')) return false;
       if (Input.hintSeen('spot_cam')) return true;
-      if (spot.active() || spotBlocked()) return false;
+      if ((TOUCH && !camTried) || spot.active() || spotBlocked()) return false;
       Input.markHintsSeen(['spot_cam']); requestSave();
       spot.run(spotSteps('cam', TOUCH), { kind: 'cam', skip: 'all' });
       return true;
@@ -5978,6 +6221,24 @@
       Input.markHintsSeen([key]); requestSave();
       spot.run(spotSteps('pill', true, info), { kind: 'pill' });
     }
+    let tipDexBase = null;
+    function runTipTour() {
+      const seen = (k) => Input.hintSeen(k);
+      if (!spot || !tipsLeft(seen)) return;
+      const dexCount = Input.getDex().count;
+      tipDexBase ??= dexCount;
+      const name = dueTip({
+        coachStep: tutIdx >= 0 ? TUT_STEPS[tutIdx]?.key : null,
+        merchantMet: seen('merchantMet'),
+        dexCount, dexBase: tipDexBase,
+        busy: spot.active() || spotBlocked() || guideArbiter.anyActive('coach'),
+      }, seen);
+      if (!name) return;
+      const steps = spotSteps(name, TOUCH);
+      Input.markHintsSeen(steps.map(s => 'spot_' + s.key)); requestSave();
+      spot.run(steps, { kind: 'tip', skip: 'all' });
+    }
+    setInterval(runTipTour, 1500);
     function startCoach(fromKey) {
       applyBetaTutorialOrder();   // 명단 조회가 늦게 끝났을 때를 대비해 여기서도 한 번 더
       const key = TUT_OLD_KEYS[fromKey] || fromKey;
@@ -5995,6 +6256,7 @@
       hud?.setCoachStep(null);
       Input.setTutStep('done');
       document.body.classList.remove('coaching', 'coach-quest');   // 코치 종료 → 토스트 원위치
+      modalQueue.flush();
       if (done) {
         ui.toast('🎉 튜토리얼 졸업! 이제 마을을 자유롭게 가꿔보세요 🌿');
         Input.markHintsSeen?.(['shop', 'mineGate']);
@@ -6005,7 +6267,7 @@
         nudgeGuideOnce();   // 📖 졸업·중간 건너뛰기 직후 안내서 배너(1회)
         Input.orchardQuestAfterTutorial?.();   // 🌾→🍎 튜토리얼 중 첫 수확으로 미뤄 둔 과수원 가는 길 의뢰
         Input.cosQuestAfterTutorial?.();
-        offerPush();                           // 🔔 튜토리얼 중 수확했으면 졸업 뒤 알림 안내(안드로이드·1회)
+        offerPush();                           // 🔔 수확 직후 카드가 다른 창에 밀렸으면 졸업 뒤 다시(앱·1회)
       };
       if (!Input.queueChapterShot?.(after)) after();
     }
@@ -6043,14 +6305,20 @@
       trackEvent('login_screen', { reason: why, inapp: inAppLogin.app || undefined });   // [GA4] 토스 유저 중 몇 %가 이 화면을 보는지
       loginStore?.shown();
       loginDwell.start();
-      try { if (sessionStorage.getItem('cf_login_email')) {
-        const from = sessionStorage.getItem('cf_login_email_from') || 'login_nudge';
-        sessionStorage.removeItem('cf_login_email');
-        sessionStorage.removeItem('cf_login_email_from');
-        emailLogin.openEmail({ from });
-      } } catch { }
+      const handoff = takeEmailHandoff(sessionStorage);
+      if (handoff) emailLogin.openEmail({ from: handoff.from });
       const inv = inviteBanner();                    // 🤝 초대 링크로 왔으면 — 로그인하면 하트핀
-      if (inv) { $('login-invite').textContent = inv; $('login-invite').classList.add('show'); }
+      if (inv) {
+        $('login-invite').textContent = inv;
+        const codeLine = loginStore && loginStore.plan.device !== 'pc' ? inviteCodeLine() : null;
+        if (codeLine) {
+          const line = document.createElement('span');
+          line.className = 'inv-code-line';
+          line.textContent = codeLine;
+          $('login-invite').append(line);
+        }
+        $('login-invite').classList.add('show');
+      }
     }
 
     let started = false;
@@ -6080,6 +6348,7 @@
           initCafeGuests();
           initNightVisit();
           initDuel();
+          gameUi = installGameUi({ $, ui, layoutBuffs, TOUCH, spot, refreshActionIcon, escapeHtml, isGuestNow, lastInv: () => lastInv, shell: () => shell, setPlacingDecorItem: (d) => { placingDecorItem = d; } });
           return bootWorld(ui);
         }).then(() => {
           $('loading').style.display = 'none';
@@ -6097,6 +6366,7 @@
       if (TOUCH) document.body.classList.add('is-touch');
       document.body.classList.add('playing');        // HUD 표시(로그인 화면에선 숨김)
       if (!shell) shell = initHudShell({ Input, t, trackEvent, menu: menuSheet });
+      if (TOUCH && !chips) { chips = createQuestChips({ panel: $('quest-panel'), t, trackEvent, tracker: () => Input.affinityTracker?.(true), unread: () => Input.unreadLetterCount?.() || 0 }); ui.setQuest(questLast); }
       if (TOUCH && !hud) {
         hud = initMobileHud({ Input, t, act: (k) => ui.act(k), trackEvent, onPill: (info) => runPillTour(info) });
         if (lastToolArgs) hud.onTool(...lastToolArgs);
@@ -6108,6 +6378,7 @@
       shell.layoutLeft();
       trackLogin(via || authState.loginVia || authState.provider || 'offline');   // [GA4] 로그인 이벤트 — 수단 기준(🍎 구글 계정에 붙은 Apple 은 apple)
       authState.betaReady?.then(() => metaSignup({ userId: authState.userId, isGuest: authState.isGuest, createdAt: authState.createdAt })).catch(() => {});   // 📣 가입 직후 첫 진입만(createdAt 은 betaReady 가 채운다)
+      if (IS_NATIVE) authState.betaReady?.then(() => tenjinSignup({ userId: authState.userId, isGuest: authState.isGuest, createdAt: authState.createdAt })).catch(() => {});
 
       // 🧪 [베타 2차] 일지 버튼 — 베타 테스터(beta_*)에게만. 새 탭으로 열어 게임은 그대로 둔다.
       // 🧪 [베타 2차] 명단 조회(비동기)가 끝난 뒤에만 variant 를 믿는다 — enterPlay 는 조회 전에 돈다
@@ -6129,12 +6400,16 @@
 
       showLoginStatus(authState);
       await enterGame();                             // 저장 로드 + 조작/로깅 on
-      if (IS_NATIVE) void trackTenjinGameStart();
+      hintBSession = Date.now();
+      if (IS_NATIVE) { initTenjinOnce(!Input.needsTutorial()); void trackTenjinGameStart(); }
       maybeHudTour();
       try { initPush(); } catch (e) { console.warn('[push] init skipped', e); }   // 🔔 안드로이드만 — 허용한 사람 조용히 재등록·설정 토글
       // 🤝 친구 초대 — 초대받았으면 연결(하트핀), 내가 초대한 친구 정산. 기다리지 않는다(실패해도 게임 진행)
       referralOnPlay({ auth: authState, toast: (m) => ui.toast(m, 2800), track: trackEvent, resync: resyncPurchases });
-      signupGiftOnPlay({ auth: authState, track: trackEvent, resync: resyncPurchases, ui });
+      promoGift().then(m => m.promoGiftOnPlay({ auth: authState, track: trackEvent, ui, grant: (b) => grantItems(b) }))
+        .then(r => { if (r.views.some(v => v.stage === 2)) return resyncPurchases('promo_gift', { quiet: true }); })
+        .catch(() => null)
+        .finally(() => signupGiftOnPlay({ auth: authState, track: trackEvent, resync: resyncPurchases, ui }));
       // 📲 앱 유도 배너 — 웹·안드로이드/아이폰·스토어가 열린 OS 에서만(TUNING.appBanner.storeLive). 실패해도 게임 진행
       try {
         mountAppBanner({
@@ -6234,7 +6509,7 @@
                                                         : '이번엔 게스트로 시작해요. 진행은 이 기기에만 임시 저장돼요.', 4000), 2200);
     });
     $('guest-btn').addEventListener('click', async () => {
-      const r = await signInAsGuest(); await enterPlay();
+      const r = resumeHeldGuest() || await signInAsGuest(); await enterPlay();
       if (r && r.online === false) ui.toast('게스트 오프라인 모드 — 진행은 되지만 저장은 안 돼요');
     });
     $('logout-btn').addEventListener('click', () => signOut());
@@ -6247,110 +6522,6 @@
     const closeFb = () => { fbModal.classList.remove('show'); };
     $('feedback-tab').addEventListener('click', openFb);
 
-    // ── 📖 초보자 안내서 패널 ──────────────────────────────────────
-    //  · fragment(guide/guide.html)를 fetch 해 DOM 에 직접 주입(iframe 금지: iOS 웹뷰 스크롤·X-Frame-Options)
-    //  · 열리면 body.guide-open 으로 HUD 숨김 + keydown capture 로 게임 입력 차단(Esc 만 닫기)
-    //  · 토스 번들은 CONFIG.GUIDE_BASE 가 웹 오리진 절대 URL 이라 같은 코드로 동작
-    const guidePanel = $('guide-panel'), guideBody = $('guide-body'), guideChips = $('guide-chips');
-    let guideLoaded = false, guideOpenedAt = 0, guideCurSec = '', guideScrollY = 0, guideSecTimer = null, guideCssLinked = false, guideIo = null;
-    const guideAbs = (rel) => new URL(rel, new URL(CONFIG.GUIDE_BASE, location.href)).href;
-    function buildGuideChips(root) {
-      guideChips.innerHTML = '';
-      const secs = [...root.querySelectorAll('section.gd-sec')].filter(s => !s.dataset.dev || root.classList.contains('dev-' + s.dataset.dev));
-      for (const sec of secs) {
-        const h2 = sec.querySelector('h2');
-        const b = document.createElement('button');
-        b.textContent = h2?.dataset.chip || h2?.textContent || sec.id;
-        b.dataset.sec = sec.id;
-        b.addEventListener('click', () => { sec.scrollIntoView({ block: 'start' }); });   // 즉시 이동 — 웹뷰·reduced-motion 에서도 확실히
-        guideChips.appendChild(b);
-      }
-      guidePanel.querySelector('.gd-toc')?.remove();
-      const toc = document.createElement('nav'), tocList = document.createElement('ol');
-      toc.className = 'gd-toc'; toc.setAttribute('aria-label', LANG === 'en' ? 'Contents' : '목차');
-      for (const sec of secs) {
-        const part = sec.querySelector('[data-part]')?.dataset.part;
-        if (part) { const li = document.createElement('li'); li.className = 'gd-toc-part'; li.textContent = part; tocList.appendChild(li); }
-        const li = document.createElement('li'), a = document.createElement('a'), label = document.createElement('span');
-        a.href = '#' + sec.id; a.dataset.sec = sec.id;
-        label.textContent = sec.querySelector('h2')?.dataset.chip || sec.id;
-        a.append(label, document.createElement('i'));
-        a.addEventListener('click', (e) => { e.preventDefault(); sec.scrollIntoView({ block: 'start' }); });
-        li.appendChild(a); tocList.appendChild(li);
-      }
-      toc.appendChild(tocList); guidePanel.appendChild(toc);
-      guideIo?.disconnect(); guideCurSec = '';
-      const io = guideIo = new IntersectionObserver((entries) => {
-        const hit = entries.filter(e => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-        if (!hit) return;
-        const id = hit.target.id;
-        if (id === guideCurSec) return;
-        guideCurSec = id;
-        for (const b of guideChips.children) b.classList.toggle('on', b.dataset.sec === id);
-        for (const a of toc.querySelectorAll('a')) a.classList.toggle('on', a.dataset.sec === id);
-        guideChips.querySelector('.on')?.scrollIntoView({ inline: 'center', block: 'nearest' });
-        clearTimeout(guideSecTimer);
-        guideSecTimer = setTimeout(() => trackEvent('guide_section', { id }), 800);   // 스크롤 훑기 중엔 안 쏨
-      }, { root: guideBody, rootMargin: '-8% 0px -80% 0px', threshold: 0 });
-      secs.forEach(s => io.observe(s));
-    }
-    async function loadGuide() {
-      guideBody.innerHTML = '<div class="gp-skel"><i></i><i></i><i></i></div>';
-      try {
-        if (!guideCssLinked) {   // 본문 스타일은 fragment 와 같은 곳에서 — 토스에서도 웹 오리진
-          const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = guideAbs('guide.css');
-          document.head.appendChild(l); guideCssLinked = true;
-        }
-        // 🌐 영어 모드는 영어판 fragment(guide/guide-en.html) — 본문 문장은 사전(i18n)으로 못 바꾸므로 파일을 따로 둔다
-        const res = await fetch(guideAbs(LANG === 'en' ? 'guide-en.html' : 'guide.html'));
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const wrap = document.createElement('div'); wrap.className = document.body.classList.contains('is-touch') ? 'gd dev-touch' : 'gd dev-pc'; wrap.innerHTML = await res.text();
-        wrap.querySelectorAll('img[src]').forEach(img => { img.src = guideAbs(img.getAttribute('src')); });
-        guideBody.replaceChildren(wrap);
-        buildGuideChips(wrap);
-        guideLoaded = true;
-      } catch (err) {
-        console.warn('[guide] 안내서 불러오기 실패:', err?.message || err);
-        guideBody.innerHTML = '<div class="gp-err"><p>안내서를 불러오지 못했어요.</p><button id="guide-retry">다시 시도</button></div>';
-        $('guide-retry').addEventListener('click', loadGuide);
-      }
-    }
-    function openGuide(src) {
-      if (guidePanel.classList.contains('show')) return;
-      $('topleft').classList.remove('open');
-      guidePanel.classList.add('show'); guidePanel.setAttribute('aria-hidden', 'false');
-      document.body.classList.add('guide-open');
-      guideOpenedAt = Date.now();
-      if (!guideLoaded) loadGuide(); else guideBody.scrollTop = guideScrollY;   // 세션 안에서는 읽던 자리로
-      trackEvent('guide_open', { src });
-    }
-    function closeGuide() {
-      if (!guidePanel.classList.contains('show')) return;
-      guideScrollY = guideBody.scrollTop;
-      guidePanel.classList.remove('show'); guidePanel.setAttribute('aria-hidden', 'true');
-      document.body.classList.remove('guide-open');
-      trackEvent('guide_close', { sec: guideCurSec, dur: Date.now() - guideOpenedAt });
-    }
-    // 📖 튜토리얼을 마치거나 건너뛴 직후 한 번만: 안내서가 있다는 걸 상단 컨텍스트 슬롯(hint-banner)으로 알린다.
-    //    졸업 토스트와 안 겹치게 3초 뒤. 저장 플래그(guideNudgeSeen)로 두 번 다시 안 뜬다.
-    function nudgeGuideOnce() {
-      if (Input.guideNudgeSeen()) return;
-      Input.markGuideNudgeSeen();
-      setTimeout(() => ui.showHintBanner({
-        ico: '📖', title: '초보자 안내서가 있어요', line: '눌러서 열기 · ☰ 메뉴 → 📖 에서 언제든',
-        near: () => true, attention: true, onTap: () => openGuide('nudge'),
-      }), 3000);
-    }
-    $('guide-close').addEventListener('click', closeGuide);
-    guideBody.addEventListener('click', (e) => {   // 안내서 첫 장 "튜토리얼 다시 보기" — 패널 닫고 환영 모달
-      if (!e.target.closest('[data-act="tutorial"]')) return;
-      closeGuide(); ui.showTutorial('help');
-    });
-    window.addEventListener('keydown', (e) => {   // 패널이 떠 있으면 어떤 키도 게임으로 안 간다(스크롤 등 브라우저 기본은 허용)
-      if (!guidePanel.classList.contains('show')) return;
-      if (e.key === 'Escape') { e.preventDefault(); closeGuide(); }
-      e.stopPropagation();
-    }, true);
     // 모바일 대화하기 버튼 → NPC 대화 실행(근처면 handleAction이 대화로 분기)
     $('talk-btn').addEventListener('click', () => Input.doTalk());
     // NPC 모달 바깥 클릭 시 닫기
@@ -6433,6 +6604,64 @@
       markNoticesSeen(noticeShown); noticeShown = [];
     });
     $('notice-x').addEventListener('click', () => $('notice-ok').click());
+    $('notice-tabs').addEventListener('click', (e) => {
+      const tab = e.target.closest('button')?.dataset.tab;
+      if (!tab) return;
+      ui.showNotices(noticeArgs.list, 'inbox', getGameState().noticeSeenId || 0, { tab });
+    });
+    ui.openNpcBook = async (npcId = null, from = 'menu') => {
+      $('topleft').classList.remove('open');
+      Input.trackBookOpen(from, npcId);
+      const { renderBook } = await import('./js/affinity/book-ui.js');
+      renderBook({ root: $('npcbook-body'), Input, t, focusId: npcId, onLetter: async (key) => {
+        $('npcbook-modal').classList.remove('show');
+        const rows = await fetchNotices(0);
+        ui.showNotices(rows, 'inbox', getGameState().noticeSeenId || 0, { tab: 'letters', key });
+      } });
+      Input.setAnalog(0, 0);
+      $('npcbook-modal').classList.add('show');
+    };
+    $('npcbook-btn').addEventListener('click', () => ui.openNpcBook(null, 'menu'));
+    let afiNpc = null;
+    ui.showAffinityIntro = async (intro, from) => {
+      if (!intro) return;
+      afiNpc = intro.npc;
+      applyTone(document.querySelector('#affintro-modal .afi'), toneById(intro.npc));
+      $('afi-face').textContent = intro.face; $('afi-title').textContent = intro.title; $('afi-body').textContent = intro.body;
+      $('afi-img').removeAttribute('src');
+      Input.markIntroSeen(intro.npc, from);
+      Input.setAnalog(0, 0);
+      $('affintro-modal').classList.add('show');
+      const { affinityThumb } = await import('./js/affinity/thumb.js');
+      const src = affinityThumb(intro.decor, 240);
+      if (src && afiNpc === intro.npc) $('afi-img').src = src;
+    };
+    $('afi-go').addEventListener('click', () => { $('affintro-modal').classList.remove('show'); Input.startAffinityGuide(afiNpc); });
+    $('afi-later').addEventListener('click', () => $('affintro-modal').classList.remove('show'));
+    function renderAffTrack() {
+      const el = $('aff-track');
+      const compact = questPhoneMQ.matches;
+      const v = Input.affinityTracker?.(compact);
+      if (!v) { el.hidden = true; return; }
+      el.hidden = false;
+      el.classList.toggle('start', !!v.start);
+      el.textContent = '';
+      if (v.start) { const b = document.createElement('b'); b.textContent = v.text; el.appendChild(b); el.onclick = () => ui.showAffinityIntro(Input.affinityIntroFor(Input.introNpcForStart(), true), 'tracker'); return; }
+      if (!compact && v.decor) {
+        const img = document.createElement('img'); img.alt = ''; img.className = 'at-th';
+        el.appendChild(img);
+        import('./js/affinity/thumb.js').then(({ affinityThumb }) => { const src = affinityThumb(v.decor, 96); if (src) img.src = src; });
+      }
+      const tx = document.createElement('div'); tx.className = 'at-tx';
+      const b = document.createElement('b'); b.textContent = v.head;
+      const s1 = document.createElement('small'); s1.textContent = v.reward;
+      const s2 = document.createElement('small'); s2.textContent = v.gift;
+      const bar = document.createElement('div'); bar.className = 'at-bar';
+      const fill = document.createElement('i'); fill.style.width = Math.round(v.pct * 100) + '%'; bar.appendChild(fill);
+      tx.append(b, s1, s2, bar); el.appendChild(tx);
+      el.onclick = () => ui.openNpcBook(v.npc, 'tracker');
+    }
+    $('npcbook-x').addEventListener('click', () => $('npcbook-modal').classList.remove('show'));
     // 🤝 친구 초대 시트 — 코드는 처음 열 때 발급. 앱은 네이티브 공유 시트, 웹은 navigator.share → 복사
     $('invite-btn').addEventListener('click', () => {
       $('topleft').classList.remove('open');
@@ -6442,6 +6671,7 @@
     });
     $('invite-close').addEventListener('click', () => $('invite-modal').classList.remove('show'));
     $('invite-modal').addEventListener('click', (e) => { if (e.target.id === 'invite-modal') $('invite-modal').classList.remove('show'); });
+    $('gift-code-btn').addEventListener('click', () => promoGift().then(m => m.openGiftCodeEntry({ auth: authState, track: trackEvent, ui, grant: (b) => grantItems(b) })).catch(() => null));
     // 🐾 캐릭터·꾸미기 — 동물 바꾸기(진행 상황은 그대로) + 🧥 옷장·🐾 펫 탭(2026-09-29)
     $('char-btn').addEventListener('click', () => {
       $('topleft').classList.remove('open');
@@ -6511,357 +6741,7 @@
     $('store-btn').addEventListener('click', () => { if (Input.storeDecor?.()) stopPlacing(); });   // 🧺 든 가구를 창고로(메뉴 안 버튼과 같은 동작)
     window.addEventListener('keydown', (e) => { if ((e.key === 'r' || e.key === 'R') && placingDecorItem) { e.preventDefault(); rotatePlacing(); } });
 
-    // ── 작업대 메뉴 (도구 / 야외 / 선물 탭) — 요리는 🍳 자유주방으로 분리 ──
-    let cookTab = 'tool';
-    // 🌟 bug(반딧불이)가 빠져 있어 촘촘한 포충망·금빛 포충망 비용이 '🪵12 🪵2' 처럼 목재로 보였다(2026-09-24 리뷰)
-    const ico = (k) => ({ fish: '🐟', crop: '🥕', wood: '🪵', stone: '🪨', coal: '⚫', gem: '💎', seed: '🌰', coins: '🪙', bug: '🌟', star: '⭐', glow: '✨' })[k] || SELL_ICO_G[k] || '🪵';
-    const WB_INV = ['wood', 'crop', 'fish', 'stone', 'coal', 'gem'];
-    const WB_WIDE = '(min-width: 700px)';
-    const wbSel = { tool: null, out: null, gift: null, carve: null };
-    function updateCookInv() {
-      $('cook-coin').textContent = `🪙 ${lastInv.coins || 0}`;
-      $('cook-inv').innerHTML = WB_INV.map(k => `<span>${ico(k)} ${lastInv[k] || 0}</span>`).join('');
-    }
-    let forgeGame = null;
-    function forgeGameOf() {
-      forgeGame ||= createForgeGame($('forge-modal'), {
-        onAbort: () => Input.forgeAbort(),
-        onFinish: (score) => Input.forgeFinish(score),
-        onHit: (pts) => (pts ? Sound.chop() : Sound.blip()),
-        onClose: (tool) => { wbSel.tool = tool || wbSel.tool; ui.openCook('tool'); },
-      });
-      return forgeGame;
-    }
-    function startForge(tool) {
-      const v = (Input.getForge?.()?.tools || []).find(x => x.tool === tool);
-      if (!v || v.check.state === 'short') { ui.toast(FORGE_COPY.short); return; }
-      const res = Input.forgeBegin(v.tool);
-      if (!res.ok) { ui.toast(res.msg || FORGE_COPY.short); return; }
-      closeCook();
-      forgeGameOf().open({ tool: v.tool, star: res.star, ico: v.ico });
-    }
-    function benchView(t) {
-      const inv = lastInv;
-      if (t === 'tool') {
-        const fv = Input.getForge?.() || {};
-        return toolView({ upgrades: Input.getUpgrades(), owned: Input.ownedUpgrades(), stars: fv.tools || [], forge: fv.forge, tier2: Input.getTier2?.() || [], weather: Input.getWeatherPrep(), inv });
-      }
-      if (t === 'out') return outView({ outdoor: Input.getOutdoor(), stored: Input.getOutdoorStored?.() || {}, atFarm: !!Input.isAtFarm?.(), inv });
-      if (t === 'gift') return giftView({ gifts: Input.getGifts(), owned: Input.ownedGifts(), kept: Input.keptGifts(), inv });
-      return carveView({ workshop: Input.getWorkshop() });
-    }
-    function benchDone(msg) { ui.toast(msg); renderBench(); }
-    function benchGo(it) {
-      const a = it.act;
-      if (!a || it.btn.disabled) return;
-      if (a.kind === 'forge') { startForge(a.tool); return; }
-      if (a.kind === 'upgrade') {
-        const res = Input.craftUpgrade(a.id);
-        if (!res.ok) { ui.toast(res.msg || '만들 수 없어요'); return; }
-        benchDone(`${it.ico} ${res.name} 제작 완료!`);
-        return;
-      }
-      if (a.kind === 'cover') {
-        const res = Input.craftCover();
-        if (!res.ok) { ui.toast(res.msg || '만들 수 없어요'); return; }
-        benchDone('🛡️ 덮개 설치 완료 — 내일 밭이 안전해요!');
-        return;
-      }
-      if (a.kind === 'tier2') {
-        const res = Input.craftTier2(a.tool);
-        if (!res.ok) { ui.toast(res.msg || '만들 수 없어요'); return; }
-        benchDone(`✨ ${res.name} 제작 완료!`);
-        return;
-      }
-      if (a.kind === 'gift') {
-        const res = Input.craftGift(a.id);
-        if (!res.ok) { ui.toast(res.msg || '재료가 부족해요'); return; }
-        benchDone(`${it.ico} ${res.name} 제작! 주민에게 대화 → 선물 주기`);
-        return;
-      }
-      if (a.kind === 'place') {
-        const o = Input.getOutdoor().find(x => x.id === a.id);
-        if (!o) return;
-        Input.selectOutdoor(o.id); closeCook();
-        placingDecorItem = o; refreshActionIcon();
-        ui.toast(`${o.ico} ${o.name} · ${TOUCH ? '⭕' : 'Space'}로 놓기`, 2400, { chips: true });
-        return;
-      }
-      if (a.kind === 'carve') {
-        const st = Input.carveStart(a.id);
-        if (!st.ok) { ui.toast(st.msg || '재료가 부족해요'); return; }
-        closeCook();
-        openCarveHud(st);
-      }
-    }
-    function renderBench() {
-      updateCookInv();
-      const v = benchView(cookTab);
-      const sel = wbSel[cookTab] = pickSel(v, wbSel[cookTab]);
-      const banner = $('wb-banner');
-      banner.hidden = !v.banner;
-      banner.textContent = v.banner;
-      const list = $('wb-list'), keep = list.scrollTop;
-      list.innerHTML = listHtml(v, sel);
-      list.scrollTop = keep;
-      list.querySelectorAll('.wb-cell').forEach(b => b.addEventListener('click', () => { wbSel[cookTab] = b.dataset.id; renderBench(); }));
-      const it = allItems(v).find(i => i.id === sel);
-      const sheet = $('wb-sheet');
-      sheet.innerHTML = it ? sheetHtml(it, ico) : '';
-      sheet.querySelector('.wb-go')?.addEventListener('click', () => benchGo(it));
-    }
-    function showCookTab(t) {
-      if (t !== cookTab) $('wb-list').scrollTop = 0;
-      cookTab = t;
-      document.querySelectorAll('#cook-menu .ck-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
-      renderBench();
-    }
-    function runBenchTour() {
-      if (!spot || Input.hintSeen('spotBench') || spot.active()) return;
-      const back = cookTab;
-      wbSel.tool = tourPick(benchView('tool')) || wbSel.tool;
-      showCookTab('tool');
-      const hasStars = !!document.querySelector('#wb-list .wb-cell[data-star]');
-      const open = () => $('cook-menu').classList.contains('show');
-      let stepped = false;
-      const markSeen = () => { Input.markHintsSeen(['spotBench']); requestSave(); };
-      setTimeout(() => {
-        if (!open() || spot.active()) return;
-        spot.run(benchSteps({ wide: matchMedia(WB_WIDE).matches, hasStars }), {
-          kind: 'bench', skip: 'all',
-          blocked: () => !open(),
-          pause: () => !!document.querySelector('[id$="-modal"].show, #boat-shop.show, #worldmap.show') || document.body.classList.contains('mg-open'),
-          onStep: () => { stepped = true; },
-        }).then(() => {
-          if (stepped || open()) markSeen();
-          if (back !== 'tool' && open()) showCookTab(back);
-        });
-      }, 60);
-    }
-    document.querySelectorAll('#cook-menu .ck-tab').forEach(b => b.addEventListener('click', () => showCookTab(b.dataset.tab)));
-    function closeCook() { $('cook-menu').classList.remove('show'); document.body.classList.remove('menu-open'); }
-    $('cook-close').addEventListener('click', closeCook);
 
-    // ═══════════════ 🍳 자유주방 — 메뉴판 ═══════════════
-    //  한 요리는 미니게임 여러 판을 이어 치르는 **코스**다. ★ 개수 = 판 수 = 난이도.
-    //  메뉴판이 "이 요리는 무엇을 몇 판 하는가"를 미리 보여주므로, 플레이어가 난이도를 직접 고른다.
-    // 🔥 화덕 미니게임 — 걸 때 한 번. 판정은 js/craft/minigame.js(순수)가 하고 여기선 조작만 받는다.
-    //    3D 무대를 쓰지 않는다: 매일 치르는 조작이라 무대 전환이 거추장스럽다.
-    const CMG = {
-      charcoal: { title: '⚫ 불 조절', tip: '바늘이 초록 구간에 왔을 때 눌러 멈추세요' },
-      flour:    { title: '🌾 맷돌 돌리기', tip: '원을 따라 <b>일정하게</b> 돌려요<br>빠르기보다 고르기' },
-      brick:    { title: '🧱 반죽 다지기', tip: '꾹 누르고 있다가 초록 구간에서 떼세요' },
-      juice:    { title: '🍷 포도 밟기', tip: '링에 맞춰 <b>같은 박자로</b> 6번<br>연타하면 뭉개져요' },
-      // 🍎 과수원 과일 가공 — 조작은 원조 품목 것을 빌린다(js/craft/recipes.js mgBaseOf)
-      apple_jam:      { title: '🥫 사과잼 졸이기', tip: '꾹 누르고 있다가 초록 구간에서 떼세요' },
-      roast_chestnut: { title: '🌰 밤 굽기', tip: '바늘이 초록 구간에 왔을 때 눌러 멈추세요' },
-      gotgam:         { title: '🍡 곶감 주무르기', tip: '링에 맞춰 <b>같은 박자로</b> 6번<br>연타하면 뭉개져요' },
-    };
-    const GRADE_FACE = ['😅', '🙂', '😋', '💫'];
-    let cmgRaf = 0, cmgCleanup = null;
-
-    function craftMinigame(itemId, onDone) {
-      const meta = CMG[itemId]; if (!meta) { onDone(1); return; }
-      const kind = Input.craftMgBase(itemId);   // 조작 종류 = 원조 품목 id(charcoal·flour·brick·juice) — 과일 가공은 빌려 쓴다
-      $('cmg-title').innerHTML = meta.title;
-      $('cmg-tip').innerHTML = meta.tip;
-      $('cmg-after').style.display = 'none';
-      const stage = $('cmg-stage'); stage.innerHTML = '';
-      // 가공 창을 접고 화면을 화덕으로 옮긴다 — 걸 때만 잠깐 클로즈업(요리·조각과 같은 문법)
-      $('craft-menu').classList.remove('show');
-      Input.craftFocus(true);
-      document.body.classList.add('menu-open', 'mg-open');   // 마을 UI 를 걷고 무대에 몰입(요리·조각과 같은 문법)
-      $('craft-mg').classList.add('show');
-
-      const finish = (score) => {
-        if (cmgRaf) { cancelAnimationFrame(cmgRaf); cmgRaf = 0; }
-        cmgCleanup?.(); cmgCleanup = null;
-        const grade = Input.craftGrade(score);
-        $('cmg-grade').textContent = GRADE_FACE[grade];
-        $('cmg-yield').textContent = `${Input.craftYield(itemId, grade)}개가 나와요`;
-        $('cmg-after').style.display = '';
-        $('cmg-ok').onclick = () => {
-          $('craft-mg').classList.remove('show');
-          document.body.classList.remove('mg-open');
-          Input.craftFocus(false);                       // 마을 카메라로 복귀
-          $('craft-menu').classList.add('show');         // 가공 창을 다시 편다
-          onDone(grade);
-        };
-      };
-
-      if (kind === 'flour') {
-        // 🌾 맷돌 — 원을 따라 끈 각을 쌓는다. 한 바퀴 반이면 끝.
-        stage.innerHTML = '<div class="cmg-wheel"><div class="hub"></div><div class="grip"></div></div>';
-        const wheel = stage.querySelector('.cmg-wheel'), grip = stage.querySelector('.grip');
-        const R = 72, samples = [];
-        let ang = -Math.PI / 2, total = 0, dragging = false, last = ang;
-        const put = () => {
-          grip.style.left = `${95 + Math.cos(ang) * R}px`;
-          grip.style.top = `${95 + Math.sin(ang) * R}px`;
-        };
-        put();
-        const at = e => {
-          const r = wheel.getBoundingClientRect();
-          const p = e.touches ? e.touches[0] : e;
-          return Math.atan2(p.clientY - (r.top + r.height / 2), p.clientX - (r.left + r.width / 2));
-        };
-        const down = e => { dragging = true; last = at(e); e.preventDefault(); };
-        const move = e => {
-          if (!dragging) return;
-          const a = at(e);
-          let d = a - last; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2;
-          last = a; ang = a; total += Math.abs(d); put();
-          samples.push({ t: performance.now(), a: total });
-          if (total >= Math.PI * 3) { up(); finish(Input.craftScore('flour', samples)); }
-        };
-        const up = () => { dragging = false; };
-        wheel.addEventListener('pointerdown', down); window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
-        cmgCleanup = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
-      } else if (kind === 'charcoal') {
-        // ⚫ 불 조절 — 바늘이 오간다. 초록 구간에서 멈춘다.
-        const { half } = Input.craftDiff('charcoal'), target = 0.5;   // 🎚️ 초록 구간 반폭만 흔든다
-        stage.innerHTML = `<div class="cmg-bar"><div class="zone"></div><div class="needle"></div></div>
-                           <button class="cf-btn go cmg-press">멈추기</button>`;
-        const zone = stage.querySelector('.zone'), needle = stage.querySelector('.needle');
-        zone.style.left = `${(target - half) * 100}%`; zone.style.width = `${half * 200}%`;
-        const t0 = performance.now();
-        let pos = 0;
-        const tick = () => {
-          const t = (performance.now() - t0) / 1000;
-          pos = 0.5 + Math.sin(t * 2.4) * 0.48;                 // 좌우로 오감
-          needle.style.left = `calc(${pos * 100}% - 2px)`;
-          Input.craftFlame(pos);                                // 🔥 실제 화덕의 불이 바늘을 따라 반응한다
-          cmgRaf = requestAnimationFrame(tick);
-        };
-        tick();
-        stage.querySelector('button').onclick = () => {
-          const score = Input.craftScore('charcoal', { pos, target, half });
-          Input.craftFlameBurst(score > 0);                     // 맞으면 확 타오르고 불티, 빗나가면 사그라듦
-          finish(score);
-        };
-      } else if (kind === 'juice') {
-        // 🍷 포도 밟기 — 링이 퍼지는 박자에 맞춰 여섯 번. 판정은 간격이라 첫 탭은 기준점이다.
-        const TARGET = 520, NEED = 6;
-        stage.innerHTML = '<div class="cmg-stomp"><div class="pulse"></div><div class="cnt"></div></div>';
-        const pad = stage.querySelector('.cmg-stomp'), cnt = stage.querySelector('.cnt');
-        pad.querySelector('.pulse').style.animationDuration = TARGET + 'ms';
-        Input.craftDiff('juice');   // 🎚️ 팔만 돌린다 — 허용 오차는 채점할 때 game.js 가 먹인다
-        const taps = [];
-        cnt.textContent = NEED;
-        const down = (e) => {
-          e.preventDefault();
-          taps.push(performance.now());
-          pad.classList.remove('hit'); void pad.offsetWidth; pad.classList.add('hit');   // 재생 중이어도 다시 튄다
-          cnt.textContent = Math.max(0, NEED - taps.length);
-          Input.craftStomp();                                  // 🫙 실제 통에서 즙이 튄다
-          if (taps.length >= NEED) finish(Input.craftScore('juice', taps));
-        };
-        pad.addEventListener('pointerdown', down);
-        cmgCleanup = () => pad.removeEventListener('pointerdown', down);
-      } else {
-        // 🧱 반죽 — 꾹 눌렀다 목표 구간에서 뗀다
-        const { targetMs, tol } = Input.craftDiff('brick'), MAX = 2200;   // 🎚️ 허용 오차만 흔든다
-        stage.innerHTML = `<div class="cmg-hold"><div class="fill"></div><div class="goal"></div></div>
-                           <button class="cf-btn go cmg-press">꾹 누르기</button>`;
-        const fill = stage.querySelector('.fill'), goal = stage.querySelector('.goal');
-        goal.style.left = `${((targetMs - tol) / MAX) * 100}%`;
-        goal.style.width = `${((tol * 2) / MAX) * 100}%`;
-        let t0 = 0;
-        const btn = stage.querySelector('button');
-        const tick = () => {
-          if (t0) { const held = performance.now() - t0; fill.style.width = `${Math.min(100, (held / MAX) * 100)}%`; }
-          cmgRaf = requestAnimationFrame(tick);
-        };
-        tick();
-        const down = () => { t0 = performance.now(); };
-        const up = () => { if (!t0) return; const held = performance.now() - t0; t0 = 0; finish(Input.craftScore('brick', { heldMs: held, targetMs, tol })); };
-        btn.addEventListener('pointerdown', down); btn.addEventListener('pointerup', up);
-        cmgCleanup = () => { btn.removeEventListener('pointerdown', down); btn.removeEventListener('pointerup', up); };
-      }
-    }
-
-    // 🔥 가공 창 — game.js 의 craftPanelData() 가 준 데이터를 그리기만 한다.
-    //    상태는 글자가 아니라 기호로(✓ 🔥) — 칸이 3개만 되어도 문구가 두 줄로 깨졌다(시안 실측).
-    let craftStationNow = null;
-    function renderCraft(d) {
-      craftStationNow = d.station;
-      $('craft-title').textContent = d.title;
-      $('craft-ask').textContent = d.ask;
-      $('craft-hint').innerHTML = d.hint;
-      const strip = $('craft-slots');
-      strip.innerHTML = '';
-      for (let i = 0; i < d.cap; i++) {
-        const s = d.slots[i], el = document.createElement('div');
-        if (!s) { el.className = 'cf-chip empty'; el.textContent = '비어 있음'; }
-        else {
-          el.className = 'cf-chip';
-          el.innerHTML = `<span class="mini">${s.ico}</span> ${s.name}${s.ready ? ' ×' + s.qty : ''} ` +
-            (s.ready ? '<span class="cf-ready mark">✓</span>' : `<span class="mark" style="opacity:.55">${d.ico}</span>`);
-        }
-        strip.appendChild(el);
-      }
-      const ready = d.slots.filter(s => s.ready);
-      const claim = $('craft-claim');
-      claim.style.display = ready.length ? '' : 'none';
-      claim.textContent = ready.length === 1
-        ? `${ready[0].ico} ${ready[0].name} 받기`
-        : `${d.claimAll} (${ready.length})`;
-      claim.onclick = () => { const nd = Input.craftClaim(d.station); if (nd) renderCraft(nd); };
-      $('craft-ad')?.remove();
-      const adBtn = ready.length ? null : Input.craftAdButton(d.station, (nd) => { if ($('craft-menu').classList.contains('show') && craftStationNow === nd.station) renderCraft(nd); });
-      if (adBtn) { const w = document.createElement('div'); w.id = 'craft-ad'; w.className = 'rw-row'; w.appendChild(adBtn); claim.after(w); }
-
-      const list = $('craft-recipes');
-      list.innerHTML = '';
-      const full = d.slots.length >= d.cap;
-      for (const r of d.recipes) {
-        const row = document.createElement('div');
-        row.className = 'cf-recipe' + (r.lack.length || full ? ' lack' : '');
-        const cost = r.cost.map(c =>
-          `<span class="${r.lack.includes(c.k) ? 'short' : ''}">${c.ico}${c.label} ${c.have}/${c.need}</span>`).join(' · ');
-        row.innerHTML = `<span class="ico">${r.ico}</span>` +
-          `<span class="txt"><span class="nm">${r.name}</span><span class="cost">${cost} → 2~5개</span></span>`;
-        const b = document.createElement('button');
-        b.className = 'cf-btn'; b.textContent = '넣기';
-        b.disabled = r.lack.length > 0 || full;
-        b.onclick = () => craftMinigame(r.id, (grade) => { const nd = Input.craftSet(r.id, grade); if (nd) renderCraft(nd); });
-        row.appendChild(b); list.appendChild(row);
-      }
-    }
-
-    function renderKitchen(d) {
-      // ⚠️ " · " 로 이어 붙인 한 줄은 i18n 이 '{0} · {1}' 글루 패턴으로 쪼개 번역한다 —
-      //    한쪽이 비면 앞에 구분자만 덩그러니 남으므로 조각을 모아서 잇는다.
-      const bits = [];
-      if (d.cooked) bits.push(`누적 요리 ${d.cooked}회`);
-      if (d.pantry) bits.push(`🧺 찬장 ${d.pantry.items.length}/${d.pantry.max}`);
-      $('kt-sub').textContent = bits.join(' · ');
-      const box = $('kt-items'); box.innerHTML = '';
-      d.recipes.forEach(r => {
-        const costStr = r.cost.map(c => `<span class="${c.have < c.need ? 'lack' : ''}">${c.ico} ${c.have}/${c.need}</span>`).join(' · ');
-        const courseStr = r.course.map(c => `${c.ico} ${c.name}`).join(' → ');
-        const el = document.createElement('div');
-        el.className = 'kt-row' + (r.ready ? '' : ' off');
-        el.innerHTML = `<span class="kt-ico">${r.ico}</span>
-          <div class="kt-body">
-            <div class="kt-name">${r.name} <span class="kt-diff d${r.diff}">${'★'.repeat(r.diff)}</span></div>
-            <div class="kt-desc">${r.desc}</div>
-            <div class="kt-course">${courseStr}</div>
-            <div class="kt-cost">${costStr}</div>
-          </div>
-          <div class="kt-side"><div class="kt-best">${r.best ? `⭐ 최고 ${r.best}점` : '기록 없음'}</div></div>`;
-        el.addEventListener('click', () => {
-          if (!r.ready) { ui.toast('재료가 부족해요'); return; }
-          const st = Input.kitchenStart(r.id);
-          if (!st.ok) { ui.toast(st.msg || '재료가 부족해요'); renderKitchen(Input.getKitchen()); return; }
-          closeKitchen();
-          startCookCourse(st);
-        });
-        box.appendChild(el);
-      });
-    }
-    function closeKitchen() { $('kitchen-menu').classList.remove('show'); document.body.classList.remove('menu-open'); }
-    $('kt-close').addEventListener('click', closeKitchen);
 
     // ── 🍲 보글보글 냄비 탭 — 재료 1~3개(같은 재료 여러 번 가능·보유 수 이내) → 조합 표가 이름·맛을 정한다
     let fpPot = [];
@@ -6968,770 +6848,45 @@
     }
     window.addEventListener('resize', layoutQuestPanel);
 
-    // ═══════════════ 🍳 요리 미니게임 — 스테이지 4종 + 코스 러너 ═══════════════
-    //  한 레시피는 여러 판(스테이지)을 **순서대로** 치르는 코스다. ★1 = 1판, ★3 = 3판.
-    //  각 스테이지는 아래 공통 인터페이스만 지키면 되고, 러너가 순서·점수 합산·종료를 맡는다:
-    //    { hud, start(cfg), tap(now), release(now), frame(now), timeout } → 끝나면 cfg.done(pts[])
-    //  cfg.mult 는 판정창 배율 — 코스 뒤로 갈수록 작아진다(= 단계별로 난이도가 올라간다).
-    //  ⚠️ 모든 스테이지는 rAF 가 멈춰도(백그라운드 탭) 반드시 정산되게 종료 보증 타이머를 건다.
-    const POT_STEPS = [
-      { label: '🧺 재료 넣기', half: 13 },     // half: 초록 구간 반폭(%) — 단계마다 좁아져 난이도↑
-      { label: '🥄 골고루 젓기', half: 10 },
-      { label: '🔥 불 조절', half: 7.5 },
-    ];
-    const POT_SWEEP = 700;                                   // 바늘 편도 이동 시간(ms) — 1% ≈ 7ms
-    const CHOP_N = 8, CHOP_BEAT = 520, CHOP_TRAVEL = 1400;   // 노트 수 · 박자 간격 · 레인 이동 시간(ms)
-    const GRILL_N = 3, GRILL_RISE = 2600;                    // 뒤집기 횟수 · 게이지가 0→100 까지 차는 시간(ms)
-    const GRILL_ZONE = 16;                                   // "노릇" 구간 반폭(%) — mult 로 넓어진다
-    const SEASON_N = 2, SEASON_RISE = 2100;                  // 간 맞추기 횟수 · 게이지 상승 시간(ms)
-    const SEASON_ZONE = 13;                                  // 목표 구간 반폭(%)
-
-    const MG = { active: false, id: null, name: '', where: 'kitchen', raf: 0, timers: [],
-      startAt: 0, course: [], si: 0, stageScores: [], stage: null,
-      offsets: [], judges: { perfect: 0, good: 0, miss: 0 }, pts: [], combo: 0, maxCombo: 0, holding: false, holdPid: null };
-    const mgT = (ms, fn) => { const h = setTimeout(fn, ms); MG.timers.push(h); return h; };
-    function mgJudge(kind, text) {
-      const el = $('mg-judge');
-      el.innerHTML = `<span class="j-${kind}">${text}</span>`;
-      el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
-    }
-    function mgCount(kind) {                                  // 판정 집계 — 콤보는 perfect/good 에서만 이어진다
-      MG.judges[kind]++;
-      if (kind === 'miss') { MG.combo = 0; $('mg-combo').textContent = ''; }
-      else { MG.combo++; MG.maxCombo = Math.max(MG.maxCombo, MG.combo); $('mg-combo').textContent = MG.combo >= 2 ? `🔥 ${MG.combo} 콤보!` : ''; }
-    }
-    function mgStepLabel(text, i, n) {                        // 코스 진행 표시 — "지금 몇 번째 판인지"를 늘 보이게
-      const course = MG.course.length > 1 ? ` <span class="mg-course">코스 ${MG.si + 1}/${MG.course.length}</span>` : '';
-      $('mg-step').innerHTML = `${text} <span id="mg-step-n">${i}/${n}</span>${course}`;
-    }
-
-    // ── 🍲 끓이기 — 왕복하는 바늘이 초록 구간에 올 때 탭 ×3 ──
-    const StagePot = {
-      hud: 'mg-pot',
-      start(cfg) {
-        this.cfg = cfg; this.pts = []; this.step = 0; this.waiting = false;
-        this.next(0);
-      },
-      next(i) {
-        this.step = i; this.waiting = false; this.stepAt = performance.now();
-        this.zoneC = 25 + Math.random() * 50;                 // 초록 구간 중심(25~75%) — 매번 다른 위치
-        const s = POT_STEPS[i];
-        this.half = s.half * this.cfg.mult;                   // ★ 판정창 배율
-        mgStepLabel(s.label, i + 1, POT_STEPS.length);
-        const z = $('mg-zone');
-        z.style.left = (this.zoneC - this.half) + '%';
-        z.style.width = (this.half * 2) + '%';
-        mgT(4200, () => { if (MG.stage === this && this.step === i && !this.waiting) this.tap(null); });  // ⏱️ 3왕복 방치 → 자동 미스
-      },
-      pct(now) {
-        const t = (now - this.stepAt) % (POT_SWEEP * 2);      // 왕복 삼각파(0→100→0)
-        return (t < POT_SWEEP ? t / POT_SWEEP : 2 - t / POT_SWEEP) * 100;
-      },
-      frame(now) { if (!this.waiting) $('mg-needle').style.left = `calc(${this.pct(now).toFixed(2)}% - 2px)`; },
-      tap(now) {
-        if (this.waiting) return;
-        this.waiting = true;
-        let pts;
-        if (now === null) { pts = 0; mgCount('miss'); mgJudge('miss', '⏰ 놓쳤어요'); }
-        else {
-          const pct = this.pct(now);
-          const dist = Math.abs(pct - this.zoneC);
-          MG.offsets.push(Math.round((pct - this.zoneC) * POT_SWEEP / 100));   // 타이밍 오차(ms, 부호=구간 앞/뒤)
-          let kind;
-          if (dist <= this.half * 0.4) { pts = 100; kind = 'perfect'; mgJudge('perfect', '💫 완벽해요!'); Sound.harvest(); }
-          else if (dist <= this.half)  { pts = Math.round(95 - (dist / this.half) * 40); kind = 'good'; mgJudge('good', '👍 좋아요'); Sound.blip(); }
-          else { pts = Math.max(0, Math.round(45 - (dist - this.half) * 2)); kind = 'miss'; mgJudge('miss', '😅 아쉬워요'); }
-          mgCount(kind);
-          Input.mgPotHit(this.step, kind, (MG.costKeys || [])[0]);   // 🎥 3D 무대 연출(재료 퐁당/국자 젓기/불길)
-        }
-        this.pts.push(pts);
-        if (this.step + 1 < POT_STEPS.length) mgT(650, () => { if (MG.stage === this) this.next(this.step + 1); });
-        else mgT(650, () => { if (MG.stage === this) this.cfg.done(this.pts); });
-      },
-      release() {},
-      timeout() { return POT_STEPS.length * 5200; },
-      settle() { while (this.pts.length < POT_STEPS.length) this.pts.push(0); return this.pts; },
-    };
-
-    // ── 🔪 썰기 — 흘러오는 재료가 칼 아래 올 때 박자 탭 ×8 ──
-    const StageChop = {
-      hud: 'mg-chop',
-      start(cfg) {
-        this.cfg = cfg; this.pts = []; this.notes = [];
-        this.win = { perfect: 90 * cfg.mult, good: 170 * cfg.mult, late: 260 * cfg.mult };   // ★ 판정창 배율
-        const t0 = performance.now() + 1100;                  // 첫 노트까지 살짝 여유
-        for (let i = 0; i < CHOP_N; i++) this.notes.push({ hitAt: t0 + i * CHOP_BEAT, done: false, missed: false });
-        mgStepLabel('🔪 박자에 맞춰 썰기', 0, CHOP_N);
-      },
-      frame(now) {
-        let allDone = true;
-        for (const n of this.notes) {
-          if (n.done) continue;
-          allDone = false;
-          if (now > n.hitAt + this.win.late) {                // 칼 아래를 지나친 노트 → 미스
-            n.done = true; n.missed = true;
-            this.pts.push(0); mgCount('miss'); mgJudge('miss', '💨 놓쳤어요');
-          }
-        }
-        mgStepLabel('🔪 박자에 맞춰 썰기', this.pts.length, CHOP_N);
-        // 🎥 3D 무대에 노트 진행도 동기화 — p: 0(출발)→1(칼 아래), s: 0진행 1썰림 2미스
-        Input.mgChopFrame(this.notes.map(n => ({
-          p: Math.max(0, Math.min(1.3, (now - (n.hitAt - CHOP_TRAVEL)) / CHOP_TRAVEL)),
-          s: n.done ? (n.missed ? 2 : 1) : 0,
-        })));
-        if (allDone && !this.ending) { this.ending = true; mgT(500, () => { if (MG.stage === this) this.cfg.done(this.pts); }); }
-      },
-      tap(now) {
-        let best = null, bestI = -1, bestAbs = 1e9;
-        this.notes.forEach((n, i) => {
-          if (n.done) return;
-          const abs = Math.abs(now - n.hitAt);
-          if (abs < bestAbs) { bestAbs = abs; best = n; bestI = i; }
-        });
-        if (!best || bestAbs > this.win.late) return;         // 칼 밖 헛스윙은 무판정(연타 방지)
-        best.done = true;
-        MG.offsets.push(Math.round(now - best.hitAt));        // 타이밍 오차(ms, -빠름/+늦음)
-        let pts, kind;
-        if (bestAbs <= this.win.perfect)   { pts = 100; kind = 'perfect'; mgJudge('perfect', '💫 싹둑!'); }
-        else if (bestAbs <= this.win.good) { pts = 65;  kind = 'good';    mgJudge('good', '👍 좋아요'); }
-        else                               { pts = 30;  kind = 'good';    mgJudge('good', '😅 아슬아슬'); }
-        mgCount(kind);
-        Input.mgChopHit(bestI, kind);                         // 🎥 칼 내려찍기 + 재료 두 조각 연출
-        Sound.chop();
-        this.pts.push(pts);
-      },
-      release() {},
-      timeout() { return 1100 + CHOP_N * CHOP_BEAT + 1500; },
-      settle() { while (this.pts.length < CHOP_N) this.pts.push(0); return this.pts; },
-    };
-
-    // ── 🔥 굽기 — 한 방향으로 차오르는 게이지를 "노릇" 구간에서 눌러 뒤집기 ×3 ──
-    //    끓이기와 달리 바늘이 **되돌아오지 않는다**. 놓치면 그냥 탄다 — 실패가 색으로 남는다.
-    const StageGrill = {
-      hud: 'mg-grill',
-      start(cfg) {
-        this.cfg = cfg; this.pts = []; this.step = 0; this.waiting = false;
-        this.next(0);
-      },
-      next(i) {
-        this.step = i; this.waiting = false; this.stepAt = performance.now(); this.burnt = false;
-        this.half = GRILL_ZONE * this.cfg.mult;
-        this.zoneC = 46 + Math.random() * 26;                 // 노릇 구간 중심(46~72%)
-        mgStepLabel(i === 0 ? '🔥 앞면 굽기' : i === 1 ? '🔥 뒷면 굽기' : '🔥 마무리 굽기', i + 1, GRILL_N);
-        const z = $('mg-gzone');
-        z.style.left = (this.zoneC - this.half) + '%';
-        z.style.width = (this.half * 2) + '%';
-        $('mg-gfill').style.width = '0%';
-        mgT(GRILL_RISE + 900, () => { if (MG.stage === this && this.step === i && !this.waiting) this.tap(null); });  // 다 타버림
-      },
-      pct(now) { return Math.min(100, (now - this.stepAt) / GRILL_RISE * 100); },
-      frame(now) {
-        if (this.waiting) return;
-        const p = this.pct(now);
-        const f = $('mg-gfill');
-        f.style.width = p + '%';
-        f.classList.toggle('hot', p > this.zoneC + this.half);   // 구간을 지나면 붉게 — 타고 있다는 신호
-      },
-      tap(now) {
-        if (this.waiting) return;
-        this.waiting = true;
-        let pts, kind, over = false;
-        if (now === null) {                                    // 끝까지 안 누름 → 새까맣게
-          pts = 0; kind = 'miss'; over = true;
-          mgJudge('miss', '🔥 타버렸어요');
-          mgCount('miss'); Input.mgGrillFlip('miss', true);
-        } else {
-          const p = this.pct(now);
-          const d = p - this.zoneC;
-          MG.offsets.push(Math.round(d * GRILL_RISE / 100));
-          if (Math.abs(d) <= this.half * 0.4) { pts = 100; kind = 'perfect'; mgJudge('perfect', '💫 노릇노릇!'); Sound.harvest(); }
-          else if (Math.abs(d) <= this.half)  { pts = Math.round(92 - (Math.abs(d) / this.half) * 34); kind = 'good'; mgJudge('good', '👍 잘 익었어요'); Sound.blip(); }
-          else if (d < 0)                     { pts = Math.max(0, Math.round(50 - (-d) * 1.6)); kind = 'miss'; mgJudge('miss', '😅 아직 덜 익었어요'); }
-          else                                { pts = Math.max(0, Math.round(45 - d * 2.2)); kind = 'miss'; over = true; mgJudge('miss', '😖 좀 탔어요'); }
-          mgCount(kind);
-          Input.mgGrillFlip(kind, over);                       // 🎥 뒤집기 + 탄 정도 반영
-        }
-        this.pts.push(pts);
-        if (this.step + 1 < GRILL_N) mgT(680, () => { if (MG.stage === this) this.next(this.step + 1); });
-        else mgT(680, () => { if (MG.stage === this) this.cfg.done(this.pts); });
-      },
-      release() {},
-      timeout() { return GRILL_N * (GRILL_RISE + 1700); },
-      settle() { while (this.pts.length < GRILL_N) this.pts.push(0); return this.pts; },
-    };
-
-    // ── 🧂 간 맞추기 — **꾹 누르고 있다가** 목표선에서 손을 떼기 ×2 ──
-    //    유일한 홀드-릴리스 문법이라 같은 탭이어도 손맛이 확실히 다르다.
-    const StageSeason = {
-      hud: 'mg-season',
-      start(cfg) {
-        this.cfg = cfg; this.pts = []; this.step = 0; this.waiting = false;
-        this.next(0);
-      },
-      next(i) {
-        this.step = i; this.waiting = false; this.holdAt = 0; this.level = 0;
-        this.half = SEASON_ZONE * this.cfg.mult;
-        this.target = 44 + Math.random() * 30;                // 목표 중심(44~74%)
-        mgStepLabel(i === 0 ? '🧂 소금 간' : '🌿 허브 간', i + 1, SEASON_N);
-        const z = $('mg-szone');
-        z.style.left = (this.target - this.half) + '%';
-        z.style.width = (this.half * 2) + '%';
-        $('mg-sfill').style.width = '0%';
-        $('mg-shold').textContent = '꾹 누르고 계세요';
-        // ⏱️ 누르지도 않은 채 9초가 지나면 미스. 이미 누르고 있었다면 그 시점으로 정상 판정한다
-        //    (팁을 읽다 늦게 누른 사람이 누르고 있는데도 "간을 안 했어요" 0점을 받던 문제)
-        mgT(9000, () => {
-          if (MG.stage !== this || this.step !== i || this.waiting) return;
-          this.release(this.holdAt ? performance.now() : null);
-        });
-      },
-      frame(now) {
-        if (this.waiting || !this.holdAt) return;
-        this.level = Math.min(118, (now - this.holdAt) / SEASON_RISE * 100);   // 100 을 넘겨도 계속 오른다(넘치면 짜다)
-        const f = $('mg-sfill');
-        f.style.width = Math.min(100, this.level) + '%';
-        f.classList.toggle('over', this.level > this.target + this.half);
-      },
-      tap(now) {                                              // 누르기 시작 = 쏟기 시작
-        if (this.waiting || this.holdAt) return;
-        this.holdAt = now; MG.holding = true;
-        $('mg-shold').textContent = '지금 손을 떼세요!';
-        Input.mgSeasonPour(true);
-        Sound.blip();
-      },
-      release(now) {
-        if (this.waiting) return;
-        if (!this.holdAt && now !== null) return;             // 누른 적 없는 손 뗌은 무시
-        this.waiting = true; MG.holding = false;
-        Input.mgSeasonPour(false);
-        let pts, kind;
-        if (now === null || !this.holdAt) { pts = 0; kind = 'miss'; mgJudge('miss', '⏰ 간을 안 했어요'); }
-        else {
-          const lv = Math.min(118, (now - this.holdAt) / SEASON_RISE * 100);
-          const d = lv - this.target;
-          MG.offsets.push(Math.round(d * SEASON_RISE / 100));
-          if (Math.abs(d) <= this.half * 0.4) { pts = 100; kind = 'perfect'; mgJudge('perfect', '💫 딱 좋은 간!'); Sound.harvest(); }
-          else if (Math.abs(d) <= this.half)  { pts = Math.round(92 - (Math.abs(d) / this.half) * 34); kind = 'good'; mgJudge('good', '👍 괜찮아요'); Sound.blip(); }
-          else if (d < 0)                     { pts = Math.max(0, Math.round(50 - (-d) * 1.8)); kind = 'miss'; mgJudge('miss', '😅 좀 싱거워요'); }
-          else                                { pts = Math.max(0, Math.round(48 - d * 2.0)); kind = 'miss'; mgJudge('miss', '😖 너무 짜요'); }
-        }
-        mgCount(kind);
-        Input.mgSeasonDone(kind);
-        this.pts.push(pts);
-        if (this.step + 1 < SEASON_N) mgT(700, () => { if (MG.stage === this) this.next(this.step + 1); });
-        else mgT(700, () => { if (MG.stage === this) this.cfg.done(this.pts); });
-      },
-      timeout() { return SEASON_N * 10000; },
-      settle() { while (this.pts.length < SEASON_N) this.pts.push(0); return this.pts; },
-    };
-
-    const STAGES = { pot: StagePot, chop: StageChop, grill: StageGrill, season: StageSeason };
-    const STAGE_HUDS = ['mg-pot', 'mg-chop', 'mg-grill', 'mg-season'];
-
-    // ── 코스 러너 ─────────────────────────────────────────────
-    function startCookCourse(st) {
-      MG.active = true; MG.id = st.id; MG.where = st.where || 'kitchen';
-      MG.name = `${st.ico} ${st.name}`; MG.costIcos = st.icos || []; MG.dishIco = st.ico; MG.costKeys = st.keys || []; MG.grillKey = st.grillKey || '';   // 🍲 무대 재료 모형(키)
-      MG.course = st.course; MG.si = -1; MG.stageScores = [];
-      MG.offsets = []; MG.judges = { perfect: 0, good: 0, miss: 0 }; MG.pts = [];
-      MG.combo = 0; MG.maxCombo = 0; MG.holding = false; MG.holdPid = null; MG.timers = [];
-      MG.startAt = performance.now();
-      $('mg-judge').textContent = ''; $('mg-combo').textContent = '';
-      $('mg-result').classList.remove('show');
-      $('mg-card').classList.remove('done');
-      $('mg-tap').style.display = '';
-      $('mg-layer').classList.add('show'); document.body.classList.add('menu-open'); document.body.classList.add('mg-open');
-      Input.setAnalog(0, 0);
-      nextStage();
-    }
-    function nextStage() {
-      MG.si++;
-      if (MG.si >= MG.course.length) { endCourse(false); return; }
-      const c = MG.course[MG.si];
-      const stage = Object.create(STAGES[c.mg]);              // 스테이지 인스턴스(모듈은 원형으로만 쓴다)
-      MG.stage = stage;
-      STAGE_HUDS.forEach(id => $(id).classList.toggle('show', id === stage.hud));
-      $('mg-title').innerHTML = `${MG.name} <span class="mg-stage">${c.ico} ${c.name}</span>`;
-      $('mg-tap').textContent = c.mg === 'season' ? '👇 꾹 눌러주세요!' : '👆 눌러주세요!';
-      $('mg-tip').textContent = c.tip;
-      Input.mgSceneStart(c.mg, MG.costKeys, CHOP_N, MG.grillKey);   // 🎥 3D 클로즈업 무대를 이 단계로 전환
-      stage.start({ mult: c.mult, done: (pts) => finishStage(pts) });
-      // ⏱️ rAF 가 멈춰도(백그라운드 탭) 판이 영원히 안 끝나지 않게 — 스테이지가 정한 상한
-      mgT(stage.timeout(), () => { if (MG.stage === stage) finishStage(stage.settle()); });
-      cancelAnimationFrame(MG.raf);
-      MG.raf = requestAnimationFrame(mgFrame);
-    }
-    function finishStage(pts) {
-      const stage = MG.stage; if (!stage) return;
-      MG.stage = null;
-      MG.holding = false; MG.holdPid = null; Input.mgSeasonPour(false);   // 타임아웃으로 끝났다면 소금이 계속 쏟아진 채 남는다
-      const c = MG.course[MG.si];
-      const avg = pts.length ? pts.reduce((a, b) => a + b, 0) / pts.length : 0;
-      MG.stageScores.push(avg);
-      MG.pts.push(...pts);
-      mgT(240, () => { if (MG.active) nextStage(); });
-    }
-    function mgFrame(now) {
-      if (!MG.active) return;
-      MG.stage?.frame?.(now);
-      MG.raf = requestAnimationFrame(mgFrame);
-    }
-
-    // ── 공통 입력(탭/홀드/키) ──
-    function mgTap(e) {
-      if (!MG.active || $('mg-result').classList.contains('show')) return;
-      if (e && e.pointerId !== undefined) MG.holdPid = e.pointerId;   // 이 포인터의 up 만 릴리스로 친다
-      MG.stage?.tap?.(performance.now());
-    }
-    // 🧂 홀드-릴리스는 **누른 그 손가락**이 떨어질 때만 확정한다.
-    //    pointerId 를 안 보면 다른 손가락으로 아무 데나 탭했다 떼는 것만으로 간이 확정된다.
-    function mgRelease(e) {
-      if (!MG.active || $('mg-result').classList.contains('show')) return;
-      if (!MG.holding) return;                                // 홀드형 스테이지가 아니면 뗌은 무의미
-      if (e && e.pointerId !== undefined && MG.holdPid !== null && e.pointerId !== MG.holdPid) return;
-      MG.holdPid = null;
-      MG.stage?.release?.(performance.now());
-    }
-    $('mg-tap').addEventListener('pointerdown', e => { e.preventDefault(); mgTap(e); });
-    $('mg-layer').addEventListener('pointerdown', e => {      // 모바일: 화면 어디를 탭해도 입력(엄지 존 자유)
-      if (e.target.closest('#mg-quit') || e.target.closest('#mg-result') || e.target.closest('#mg-tap')) return;
-      mgTap(e);
-    });
-    // 🧂 홀드-릴리스: 손을 떼는 건 어디서 떼든(레이어 밖으로 끌고 나가도) 받아야 한다.
-    //    pointerup 만 걸면 손가락이 레이어를 벗어난 채 떼었을 때 영영 안 멎는다 → pointercancel 도 함께.
-    for (const ev of ['pointerup', 'pointercancel']) window.addEventListener(ev, mgRelease, true);
-    window.addEventListener('keydown', e => {                 // 데스크톱: Space/Enter/J — 게임 조작으로 안 새게 capture
-      if (!MG.active) return;
-      if (e.code === 'Space' || e.code === 'Enter' || e.code === 'KeyJ') {
-        e.preventDefault(); e.stopPropagation();
-        if (!e.repeat) { MG.holdPid = null; mgTap(); }
-      }
-    }, true);
-    window.addEventListener('keyup', e => {
-      if (!MG.active) return;
-      if (e.code === 'Space' || e.code === 'Enter' || e.code === 'KeyJ') { e.preventDefault(); e.stopPropagation(); mgRelease(null); }
-    }, true);
-
-    // ── 코스 종료 → 등급 판정 ─────────────────────────────────
-    function endCourse(abandoned) {
-      cancelAnimationFrame(MG.raf);
-      MG.timers.forEach(clearTimeout); MG.timers = [];
-      // 마지막 판까지 다 치른 뒤 다음 판 대기(240ms) 중에 눌렀다면 그건 포기가 아니다 —
-      // 점수는 만점일 수 있는데 지표에만 cooking_abandon 으로 찍히면 이탈률이 거짓말을 한다
-      if (abandoned && !MG.stage && MG.stageScores.length >= MG.course.length) abandoned = false;
-      if (MG.stage) { MG.stageScores.push(0); MG.stage = null; }   // 그만두기: 진행 중이던 판은 0점
-      while (MG.stageScores.length < MG.course.length) MG.stageScores.push(0);   // 남은 판도 0점
-      // 코스 점수 = 단계별 점수의 가중 평균(뒤 단계가 무겁다 — 마지막 한 판을 잘해야 최고 등급)
-      let sum = 0, wsum = 0;
-      MG.course.forEach((c, i) => { sum += MG.stageScores[i] * c.weight; wsum += c.weight; });
-      let score = wsum ? sum / wsum : 0;
-      // 풀콤보 보너스 — "한 번도 안 놓쳤다" 가 기준. 판 수로 재면 🧂 두 번짜리(소금 주먹밥)는
-      // 영영 못 받고 8노트짜리 썰기만 받는 불공평이 생긴다.
-      if (MG.pts.length && MG.maxCombo >= MG.pts.length) score = Math.min(100, score + 5);
-      const payload = {
-        score, offsets: MG.offsets, maxCombo: MG.maxCombo, judges: MG.judges,
-        stageScores: MG.stageScores, durationMs: performance.now() - MG.startAt, abandoned,
-        step: MG.si,                                          // 어느 판까지 갔는지(퍼널 이탈 지점)
-      };
-      MG.active = false; MG.holding = false;
-      Input.mgSeasonPour(false);
-      if (MG.where === 'cafe') { showCafeResult(Input.cafeCookDone(payload)); return; }
-      showCookResult(Input.kitchenFinish(MG.id, payload));
-    }
-
-    function mgResultChrome(res) {
-      STAGE_HUDS.forEach(id => $(id).classList.remove('show'));
-      $('mg-tap').style.display = 'none'; $('mg-judge').textContent = ''; $('mg-tip').textContent = '';
-      $('mgr-ico').textContent = res.tier.ico;
-      $('mgr-title').textContent = `${res.tier.name}!`;
-      $('mgr-stats').innerHTML = `<span>점수 <b>${res.score}</b>점${res.isBest ? ' ⭐신기록!' : ''}</span><span>최대 콤보 <b>${MG.maxCombo}</b></span><span>누적 요리 <b>${res.cooked}</b>회</span>`;
-      $('mg-result').classList.add('show');
-      $('mg-card').classList.add('done');
-    }
-    // 🍳 자유주방 결과 — 먹을지 보관할지 고른다(그냥 닫으면 먹는 쪽으로 마무리된다)
-    function showCookResult(res) {
-      if (!res.ok) { closeMg(); return; }
-      mgResultChrome(res);
-      // 🍲 보글보글 냄비 요리는 이름·평이 조합 표에서 온다 — 영어면 표의 _en 을 직접(사전에 없는 생성 문구라 번역기가 못 바꾼다)
-      const dishName = res.free && LANG === 'en' ? res.free.name_en : res.name;
-      $('mgr-sub').innerHTML = `${res.ico} ${dishName} 완성 — 먹으면 ${res.buff.ico} <b>${res.buff.name}</b> 버프 <b>${res.buff.dur}초</b>`;
-      const tasteEl = $('mgr-taste');
-      if (res.free) {
-        // 짧게 — 별 + 한 줄 평(16자) + ✨NEW 배지, 발견 수는 작게(사용자 "짧고 컴팩트하게")
-        const t = res.free.taste, stars = `<span class="star">${'★'.repeat(t)}${'☆'.repeat(5 - t)}</span>`;
-        const judge = LANG === 'en' ? res.free.judge_en : res.free.judge;
-        tasteEl.innerHTML = `${stars} ${judge}${res.free.isNew ? ' <span class="new">✨NEW</span>' : ''}`;
-        tasteEl.style.display = '';
-        // 발견 수는 따로 줄을 차지하지 않게 점수 줄 끝 칸으로(사용자 "1/672도 칸 차지한다", 2026-09-29)
-        if (res.free.total) $('mgr-stats').insertAdjacentHTML('beforeend', `<span class="cnt">🍲 <b>${res.free.found}</b>/${res.free.total}</span>`);
-      } else tasteEl.style.display = 'none';
-      $('mgr-cafe').style.display = 'none';
-      $('mgr-choice').style.display = '';
-      $('mgr-store').disabled = !res.canStore;
-      $('mgr-store').textContent = res.canStore ? '🧺 보관하기' : '🧺 찬장이 가득 찼어요';
-      $('mgr-again').style.display = '';
-    }
-    // ☕ 카페 결과 — 손님에게 바로 나갔으니 고를 게 없다. 받은 팁만 보여준다
-    function showCafeResult(res) {
-      if (!res?.ok) { closeMg(); return; }
-      mgResultChrome(res);
-      $('mgr-taste').style.display = 'none';
-      const c = res.cafe || {};
-      $('mgr-sub').innerHTML = `${res.ico} ${res.name} 완성 — ${c.emoji || '🙂'} <b>${c.name || '손님'}</b>에게 서빙!`;
-      $('mgr-choice').style.display = 'none';
-      $('mgr-again').style.display = 'none';
-      $('mgr-cafe').style.display = '';
-      $('mgr-cafe').innerHTML = `🪙 <b>+${c.pay || 0}</b>${c.complete ? ` · 🎉 오늘 영업 완주 보너스 🪙+${c.bonus}` : ''}`;
-    }
-    function closeMg() {
-      $('mg-layer').classList.remove('show');
-      document.body.classList.remove('menu-open'); document.body.classList.remove('mg-open');
-      MG.active = false; MG.holding = false;
-      Input.mgSceneEnd();                                     // 🎥 마을 카메라 복귀
-      layoutBuffs();                                          // 탭들이 다시 보이니 버프 위치 재계산
-    }
-    function closeCookResult(how) {                           // 결과 카드 닫기 = 선택 확정
-      const r = Input.cookResolve(how);
-      if (r?.ok && r.how === 'store') ui.toast(`🧺 ${r.ico} ${r.name} 찬장에 넣었어요. 남은 칸 ${r.left}`, 2600);
-      else if (r?.ok && r.fallback) ui.toast('🧺 찬장이 가득 차서 바로 먹었어요', 2600);
-      closeMg();
-    }
-    $('mg-quit').addEventListener('click', () => {
-      if (!MG.active) { closeResult(); return; }              // 결과 화면 위에서 눌렀다 = 닫기와 같다(만든 요리를 잃지 않게)
-      endCourse(true);                                        // 포기해도 재료는 이미 썼으니 낮은 등급으로 완성된다
-    });
-    // 결과 화면을 닫는 모든 길은 여기로 — 주방이면 먹기로 마무리, 카페면 이미 손님에게 나갔다
-    function closeResult() { MG.where === 'cafe' ? closeMg() : closeCookResult('eat'); }
-    $('mgr-close').addEventListener('click', closeResult);
-    $('mgr-eat').addEventListener('click', () => closeCookResult('eat'));
-    $('mgr-store').addEventListener('click', () => closeCookResult('store'));
-    $('mgr-again').addEventListener('click', () => {          // 같은 요리 한 번 더(재료 있으면 바로 재시작)
-      Input.cookResolve('eat');                               // 방금 만든 건 먹은 걸로 마무리
-      const st = Input.kitchenStart(MG.id);
-      if (!st.ok) { ui.toast(st.msg || '재료가 부족해요'); closeMg(); return; }
-      startCookCourse(st);
-    });
-    ui.startCookCourse = startCookCourse;                     // ☕ 카페에서 손님 앞 조리를 열 때 game.js 가 부른다
-
-    // ── 🗿 조각 공방 HUD — 판정·연출은 game.js(캔버스 소유), 여기는 진행 표시 + 결과 카드만 ──
-    let CV = { active: false };
-    const CV_PAPERS = [['kraft', '크라프트'], ['floral', '꽃무늬'], ['starry', '별밤']];
-    function openCarveHud(st) {
-      CV = { active: true, kept: null, paper: 'floral', gemT: 0 };
-      $('cv-title').textContent = `${st.ico} ${st.name}`;
-      $('cv-result').classList.remove('show', 'wrap');
-      $('cv-gem').classList.remove('show');
-      $('cv-hint').textContent = st.grain ? '결 따라 길게 그으면 여러 칸이 한 번에 깎여요' : '밝은 칩을 탭·드래그로 깎아내세요 — 어두운 밑그림을 탭하면 흠집!';
-      cvProgress({ removed: 0, waste: st.waste, dmg: 0, combo: 0, best: 0 });
-      $('cv-layer').classList.add('show');
-      document.body.classList.add('menu-open'); document.body.classList.add('mg-open'); document.body.classList.add('cv-open');   // 마을 UI 걷고 무대에 몰입
-      Input.setAnalog(0, 0);
-    }
-    function cvProgress(p) {
-      $('cv-prog').textContent = `다듬기 ${Math.round(p.removed / p.waste * 100)}%`;
-      $('cv-dmg').textContent = `흠집 ${'●'.repeat(p.dmg)}${'○'.repeat(Math.max(0, 3 - p.dmg))}`;
-      const combo = p.combo || 0, best = p.best || 0;
-      $('cv-combo').textContent = `콤보 ${combo}`;
-      $('cv-gauge').querySelector('.cvg-fill').style.width = `${Math.min(combo, 15) / 15 * 100}%`;
-      $('cv-gauge').querySelectorAll('.cvg-tick').forEach(t => t.classList.toggle('hit', best >= +t.dataset.at));
-    }
-    function cvGem() {
-      const el = $('cv-gem');
-      el.classList.add('show');
-      clearTimeout(CV.gemT);
-      CV.gemT = setTimeout(() => el.classList.remove('show'), 1800);
-    }
-    function cvDone(res) {
-      if (!CV.active) return;
-      $('cvr-ico').textContent = res.tier.ico;
-      $('cvr-title').textContent = `${res.tier.name}!`;
-      $('cvr-sub').innerHTML = res.canKeep ? `<span>${res.ico}</span> <span>${res.name}</span>` : `${res.ico} ${res.name} 완성 — 보상 🪙 <b>${res.coins}</b>`;
-      $('cvr-stats').innerHTML = `<span>품질 <b>${res.score}</b>점${res.isBest ? ' ⭐신기록!' : ''}</span><span>흠집 <b>${res.dmg}</b></span><span>최고 콤보 <b>${res.comboMax}</b></span><span>누적 조각 <b>${res.carved}</b></span>`;
-      $('cvr-sell').innerHTML = `🪙 팔기<small>+${res.coins}</small>`;
-      $('cvr-keep').innerHTML = `🎁 간직하기<small>선물 ❤️+${res.keepLove}</small>`;
-      $('cvr-choice').style.display = res.canKeep ? '' : 'none';
-      $('cvr-closebar').style.display = res.canKeep ? 'none' : '';
-      $('cv-result').classList.remove('wrap');
-      $('cv-result').classList.add('show');
-    }
-    function cvRenderPapers() {
-      const box = $('cvr-papers'); box.innerHTML = '';
-      CV_PAPERS.forEach(([id, name]) => {
-        const b = document.createElement('button');
-        b.className = 'cvr-paper' + (CV.paper === id ? ' sel' : '');
-        b.innerHTML = `<span class="sw p-${id}"></span><span>${name}</span>`;
-        b.addEventListener('click', () => { CV.paper = id; cvRenderPapers(); });
-        box.appendChild(b);
-      });
-    }
-    function cvKeep() {
-      if (CV.kept) return;
-      const r = Input.carveResolve('keep');
-      if (!r?.ok) { closeCarve(); return; }
-      ui.toast(`🎁 ${r.name}${r.particle} 선물로 간직했어요`, 2400);
-      CV.kept = r.id;
-      cvRenderPapers();
-      $('cv-result').classList.add('wrap');
-    }
-    function cvWrap() {
-      const r = Input.carveWrap(CV.kept, CV.paper);
-      if (!r.ok) { ui.toast(r.msg || '포장할 수 없어요'); return; }
-      closeCarve();
-    }
-    function closeCarve() {
-      CV.active = false;
-      $('cv-layer').classList.remove('show');
-      document.body.classList.remove('menu-open'); document.body.classList.remove('mg-open'); document.body.classList.remove('cv-open');
-      Input.carveSceneEnd();                              // 마을 카메라 복귀
-      layoutBuffs();
-    }
-    $('cv-quit').addEventListener('click', () => Input.carveAbandon());   // 포기해도 낮은 등급으로 정산됨
-    $('cvr-close').addEventListener('click', closeCarve);
-    $('cvr-sell').addEventListener('click', () => { Input.carveResolve('sell'); closeCarve(); });
-    $('cvr-keep').addEventListener('click', cvKeep);
-    $('cvr-plain').addEventListener('click', closeCarve);
-    $('cvr-wrapgo').addEventListener('click', cvWrap);
+    let gameUi = null;
+    const startCookCourse = (st) => gameUi?.cook?.startCookCourse(st);
+    const openCarveHud = (st) => gameUi?.carve?.openCarveHud(st);
+    const cvProgress = (p) => gameUi?.carve?.cvProgress(p);
+    const cvDone = (res) => gameUi?.carve?.cvDone(res);
+    const cvGem = () => gameUi?.carve?.cvGem();
+    const renderShop = () => gameUi?.shop?.renderShop();
+    const openHomi = () => gameUi?.shop?.openHomi();
+    const showShopTab = (tab) => gameUi?.shop?.showShopTab(tab);
+    const renderBench = () => gameUi?.bench?.renderBench();
+    const showCookTab = (tab) => gameUi?.bench?.showCookTab(tab);
+    const runBenchTour = () => gameUi?.bench?.runBenchTour();
+    const closeCook = () => gameUi?.bench?.closeCook();
+    const renderCraft = (d) => gameUi?.kitchen?.renderCraft(d);
+    const renderKitchen = (d) => gameUi?.kitchen?.renderKitchen(d);
+    const closeKitchen = () => gameUi?.kitchen?.closeKitchen();
+    const renderBoatShop = (d) => gameUi?.boat?.renderBoatShop(d);
+    const openLb = () => gameUi?.lb?.openLb();
+    const renderBag = () => gameUi?.bag?.renderBag();
+    const openGuide = (from) => gameUi?.guide?.openGuide(from);
+    const nudgeGuideOnce = () => gameUi?.guide?.nudgeGuideOnce();
 
     // 로컬 개발 훅 — 콘솔에서 미니게임을 직접 구동(?give 처럼 localhost 전용, 실서비스 노출 안 됨)
     if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) {
       window.__kitchenOpen = () => { const d = Input.getKitchen(); ui.openKitchen(d); return d; };
       window.__mgStart = (id) => { const st = Input.kitchenStart(id); if (st.ok) { closeKitchen(); startCookCourse(st); } return st; };
-      window.__mgTap = () => mgTap();
-      window.__mgState = () => ({ active: MG.active, where: MG.where, si: MG.si, n: MG.course.length,
-        stage: MG.course[MG.si]?.mg || null, stageScores: MG.stageScores, pts: MG.pts, combo: MG.combo, offsets: MG.offsets });
-      window.__mgHold = (on) => { on ? MG.stage?.tap?.(performance.now()) : (MG.holding = true, MG.stage?.release?.(performance.now())); };  // 🧂 홀드-릴리스 검증용
+      window.__mgTap = () => gameUi.cook.mgTap();
+      window.__mgState = () => { const MG = gameUi.cook.MG; return { active: MG.active, where: MG.where, si: MG.si, n: MG.course.length,
+        stage: MG.course[MG.si]?.mg || null, stageScores: MG.stageScores, pts: MG.pts, combo: MG.combo, offsets: MG.offsets }; };
+      window.__mgHold = (on) => { const MG = gameUi.cook.MG; on ? MG.stage?.tap?.(performance.now()) : (MG.holding = true, MG.stage?.release?.(performance.now())); };  // 🧂 홀드-릴리스 검증용
       window.__carveOpen = () => { ui.openCook(); showCookTab('carve'); return Input.getWorkshop(); };
       window.__carveStart = (id) => { const st = Input.carveStart(id); if (st.ok) { closeCook(); openCarveHud(st); } return st; };
       window.__carveChip = (n = 1) => Input.carveDebug('chip', n);
       window.__carveScratch = () => Input.carveDebug('scratch');
       window.__carveDebug = (a, n) => Input.carveDebug(a, n);
-      window.__carveState = () => ({ active: CV.active, resultShown: $('cv-result').classList.contains('show'), wrap: $('cv-result').classList.contains('wrap'), prog: $('cv-prog').textContent, dmg: $('cv-dmg').textContent, combo: $('cv-combo').textContent });
+      window.__carveState = () => ({ active: gameUi.carve.getCV().active, resultShown: $('cv-result').classList.contains('show'), wrap: $('cv-result').classList.contains('wrap'), prog: $('cv-prog').textContent, dmg: $('cv-dmg').textContent, combo: $('cv-combo').textContent });
       window.__ui = ui;        // HUD 문구·크기 검증용(캐치 배너·퀘스트 패널을 직접 그려본다)
       window.__state = () => getGameState();   // 의뢰 진행(npcs.<id>.idx)·집 단계 검증용 — 직접 고쳐서 상황을 만든다
     }
-
-    // ── 상점 메뉴 (팔기 / 사기) ──
-    let shopTab = 'sell';
-    let sellSel = null, sellQ = 1;
-    const trendHtml = d => (d > 0 ? `<span class="up">▲${d}%</span>` : d < 0 ? `<span class="down">▼${-d}%</span>` : '');
-    function holdRepeat(btn, step) {
-      let wait = null, rep = null;
-      const stop = () => { clearTimeout(wait); clearInterval(rep); wait = rep = null; window.removeEventListener('pointerup', stop); };
-      btn.addEventListener('pointerdown', (e) => {
-        if (e.button !== 0) return;
-        e.preventDefault(); stop();
-        if (!step()) return;
-        window.addEventListener('pointerup', stop);
-        wait = setTimeout(() => { rep = setInterval(() => { if (!step()) stop(); }, 70); }, 380);
-      });
-      ['pointerleave', 'pointercancel'].forEach(ev => btn.addEventListener(ev, stop));
-      btn.addEventListener('click', (e) => { if (e.detail === 0) step(); });
-      btn.addEventListener('contextmenu', (e) => e.preventDefault());
-    }
-    function renderSellSheet(it) {
-      const sheet = $('sell-sheet');
-      if (!it || shopTab !== 'sell') { sheet.hidden = true; sheet.innerHTML = ''; return; }
-      sellQ = clampQty(sellQ, it.have);
-      sheet.hidden = false;
-      sheet.innerHTML = `<div class="ss-top"><span class="ss-ico">${SELL_ICO_G[it.k] || '📦'}</span><span><div class="ss-nm">${it.name}</div><div class="ss-sub"><span>개당 🪙${it.price}</span>${trendHtml(it.rate)} · <span>${it.have}개 있어요</span></div></span></div>
-        <div class="ss-row"><div class="ss-step"><button class="ss-dec" aria-label="-1">−</button><span class="ss-q"></span><button class="ss-inc" aria-label="+1">+</button></div>
-        <button class="ss-max">전부</button><button class="ss-go"></button></div>`;
-      const dec = sheet.querySelector('.ss-dec'), inc = sheet.querySelector('.ss-inc'), max = sheet.querySelector('.ss-max'), go = sheet.querySelector('.ss-go');
-      const paint = () => {
-        sheet.querySelector('.ss-q').textContent = sellQ;
-        dec.disabled = sellQ <= 1;
-        inc.disabled = sellQ >= it.have;
-        max.classList.toggle('on', sellQ === it.have);
-        go.textContent = `팔기 🪙${it.price * sellQ}`;
-      };
-      const bump = (n) => { if (!dec.isConnected) return false; const q = clampQty(sellQ + n, lastInv[it.k] || 0); if (q === sellQ) return false; sellQ = q; paint(); return true; };
-      holdRepeat(dec, () => bump(-1));
-      holdRepeat(inc, () => bump(1));
-      max.addEventListener('click', () => { sellQ = it.have; paint(); });
-      go.addEventListener('click', () => {
-        const r = Input.sellItem(it.k, sellQ);
-        if (!r.ok) { ui.toast(r.msg); return; }
-        ui.toast(r.qty === it.have ? `🪙 +${r.gain} (${r.qty}개 전부)` : `🪙 +${r.gain} (${r.qty}개)`);
-        sellQ = 1;
-        renderShop();
-        showSellAd(it.k, r.gain);
-      });
-      paint();
-    }
-    function showSellAd(k, gain) {
-      const box = $('sell-ad');
-      box.replaceChildren();
-      const b = Input.sellAdButton(k, gain, (ok) => { if (!ok) return; box.replaceChildren(); renderShop(); });
-      if (b) box.appendChild(b);
-    }
-    function renderShop() {
-      $('shop-coin').textContent = `🪙 ${lastInv.coins || 0}`;
-      if (shopTab === 'sell') {
-        const market = Input.getMarket().items; const box = $('sell-items'); const keepTop = box.scrollTop; box.innerHTML = '';
-        const list = sellList(market, lastInv);
-        const top = market[0];
-        if (top && top.rate > 0) {
-          const banner = document.createElement('div');
-          banner.className = 'market-banner';
-          banner.innerHTML = `📊 <span>오늘 가장 비싼 건</span> ${SELL_ICO_G[top.k] || '📦'} <b>${itemName(top.label)}</b> ${trendHtml(top.rate)}`;
-          box.appendChild(banner);
-        }
-        if (!list.length) {
-          sellSel = null;
-          const empty = document.createElement('div');
-          empty.className = 'sl-empty';
-          empty.innerHTML = '<div>팔 수 있는 게 없어요</div><div>작물·목재·물고기를 모아 오세요</div>';
-          box.appendChild(empty);
-          renderSellSheet(null);
-          return;
-        }
-        if (!list.some(i => i.k === sellSel)) { sellSel = list[0].k; sellQ = 1; }
-        const grid = document.createElement('div');
-        grid.className = 'sl-grid';
-        list.forEach((it, n) => {
-          const el = document.createElement('button');
-          el.className = 'sl-cell' + (it.k === sellSel ? ' sel' : '') + (n === 0 && it.rate > 0 ? ' hot' : '');
-          el.innerHTML = `<span class="sl-tr">${it.rate > 0 ? '<span class="up">▲</span>' : it.rate < 0 ? '<span class="down">▼</span>' : ''}</span><span class="sl-ico">${SELL_ICO_G[it.k] || '📦'}</span><span class="sl-nm">${it.name}</span><span class="sl-cnt">${it.have}</span>`;
-          el.addEventListener('click', () => { if (sellSel !== it.k) { sellSel = it.k; sellQ = 1; } renderShop(); });
-          grid.appendChild(el);
-        });
-        box.appendChild(grid);
-        box.scrollTop = keepTop;
-        renderSellSheet(list.find(i => i.k === sellSel));
-      } else {
-        const box = $('buy-items'); box.innerHTML = '';
-        const owned = Input.ownedUpgrades(), homiTier = Input.homiTier();
-        Input.getShopBuy().filter(it => !it.homi).forEach(it => {
-          const isOwned = it.homi ? homiTier >= it.homi : it.upgrade && owned[it.upgrade];
-          const locked = it.homi && homiTier < it.homi - 1;
-          const can = !isOwned && !locked && (lastInv.coins || 0) >= it.coin;
-          const el = document.createElement('div');
-          el.className = 'ck-item' + (can || (it.homi && isOwned) ? '' : ' off');
-          const costLabel = isOwned ? (it.homi ? '보유중 ✅ · 각인' : '보유중 ✅') : locked ? '🔒 앞 단계 먼저' : `🪙${it.coin}`;
-          el.innerHTML = `<span class="ck-ico">${it.ico}</span><span class="ck-name">${it.name}</span><span class="ck-buff">${it.desc || '&nbsp;'}</span><span class="ck-cost">${costLabel}</span>`;
-          el.addEventListener('click', () => {
-            if (it.homi && isOwned) { openHomi(); return; }
-            const r = Input.buyShop(it.id); if (!r.ok) { ui.toast(r.msg); return; }
-            if (it.id.startsWith('sap_') && !Input.hintSeen('saplingPurchase')) pendingSaplingPurchaseSpotlight = true;
-            ui.toast(`🛍️ ${r.name} 구매!`); renderShop();
-          });
-          box.appendChild(el);
-        });
-        const next = document.createElement('div');
-        next.className = 'market-hint';
-        next.textContent = '다음 목표: 🐔 닭장 60 · 🏡 넓은 집 80 · ✨ 정령 등불 60';
-        box.appendChild(next);
-      }
-    }
-    let homiSel = 0;
-    const RES_NAME = { mf_clam: '바지락', mf_cockle: '꼬막', mf_razor: '맛조개', mf_crab: '칠게' };
-    const costText = c => Object.entries(c).map(([k, n]) => `${t(RES_NAME[k] || k)} ${n}`).join(' · ');
-    function renderHomi() {
-      const d = Input.homiInfo();
-      $('homi-ico').innerHTML = iconById(d.ico);
-      const base = $('homi-base');
-      base.style.display = d.base.length ? 'flex' : 'none';
-      base.innerHTML = d.base.map(e => iconById(e.ico)).join('') + t(`기본으로 들어 있어요: ${d.base.map(e => e.name).join(' · ')}`);
-      if (homiSel >= d.slots.length) homiSel = 0;
-      const slots = $('homi-slots'); slots.innerHTML = '';
-      for (let i = 0; i < d.maxSlots; i++) {
-        const el = document.createElement('div');
-        const id = d.slots[i], e = d.engraves.find(x => x.id === id);
-        el.className = 'hm-slot' + (i >= d.slots.length ? ' lock' : e ? ' on' : '') + (i === homiSel && i < d.slots.length ? ' sel' : '');
-        el.innerHTML = i >= d.slots.length ? t('다음 호미에서 열려요') : e ? `${iconById(e.ico)}${t(e.name)}` : t('각인을 골라 주세요');
-        if (i < d.slots.length) el.addEventListener('click', () => { homiSel = i; renderHomi(); });
-        slots.appendChild(el);
-      }
-      const tiles = $('homi-tiles'); tiles.innerHTML = '';
-      d.engraves.forEach(e => {
-        const el = document.createElement('div');
-        const label = e.base ? t('기본') : e.slot >= 0 ? t('끼움') : e.owned ? t('끼우기') : costText(e.cost);
-        const usable = !e.base && d.slots.length > 0 && (e.owned || e.afford);
-        el.className = 'hm-tile' + (e.slot >= 0 ? ' on' : '') + (usable || e.slot >= 0 ? '' : ' off');
-        el.innerHTML = `${iconById(e.ico)}<span><b>${t(e.name)}</b><small>${label}</small></span>`;
-        el.title = t(e.desc);
-        el.addEventListener('click', () => onHomiTile(e, d));
-        tiles.appendChild(el);
-      });
-    }
-    function renderHomiTiers() {
-      const box = $('homi-tiers'); box.innerHTML = '';
-      Input.homiStallTiers().forEach(it => {
-        const el = document.createElement('div');
-        const can = !it.owned && !it.locked && it.afford;
-        el.className = 'hm-tile' + (it.owned ? ' on' : can ? '' : ' off');
-        const label = it.owned ? t('보유중') : it.locked ? t('🔒 앞 단계 먼저') : `🪙${it.coin}`;
-        el.innerHTML = `${it.ico}<span><b>${t(it.name)}</b><small>${label}</small></span>`;
-        el.title = t(it.desc || '');
-        el.addEventListener('click', () => {
-          if (it.owned) return;
-          if (it.locked) { ui.toast('앞 단계 호미를 먼저 사 주세요'); return; }
-          const r = Input.buyShop(it.id);
-          if (!r.ok) { ui.toast(r.msg); return; }
-          ui.toast(`🛍️ ${r.name} 구매!`); renderHomiStall();
-        });
-        box.appendChild(el);
-      });
-    }
-    function renderHomiSkins() {
-      const rows = Input.homiStallSkins(), box = $('homi-skins');
-      $('homi-skin-wrap').style.display = rows.length ? 'flex' : 'none';
-      box.innerHTML = '';
-      rows.forEach(r => {
-        const el = document.createElement('div');
-        el.className = 'hm-tile' + (r.mode === 'owned' ? ' on' : '');
-        el.innerHTML = `<i class="hm-emo">${r.ico}</i><span><b>${t(r.name)}</b><small>${r.mode === 'owned' ? t('보유중') : r.label}</small></span>`;
-        el.addEventListener('click', openHomiSkins);
-        box.appendChild(el);
-      });
-    }
-    function openHomiSkins() {
-      $('homi-menu').classList.remove('show');
-      Input.setCosTab?.('homi');
-      ui.openCosShop();
-    }
-    $('homi-skin-go').addEventListener('click', openHomiSkins);
-    function renderHomiStall() { renderHomiTiers(); renderHomi(); renderHomiSkins(); }
-    function onHomiTile(e, d) {
-      if (e.base) { ui.toast('이 호미에 이미 들어 있는 효과예요'); return; }
-      if (!d.slots.length) { ui.toast('길쭉 자루 호미부터 각인 칸이 생겨요'); return; }
-      if (e.slot >= 0) { const r = Input.equipHomiEngrave(e.slot, null); if (!r.ok) ui.toast(r.msg); renderHomi(); return; }
-      if (!e.owned) {
-        const r = Input.buyHomiEngrave(e.id);
-        if (!r.ok) { ui.toast(r.msg); return; }
-        ui.toast(t(`${e.name} 각인을 샀어요`));
-      }
-      const empty = d.slots.indexOf(null);
-      const slot = d.slots[homiSel] == null ? homiSel : empty >= 0 ? empty : homiSel;
-      const r = Input.equipHomiEngrave(slot, e.id);
-      if (!r.ok) ui.toast(r.msg);
-      renderHomi();
-    }
-    function openHomi() {
-      homiSel = 0;
-      renderHomiStall();
-      $('homi-menu').classList.add('show');
-      document.body.classList.add('menu-open');
-    }
-    $('homi-close').addEventListener('click', () => { $('homi-menu').classList.remove('show'); document.body.classList.remove('menu-open'); });
-    function showShopTab(t) {
-      shopTab = t;
-      $('sell-ad').replaceChildren();
-      [...document.querySelectorAll('#shop-menu .sh-tab')].forEach(b => b.classList.toggle('active', b.dataset.tab === t));   // 좌판 탭만 — .sh-tab 은 꾸미기 가게·캐릭터 창도 쓴다
-      $('sell-items').style.display = t === 'sell' ? 'flex' : 'none';
-      $('buy-items').style.display = t === 'buy' ? 'flex' : 'none';
-      if (t !== 'sell') renderSellSheet(null);
-      renderShop();
-    }
-    document.querySelectorAll('#shop-menu .sh-tab').forEach(b => b.addEventListener('click', () => showShopTab(b.dataset.tab)));
-    let pendingSaplingPurchaseSpotlight = false;
-    $('shop-close').addEventListener('click', () => {
-      $('shop-menu').classList.remove('show'); document.body.classList.remove('menu-open');
-      if (pendingSaplingPurchaseSpotlight) {
-        pendingSaplingPurchaseSpotlight = false;
-        setTimeout(() => ui.startSaplingPurchaseSpotlight(), 80);
-      }
-    });
     // 🎀 꾸미기 닫기 — 입어보던 건 버리고(실제 장착으로 복귀) 프리뷰 렌더러도 세운다
     $('cos-close').addEventListener('click', () => { $('cos-menu').classList.remove('show'); document.body.classList.remove('menu-open'); Input.closeCosMenu?.(); });
     $('craft-close').addEventListener('click', () => { $('craft-menu').classList.remove('show'); document.body.classList.remove('menu-open'); });
@@ -7761,25 +6916,6 @@
     }
     $('cafe-close').addEventListener('click', () => { $('cafe-menu').classList.remove('show'); document.body.classList.remove('menu-open'); });
 
-    // ── 🛶 나룻배: 결과 모달 · 🧰 창고(배 강화) · 런 조작 버튼 ──
-    function renderBoatShop(d) {
-      renderDock($('bs-dock'), d, {
-        select(id) { const r = Input.selectBoat(id); if (!r.ok) ui.toast(r.msg); renderBoatShop(Input.getDock()); },
-        course(c) { const r = Input.selectCourse(c); if (!r.ok && r.msg) ui.toast(r.msg); renderBoatShop(Input.getDock()); },
-        unlock(id) { const r = Input.unlockBoat(id); if (!r.ok) { ui.toast(r.msg); return; } ui.toast(`${r.ico} ${r.name} 완성!`, 2400); renderBoatShop(Input.getDock()); },
-      });
-    }
-    $('bs-close').addEventListener('click', () => $('boat-shop').classList.remove('show'));
-    $('boat-shop').addEventListener('click', (e) => { if (e.target === $('boat-shop')) $('boat-shop').classList.remove('show'); });
-    $('boat-result-close').addEventListener('click', () => $('boat-result').classList.remove('show'));
-    $('br-again').addEventListener('click', () => { $('boat-result').classList.remove('show'); Input.startBoatRun(); });
-    $('boat-quit').addEventListener('click', () => Input.quitBoatRun());
-    $('boat-skill').addEventListener('click', () => Input.boatSkill());
-    $('boat-view').addEventListener('click', () => {
-      const m = Input.toggleBoatView();
-      $('boat-view').textContent = m === 'first' ? '👁️ 1인칭' : '👁️ 3인칭';
-      ui.toast(m === 'first' ? '👁️ 1인칭 시점 (뱃머리)' : '👁️ 3인칭 시점 (멀미가 나면 이쪽으로)');
-    });
 
     // 내 활동 기록 대시보드 — 영구 계정은 플랫폼에 관계없이 본인 로그를 볼 수 있다.
     $('stats-btn').addEventListener('click', () => {
@@ -7798,7 +6934,7 @@
       }
     });
     $('seed-ok').addEventListener('click', () => $('seed-modal').classList.remove('show'));
-    $('hint-ok').addEventListener('click', () => $('hint-modal').classList.remove('show'));
+    $('hint-ok').addEventListener('click', () => { $('hint-modal').classList.remove('show'); nextHint(); });
     window.addEventListener('keydown', e => {                // 데스크톱: 안내 모달이 떠 있으면 Space = 알겠어요 — 게임 조작으로 안 새게 capture
       if (e.code !== 'Space' || e.repeat) return;
       const OK_BTN = { 'hint-modal': 'hint-ok', 'seed-modal': 'seed-ok', 'notice-modal': 'notice-ok', 'dream-arrive-modal': 'dream-arrive-ok', 'mirror-arrive-modal': 'mirror-arrive-ok', 'daily-modal': 'daily-ok' };
@@ -7853,165 +6989,15 @@
     $('story-close').addEventListener('click', () => closeStoryModal());
     $('story-modal').addEventListener('click', (e) => { if (e.target === $('story-modal')) closeStoryModal(); });
 
-    // ═══════════════ 🏆 리더보드 — /api/leaderboard (서버 집계·엣지 캐시) ═══════════════
-    const LB_BOARDS = [
-      { id: 'boat',  label: '🛶 오늘의 뱃길', unit: '점',  desc: '오늘의 물길 최고 점수 — 코스는 모두에게 같아요', daily: true },
-      { id: 'boat_rapid', label: '🌊 급류', unit: '점', desc: '오늘 급류 최고 점수', daily: true },
-      { id: 'sea',   label: '🌊 오늘의 대어', unit: 'kg',  desc: '오늘 낚은 가장 무거운 물고기 — 어종은 가리지 않아요', daily: true, fmt: s => (s / 10).toFixed(1) },
-      { id: 'rich',  label: '🪙 주간 부자',   unit: '🪙', desc: '이번 주에 번 코인' },
-      { id: 'mine',  label: '⛏️ 광부왕',      unit: '회',  desc: '이번 주 채굴 횟수' },
-      { id: 'cook',  label: '🍳 요리왕',      unit: '회',  desc: '이번 주 요리 횟수' },
-      { id: 'quest', label: '📜 퀘스트',      unit: '건',  desc: '이번 주 완료한 의뢰' },
-      { id: 'sled',  label: '🛷 썰매',        unit: '초',  desc: '오늘 설산 썰매 최고 기록', daily: true, fmt: v => (-v / 1000).toFixed(2) },
-    ];
-    let lbBoard = 'boat';
-    const lbCache = {};   // 모달 열려있는 동안 보드별 응답 캐시(탭 왕복 시 재요청 방지)
-    function lbMedal(r) { return r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : r + '위'; }
-    // 🌊 오늘의 대어 — 그 무게를 낸 어종(서버가 sp 로 준다. 없으면 예전처럼 비움 — SQL 적용 전에도 안전)
-    //   이름은 별도 span — 옵저버가 '참치' 같은 사전 단어로 번역한다(아이콘과 붙이면 못 찾는다)
-    function lbSpecies(sp) {
-      if (!sp) return '';
-      const s = (Input.getSeaSpecies?.() || []).find(x => x.id === sp);
-      return s ? `<span class="lb-sp">${s.ico} <span>${s.name}</span></span>` : '';
-    }
-    async function renderLb(board) {
-      lbBoard = board;
-      const meta = LB_BOARDS.find(b => b.id === board);
-      $('lb-sub').textContent = meta.desc + (meta.daily ? '' : ' — 매주 월요일 새로 시작해요');
-      [...document.querySelectorAll('.lb-tab')].forEach(b => b.classList.toggle('active', b.dataset.id === board));
-      const list = $('lb-list'), meBox = $('lb-me');
-      list.innerHTML = '<div class="lb-empty">불러오는 중… 🌿</div>'; meBox.innerHTML = '';
-      try {
-        if (!lbCache[board]) {
-          const uid = (authState.userId || '');
-          const res = await fetch(`${CONFIG.API_BASE}/api/leaderboard?board=${board}&uid=${uid}`);
-          if (!res.ok) throw new Error('http ' + res.status);
-          lbCache[board] = await res.json();
-        }
-        const d = lbCache[board];
-        const top = d.top || [];
-        const myNick = Input.getNickname() || '';
-        if (!top.length) {
-          list.innerHTML = `<div class="lb-empty">아직 기록이 없어요.<br>${meta.label}의 첫 주인공이 되어보세요!</div>`;
-          return;
-        }
-        list.innerHTML = top.map(r =>
-          `<div class="lb-row${r.rank <= 3 ? ' top3' : ''}${d.me && r.rank === d.me.rank && r.nick === myNick ? ' me-row' : ''}">
-            <span class="lb-rank">${lbMedal(r.rank)}</span>
-            <span class="lb-nick">${escapeHtml(r.nick)}</span>${lbSpecies(r.sp)}
-            <span class="lb-score">${meta.fmt ? meta.fmt(r.score) : Number(r.score).toLocaleString()}${meta.unit}</span>
-          </div>`).join('');
-        // 내 순위 — 상위 목록에 안 보이면 하단에 고정 표시
-        if (d.me && !(top.some(r => r.rank === d.me.rank && r.nick === myNick))) {
-          meBox.innerHTML = `<div class="lb-row"><span class="lb-rank">${lbMedal(d.me.rank)}</span><span class="lb-nick">${escapeHtml(myNick || '나')} (나)</span>${lbSpecies(d.me.sp)}<span class="lb-score">${meta.fmt ? meta.fmt(d.me.score) : Number(d.me.score).toLocaleString()}${meta.unit}</span></div>`;
-        } else if (!d.me && authState.userId) {
-          meBox.innerHTML = `<div class="lb-empty" style="padding:8px;">아직 이 보드에 내 기록이 없어요. 지금 만들어봐요!</div>`;
-        }
-      } catch (e) {
-        list.innerHTML = '<div class="lb-empty">순위를 불러오지 못했어요.<br>잠시 후 다시 열어주세요 🌧️</div>';
-      }
-    }
-    function openLb() {
-      const tabs = $('lb-tabs');
-      if (!tabs.children.length) {
-        LB_BOARDS.forEach(b => {
-          const t = document.createElement('button');
-          t.className = 'lb-tab'; t.dataset.id = b.id; t.textContent = b.label;
-          t.addEventListener('click', () => renderLb(b.id));
-          tabs.appendChild(t);
-        });
-        $('lb-close').addEventListener('click', () => $('lb-modal').classList.remove('show'));
-      }
-      Object.keys(lbCache).forEach(k => delete lbCache[k]);   // 열 때마다 신선하게(서버가 5분 캐시)
-      Input.setAnalog(0, 0);
-      $('lb-modal').classList.add('show');
-      trackEvent('leaderboard_open', { board: lbBoard });   // [GA4] 소셜 기능 사용률
-      renderLb(lbBoard);
-    }
-    $('lb-btn').addEventListener('click', openLb);   // ☰메뉴 접힘은 util-btns 위임 핸들러가 처리
     $('hire-close').addEventListener('click', () => $('hire-modal').classList.remove('show'));
     $('hire-modal').addEventListener('click', (e) => { if (e.target === $('hire-modal')) $('hire-modal').classList.remove('show'); });
     $('market-close').addEventListener('click', () => $('market-modal').classList.remove('show'));
     $('market-modal').addEventListener('click', (e) => { if (e.target === $('market-modal')) $('market-modal').classList.remove('show'); }); // 바깥 클릭 닫기
 
-    // ── 📖 도감 — 발견한 종은 컬러, 미발견은 실루엣(???). 게스트에겐 보존 배너(회원 유치) ──
-    // ⚠️ js/game.js 에도 같은 이름의 표가 있다(박물관 명판용). 문구가 서로 달라 **둘 다** 고쳐야 한다 —
-    //    한쪽만 고치면 도감 모달 제목에 카테고리 키가 날것으로 뜬다('visitor' 가 그대로 보였다).
-    const DEX_CAT_LABEL = { fish: '🎣 물고기', crop: '🌾 작물', ore: '⛏️ 광물', cook: '🍳 요리', npc: '🏡 이웃', weather: '🌦️ 날씨', bug: '🌟 반딧불이', forage: '🍄 채집물', track: '🐾 밤손님 흔적', river: '🛶 강에서', spirit: '🌫️ 안개 숲 정령', dig: '🪏 땅속에서', visitor: '🦋 텃밭 방문객' };
     const isGuestNow = () => !['google', 'email', 'toss', 'pgs', 'gc', 'apple'].includes(authState.provider);   // 구글·이메일·토스·플레이 게임즈·🍎게임센터·Apple 계정 = 영구 계정
-    // 📖 도감 설명문 — /api/dex-notes 에서 받아 카드에 한 줄씩 붙인다.
-    //   종 목록이 배포마다 고정이라 응답도 고정 → 한 번 받으면 localStorage 에 두고 다시 부르지 않는다.
-    //   실패·미설정이면 설명 줄 없이 지금처럼 아이콘·이름만 나온다.
-    const DEX_NOTE_KEY = `cf_dexnote_${LANG}_v1`;
-    let dexNotes = {};
-    try { dexNotes = JSON.parse(localStorage.getItem(DEX_NOTE_KEY) || '{}') || {}; } catch (e) { dexNotes = {}; }
-    const dexNoteBusy = new Set();
-    async function fetchDexNotes(cats) {
-      const todo = cats.filter(c => !dexNotes[c] && !dexNoteBusy.has(c));
-      if (!todo.length) return;
-      todo.forEach(c => dexNoteBusy.add(c));
-      await Promise.all(todo.map(async (c) => {
-        try {
-          const res = await fetch(`${CONFIG.API_BASE}/api/dex-notes?cat=${c}&lang=${LANG}`);
-          if (res.ok) {
-            const d = await res.json();
-            if (d && Object.keys(d).length) dexNotes[c] = d;
-          }
-        } catch (e) { /* 오프라인 — 설명 줄 없이 진행 */ }
-        finally { dexNoteBusy.delete(c); }
-      }));
-      try { localStorage.setItem(DEX_NOTE_KEY, JSON.stringify(dexNotes)); } catch (e) {}
-      if ($('dex-modal').classList.contains('show')) renderDex();   // 도착했으면 다시 그린다
-    }
-
-    function renderDex() {
-      const d = Input.getDex();
-      $('dex-title').textContent = `📖 도감 (${d.count}/${d.total})`;
-      const box = $('dex-sections'); box.innerHTML = '';
-      for (const cat in d.cats) {
-        const h = document.createElement('div'); h.className = 'dex-cat'; h.textContent = DEX_CAT_LABEL[cat] || cat; box.appendChild(h);
-        const grid = document.createElement('div'); grid.className = 'dex-grid';
-        d.cats[cat].forEach(e => {
-          const el = document.createElement('div');
-          el.className = 'dex-item' + (e.found ? '' : ' locked');
-          // 발견한 것에만 설명을 붙인다 — 미발견 카드에 붙으면 그 자체가 스포일러가 된다
-          const note = e.found ? (dexNotes[cat] || {})[e.id] : '';
-          el.innerHTML = `<span class="d-ico">${e.ico}</span><span class="d-name">${e.found ? e.name : '???'}</span>`
-            + (note ? `<span class="d-desc">${note}</span>` : '');
-          grid.appendChild(el);
-        });
-        box.appendChild(grid);
-      }
-      // 🏅 배지 — 미획득도 이름·조건을 보여줘 목표 제시(도감과 달리 ??? 없음)
-      const bh = document.createElement('div'); bh.className = 'dex-cat';
-      bh.textContent = `🏅 배지 (${d.badgeCount}/${d.badgeTotal})`; box.appendChild(bh);
-      const bgrid = document.createElement('div'); bgrid.className = 'dex-grid';
-      d.badges.forEach(b => {
-        const el = document.createElement('div');
-        el.className = 'dex-item badge' + (b.earned ? '' : ' locked');
-        el.innerHTML = `<span class="d-ico">${b.ico}</span><span class="d-name">${b.name}</span><span class="d-desc">${b.desc}</span>`;
-        bgrid.appendChild(el);
-      });
-      box.appendChild(bgrid);
-      $('dex-guest').classList.toggle('show', isGuestNow());   // 게스트만: 보존 배너 + 구글 버튼
-      return d;
-    }
-
-    function openDex() {
-      Input.setAnalog(0, 0);
-      const d = renderDex();
-      $('dex-modal').classList.add('show');
-      ui.act?.('dex');                                          // 튜토리얼: 도감 확인 단계
-      trackEvent('dex_open', { found: d.count, total: d.total, badges: d.badgeCount, guest: isGuestNow() }); // [GA4] 도감 관심 퍼널
-      // 하나라도 발견한 분류만 받아온다 — 안 본 것까지 미리 받을 이유가 없다
-      fetchDexNotes(Object.keys(d.cats).filter(c => d.cats[c].some(e => e.found)));
-    }
-    $('dex-tab').addEventListener('click', openDex);
     // 🍂 계절 아이콘 — 지금 계절·남은 날·이번 계절 한정 어종
     hydrateIcons();
     $('season-emoji').addEventListener('click', () => ui.toast(Input.seasonStatus(), 2600));
-    $('dex-close').addEventListener('click', () => $('dex-modal').classList.remove('show'));
-    $('dex-modal').addEventListener('click', (e) => { if (e.target === $('dex-modal')) $('dex-modal').classList.remove('show'); });
     // 🔵 토스 웹뷰에선 구글 OAuth 가 불가하므로 넛지의 출구를 토스 식별키 연결로 바꾼다
     //    (안 바꾸면 게스트가 "구글로 로그인하세요"라는 실행 불가능한 안내에 갇힌다)
     //    📱 플레이 앱도 같은 이유(WebView 구글 OAuth 차단)로 출구를 플레이 게임즈 연결로 바꾼다.
@@ -8034,9 +7020,10 @@
           holdGuestForLogin(getGameState());
           if (!inAppLogin.inApp && !IS_ITCH) return signInWithGoogle();
           trackEvent('inapp_nudge_email', { from, app: IS_ITCH ? 'itch' : inAppLogin.app });
-          try { sessionStorage.setItem('cf_login_email', '1'); sessionStorage.setItem('cf_login_email_from', from); } catch { }
+          requestEmailHandoff(sessionStorage, from);
           location.reload();
         };
+    ui.connectAccount = (from) => nudgeConnect(from);
     if (!IS_TOSS && !IS_NATIVE && (inAppLogin.inApp || IS_ITCH)) {
       $('dex-google').textContent = '✉️ 이메일로 도감 지키기';
       $('nudge-google').textContent = '✉️ 이메일로 가입하고 영구 보존';
@@ -8103,201 +7090,7 @@
     $('nudge-later').addEventListener('click', () => $('nudge-modal').classList.remove('show'));
     $('nudge-modal').addEventListener('click', (e) => { if (e.target === $('nudge-modal')) $('nudge-modal').classList.remove('show'); });
 
-    // ── 사진 찍기 (캡처 → 저장/공유) ──
-    let lastPhoto = null, photoPulseT;
-
-    // ── 📸 액션샷 공유 카드 — 촬영본에 프레임·타이틀·도감 진행도를 합성(공유 시 홍보 카드가 됨) ──
-    function frameActionShot(dataURL) {
-      return new Promise((resolve) => {
-        const img = new Image();
-        img.onload = () => {
-          try {
-            const W = img.width, H = img.height;
-            const S = Math.min(W, H);   // 세로 캡처(모바일)에서도 글자·바가 사진 폭에 맞게
-            const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-            const c = cv.getContext('2d');
-            c.drawImage(img, 0, 0);
-            // 크림 프레임 테두리
-            const bw = Math.max(6, Math.round(W * 0.012));
-            c.strokeStyle = 'rgba(255,252,240,0.9)'; c.lineWidth = bw;
-            c.strokeRect(bw / 2, bw / 2, W - bw, H - bw);
-            // 하단 정보 바(그라데이션 — 사진을 가리지 않게 은은히)
-            const barH = Math.round(S * 0.11);
-            const grad = c.createLinearGradient(0, H - barH * 1.7, 0, H);
-            grad.addColorStop(0, 'rgba(28,42,34,0)');
-            grad.addColorStop(1, 'rgba(28,42,34,0.74)');
-            c.fillStyle = grad; c.fillRect(0, H - barH * 1.7, W, barH * 1.7);
-            const pad = Math.round(W * 0.032), fs = Math.round(S * 0.045);
-            // 좌: 게임 타이틀 + 주소(유입 링크)
-            c.textAlign = 'left'; c.fillStyle = '#fffdf4';
-            c.font = `800 ${fs}px sans-serif`;
-            c.fillText(t('🌿 고요한 숲'), pad, H - Math.round(barH * 0.55));
-            c.font = `500 ${Math.round(fs * 0.58)}px sans-serif`; c.fillStyle = 'rgba(255,253,244,0.85)';
-            c.fillText('calmforest.cloud', pad, H - Math.round(barH * 0.18));
-            // 우: 오늘 날씨 + 도감 진행도 + 날짜
-            const dex = Input.getDex();
-            const wIco = iconText($('time-emoji')) || '🌿';
-            const t = new Date();
-            const ds = `${t.getFullYear()}.${String(t.getMonth() + 1).padStart(2, '0')}.${String(t.getDate()).padStart(2, '0')}`;
-            c.textAlign = 'right'; c.fillStyle = '#fffdf4';
-            c.font = `700 ${Math.round(fs * 0.75)}px sans-serif`;
-            c.fillText(t(`${wIco}  📖 도감 ${dex.count}/${dex.total}  ·  ${ds}`), W - pad, H - Math.round(barH * 0.38));
-            resolve(cv.toDataURL('image/png'));
-          } catch (e) { resolve(dataURL); }   // 합성 실패 시 원본 그대로
-        };
-        img.onerror = () => resolve(dataURL);
-        img.src = dataURL;
-      });
-    }
-    let photoBusy = false;   // 액션샷 진행 중 중복 클릭 방지
-    $('photo-btn').addEventListener('click', async () => {
-      if (photoBusy) return;
-      photoBusy = true;
-      Input.setAnalog(0, 0); $('photo-btn').classList.remove('pulse');
-      ui.toast('📸 찰칵…!');
-      // 카메라가 캐릭터에 밀착 + 랜덤 포즈 → 포즈 정점 프레임에서 캡처(역동샷)
-      let data = await Input.captureActionShot();
-      photoBusy = false;
-      if (!data) { ui.toast('사진 캡처에 실패했어요'); return; }
-      data = await frameActionShot(data);   // 📸 공유 카드 합성(프레임+타이틀+도감 진행도)
-      lastPhoto = data; $('photo-img').src = data;
-      const pc = $('photo-cloud'); pc.disabled = false; pc.textContent = '☁️ 사진첩';   // 새 사진 → 저장 버튼 초기화
-      const ps = $('photo-save'); ps.disabled = false; ps.textContent = '💾 저장';        // 📱 앱의 '✅ 저장됨' 되돌리기
-      $('photo-modal').classList.add('show');
-      trackEvent('photo_capture');   // [GA4]
-    });
-    $('photo-close').addEventListener('click', () => $('photo-modal').classList.remove('show'));
-
-    // ── 📸 사진첩(OCI 버킷) — 구글 로그인 전용, 게스트에겐 로그인 넛지 ──
-    //    업로드: 카드 PNG → JPEG(용량 1/3) → 같은 오리진 /api/photo (서버가 OCI 에 서명 PUT)
-    //    목록: photos 테이블(RLS) → /api/photo-urls 로 presigned <img> URL 일괄 발급
-    function toJpegDataURL(pngDataURL, quality = 0.85, maxDim = 1600) {
-      return new Promise((resolve) => {
-        const img = new Image();
-        img.onload = () => {
-          try {
-            // 레티나/4K 캡처는 그대로 올리면 서버 한도(1.5MB)를 넘을 수 있어 긴 변 1600px 로 축소
-            const k = Math.min(1, maxDim / Math.max(img.width, img.height));
-            const cv = document.createElement('canvas');
-            cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
-            const c = cv.getContext('2d');
-            c.fillStyle = '#fff'; c.fillRect(0, 0, cv.width, cv.height);   // PNG 투명부 → 흰 배경
-            c.drawImage(img, 0, 0, cv.width, cv.height);
-            resolve(cv.toDataURL('image/jpeg', quality));
-          } catch (e) { resolve(null); }
-        };
-        img.onerror = () => resolve(null);
-        img.src = pngDataURL;
-      });
-    }
-    const authHeaders = async () => { const t = await getAccessToken(); return t ? { authorization: 'Bearer ' + t } : {}; };
-
-    let cloudBusy = false;
-    $('photo-cloud').addEventListener('click', async () => {
-      if (isGuestNow()) { ui.loginNudge('album'); return; }       // 게스트 → 회원 전환 넛지
-      if (!lastPhoto || cloudBusy) return;
-      cloudBusy = true;
-      const btn = $('photo-cloud'); btn.disabled = true; btn.textContent = '☁️ 저장 중…';
-      try {
-        const jpeg = await toJpegDataURL(lastPhoto);
-        if (!jpeg) throw new Error('convert_failed');
-        const res = await fetch(CONFIG.PHOTO_API, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json', ...(await authHeaders()) },
-          body: JSON.stringify({ image: jpeg }),
-        });
-        const d = await res.json().catch(() => ({}));
-        if (res.status === 409) { ui.toast('📸 사진첩 가득 · 지우면 더 담겨요', 3200); }
-        else if (res.status === 503) { ui.toast('☁️ 사진첩 서버 준비 중이에요. 조금만 기다려주세요'); }
-        else if (!res.ok || !d.ok) { throw new Error(d.error || 'HTTP ' + res.status); }
-        else {
-          insertPhotoRow(d.key, iconText($('time-emoji')) || null);   // 목록용 메타 행
-          btn.textContent = '✅ 저장됨';                                  // 같은 사진 중복 저장 방지(비활성 유지)
-          ui.toast(`☁️ 사진첩에 저장했어요! (${d.count}/${d.max})`);
-          trackEvent('photo_upload', { count: d.count });               // [GA4] 사진첩 퍼널
-          cloudBusy = false;
-          return;
-        }
-      } catch (err) {
-        console.warn('[사진첩] 업로드 실패:', err?.message || err);
-        ui.toast('☁️ 저장에 실패했어요. 잠시 후 다시 시도해주세요');
-      }
-      btn.disabled = false; btn.textContent = '☁️ 사진첩'; cloudBusy = false;
-    });
-
-    // 사진첩 열기 — 그리드(최신순) + 크게 보기/공유/삭제
-    let albumCur = null;   // 크게 보는 사진 { key, url }
-    async function openAlbum() {
-      if (isGuestNow()) { ui.loginNudge('album'); return; }
-      $('topleft').classList.remove('open');
-      const grid = $('album-grid');
-      grid.innerHTML = '<div class="album-empty">불러오는 중…</div>';
-      $('album-count').textContent = '';
-      Input.setAnalog(0, 0);
-      $('album-modal').classList.add('show');
-      const rows = await listPhotos();
-      $('album-count').textContent = `${rows.length}/100`;
-      trackEvent('album_open', { count: rows.length });               // [GA4]
-      if (!rows.length) {
-        grid.innerHTML = '<div class="album-empty">아직 사진이 없어요. 📷 액션샷을 찍고 ☁️ 버튼으로 저장해보세요!</div>';
-        return;
-      }
-      let urls = {};
-      try {
-        const res = await fetch(CONFIG.PHOTO_URLS_API, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json', ...(await authHeaders()) },
-          body: JSON.stringify({ keys: rows.map(r => r.object_key) }),
-        });
-        urls = (await res.json())?.urls || {};
-      } catch (e) { console.warn('[사진첩] URL 발급 실패:', e?.message || e); }
-      grid.innerHTML = '';
-      let shown = 0;
-      rows.forEach(r => {
-        const url = urls[r.object_key]; if (!url) return;
-        shown++;
-        const d = new Date(r.taken_at);
-        const cell = document.createElement('div'); cell.className = 'album-cell';
-        cell.innerHTML = `<img loading="lazy" src="${url}" alt="${escapeHtml(`고요한 숲 사진 · ${r.weather || ''} ${d.getMonth() + 1}/${d.getDate()}`)}"><span class="album-date">${escapeHtml(r.weather || '')} ${d.getMonth() + 1}/${d.getDate()}</span>`;
-        cell.addEventListener('click', () => {
-          albumCur = { key: r.object_key, url };
-          $('album-img').src = url;
-          $('album-view').classList.add('show');
-        });
-        grid.appendChild(cell);
-      });
-      if (!shown) grid.innerHTML = '<div class="album-empty">사진을 불러오지 못했어요. ☁️ 서버 설정을 확인해주세요</div>';
-    }
-    $('album-btn').addEventListener('click', openAlbum);
-    $('album-close').addEventListener('click', () => $('album-modal').classList.remove('show'));
-    $('album-modal').addEventListener('click', (e) => { if (e.target === $('album-modal')) $('album-modal').classList.remove('show'); });
-    $('album-view-close').addEventListener('click', () => $('album-view').classList.remove('show'));
-    $('album-view').addEventListener('click', (e) => { if (e.target === $('album-view')) $('album-view').classList.remove('show'); });
-    $('album-share').addEventListener('click', async () => {
-      if (!albumCur) return;
-      if (IS_ANDROID) {                                  // 📱 앱: 링크를 공유 시트로
-        try { await shareUrlNative({ plugin: capPlugin('Photo'), url: albumCur.url, title: t('🌿 고요한 숲') }); } catch (e) { ui.toast('공유하지 못했어요'); }
-        return;
-      }
-      try {
-        if (navigator.share) await navigator.share({ title: t('🌿 고요한 숲'), url: albumCur.url });
-        else { await navigator.clipboard.writeText(albumCur.url); ui.toast('🔗 사진 링크를 복사했어요 (1시간 유효)'); }
-      } catch (e) {}   // 공유 시트 취소는 정상 흐름
-    });
-    $('album-delete').addEventListener('click', async () => {
-      if (!albumCur) return;
-      try {
-        const res = await fetch(`${CONFIG.PHOTO_API}?key=${encodeURIComponent(albumCur.key)}`, {
-          method: 'DELETE', headers: await authHeaders(),
-        });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        deletePhotoRow(albumCur.key);
-        trackEvent('photo_delete');                                   // [GA4]
-        $('album-view').classList.remove('show');
-        ui.toast('🗑️ 사진을 지웠어요');
-        openAlbum();                                                  // 목록 갱신
-      } catch (err) { ui.toast('삭제에 실패했어요. 잠시 후 다시'); }
-    });
+    let photoPulseT;
 
     // ── 배경음악 토글 ──
     let musicPref = 'on';
@@ -8318,202 +7111,7 @@
       b.addEventListener('click', () => { Input.emote(b.dataset.e); emotePop.classList.remove('show'); }));
     $('emote-sit').addEventListener('click', () => { Input.toggleSit(); emotePop.classList.remove('show'); });
 
-    // ── 가방 창 (분류별 아이템 보기) ──
-    const ITEM_META = {
-      wood: { ico: '🪵', name: '목재' }, seed: { ico: '🌰', name: '씨앗' }, coins: { ico: '🪙', name: '코인' },
-      crop: { ico: '🥕', name: '작물' }, fish: { ico: '🐟', name: '물고기' }, egg: { ico: '🥚', name: '달걀' },
-      stone: { ico: '🪨', name: '돌' }, coal: { ico: '⚫', name: '석탄' }, gem: { ico: '💎', name: '보석' },
-      bug: { ico: '🌟', name: '반딧불이' }, forage: { ico: '🍄', name: '채집물' },
-      star: { ico: '⭐', name: '별조각' }, glow: { ico: '✨', name: '정령빛' },
-      fert: { ico: '🌱', name: '비료' }, bait: { ico: '🪱', name: '미끼' },
-      wheat: { ico: '🌾', name: '밀' }, corn: { ico: '🌽', name: '옥수수' }, grape: { ico: '🍇', name: '포도' },
-      seed_wheat: { ico: '🌾', name: '밀 씨앗' }, seed_corn: { ico: '🌽', name: '옥수수 씨앗' }, seed_grape: { ico: '🍇', name: '포도 씨앗' },
-      honey: { ico: '🍯', name: '꿀' }, candy: { ico: '🍬', name: '사탕' },
-      apple: { ico: '🍎', name: '사과' }, pear: { ico: '🍐', name: '배' }, peach: { ico: '🍑', name: '복숭아' },
-      persimmon: { ico: '🍊', name: '감' }, chestnut: { ico: '🌰', name: '밤' },
-      sap_apple: { ico: '🍎', name: '사과나무 묘목' }, sap_pear: { ico: '🍐', name: '배나무 묘목' },
-      sap_peach: { ico: '🍑', name: '복숭아나무 묘목' }, sap_persimmon: { ico: '🍊', name: '감나무 묘목' },
-      sap_chestnut: { ico: '🌰', name: '밤나무 묘목' },
-      ...FORAGE_META,
-    };
-    const BAG_CATS = [
-      { name: '🌲 자원', keys: ['wood', 'seed', 'coins'] },
-      { name: '🌱 농사·낚시·닭장', keys: ['crop', 'fish', 'egg', 'fert', 'bait'] },
-      { name: '🌾 고급 작물', keys: ['wheat', 'corn', 'grape', 'honey', 'seed_wheat', 'seed_corn', 'seed_grape'] },
-      { name: '🍎 과수원', keys: ['sap_apple', 'sap_pear', 'sap_peach', 'sap_persimmon', 'sap_chestnut', 'apple', 'pear', 'peach', 'persimmon', 'chestnut'] },
-      { name: '⛏️ 광물', keys: ['stone', 'coal', 'gem'] },
-      { name: '🌙 밤·숲', keys: ['bug', 'forage'] },
-      { name: '🛶 강 · 🌫️ 숲', keys: ['star', 'glow'] },
-      { name: '🎃 할로윈', keys: ['candy'] },
-      { name: '🌊 바다', keys: FORAGE_KEYS },
-    ];
-    function bagSection(title, items) {
-      const sec = document.createElement('div'); sec.className = 'bag-sec';
-      const h = document.createElement('div'); h.className = 'bag-h'; h.textContent = title; sec.appendChild(h);
-      const grid = document.createElement('div'); grid.className = 'bag-grid';
-      items.forEach(it => {
-        const c = document.createElement('div'); c.className = 'bag-item' + (it.count > 0 ? '' : ' zero');
-        c.innerHTML = `<span class="bag-ico">${it.ico}</span><span class="bag-name">${it.name}</span><span class="bag-cnt">×${it.count}</span>`;
-        grid.appendChild(c);
-      });
-      sec.appendChild(grid); return sec;
-    }
-    // 🍱 찬장 — 보관해 둔 음식. 칸을 누르면 그 자리에서 먹어 버프가 켜진다.
-    //   재료와 달리 "등급"이 붙어 있어서 개수만 세는 bagSection 으로는 표현이 안 된다(칸마다 다른 물건).
-    function pantrySection(d) {
-      const sec = document.createElement('div'); sec.className = 'bag-sec';
-      const h = document.createElement('div'); h.className = 'bag-h';
-      h.textContent = `🍱 찬장 ${d.items.length}/${d.max}`;
-      sec.appendChild(h);
-      if (!d.items.length) {
-        const empty = document.createElement('div'); empty.className = 'bag-empty';
-        empty.textContent = '🍳 자유주방에서 요리한 뒤 "🧺 보관하기"를 고르면 여기 담겨요';
-        sec.appendChild(empty); return sec;
-      }
-      const grid = document.createElement('div'); grid.className = 'bag-grid';
-      d.items.forEach(f => {
-        const c = document.createElement('button'); c.className = 'bag-item food';
-        c.innerHTML = `<span class="bag-ico">${f.ico}</span><span class="bag-name">${f.name}</span><span class="bag-tier">${f.tier.ico} ${f.buff.ico}${f.buff.dur}초</span>`;
-        c.title = `${f.tier.name} · ${f.buff.name} 버프 ${f.buff.dur}초`;
-        c.addEventListener('click', () => {
-          const r = Input.pantryEat(f.i);
-          if (r?.ok) ui.toast(`${r.ico} ${r.name} 먹었어요 — ${r.buff.ico} ${r.buff.name} 버프 ${r.buff.dur}초`, 2600);
-          renderBag();
-        });
-        grid.appendChild(c);
-      });
-      sec.appendChild(grid); return sec;
-    }
-    function renderBag() {
-      const box = $('bag-content'); box.innerHTML = '';
-      if (shell) {
-        const keys = document.body.classList.contains('at-mine') ? ['coins', 'stone', 'coal', 'gem'] : ['coins', 'wood', 'seed', 'crop', 'stone'];
-        const ICO = { coins: '🪙', wood: '🪵', seed: '🌰', crop: '🥕', stone: '🪨', coal: '⚫', gem: '💎' };
-        const row = document.createElement('div'); row.className = 'bag-sum';
-        keys.forEach(k => { const c = document.createElement('span'); c.className = 'bag-chip' + (k === 'coins' ? ' coin' : ''); c.textContent = `${ICO[k]} ${lastInv[k] || 0}`; row.appendChild(c); });
-        box.appendChild(row);
-      }
-      box.appendChild(pantrySection(Input.getPantry()));   // 🍱 찬장을 맨 위로 — 먹으러 여는 일이 가장 잦다
-      BAG_CATS.forEach(cat => box.appendChild(bagSection(cat.name, cat.keys.map(k => ({ ...ITEM_META[k], count: lastInv[k] || 0 })))));
-      const owned = Input.ownedGifts();
-      box.appendChild(bagSection('🎁 선물', [...Input.keptGifts().map(k => ({ ico: k.ico + (k.paper ? '🎀' : ''), name: k.name, count: k.n })), ...Input.getGifts().map(g => ({ ico: g.ico, name: g.name, count: owned[g.id] || 0 }))]));
-    }
-    function openBag() { renderBag(); Input.setAnalog(0, 0); $('bag-menu').classList.add('show'); $('bag-backdrop').classList.add('show'); document.body.classList.add('menu-open'); }
-    function closeBag() { $('bag-menu').classList.remove('show'); $('bag-backdrop').classList.remove('show'); document.body.classList.remove('menu-open'); }
-    $('inv-hud').addEventListener('click', openBag);   // 자원 숫자·가방 아무 데나 탭하면 열림
-    $('bag-close').addEventListener('click', closeBag);
-    $('bag-backdrop').addEventListener('click', closeBag);
 
-    // ── 집 외관 꾸미기 ──
-    const hex = (c) => '#' + c.toString(16).padStart(6, '0');
-    function renderExt() {
-      const { style, unlocked, roof, wall, door } = Input.getHouseStyle();
-      const rows = { roof: { box: 'ext-roof', cols: roof }, wall: { box: 'ext-wall', cols: wall }, door: { box: 'ext-door', cols: door } };
-      Object.entries(rows).forEach(([part, { box, cols }]) => {
-        const el = $(box); el.innerHTML = '';
-        cols.forEach((c, i) => {
-          const has = unlocked[part].includes(i);
-          const s = document.createElement('div');
-          s.className = 'ext-sw' + (style[part] === i ? ' sel' : '') + (has ? '' : ' locked');
-          s.style.background = has ? hex(c) : '#c8ccc8';
-          if (!has) s.textContent = '🔒';
-          s.addEventListener('click', () => {
-            if (!has) { ui.toast('아직 잠긴 색이에요. 낚시·수확·퀘스트로 얻어요 🎨'); return; }
-            Input.setHousePart(part, i); renderExt();
-          });
-          el.appendChild(s);
-        });
-      });
-      renderExpand();
-      renderAddons();
-    }
-    // 🧩 구성품 상점 — 지금 단계(+다음 단계는 🔒 예고)까지의 장식. 사면 코인이 빠지고 집에 바로 붙는다
-    function renderAddons() {
-      const box = $('ext-addons'); const info = Input.getHouseAddons();
-      const items = info.items.filter(i => i.stage <= info.stage + 1);
-      if (!items.length) { box.innerHTML = ''; return; }
-      const btn = (i) => i.owned ? '<button class="ad-btn done" disabled>✓ 설치됨</button>'
-        : i.locked ? `<button class="ad-btn" disabled>🔒 ${i.stage}단계부터</button>`
-        : `<button class="ad-btn" data-id="${i.id}" ${i.affordable ? '' : 'disabled'}>사기</button>`;
-      box.innerHTML = `<div class="ad-head"><span>🧩 구성품</span><span class="ad-coins">🪙 ${info.coins}</span></div><div class="ad-list">` +
-        items.map(i => `<div class="ad-row${i.owned ? ' owned' : ''}${i.locked ? ' locked' : ''}"><span class="ad-ico">${i.ico}</span>` +
-          `<span class="ad-txt"><b>${i.name}</b><small>${i.desc}</small></span>` +
-          `<span class="ad-price${!i.owned && !i.locked && !i.affordable ? ' lack' : ''}">${i.coins}🪙</span>${btn(i)}</div>`).join('') + '</div>';
-      box.querySelectorAll('.ad-btn[data-id]').forEach(b => b.addEventListener('click', () => {
-        const r = Input.buyHouseAddon(b.dataset.id);
-        if (r.msg) ui.toast(r.msg, 2600);
-        if (r.ok) renderAddons();   // 코인·설치 상태 갱신
-      }));
-    }
-    // 🏗️ 증축 섹션 — 다음 단계 비용·보유량 표시, 충족 시 버튼 활성화
-    let xpStyle = null;   // 🏡 7단계(정원 저택) 증축에서 고른 스타일 'modern'|'hanok' — 고른 뒤엔 바꿀 수 없어 증축 전까지만 기억
-    function renderExpand() {
-      const box = $('ext-expand'); const info = Input.getExpansion();
-      if (info.maxed) { box.innerHTML = '🏡 <b>정원 저택 완성!</b> 마을에서 가장 근사한 집이에요.'; return; }
-      if (!info.next) { box.innerHTML = ''; return; }
-      const rows = info.items.map(i => `<span class="${i.have < i.need ? 'xp-lack' : ''}">${i.label} ${i.have}/${i.need}</span>`).join(' · ');
-      const cards = info.needsStyle
-        ? '<div class="xp-hint">🎨 스타일을 골라 주세요 — 한 번 고르면 바꿀 수 없어요</div><div class="xp-styles">' +
-          Object.entries(info.next.styles).map(([id, st]) => `<button type="button" class="xp-style${xpStyle === id ? ' on' : ''}" data-style="${id}"><span class="xp-sico">${st.ico}</span><b>${st.name}</b><small>${st.desc}</small></button>`).join('') + '</div>'
-        : '';
-      const ready = info.affordable && (!info.needsStyle || xpStyle);
-      box.innerHTML = `🏗️ 다음 증축: <b>${info.next.ico} ${info.next.name}</b> — 집이 커지고 모양이 바뀌어요!<br>` +
-        `<span class="xp-cost">${rows}</span>` + cards +
-        `<button id="xp-btn" class="xp-btn" ${ready ? '' : 'disabled'}>${!info.affordable ? '재료를 더 모아요' : (info.needsStyle && !xpStyle) ? '스타일을 골라요' : '🔨 증축하기'}</button>`;
-      box.querySelectorAll('.xp-style').forEach(b => b.addEventListener('click', () => { xpStyle = b.dataset.style; renderExpand(); }));
-      $('xp-btn').addEventListener('click', () => {
-        const r = Input.expandHouse(xpStyle);
-        ui.toast(r.msg, 3200);
-        if (r.ok) { xpStyle = null; renderExt(); }   // 증축 후 정보 갱신(다음 단계 표시)
-      });
-    }
-    // 🎨 집 외관 꾸미기 — 완성된 집 근처에서만 뜨는 버튼(공간 기반 동선)
-    //    열린 동안엔 카메라가 집을 화면 위쪽(패널 위)에 두어 색이 바뀌는 게 가려지지 않게 한다
-    $('ext-btn').addEventListener('click', () => {
-      renderExt(); Input.setAnalog(0, 0); Input.setExtView(true);
-      $('ext-menu').classList.add('show'); document.body.classList.add('menu-open');
-    });
-    $('ext-close').addEventListener('click', () => { $('ext-menu').classList.remove('show'); document.body.classList.remove('menu-open'); Input.setExtView(false); });
-    $('photo-save').addEventListener('click', async () => {
-      if (!lastPhoto) return;
-      if (IS_ANDROID) {                                  // 📱 앱: 갤러리(사진/calmforest)에 바로 저장
-        const btn = $('photo-save');
-        //  처음 한 번은 시스템 "사진 접근 허용" 창이 뜬다 — 놓치지 않게 먼저 알려 준다(2026-09-25 실기기: 창을 못 보고 안 되는 줄 앎)
-        let first = false; try { first = !localStorage.getItem('cf_photo_saved'); } catch {}
-        if (first) ui.toast('📷 사진 저장 권한을 물어보면 \'허용\'을 눌러 주세요', 4000);
-        try {
-          await savePhotoNative({ plugin: capPlugin('Photo'), dataUrl: lastPhoto });
-          try { localStorage.setItem('cf_photo_saved', '1'); } catch {}
-          btn.textContent = '✅ 저장됨'; btn.disabled = true;   // 새 사진을 찍으면 되돌린다(photo-btn)
-          ui.toast('🖼️ 갤러리 calmforest 앨범에 저장했어요');
-        } catch (e) {
-          ui.toast(/legacy/.test(e?.message) ? '이 기기는 바로 저장이 안 돼요 — 📤공유로 보내 주세요'
-                                             : '사진을 저장하지 못했어요 — 사진 권한을 허용했는지 확인해 주세요', 4000);
-        }
-        return;
-      }
-      const a = document.createElement('a'); a.href = lastPhoto; a.download = 'calmforest-' + Date.now() + '.png'; a.click();
-    });
-    $('photo-share').addEventListener('click', async () => {
-      if (!lastPhoto) return;
-      if (IS_ANDROID) {                                  // 📱 앱: 안드로이드 공유 시트
-        try {
-          await sharePhotoNative({ plugin: capPlugin('Photo'), dataUrl: lastPhoto, text: t('내 마을 구경오세요 · https://calmforest.cloud') });
-          trackEvent('photo_share');   // [GA4] 공유 훅
-        } catch (e) { ui.toast('공유하지 못했어요'); }
-        return;
-      }
-      try {
-        const blob = await (await fetch(lastPhoto)).blob();
-        const file = new File([blob], 'calmforest.png', { type: 'image/png' });
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title: '고요한 숲 🌿', text: t('내 마을 구경오세요 · https://calmforest.cloud') });
-          trackEvent('photo_share');   // [GA4] 공유 훅
-        } else {
-          ui.toast('이 기기는 바로 공유가 안 되니 💾저장으로 받아 공유해요');
-        }
-      } catch (e) { /* 사용자 취소 등은 무시 */ }
-    });
 
     // 낮/밤은 늘 자동으로 흐른다 — 시간 바·이모지는 읽기 전용 시계다(드래그·클릭 조절 제거).
     $('fb-cancel').addEventListener('click', closeFb);
@@ -8535,9 +7133,10 @@
     });
 
     (async () => {
-      if (IS_NATIVE) void bootTenjin();
+      if (IS_NATIVE) { void bootTenjin(); onTrack(tenjinFromTrack); }
       preloadSupabase().catch(() => {});
       bootReferral({ track: trackEvent });           // 🤝 ?invite= 보관 — 인증(구글 리다이렉트)이 쿼리를 지우기 전에
+      promoGift().then(m => m.bootPromoGift({ track: trackEvent })).catch(() => null);
       try { bootAppBanner(); } catch (e) { /* 저장소 없음 — 배너 연결만 빠진다 */ }   // 📲 jid·utm 보관 — 같은 이유로 인증 전에
       try { bootMetaPixel(); onTrack(metaFromTrack); } catch (e) { /* Pixel 실패해도 게임 진행 */ }   // 📣 fbclid 보관 — 같은 이유로 인증 전에
       if (PLATFORM === 'web') { try { trackHandoffArrival({ track: trackEvent, search: location.search, ua: navigator.userAgent, storage: sessionStorage }); } catch (e) { } }
@@ -8551,6 +7150,8 @@
           referrerFresh = !cachedInstallAttribution(storage);   // 캐시가 없었다 = 이번 실행에 새로 읽는다(첫 실행)
           syncInstall = (auth) => syncInstallAttribution({ auth, storage, insert: insertInstallAttribution }).catch(() => {});
           referrerP = bootInstallReferrer({ plugin: capPlugin('InstallReferrer'), storage, track: trackEvent, setUserProps: setInstallUserProps });
+          if (referrerFresh) linkInstallInvite(referrerP);
+          if (referrerFresh) promoGift().then(m => m.linkInstallGift(referrerP)).catch(() => null);
           referrerP.then(() => syncInstall({ ...authState }))   // 로그인이 귀속보다 먼저 끝난 경우
             .catch(e => console.warn('[install-referrer] skipped', e));
         } catch (e) { /* 저장소 없음 — 귀속만 빠진다 */ }
@@ -8593,7 +7194,7 @@
           if (!sessionExpiredSent) { sessionExpiredSent = true; trackEvent('session_expired', { provider: s.provider || 'unknown' }); }
           ui.setSaveStuck(true);
         }
-      }, { keepGuest: keepGuestSession(e2, { hasInvite: e2HasInvite() }) });   // 🧪 E2 처치 기기만 같은 기기의 게스트 세션을 이어 간다
+      }, { keepGuest: keepGuestSession(e2, { hasInvite: e2HasInvite() }), holdGuest: pendingEmailHandoff(sessionStorage) });   // 🧪 E2 처치 기기만 같은 기기의 게스트 세션을 이어 간다
       // 🚪 방금 '나가기'로 나왔으면 토스 자동 연결을 한 번 건너뛴다 — 안 그러면 곧장 다시 들어와 캐릭터 선택으로 돌아오는 루프(js/exit-flag.js)
       const justExited = consumeExit(sessionStorage);
       if (!res.needLogin) enterPlay();               // 기존/복귀 세션 → 바로 시작(토스 재방문도 여기 — SDK 호출 없음)

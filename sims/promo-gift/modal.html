@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>홍보 링크 선물 창 시안</title>
+<style>
+  :root { --cream: #f6f0e4; --ink: #2b3a30; --sub: #5b6b60; --mute: #7a8a7f; --hero: #253529; --mint: #cfe8d2; --mint-ink: #2d4a37; --gold: #f0c96a; --gold-bg: #fff8e8; --gold-ink: #6b4a12; --paper: #fffaf0; --seal: #c9483c; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px; background: #2b2118; font-family: -apple-system, "Apple SD Gothic Neo", "Pretendard", sans-serif; color: #fff; width: 1720px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .lead { font-size: 13px; color: rgba(255,255,255,.7); margin: 0 0 22px; }
+  .opt { display: flex; gap: 24px; align-items: flex-start; margin-bottom: 34px; }
+  .meta { width: 260px; flex: none; }
+  .meta h2 { font-size: 19px; margin: 0 0 6px; }
+  .meta p { font-size: 13px; line-height: 1.55; color: rgba(255,255,255,.8); margin: 0 0 10px; word-break: keep-all; }
+  .meta .copy { font-size: 12px; line-height: 1.6; background: rgba(255,255,255,.06); border-radius: 12px; padding: 10px 12px; color: rgba(255,255,255,.85); }
+  .meta .copy b { color: #fff; }
+  .cap { font-size: 12px; font-weight: 700; color: rgba(255,255,255,.65); margin: 0 0 6px; }
+
+  .frame { width: 768px; height: 480px; border-radius: 14px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,.4); flex: none; }
+  .pc { position: relative; width: 1280px; height: 800px; transform: scale(.6); transform-origin: 0 0; background: url(bg-pc.jpg) center/cover; color: var(--ink); }
+  .phone { position: relative; width: 300px; height: 650px; border-radius: 26px; overflow: hidden; background: url(bg-mobile.jpg) center/cover; box-shadow: 0 10px 40px rgba(0,0,0,.4); color: var(--ink); flex: none; }
+  .phone .inner { position: absolute; left: 0; top: 0; width: 375px; height: 812px; transform: scale(.8); transform-origin: 0 0; }
+  .dim { position: absolute; inset: 0; background: rgba(20,40,30,.55); }
+
+  .card { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); width: 340px; background: var(--cream); border-radius: 28px; padding: 18px 16px 16px; text-align: center; }
+  .phone .card { width: 343px; }
+  .pkg { font-size: 64px; line-height: 1; display: block; margin: 2px auto 6px; }
+  .title { display: block; font-size: 19px; font-weight: 800; word-break: keep-all; }
+  .sub { margin: 5px 0 12px; font-size: 13px; color: var(--sub); word-break: keep-all; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .tile { background: #fff; border-radius: 14px; padding: 9px 2px 7px; }
+  .tile i { display: block; font-style: normal; font-size: 26px; line-height: 1.1; }
+  .tile b { display: block; font-size: 11px; margin-top: 3px; }
+  .tile span { display: block; font-size: 11px; color: var(--mute); font-weight: 700; }
+  .lock { display: flex; gap: 10px; align-items: center; text-align: left; margin-top: 10px; border-radius: 16px; padding: 10px 12px; background: var(--gold-bg); border: 2px dashed var(--gold); }
+  .lock .th { width: 46px; height: 46px; flex: none; border-radius: 12px; background: linear-gradient(160deg,#fbeac2,#f3d58e); display: grid; place-items: center; font-size: 26px; position: relative; }
+  .lock .th::after { content: '🔒'; position: absolute; right: -6px; bottom: -6px; font-size: 16px; }
+  .lock small { display: block; font-size: 11px; font-weight: 800; color: var(--gold-ink); }
+  .lock b { display: block; font-size: 13px; color: var(--ink); word-break: keep-all; }
+  .btns { display: flex; gap: 8px; margin-top: 12px; }
+  .cta { flex: 1; border: none; border-radius: 16px; padding: 13px 8px; background: var(--mint); color: var(--mint-ink); font-size: 14px; font-weight: 800; font-family: inherit; }
+  .ghost { flex: none; border: none; border-radius: 16px; padding: 13px 14px; background: #ebe3d3; color: #6b5b4a; font-size: 13px; font-weight: 700; font-family: inherit; }
+  .set { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 2px; }
+  .set .tile { padding: 14px 4px 10px; background: linear-gradient(160deg,#fff,#fdf3dc); border: 2px solid var(--gold); }
+  .set .tile i { font-size: 38px; }
+  .set .tile b { font-size: 13px; }
+  .badge { display: inline-block; font-size: 11px; font-weight: 800; color: var(--gold-ink); background: var(--gold-bg); border: 1.5px solid var(--gold); border-radius: 999px; padding: 3px 10px; margin-bottom: 6px; }
+
+  .env { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); width: 344px; }
+  .phone .env { width: 343px; }
+  .flap { position: relative; height: 92px; background: linear-gradient(180deg,#e9d9b8,#dcc79f); border-radius: 22px 22px 0 0; clip-path: polygon(0 0, 100% 0, 100% 40%, 50% 100%, 0 40%); }
+  .seal { position: absolute; left: 50%; top: 52px; transform: translateX(-50%); width: 50px; height: 50px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #e0675a, var(--seal)); box-shadow: 0 3px 0 #9b3328; display: grid; place-items: center; font-size: 22px; z-index: 2; }
+  .letter { margin-top: -34px; background: var(--paper); border-radius: 0 0 22px 22px; padding: 46px 16px 16px; text-align: center; box-shadow: 0 0 0 3px #e9d9b8 inset; }
+  .from { font-size: 11px; font-weight: 800; letter-spacing: .5px; color: #9a7a52; }
+  .hand { font-size: 18px; font-weight: 800; margin: 4px 0 4px; }
+  .note { font-size: 13px; color: var(--sub); margin: 0 0 12px; line-height: 1.5; word-break: keep-all; }
+  .rule { border: none; border-top: 1.5px dashed #e3d4b6; margin: 0 0 10px; }
+  .list { text-align: left; font-size: 13px; line-height: 1.9; padding: 0 6px; }
+  .list span { color: var(--mute); font-weight: 700; float: right; }
+  .ps { text-align: left; margin-top: 8px; font-size: 12.5px; font-weight: 700; color: var(--gold-ink); background: var(--gold-bg); border-radius: 12px; padding: 9px 11px; word-break: keep-all; }
+
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--cream); border-radius: 26px 26px 0 0; padding: 10px 16px 22px; box-shadow: 0 -10px 30px rgba(0,0,0,.18); }
+  .pc .sheet { left: 50%; right: auto; bottom: 150px; width: 520px; transform: translateX(-50%); border-radius: 26px; padding: 16px 20px 18px; }
+  .grip { width: 40px; height: 5px; border-radius: 3px; background: #d8cfbe; margin: 0 auto 10px; }
+  .pc .grip { display: none; }
+  .shead { display: flex; gap: 12px; align-items: center; }
+  .shead .gb { width: 54px; height: 54px; flex: none; border-radius: 16px; background: linear-gradient(160deg,#fbe0d0,#f6c3a6); display: grid; place-items: center; font-size: 32px; }
+  .shead small { display: block; font-size: 11px; font-weight: 800; color: var(--mute); }
+  .shead b { display: block; font-size: 17px; word-break: keep-all; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .chip { background: #fff; border-radius: 999px; padding: 6px 11px 6px 8px; font-size: 13px; font-weight: 700; }
+  .chip.plus { background: var(--gold-bg); border: 1.5px dashed var(--gold); color: var(--gold-ink); }
+  .pill { position: absolute; left: 12px; top: 150px; display: flex; align-items: center; gap: 8px; background: var(--gold-bg); border: 2px solid var(--gold); border-radius: 999px; padding: 6px 13px 6px 7px; box-shadow: 0 6px 18px rgba(0,0,0,.15); font-size: 13px; font-weight: 800; color: var(--gold-ink); }
+  .pc .pill { left: 16px; top: 185px; font-size: 14px; }
+  .pill .gi { width: 28px; height: 28px; border-radius: 50%; background: #f7d98a; display: grid; place-items: center; font-size: 16px; }
+  .pill .dot { width: 8px; height: 8px; border-radius: 50%; background: #e2574c; }
+  .toast { position: absolute; left: 50%; top: 70px; transform: translateX(-50%); background: var(--hero); color: #fff; border-radius: 999px; padding: 9px 16px; font-size: 13px; font-weight: 700; white-space: nowrap; }
+</style>
+</head>
+<body>
+<h1>홍보 링크 선물 · 창 시안</h1>
+<p class="lead">각 줄 = PC 1단계 · 모바일 1단계(게스트) · 모바일 2단계(로그인 뒤). 선물 수량·꾸미기 세트 그림은 자리표시이고 꾸미기는 다음 시안에서 골라요.</p>
+
+<div class="opt">
+  <div class="meta">
+    <h2>A안 · 선물 상자</h2>
+    <p>지금 쓰는 가입 선물 상자 창(#gift-box-modal)을 넓혀 씀. 상자를 누르면 열리고 칸 4개가 나옴. 아래 금색 점선 칸이 "로그인하면 더" 자리</p>
+    <div class="copy"><b>제목</b> 숲에서 보낸 선물이에요<br><b>설명</b> 링크 타고 와 줘서 고마워요<br><b>잠긴 칸</b> 로그인하면 열려요 · 전용 꾸미기 세트<br><b>버튼</b> 받기 · 로그인하고 더 받기</div>
+  </div>
+  <div><p class="cap">PC · 1단계</p><div class="frame"><div class="pc"><div class="dim"></div>
+    <div class="card">
+      <span class="pkg">🎁</span><span class="title">숲에서 보낸 선물이에요</span><p class="sub">링크 타고 와 줘서 고마워요</p>
+      <div class="grid"><div class="tile"><i>🪙</i><b>코인</b><span>200</span></div><div class="tile"><i>🌾</i><b>고급 씨앗</b><span>3종 ×3</span></div><div class="tile"><i>🌱</i><b>비료</b><span>×5</span></div><div class="tile"><i>🪱</i><b>미끼</b><span>×5</span></div></div>
+      <div class="lock"><div class="th">🎀</div><div><small>로그인하면 열려요</small><b>전용 꾸미기 세트</b></div></div>
+      <div class="btns"><button class="ghost">받기</button><button class="cta">✉️ 로그인하고 더 받기</button></div>
+    </div></div></div></div>
+  <div><p class="cap">모바일 · 1단계</p><div class="phone"><div class="inner"><div class="dim"></div>
+    <div class="card">
+      <span class="pkg">🎁</span><span class="title">숲에서 보낸 선물이에요</span><p class="sub">링크 타고 와 줘서 고마워요</p>
+      <div class="grid"><div class="tile"><i>🪙</i><b>코인</b><span>200</span></div><div class="tile"><i>🌾</i><b>고급 씨앗</b><span>3종 ×3</span></div><div class="tile"><i>🌱</i><b>비료</b><span>×5</span></div><div class="tile"><i>🪱</i><b>미끼</b><span>×5</span></div></div>
+      <div class="lock"><div class="th">🎀</div><div><small>로그인하면 열려요</small><b>전용 꾸미기 세트</b></div></div>
+      <div class="btns"><button class="ghost">받기</button><button class="cta">✉️ 로그인하고 더 받기</button></div>
+    </div></div></div></div>
+  <div><p class="cap">모바일 · 2단계</p><div class="phone"><div class="inner"><div class="dim"></div>
+    <div class="card">
+      <span class="badge">로그인 선물</span><span class="title">꾸미기 세트가 열렸어요</span><p class="sub">작업대 보관함에 넣어 뒀어요</p>
+      <div class="set"><div class="tile"><i>🎀</i><b>세트 1</b></div><div class="tile"><i>🎀</i><b>세트 2</b></div></div>
+      <div class="btns"><button class="ghost">닫기</button><button class="cta">마당에 놓기</button></div>
+    </div></div></div></div>
+</div>
+
+<div class="opt">
+  <div class="meta">
+    <h2>B안 · 초대장 봉투</h2>
+    <p>빨간 밀랍 도장이 붙은 봉투가 열리며 편지가 나옴. 편지 첫 줄에 캠페인 이름(DB 문구)을 넣어 "어디서 받은 초대장인지"를 보여 줌. 추신 자리에 로그인 선물</p>
+    <div class="copy"><b>머리</b> 인스타그램에서 온 초대장 (코드마다 바뀜)<br><b>제목</b> 고요한 숲에 온 걸 환영해요<br><b>추신</b> 로그인하면 전용 꾸미기 세트를 하나 더 보내 드려요<br><b>버튼</b> 받기 · 로그인하고 더 받기</div>
+  </div>
+  <div><p class="cap">PC · 1단계</p><div class="frame"><div class="pc"><div class="dim"></div>
+    <div class="env"><div class="flap"></div><div class="seal">🌲</div>
+      <div class="letter"><div class="from">인스타그램에서 온 초대장</div><div class="hand">고요한 숲에 온 걸 환영해요</div><p class="note">첫날 쓰라고 몇 가지 챙겨 넣었어요</p><hr class="rule">
+        <div class="list">🪙 코인<span>200</span><br>🌾 고급 씨앗 3종<span>각 3개</span><br>🌱 비료<span>5개</span><br>🪱 미끼<span>5개</span></div>
+        <div class="ps">추신. 로그인하면 전용 꾸미기 세트를 하나 더 보내 드려요 🎀</div>
+        <div class="btns"><button class="ghost">받기</button><button class="cta">✉️ 로그인하고 더 받기</button></div></div></div>
+  </div></div></div>
+  <div><p class="cap">모바일 · 1단계</p><div class="phone"><div class="inner"><div class="dim"></div>
+    <div class="env"><div class="flap"></div><div class="seal">🌲</div>
+      <div class="letter"><div class="from">인스타그램에서 온 초대장</div><div class="hand">고요한 숲에 온 걸 환영해요</div><p class="note">첫날 쓰라고 몇 가지 챙겨 넣었어요</p><hr class="rule">
+        <div class="list">🪙 코인<span>200</span><br>🌾 고급 씨앗 3종<span>각 3개</span><br>🌱 비료<span>5개</span><br>🪱 미끼<span>5개</span></div>
+        <div class="ps">추신. 로그인하면 전용 꾸미기 세트를 하나 더 보내 드려요 🎀</div>
+        <div class="btns"><button class="ghost">받기</button><button class="cta">✉️ 로그인하고 더 받기</button></div></div></div>
+  </div></div></div>
+  <div><p class="cap">모바일 · 2단계</p><div class="phone"><div class="inner"><div class="dim"></div>
+    <div class="env"><div class="flap"></div><div class="seal">🎀</div>
+      <div class="letter"><div class="from">두 번째 편지</div><div class="hand">약속한 꾸미기 세트예요</div><p class="note">작업대 보관함에 넣어 뒀어요</p>
+        <div class="set"><div class="tile"><i>🎀</i><b>세트 1</b></div><div class="tile"><i>🎀</i><b>세트 2</b></div></div>
+        <div class="btns"><button class="ghost">닫기</button><button class="cta">마당에 놓기</button></div></div></div>
+  </div></div></div>
+</div>
+
+<div class="opt">
+  <div class="meta">
+    <h2>C안 · 아래 시트 + 알약</h2>
+    <p>화면을 막지 않고 아래에서 시트가 올라옴. 받으면 시트는 닫히고, 로그인 선물은 미니맵 아래 금색 알약으로 남아 있다가 누르면 로그인 창으로 감</p>
+    <div class="copy"><b>시트</b> 링크 선물이 도착했어요<br><b>칩</b> 🪙200 · 🌾씨앗 9 · 🌱비료 5 · 🪱미끼 5 · 🎀 로그인하면 +1<br><b>알약</b> 로그인 선물이 남았어요<br><b>버튼</b> 받기</div>
+  </div>
+  <div><p class="cap">PC · 1단계</p><div class="frame"><div class="pc">
+    <div class="sheet"><div class="grip"></div>
+      <div class="shead"><div class="gb">🎁</div><div><small>링크 선물</small><b>링크 선물이 도착했어요</b></div></div>
+      <div class="chips"><span class="chip">🪙 200</span><span class="chip">🌾 고급 씨앗 9</span><span class="chip">🌱 비료 5</span><span class="chip">🪱 미끼 5</span><span class="chip plus">🎀 로그인하면 +1</span></div>
+      <div class="btns"><button class="cta">받기</button></div></div>
+  </div></div></div>
+  <div><p class="cap">모바일 · 1단계</p><div class="phone"><div class="inner">
+    <div class="sheet"><div class="grip"></div>
+      <div class="shead"><div class="gb">🎁</div><div><small>링크 선물</small><b>링크 선물이 도착했어요</b></div></div>
+      <div class="chips"><span class="chip">🪙 200</span><span class="chip">🌾 고급 씨앗 9</span><span class="chip">🌱 비료 5</span><span class="chip">🪱 미끼 5</span><span class="chip plus">🎀 로그인하면 +1</span></div>
+      <div class="btns"><button class="cta">받기</button></div></div>
+  </div></div></div>
+  <div><p class="cap">모바일 · 받은 뒤 남는 알약</p><div class="phone"><div class="inner">
+    <div class="toast">🪙 200 · 씨앗 9 · 비료 5 · 미끼 5 받았어요</div>
+    <div class="pill"><span class="gi">🎀</span>로그인 선물이 남았어요<span class="dot"></span></div>
+  </div></div></div>
+</div>
+</body>
+</html>

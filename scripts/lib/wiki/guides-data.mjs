@@ -290,9 +290,32 @@ const visitorEntry = (e, all) => {
   ];
 };
 
+const GIFT_NOTE = {
+  '가입 선물': '셋 가운데 하나만 무작위로 오므로 원하는 것을 골라 받을 수는 없고, 계정마다 한 번뿐이다.',
+  '링크 선물': '둘은 한 세트로 함께 도착하므로 나란히 놓아 여행자의 짐처럼 꾸미기 좋다. 같은 계정은 링크 선물을 한 번만 받는다.',
+};
+
+const GIFT_HOW = {
+  '가입 선물': (e) => `${lnk(e, '은/는')} 게스트로 지내는 동안에는 오지 않는다. 첫 수확이나 첫 집을 지은 뒤 뜨는 로그인 권유 창에서 계정을 연결하면 선물 상자가 열리고, 소식함에도 꺼내는 곳을 알려 주는 편지가 남는다.`,
+  '링크 선물': (e) => `${lnk(e, '은/는')} 게스트에게는 오지 않고, 선물 코드를 받아 둔 기기에서 로그인해야 도착한다. 링크 대신 메뉴의 선물 코드로 넣었더라도 로그인한 상태라면 두 번째 봉투가 곧바로 열린다.`,
+  '친구 초대 보상': (e) => `${lnk(e, '을/를')} 받을 차례는 친구 초대 화면의 단계 표시에서 확인할 수 있다. 화면에는 지금 센 친구 수와 숲에 막 와서 아직 세지 않은 친구 수가 따로 나오므로, 이틀을 채우지 못한 친구가 있는지도 함께 살피자.`,
+};
+
+const giftEntry = (e, all) => {
+  const kind = fact(e, '구분');
+  const same = all.filter(x => x.cat === 'gift' && x !== e && fact(x, '구분') === kind);
+  return [
+    `${lnk(e, '은/는')} ${josa(kind, '으로/로')} 받는 꾸미기로, 받는 조건은 ${josa(fact(e, '받는 조건'), '이다/다')}. 도착하면 ${fact(e, '보관')}에 들어가고, 꺼내서 ${fact(e, '놓는 곳')}의 빈자리에 놓으면 된다. 상점이나 작업대에서 팔거나 다시 살 수 없는 꾸미기다.`,
+    same.length
+      ? `같은 ${kind}에는 ${lnkAll(same, '이/가')} 있다. ${GIFT_NOTE[kind] ?? ''}`
+      : `${kind} 가운데 마당에 놓는 꾸미기는 ${lnk(e, '이/가')} 유일하다. 나머지 단계 보상은 도구와 옷차림을 바꾸는 꾸밈으로 온다.`,
+    GIFT_HOW[kind]?.(e),
+  ];
+};
+
 const DISPATCH = {
   fish: fishEntry, crop: cropEntry, ore: oreEntry, cook: cookEntry, npc: npcEntry, forage: forageEntry,
-  bug: bugEntry, weather: weatherEntry, spirit: spiritEntry, track: trackEntry, dig: digEntry, river: riverEntry, visitor: visitorEntry,
+  bug: bugEntry, weather: weatherEntry, spirit: spiritEntry, track: trackEntry, dig: digEntry, river: riverEntry, visitor: visitorEntry, gift: giftEntry,
 };
 
 export function entryExtra(entry, all) {

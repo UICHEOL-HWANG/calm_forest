@@ -105,10 +105,16 @@ ${faqHtml}<section class="wk-rel"><h2>함께 보면 좋아요</h2><div class="wk
   return shell({ path, title, description, jsonLd, body, campaign: `${entry.cat}_${entry.id}` });
 }
 
+const CAT_DESC = {
+  gift: (cat, n) => `고요한 숲의 ${cat.name} ${n}가지를 한눈에. 이름을 누르면 받는 조건과 놓는 법을 볼 수 있어요.`,
+};
+const ROW_KEYS = { gift: ['구분', '받는 조건'] };
+
 export function renderCat(cat, entries, ctx) {
   const path = catPath(cat);
-  const description = `고요한 숲의 ${cat.name} ${entries.length}종을 한눈에. 이름을 누르면 얻는 법과 쓰임새를 볼 수 있어요.`;
-  const rows = entries.map(e => `<tr><td class="wk-ic">${e.ico}</td><td><a href="${docPath(e)}">${escapeHtml(e.name)}</a><small>${escapeHtml(e.nameEn ?? '')}</small></td><td>${escapeHtml(e.facts.filter(([k]) => ['장소', '시간', '날씨', '계절'].includes(k)).map(([, v]) => v).join(' · '))}</td></tr>`).join('\n');
+  const description = CAT_DESC[cat.id]?.(cat, entries.length) ?? `고요한 숲의 ${cat.name} ${entries.length}종을 한눈에. 이름을 누르면 얻는 법과 쓰임새를 볼 수 있어요.`;
+  const keys = ROW_KEYS[cat.id] ?? ['장소', '시간', '날씨', '계절'];
+  const rows = entries.map(e => `<tr><td class="wk-ic">${e.ico}</td><td><a href="${docPath(e)}">${escapeHtml(e.name)}</a><small>${escapeHtml(e.nameEn ?? '')}</small></td><td>${escapeHtml(e.facts.filter(([k]) => keys.includes(k)).map(([, v]) => v).join(' · '))}</td></tr>`).join('\n');
   const jsonLd = { '@context': 'https://schema.org', '@graph': [
     { '@type': 'CollectionPage', name: `${cat.name} · 고요위키`, url: SITE + path, inLanguage: 'ko' },
     crumbLd([['고요위키', '/wiki/'], [cat.name, path]]),

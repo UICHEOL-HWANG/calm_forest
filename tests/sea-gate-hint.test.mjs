@@ -16,5 +16,5 @@ test('firstHintBanner 는 실제로 띄웠을 때만 true 를 돌려준다', () 
 test('바다터 입구 첫 안내가 뜰 때만 sea_gate_hint 를 보낸다', () => {
   const i = src.indexOf("nd = 'sea';");
   const branch = src.slice(i, src.indexOf("nd = 'orchard';", i));
-  assert.match(branch, /if \(!locked && firstHintBanner\('seaGate',[^)]*\)\)\s*trackEvent\('sea_gate_hint'/);
+  assert.match(branch, /if \(!locked\) firstHintBanner\('seaGate',[^)]*,\s*\(\) => trackEvent\('sea_gate_hint'/);
 });

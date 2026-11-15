@@ -3,7 +3,7 @@ import { trackEvent } from '../analytics.js';
 import { logEcon } from '../metrics.js';
 import { UPGRADES } from '../data/catalog.js';
 import { updateHouseSign } from '../spaces/house.js';
-import { STAR_TOOLS, STAR_EFFECT, forgeCheck, forgeStart, forgeCancel, forgeScore, forgeComplete, starOf } from './rules.js';
+import { STAR_TOOLS, STAR_EFFECT, forgeCheck, forgeStart, forgeCancel, forgeScore, forgeComplete, forgeReady, starOf } from './rules.js';
 import { FORGE_COPY, doneToast } from './copy.js';
 
 const LOCAL_HOST = /^(localhost|127\.0\.0\.1|\[::1\])$/;
@@ -63,6 +63,8 @@ export function forgeFinish(score) {
   if (refund > 0) logEcon('tool_star_refund', f.tool + f.star, refund, gameState.inventory.coins);
   return { ok: true, tool: f.tool, star: f.star, score: f.score, refund };
 }
+
+export const forgeRushReady = () => forgeReady(gameState.forge, todayStr(), true) && !forgeReady(gameState.forge, todayStr());
 
 export function settleForge(slept = false) {
   const res = forgeComplete(gameState, todayStr(), slept);

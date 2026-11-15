@@ -8,6 +8,7 @@
 // =============================================================
 import { diffParams, gameState, giveReward, requestSave, settleDifficulty, todayStr, trackDiffAbandon } from '../game.js';   // 🔁 순환 import — 함수 안에서만
 import { trackEvent } from '../analytics.js';
+import { weeklyNote } from '../weekly/index.js';
 import { onPlay } from '../decor-drops/index.js';
 import { sendStarRun } from '../supabase-client.js';
 import { ddaOutcome } from '../difficulty.js';
@@ -98,6 +99,7 @@ export function starSettle(summary, run = {}, diff = null, ctx = {}) {
     judges: (run.judges || []).join(','),
   });
   if (summary.success) onPlay('star');
+  if (summary.success) weeklyNote('star');
   if (unlockedNext) trackEvent('star_unlock', { constellation: unlockedNext, from: c.id, run_id: ctx.runId || '' });
 
   const pay = { coins: coins + bonus, alreadyToday, firstClear, unlockedNext };

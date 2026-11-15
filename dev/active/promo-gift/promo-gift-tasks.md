@@ -1,0 +1,17 @@
+# Tasks — promo-gift
+- [x] 설계 질문·결정 (2026-11-13)
+- [x] 창 시안 3안·꾸미기 시안 3안 → B안·C안
+- [x] 스펙 작성 `docs/superpowers/specs/2026-11-13-promo-gift-design.md`
+- [x] 사용자 스펙 검토 (2026-11-13 OK)
+- [x] 선행 커밋: d24ea672 로그인 버그 · 6806311f 앱 딥링크 (main 로컬, 미푸시·미배포)
+- [x] 구현 계획 docs/superpowers/plans/2026-11-13-promo-gift.md (코드 블록 추출 검증: 순수 로직·API·링크 테스트 통과)
+- [x] SQL·셀프테스트
+- [x] API·링크
+- [x] 클라 규칙·테스트
+- [x] 흐름·창·메뉴·i18n
+- [x] 꾸미기 3D·가드 목록
+- [x] 트래킹·태스크별 리뷰·최종 리뷰(feat/promo-gift cff662c9..cd609b7e, npm test 5344/0, 첫 화면 JS 649.29KB)
+- [x] 운영 DB 적용(2026-11-13 03:3x KST, lock_timeout 5s, 권한·RLS 확인) → E2E: 게스트 1단계·로그인 2단계 API·코드 입력 — 버그 2건 수정(79b59ed5·2496e9b5), QA 데이터 삭제
+- [x] 안드 에뮬레이터 /g/ 콜드 스타트(코드 deeplink 저장) · 로그인 후 2단계 편지·보관함·마당 배치 확인(2026-11-13)
+- [ ] PROMO_NOTICE·편지 문구 사용자 검수
+- [ ] 배포 5곳·첫 코드

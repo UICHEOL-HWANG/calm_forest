@@ -61,8 +61,9 @@ test('the stall is built, solid, kept clear of trees and opens the stall menu', 
   assert.match(game, /if \(nearHomiStall\) \{ trackEvent\('shop_open', \{ tab: 'homi' \}\); return ui\.openHomiStall\?\.\(\); \}/);
   assert.match(doors, /\$w\.nearHomiStall = inVillage && /);
   assert.match(html, /openHomiStall\(\) \{ Input\.setAnalog\(0, 0\); openHomi\(\); \}/);
-  assert.match(html, /Input\.getShopBuy\(\)\.filter\(it => !it\.homi\)/);
-  assert.match(html, /Input\.setCosTab\?\.\('homi'\)/);
+  const shop = read('js/game-ui/shop-menu.js');
+  assert.match(shop, /Input\.getShopBuy\(\)\.filter\(it => !it\.homi\)/);
+  assert.match(shop, /Input\.setCosTab\?\.\('homi'\)/);
 });
 
 test('the mudflat hoe wears the equipped paid skin', () => {

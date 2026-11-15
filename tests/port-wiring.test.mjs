@@ -93,7 +93,8 @@ test('첫 방문 안내: 시작·매 프레임·숨김·귀항 순서가 연결�
   assert.match(idx, /if \(guideHides\(\)\) return null;/);
   assert.match(idx, /flushGuideHome\(\);\n  env\.exitSea\(\);/);
   assert.match(game, /updateSeaVisuals\(t\);[^\n]*\n  updatePortGuide\(/);
-  assert.match(game, /syncUnlocks\(\);[^\n]*maybeStartPortGuide\(|maybeStartPortGuide\([^\n]*syncUnlocks\(\)/);
+  assert.match(game, /syncUnlocks\(\); tickPlaceGuides\(gap\);/);
+  assert.match(game, /function tickPlaceGuides\(dt\) \{[\s\S]{0,600}maybeStartPortGuide\(true\)/);
   assert.match(game, /setActPoint:/);
   assert.match(doors, /fastUnlocked && !guideHides\(\)/);
   for (const id of ['guide-card', 'guide-mark', 'guide-edge']) assert.match(html, new RegExp(`<div id="${id}" hidden></div>`));

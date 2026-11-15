@@ -1,10 +1,13 @@
+import { ARROW_LABEL } from '../guide/feature-rules.js';
+
 export const BANNER_FAR = 8;
+export const AUCTION_BANNER_MAX = 3;
 
 export const ONBOARD_COPY = Object.freeze({
   ico: '🔨',
   title: '저녁 경매가 열렸어요',
   line: Object.freeze({ eul: '나루터 옆 무대에서 {0}을 겨뤄요', reul: '나루터 옆 무대에서 {0}를 겨뤄요' }),
-  follow: '화살표를 따라가요!',
+  follow: ARROW_LABEL.auction,
 });
 
 export const INTRO_CARDS = Object.freeze([
@@ -30,11 +33,12 @@ export function bannerTick(state, { open, day, joined, ready, far }) {
     return { act: 'reset', state: { ...state, bannerDate: '' } };
   }
   if (state.bannerDate === day) return { act: null, state };
+  if (state.lastDate || (state.bannerCount | 0) >= AUCTION_BANNER_MAX) return { act: null, state };
   const marked = { ...state, bannerDate: day };
   if (joined) return { act: 'skip', state: marked };
   if (!ready) return { act: null, state };
   if (!far) return { act: 'skip', state: marked };
-  return { act: 'show', state: marked };
+  return { act: 'show', state: { ...marked, bannerCount: (state.bannerCount | 0) + 1 } };
 }
 
 export function introNeeded(state, mode) {

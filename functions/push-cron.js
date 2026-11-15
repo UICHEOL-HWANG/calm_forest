@@ -15,6 +15,7 @@ import { storeHeaders, storeReady } from './api/_ai-store.js';
 import { judgeNight } from './api/_night-judge.js';
 import { getAccessToken, readServiceAccount, sendFcm } from './push/fcm.js';
 import { kstDates, nightInput, pickPush, messageFor } from './push/pick-kind.js';
+import { isMarketTick, marketBudget, runMarketPush } from './push/market.js';
 
 export const PUSH_BUDGET = 40;
 
@@ -91,4 +92,17 @@ export async function runPush(env, { now = Date.now(), fetch: fetchFn = fetch } 
     return { candidates: rows.length, sent, failed, dead: dead.length, checked: checked.length, error: 'mark' };
   }
   return { candidates: rows.length, sent, failed, dead: dead.length, checked: checked.length, ...(stop ? { error: stop } : {}) };
+}
+
+const NIGHT_WORST_CASE = { candidates: 1, sent: PUSH_BUDGET, failed: 0, dead: 0 };
+
+export async function runPushTick(env, { scheduledTime = Date.now(), now = Date.now(), fetch: fetchFn = fetch, runNight = runPush, runMarket = runMarketPush } = {}) {
+  let night, nightThrew = false;
+  try { night = await runNight(env, { now, fetch: fetchFn }); }
+  catch (e) { console.warn('[push] night failed', e?.message); nightThrew = true; night = { error: `night ${e?.message}` }; }
+  if (!isMarketTick(scheduledTime)) return night;
+  let market;
+  try { market = await runMarket(env, { now, fetch: fetchFn, budget: marketBudget(nightThrew ? NIGHT_WORST_CASE : night) }); }
+  catch (e) { console.warn('[push-market] failed', e?.message); market = { error: `market ${e?.message}` }; }
+  return { ...night, market };
 }

@@ -1,16 +1,52 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { GOALS, tutGoal, minerGoal, edgeAnchor, onScreen, detourPoint, freshBranchTab, guideEventParams, rearmMerchant } from '../js/guide/guide-rules.js';
+import { GOALS, tutGoal, minerGoal, edgeAnchor, onScreen, detourPoint, freshBranchTab, guideEventParams, rearmMerchant, farmPlotTarget } from '../js/guide/guide-rules.js';
 
-test('튜토리얼 단계마다 목적지를 하나만 고르고 집 바닥은 실험에 맡긴다', () => {
+test('집 바닥 깔기: 목재가 모자라면 나무로, 다 모이면 집 터로, 집터 나침반 무리면 나침반에 맡긴다', () => {
+  assert.deepEqual(tutGoal('house1', { wood: 3 }), { key: 'tree', cine: false });
+  assert.deepEqual(tutGoal('house1', { wood: 3, houseCompass: true }), { key: 'tree', cine: false });
+  assert.deepEqual(tutGoal('house1', { wood: 15 }), { key: 'house', cine: false });
+  assert.equal(tutGoal('house1', { wood: 15, houseCompass: true }), null);
+});
+
+const full = { wood: 99, stone: 99, coins: 999 };
+
+test('wall and roof steps send the player for missing wood, then stone, then to the site', () => {
+  assert.deepEqual(tutGoal('house2', { wood: 0, stone: 0 }), { key: 'tree', cine: false });
+  assert.deepEqual(tutGoal('house2', { wood: 19, stone: 10 }), { key: 'tree', cine: false });
+  assert.deepEqual(tutGoal('house2', { wood: 20, stone: 9 }), { key: 'cave', cine: false });
+  assert.deepEqual(tutGoal('house2', { wood: 20, stone: 10 }), { key: 'wall', cine: true });
+  assert.deepEqual(tutGoal('build', { wood: 24, stone: 15, coins: 80 }), { key: 'tree', cine: false });
+  assert.deepEqual(tutGoal('build', { wood: 25, stone: 14, coins: 80 }), { key: 'cave', cine: false });
+  assert.deepEqual(tutGoal('build', { wood: 25, stone: 15, coins: 0 }), { key: 'farm', cine: false });
+  assert.deepEqual(tutGoal('build', { wood: 25, stone: 15, coins: 80 }), { key: 'roof', cine: true });
+});
+
+test('the farm step points to the farm until the roof coins are in, then to the roof materials', () => {
+  assert.deepEqual(tutGoal('harvest', { coins: 79 }), { key: 'farm', cine: true });
+  assert.deepEqual(tutGoal('harvest', { wood: 0, stone: 0, coins: 80 }), { key: 'tree', cine: false });
+  assert.deepEqual(tutGoal('harvest', { wood: 25, stone: 0, coins: 80 }), { key: 'cave', cine: false });
+  assert.deepEqual(tutGoal('harvest', full), { key: 'roof', cine: true });
+});
+
+test('inside the farm the arrow picks the plot that needs a hand next', () => {
+  const center = { x: 0, z: 84 };
+  const p = (state, x, watered = false) => ({ state, x, z: 84, watered });
+  assert.deepEqual(farmPlotTarget([], center), center);
+  assert.deepEqual(farmPlotTarget([p('growing', 1, true), p('empty', 2), p('mature', 3)], center), { x: 3, z: 84 });
+  assert.deepEqual(farmPlotTarget([p('growing', 1, true), p('empty', 2)], center), { x: 2, z: 84 });
+  assert.deepEqual(farmPlotTarget([p('growing', 1, true), p('growing', 4)], center), { x: 4, z: 84 });
+  assert.equal(farmPlotTarget([p('growing', 1, true)], center), null);
+});
+
+test('튜토리얼 단계마다 목적지를 하나만 고른다', () => {
   assert.deepEqual(tutGoal('chop', { wood: 0 }), { key: 'tree', cine: true });
   assert.deepEqual(tutGoal('sell', { wood: 2 }), { key: 'tree', cine: false });
   assert.equal(tutGoal('sell', { wood: 5 }), null);
   assert.deepEqual(tutGoal('mine', { wood: 0 }), { key: 'cave', cine: true });
-  assert.equal(tutGoal('house1', { wood: 15 }), null);
-  assert.deepEqual(tutGoal('house2', {}), { key: 'wall', cine: true });
+  assert.deepEqual(tutGoal('house2', full), { key: 'wall', cine: true });
   assert.deepEqual(tutGoal('harvest', {}), { key: 'farm', cine: true });
-  assert.deepEqual(tutGoal('build', {}), { key: 'roof', cine: true });
+  assert.deepEqual(tutGoal('build', full), { key: 'roof', cine: true });
   assert.deepEqual(tutGoal('dress', {}), { key: 'cosShop', cine: true });
   assert.deepEqual(tutGoal('bridge', {}), { key: 'bridge', cine: true });
   assert.deepEqual(tutGoal('curator', {}), { key: 'museum', cine: true });
@@ -106,7 +142,7 @@ test('도착 반경은 그 목적지의 상호작용 거리보다 작다', async
     cave: 2.0, farm: 2.0,
     miner: 1.8, lift: 2.0,
     farmBranch: 2.4 + 2.3,
-    wall: 3.2, roof: 3.2,
+    wall: 3.2, roof: 3.2, house: 3.2,
     cosShop: 2.8, bridge: 2.2, museum: 2.4,
     exit: 1.7,
   };

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { holeRect, bars, bubblePos, inHole } from '../js/hud/spot-geom.js';
+import { holeRect, bars, bubblePos, calloutPos, inHole } from '../js/hud/spot-geom.js';
 
 const VW = 390, VH = 844;
 
@@ -30,6 +30,24 @@ test('말풍선은 위에 자리가 있으면 위, 없으면 아래, 좌우는 �
   assert.ok(high.y >= 60 + 12 - 0.01);
   assert.ok(high.x + 180 <= VW - 12 + 0.01);
   assert.ok(high.x >= 12);
+});
+
+test('말풍선과 다음 버튼이 가로·세로·PC 화면 모두에서 화면 안에 들어온다', () => {
+  const cases = [
+    [740, 360, { l: 60, t: 60, r: 680, b: 300 }],
+    [740, 360, { l: 160, t: 72, r: 580, b: 296 }],
+    [360, 740, { l: 30, t: 160, r: 330, b: 520 }],
+    [1280, 720, { l: 200, t: 120, r: 1080, b: 600 }],
+    [360, 740, { l: 30, t: 600, r: 110, b: 680 }],
+  ];
+  for (const [vw, vh, h] of cases) {
+    const bh = 64, nh = 32;
+    const p = calloutPos(h, 280, bh, nh, vw, vh, 14);
+    const at = `${vw}x${vh}`;
+    assert.ok(p.bubY >= 14 && p.bubY + bh <= vh - 14, `${at} bubble ${p.bubY}`);
+    assert.ok(p.nextY >= 14 && p.nextY + nh <= vh - 14, `${at} next ${p.nextY}`);
+    assert.ok(p.nextY + nh <= p.bubY || p.nextY >= p.bubY + bh, `${at} overlap`);
+  }
 });
 
 test('구멍 안 클릭 판정', () => {

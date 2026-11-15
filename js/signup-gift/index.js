@@ -3,31 +3,15 @@ import { getAccessToken } from '../supabase-client.js';
 import { takeNudge } from './rules.js';
 import { runSignupGift } from './flow.js';
 import { BOX, GIFT_ICONS } from './copy.js';
+import { modalQueue } from '../guide/modal-queue.js';
+import { queueLoginNudge } from '../guide/nudge-cap.js';
 
-const BUSY = ['body.intro-open', '#char-modal.show', '#tutorial-modal.show', '#hint-modal.show', '#nudge-modal.show', '#gift-box-modal.show'];
-const busyWith = (ui) => () => BUSY.some(sel => document.querySelector(sel)) || !!ui?.coachActive?.() || !!ui?.anyModalOpen?.();
-
-function whenIdle(fn, busy, { first = 3000, every = 700, maxMs = 120000 } = {}) {
-  const t0 = Date.now();
-  let clear = 0;
-  const tick = () => {
-    clear = busy() ? 0 : clear + 1;
-    if (clear >= 2 || Date.now() - t0 >= maxMs) fn();
-    else setTimeout(tick, every);
-  };
-  setTimeout(tick, first);
-}
-
-let waiting = 0;
-export const nudgeWaiting = () => waiting > 0;
-
-export function requestSignupNudge(state, trigger, ui, opts = {}) {
+export function requestSignupNudge(state, trigger, ui) {
   const seen = state.hintsSeen || {};
   const { fire, flags } = takeNudge(seen.signupNudge, trigger);
   if (!fire) return false;
   state.hintsSeen = { ...seen, signupNudge: flags };
-  waiting++;
-  whenIdle(() => { waiting--; ui.loginNudge?.(trigger); }, busyWith(ui), opts);
+  queueLoginNudge(trigger, ui);
   return true;
 }
 
@@ -68,7 +52,7 @@ export function showGiftBox(item, track, ui) {
     track('signup_gift_open', { item });
   };
   $('gift-box-ok').onclick = () => modal.classList.remove('show');
-  whenIdle(() => modal.classList.add('show'), busyWith(ui), { first: 1200 });
+  modalQueue.request({ kind: 'giftBox', show: () => modal.classList.add('show') });
 }
 
 export async function signupGiftOnPlay({ auth, track, resync, ui }) {

@@ -37,16 +37,54 @@ export const MSG = Object.freeze({
   self: '내 초대 링크로는 받을 수 없어요',
   invalid: '초대 링크가 올바르지 않아요',
   shareText: '🌲 고요한 숲에서 같이 플레이하자! 이 링크로 오면 선물이 있어 →',
+  entryTitle: '친구에게 초대받았나요?',
+  entryHint: '초대 코드 8자리를 넣어 주세요',
+  entryBtn: '확인',
+  entryBad: '초대 코드 8자리를 다시 확인해 주세요',
+  alreadyBound: '이미 친구와 연결되어 있어요',
+  bannerCode: '초대 코드 {0} · 앱에서 입력해도 받을 수 있어요',
 });
+
+const PATH_RE = /^(?:https?:\/\/[^/?#]+)?\/i\/([^/?#]+)\/?(?:[?#]|$)/i;
+
+const asCode = (raw) => {
+  const code = String(raw ?? '').trim().toUpperCase();
+  return CODE_RE.test(code) ? code : null;
+};
 
 /** location.search 또는 토스 진입 스킴 URL(intoss://calmforest?invite=…) → 초대 코드(대문자) | null */
 export function readInviteParam(search) {
   let raw = null;
   const str = String(search || '').split('#')[0];   // # 조각이 코드 끝에 붙으면 형식 검사에서 버려진다
+  const path = str.match(PATH_RE);
+  if (path) return asCode(path[1]);
   const q = str.indexOf('?');   // 전체 URL 이면 ? 뒤만 — 스킴 URL 은 URL() 로 파싱하면 호스트·경로 해석이 브라우저마다 다르다
   try { raw = new URLSearchParams(q >= 0 ? str.slice(q) : str).get('invite'); } catch (e) { return null; }
-  const code = String(raw ?? '').trim().toUpperCase();
-  return CODE_RE.test(code) ? code : null;
+  return asCode(raw);
+}
+
+export function inviteFromReferrer(raw) {
+  let text = String(raw || '').trim();
+  if (!text) return null;
+  if (!text.includes('=') && /%3d/i.test(text)) {
+    try { text = decodeURIComponent(text); } catch (e) { return null; }
+  }
+  try { return asCode(new URLSearchParams(text).get('invite')); } catch (e) { return null; }
+}
+
+export function normalizeInviteCode(text) {
+  const s = String(text || '').trim();
+  const fromLink = readInviteParam(s);
+  if (fromLink) return fromLink;
+  return asCode(s.replace(/[\s-]+/g, ''));
+}
+
+const ENTRY_WINDOW_MS = 72 * 3600 * 1000;
+
+export function canEnterCode({ isGuest, provider, createdAt, now = Date.now(), bound }) {
+  if (isGuest || bound || provider === 'offline' || provider === 'anonymous') return false;
+  const t = Date.parse(createdAt || '');
+  return Number.isFinite(t) && now - t < ENTRY_WINDOW_MS;
 }
 
 /** 로그인(비익명) 계정이고 보관한 코드가 있을 때만 서버에 연결을 청한다 */
@@ -61,7 +99,7 @@ export function tierView(active) {
 }
 
 export function inviteUrl(code) {
-  return `${WEB_ORIGIN}/?invite=${code}`;
+  return `${WEB_ORIGIN}/i/${code}`;
 }
 
 /** 토스 앱인토스 이름 — apps-in-toss.config.ts appName 과 같아야 한다 */
@@ -73,10 +111,11 @@ export function tossInvitePath(code) {
 }
 
 /** bind 결과 → 토스트 문구. null = 말하지 않는다(이미 연결됨·익명·네트워크 실패) */
-export function bindMessage(res) {
+export function bindMessage(res, { manual = false } = {}) {
   if (!res || res.error) return null;
   if (res.ok) return MSG.bindOk;
   switch (res.reason) {
+    case 'already_bound': return manual ? MSG.alreadyBound : null;
     case 'not_new': return MSG.notNew;
     case 'self': return MSG.self;
     case 'bad_code': case 'too_many': case 'inviter_full': case 'cycle': return MSG.invalid;

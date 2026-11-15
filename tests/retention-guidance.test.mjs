@@ -154,9 +154,24 @@ test('🔓 잠긴 시설(gs.closed)은 next_content 배너가 가리키지 않�
   const next = { eligible: true, segment: 'next_content' };
   const b = pickGuidanceBanner(next, { seenFamilies: [] }, { closed: ['sea', 'mist', 'museum'] });
   assert.equal(b.kind, 'cafe');
-  const all = pickGuidanceBanner(next, { seenFamilies: [] }, { closed: ['sea', 'mist', 'museum', 'cafe', 'orchard'] });
+  const all = pickGuidanceBanner(next, { seenFamilies: [] }, { closed: ['sea', 'mist', 'museum', 'cafe', 'orchard'], nearAction: true });
   assert.equal(all.kind, 'next_content', '전부 잠겼으면 장소를 짚지 않는 일반 안내');
   assert.equal(pickGuidanceBanner(next, { seenFamilies: [] }, {}).kind, 'sea_boat', 'closed 가 없으면 예전 그대로');
+});
+
+test('일반 안내 "이어서 하나만 더"는 가까이에 할 일이 있을 때만', () => {
+  const next = { eligible: true, segment: 'next_content' };
+  const closed = ['sea', 'mist', 'museum', 'cafe', 'orchard'];
+  assert.equal(pickGuidanceBanner(next, { seenFamilies: [] }, { closed, nearAction: false }), null);
+  assert.equal(pickGuidanceBanner(next, { seenFamilies: [] }, { closed }), null);
+  assert.equal(pickGuidanceBanner(next, { seenFamilies: [] }, { closed, nearAction: true }).kind, 'next_content');
+  assert.equal(pickGuidanceBanner(next, { seenFamilies: [] }, { closed: ['sea'], nearAction: false }).kind, 'mist');
+});
+
+test('스냅샷은 nearAction 을 불리언으로 넘긴다', async () => {
+  const { buildRetentionGameStateSnapshot } = await import('../js/retention-guidance.js');
+  assert.equal(buildRetentionGameStateSnapshot({ nearAction: 1 }).nearAction, true);
+  assert.equal(buildRetentionGameStateSnapshot({}).nearAction, false);
 });
 
 test('🔓 스냅샷은 closed 를 배열로만 넘긴다', async () => {
