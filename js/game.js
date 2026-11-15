@@ -242,9 +242,9 @@ import { clampToLandmark, clampToMountain, maybeRevealMountain, mountainAction, 
 import { applyObservatoryLight, clampToObservatory, observatoryAction, observatoryCamFocus, observatoryLensOpen, observatoryMinimapMarks, spawnObservatoryGate, updateObservatory, updateObservatoryStairs } from './spaces/observatory.js';   // 📦 🔭 천문대 — 별자리 리듬 실내 공간
 import { clampToNeighbor, initNeighbors, neighborAction, neighborIndoorElevated, neighborIndoorFrame, neighborMinimapMarks, neighborReturnPos, spawnNeighborGate, updateNeighbor } from './spaces/neighbor.js';   // 📦 🏡 이웃 마을 — 남의 앞마당 구경(js/neighbors/*)
 import { neighborsDefault, restoreNeighbors } from './neighbors/rules.js';
-import { applyE1, e1FirstScreen, e1Pending, enrollE1, updateE1Bubble } from './spaces/e1-start.js';
+import { applyE1, e1FirstScreen, e1Pending, enrollE1, updateE1Bubble } from './spaces/e1-start.js';   // 📦 🧪 E1 첫 5분 수확 실험 — 배정·처치 밭·첫 화면 말풍선
 import { modalQueue } from './guide/modal-queue.js';
-import { queueLoginNudge, touchNudgeClock } from './guide/nudge-cap.js';   // 📦 🧪 E1 첫 5분 수확 실험 — 배정·처치 밭·첫 화면 말풍선
+import { queueLoginNudge, touchNudgeClock } from './guide/nudge-cap.js';
 import { sanitizeE1 } from './exp-e1.js';
 import { DREAM_MAP, clampToDream, dreamAction, dreamCutActive, dreamMinimapMarks, dreamReturnPos, openSleepChoice, setDreamVisible, skipDreamCut, startDream, updateDream, updateDreamCut } from './spaces/dream.js';   // 📦 🌙 꿈의 숲 — 침대에서 꿈꾸기(js/dream/*)
 import { normalizeDream } from './dream/layout.js';   // 🏡 세이브 필드 neighbors { visited, seenAt }
@@ -1438,7 +1438,7 @@ function unlockMinutes() {
   const ms = t0 > 1e12 ? t0 : Date.parse(authState.createdAt || '');
   return Number.isFinite(ms) ? Math.max(0, Math.round((Date.now() - ms) / 60000)) : -1;
 }
-/** 이야기 모달을 모달 큐(js/guide/modal-queue.js)에 세운다 — 튜토리얼·미니게임·승부·조망샷·다른 모달이 끝날 때까지 시간 제한 없이 기다린다. 튜토리얼 중이면 토스트를 먼저 */
+/** 이야기 모달을 줄 세운다 — 미니게임·승부·다른 모달이 떠 있으면 기다렸다가(최대 ~50초) 띄우고, 튜토리얼 중이면 토스트로만 */
 let owlBridgeQueued = false;
 function queueStoryModal(opts, toastLine) {
   if (ui.coachActive?.()) ui.toast?.(toastLine, 3200);
