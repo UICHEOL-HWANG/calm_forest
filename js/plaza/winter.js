@@ -22,9 +22,9 @@ import { guideArbiter } from '../guide/arbiter.js';
 import { featureGuidesOpen } from '../guide/feature-rules.js';
 import { YARD_STALL_SEC } from '../pond/yard-steps.js';
 import { makeGuideEnv } from '../weekly/bridge.js';
-import { bannerDue, arrowWanted } from './winter-guide.js';
+import { bannerDue, arrowWanted, FOUNTAIN_SPOT_R, FOUNTAIN_ARROW_REACH } from './winter-guide.js';
 
-const SPOT_R = 2.8;
+const SPOT_R = FOUNTAIN_SPOT_R;
 const VIEW_R = 12;
 const FOUNTAIN_AT = { x: PLAZA.x + PLAZA_FOUNTAIN.x, z: PLAZA.z + PLAZA_FOUNTAIN.z };
 const LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
@@ -36,8 +36,7 @@ let def = null, debugStage = null, saveRestored = false, lastProg = null, spot =
 let built = [], solids = [], obstacle = null, shown = '', fireworks = null, fireworksToasted = false;
 let viewCheck = 0, lastNearPollAt = -Infinity;
 const viewed = new Set();
-const ARROW_REACH = 4;
-let guideEnv = null, arrow = null, bannered = false, arrowSec = 0;
+let guideEnv = null, arrow = null, bannered = false, arrived = false, arrowSec = 0;
 
 export function addStored(id) {
   const stored = gameState.outdoorStored || {};
@@ -210,10 +209,11 @@ function tickGuide(dt, inVillage) {
     commit({ ...s, banner: s.banner + 1 });
     ui.showHintBanner?.({ ico: '❄️', title: WINTER_COPY.banner.title, line: WINTER_COPY.banner.line, near: () => true, attention: true, slotQuest: true, kind: 'feature', key: `fountain-${def.id}` });
   }
-  const want = bannered && arrowSec < YARD_STALL_SEC
+  if (dist2D(FOUNTAIN_AT, player.position) < FOUNTAIN_ARROW_REACH) arrived = true;
+  const want = bannered && !arrived && arrowSec < YARD_STALL_SEC
     && arrowWanted({ ...base, inVillage, busy, other: !guideArbiter.mayShow('fountain') || !guideEnv.cameraFree() });
   if (!want) { if (arrow?.active) arrow.cancel('gate'); return; }
-  arrow ??= guideEnv.makeGuide('fountain', FOUNTAIN_AT, ARROW_REACH);
+  arrow ??= guideEnv.makeGuide('fountain', FOUNTAIN_AT, FOUNTAIN_ARROW_REACH);
   if (!arrow.active) arrow.start();
   arrowSec += dt;
   arrow.update(dt);

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { bannerDue, arrowWanted, FOUNTAIN_BANNER_MAX } from '../js/plaza/winter-guide.js';
+import { bannerDue, arrowWanted, FOUNTAIN_BANNER_MAX, FOUNTAIN_ARROW_REACH, FOUNTAIN_SPOT_R } from '../js/plaza/winter-guide.js';
 import { fountainCard } from '../js/plaza/winter-card.js';
 import { GUIDE_PRIORITY, createArbiter } from '../js/guide/arbiter.js';
 import { winterDefault } from '../js/plaza/winter-rules.js';
@@ -51,4 +51,8 @@ test('연결: 중재 등록·첫 방문·의뢰 패널', () => {
   assert.ok(read('js/plaza/winter.js').includes("guideArbiter.register({ name: 'fountain', active: winterGuideActive })"));
   assert.ok(read('js/game.js').includes('fountain: () => fountainSpotNow()'));
   assert.ok(read('js/spaces/npc.js').includes('fountainCard(gameState.plaza, Date.now(), featureGuidesOpen(gameState))'));
+});
+
+test('화살표 도착 반경은 분수 칸 안쪽이다', () => {
+  assert.ok(FOUNTAIN_ARROW_REACH < FOUNTAIN_SPOT_R);
 });
