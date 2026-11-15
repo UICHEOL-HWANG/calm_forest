@@ -160,6 +160,30 @@ test('season-limited bugs: only roll in their season, other seasons keep the old
   assert.ok(Math.abs(none.green / N - 0.16 / 0.94) < 0.012);
 });
 
+test('season-limited forage: exactly one per season, table/dex/gate agree', () => {
+  for (const id of SEASON_IDS) {
+    const kinds = FORAGE_KINDS.filter(k => k.season === id);
+    assert.equal(kinds.length, 1, `${id} should have exactly one seasonal forage`);
+    const k = kinds[0], i = FORAGE_KINDS.indexOf(k);
+    assert.equal(k.p, i ? FORAGE_KINDS[i - 1].p : 0);
+    assert.deepEqual(k.give, { forage: 1 });
+    assert.ok(DEX.forage.find(d => d.id === k.id && d.season === id), `${k.id} missing from DEX.forage`);
+    assert.deepEqual(DEX_GATES.forage[k.id].season, [id]);
+  }
+});
+
+test('season-limited forage: herb night gate still works next to the season gate', () => {
+  const N = 4000;
+  const seen = {};
+  for (let i = 0; i < N; i++) {
+    const k = rollKind(FORAGE_KINDS, 'forage', { weather: 'clear', season: 'autumn', night: true }, () => (i + 0.5) / N);
+    seen[k.id] = (seen[k.id] || 0) + 1;
+  }
+  assert.ok(Math.abs(seen.chestnut / N - 0.14) < 0.012);
+  assert.ok(Math.abs(seen.herb / N - 0.30) < 0.012);
+  assert.equal(seen.mugwort, undefined);
+});
+
 test('season-limited entries do not shift the weather-biased odds of the existing rare kinds', () => {
   const N = 4000;
   const odds = (kinds, cat, id, sit, bias) => {

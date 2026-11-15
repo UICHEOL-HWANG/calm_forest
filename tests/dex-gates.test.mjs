@@ -129,7 +129,7 @@ test('게이트는 도감 종을 늘리거나 줄이지 않는다 — DEX_TOTAL 
     fish:   ['common', 'uncommon', 'rare', 'sakura_trout', 'puffer', 'maple_carp', 'ice_smelt'],
     ore:    ['stone', 'coal', 'gem'],
     bug:    ['rainbow', 'green', 'blue', 'yellow', 'petal', 'ember', 'amber', 'frost'],
-    forage: ['herb', 'acorn', 'berry', 'mushroom'],
+    forage: ['herb', 'acorn', 'berry', 'mushroom', 'mugwort', 'wildgrape', 'chestnut', 'pinecone'],
   };
   for (const [cat, m] of Object.entries(DEX_GATES)) {
     for (const id of Object.keys(m)) {

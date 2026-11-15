@@ -53,6 +53,10 @@ export const DEX = {
     { id: 'berry',    name: '산딸기',   ico: '🫐' },
     { id: 'acorn',    name: '도토리',   ico: '🌰' },
     { id: 'herb',     name: '숲 약초',  ico: '🌿' },
+    { id: 'mugwort',   name: '어린 쑥', ico: '🌱', season: 'spring' },
+    { id: 'wildgrape', name: '머루',    ico: '🍇', season: 'summer' },
+    { id: 'chestnut',  name: '알밤',    ico: '🌰', season: 'autumn' },
+    { id: 'pinecone',  name: '솔방울',  ico: '🌲', season: 'winter' },
   ],
   // 🌟 반딧불이 — 밤에 남쪽 계곡에서 🦋포충망으로 잡아야 채워짐(밤 재방문 훅)
   bug: [

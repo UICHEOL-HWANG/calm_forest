@@ -535,10 +535,10 @@ test('층 정의: 1층은 벽 유리장, 2층·3층·특별전은 회랑 — 그
   }
 });
 
-test('실제 도감 칸 수 — 1층 14 · 2층 21 · 3층 31 · 특별전 15(바뀌면 배치 한도를 다시 본다)', () => {
+test('실제 도감 칸 수 — 1층 14 · 2층 25 · 3층 31 · 특별전 15(바뀌면 배치 한도를 다시 본다)', () => {
   const real = realDexIds();
   const DEXR = Object.fromEntries(Object.entries(real).map(([k, v]) => [k, v.map(id => ({ id }))]));
-  assert.deepEqual(MUSEUM_FLOORS.map(f => floorEntries(f.id, DEXR).length), [14, 21, 31, 15]);
+  assert.deepEqual(MUSEUM_FLOORS.map(f => floorEntries(f.id, DEXR).length), [14, 25, 31, 15]);
 });
 
 test('전시물 메시: 새 조형 → 폴백 순서, 모든 경로가 바닥 y=0 으로 앉는다', () => {

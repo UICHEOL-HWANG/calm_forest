@@ -41,7 +41,13 @@ export const DEX_GATES = {
   },
   // 🌿 숲 약초 — 이슬 맺힌 밤에 캔다. 🌙달빛 물고기(night:true) 선례.
   //   ⚠️ 날씨를 안 본다. 비 오는 날은 기존 보정이 **버섯**을 밀어주므로 근거가 반대다.
-  forage: { herb:    { night: true, p: 0.30 } },
+  forage: {
+    herb:    { night: true, p: 0.30 },
+    mugwort:   { season: ['spring'], p: 0.14 },
+    wildgrape: { season: ['summer'], p: 0.14 },
+    chestnut:  { season: ['autumn'], p: 0.14 },
+    pinecone:  { season: ['winter'], p: 0.14 },
+  },
 };
 
 export function gateOf(cat, id) {

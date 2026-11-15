@@ -149,6 +149,10 @@ export const FORAGE_RESPAWN = [55, 110];               // 채집 후 다시 돋�
 // p는 누적 확률(FISH_KINDS 규칙과 동일). give 는 획득 자원
 export const FORAGE_KINDS = [
   { id: 'herb',     name: '숲 약초',   ico: '🌿', p: 0.12, give: { forage: 2 },          color: 0x7fd6a0 },
+  { id: 'mugwort',   name: '어린 쑥', ico: '🌱', p: 0.12, give: { forage: 1 }, color: 0x9cc98a, season: 'spring' },
+  { id: 'wildgrape', name: '머루',    ico: '🍇', p: 0.12, give: { forage: 1 }, color: 0x6b4fa3, season: 'summer' },
+  { id: 'chestnut',  name: '알밤',    ico: '🌰', p: 0.12, give: { forage: 1 }, color: 0x9b6236, season: 'autumn' },
+  { id: 'pinecone',  name: '솔방울',  ico: '🌲', p: 0.12, give: { forage: 1 }, color: 0x8a6a4a, season: 'winter' },
   { id: 'acorn',    name: '도토리',    ico: '🌰', p: 0.38, give: { forage: 1, seed: 2 }, color: 0xc99a5a },
   { id: 'berry',    name: '산딸기',    ico: '🫐', p: 0.66, give: { forage: 1, crop: 1 }, color: 0x8a7ad0 },
   { id: 'mushroom', name: '숲 버섯',   ico: '🍄', p: 1.00, give: { forage: 1 },          color: 0xe0705a },
