@@ -36,3 +36,9 @@ test('ad quiet treats only the tutorial window as coaching, not every open card 
   assert.ok(!src.includes(".querySelector('.show > .tut-card')"));
   assert.match(src, /coaching: b\.contains\('coaching'\) \|\| !!document\.querySelector\('#tutorial-modal\.show'\)/);
 });
+
+test('fill-materials ad is offered only when the current stage is actually short', () => {
+  const src = readFileSync(new URL('../js/plaza/winter.js', import.meta.url), 'utf8');
+  const body = src.slice(src.indexOf('function adShort'), src.indexOf("adPill('fountain_short'"));
+  assert.match(body, /if \(!Object\.keys\(shortFill\(stageRows\(st\(\)\), gameState\.inventory\)\)\.length\) return null;/);
+});

@@ -118,7 +118,7 @@ function claimLamps() {
 function afterGive(beforeStage) {
   const s = st(), now = myStage(s);
   if (now <= beforeStage) return;
-  trackEvent('plaza_fountain_stage', { season: def.id, stage: now, guest: guest() ? 1 : 0 });
+  trackEvent('plaza_fountain_stage', { season: def.id, stage: now, ...(guest() ? { guest: true } : {}) });
   if (now < FOUNTAIN_DONE) { commit({ ...s, seenStage: now }); return; }
   const d = decorPlan({ ...s, seenStage: now }, 'winterfountain', guest());
   if (d.grant) addStored('winterfountain');
@@ -175,6 +175,7 @@ async function onGive(item, qty) {
 function adShort() {
   if (!economy() || winterPhase() !== 'active' || myStage(st()) >= FOUNTAIN_DONE) return null;
   const stage = myStage(st());
+  if (!Object.keys(shortFill(stageRows(st()), gameState.inventory)).length) return null;
   return adPill('fountain_short', () => {
     if (winterPhase() !== 'active') return;
     const give = shortFill(stageRows(st()), gameState.inventory);
