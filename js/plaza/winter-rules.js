@@ -1,4 +1,4 @@
-import { WINTER_NEEDS, PLAZA_DAILY_CAP } from '../data/plaza.js';
+import { WINTER_NEEDS, PLAZA_DAILY_CAP, WINTER_LAMP_THRESHOLDS, WINTER_LAMPS, WINTER_LAMP_R, WINTER_LAMP_REWARD, WINTER_SHORT_MAX } from '../data/plaza.js';
 import { giveText } from './copy.js';
 
 export const FOUNTAIN_DONE = 4;
@@ -87,4 +87,61 @@ export function winterButtons(inv, left, row) {
     { label: '+5', qty: 5, on: max >= 5, cls: '' },
     { label: giveText(max), qty: max, on: max >= 1, cls: 'max' },
   ];
+}
+
+const PER_STAGE = WINTER_LAMPS / WINTER_LAMP_THRESHOLDS.length;
+
+export const villageStage = (total) => WINTER_LAMP_THRESHOLDS.filter(t => (total | 0) >= t).length;
+
+export const litLamps = (total) => villageStage(total) * PER_STAGE;
+
+export function nextLampLeft(total) {
+  const t = WINTER_LAMP_THRESHOLDS.find(x => (total | 0) < x);
+  return t === undefined ? 0 : t - (total | 0);
+}
+
+export function lampSpot(i) {
+  const a = -Math.PI / 2 + (i / WINTER_LAMPS) * Math.PI * 2;
+  return { x: Math.cos(a) * WINTER_LAMP_R, z: Math.sin(a) * WINTER_LAMP_R };
+}
+
+export const lampLit = (i, lit) => (i % PER_STAGE) * PER_STAGE + Math.floor(i / PER_STAGE) < lit;
+
+export const lampEligible = (st, k) => st.joined >= 0 && st.joined < WINTER_LAMP_THRESHOLDS[k - 1];
+
+export const lampClaims = (st, total) => STAGES.filter(k => k <= villageStage(total) && lampEligible(st, k) && !st.lamps.includes(k));
+
+export function lampGrant(k) {
+  const r = WINTER_LAMP_REWARD[k];
+  return r.decor ? { give: null, decor: r.decor } : { give: { ...r }, decor: null };
+}
+
+export const claimLamp = (st, k) => ({ ...st, lamps: stageList([...st.lamps, k]) });
+
+export const doubleOpen = (st, k) => st.lamps.includes(k) && !WINTER_LAMP_REWARD[k].decor && !st.doubled.includes(k);
+
+export const markDoubled = (st, k) => ({ ...st, doubled: stageList([...st.doubled, k]) });
+
+export function decorPlan(st, id, isGuest) {
+  if (st.got.includes(id)) return { st, grant: false };
+  if (isGuest) return { st: { ...st, owed: decorList([...st.owed, id]) }, grant: false };
+  return { st: { ...st, got: decorList([...st.got, id]), owed: st.owed.filter(x => x !== id) }, grant: true };
+}
+
+export function settleOwed(st, isGuest) {
+  if (isGuest || !st.owed.length) return { st, grant: [] };
+  const grant = st.owed.filter(id => !st.got.includes(id));
+  return { st: { ...st, owed: [], got: decorList([...st.got, ...grant]) }, grant };
+}
+
+export function shortFill(rows, inv, max = WINTER_SHORT_MAX) {
+  return rows.reduce(({ give, left }, r) => {
+    const n = Math.min(left, Math.max(0, r.need - r.have - (inv?.[r.item] | 0)));
+    return n > 0 ? { give: { ...give, [r.item]: n }, left: left - n } : { give, left };
+  }, { give: {}, left: max }).give;
+}
+
+export function fireworksDue(def, nowMs, total) {
+  const lastDay = kstDay(Date.parse(`${def.closesKst}T00:00:00+09:00`) - 1);
+  return villageStage(total) >= STAGES.length && kstDay(nowMs) === lastDay;
 }
