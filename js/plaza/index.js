@@ -6,7 +6,8 @@
 import { gameState, player, dist2D, ui, scene, solidCircle, removeSolid, obstacles, giveReward, refreshInventoryUI, requestSave, awardBadge, mode } from '../game.js';
 import { trackEvent } from '../analytics.js';
 import { state as authState } from '../supabase-client.js';   // 🔐 게스트(익명)는 기부 불가 — plaza_mine 호출 자체를 건너뛴다
-import { PLAZA, PLAZA_R, PLAZA_BOX, PLAZA_STALL_POS, PLAZA_SEASON, PLAZA_VIEW_R, PLAZA_OPENS_KST } from '../data/plaza.js';
+import { PLAZA, PLAZA_R, PLAZA_BOX, PLAZA_STALL_POS, PLAZA_VIEW_R, PLAZA_OPENS_KST } from '../data/plaza.js';
+import { pickSeason, SEASON_OVERRIDE } from './seasons.js';
 import { plazaPropSolids, plazaPathSolids } from './solids.js';
 import { plazaBlocks, siteOpen, seasonPhase, visualStage, tierOf, currentItems, stageSeenPlan, gateOpens, economyAllowed, nearPollDue, normalizeMineReason } from './rules.js';
 import { progress, donate, mine as fetchMine } from './net.js';
@@ -29,7 +30,8 @@ const BOX_R = 2.0;
 const STALL_R = 2.0;
 // 시즌 id — localhost 에서만 ?plazaSeason= 으로 바꿀 수 있다(Task 8 의 dev-plaza 시즌 검증용). 모든 서버 호출·트래킹은 SEASON 을 쓴다
 const IS_LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-export const SEASON = (IS_LOCAL && new URLSearchParams(location.search).get('plazaSeason')) || PLAZA_SEASON;
+const DEF = pickSeason(Date.now(), SEASON_OVERRIDE);
+export const SEASON = DEF.id;
 
 let spotNow = null;
 let shownStage = -1;
