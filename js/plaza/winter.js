@@ -14,10 +14,15 @@ import { buildFountain } from './fountain.js';
 import { buildWinterPlaza, buildFireworks } from './winter-build.js';
 import { winterPropSolids, plazaPathSolids } from './solids.js';
 import { winterDefault, myStage, stageRows, todayLeft, recordGive, recordCap, syncToday, markFull, kstDay, villageStage, litLamps,
-         lampClaims, lampPlan, decorPlan, settleOwed, fireworksDue, FOUNTAIN_DONE } from './winter-rules.js';
+         lampClaims, lampPlan, decorPlan, settleOwed, fireworksDue, myTotal, FOUNTAIN_DONE } from './winter-rules.js';
 import { WINTER_COPY, winterToast } from './winter-copy.js';
 import { fill, stagePct } from './copy.js';
 import { openPlazaModal, renderPlazaModal } from './ui.js';
+import { guideArbiter } from '../guide/arbiter.js';
+import { featureGuidesOpen } from '../guide/feature-rules.js';
+import { YARD_STALL_SEC } from '../pond/yard-steps.js';
+import { makeGuideEnv } from '../weekly/bridge.js';
+import { bannerDue, arrowWanted } from './winter-guide.js';
 
 const SPOT_R = 2.8;
 const VIEW_R = 12;
@@ -31,6 +36,8 @@ let def = null, debugStage = null, saveRestored = false, lastProg = null, spot =
 let built = [], solids = [], obstacle = null, shown = '', fireworks = null, fireworksToasted = false;
 let viewCheck = 0, lastNearPollAt = -Infinity;
 const viewed = new Set();
+const ARROW_REACH = 4;
+let guideEnv = null, arrow = null, bannered = false, arrowSec = 0;
 
 export function addStored(id) {
   const stored = gameState.outdoorStored || {};
@@ -189,6 +196,29 @@ function trackView() {
   trackEvent('plaza_view', { season: def.id, stage, pct: stage >= FOUNTAIN_DONE ? 100 : stagePct(stageRows(st())), from: 'other' });
 }
 
+export const winterGuideActive = () => !!arrow?.active;
+
+const reached = () => !!gameState.hintsSeen?.visitFountain || myTotal(st()) > 0;
+
+function tickGuide(dt, inVillage) {
+  if (!guideEnv || debugStage !== null || !saveRestored) return;
+  const s = st();
+  const base = { phase: winterPhase(), open: featureGuidesOpen(gameState), reached: reached() };
+  const busy = guideEnv.uiBusy() || guideEnv.cine();
+  if (!bannered && inVillage && bannerDue({ ...base, busy, tries: s.banner })) {
+    bannered = true;
+    commit({ ...s, banner: s.banner + 1 });
+    ui.showHintBanner?.({ ico: '❄️', title: WINTER_COPY.banner.title, line: WINTER_COPY.banner.line, near: () => true, attention: true, slotQuest: true, kind: 'feature', key: `fountain-${def.id}` });
+  }
+  const want = bannered && arrowSec < YARD_STALL_SEC
+    && arrowWanted({ ...base, inVillage, busy, other: !guideArbiter.mayShow('fountain') || !guideEnv.cameraFree() });
+  if (!want) { if (arrow?.active) arrow.cancel('gate'); return; }
+  arrow ??= guideEnv.makeGuide('fountain', FOUNTAIN_AT, ARROW_REACH);
+  if (!arrow.active) arrow.start();
+  arrowSec += dt;
+  arrow.update(dt);
+}
+
 export function winterSpot(pos) {
   spot = dist2D(FOUNTAIN_AT, pos) < SPOT_R ? 'fountain' : null;
   return spot;
@@ -200,6 +230,8 @@ export const fountainSpotNow = () => spot === 'fountain';
 export function initWinter(seasonDef, ge, debug) {
   def = seasonDef;
   debugStage = debug;
+  guideEnv = ge ? makeGuideEnv(ge) : null;
+  guideArbiter.register({ name: 'fountain', active: winterGuideActive });
   rebuild();
   refreshWinter();
 }
@@ -208,6 +240,7 @@ export function updateWinter(dt, inVillage) {
   if (!def) return;
   if (gateOpens(saveRestored, mode)) { saveRestored = true; refreshWinter(); }
   tickFireworks(dt);
+  tickGuide(dt, inVillage);
   if (!inVillage) { spot = null; return; }
   viewCheck -= dt;
   if (viewCheck > 0) return;

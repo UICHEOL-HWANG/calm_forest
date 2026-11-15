@@ -1687,7 +1687,7 @@ function countHint(key) {
   gameState.hintsSeen = { ...gameState.hintsSeen, [key]: (gameState.hintsSeen[key] | 0) + 1 };
   requestSave();
 }
-const FIRST_VISIT_AT = { weekly: () => weeklySpotNow() === 'board', concert: () => concertSpotNow(), auction: () => auctionSpotNow(), pond: () => inVillage2() && pondNear() };
+const FIRST_VISIT_AT = { weekly: () => weeklySpotNow() === 'board', concert: () => concertSpotNow(), auction: () => auctionSpotNow(), pond: () => inVillage2() && pondNear(), fountain: () => fountainSpotNow() };
 function tickFirstVisits() {
   if (!featureGuidesOpen(gameState)) return;
   for (const [id, at] of Object.entries(FIRST_VISIT_AT)) {

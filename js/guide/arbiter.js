@@ -1,5 +1,5 @@
 export const GUIDE_PRIORITY = Object.freeze({
-  coach: 100, house: 90, goal: 80, port: 70, restaurant: 60, yard: 50, affinity: 40, weekly: 30, concert: 20, auction: 10,
+  coach: 100, house: 90, goal: 80, port: 70, restaurant: 60, yard: 50, affinity: 40, weekly: 30, fountain: 25, concert: 20, auction: 10,
 });
 
 const claiming = (e) => !!e.active() || !!e.wants?.();
