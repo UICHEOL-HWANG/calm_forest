@@ -7,7 +7,7 @@ begin
     execute format('alter table public.push_logs drop constraint %I', c);
   end loop;
 end $$;
-alter table public.push_logs add constraint push_logs_kind_check check (kind in ('night', 'craft', 'return', 'pond'));
+alter table public.push_logs add constraint push_logs_kind_check check (kind in ('night', 'craft', 'return', 'pond', 'market', 'season'));
 
 drop function if exists public.push_candidates(date, int);
 create or replace function public.push_candidates(p_today date, p_limit int default 100)

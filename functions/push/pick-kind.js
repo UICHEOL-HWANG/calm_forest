@@ -56,7 +56,7 @@ export function pickPush(row, dates, night, seasonCtx) {
     if (stations.length) return { kind: 'craft', stations };
   }
   if (lastMs < dates.todayStartMs && row.pond_day === dates.yesterday) return { kind: 'pond' };
-  if (seasonCtx && seasonCtx.left <= 3 && lastMs < dates.todayStartMs && row.season_14d === 0) {
+  if (seasonCtx && seasonCtx.left <= 3 && lastMs < dates.todayStartMs && row.season_7d === 0) {
     const dex = row.dex || {};
     if (seasonCtx.limited.some(x => !dex[x.cat]?.[x.id])) return { kind: 'season', season: seasonCtx.id };
   }

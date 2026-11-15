@@ -81,9 +81,11 @@ export async function runPush(env, { now = Date.now(), fetch: fetchFn = fetch } 
     }
   }
 
+  let logsFailed;
   try {
     if (logs.length) {
-      await fetchFn(rest('push_logs'), { method: 'POST', headers: storeHeaders(env, 'return=minimal'), body: JSON.stringify(logs) });
+      const lr = await fetchFn(rest('push_logs'), { method: 'POST', headers: storeHeaders(env, 'return=minimal'), body: JSON.stringify(logs) });
+      if (!lr.ok) { logsFailed = lr.status; console.warn('[push] logs failed', lr.status); }
     }
     const m = await fetchFn(rest('rpc/push_mark'), { method: 'POST', headers: storeHeaders(env),
       body: JSON.stringify({ p_today: dates.today, p_checked: checked, p_dead: dead }) });
@@ -93,7 +95,7 @@ export async function runPush(env, { now = Date.now(), fetch: fetchFn = fetch } 
     console.warn('[push] mark failed', e?.message);
     return { candidates: rows.length, sent, failed, dead: dead.length, checked: checked.length, error: 'mark' };
   }
-  return { candidates: rows.length, sent, failed, dead: dead.length, checked: checked.length, ...(stop ? { error: stop } : {}) };
+  return { candidates: rows.length, sent, failed, dead: dead.length, checked: checked.length, ...(stop ? { error: stop } : {}), ...(logsFailed ? { logs_failed: logsFailed } : {}) };
 }
 
 const NIGHT_WORST_CASE = { candidates: 1, sent: PUSH_BUDGET, failed: 0, dead: 0 };

@@ -121,3 +121,11 @@ test('cron 분 분기 — 0·20·40 은 ai-pregen(9회 그대로), 10·30·50 �
   const w = readFileSync(new URL('../worker/index.js', import.meta.url), 'utf8');
   assert.match(w, /if \(isPushTick\(event\.scheduledTime\)\)/);
 });
+
+test('a rejected push_logs insert is reported and the tokens are still marked', async () => {
+  const f = fakeFetch([row('t-return-aaaaaaaaaaaaaaaa')]);
+  const fn = async (url, init) => String(url).endsWith('/rest/v1/push_logs') ? (f.calls.push({ url: String(url) }), new Response('{}', { status: 400 })) : f.fn(url, init);
+  const r = await runPush(env(), { now: NOW, fetch: fn });
+  assert.equal(r.logs_failed, 400);
+  assert.ok(f.calls.some(c => c.url.endsWith('rpc/push_mark')));
+});

@@ -40,7 +40,7 @@ Last Updated: 2026-11-15 (계획 작성 직후, 구현 0줄)
 - 한정 종 `p` 는 물고기 선례대로 0, 게이트 안 확률 0.14(사용자 확인 대기).
 - 채집물 보상은 `{ forage: 1 }` 고정. 경제에 새 값 없음.
 - 푸시 `season` 은 계절당 1통, `return` 보다 위, 오늘 접속한 사람에게는 안 보낸다.
-- Worker 를 SQL 보다 먼저 배포하면 전원 발송 사고가 날 수 있다. `row.season_14d === 0` 엄격 비교로 코드에서도 막는다.
+- Worker 를 SQL 보다 먼저 배포하면 전원 발송 사고가 날 수 있다. `row.season_7d === 0` 엄격 비교로 코드에서도 막는다.
 - 스탬프 카드는 이번에 구현하지 않는다(설계 게이트만).
 
 ## 확정 사항 (Task 1 에서 채운다)
@@ -66,9 +66,12 @@ Last Updated: 2026-11-15 (계획 작성 직후, 구현 0줄)
 
 - 운영 `push_logs_kind_check` = night·craft·return 뿐. `migrate_push_pond.sql`·`migrate_push_weekly_market.sql` 은 미적용.
 - 세 파일이 모두 kind 목록과(pond·season 은) `push_candidates` 를 통째로 덮어쓴다 → 사용자 결정 "합집합".
-- `migrate_push_season.sql` = kind 6종(night·craft·return·pond·market·season) + `push_candidates` 에 pond_day·dex·season_14d.
-- 순서: `migrate_push_weekly_market.sql`(market_week 열·market 함수 필요) → `migrate_push_season.sql` **마지막**. pond 파일은 season 파일이 포함하므로 따로 적용하지 않는다. season 뒤에 market·pond 파일을 다시 돌리면 season 이 kind 목록에서 빠져 발송 기록이 실패하고, season_14d 가 0 으로 남아 끝 3일 동안 매일 보낼 수 있다.
-- SQL 먼저, Worker 나중. 옛 Worker 는 새 열을 무시한다. 새 Worker 가 옛 RPC 를 만나면 season_14d 가 undefined 라 보내지 않는다(엄격 비교).
+- `migrate_push_season.sql` = kind 6종(night·craft·return·pond·market·season) + `push_candidates` 에 pond_day·dex·season_7d.
+- 순서: `migrate_push_weekly_market.sql`(market_week 열·market 함수 필요) → `migrate_push_season.sql` **마지막**. pond 파일은 season 파일이 포함하므로 따로 적용하지 않는다.
+- 리뷰 반영(11/16): pond·market 파일의 kind 목록도 6종으로 맞춰 어느 순서로 돌려도 kind 가 빠지지 않는다. 단 season 뒤에 pond 파일을 다시 돌리면 push_candidates 에서 dex·season_7d 가 빠져 계절 푸시가 조용히 멈춘다(발송 사고는 아님).
+- push-cron 이 push_logs 저장 실패를 `logs_failed` 로 돌려주고 경고를 남긴다(실패하면 season_7d·returns_7d 중복 방지가 꺼지므로).
+- 중복 방지 창은 7일(`season_7d`). 14일이면 마지막 날 받은 사람의 다음 계절 푸시가 막힌다. 한 계절의 발송일은 3일 안에 모인다.
+- SQL 먼저, Worker 나중. 옛 Worker 는 새 열을 무시한다. 새 Worker 가 옛 RPC 를 만나면 season_7d 가 undefined 라 보내지 않는다(엄격 비교).
 - 함수 본문 SELECT 를 운영 DB 에서 읽기 전용으로 돌려 확인: 대상 14명, dex 14/14.
 
 ## 출시 때 사용자 몫 (미리 적어 둠)

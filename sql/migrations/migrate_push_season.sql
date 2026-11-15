@@ -16,11 +16,11 @@ create or replace function public.push_candidates(p_today date, p_limit int defa
 returns table (
   token text, user_id uuid, lang text, updated_at timestamptz,
   plots jsonb, outdoor jsonb, truce jsonb, night_last text, craft jsonb, returns_7d int,
-  pond_day text, dex jsonb, season_14d int
+  pond_day text, dex jsonb, season_7d int
 )
 language sql stable security definer set search_path = public as $$
   select c.token, c.user_id, c.lang, c.updated_at, c.plots, c.outdoor, c.truce, c.night_last, c.craft, c.returns_7d,
-         c.pond_day, c.dex, c.season_14d from (
+         c.pond_day, c.dex, c.season_7d from (
   select distinct on (t.user_id)
          t.token, t.user_id, t.lang, s.updated_at,
          s.state -> 'plots' as plots, s.state -> 'outdoor' as outdoor, s.state -> 'night' -> 'truce' as truce,
@@ -32,7 +32,7 @@ language sql stable security definer set search_path = public as $$
          jsonb_build_object('fish', s.state -> 'dex' -> 'fish', 'bug', s.state -> 'dex' -> 'bug', 'forage', s.state -> 'dex' -> 'forage') as dex,
          (select count(*)::int from public.push_logs l
            where l.user_id = t.user_id and l.kind = 'season' and l.status = 'sent'
-             and l.sent_at > now() - interval '14 days') as season_14d
+             and l.sent_at > now() - interval '7 days') as season_7d
   from public.push_tokens t
   join public.game_saves s on s.user_id = t.user_id
   where t.enabled and (t.last_checked_on is null or t.last_checked_on < p_today)

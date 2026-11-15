@@ -104,21 +104,21 @@ const CTX = { id: 'spring', name: '봄', ico: '🌸', left: 3,
 const AWAY = row({ updated_at: '2026-10-12T05:00:00Z' });
 
 test('season push: last three days, something missing, not sent this season', () => {
-  const r = { ...AWAY, dex: { fish: { sakura_trout: 1 }, bug: {}, forage: {} }, season_14d: 0 };
+  const r = { ...AWAY, dex: { fish: { sakura_trout: 1 }, bug: {}, forage: {} }, season_7d: 0 };
   assert.deepEqual(pickPush(r, D, null, CTX), { kind: 'season', season: 'spring' });
 });
 
 test('season push: silent when everything is owned, already sent, too early, played today, or column missing', () => {
   const all = { fish: { sakura_trout: 1 }, bug: { petal: 1 }, forage: { mugwort: 1 } };
-  assert.equal(pickPush({ ...AWAY, dex: all, season_14d: 0 }, D, null, CTX), null);
-  assert.equal(pickPush({ ...AWAY, dex: {}, season_14d: 1 }, D, null, CTX), null);
-  assert.equal(pickPush({ ...AWAY, dex: {}, season_14d: 0 }, D, null, { ...CTX, left: 4 }), null);
-  assert.equal(pickPush(row({ dex: {}, season_14d: 0 }), D, null, CTX), null);
+  assert.equal(pickPush({ ...AWAY, dex: all, season_7d: 0 }, D, null, CTX), null);
+  assert.equal(pickPush({ ...AWAY, dex: {}, season_7d: 1 }, D, null, CTX), null);
+  assert.equal(pickPush({ ...AWAY, dex: {}, season_7d: 0 }, D, null, { ...CTX, left: 4 }), null);
+  assert.equal(pickPush(row({ dex: {}, season_7d: 0 }), D, null, CTX), null);
   assert.equal(pickPush({ ...AWAY, dex: {} }, D, null, CTX), null);
 });
 
 test('season push: ranks below night and above return; missing ctx keeps old behaviour', () => {
-  const r = { ...AWAY, dex: {}, season_14d: 0 };
+  const r = { ...AWAY, dex: {}, season_7d: 0 };
   assert.equal(pickPush(r, D, { visited: true }, CTX).kind, 'night');
   const away5 = { ...r, updated_at: '2026-10-08T05:00:00Z' };
   assert.equal(pickPush(away5, D, null, CTX).kind, 'season');

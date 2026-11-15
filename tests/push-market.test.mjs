@@ -315,7 +315,7 @@ test('sql: the market mark does not stamp last_checked_on', () => {
 
 test('sql: log kind keeps every existing kind and adds market', () => {
   const kinds = SQL.match(/push_logs_kind_check check \(kind in \(([^)]*)\)\)/)[1].match(/'([a-z]+)'/g).map(s => s.slice(1, -1));
-  assert.deepEqual(kinds, ['night', 'craft', 'return', 'market']);
+  assert.deepEqual(kinds, ['night', 'craft', 'return', 'pond', 'market', 'season']);
   const drops = SQL.match(/\bdrop\b[^;]*;/gi) || [];
   assert.deepEqual(drops, ['drop constraint if exists push_logs_kind_check;']);
 });
