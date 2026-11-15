@@ -3055,7 +3055,7 @@ export async function enterGame() {
       const b = document.body.classList;
       return adQuiet({
         tutorial: !gameState.tutorialSeen || !b.contains('playing') || ![undefined, null, 'done'].includes(gameState.hintsSeen?.tutStep),
-        coaching: b.contains('coaching') || !!document.querySelector('.show > .tut-card'),
+        coaching: b.contains('coaching') || !!document.querySelector('#tutorial-modal.show'),
         spotlight: b.contains('spot-on'),
         e1: e1Pending() || b.contains('e1-pending'),
         cutscene: !!intro || b.contains('intro-open') || b.contains('cine-open') || !!goalGuide?.cinematic || !!houseGuidance?.cinematic,

@@ -176,6 +176,7 @@ function adShort() {
   if (!economy() || winterPhase() !== 'active' || myStage(st()) >= FOUNTAIN_DONE) return null;
   const stage = myStage(st());
   return adPill('fountain_short', () => {
+    if (winterPhase() !== 'active') return;
     const give = shortFill(stageRows(st()), gameState.inventory);
     if (!Object.keys(give).length) return;
     giveReward(give, 'fountain_short', `stage${stage}`);
@@ -186,6 +187,7 @@ function adShort() {
 function adDouble(k) {
   if (!economy() || !doubleOpen(st(), k)) return null;
   return adPill('fountain_double', () => {
+    if (!doubleOpen(st(), k)) return;
     const g = lampGrant(k).give;
     if (!g) return;
     giveReward(g, 'fountain_double', `lamp${k}`);

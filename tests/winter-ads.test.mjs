@@ -30,3 +30,9 @@ test('quiet during tutorial and modal queue, winter.js goes through adPill', () 
   assert.ok(src.includes("adPill('fountain_short'"));
   assert.ok(src.includes("adPill('fountain_double'"));
 });
+
+test('ad quiet treats only the tutorial window as coaching, not every open card modal', () => {
+  const src = readFileSync(new URL('../js/game.js', import.meta.url), 'utf8');
+  assert.ok(!src.includes(".querySelector('.show > .tut-card')"));
+  assert.match(src, /coaching: b\.contains\('coaching'\) \|\| !!document\.querySelector\('#tutorial-modal\.show'\)/);
+});
