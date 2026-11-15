@@ -41,3 +41,20 @@ test('canDo blocks types whose space is closed', () => {
   assert.equal(b.canDo('sled'), false);
   assert.equal(b.canDo('harvest'), true);
 });
+
+test('feature guides wait for the shared gate, not the merchant', () => {
+  const gate = { open: false };
+  const guide = { featureOpen: () => gate.open, isOpen: () => true };
+  const b = makeWeeklyBridge({ ...env(empty()).api, guide });
+  assert.equal(b.guideEnv.pastOnboarding(), false);
+  gate.open = true;
+  assert.equal(b.guideEnv.pastOnboarding(), true);
+});
+
+test('weekly arrows log guide_step and name their destination', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../js/weekly/bridge.js', import.meta.url), 'utf8');
+  assert.match(src, /track: g\.track,/);
+  assert.match(src, /follow: ARROW_LABEL\[name\]/);
+  assert.doesNotMatch(src, /track: \(\) => \{\}/);
+});

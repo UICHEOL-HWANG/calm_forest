@@ -178,7 +178,7 @@ export function createRestaurantRuntime(env) {
     env.trackEvent('restaurant_service', { star: star0, served: r.served, avg_score: Math.round(r.avg * 10) / 10, dda: out.rest.dda.iv });
     if (out.starUp) env.trackEvent('restaurant_star_up', { star: out.rest.star });
     env.requestSave();
-    hud.result(resultView(r, out, goalRows(out.rest), env.copy), refresh);
+    hud.result(resultView(r, out, goalRows(out.rest), env.copy), refresh, env.adButton?.(r.coins) || null);
     env.onFinish?.(r, out);
   }
 

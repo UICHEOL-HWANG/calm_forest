@@ -57,7 +57,8 @@ test('배선: 이정표 1회 플래그 · 해금 꺼짐/레거시 제외 · 귀�
   const hab = w.slice(w.indexOf("if (e.type === 'habitat')"), w.indexOf("} else if (e.type === 'bundle')"));
   assert.ok(hab.indexOf("queueTreeShot('habitat'") < hab.indexOf('syncUnlocks(false)'));
   const q = g.slice(g.indexOf('function queueStoryModal'), g.indexOf('function afterModals'));
-  assert.ok(q.indexOf('coachActive') < q.indexOf('treeShotBusy()'));
+  assert.ok(q.includes('coachActive') && q.includes("modalQueue.request({ kind: 'story'"));
+  assert.match(g, /modalQueue\.addGate\(\(\) => [^\n]*treeShotBusy\(\)/);
   assert.match(g.slice(g.indexOf('function afterModals'), g.indexOf('function showReturnModal')), /treeShotBusy\(\)/);
   assert.match(read('js/i18n-en.js'), /'🌳 저 나무가 세계수예요\. 다시 살려 볼까요\?'/);
 });

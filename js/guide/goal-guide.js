@@ -10,6 +10,7 @@ const CINE_DELAY = 0.6;
 const NPC_CLEAR = 5;
 const RESOLVE_SEC = 0.25;
 const STORY_SEC = 0.5;
+const GATE_ARRIVE = 0.8;
 const BAR = 'clamp(48px,9vh,90px)';
 
 const CSS = `
@@ -43,7 +44,7 @@ const CSS = `
 `;
 
 export function createGoalGuide(deps) {
-  let goal = null, cine = null, overlay = null, arrow = null, ring = null, keyHandler = null, waitT = 0;
+  let goal = null, cine = null, overlay = null, arrow = null, ring = null, keyHandler = null, waitT = 0, pointing = false;
   let cached = null, cacheT = 0, wpCache = null, wpT = 0, edgeHalf = 96, storyMemo = null, storyT = STORY_SEC;
   const boardSeen = new Set();
   const last = {};
@@ -93,12 +94,13 @@ export function createGoalGuide(deps) {
       return { at: nearest(deps.trees(), clear) || nearest(deps.trees(), t => !t.userData.fallen), g: GOALS.tree };
     }
     if (key === 'cave') {
-      if (inV) return { at: deps.mineGate, g: GOALS.cave };
+      if (inV) return { at: deps.mineGate, g: GOALS.cave, arrive: GATE_ARRIVE };
       if (inMine) return { at: nearest(deps.oreRocks(), r => !r.userData.depleted && r.userData.ore?.id === 'stone'), g: GOALS.stone };
       return null;
     }
     if (key === 'farmBranch') return inV ? { at: deps.worldTree, g: GOALS.farmBranch } : null;
     if (key.startsWith('story_')) return storyTarget(key, inV);
+    if (key === 'farm' && deps.atFarm()) { const at = deps.farmPlot?.(); return at ? { at, g: GOALS.farm } : null; }
     const spot = deps.villageSpots()[key];
     if (spot) return inV ? { at: spot.at, via: spot.via || null, g: GOALS[key] } : null;
     if (!inMine) return null;
@@ -123,7 +125,9 @@ export function createGoalGuide(deps) {
     const gs = deps.state();
     if (deps.coaching()) {
       const step = gs.hintsSeen?.tutStep;
-      const g = tutGoal(step, { wood: gs.inventory.wood || 0 });
+      const houseCompass = gs.houseGuide?.arm === 'guide' && (gs.houseStage | 0) === 0 && deps.inVillage();
+      const inv = gs.inventory;
+      const g = tutGoal(step, { wood: inv.wood || 0, stone: inv.stone || 0, coins: inv.coins || 0, houseCompass });
       if (g) return { flow: 'tut', step, ...g };
     }
     if (!seen('guideFarmTab') && deps.farmBranchDue()) return { flow: 'tree', step: 'farm', key: 'farmBranch', cine: true };
@@ -132,6 +136,7 @@ export function createGoalGuide(deps) {
       if (g) return { flow: 'mine', step: `stage${gs.delve.stage}`, ...g };
     }
     if (storyMemo && storyMemo.where !== 'board') return { flow: 'story', step: storyMemo.rule, key: `story_${storyMemo.where}`, story: storyMemo, cine: false };
+    if (deps.houseDue?.() && deps.inVillage()) return { flow: 'house', step: `stage${gs.houseStage | 0}`, key: 'house', cine: false };
     return null;
   }
 
@@ -222,7 +227,7 @@ export function createGoalGuide(deps) {
     const { at, g, via } = r;
     const p = deps.player.position;
     const dist = Math.hypot(at.x - p.x, at.z - p.z);
-    goal.near = !r.exit && dist < (ARRIVE[goal.key] || 1.5);
+    goal.near = !r.exit && dist < (r.arrive || ARRIVE[goal.key] || 1.5);
     if (goal.near || (r.exit && dist < ARRIVE.exit)) {
       if (goal.near && !goal.arrived) { goal.arrived = true; stepEvent('arrive'); }
       if (goal.near && goal.story) { drawCard(at); return; }
@@ -278,23 +283,33 @@ export function createGoalGuide(deps) {
     arrow.classList.add('show');
   }
 
+  function resting(r) {
+    const p = deps.player.position;
+    const dist = Math.hypot(r.at.x - p.x, r.at.z - p.z);
+    const near = !r.exit && dist < (r.arrive || ARRIVE[goal.key] || 1.5);
+    return (near && !goal.story) || (!!r.exit && dist < ARRIVE.exit);
+  }
+
   function update(dt = 1 / 60) {
     storyT += dt;
     if (storyT >= STORY_SEC) { storyT = 0; const snap = deps.storySnap?.(); storyMemo = snap ? storyStep({ ...snap, boardOpen: false }) : null; }
     if (cine) return;
     setGoal(wanted());
+    pointing = false;
     if (!goal) { hideArrow(); return; }
     cacheT += dt;
     if (!cached || cached.goal !== goal || cacheT >= RESOLVE_SEC) { cacheT = 0; cached = { goal, r: resolve(goal.key) }; }
     const r = cached.r;
     if (!r?.at) { hideArrow(); return; }
     if (goal.cine && !r.exit && !seen(goal.cineKey)) {
+      pointing = true;
       hideArrow();
       waitT += dt;
-      if (waitT >= CINE_DELAY && canCine()) startCine(r.at, r.g);
+      if (waitT >= CINE_DELAY && canCine() && !deps.otherGuide?.(goal.flow)) startCine(r.at, r.g);
       return;
     }
-    if (deps.modalOpen() || document.hidden || !deps.cameraFree() || deps.otherGuide?.()) { hideArrow(); return; }
+    pointing = !resting(r);
+    if (deps.modalOpen() || document.hidden || !deps.cameraFree() || deps.otherGuide?.(goal.flow)) { hideArrow(); return; }
     drawArrow(r, dt);
   }
 
@@ -320,5 +335,5 @@ export function createGoalGuide(deps) {
     return { goal: goal && { flow: goal.flow, key: goal.key, step: goal.step, arrived: goal.arrived, near: !!goal.near }, at: r?.at ? { x: r.at.x, z: r.at.z } : null, wp, cine: !!cine, exit: !!r?.exit, story: storyMemo && storyMemo.key };
   }
 
-  return { update, boardTab, boardHint, skip, debug, get cinematic() { return !!cine; } };
+  return { update, boardTab, boardHint, skip, debug, get cinematic() { return !!cine; }, get pointing() { return pointing && goal ? goal.flow : null; } };
 }

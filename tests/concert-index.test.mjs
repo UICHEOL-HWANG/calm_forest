@@ -336,6 +336,22 @@ test('players who no longer need the guide skip the other gates', () => {
   assert.equal(g.starts, 0);
 });
 
+test('the guide counts one try per session and stops after two sessions', () => {
+  const { w, g } = guideWorld({});
+  updateConcert(0.016, true, far);
+  updateConcert(0.016, true, far);
+  assert.equal(w.state.guideTries, 1);
+  assert.equal(w.saves, 1);
+  assert.equal(g.starts, 1);
+  const again = guideWorld({ guideTries: 1 });
+  updateConcert(0.016, true, far);
+  assert.equal(again.w.state.guideTries, 2);
+  assert.equal(again.g.starts, 1);
+  const spent = guideWorld({ guideTries: 2 });
+  updateConcert(0.016, true, far);
+  assert.equal(spent.g.starts, 0);
+});
+
 test('the guide does not come back after the player reached the stage once', () => {
   const { g, guide } = guideWorld({});
   updateConcert(0.016, true, far);

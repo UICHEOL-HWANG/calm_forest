@@ -8,7 +8,7 @@
 import {
   $w, IS_MOBILE, atMine, RAIN_DAY, churnTrigger, clayMat, clock, currentQuest, dateHash, dexDiscover, dist2D, farmActionFirst,
   gameState, lerpAngle, makeNameTag, mode, nearNPC, npcDialogState, npcObjs, obstacles, onPlotArea, player, plots,
-  questCtx, questEvent, refreshInventoryUI, roundRect, scene, solidCircle, spawnFloatText, spawnSparkle, syncBadges, syncUnlocks, todayStr, unlocksOn,
+  questCtx, questEvent, questRerollAd, refreshInventoryUI, roundRect, scene, solidCircle, spawnFloatText, spawnSparkle, syncBadges, syncUnlocks, todayStr, unlocksOn,
   ui,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
@@ -681,7 +681,7 @@ export function updateMerchantVisit(dt) {
   if (!merchantVisit) {
     if (gameState.hintsSeen.merchantVisit) return;
     if (!inVillage2()) return;   // 마을(실외) 밖(텃밭·동굴·카페·강·바다·안개숲·실내)에선 발동 금지
-    if (ui.anyModalOpen?.()) return;
+    if (ui.anyModalOpen?.() || ui.tutorialOverlay?.()) return;
     const offer = welcomeOffer(gameState.inventory, { reworld: storyReworld(gameState, unlocksOn()), houseWood: gameState.houseStage === 0 && guideRevamp ? BUILD_STAGES[0].cost.wood : 0 });   // 🔓 첫 수확으로도 돌아온다(E1 처치는 당근부터 거둔다)
     if (!offer) return;
     gameState.hintsSeen.merchantVisit = true;            // 즉시 소진(세이브에 남아 재발동 없음)
@@ -697,10 +697,10 @@ export function updateMerchantVisit(dt) {
     }
     const d = stepNpcToward(m, player.position, 2.0, dt);
     if (d <= 1.6) {
-      if (ui.anyModalOpen?.()) { v.t = 0; return; }   // 튜토리얼 카드 등이 떠 있으면 옆에서 기다린다(뒤에 묻혀 1회권만 소진되던 것)
+      if (ui.anyModalOpen?.() || ui.tutorialOverlay?.()) { v.t = 0; return; }   // 튜토리얼 카드 등이 떠 있으면 옆에서 기다린다(뒤에 묻혀 1회권만 소진되던 것)
       v.state = 'talk'; openMerchantOffer(v.offer);
     } else if (v.t > MERCHANT_WALK_SEC) {
-      if (ui.anyModalOpen?.()) return;
+      if (ui.anyModalOpen?.() || ui.tutorialOverlay?.()) return;
       placeNearPlayer(m);
       v.state = 'talk'; openMerchantOffer(v.offer);
     }
@@ -771,7 +771,7 @@ export function merchantDismiss() {
   showShopCue(60);
   if (!gameState.hintsSeen.merchantShop) {   // 코치 진행 중에도 1회 표시(firstHintBanner 는 코치 중 억제라 새 유저에겐 영영 안 뜸)
     gameState.hintsSeen.merchantShop = true;
-    ui.showHintBanner?.({ ico: '🛒', title: '상점 좌판', line: '동쪽 좌판에서 언제든 팔 수 있어요', near: () => true });
+    ui.showHintBanner?.({ ico: '🛒', title: '상점 좌판', line: '동쪽 좌판에서 언제든 팔 수 있어요', near: () => true, kind: 'place', key: 'stall' });
   }
 }
 
@@ -842,6 +842,10 @@ export function talkToNPC() {
       trackEvent('ferry_quiz_offer', { quiz_date: todayStr(), available: view.quiz.available ? 1 : 0, reason: view.quiz.available ? 'ok' : 'done' });   // [GA4] 노출
     }
     Sound.blip(); ui.openNPCModal?.(view); ui.act?.('talk'); // 튜토리얼
+    if (view.npc.daily && (view.mode === 'offer' || view.mode === 'progress')) {
+      const b = questRerollAd((ok) => { if (ok) ui.openNPCModal?.(npcDialogState()); });
+      if (b) document.getElementById('npc-actions')?.appendChild(b);
+    }
     if (view.npc.id === 'curator') ui.act?.('curator');
     dexDiscover('npc', view.npc.id);                         // 📖 도감(이웃 첫 대화)
     // [GA4] 대화 이벤트 — 주민별 대화 횟수 / mode(offer·progress·claim·done)로 대화→수락 전환 분석.

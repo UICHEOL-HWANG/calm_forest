@@ -28,6 +28,18 @@ export function rollDrop(drops, granted, src, rand, force = false) {
   };
 }
 
+export function extraRollOpen(drops, granted, src) {
+  const def = DROP_SOURCES[src];
+  return !!def && !granted.includes(def.item) && normalizeDrops(drops).tries[src] > 0;
+}
+
+export function extraRoll(drops, granted, src, rand) {
+  const def = DROP_SOURCES[src];
+  const base = normalizeDrops(drops);
+  const hit = extraRollOpen(base, granted, src) && rand < def.p;
+  return { drops: base, hit, item: hit ? def.item : null, tries: base.tries[src] || 0, pity: false };
+}
+
 export function setProgress(granted, setId) {
   const set = DECOR_SETS.find(s => s.id === setId);
   const got = set ? set.items.filter(id => granted.includes(id)) : [];

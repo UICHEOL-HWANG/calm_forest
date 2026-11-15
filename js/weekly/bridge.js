@@ -1,5 +1,5 @@
 import { createAuctionGuide } from '../auction/guide.js';
-import { ONBOARD_COPY } from '../auction/onboard.js';
+import { ARROW_LABEL } from '../guide/feature-rules.js';
 import { walkLimit } from '../world/walk-bounds.js';
 import { WEEKLY_COPY } from './copy.js';
 
@@ -36,14 +36,14 @@ function makeGuideEnv(g) {
     return { big: [...live.filter(c => c.r === undefined || c.r >= BIG_SOLID), g.lake], small: live.filter(c => c.r !== undefined && c.r < BIG_SOLID) };
   };
   return {
-    pastOnboarding: () => g.isOpen('merchant'),
+    pastOnboarding: () => g.featureOpen(),
     cameraFree: () => g.cameraFree(),
     uiBusy,
     cine: () => body().contains('cine-open'),
-    otherGuide: () => g.otherGuide() || body().contains('coaching'),
+    otherGuide: (name) => g.otherGuide(name) || body().contains('coaching'),
     makeGuide: (name, spot, reach) => createAuctionGuide({
-      name, THREE: g.THREE, scene: g.scene, camera: g.camera, player: g.player, t: g.t, track: () => {},
-      follow: ONBOARD_COPY.follow, spot, reach,
+      name, THREE: g.THREE, scene: g.scene, camera: g.camera, player: g.player, t: g.t, track: g.track,
+      follow: ARROW_LABEL[name], spot, reach,
       project: (p, lift) => g.project(p, lift),
       solids,
       inside: p => Math.hypot(p.x, p.z) < walkLimit(Math.atan2(p.z, p.x)) - 1,
@@ -51,6 +51,6 @@ function makeGuideEnv(g) {
       inVillage: () => g.inVillage(),
       visible: () => g.cameraFree() && !uiBusy(),
     }),
-    showBanner: () => g.ui.showHintBanner?.({ ico: '🛒', title: WEEKLY_COPY.market.title, line: WEEKLY_COPY.banner, near: () => true, attention: true, slotQuest: true }),
+    showBanner: (burn) => g.ui.showHintBanner?.({ ico: '🛒', title: WEEKLY_COPY.market.title, line: WEEKLY_COPY.banner, near: () => true, attention: true, slotQuest: true, kind: 'feature', key: 'weekly-market', burn }),
   };
 }

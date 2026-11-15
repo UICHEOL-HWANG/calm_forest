@@ -1,5 +1,5 @@
 import { STAGE_POS, SPOT_R, PAID_PLAYS, CONCERT_DECOR, CONCERT_DECOR_IDS } from '../data/concert.js';
-import { concertDefault, restoreConcert, settle, buyPlan, spend, addInstrument, equip, markTutorial, paidLeft } from './rules.js';
+import { concertDefault, restoreConcert, settle, buyPlan, spend, addInstrument, equip, markTutorial, paidLeft, extraPlay } from './rules.js';
 import { windowsFor, makeJudge } from './judge.js';
 import { chartOf, lengthMs, minGapMs, backingEvents, practiceChart, practiceEvents, PRACTICE_LENGTH_MS } from './songs.js';
 import { createConcertAudio } from './audio.js';
@@ -32,6 +32,7 @@ let solidsAdded = false;
 let onHidden = null;
 let guide = null;
 let guideOff = false;
+let guideCounted = false;
 let thumbFn = null;
 
 const state = () => deps.getState();
@@ -65,6 +66,7 @@ export function initConcert(d) {
   spot = false;
   guide = null;
   guideOff = false;
+  guideCounted = false;
   if (typeof document !== 'undefined' && !onHidden) {
     onHidden = () => { if (document.hidden) quitShow(); };
     document.addEventListener('visibilitychange', onHidden);
@@ -94,10 +96,10 @@ function tickGuide(dt, inVillage) {
   const env = deps.guideEnv;
   if (!env || guideOff) return;
   if (spot) guideOff = true;
-  const need = !guideOff && !show && guideNeed(state());
+  const need = !guideOff && !show && guideNeed(state(), guideCounted);
   const want = need && guideTarget({
     need, inVillage, pastOnboarding: env.pastOnboarding(),
-    cameraFree: env.cameraFree(), uiBusy: env.uiBusy(), otherGuide: env.otherGuide() || weeklyGuiding(),
+    cameraFree: env.cameraFree(), uiBusy: env.uiBusy(), otherGuide: env.otherGuide('concert') || weeklyGuiding(),
   });
   if (!want) {
     if (guide?.active) guide.cancel('gate');
@@ -105,9 +107,15 @@ function tickGuide(dt, inVillage) {
   }
   guide ??= env.makeGuide('concert', STAGE_POS, SPOT_R);
   if (!guide.active) guide.start();
+  if (!guideCounted) {
+    guideCounted = true;
+    save({ ...state(), guideTries: (state().guideTries | 0) + 1 });
+  }
   guide.update(dt);
   if (!guide.active) guideOff = true;
 }
+
+export function concertGuideActive() { return !!guide?.active; }
 
 export function updateConcert(dt, inVillage, pos) {
   if (!deps) return;
@@ -215,6 +223,7 @@ function finishShow() {
     view: resultView({ stars: r.stars, earned: r.earned, bestUp: r.bestUp, summary }),
     onAgain: () => startShow(songId),
     onLeave: () => {},
+    ad: r.left === 0 ? deps.adButton?.(() => save(extraPlay(state(), deps.today()))) || null : null,
   });
 }
 

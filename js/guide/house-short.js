@@ -36,7 +36,7 @@ export function createHouseShort(deps) {
   function hide() { if (root) root.classList.remove('show'); cur = null; }
 
   function adOpen(sh) {
-    return Object.keys(prepassGrant(sh.list)).length > 0 && ad.open();
+    return Object.keys(prepassGrant(sh.list)).length > 0 && ad.open(sh.slot);
   }
 
   function adLabel(sh) {

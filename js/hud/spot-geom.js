@@ -23,6 +23,14 @@ export function bubblePos(h, bw, bh, vw, vh, m) {
   return above ? { x, y: h.t - m - bh, side: 'above' } : { x, y: Math.min(h.b + m, vh - m - bh), side: 'below' };
 }
 
+export function calloutPos(h, bw, bh, nh, vw, vh, m) {
+  const gap = 8;
+  const p = bubblePos(h, bw, bh + gap + nh, vw, vh, m);
+  return p.side === 'above'
+    ? { x: p.x, bubY: p.y + nh + gap, nextY: p.y, side: 'above' }
+    : { x: p.x, bubY: p.y, nextY: p.y + bh + gap, side: 'below' };
+}
+
 export function inHole(h, x, y) {
   return x >= h.l && x <= h.r && y >= h.t && y <= h.b;
 }

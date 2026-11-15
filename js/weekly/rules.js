@@ -54,7 +54,7 @@ export function pickWeekly(index, canDo, prevIds = []) {
 }
 
 export function weeklyDefault() {
-  return { week: -1, quests: [], prev: [], counts: {}, claimed: [], tickets: 0, seenBoard: -1, seenMarket: -1 };
+  return { week: -1, quests: [], prev: [], counts: {}, claimed: [], tickets: 0, seenBoard: -1, seenMarket: -1, boardTries: 0, marketTries: 0 };
 }
 
 const int = (v, d = 0) => (Number.isInteger(v) ? v : d);
@@ -77,6 +77,8 @@ export function restoreWeekly(saved) {
     tickets: Math.max(0, Math.min(TICKET_CAP, int(saved.tickets))),
     seenBoard: int(saved.seenBoard, -1),
     seenMarket: int(saved.seenMarket, -1),
+    boardTries: Math.max(0, int(saved.boardTries)),
+    marketTries: Math.max(0, int(saved.marketTries)),
   };
 }
 
@@ -106,6 +108,9 @@ export function claim(state, questId) {
   const tickets = Math.min(TICKET_CAP, state.tickets + TICKETS_PER_QUEST);
   return { ok: true, state: { ...state, claimed: [...state.claimed, questId], tickets }, gained: tickets - state.tickets };
 }
+
+export const adTicketOpen = (state) => state.tickets < TICKET_CAP;
+export const adTicket = (state) => ({ ...state, tickets: Math.min(TICKET_CAP, state.tickets + 1) });
 
 export function buyPlan(state, item, ctx) {
   if (!ctx.open) return { ok: false, reason: 'closed' };

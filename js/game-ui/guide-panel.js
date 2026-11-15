@@ -96,7 +96,7 @@ function nudgeGuideOnce() {
   Input.markGuideNudgeSeen();
   setTimeout(() => ui.showHintBanner({
     ico: '📖', title: '초보자 안내서가 있어요', line: '눌러서 열기 · ☰ 메뉴 → 📖 에서 언제든',
-    near: () => true, attention: true, onTap: () => openGuide('nudge'),
+    near: () => true, attention: true, onTap: () => openGuide('nudge'), kind: 'tutorial', key: 'guide-nudge',
   }), 3000);
 }
 

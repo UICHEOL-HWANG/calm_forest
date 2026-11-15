@@ -245,6 +245,7 @@ export function pickGuidanceBanner(decision, counters, gs = {}) {
     for (const [family, banner] of candidates) {
       if (!seen.has(family) && !closed.has(PLACE_OF[family])) return banner;
     }
+    if (!gs.nearAction) return null;
     return { kind: 'next_content', targetFamily: 'any_action', ico: '🌿', title: '이어서 하나만 더 해볼까요', line: '가까운 장소에서 짧은 행동 하나만 이어가도 좋아요.' };
   }
 
@@ -474,6 +475,7 @@ export function buildRetentionGameStateSnapshot(src = {}) {
     plantedUnwatered: src.plantedUnwatered || 0,
     openQuests: src.openQuests || 0,
     buildableHouse: !!src.buildableHouse,
+    nearAction: !!src.nearAction,
     closed: Array.isArray(src.closed) ? src.closed : [],   // 🔓 잠긴 시설 id(js/world/unlocks.js) — 배너가 가리키지 않게
   };
 }

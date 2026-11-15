@@ -1,7 +1,7 @@
-import { prepassArm, PREPASS_DAILY_CAP, dayCount, bumpDay } from '../guide/prepass-rules.js';
+import { prepassArm, PREPASS_DAILY_CAP, dayCount, bumpDay, slotLeft } from '../guide/prepass-rules.js';
 
 const CSS = `
-.rw-ad{pointer-events:auto;position:relative;isolation:isolate;overflow:hidden;display:inline-block;text-align:center;border:0;border-radius:14px;padding:8px 14px 8px 8px;font:inherit;font-weight:700;font-size:13px;line-height:1.2;color:#fbf6e6;cursor:pointer;background:linear-gradient(180deg,#3d6b4a,#2f5a3a);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 6px 14px -6px rgba(31,74,44,.6);transition:transform .2s cubic-bezier(.16,1,.3,1)}
+.rw-ad,.tk-acts .rw-ad{pointer-events:auto;position:relative;isolation:isolate;overflow:hidden;display:inline-block;text-align:center;border:0;border-radius:14px;padding:8px 14px 8px 8px;font:inherit;font-weight:700;font-size:13px;line-height:1.2;color:#fbf6e6;cursor:pointer;background:linear-gradient(180deg,#3d6b4a,#2f5a3a);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 6px 14px -6px rgba(31,74,44,.6);transition:transform .2s cubic-bezier(.16,1,.3,1)}
 .rw-ad::after{content:'';position:absolute;top:0;bottom:0;width:36%;left:-60%;background:linear-gradient(100deg,transparent,rgba(255,226,140,.5),transparent);transform:skewX(-18deg);animation:rw-sweep 3.8s cubic-bezier(.45,0,.2,1) infinite;pointer-events:none}
 .rw-ad:active{transform:translateY(1px) scale(.98)}
 .rw-ad:disabled{opacity:.6;cursor:default}
@@ -27,16 +27,22 @@ export function createRewarded(deps) {
   const arm = () => deps.forceArm?.() || prepassArm(deps.clientId(), deps.platform);
   const readDay = () => { try { return deps.dayRecord?.get() ?? null; } catch { return null; } };
   const usedToday = () => (deps.today ? dayCount(readDay(), deps.today()) : 0);
-  const countView = () => { if (!deps.today) return; try { deps.dayRecord?.set(bumpDay(readDay(), deps.today())); } catch { return; } };
-  const open = () => deps.enabled() && arm() === 'ad' && usedToday() < PREPASS_DAILY_CAP && !!deps.provider().available();
+  const at = () => ({ day: deps.today?.(), week: deps.week?.() });
+  const countView = (slot) => { if (!deps.today) return; try { deps.dayRecord?.set(bumpDay(readDay(), deps.today(), slot, at())); } catch { return; } };
+  const quiet = () => !!deps.quiet?.();
+  const live = () => deps.enabled() && !!deps.provider().available();
+  const slotOk = (slot) => !deps.today || slotLeft(readDay(), slot, at()) > 0;
+  const ready = (slot) => live() && arm() === 'ad' && usedToday() < PREPASS_DAILY_CAP && slotOk(slot);
+  const open = (slot) => !quiet() && ready(slot);
 
   function offer(slot) {
-    if (deps.enabled() && !seen.has(slot)) { seen.add(slot); deps.track('prepass_eligible', { slot, arm: arm() }); }
-    return open();
+    if (quiet()) return false;
+    if (live() && !seen.has(slot)) { seen.add(slot); deps.track('prepass_eligible', { slot, arm: arm() }); }
+    return open(slot);
   }
 
   async function watch(slot, grant) {
-    if (busy || !open()) return false;
+    if (busy || !ready(slot)) return false;
     busy = true;
     const now = deps.now || Date.now;
     const t0 = now();
@@ -44,7 +50,7 @@ export function createRewarded(deps) {
     try { r = await deps.provider().show(slot); } catch (err) { r = { result: 'fail', reason: String(err?.message || err) }; }
     busy = false;
     deps.track('prepass_ad_result', { slot, result: r?.result || 'fail', value_micros: Number.isFinite(r?.valueMicros) ? r.valueMicros : undefined, sec: Math.round((now() - t0) / 1000) });
-    if (r?.result === 'complete') { countView(); grant(); return true; }
+    if (r?.result === 'complete') { countView(slot); grant(); return true; }
     if (r?.result !== 'skip') deps.toast(deps.translate('지금은 광고를 볼 수 없어요'));
     return false;
   }
@@ -76,5 +82,10 @@ export function createRewarded(deps) {
     return btn;
   }
 
-  return { offer, open, watch, button, label, arm };
+  function pill(slot, parts, grant, done) {
+    if (!offer(slot)) return null;
+    return button(slot, parts, grant, (ok, btn) => { if (ok) btn.remove(); done?.(ok, btn); });
+  }
+
+  return { offer, open, watch, button, label, arm, pill };
 }

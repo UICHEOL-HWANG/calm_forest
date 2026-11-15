@@ -14,6 +14,7 @@ export function concertDefault() {
     paid: 0,
     tutorial: false,
     seen: false,
+    guideTries: 0,
   };
 }
 
@@ -30,12 +31,15 @@ export function restoreConcert(saved) {
     paid: Math.min(PAID_PLAYS, count(saved.paid)),
     tutorial: saved.tutorial === true,
     seen: saved.seen === true,
+    guideTries: count(saved.guideTries),
   };
 }
 
 export const starsFor = (songId, ratio) => (STAR_CUTS[songId] || STAR_CUTS.morning).filter(cut => ratio >= cut).length;
 export const notesFor = (stars) => 1 + stars;
 export const paidLeft = (state, today) => (state.day === today ? Math.max(0, PAID_PLAYS - state.paid) : PAID_PLAYS);
+
+export const extraPlay = (state, today) => (state.day === today && paidLeft(state, today) === 0 ? { ...state, paid: PAID_PLAYS - 1 } : state);
 
 export function settle(state, { songId, ratio, today }) {
   const stars = starsFor(songId, ratio);

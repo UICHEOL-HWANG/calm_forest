@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ONBOARD_COPY, INTRO_CARDS, hasBatchim, bannerLine, bannerTick, introNeeded, BANNER_FAR } from '../js/auction/onboard.js';
+import { ONBOARD_COPY, INTRO_CARDS, hasBatchim, bannerLine, bannerTick, introNeeded, BANNER_FAR, AUCTION_BANNER_MAX } from '../js/auction/onboard.js';
 
 const t = s => s;
 const DAY = '2026-11-10';
@@ -10,7 +10,7 @@ const fresh = { lastDate: '', wins: 0, bannerDate: '', introSeen: false };
 test('the approved copy is used exactly', () => {
   assert.equal(ONBOARD_COPY.ico, '🔨');
   assert.equal(ONBOARD_COPY.title, '저녁 경매가 열렸어요');
-  assert.equal(ONBOARD_COPY.follow, '화살표를 따라가요!');
+  assert.equal(ONBOARD_COPY.follow, '저녁 경매로 가요');
   assert.deepEqual(INTRO_CARDS.map(c => [c.ico, c.title, c.sub, c.btn]), [
     ['🔨', '저녁마다 경매가 열려요', '경매품 한 점이 무대에 올라와요', '다음'],
     ['🔔', '버튼으로 값을 불러요', '4초 동안 조용하면 낙찰!', '다음'],
@@ -88,6 +88,22 @@ test('bannerTick never mutates the given state', () => {
   bannerTick(Object.freeze({ ...fresh, bannerDate: DAY }), { ...base, open: false });
 });
 
+test('the banner shows on at most three evenings', () => {
+  let s = fresh;
+  const days = ['2026-11-10', '2026-11-11', '2026-11-12', '2026-11-13'];
+  const acts = days.map((day) => {
+    const r = bannerTick(s, { ...base, day });
+    s = bannerTick(r.state, { ...base, day, open: false }).state;
+    return r.act;
+  });
+  assert.deepEqual(acts, ['show', 'show', 'show', null]);
+  assert.equal(s.bannerCount, AUCTION_BANNER_MAX);
+});
+
+test('the banner never returns after the first join', () => {
+  assert.equal(bannerTick({ ...fresh, lastDate: '2026-11-01' }, base).act, null);
+});
+
 test('the far threshold matches the approved distance', () => {
   assert.equal(BANNER_FAR, 8);
 });
@@ -106,4 +122,6 @@ test('열림 배너는 연출 중엔 기다리고, 터치에선 미니맵 아래
   const src = readFileSync(new URL('../js/auction/index.js', import.meta.url), 'utf8');
   assert.match(src, /!uiBusy\(\) && !document\.body\.classList\.contains\('cine-open'\) && !guide\?\.active/);
   assert.match(src, /near: \(\) => true, attention: true, slotQuest: true,/);
+  assert.match(src, /guideArbiter\.mayShow\('auction'\) && featureGuidesOpen\(gameState\);/);
+  assert.match(src, /bannerDate: r\.state\.bannerDate, bannerCount: r\.state\.bannerCount/);
 });

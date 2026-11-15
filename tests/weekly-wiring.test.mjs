@@ -7,7 +7,7 @@ const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 test('game.js only wires the weekly module', () => {
   const game = read('js/game.js');
   const lines = game.split('\n').filter(l => /weekly/i.test(l));
-  assert.ok(lines.length <= 16, `${lines.length} weekly lines:\n${lines.join('\n')}`);
+  assert.ok(lines.length <= 18,`${lines.length} weekly lines:\n${lines.join('\n')}`);
   assert.ok(game.includes('const m = weeklyDecorMesh(THREE, id); if (m)'));
   assert.ok(read('js/spaces/indoor.js').includes('weeklyDecorMesh(THREE, id)'));
   assert.ok(!/function\s+\w*weekly/i.test(game));
@@ -114,15 +114,17 @@ test('game.js passes the guide environment through the existing weekly lines', (
   const game = read('js/game.js');
   assert.match(game, /guide: GE/);
   assert.match(game, /guideEnv: wb\.guideEnv/);
-  assert.match(game, /function guideBusy\(\) \{ return portGuideActive\(\) \|\| restaurantGuideActive\(\) \|\| auctionGuideActive\(\) \|\| affinityGuideActive\(\) \|\| !!yardGuide\?\.active\(\); \}/);
-  assert.match(game, /otherGuide: guideBusy \};/);
+  assert.match(game, /otherGuide: \(name\) => !guideMay\(name\), featureOpen: \(\) => featureGuidesOpen\(gameState\), track: trackEvent \};/);
+  assert.match(game, /guideArbiter\.register\(\{ name: 'weekly', active: weeklyGuideActive \}\);/);
+  assert.match(read('js/weekly/index.js'), /export function weeklyGuideActive\(\) \{ return !!live && !!guides\[live\]\?\.active; \}/);
 });
 
-test('weekly index saves only from claim, buy and open', () => {
+test('weekly index saves only from claim, buy, open and a counted guide try', () => {
   const src = read('js/weekly/index.js').replace(/^const saveCommit = .*$/m, '');
   const fns = [...src.matchAll(/\n(?:export )?function (\w+)\(/g)].map(m => ({ name: m[1], at: m.index }));
   const users = [...src.matchAll(/saveCommit\(|requestSave\(/g)].map(m => fns.filter(f => f.at < m.index).pop()?.name);
-  assert.deepEqual([...new Set(users)].sort(), ['onBuy', 'onClaim', 'openWeekly']);
+  assert.deepEqual([...new Set(users)].sort(), ['onBuy', 'onClaim', 'openWeekly', 'runGuide']);
+  assert.match(fnBody(src, 'runGuide'), /if \(!tried\.has\(target\)\) \{ tried\.add\(target\); saveCommit\(countTry/);
 });
 
 test('initWeekly, updateWeekly and weeklyNote never save or use the saving helper', () => {

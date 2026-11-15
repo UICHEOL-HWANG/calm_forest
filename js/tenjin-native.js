@@ -4,7 +4,7 @@ import { IS_ANDROID, IS_IOS } from './platform.js';
 import { IS_DEV_SESSION } from './config.js';
 import { requestTrackingConsent } from './tracking-consent.js';
 import { admobImpressionJson } from './tenjin-ad-revenue.js';
-import { tenjinEventFor, onceSeed } from './tenjin-events.js';
+import { tenjinEventFor, onceSeed, bumpTally, tallyEvents } from './tenjin-events.js';
 import { isFreshSignup } from './meta-pixel-rules.js';
 
 const ONCE_KEY = 'cf_tj_once';
@@ -94,9 +94,15 @@ async function sendTenjinEvent(ev) {
   }
 }
 
+function expandTally(ev) {
+  if (!ev.tally) return [ev];
+  try { return tallyEvents(bumpTally(localStorage)); } catch { return []; }
+}
+
 export function tenjinFromTrack(name, payload) {
   const ev = tenjinEventFor(name, payload);
-  if (ev) void sendTenjinEvent(ev);
+  if (!ev) return;
+  for (const one of [ev].flat().flatMap(expandTally)) void sendTenjinEvent(one);
 }
 
 export function tenjinSignup({ userId, isGuest, createdAt } = {}) {

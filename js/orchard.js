@@ -114,6 +114,16 @@ export function settleTrees(trees = [], stream = [], days = 1) {
   return { trees: out, matured, fruited, capped: cappedList };
 }
 
+export function growOneTree(trees = [], stream = []) {
+  let index = -1;
+  trees.forEach((t, i) => {
+    if ((t.stage === 'sapling' || t.stage === 'growing') && (index < 0 || (t.age || 0) > (trees[index].age || 0))) index = i;
+  });
+  if (index < 0) return null;
+  const one = settleTrees([trees[index]], stream, 1);
+  return { index, trees: trees.map((t, i) => (i === index ? one.trees[0] : { ...t })), matured: one.matured };
+}
+
 // ── 🪓 베기 규칙 (스펙 §4) ────────────────────────────────────
 //  숲 나무와 같은 hp 방식 — 도끼 3번, 강철 도끼 2번. 여러 번 쳐야 쓰러진다는 것 자체가
 //  실수 방지라 확인 창이 없다. 목재는 단계 비례(묘목 1 · 자라는 중 2 · 다 자람 3)라

@@ -18,8 +18,21 @@ test('레이어 z-index 는 ☰ 카드(47) 위, 저장 멈춤 화면(60) 아래'
   assert.ok(z > 47 && z < 60, `z=${z}`);
 });
 
-test('막힘 탈출 — 같은 단계 20초면 다음 버튼', () => {
+test('모바일 시점 안내는 손가락 두 개를 처음 올렸을 때 뜬다', () => {
+  assert.match(HTML, /if \(type === 'camtwo'\) camTried = true;/);
+  assert.match(HTML, /if \(\(TOUCH && !camTried\) \|\| spot\.active\(\) \|\| spotBlocked\(\)\) return false;/);
+});
+
+test('가방·도감 팁은 처음 필요할 때 한 번, 다른 안내·창이 없을 때만', () => {
+  assert.match(HTML, /function runTipTour\(\) \{/);
+  assert.match(HTML, /busy: spot\.active\(\) \|\| spotBlocked\(\) \|\| guideArbiter\.anyActive\('coach'\)/);
+  assert.match(HTML, /Input\.markHintsSeen\(steps\.map\(s => 'spot_' \+ s\.key\)\)/);
+  assert.match(HTML, /setInterval\(runTipTour, 1500\);/);
+});
+
+test('막힘 탈출 — 같은 단계 20초(단계별 wait 가 있으면 그 값)면 다음 버튼', () => {
   assert.match(SPOT, /const STUCK_MS = 20000;/);
+  assert.match(SPOT, /Date\.now\(\) - run\.t > \(s\.wait \?\? STUCK_MS\)/);
   assert.match(SPOT, /advance\('timeout'\)/);
 });
 
@@ -38,7 +51,7 @@ test('ui.act 신호가 스포트라이트로도 간다 · 코치 대기 판정�
 test('환영 창 자리에서 스포트라이트 → 코치 순서로 이어진다(E1 분기는 그대로)', () => {
   assert.match(HTML, /showTutorial\(src = 'welcome'\) \{ startOnboarding\(src\); \}/);
   assert.match(HTML, /async function startOnboarding\(src\) \{/);
-  assert.match(HTML, /Input\.markHintsSeen\(\['spotV2', 'spot_cam'\]\);\s*if \(\$\('worldmap'\)\.classList\.contains\('show'\)\) closeWorldMap\(\);\s*startCoach\(\);/);
+  assert.match(HTML, /Input\.markHintsSeen\(\['spotV2', TIP_ARM\]\);\s*if \(\$\('worldmap'\)\.classList\.contains\('show'\)\) closeWorldMap\(\);\s*startCoach\(\);/);
   assert.match(HTML, /Input\.armTutorialMove\(\);\n\s*await spot\.run\(/);
   assert.match(GAME, /else if \(Input\.e1FirstScreen\(\)\)/);
 });

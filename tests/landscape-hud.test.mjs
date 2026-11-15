@@ -69,7 +69,8 @@ test('🎓 진행바 카드 — 원문(번역 키)으로 번역한 뒤 앞 번�
 
 test('🎓 코치 자리는 미니맵 바로 아래(가로·세로 폰 공통) — 캐릭터 위를 덮지 않게', () => {
   assert.doesNotMatch(landBlock(), /body\.is-touch #coach \{/);
-  assert.match(html, /document\.body\.style\.setProperty\('--coach-top', Math\.round\(r\.bottom \+ 8\) \+ 'px'\);/);
+  assert.match(html, /const top = side \? qb\.top : Math\.max\(r\.bottom, qb\?\.height \? qb\.bottom : 0\) \+ 8;/);
+  assert.match(html, /document\.body\.style\.setProperty\('--coach-left', Math\.round\(side \? qb\.right \+ 8 : r\.left\) \+ 'px'\);/);
 });
 
 test('is-touch 는 playing 보다 먼저 — 세이브 로드 동안 폰에 키보드 안내가 넘쳐 보였다', () => {

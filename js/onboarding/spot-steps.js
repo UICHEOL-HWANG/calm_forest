@@ -1,34 +1,33 @@
 export const DONE_KINDS = ['act', 'open', 'menu', 'click', 'tap'];
 
 const CAM_TOUCH = [
-  { key: 'cam_two', target: '#cam-spot-zone', hand: 'two', text: '✌️ 화면에 손가락 두 개를 올려 보세요', done: 'act:camtwo' },
-  { key: 'cam', target: '#cam-spot-zone', hand: 'twist', text: '🔄 그대로 동그랗게 비틀면 시점이 돌아가요', done: 'act:camrotate' },
+  { key: 'cam', target: '#cam-spot-zone', hand: 'twist', text: '✌️ 화면에 손가락 두 개를 올려 보세요\n🔄 그대로 동그랗게 비틀면 시점이 돌아가요', done: 'act:camrotate' },
   { key: 'cam_reset', target: '#cam-reset-btn', hand: 'tap', text: '🧭 이 버튼을 누르면 처음 시점으로 돌아와요', done: 'click' },
 ];
 const CAM_PC = { key: 'cam', target: null, keys: ['Q', 'E'], hand: 'key', text: '🔄 Q·E로 시점을 돌려요', done: 'act:camrotate' };
 
+const INTRO_WAIT = 6000;
+
 const TOUCH_FULL = [
-  { key: 't_move', core: true, target: '#joy-base', hand: 'drag', text: '🕹️ 끌어서 걸어 보세요', done: 'act:move' },
-  { key: 't_tool', core: true, target: '#tool-btn', hand: 'tap', text: '🧰 탭해서 도구를 골라요', done: 'act:toolpage' },
-  { key: 't_use', core: true, target: '#action-btn', hand: 'tap', text: '⭕ 큰 버튼으로 도구를 써요', done: 'act:use' },
-  ...CAM_TOUCH,
-  { key: 't_bag', target: '#bag-btn', hand: 'tap', text: '🎒 가방엔 재화와 재료가 있어요', done: 'open:bag-menu' },
-  { key: 't_dex', target: '#hud-dex', hand: 'tap', text: '📖 도감에서 모은 것을 봐요', done: 'open:dex-modal' },
-  { key: 't_menu', target: '#hud-menu', hand: 'tap', text: '☰ 사진·소식함·설정은 여기 있어요', done: 'menu' },
-  { key: 't_map', target: '#minimap', hand: 'tap', text: '🗺️ 누르면 마을 지도가 펼쳐져요', done: 'open:worldmap' },
+  { key: 't_move', core: true, wait: INTRO_WAIT, target: '#joy-base', hand: 'drag', text: '🕹️ 끌어서 걸어 보세요', done: 'act:move' },
+  { key: 't_use', core: true, wait: INTRO_WAIT, target: '#action-btn', hand: 'tap', text: '⭕ 큰 버튼으로 도구를 써요', done: 'act:use' },
 ];
 
 const PC_FULL = [
-  { key: 'pc_move', core: true, target: null, keys: ['↑', '←', '↓', '→'], hand: 'key', text: '⌨️ 방향키로 걸어 보세요', done: 'act:move' },
-  { key: 'pc_set', core: true, target: '#tool-page', keys: ['1'], hand: 'key', text: '🧰 1을 누르면 도구 세트가 바뀌어요', done: 'act:toolpage' },
-  { key: 'pc_pick', core: true, target: '#hotbar', keys: ['2', '3', '4', '5', '6'], hand: 'key', text: '🔢 2~6으로 도구를 골라요', done: 'act:toolpick' },
-  { key: 'pc_use', core: true, target: null, keys: ['Space'], hand: 'key', text: '⭕ Space로 도구를 써요', done: 'act:use' },
-  CAM_PC,
-  { key: 'pc_bag', target: '#bag-btn', hand: 'click', text: '🎒 가방엔 재화와 재료가 있어요', done: 'open:bag-menu' },
-  { key: 'pc_dex', target: '#hud-dex', hand: 'click', text: '📖 도감에서 모은 것을 봐요', done: 'open:dex-modal' },
-  { key: 'pc_menu', target: '#hud-menu', hand: 'click', text: '☰ 사진·소식함·설정은 여기 있어요', done: 'menu' },
-  { key: 'pc_map', target: '#minimap', hand: 'click', text: '🗺️ 누르면 마을 지도가 펼쳐져요', done: 'open:worldmap' },
+  { key: 'pc_move', core: true, wait: INTRO_WAIT, target: null, keys: ['↑', '←', '↓', '→'], hand: 'key', text: '⌨️ 방향키로 걸어 보세요', done: 'act:move' },
+  { key: 'pc_use', core: true, wait: INTRO_WAIT, target: null, keys: ['Space'], hand: 'key', text: '⭕ Space로 도구를 써요', done: 'act:use' },
 ];
+
+const TIPS = {
+  bag: [
+    { key: 't_bag', wait: INTRO_WAIT, target: '#bag-btn', hand: 'tap', text: '🎒 가방엔 재화와 재료가 있어요', done: 'open:bag-menu' },
+    { key: 'pc_bag', wait: INTRO_WAIT, target: '#bag-btn', hand: 'click', text: '🎒 가방엔 재화와 재료가 있어요', done: 'open:bag-menu' },
+  ],
+  dex: [
+    { key: 't_dex', wait: INTRO_WAIT, target: '#hud-dex', hand: 'tap', text: '📖 도감에서 모은 것을 봐요', done: 'open:dex-modal' },
+    { key: 'pc_dex', wait: INTRO_WAIT, target: '#hud-dex', hand: 'click', text: '📖 도감에서 모은 것을 봐요', done: 'open:dex-modal' },
+  ],
+};
 
 const TOUCH_NEW = [
   { key: 'new_tool', target: '#tool-btn', hand: 'tap', text: '🧰 도구는 이 버튼을 탭해서 골라요', done: 'act:toolpage' },
@@ -73,6 +72,7 @@ export function spotSteps(kind, touch, info = null) {
   if (kind === 'menu') return MENU;
   if (kind === 'pill') return [{ ...PILL[0], text: pillText(info) }];
   if (kind === 'cam') return touch ? CAM_TOUCH : [CAM_PC];
+  if (TIPS[kind]) return [TIPS[kind][touch ? 0 : 1]];
   return [];
 }
 

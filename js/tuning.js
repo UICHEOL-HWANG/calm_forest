@@ -5,7 +5,7 @@
 //  배정 자체는 supabase-client.js(명단 테이블), 적용은 game.js/index.html.
 // =============================================================
 
-export const PREPASS_ON = false;
+export const PREPASS_ON = true;
 
 export const TUNING = {
   // 보상 부스트 — 가입(created_at) 후 N일간, 출석·퀘스트·판매 코인 ×mult

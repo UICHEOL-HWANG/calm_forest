@@ -169,6 +169,8 @@ function noteRow(args, row, extra) {
     if (row.status === 'capped') n.append(el('p', 'wk-msg', fill(WEEKLY_COPY.board.capNo, TICKET_CAP)));
   }
   if (status === 'done') n.append(el('span', 'wk-stamp', WEEKLY_COPY.board.claimed));
+  const ad = status === 'done' && extra.justId === row.id ? args.adFor?.(() => drawBoard(args, { bump: true })) : null;
+  if (ad) { ad.style.whiteSpace = 'nowrap'; n.append(ad); requestAnimationFrame(() => ad.scrollIntoView({ block: 'nearest' })); }
   return n;
 }
 

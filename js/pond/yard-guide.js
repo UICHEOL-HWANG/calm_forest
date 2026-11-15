@@ -84,13 +84,15 @@ export function createYardGuide(deps) {
     });
   };
 
+  const suspend = () => {
+    lastProgressAt = performance.now() / 1000;
+    setHud(false);
+    view?.hide();
+  };
+
   return {
     active: () => !!guide?.active(),
-    suspend() {
-      lastProgressAt = performance.now() / 1000;
-      setHud(false);
-      view?.hide();
-    },
+    suspend,
     pointTo(kind) {
       if (flow === 'yard_fill' || flow === 'pond_d1') return;
       const sea = kind === 'sea';
@@ -109,6 +111,7 @@ export function createYardGuide(deps) {
         }
         return;
       }
+      if (deps.held?.()) { suspend(); return; }
       const c = ctx();
       guide.tick(c);
       if (!guide) return;

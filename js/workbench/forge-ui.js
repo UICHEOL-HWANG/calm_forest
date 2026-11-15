@@ -50,7 +50,7 @@ function resultHtml(ico, marks, score, refund, star) {
     <button class="fg-ok">${FORGE_COPY.ok}</button>`;
 }
 
-export function createForgeGame(host, { onAbort, onFinish, onClose, onHit } = {}) {
+export function createForgeGame(host, { onAbort, onFinish, onClose, onHit, adButton } = {}) {
   let raf = 0, t0 = 0, run = null, cur = null, finished = false;
   const q = sel => host.querySelector(sel);
   const beats = beatTimes();
@@ -110,6 +110,8 @@ export function createForgeGame(host, { onAbort, onFinish, onClose, onHit } = {}
     const card = q('.fg-result');
     card.innerHTML = resultHtml(cur.ico, run.marks, score, res.refund || 0, cur.star);
     card.classList.add('show');
+    const ad = adButton?.();
+    if (ad) card.querySelector('.fg-ok').before(ad);
     q('.fg-quit').hidden = true;
     card.querySelector('.fg-ok').addEventListener('click', () => { const tool = close(); onClose?.(tool); });
   };

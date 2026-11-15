@@ -7,7 +7,7 @@ import { BEST_ITEMS, letterOf } from '../data/npc-letters.js';
 import { blueprintOfNpc } from '../tool-blueprints.js';
 import {
   AFFINITY_NPCS, STAGES, GIFT_DAILY_CAP, isAffinityNpc, stageIndex, stageProgress,
-  lettersToIssue, markIssued, letterKey, giftGain, owlDailyGain, pickTracker, allMaxed,
+  lettersToIssue, markIssued, letterKey, giftGain, owlDailyGain, pickTracker, allMaxed, heartAdOpen, heartAdGain,
 } from './stages.js';
 import { refreshQuestPanel, updateNPCGlyph } from '../spaces/npc.js';
 import { chipText, giftCapToast, introBody, introTitle, letterRowText, letterTitle, nextRewardText, retroToast, stageLabel, stageUpToast, trackerLines, trackerStart } from './copy.js';
@@ -96,6 +96,18 @@ export function giftAffinity(id, love) {
 export function giftHeartsToday(id) {
   const s = hints().affGift;
   return s && s.d === todayStr() && s.by ? (s.by[id] || 0) : 0;
+}
+
+export const heartAdReady = (id) => isAffinityNpc(id) && heartAdOpen(hints().affGift, todayStr(), id);
+
+export function heartAd(id) {
+  const { gain, state } = heartAdGain(hints().affGift, todayStr(), id);
+  if (!gain) return false;
+  setHints({ affGift: state });
+  gainAffinity(id, gain, 'ad');
+  requestSave();
+  refreshQuestPanel();
+  return true;
 }
 
 export function owlDailyAffinity() {
@@ -218,7 +230,7 @@ export function npcBook() {
       stage: p.idx >= 0 ? stageLabel(p.idx, L) : '',
       chip: chipText(n, L),
       next: nextRewardText(n, p.next ? nextIco(id, p.idx + 1) : '', L),
-      giftToday: giftHeartsToday(id), giftCap: GIFT_DAILY_CAP,
+      giftToday: giftHeartsToday(id), giftCap: Math.max(GIFT_DAILY_CAP, giftHeartsToday(id)),
       rows: stageRows(id),
       letters: affinityLetters().filter(l => l.npc === id),
     };
@@ -247,8 +259,8 @@ export function affinityTracker(compact = false) {
   const { npc, value, next } = pick;
   const nextIdx = stageIndex(value) + 1;
   return {
-    npc, face: npcDef(npc).emoji, decor: BEST_ITEMS[npc]?.decor || null, pct: Math.min(1, value / next),
-    ...trackerLines({ name: nameOf(npc), nameEn: t(nameOf(npc)), value, next, nextIdx, reward: rewardLabel(npc, nextIdx), giftLeft: GIFT_DAILY_CAP - giftHeartsToday(npc), compact, lang: lang() }),
+    npc, value, face: npcDef(npc).emoji, decor: BEST_ITEMS[npc]?.decor || null, pct: Math.min(1, value / next),
+    ...trackerLines({ name: nameOf(npc), nameEn: t(nameOf(npc)), value, next, nextIdx, reward: rewardLabel(npc, nextIdx), giftLeft: Math.max(0, GIFT_DAILY_CAP - giftHeartsToday(npc)), compact, lang: lang() }),
   };
 }
 

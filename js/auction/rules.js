@@ -34,7 +34,7 @@ export function joinMode({ t, day, lastDate, coins, start }) {
   return coins >= start ? 'bid' : 'watch';
 }
 
-export function auctionDefault() { return { lastDate: '', wins: 0, bannerDate: '', introSeen: false }; }
+export function auctionDefault() { return { lastDate: '', wins: 0, bannerDate: '', introSeen: false, bannerCount: 0 }; }
 
 export function restoreAuction(saved) {
   const lastDate = typeof saved?.lastDate === 'string' ? saved.lastDate : '';
@@ -42,5 +42,7 @@ export function restoreAuction(saved) {
   const wins = Number.isFinite(w) && w >= 0 ? Math.floor(w) : 0;
   const bannerDate = typeof saved?.bannerDate === 'string' ? saved.bannerDate : '';
   const introSeen = saved?.introSeen === true;
-  return { lastDate, wins, bannerDate, introSeen };
+  const c = saved?.bannerCount;
+  const bannerCount = Number.isInteger(c) && c > 0 ? c : 0;
+  return { lastDate, wins, bannerDate, introSeen, bannerCount };
 }

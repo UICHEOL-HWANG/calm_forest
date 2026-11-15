@@ -42,7 +42,8 @@ test('폰 — 💎 배너가 떠 있는 동안 1장 칩(없으면 의뢰 패널)
   assert.match(html, /chip\?\.classList\.contains\('show'\) && mm\.height\) \{ target = chip; top = mm\.bottom \+ 8; left = mm\.left; \}/);
   assert.match(html, /target\.style\.visibility = 'hidden';/);
   assert.match(html, /if \(swapped\) setTimeout\(swapped, 250\);/);
-  assert.match(html, /if \(item\.slotQuest && document\.body\.classList\.contains\('cine-open'\)\) \{ hintBQ\.unshift\(item\); setTimeout\(nextHintBanner, 400\); return; \}/);
+  assert.match(html, /function bannerVisibleNow\(\)[\s\S]{0,400}getComputedStyle\(\$\('hint-banner'\)\)\.display !== 'none'/);
+  assert.match(html, /body\.cine-open :is\([^)]*#hint-banner/);
 });
 
 test('강조 배너 팝 애니메이션이 위치(transform)를 건드리지 않는다 — 폰에서 가운데로 갔다 오른쪽으로 튀던 문제', () => {

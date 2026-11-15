@@ -1876,6 +1876,7 @@
     body.coaching #toast { top: calc(162px + var(--top-inset) + var(--coach-h, 110px) + 16px); }   /* 코치 카드 실측 아래 */
     #hint-banner { top: calc(162px + var(--top-inset)); left: 12px; transform: none; max-width: calc(100vw - 12px - 150px); }
     body:has(#hint-banner.show) #story-chip { display: none !important; }   /* 배너가 떠 있는 1.4~3초만 칩을 비켜준다 */
+    body.hb-chain #story-chip { display: none !important; }
     body.coaching #hint-banner { top: auto; bottom: calc(282px + env(safe-area-inset-bottom)); }   /* 코치가 슬롯을 쓰면 배너는 프롬프트 줄 위로 */
     /* 🌿 리텐션 안내는 상시 프롬프트 줄 위로 — 상단 슬롯은 캔버스에 그려지는 월드 라벨(NPC 이름표·
        간판)을 가린다. 코치 자리와 같은 282px(검증된 값): 배너 83px 기준 y 447~530 으로,
@@ -4219,11 +4220,17 @@
     import { CONFIG, IS_DEV_SESSION } from './js/config.js';
     import { initMobileHud } from './js/hud/mobile-hud.js';
     import { initHudShell } from './js/hud/hud-shell.js';
+    import { createQuestChips } from './js/hud/quest-chips.js';
+    import { chipIntroNext, CHIP_INTRO_KEYS } from './js/hud/quest-chips-model.js';
     import { createMenuSheet } from './js/hud/menu-sheet.js';
     import { nicknameChecks } from './js/nickname-filter.js';
     import { createNickStep } from './js/nickname-step.js';
     import { createSpotlight } from './js/hud/spotlight.js';
+    import { modalQueue } from './js/guide/modal-queue.js';
+    import { BANNER_STATS0, enqueueBanner, pickBanner, noteBannerShown, yieldedBanner } from './js/guide/banner-queue.js';
     import { pillHintKey, spotSteps, treeSteps } from './js/onboarding/spot-steps.js';
+    import { dueTip, tipsLeft, TIP_ARM } from './js/onboarding/jit-tips.js';
+    import { guideArbiter } from './js/guide/arbiter.js';
     import { Sound, startBGM, toggleBGM } from './js/sound.js';
     import { t, LANG, setLang, translateDom, watchDom } from './js/i18n.js';   // 🌐 i18n(한국어 원문 키 사전)
     import { TUNING, isBetaA, betaDay } from './js/tuning.js';
@@ -4341,7 +4348,9 @@
     // 🪧 시설 배너 큐 — 그 앞에 있으면 3초(읽을 시간), 이미 지나쳤으면 1.4초로 빠르게 흘림.
     //    읽는 중 자리를 뜨면 최소 1.4초만 채우고 조기 페이드아웃 — 연속으로 지나쳐도 큐가 안 밀린다
     //    (실기기 피드백: 5초/2.2초는 안내가 한참 뒤에 떠서 답답했음)
-    const hintBQ = []; let hintBShowing = false;
+    let hintBQ = Object.freeze([]); let hintBShowing = false;
+    let hintBRetry = 0, hintBChainT = 0, hintBStats = BANNER_STATS0, hintBSession = 0;
+    let chipIntroAt = -Infinity, chipIntroLive = false;
     const HINT_B_MIN = 1400, HINT_B_FULL = 3000, HINT_B_ATTN = 8000;   // attention 배너는 시선이 늦게 가도 읽게 8초
     function swapIntoLeftSlot(el) {
       if (!document.body.classList.contains('is-touch') || document.body.classList.contains('coaching')) return null;
@@ -4355,12 +4364,31 @@
       target.style.visibility = 'hidden';
       return () => { target.style.visibility = ''; el.classList.remove('slot-swap'); el.style.top = ''; el.style.left = ''; };
     }
+    function bannerVisibleNow() {
+      const b = document.body.classList;
+      if (!hintBSession || !b.contains('playing') || b.contains('quest-sheet-open') || chipIntroLive || ui.anyModalOpen()) return false;
+      return getComputedStyle($('hint-banner')).display !== 'none';
+    }
+    function bannerCtx() {
+      const now = Date.now();
+      return { visible: bannerVisibleNow(), tutorial: tutorialRunning(), modalDue: modalQueue.due(), now, sessionStart: hintBSession || now, ...hintBStats };
+    }
     function nextHintBanner() {
-      const item = hintBQ.shift();
-      if (!item) { hintBShowing = false; document.body.classList.remove('hintbanner'); return; }
+      clearTimeout(hintBRetry);
+      const pick = hintBQ.length ? pickBanner(hintBQ, bannerCtx()) : null;
+      if (pick && !pick.item) hintBQ = pick.rest;
+      if (!pick?.item) {
+        hintBShowing = false; document.body.classList.remove('hintbanner');
+        if (hintBQ.length) hintBRetry = setTimeout(nextHintBanner, 500);
+        return;
+      }
+      const item = pick.item;
+      hintBQ = pick.rest;
       hintBShowing = true;
-      if (item.slotQuest && document.body.classList.contains('cine-open')) { hintBQ.unshift(item); setTimeout(nextHintBanner, 400); return; }
-      document.body.classList.add('hintbanner');
+      hintBStats = noteBannerShown(hintBStats, item, Date.now());
+      try { item.burn?.(); } catch (e) { console.warn('banner burn failed', e); }
+      clearTimeout(hintBChainT);
+      document.body.classList.add('hintbanner', 'hb-chain');
       $('hb-ico').textContent = item.ico || '🌿';
       $('hb-img').hidden = !item.img;
       if (item.img) $('hb-img').src = item.img;
@@ -4375,20 +4403,26 @@
       el.classList.toggle('tap', !!item.onTap);
       const near = item.near || (() => true);   // 판정 없는 배너는 기존처럼 3초
       const t0 = Date.now();
-      let timer, watch, settled = false;
+      let timer, watch, yieldT, settled = false;
       try { item.onShow?.(); } catch (e) { /* 계측 실패가 배너를 막지 않게 */ }
-      const done = (reason = 'timeout') => {
+      const done = (reason = 'timeout', quiet = false) => {
         if (settled) return;
         settled = true;
-        clearTimeout(timer); clearInterval(watch); el.onclick = null;
+        clearTimeout(timer); clearInterval(watch); clearInterval(yieldT); el.onclick = null;
         el.classList.remove('show', 'tap');
         if (swapped) setTimeout(swapped, 250);
-        try { item.onDismiss?.(reason); } catch (e) { /* 계측 실패가 큐를 막지 않게 */ }
+        hintBChainT = setTimeout(() => document.body.classList.remove('hb-chain'), 1000);
+        if (!quiet) try { item.onDismiss?.(reason); } catch (e) { /* 계측 실패가 큐를 막지 않게 */ }
         setTimeout(nextHintBanner, 250);
       };
       el.onclick = item.onTap ? () => { const f = item.onTap; done('tap'); f(); } : null;   // 한 번 탭하면 배너를 걷고 실행
       const hold = item.attention ? HINT_B_ATTN : (near() ? HINT_B_FULL : HINT_B_MIN);
       timer = setTimeout(done, hold);
+      yieldT = setInterval(() => {
+        if (!ui.anyModalOpen()) return;
+        hintBQ = enqueueBanner(hintBQ, yieldedBanner(item));
+        done('modal', true);
+      }, 300);
       if (hold > HINT_B_MIN && !item.attention) watch = setInterval(() => {   // attention 은 조기 종료 없이 8초   // 조기 페이드아웃 감시
         if (Date.now() - t0 >= HINT_B_MIN && !near()) done();
       }, 400);
@@ -4649,9 +4683,26 @@
       ui.setQuest(questLast);
     });
     questPhoneMQ.addEventListener?.('change', () => { questOpen = !questPhoneMQ.matches && readQuestOpen(); ui.setQuest(questLast); });
-    let hud = null, shell = null, lastToolArgs = null, lastNpcText = null, lastDoorArgs = null, lastTargetIcon = null;
+    let hud = null, shell = null, chips = null, lastToolArgs = null, lastNpcText = null, lastDoorArgs = null, lastTargetIcon = null;
     const menuSheet = createMenuSheet({ Input, t, trackEvent, dotTarget: $('menu-btn'), onOpen: () => runMenuTour() });
     const spot = createSpotlight({ t, trackEvent, blocked: () => spotBlocked() });
+    const TUTORIAL_BODY = ['spot-on', 'intro-open', 'cine-open', 'e1-pending', 'coaching'];
+    const tutorialRunning = () => tutIdx >= 0 || !!spot.active() || !!Input.needsTutorial?.() || TUTORIAL_BODY.some(c => document.body.classList.contains(c));
+    modalQueue.addGate(() => !document.body.classList.contains('playing') || tutorialRunning() || ui.anyModalOpen() || !!document.querySelector('.show > .tut-card'));
+    const CHIP_BUSY_BODY = ['quest-sheet-open', 'mg-open', 'menu-open', 'cine-open', 'intro-open', 'hintbanner'];
+    const chipBusy = () => chipIntroLive || !document.body.classList.contains('playing') || tutorialRunning() || ui.anyModalOpen() || modalQueue.due()
+      || CHIP_BUSY_BODY.some(c => document.body.classList.contains(c));
+    function tickChipIntro() {
+      if (!chips) return;
+      const hints = Object.fromEntries(['chipNew', 'chipOld', 'chipQ', 'chipA'].map(k => [k, Input.hintSeen(k)]));
+      const kind = chipIntroNext({ hints, shown: chips.shown(), now: Date.now(), lastAt: chipIntroAt, busy: chipBusy() });
+      if (!kind) return;
+      chipIntroLive = true;
+      Input.markHintsSeen([CHIP_INTRO_KEYS[kind]]); requestSave();
+      trackEvent('quest_chip_intro', { kind, act: 'show' });
+      chips.intro(kind).then((how) => { chipIntroLive = false; chipIntroAt = Date.now(); trackEvent('quest_chip_intro', { kind, act: how }); });
+    }
+    setInterval(tickChipIntro, 500);
     const hintQueue = [];
     const nextHint = () => { if (hintQueue.length) setTimeout(() => { if (!$('hint-modal').classList.contains('show') && hintQueue.length) ui.showHintModal(hintQueue.shift()); }, 0); };
     const camSpotZone = document.createElement('div'); camSpotZone.id = 'cam-spot-zone'; document.body.appendChild(camSpotZone);
@@ -4697,10 +4748,11 @@
       },
       // 🪧 시설 첫 접근 비차단 배너 — 입력을 안 받아 이동이 안 끊긴다(상세 규칙은 입장 후 모달 담당)
       openDecorAlbum(html) { $('topleft').classList.remove('open'); $('decor-body').innerHTML = html; $('decor-body').scrollTop = 0; $('decor-album').classList.add('show'); $('decor-album').setAttribute('aria-hidden', 'false'); document.body.classList.add('decor-open'); },
-      showHintBanner({ ico, img, title, line, near, attention, onTap, onShow, onDismiss, slotBottom, slotQuest }) { hintBQ.push({ ico, img, title, line, near, attention, onTap, onShow, onDismiss, slotBottom, slotQuest }); if (!hintBShowing) nextHintBanner(); },
+      showHintBanner({ ico, img, title, line, near, attention, onTap, onShow, onDismiss, slotBottom, slotQuest, kind = 'misc', key, burn, live }) { hintBQ = enqueueBanner(hintBQ, { ico, img, title, line, near, attention, onTap, onShow, onDismiss, slotBottom, slotQuest, kind, key, burn, live }); if (!hintBShowing) nextHintBanner(); },
       // 튜토리얼 코치 진행 중 여부 — game.js 가 근접 배너를 억제할 때 확인
       coachActive() { return tutIdx >= 0 || !!spot?.active(); },
       spotActive() { return !!spot?.active(); },
+      tutorialOverlay() { return !!spot?.active() || ['spot-on', 'intro-open', 'cine-open', 'e1-pending'].some(c => document.body.classList.contains(c)) || !!document.querySelector('.show > .tut-card'); },
       setInventory(inv) {
         lastInv = inv;
         const set = (id, v) => { const e = $(id); if (e) e.textContent = v; };
@@ -4799,12 +4851,12 @@
         const p = $('quest-panel');
         const list = (!v ? [] : Array.isArray(v.items) ? v.items : Array.isArray(v) ? v : [v]).filter(q => q && q.title);
         const more = (v && !Array.isArray(v) && v.more) || 0;
-        if (!list.length) { p.classList.remove('show', 'collapsible'); document.body.classList.remove('quest-open'); $('quest-list').textContent = ''; $('quest-more').textContent = ''; $('quest-toggle').textContent = ''; return; }
+        if (!list.length) { p.classList.remove('show', 'collapsible'); document.body.classList.remove('quest-open'); $('quest-list').textContent = ''; $('quest-more').textContent = ''; $('quest-toggle').textContent = ''; renderAffTrack(); chips?.sync(list); return; }
         p.classList.add('show');
         const box = $('quest-list'); box.textContent = '';
         //  세로가 아주 짧은 화면(폰 가로·분할 화면)에선 펼친 카드 한 장도 안 들어간다 → 전부 요약형으로.
         //  요약형은 주민 이름을 진행도 줄이 물고 있어서, 줄여도 "누구 의뢰인지" 는 남는다.
-        const view = questPanelView(list, { phone: questPhoneMQ.matches, open: questOpen, short: window.innerHeight < 560, more });
+        const view = questPanelView(list, { phone: questPhoneMQ.matches, open: questOpen, short: window.innerHeight < 560, more, sheet: !!chips });
         p.classList.toggle('collapsible', !!view.toggle);
         document.body.classList.toggle('quest-open', view.toggle === '접기');
         view.items.forEach(({ q, mode }) => {
@@ -4846,6 +4898,7 @@
         $('quest-more').textContent = view.more ? `+ ${view.more}건 더` : '';
         $('quest-toggle').textContent = view.toggle || '';
         renderAffTrack();
+        chips?.sync(list);
       },
       // 낚시 프롬프트(던지는 중 / 물었어요!)
       setFishPrompt(text) {
@@ -5716,6 +5769,7 @@
       // 인터랙티브 튜토리얼: 게임에서 행동 성공 시 호출 → 현재 단계면 진행
       act(type) {
         spot?.notify('act:' + type);
+        if (type === 'camtwo') camTried = true;
         if (tutIdx < 0) return;
         if (TUT_STEPS[tutIdx].key === type) {
           trackEvent('tutorial_step', { step: tutIdx + 1, key: TUT_STEPS[tutIdx].key }); // [①] 단계 완료
@@ -5768,7 +5822,7 @@
       $('npc-modal').classList.remove('show'); flushPendingToasts();
       const intro = lastNpcOpen && Input.affinityIntroFor(lastNpcOpen);
       lastNpcOpen = null;
-      if (intro) ui.showAffinityIntro(intro, 'npc');
+      if (intro) modalQueue.request({ kind: 'affinity', key: 'affintro', show: () => ui.showAffinityIntro(intro, 'npc') });
     };
 
     // ── 💬 주민과 잡담 ───────────────────────────────────────────
@@ -6096,8 +6150,11 @@
     function placeCoach() {
       const r = $('minimap')?.getBoundingClientRect();
       if (!r || !r.height) return;
-      document.body.style.setProperty('--coach-top', Math.round(r.bottom + 8) + 'px');
-      document.body.style.setProperty('--coach-left', Math.round(r.left) + 'px');
+      const qb = $('qc-btns')?.getBoundingClientRect();
+      const side = qb?.height && innerWidth > innerHeight;
+      const top = side ? qb.top : Math.max(r.bottom, qb?.height ? qb.bottom : 0) + 8;
+      document.body.style.setProperty('--coach-top', Math.round(top) + 'px');
+      document.body.style.setProperty('--coach-left', Math.round(side ? qb.right + 8 : r.left) + 'px');
     }
     window.addEventListener('resize', () => { if (tutIdx >= 0) placeCoach(); });
     // 카드 실제 높이를 CSS 로 넘긴다 — 토스트가 이 값을 기준으로 아래에 선다.
@@ -6127,7 +6184,7 @@
         Input.armTutorialMove();
         await spot.run(steps, { kind: 'full', startAt: src === 'help' ? 0 : left, skip: src === 'help' ? 'all' : 'optional', onStep: (s) => { Input.markHintsSeen(['spot_' + s.key]); requestSave(); } });
       }
-      Input.markHintsSeen(['spotV2', 'spot_cam']);
+      Input.markHintsSeen(['spotV2', TIP_ARM]);
       if ($('worldmap').classList.contains('show')) closeWorldMap();
       startCoach();
       showStoryMapOnce(null);
@@ -6149,10 +6206,11 @@
       Input.markHintsSeen(['spotTree']); requestSave();
       setTimeout(() => spot.run(treeSteps(plan), { kind: 'tree', skip: 'all', blocked: () => !$('tree-modal')?.classList.contains('show') }), 60);
     }
+    let camTried = false;
     function runCamTour() {
       if (!spot || Input.needsTutorial() || !Input.hintSeen('spotV2')) return false;
       if (Input.hintSeen('spot_cam')) return true;
-      if (spot.active() || spotBlocked()) return false;
+      if ((TOUCH && !camTried) || spot.active() || spotBlocked()) return false;
       Input.markHintsSeen(['spot_cam']); requestSave();
       spot.run(spotSteps('cam', TOUCH), { kind: 'cam', skip: 'all' });
       return true;
@@ -6163,6 +6221,24 @@
       Input.markHintsSeen([key]); requestSave();
       spot.run(spotSteps('pill', true, info), { kind: 'pill' });
     }
+    let tipDexBase = null;
+    function runTipTour() {
+      const seen = (k) => Input.hintSeen(k);
+      if (!spot || !tipsLeft(seen)) return;
+      const dexCount = Input.getDex().count;
+      tipDexBase ??= dexCount;
+      const name = dueTip({
+        coachStep: tutIdx >= 0 ? TUT_STEPS[tutIdx]?.key : null,
+        merchantMet: seen('merchantMet'),
+        dexCount, dexBase: tipDexBase,
+        busy: spot.active() || spotBlocked() || guideArbiter.anyActive('coach'),
+      }, seen);
+      if (!name) return;
+      const steps = spotSteps(name, TOUCH);
+      Input.markHintsSeen(steps.map(s => 'spot_' + s.key)); requestSave();
+      spot.run(steps, { kind: 'tip', skip: 'all' });
+    }
+    setInterval(runTipTour, 1500);
     function startCoach(fromKey) {
       applyBetaTutorialOrder();   // 명단 조회가 늦게 끝났을 때를 대비해 여기서도 한 번 더
       const key = TUT_OLD_KEYS[fromKey] || fromKey;
@@ -6180,6 +6256,7 @@
       hud?.setCoachStep(null);
       Input.setTutStep('done');
       document.body.classList.remove('coaching', 'coach-quest');   // 코치 종료 → 토스트 원위치
+      modalQueue.flush();
       if (done) {
         ui.toast('🎉 튜토리얼 졸업! 이제 마을을 자유롭게 가꿔보세요 🌿');
         Input.markHintsSeen?.(['shop', 'mineGate']);
@@ -6289,6 +6366,7 @@
       if (TOUCH) document.body.classList.add('is-touch');
       document.body.classList.add('playing');        // HUD 표시(로그인 화면에선 숨김)
       if (!shell) shell = initHudShell({ Input, t, trackEvent, menu: menuSheet });
+      if (TOUCH && !chips) { chips = createQuestChips({ panel: $('quest-panel'), t, trackEvent, tracker: () => Input.affinityTracker?.(true), unread: () => Input.unreadLetterCount?.() || 0 }); ui.setQuest(questLast); }
       if (TOUCH && !hud) {
         hud = initMobileHud({ Input, t, act: (k) => ui.act(k), trackEvent, onPill: (info) => runPillTour(info) });
         if (lastToolArgs) hud.onTool(...lastToolArgs);
@@ -6322,6 +6400,7 @@
 
       showLoginStatus(authState);
       await enterGame();                             // 저장 로드 + 조작/로깅 on
+      hintBSession = Date.now();
       if (IS_NATIVE) { initTenjinOnce(!Input.needsTutorial()); void trackTenjinGameStart(); }
       maybeHudTour();
       try { initPush(); } catch (e) { console.warn('[push] init skipped', e); }   // 🔔 안드로이드만 — 허용한 사람 조용히 재등록·설정 토글

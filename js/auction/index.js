@@ -18,6 +18,8 @@ import { AUCTION_STAGE, AUCTION_STAGE_R, AUCTION_SPOTS, AUCTION_BIDDERS, AUCTION
 import { lotFor, joinMode, secondsUntilOpen, auctionOpenAt } from './rules.js';
 import { ONBOARD_COPY, BANNER_FAR, bannerLine, bannerTick, introNeeded } from './onboard.js';
 import { createAuctionGuide } from './guide.js';
+import { guideArbiter } from '../guide/arbiter.js';
+import { featureGuidesOpen } from '../guide/feature-rules.js';
 import { createAuctionIntro } from './intro.js';
 import { buildAuctionStage } from './stage.js';
 import { createActors, faceStage } from './actors.js';
@@ -99,7 +101,7 @@ function ensureGuide() {
     inside: p => Math.hypot(p.x, p.z) < walkLimit(Math.atan2(p.z, p.x)) - 1,
     open: () => auctionOpen() && auctionOpenAt(gameState.timeOfDay),
     inVillage: () => inVillage2(),
-    visible: () => cameraFree() && !uiBusy(),
+    visible: () => cameraFree() && !uiBusy() && guideArbiter.mayShow('auction'),
   });
   return guide;
 }
@@ -122,12 +124,12 @@ function bannerLive(day) {
     && document.body.classList.contains('playing');
 }
 
-function showOpenBanner(day) {
+function showOpenBanner(day, burn) {
   const lot = lotFor(day);
   const name = catalogDef(lot.id)?.name || lot.id;
   ui.showHintBanner?.({
     ico: ONBOARD_COPY.ico, title: ONBOARD_COPY.title, line: bannerLine(name, t),
-    near: () => true, attention: true, slotQuest: true,
+    near: () => true, attention: true, slotQuest: true, kind: 'feature', key: 'auction', burn,
     onShow: () => trackEvent('auction_banner', { act: 'shown', item: lot.id }),
     onTap: () => {
       trackEvent('auction_banner', { act: 'tap', item: lot.id });
@@ -140,14 +142,14 @@ function showOpenBanner(day) {
 function tickBanner(inVillage) {
   const day = todayStr();
   const away = Math.hypot(player.position.x - AUCTION_ENTRY.x, player.position.z - AUCTION_ENTRY.z) > BANNER_FAR;
-  const ready = auctionOpen() && inVillage && !mgView && cameraFree() && !uiBusy() && !document.body.classList.contains('cine-open') && !guide?.active && !intro?.open;
+  const ready = auctionOpen() && inVillage && !mgView && cameraFree() && !uiBusy() && !document.body.classList.contains('cine-open') && !guide?.active && !intro?.open && guideArbiter.mayShow('auction') && featureGuidesOpen(gameState);
   const r = bannerTick(gameState.auction, {
     open: auctionOpenAt(gameState.timeOfDay), day, joined: gameState.auction.lastDate === day, ready, far: away,
   });
   if (!r.act) return;
-  gameState.auction = r.state;
-  requestSave();
-  if (r.act === 'show') showOpenBanner(day);
+  const save = () => { gameState.auction = { ...gameState.auction, bannerDate: r.state.bannerDate, bannerCount: r.state.bannerCount }; requestSave(); };
+  if (r.act === 'show') showOpenBanner(day, save);
+  else save();
 }
 
 function tickOnboard(dt, inVillage) {
