@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { MODAL_PRIORITY, MODAL_GAP_MS, enqueueModal, nextModal, createModalQueue } from '../js/guide/modal-queue.js';
-import { NUDGE_QUIET_MS, startNudgeClock, nudgeAllowed, noteNudge } from '../js/guide/nudge-cap.js';
+import { NUDGE_QUIET_MS, startNudgeClock, nudgeAllowed, noteNudge, queueLoginNudge, touchNudgeClock } from '../js/guide/nudge-cap.js';
 
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
 
@@ -151,6 +151,28 @@ test('login nudge: one in the first 14 minutes, then the old rules', () => {
   assert.equal(nudgeAllowed(once, t0 + NUDGE_QUIET_MS), true);
   assert.equal(NUDGE_QUIET_MS, 14 * 60 * 1000);
   assert.equal(nudgeAllowed(null, t0), true);
+});
+
+test('a login nudge keeps its own wording and a capped one is dropped, not held for later', () => {
+  const store = new Map();
+  globalThis.localStorage = { getItem: k => store.get(k) ?? null, setItem: (k, v) => store.set(k, String(v)) };
+  try {
+    const reqs = [];
+    const q = { request: (item) => { reqs.push(item); return true; } };
+    const shown = [];
+    const ui = { isGuestNow: () => true, loginNudge: (t) => shown.push(t) };
+    touchNudgeClock();
+    assert.equal(queueLoginNudge('harvest', ui, q), true);
+    assert.equal(queueLoginNudge('house', ui, q), true);
+    assert.equal(reqs[0].ready, undefined);
+    reqs[0].show();
+    reqs[1].show();
+    assert.deepEqual(shown, ['harvest']);
+    assert.equal(queueLoginNudge('dex10', ui, q), false);
+    assert.equal(reqs.length, 2);
+  } finally {
+    delete globalThis.localStorage;
+  }
 });
 
 test('automatic modals go through the queue and the 120 s caps are gone', () => {

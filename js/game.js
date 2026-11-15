@@ -1677,6 +1677,7 @@ function countHint(key) {
 }
 const FIRST_VISIT_AT = { weekly: () => weeklySpotNow() === 'board', concert: () => concertSpotNow(), auction: () => auctionSpotNow(), pond: () => inVillage2() && pondNear() };
 function tickFirstVisits() {
+  if (!featureGuidesOpen(gameState)) return;
   for (const [id, at] of Object.entries(FIRST_VISIT_AT)) {
     const v = FIRST_VISIT[id];
     if (!gameState.hintsSeen[v.key] && at()) firstHintBanner(v.key, v.ico, v.title, v.line);

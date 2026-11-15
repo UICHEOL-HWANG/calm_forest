@@ -20,12 +20,11 @@ function writeCap(rec) {
 export const touchNudgeClock = (now = Date.now()) => writeCap(startNudgeClock(readCap(), now));
 
 export function queueLoginNudge(trigger, ui, queue = modalQueue) {
-  if (ui?.isGuestNow?.() === false) return false;
+  if (ui?.isGuestNow?.() === false || !nudgeAllowed(readCap(), Date.now())) return false;
   return queue.request({
     kind: 'nudge', key: 'nudge',
-    ready: () => nudgeAllowed(readCap(), Date.now()),
     show: () => {
-      if (ui?.isGuestNow?.() === false) return;
+      if (ui?.isGuestNow?.() === false || !nudgeAllowed(readCap(), Date.now())) return;
       writeCap(noteNudge(readCap(), Date.now()));
       ui?.loginNudge?.(trigger);
     },

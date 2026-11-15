@@ -31,6 +31,7 @@ test('the touch quest button intro runs through one busy check and keeps banners
 
 test('first-visit lines use the place banner once per place', () => {
   assert.match(game, /if \(!gameState\.hintsSeen\[v\.key\] && at\(\)\) firstHintBanner\(v\.key, v\.ico, v\.title, v\.line\);/);
+  assert.match(game, /function tickFirstVisits\(\) \{\n\s*if \(!featureGuidesOpen\(gameState\)\) return;/);
   assert.match(game, /syncUnlocks\(\); tickPlaceGuides\(gap\); tickFirstVisits\(\);/);
 });
 
