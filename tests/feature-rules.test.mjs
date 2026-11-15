@@ -8,12 +8,26 @@ const save = (over = {}) => ({ houseStage: 3, hintsSeen: { tutStep: 'done' }, un
 test('the tutorial counts as done once it ended or was skipped', () => {
   assert.equal(tutorialDone(save()), true);
   assert.equal(tutorialDone(save({ hintsSeen: { tutStep: 'chop' } })), false);
-  assert.equal(tutorialDone(save({ hintsSeen: {} })), false);
+  assert.equal(tutorialDone(save({ hintsSeen: {}, houseStage: 0 })), false);
 });
 
 test('a legacy save without a tutorial step counts as done', () => {
   assert.equal(tutorialDone(save({ hintsSeen: {}, unlocks: { legacy: true } })), true);
   assert.equal(tutorialDone(save({ hintsSeen: { tutStep: 'mine' }, unlocks: { legacy: true } })), false);
+});
+
+test('a save from before tutorial steps were stored counts as done once it has a house or saw the tour', () => {
+  assert.equal(tutorialDone(save({ hintsSeen: {}, houseStage: 3 })), true);
+  assert.equal(tutorialDone(save({ hintsSeen: {}, houseStage: 1 })), true);
+  assert.equal(tutorialDone({ houseStage: 0, tutorialSeen: true, hintsSeen: { spotV2: true }, unlocks: { legacy: false } }), true);
+  assert.equal(tutorialDone({ houseStage: 0, tutorialSeen: true, hintsSeen: {}, unlocks: { legacy: false } }), false);
+  assert.equal(tutorialDone({ houseStage: 0, tutorialSeen: false, hintsSeen: { spotV2: true }, unlocks: { legacy: false } }), false);
+  assert.equal(tutorialDone(save({ hintsSeen: { tutStep: 'build' }, houseStage: 2 })), false);
+});
+
+test('a fresh save is not done', () => {
+  assert.equal(tutorialDone({ houseStage: 0, tutorialSeen: false, hintsSeen: {}, unlocks: { legacy: false } }), false);
+  assert.equal(featureGuidesOpen({ houseStage: 0, hintsSeen: {}, unlocks: { legacy: false } }), false);
 });
 
 test('feature guides need the tutorial and a finished house', () => {

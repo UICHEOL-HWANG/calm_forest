@@ -4,7 +4,8 @@ export const FEATURE_HOUSE_STAGE = 3;
 
 export function tutorialDone(gs) {
   const step = gs?.hintsSeen?.tutStep;
-  return step === 'done' || (!step && !!gs?.unlocks?.legacy);
+  if (step) return step === 'done';
+  return !!gs?.unlocks?.legacy || (gs?.houseStage | 0) >= 1 || (!!gs?.tutorialSeen && !!gs?.hintsSeen?.spotV2);
 }
 
 export const featureGuidesOpen = (gs) => tutorialDone(gs) && (gs?.houseStage | 0) >= FEATURE_HOUSE_STAGE;
