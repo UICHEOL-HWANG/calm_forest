@@ -50,9 +50,23 @@ export function concertScatterBlocks(x, z, pad = 1) {
   return Math.hypot(x - STAGE_POS.x, z - STAGE_POS.z) < SCATTER_R + pad || inView(x, z, pad);
 }
 
+const BIG = 15;
+const boxInView = (b) => b.max.x - b.min.x < BIG && b.max.z - b.min.z < BIG && b.max.y - b.min.y > 0.2
+  && b.max.x > STAGE_POS.x - VIEW.half && b.min.x < STAGE_POS.x + VIEW.half
+  && b.max.z > STAGE_POS.z + VIEW.near && b.min.z < STAGE_POS.z + VIEW.far;
+
+function collectView(o, box, hit, top) {
+  if (!o.visible || o === stage || o.isLight || o.isInstancedMesh) return;
+  if (top && inView(o.position.x, o.position.z)) { hit.push(o); return; }
+  if (box && (o.isMesh || o.isSprite) && boxInView(box.setFromObject(o))) { hit.push(o); return; }
+  (o.children || []).forEach(c => collectView(c, box, hit, false));
+}
+
 function hideView() {
   if (!deps.scene) return [];
-  const hit = deps.scene.children.filter(o => o.visible && o !== stage && !o.isLight && inView(o.position.x, o.position.z));
+  const box = deps.THREE?.Box3 ? new deps.THREE.Box3() : null;
+  const hit = [];
+  deps.scene.children.forEach(o => collectView(o, box, hit, true));
   hit.forEach(o => { o.visible = false; });
   return hit;
 }
