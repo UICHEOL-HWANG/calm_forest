@@ -62,6 +62,15 @@ Last Updated: 2026-11-15 (계획 작성 직후, 구현 0줄)
 - 새 코드에 주석 금지. game.js 에는 연결 줄만.
 - 스윙 모션, 캐릭터 얼굴 등 이번 범위 밖의 것은 건드리지 않는다.
 
+## 푸시 SQL 적용 순서 (Task 7, 2026-11-16 운영 DB 조회)
+
+- 운영 `push_logs_kind_check` = night·craft·return 뿐. `migrate_push_pond.sql`·`migrate_push_weekly_market.sql` 은 미적용.
+- 세 파일이 모두 kind 목록과(pond·season 은) `push_candidates` 를 통째로 덮어쓴다 → 사용자 결정 "합집합".
+- `migrate_push_season.sql` = kind 6종(night·craft·return·pond·market·season) + `push_candidates` 에 pond_day·dex·season_14d.
+- 순서: `migrate_push_weekly_market.sql`(market_week 열·market 함수 필요) → `migrate_push_season.sql` **마지막**. pond 파일은 season 파일이 포함하므로 따로 적용하지 않는다. season 뒤에 market·pond 파일을 다시 돌리면 season 이 kind 목록에서 빠져 발송 기록이 실패하고, season_14d 가 0 으로 남아 끝 3일 동안 매일 보낼 수 있다.
+- SQL 먼저, Worker 나중. 옛 Worker 는 새 열을 무시한다. 새 Worker 가 옛 RPC 를 만나면 season_14d 가 undefined 라 보내지 않는다(엄격 비교).
+- 함수 본문 SELECT 를 운영 DB 에서 읽기 전용으로 돌려 확인: 대상 14명, dex 14/14.
+
 ## 출시 때 사용자 몫 (미리 적어 둠)
 
 - 새 도감 id 가 있으므로 웹·토스·Play·iOS·itch 5곳 동시 배포.
