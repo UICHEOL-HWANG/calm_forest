@@ -53,7 +53,7 @@ for (const [lang, read] of BOTH) test(`[${lang}] fragment 에 문서 껍데기·
 });
 
 // 1부(sec-01..21) + 2부 간지(sec-22) + 2부 10장(sec-23..32, 2026-10-28 물가 장) — docs: dev/active/guide-device
-const SECTION_COUNT = 32;
+const SECTION_COUNT = 34;
 for (const [lang, read] of BOTH) test(`[${lang}] 섹션 ${SECTION_COUNT}개 · id sec-01..sec-${SECTION_COUNT} · 각각 eyebrow + h2[data-chip]`, () => {
   const h = read();
   const secs = [...h.matchAll(/<section class="gd-sec" id="(sec-\d\d)">/g)].map(m => m[1]);
