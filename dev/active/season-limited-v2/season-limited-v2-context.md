@@ -1,0 +1,63 @@
+# season-limited-v2 컨텍스트
+
+Last Updated: 2026-11-15 (계획 작성 직후, 구현 0줄)
+
+## 위치
+
+- 워크트리 `.claude/worktrees/season-limited`, 브랜치 `feat/season-limited-v2`, 기준 main `c7067238`
+- 계획 `docs/superpowers/plans/2026-11-15-season-limited-v2.md`
+
+## 왜 하는가
+
+계절이 14일마다 바뀌는데 그 계절에만 할 수 있는 것이 물고기 1종뿐이다. 한정 종을 3종으로 늘려 도감을 채우러 올 이유를 만들고, 끝나기 전에 푸시로 알려 복귀 계기를 만든다.
+
+## 조사에서 확인한 사실 (2026-11-15, main c7067238)
+
+- 계절 한정 물고기 4종과 계절 게이트는 이미 있다. 커밋 `6838050c`. 이 커밋이 건드린 파일이 새 종 추가의 체크리스트다.
+- 게임 내 "끝나기 3일 전" 안내도 이미 있다(`js/season.js` `seasonNotice`, 출석 카드). 단, 물고기 1종만 안다.
+- 푸시에는 계절 종류가 없다. `functions/push/pick-kind.js` 우선순위는 night > craft > pond > return.
+- 반디는 색만 다르다(`js/spaces/glade.js` `makeFirefly`). 채집물은 `js/spaces/forest.js` `forageMesh` 에 종별 분기가 있다.
+- `BUG_KINDS`·`FORAGE_KINDS` 는 `js/data/places.js`(three 를 import 한다), `FISH_KINDS` 는 `js/data/catalog.js`.
+- `push_logs_kind_check` 목록이 마이그레이션 파일마다 다르다(`migrate_push_weekly_market.sql` 에는 `pond` 가 없다). 운영 DB 의 실제 제약을 읽고 써야 한다.
+
+## 핵심 파일
+
+| 파일 | 역할 |
+|---|---|
+| `js/season.js` | 계절 판정, 안내 문구(순수 함수) |
+| `js/dex-gates.js` | 게이트 표, `rollKind` |
+| `js/data/places.js`, `js/data/catalog.js`, `js/data/dex.js` | 종 표, 도감 표 |
+| `js/spaces/glade.js`, `js/spaces/forest.js` | 반디·채집물 굴림과 모양 |
+| `js/game.js:1550-1577`, `:2362` | 출석 카드·HUD 계절 줄 연결 |
+| `js/daily-card.js` | 출석 카드 뷰 |
+| `functions/push/pick-kind.js`, `functions/push-cron.js` | 푸시 판정·발송 |
+| `functions/api/_game-day.js` | 서버 계절 사본 |
+| `sql/migrations/migrate_push_pond.sql` | `push_candidates` 최신 정의(추정, 확인 필요) |
+
+## 의사결정
+
+- 새 시스템 없음. 기존 게이트 표와 안내 함수에 얹는다.
+- 한정 종 `p` 는 물고기 선례대로 0, 게이트 안 확률 0.14(사용자 확인 대기).
+- 채집물 보상은 `{ forage: 1 }` 고정. 경제에 새 값 없음.
+- 푸시 `season` 은 계절당 1통, `return` 보다 위, 오늘 접속한 사람에게는 안 보낸다.
+- Worker 를 SQL 보다 먼저 배포하면 전원 발송 사고가 날 수 있다. `row.season_14d === 0` 엄격 비교로 코드에서도 막는다.
+- 스탬프 카드는 이번에 구현하지 않는다(설계 게이트만).
+
+## 확정 사항 (Task 1 에서 채운다)
+
+- 종 이름 8개: 미확정
+- 게이트 안 확률: 미확정(제안 0.14)
+- 게임 내 문구 3종: 미확정
+- 푸시 문구: 미확정
+
+## 금지
+
+- 푸시·병합·배포·운영 SQL 적용 금지(사용자 승인 전).
+- 새 코드에 주석 금지. game.js 에는 연결 줄만.
+- 스윙 모션, 캐릭터 얼굴 등 이번 범위 밖의 것은 건드리지 않는다.
+
+## 출시 때 사용자 몫 (미리 적어 둠)
+
+- 새 도감 id 가 있으므로 웹·토스·Play·iOS·itch 5곳 동시 배포.
+- SQL 적용 승인(먼저) → Worker 배포(나중).
+- 공지·출시 노트.
