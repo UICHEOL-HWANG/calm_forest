@@ -44,11 +44,13 @@ function stage2(add) {
   }
 }
 
-function stage3(add) {
+function stage3(add, opts = {}) {
   stage2(add);
   add('straw', cyl(0.45, 0.45, 0.6, -3.3, 0.3, 2.4));            // 볏단
   add('straw', cyl(0.4, 0.4, 0.55, -2.6, 0.28, 2.9));
-  add('pumpkin', ball(0.38, 3.5, 0.3, 1.5, 0.75)); add('pumpkin', ball(0.28, 4.1, 0.22, 1.35, 0.75)); add('pumpkin', ball(0.24, 3.0, 0.2, 1.9, 0.75));   // 좌판(2.4,3.0)과 겹치지 않게
+  if (!opts.winter) {
+    add('pumpkin', ball(0.38, 3.5, 0.3, 1.5, 0.75)); add('pumpkin', ball(0.28, 4.1, 0.22, 1.35, 0.75)); add('pumpkin', ball(0.24, 3.0, 0.2, 1.9, 0.75));   // 좌판(2.4,3.0)과 겹치지 않게
+  }
   // 허수아비 — 서쪽 가장자리(벤치와 가로등 사이). 가운데 뒤(0,−3.4)는 4단계 나무에 가려 기본 카메라에서 안 보였다
   add('woodDark', box(0.1, 1.9, 0.1, SCX, 0.95, SCZ)); add('woodDark', box(1.1, 0.08, 0.08, SCX, 1.4, SCZ));
   add('straw', box(0.42, 0.55, 0.22, SCX, 1.3, SCZ));             // 짚 몸통
@@ -56,8 +58,8 @@ function stage3(add) {
   add('woodDark', cyl(0.06, 0.34, 0.2, SCX, 2.32, SCZ, 12));       // 밀짚모자
 }
 
-function stage4(add) {
-  stage3(add);
+function stage4(add, opts = {}) {
+  stage3(add, opts);
   add('woodDark', cyl(0.25, 0.35, 2.6, 0, 1.3, 0));                // 수확 나무 줄기
   add('leaf', ball(1.5, 0, 3.4, 0)); add('leaf', ball(1.0, -1.0, 2.9, 0.3)); add('leaf', ball(1.0, 1.0, 3.0, -0.2)); add('leaf', ball(0.9, 0.1, 4.3, 0));
   // 꼬마 등불 4개 — 잎 덩이 바깥 표면, 카메라 쪽(+Z) 반구에 매단다(잎 속에 묻히면 밤에도 안 보인다)
@@ -94,13 +96,13 @@ const STAGES = [null, stage1, stage2, stage3, stage4];
 //   재질별 메시 8개(메인 8 + 그림자 7 = +15콜)가 예산 12를 넘어 정점색 병합으로 바꿨다(+4콜).
 const BUCKET_OF = (k) => (k === 'lamp' ? 'lamp' : k === 'dirt' || k === 'stone' || k === 'stoneDark' ? 'ground' : 'props');
 
-export function buildPlaza(stage, phase) {
+export function buildPlaza(stage, phase, opts = {}) {
   const buckets = new Map();
   const add = (k, geo) => {
     const b = BUCKET_OF(k), g = paintGeo(geo, PAL[k]);
     const a = buckets.get(b); a ? a.push(g) : buckets.set(b, [g]);
   };
-  if (stage >= 1) { STAGES[stage](add); props(add, stage, phase); }
+  if (stage >= 1) { STAGES[stage](add, opts); props(add, stage, phase); }
 
   const group = new THREE.Group();
   group.position.set(PLAZA.x, 0, PLAZA.z);
