@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { winterDefault, restoreWinter, restoreWinterMap, myRows, myStage, stageRows, myTotal, todayLeft,
-         recordGive, recordCap, winterButtons, kstDay, FOUNTAIN_DONE } from '../js/plaza/winter-rules.js';
+         recordGive, recordCap, syncToday, winterButtons, kstDay, FOUNTAIN_DONE } from '../js/plaza/winter-rules.js';
 import { plazaDefault, restorePlaza } from '../js/plaza/rules.js';
 
 const S = (given = {}, o = {}) => ({ ...winterDefault(), given, ...o });
@@ -74,6 +74,17 @@ test('todayLeft·recordCap: 날이 바뀌면 상한이 다시 30', () => {
   assert.equal(todayLeft(s, '2026-12-18'), 0);
   assert.equal(todayLeft(s, '2026-12-19'), 30);
   assert.equal(todayLeft(recordCap(S(), '2026-12-20'), '2026-12-20'), 0);
+});
+
+test('syncToday: 거절·0개여도 서버 today_left 로 오늘 사용량을 맞춘다', () => {
+  const s = S({}, { day: '2026-12-17', today: 30 });
+  const a = syncToday(s, '2026-12-18', 12);
+  assert.deepEqual([a.day, a.today, todayLeft(a, '2026-12-18')], ['2026-12-18', 18, 12]);
+  assert.notEqual(a, s);
+  assert.equal(syncToday(s, '2026-12-18', null), s);
+  assert.equal(syncToday(s, '2026-12-18', undefined), s);
+  assert.equal(syncToday(S(), '2026-12-18', 99).today, 0);
+  assert.equal(syncToday(S(), '2026-12-18', -3).today, 30);
 });
 
 test('kstDay: KST 자정 경계', () => {

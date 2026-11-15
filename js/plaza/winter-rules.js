@@ -83,6 +83,9 @@ export function recordGive(st, day, { stage, item, accepted, today_left, village
 
 export const recordCap = (st, day) => ({ ...st, day, today: PLAZA_DAILY_CAP });
 
+export const syncToday = (st, day, left) => (Number.isInteger(left)
+  ? { ...st, day, today: Math.min(PLAZA_DAILY_CAP, Math.max(0, PLAZA_DAILY_CAP - left)) } : st);
+
 export function winterButtons(inv, left, row) {
   const max = Math.max(0, Math.min(inv?.[row.item] | 0, left | 0, row.need - row.have));
   return [

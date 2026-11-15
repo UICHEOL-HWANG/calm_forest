@@ -10,7 +10,7 @@ import { lampSpot } from './winter-rules.js';
 
 // 광장 로컬 좌표(중심 기준) — build.js 가 같은 값으로 그린다
 export const SCARECROW = { x: -3.9, z: -1.5 };                       // 허수아비(3·4단계 같은 자리)
-export const LAMP_POSTS = [[-3.0, -2.6], [3.0, -2.6]];               // 가로등(2단계~)
+export const LAMP_POSTS = Object.freeze([Object.freeze([-3.0, -2.6]), Object.freeze([3.0, -2.6])]);   // 가로등(2단계~)
 export const HAYBALES = [[-3.3, 2.4, 0.45], [-2.6, 2.9, 0.4]];       // 볏단 [x, z, 반지름]
 export const PUMPKIN_PILE = { x: 3.55, z: 1.6, r: 0.75 };            // 호박 셋(x 3.0~4.1, z 1.35~1.9)을 덮는 원
 

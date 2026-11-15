@@ -1,0 +1,221 @@
+import { gameState, player, dist2D, ui, scene, solidCircle, removeSolid, obstacles, giveReward, refreshInventoryUI, requestSave, mode, nightLevel } from '../game.js';
+import { trackEvent } from '../analytics.js';
+import { state as authState } from '../supabase-client.js';
+import { modalQueue } from '../guide/modal-queue.js';
+import { refreshQuestPanel } from '../spaces/npc.js';
+import { PLAZA, PLAZA_R, PLAZA_FOUNTAIN, PLAZA_VIEW_R, WINTER_LAMP_REWARD } from '../data/plaza.js';
+import { gateOpens, seasonPhase, nearPollDue } from './rules.js';
+import { datePhase } from './seasons.js';
+import { progress, give } from './net.js';
+import { interpretDonate } from './donate.js';
+import { buildPlaza } from './build.js';
+import { buildPath } from './path.js';
+import { buildFountain } from './fountain.js';
+import { buildWinterPlaza, buildFireworks } from './winter-build.js';
+import { winterPropSolids, plazaPathSolids } from './solids.js';
+import { winterDefault, myStage, stageRows, todayLeft, recordGive, recordCap, syncToday, kstDay, villageStage, litLamps,
+         lampClaims, lampGrant, claimLamp, decorPlan, settleOwed, fireworksDue, FOUNTAIN_DONE } from './winter-rules.js';
+import { WINTER_COPY, winterToast } from './winter-copy.js';
+import { fill, stagePct } from './copy.js';
+import { openPlazaModal, renderPlazaModal } from './ui.js';
+
+const SPOT_R = 2.8;
+const VIEW_R = 12;
+const FOUNTAIN_AT = { x: PLAZA.x + PLAZA_FOUNTAIN.x, z: PLAZA.z + PLAZA_FOUNTAIN.z };
+const LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+const QS = new URLSearchParams(location.search);
+const DEBUG_TOTAL = LOCAL && /^\d{1,5}$/.test(QS.get('plazaTotal') || '') ? Number(QS.get('plazaTotal')) : null;
+const DEBUG_FIREWORKS = LOCAL && QS.get('plazaFireworks') === '1';
+
+let def = null, debugStage = null, saveRestored = false, lastProg = null, spot = null, busy = false, open = false;
+let built = [], solids = [], obstacle = null, shown = '', fireworks = null, fireworksToasted = false;
+let viewCheck = 0, lastNearPollAt = -Infinity;
+const viewed = new Set();
+
+export function addStored(id) {
+  const stored = gameState.outdoorStored || {};
+  gameState.outdoorStored = { ...stored, [id]: (stored[id] || 0) + 1 };
+}
+
+const guest = () => authState.isGuest !== false;
+const st = () => gameState.plaza.winter?.[def.id] || winterDefault();
+const economy = () => debugStage === null && DEBUG_TOTAL === null;
+const total = () => DEBUG_TOTAL ?? (Number.isInteger(lastProg?.total) ? lastProg.total : st().total);
+const stageNow = () => (debugStage === null ? myStage(st()) : Math.max(1, debugStage));
+const dayNow = () => kstDay(Date.now());
+
+function commit(next) {
+  gameState.plaza = { ...gameState.plaza, winter: { ...gameState.plaza.winter, [def.id]: next } };
+  requestSave();
+}
+
+export const winterPhase = () => (lastProg?.starts_at ? seasonPhase(lastProg, Date.now()) : datePhase(def, Date.now()));
+
+function clear() {
+  for (const b of built) { scene.remove(b.group); b.dispose(); }
+  built = [];
+  for (const c of solids) removeSolid(c);
+  solids = [];
+  if (obstacle) { const i = obstacles.indexOf(obstacle); if (i >= 0) obstacles.splice(i, 1); obstacle = null; }
+}
+
+function rebuild() {
+  const key = `${stageNow()}:${litLamps(total())}`;
+  if (key === shown) return;
+  shown = key;
+  clear();
+  built = [buildPlaza(4, 'after', { winter: true }), buildPath(4, 'after'), buildWinterPlaza(litLamps(total())), buildFountain(stageNow())];
+  for (const b of built) scene.add(b.group);
+  for (const [x, z, r] of [...winterPropSolids(), ...plazaPathSolids(4, 'after')]) solids.push(solidCircle(x, z, r));
+  obstacle = { x: PLAZA.x, z: PLAZA.z, r: PLAZA_R };
+  obstacles.push(obstacle);
+}
+
+function tickFireworks(dt) {
+  const on = DEBUG_FIREWORKS || (fireworksDue(def, Date.now(), total()) && nightLevel > 0.3);
+  if (on && !fireworks) {
+    fireworks = buildFireworks();
+    scene.add(fireworks.group);
+    if (!fireworksToasted) { fireworksToasted = true; ui.toast?.(WINTER_COPY.fireworks, 4200); }
+  }
+  if (!on && fireworks) { scene.remove(fireworks.group); fireworks.dispose(); fireworks = null; }
+  fireworks?.update(dt);
+}
+
+function settle() {
+  if (!saveRestored || !economy()) return;
+  const r = settleOwed(st(), guest());
+  if (!r.grant.length) return;
+  for (const id of r.grant) addStored(id);
+  commit(r.st);
+  ui.toast?.(WINTER_COPY.stored, 3600);
+}
+
+function lampPlan(start, claims) {
+  return claims.reduce(({ st: s, gives, stored }, k) => {
+    const g = lampGrant(k);
+    const d = g.decor ? decorPlan(s, g.decor, guest()) : { st: s, grant: false };
+    return { st: claimLamp(d.st, k), gives: g.give ? [...gives, [k, g.give]] : gives, stored: d.grant ? [...stored, g.decor] : stored };
+  }, { st: start, gives: [], stored: [] });
+}
+
+function claimLamps() {
+  if (!saveRestored || !economy()) return;
+  const t = total(), before = st(), vs = villageStage(t);
+  const seen = Array.from({ length: Math.max(0, vs - before.seenLamp) }, (_, i) => before.seenLamp + 1 + i);
+  const claims = lampClaims(before, t).filter(k => WINTER_LAMP_REWARD[k]);
+  const moved = villageStage(before.total) !== vs;
+  if (!seen.length && !claims.length && !moved) return;
+  const plan = lampPlan({ ...before, seenLamp: Math.max(before.seenLamp, vs), total: t }, claims);
+  for (const id of plan.stored) addStored(id);
+  for (const [k, g] of plan.gives) giveReward(g, 'plaza_lamp', `lamp${k}`);
+  commit(plan.st);
+  for (const k of seen) trackEvent('plaza_lamp_stage', { season: def.id, stage: k, via: 'seen' });
+  for (const k of claims) {
+    trackEvent('plaza_lamp_stage', { season: def.id, stage: k, via: 'reward' });
+    modalQueue.request({ kind: 'result', key: `lamp-${def.id}-${k}`, show: () => ui.toast?.(fill(WINTER_COPY.lampToast, k * 3), 4200) });
+  }
+}
+
+function afterGive(beforeStage) {
+  const s = st(), now = myStage(s);
+  if (now <= beforeStage) return;
+  trackEvent('plaza_fountain_stage', { season: def.id, stage: now, guest: guest() ? 1 : 0 });
+  if (now < FOUNTAIN_DONE) { commit({ ...s, seenStage: now }); return; }
+  const d = decorPlan({ ...s, seenStage: now }, 'winterfountain', guest());
+  if (d.grant) addStored('winterfountain');
+  commit(d.st);
+  ui.toast?.(d.grant ? WINTER_COPY.complete : WINTER_COPY.completeGuest, 4200);
+}
+
+export async function refreshWinter(force = false) {
+  if (!def) return;
+  const p = await progress.get(def.id, { force });
+  if (p && p.per_user === true) lastProg = p;
+  settle();
+  claimLamps();
+  rebuild();
+}
+
+async function onGive(item, qty) {
+  if (!economy() || busy || qty <= 0 || winterPhase() !== 'active') return;
+  const stage = myStage(st());
+  busy = true;
+  render();
+  try {
+    const raw = await give(def.id, stage, item, qty);
+    const r = interpretDonate(qty, raw);
+    const day = dayNow(), left = raw?.today_left;
+    trackEvent(r.event, { season: def.id, item, ...r.params });
+    if (r.spend > 0) {
+      gameState.inventory[item] = Math.max(0, (gameState.inventory[item] || 0) - r.spend);
+      commit(syncToday(recordGive(st(), day, { stage, item, accepted: r.spend, today_left: left, village_before: raw.village_before }), day, left));
+      refreshInventoryUI();
+      ui.toast?.(winterToast(r.toastKey, item, r.spend));
+      afterGive(stage);
+      await refreshWinter(true);
+    } else {
+      const s = r.params.reason === 'cap' ? recordCap(st(), day) : st();
+      const next = syncToday(s, day, left);
+      if (next !== st()) commit(next);
+      ui.toast?.(winterToast(r.toastKey, item, 0));
+    }
+  } finally {
+    busy = false;
+    render();
+    refreshQuestPanel();
+  }
+}
+
+const ctx = () => ({
+  kind: 'fountain', stage: stageNow(), rows: stageRows(st()), todayLeft: todayLeft(st(), dayNow()),
+  inv: gameState.inventory, busy, guest: guest(), phase: winterPhase(), total: total(), lamps: st().lamps,
+  adShort: () => null, adDouble: () => null,
+  onDonate: onGive, onClose: () => { open = false; },
+});
+
+function render() { if (open) renderPlazaModal(ctx()); }
+
+export function openWinter() {
+  if (spot !== 'fountain') return;
+  open = true;
+  openPlazaModal('fountain', ctx());
+  trackEvent('plaza_modal_open', { season: def.id, stage: stageNow(), today_left: todayLeft(st(), dayNow()), ...(guest() ? { guest: true } : {}) });
+}
+
+function trackView() {
+  const stage = stageNow();
+  if (viewed.has(stage) || dist2D(PLAZA, player.position) > VIEW_R) return;
+  viewed.add(stage);
+  trackEvent('plaza_view', { season: def.id, stage, pct: stage >= FOUNTAIN_DONE ? 100 : stagePct(stageRows(st())), from: 'other' });
+}
+
+export function winterSpot(pos) {
+  spot = dist2D(FOUNTAIN_AT, pos) < SPOT_R ? 'fountain' : null;
+  return spot;
+}
+
+export const winterSpotNow = () => spot;
+export const fountainSpotNow = () => spot === 'fountain';
+
+export function initWinter(seasonDef, ge, debug) {
+  def = seasonDef;
+  debugStage = debug;
+  rebuild();
+  refreshWinter();
+}
+
+export function updateWinter(dt, inVillage) {
+  if (!def) return;
+  if (gateOpens(saveRestored, mode)) { saveRestored = true; refreshWinter(); }
+  tickFireworks(dt);
+  if (!inVillage) { spot = null; return; }
+  viewCheck -= dt;
+  if (viewCheck > 0) return;
+  viewCheck = 1;
+  trackView();
+  if (dist2D(PLAZA, player.position) < PLAZA_VIEW_R && nearPollDue(lastProg, Date.now(), lastNearPollAt)) {
+    lastNearPollAt = Date.now();
+    refreshWinter();
+  }
+}

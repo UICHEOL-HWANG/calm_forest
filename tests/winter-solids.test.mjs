@@ -34,6 +34,20 @@ test('분수 충돌 원은 명판·벤치·나무와 겹치지 않는다', () =>
   }
 });
 
+test('겨울 충돌 원끼리는 서로 겹치지 않는다', () => {
+  const s = winterPropSolids();
+  for (let i = 0; i < s.length; i++) for (let j = i + 1; j < s.length; j++) {
+    const [ax, az, ar] = s[i], [bx, bz, br] = s[j];
+    assert.ok(Math.hypot(ax - bx, az - bz) > ar + br, `${s[i]} / ${s[j]}`);
+  }
+});
+
+test('가로등 목록은 얼려 둔다(공유 배열을 고칠 수 없다)', () => {
+  assert.ok(Object.isFrozen(LAMP_POSTS));
+  assert.ok(LAMP_POSTS.every(p => Object.isFrozen(p)));
+  assert.equal(streetLamps(), LAMP_POSTS);
+});
+
 test('가로등: 수확제는 그대로 세우고 겨울은 빼며 충돌체도 따라간다', () => {
   assert.deepEqual(streetLamps(), LAMP_POSTS);
   assert.deepEqual(streetLamps({ winter: true }), []);
