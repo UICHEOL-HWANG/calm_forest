@@ -61,20 +61,23 @@ export function stageRows(st, needs = WINTER_NEEDS) {
     .sort((a, b) => a.item.localeCompare(b.item));
 }
 
-export const myTotal = (st) => Object.values(st.given).reduce((a, n) => a + n, 0);
+export const myTotal = (st) => myRows(st).reduce((a, r) => a + r.have, 0);
 
 export const todayLeft = (st, day, cap = PLAZA_DAILY_CAP) => Math.max(0, cap - (st.day === day ? st.today : 0));
 
 export function recordGive(st, day, { stage, item, accepted, today_left, village_before }) {
+  const row = stage === myStage(st) ? stageRows(st).find(r => r.item === item) : null;
+  const n = row ? Math.max(0, Math.min(accepted | 0, row.need - row.have)) : 0;
+  if (n <= 0) return st;
   const k = keyOf(stage, item);
-  const n = Math.max(0, accepted | 0);
   const usedBefore = st.day === day ? st.today : 0;
+  const used = Number.isInteger(today_left) ? PLAZA_DAILY_CAP - today_left : usedBefore + n;
   return {
     ...st,
     given: { ...st.given, [k]: (st.given[k] || 0) + n },
     day,
-    today: Number.isInteger(today_left) ? PLAZA_DAILY_CAP - today_left : usedBefore + n,
-    joined: st.joined >= 0 || !Number.isInteger(village_before) ? st.joined : village_before,
+    today: Math.min(PLAZA_DAILY_CAP, Math.max(0, used)),
+    joined: st.joined === -1 && Number.isInteger(village_before) && village_before >= 0 ? village_before : st.joined,
   };
 }
 
@@ -134,9 +137,11 @@ export function settleOwed(st, isGuest) {
   return { st: { ...st, owed: [], got: decorList([...st.got, ...grant]) }, grant };
 }
 
+const bagCount = (x) => (Number.isFinite(x) ? Math.max(0, Math.floor(x)) : 0);
+
 export function shortFill(rows, inv, max = WINTER_SHORT_MAX) {
   return rows.reduce(({ give, left }, r) => {
-    const n = Math.min(left, Math.max(0, r.need - r.have - (inv?.[r.item] | 0)));
+    const n = Math.min(left, Math.max(0, r.need - r.have - bagCount(inv?.[r.item])));
     return n > 0 ? { give: { ...give, [r.item]: n }, left: left - n } : { give, left };
   }, { give: {}, left: max }).give;
 }

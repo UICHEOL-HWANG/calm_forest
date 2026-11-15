@@ -41,6 +41,34 @@ test('recordGive: 새 객체, 처음 보탠 때의 마을 누적을 joined 로 �
   assert.equal(c.given['1:wood'], 8); assert.equal(c.joined, 120); assert.equal(c.today, 8);
 });
 
+test('recordGive: 0개·음수 수락은 joined 를 남기지 않는다', () => {
+  const g = (accepted, village_before) => recordGive(S(), '2026-12-18', { stage: 1, item: 'wood', accepted, today_left: 30, village_before });
+  assert.equal(g(0, 250).joined, -1);
+  assert.equal(g(-5, -3).joined, -1);
+  assert.equal(g(5, -3).joined, -1);
+  assert.equal(g(5, 0).joined, 0);
+});
+
+test('recordGive: 지금 단계 품목만 기록하고 need 까지만 더한다', () => {
+  const a = S({ '1:wood': 18 });
+  const give = (st, stage, item, accepted) => recordGive(st, '2026-12-18', { stage, item, accepted, today_left: 20, village_before: 10 });
+  assert.equal(give(a, 1, 'wood', 5).given['1:wood'], 20);
+  assert.equal(give(a, 9, 'x', 5), a);
+  assert.equal(give(a, 2, 'coal', 5), a);
+  assert.equal(give(a, 1, 'coal', 5), a);
+  assert.equal(give(S(ALL1), 1, 'wood', 5).given['1:wood'], 20);
+});
+
+test('myTotal: 엉뚱한 키·넘친 값은 세지 않는다', () => {
+  assert.equal(myTotal(S({ '1:wood': 99, '9:x': 500, '1:stone': 3 })), 23);
+});
+
+test('recordGive: today 는 0~30 안', () => {
+  const t = (today_left) => recordGive(S(), '2026-12-18', { stage: 1, item: 'wood', accepted: 1, today_left, village_before: 1 }).today;
+  assert.equal(t(-10), 30);
+  assert.equal(t(99), 0);
+});
+
 test('todayLeft·recordCap: 날이 바뀌면 상한이 다시 30', () => {
   const s = S({}, { day: '2026-12-18', today: 30 });
   assert.equal(todayLeft(s, '2026-12-18'), 0);

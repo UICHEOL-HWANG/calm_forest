@@ -74,6 +74,23 @@ test('shortFill: 가방과 합쳐도 모자란 만큼, 합계 최대 10', () => 
   assert.deepEqual(shortFill(rows, { coal: 8, stone: 18 }), { stone: 2 });
 });
 
+test('shortFill: 음수·거대·비정상 가방 값은 0 으로', () => {
+  const rows = [{ item: 'coal', have: 2, need: 10 }];
+  assert.deepEqual(shortFill(rows, { coal: -5 }), { coal: 8 });
+  assert.deepEqual(shortFill(rows, { coal: NaN }), { coal: 8 });
+  assert.deepEqual(shortFill(rows, { coal: 2 ** 32 }), {});
+  assert.deepEqual(shortFill(rows, { coal: 2 ** 32 + 3 }), {});
+});
+
+const deepFreeze = (o) => { Object.values(o).forEach(v => { if (v && typeof v === 'object') deepFreeze(v); }); return Object.freeze(o); };
+
+test('얼린 상태에도 변형 없이 새 객체를 낸다', () => {
+  const s = deepFreeze(S({ lamps: [1], owed: ['winterlamp'], got: [] }));
+  assert.doesNotThrow(() => {
+    claimLamp(s, 2); markDoubled(s, 1); decorPlan(s, 'winterfountain', true); decorPlan(s, 'winterfountain', false); settleOwed(s, false);
+  });
+});
+
 test('fireworksDue: 시즌 마지막 KST 날(12/31)에 마을 3단계', () => {
   const at = (iso) => Date.parse(iso);
   assert.equal(fireworksDue(WINTER, at('2026-12-31T20:00:00+09:00'), 1500), true);
