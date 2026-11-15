@@ -3100,7 +3100,7 @@ export async function enterGame() {
     trees: () => trees, oreRocks: () => oreRocks, mineSpots: delveGuideSpots,
     npcSpots: () => npcObjs.filter(o => !o.hidden).map(o => o.group.position),
     solids: () => colliders.filter(c => ('r' in c ? c.r >= 1.0 : true)),
-    mineGate: MINE_GATE, worldTree: WORLD_TREE,
+    mineGate: { x: MINE_GATE.x, z: MINE_GATE.z + 1.1 }, worldTree: WORLD_TREE,
     storySnap: () => {
       const c = curStory()[Number(gameState.story?.ch) || 0];
       const rule = c ? (c.rule || c.id) : null;

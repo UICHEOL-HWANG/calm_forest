@@ -48,3 +48,17 @@ test('the house goal waits behind mine and story goals and stays in the village'
   assert.ok(at(/if \(storyMemo && storyMemo\.where !== 'board'\)/) < house);
   assert.ok(at(/deps\.farmBranchDue\(\)\) return/) < house);
 });
+
+test('the cave arrow stops in front of the open side of the cave, inside the door radius', () => {
+  const m = game.match(/mineGate: \{ x: MINE_GATE\.x, z: MINE_GATE\.z \+ ([\d.]+) \}/);
+  assert.ok(m);
+  const front = Number(m[1]);
+  const box = read('js/spaces/mine.js').match(/solidBox\(MINE_GATE\.x - [\d.]+, MINE_GATE\.z - [\d.]+, MINE_GATE\.x \+ [\d.]+, MINE_GATE\.z \+ ([\d.]+)\)/);
+  const door = Number(read('js/spaces/doors.js').match(/dist2D\(MINE_GATE, player\.position\) < ([\d.]+)/)[1]);
+  const src = read('js/guide/goal-guide.js');
+  const arrive = Number(src.match(/const GATE_ARRIVE = ([\d.]+);/)[1]);
+  assert.ok(front > Number(box[1]) + 0.4);
+  assert.ok(front + arrive <= door);
+  assert.match(src, /if \(inV\) return \{ at: deps\.mineGate, g: GOALS\.cave, arrive: GATE_ARRIVE \};/);
+  assert.equal(src.match(/r\.arrive \|\| ARRIVE\[goal\.key\]/g)?.length, 2);
+});

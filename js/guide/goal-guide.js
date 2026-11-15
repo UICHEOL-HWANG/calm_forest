@@ -10,6 +10,7 @@ const CINE_DELAY = 0.6;
 const NPC_CLEAR = 5;
 const RESOLVE_SEC = 0.25;
 const STORY_SEC = 0.5;
+const GATE_ARRIVE = 0.8;
 const BAR = 'clamp(48px,9vh,90px)';
 
 const CSS = `
@@ -93,7 +94,7 @@ export function createGoalGuide(deps) {
       return { at: nearest(deps.trees(), clear) || nearest(deps.trees(), t => !t.userData.fallen), g: GOALS.tree };
     }
     if (key === 'cave') {
-      if (inV) return { at: deps.mineGate, g: GOALS.cave };
+      if (inV) return { at: deps.mineGate, g: GOALS.cave, arrive: GATE_ARRIVE };
       if (inMine) return { at: nearest(deps.oreRocks(), r => !r.userData.depleted && r.userData.ore?.id === 'stone'), g: GOALS.stone };
       return null;
     }
@@ -226,7 +227,7 @@ export function createGoalGuide(deps) {
     const { at, g, via } = r;
     const p = deps.player.position;
     const dist = Math.hypot(at.x - p.x, at.z - p.z);
-    goal.near = !r.exit && dist < (ARRIVE[goal.key] || 1.5);
+    goal.near = !r.exit && dist < (r.arrive || ARRIVE[goal.key] || 1.5);
     if (goal.near || (r.exit && dist < ARRIVE.exit)) {
       if (goal.near && !goal.arrived) { goal.arrived = true; stepEvent('arrive'); }
       if (goal.near && goal.story) { drawCard(at); return; }
@@ -285,7 +286,7 @@ export function createGoalGuide(deps) {
   function resting(r) {
     const p = deps.player.position;
     const dist = Math.hypot(r.at.x - p.x, r.at.z - p.z);
-    const near = !r.exit && dist < (ARRIVE[goal.key] || 1.5);
+    const near = !r.exit && dist < (r.arrive || ARRIVE[goal.key] || 1.5);
     return (near && !goal.story) || (!!r.exit && dist < ARRIVE.exit);
   }
 
