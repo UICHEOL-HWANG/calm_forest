@@ -287,7 +287,7 @@ import {
   affinityChip, affinityIntroFor, affinityLetters, affinityTracker, affinityVisible, claimLetter, introNpcForStart, markIntroSeen, npcBook, onLettersChanged, owlDailyAffinity, readLetter,
   syncAffinityLetters, trackBookOpen, unreadLetterCount, heartAdReady, heartAd,
 } from './affinity/index.js';
-import { affinityGuideActive, affinityGuidePending, startAffinityGuide, updateAffinityGuide } from './affinity/guide.js';
+import { affinityGuideActive, affinityPriority, startAffinityGuide, updateAffinityGuide } from './affinity/guide.js';
 import {
   rebuildFarm, spawnFarmGate, surveyBenchWorld, surveyDeskWorld,
 } from './spaces/farm-field.js';   // 📦 🪧 표지판·텃밭 게이트·측량소·텃밭 필드 (구역 머리말 — 분리 2단계)
@@ -1663,7 +1663,7 @@ guideArbiter.register({ name: 'goal', active: () => !!goalGuide?.cinematic || (!
 guideArbiter.register({ name: 'port', active: portGuideActive });
 guideArbiter.register({ name: 'restaurant', active: restaurantGuideActive });
 guideArbiter.register({ name: 'yard', active: () => !!yardGuide?.active() });
-guideArbiter.register({ name: 'affinity', active: affinityGuideActive, wants: affinityGuidePending });
+guideArbiter.register({ name: 'affinity', active: affinityGuideActive, priority: affinityPriority });
 guideArbiter.register({ name: 'weekly', active: weeklyGuideActive });
 guideArbiter.register({ name: 'concert', active: concertGuideActive });
 guideArbiter.register({ name: 'auction', active: auctionGuideActive });

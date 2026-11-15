@@ -3,6 +3,7 @@ export const GUIDE_PRIORITY = Object.freeze({
 });
 
 const claiming = (e) => !!e.active() || !!e.wants?.();
+const prio = (p) => (typeof p === 'function' ? p() : p);
 
 export function createArbiter(table = GUIDE_PRIORITY) {
   let entries = Object.freeze([]);
@@ -15,10 +16,10 @@ export function createArbiter(table = GUIDE_PRIORITY) {
 
   function rankOf(name) {
     const at = entries.findIndex(e => e.name === name);
-    return at < 0 ? { priority: table[name] ?? -Infinity, at: Infinity } : { priority: entries[at].priority, at };
+    return at < 0 ? { priority: table[name] ?? -Infinity, at: Infinity } : { priority: prio(entries[at].priority), at };
   }
 
-  const beats = (e, i, me) => e.priority > me.priority || (e.priority === me.priority && i < me.at);
+  const beats = (e, i, me) => prio(e.priority) > me.priority || (prio(e.priority) === me.priority && i < me.at);
 
   function mayShow(name) {
     const me = rankOf(name);

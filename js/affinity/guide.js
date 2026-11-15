@@ -5,13 +5,13 @@ import { NPCS } from '../data/npcs.js';
 import { BENCH } from '../data/places.js';
 import { createGuide } from '../guide/runner.js';
 import { createGuideView } from '../guide/view.js';
-import { guideArbiter } from '../guide/arbiter.js';
+import { GUIDE_PRIORITY, guideArbiter } from '../guide/arbiter.js';
 import { guideGiveText } from './copy.js';
 import { AFFINITY_NPCS } from './stages.js';
 
 const NAV_MIN_R = 0.8;
 const NEAR_R = 12;
-let guide = null, view = null, npcId = null, base = 0, pending = null;
+let guide = null, view = null, npcId = null, base = 0, asking = false;
 
 const npcObj = () => (npcObjs || []).find(o => o.def.id === npcId);
 const total = () => AFFINITY_NPCS.reduce((s, id) => s + (gameState.affinity?.[id] || 0), 0);
@@ -38,12 +38,14 @@ const nearSolids = (me) => obstacles
   .map(o => [{ x: o.x, z: o.z }, o.r]);
 
 export const affinityGuideActive = () => !!guide?.active();
-export const affinityGuidePending = () => !guide && !!pending;
+export const affinityPriority = () => (asking || affinityGuideActive() ? GUIDE_PRIORITY.goal + 5 : GUIDE_PRIORITY.affinity);
 
 export function startAffinityGuide(id) {
   if (guide || !id) return false;
-  if (!guideArbiter.mayShow('affinity')) { pending = id; return false; }
-  pending = null;
+  asking = true;
+  const ok = guideArbiter.mayShow('affinity');
+  asking = false;
+  if (!ok) { ui.toast?.(t('지금은 다른 안내가 먼저예요. 조금 뒤에 다시 눌러 주세요'), 2600); return false; }
   npcId = id;
   base = total();
   const crops = gameState.inventory?.crop || 0;
@@ -65,7 +67,6 @@ export function startAffinityGuide(id) {
 }
 
 export function updateAffinityGuide(visible) {
-  if (!guide && pending && visible) startAffinityGuide(pending);
   if (!guide) return;
   const o = npcObj();
   if (!o || o.hidden) { guide.stop(); view.hide(); guide = null; return; }

@@ -3686,4 +3686,5 @@ export const EN = {
   '🎁 선물 만들러 가기': '🎁 Make a gift',
   '🎁 작업대에서 꽃다발 만들기': '🎁 Make a bouquet at the workbench',
   '🥕 꽃다발 재료(작물 2개)를 챙겨 드렸어요': '🥕 Here are 2 crops for the bouquet',
+  '지금은 다른 안내가 먼저예요. 조금 뒤에 다시 눌러 주세요': 'Another guide comes first right now. Try again in a moment',
 };

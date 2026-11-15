@@ -109,6 +109,22 @@ test('a guide never blocks itself', () => {
   assert.equal(a.mayShow('goal'), true);
 });
 
+test('a guide the player asked for can rise above the goal arrow while it runs', () => {
+  const a = createArbiter();
+  const goal = flag(true), aff = flag(false), asked = flag(false);
+  a.register({ name: 'coach', active: () => false });
+  a.register({ name: 'goal', active: goal });
+  a.register({ name: 'affinity', priority: () => (asked() ? GUIDE_PRIORITY.goal + 5 : GUIDE_PRIORITY.affinity), active: aff });
+  assert.equal(a.mayShow('affinity'), false);
+  asked.set(true);
+  assert.equal(a.mayShow('affinity'), true);
+  aff.set(true);
+  assert.equal(a.mayShow('goal'), false);
+  assert.equal(a.mayShow('coach'), true);
+  asked.set(false);
+  assert.equal(a.mayShow('goal'), true);
+});
+
 test('the shared arbiter is a single instance', () => {
   assert.equal(typeof guideArbiter.mayShow, 'function');
   assert.equal(typeof guideArbiter.register, 'function');
