@@ -4227,7 +4227,7 @@
     import { createNickStep } from './js/nickname-step.js';
     import { createSpotlight } from './js/hud/spotlight.js';
     import { modalQueue } from './js/guide/modal-queue.js';
-    import { BANNER_STATS0, enqueueBanner, pickBanner, noteBannerShown } from './js/guide/banner-queue.js';
+    import { BANNER_STATS0, enqueueBanner, pickBanner, noteBannerShown, yieldedBanner } from './js/guide/banner-queue.js';
     import { pillHintKey, spotSteps, treeSteps } from './js/onboarding/spot-steps.js';
     import { dueTip, tipsLeft, TIP_ARM } from './js/onboarding/jit-tips.js';
     import { guideArbiter } from './js/guide/arbiter.js';
@@ -4366,17 +4366,18 @@
     }
     function bannerVisibleNow() {
       const b = document.body.classList;
-      if (!hintBSession || !b.contains('playing') || b.contains('quest-sheet-open') || chipIntroLive || ui.anyModalOpen() || modalQueue.due()) return false;
+      if (!hintBSession || !b.contains('playing') || b.contains('quest-sheet-open') || chipIntroLive || ui.anyModalOpen()) return false;
       return getComputedStyle($('hint-banner')).display !== 'none';
     }
     function bannerCtx() {
       const now = Date.now();
-      return { visible: bannerVisibleNow(), tutorial: tutorialRunning(), now, sessionStart: hintBSession || now, ...hintBStats };
+      return { visible: bannerVisibleNow(), tutorial: tutorialRunning(), modalDue: modalQueue.due(), now, sessionStart: hintBSession || now, ...hintBStats };
     }
     function nextHintBanner() {
       clearTimeout(hintBRetry);
       const pick = hintBQ.length ? pickBanner(hintBQ, bannerCtx()) : null;
-      if (!pick) {
+      if (pick && !pick.item) hintBQ = pick.rest;
+      if (!pick?.item) {
         hintBShowing = false; document.body.classList.remove('hintbanner');
         if (hintBQ.length) hintBRetry = setTimeout(nextHintBanner, 500);
         return;
@@ -4404,14 +4405,14 @@
       const t0 = Date.now();
       let timer, watch, yieldT, settled = false;
       try { item.onShow?.(); } catch (e) { /* 계측 실패가 배너를 막지 않게 */ }
-      const done = (reason = 'timeout') => {
+      const done = (reason = 'timeout', quiet = false) => {
         if (settled) return;
         settled = true;
         clearTimeout(timer); clearInterval(watch); clearInterval(yieldT); el.onclick = null;
         el.classList.remove('show', 'tap');
         if (swapped) setTimeout(swapped, 250);
         hintBChainT = setTimeout(() => document.body.classList.remove('hb-chain'), 1000);
-        try { item.onDismiss?.(reason); } catch (e) { /* 계측 실패가 큐를 막지 않게 */ }
+        if (!quiet) try { item.onDismiss?.(reason); } catch (e) { /* 계측 실패가 큐를 막지 않게 */ }
         setTimeout(nextHintBanner, 250);
       };
       el.onclick = item.onTap ? () => { const f = item.onTap; done('tap'); f(); } : null;   // 한 번 탭하면 배너를 걷고 실행
@@ -4419,8 +4420,8 @@
       timer = setTimeout(done, hold);
       yieldT = setInterval(() => {
         if (!ui.anyModalOpen()) return;
-        hintBQ = enqueueBanner(hintBQ, { ...item, burn: null });
-        done('modal');
+        hintBQ = enqueueBanner(hintBQ, yieldedBanner(item));
+        done('modal', true);
       }, 300);
       if (hold > HINT_B_MIN && !item.attention) watch = setInterval(() => {   // attention 은 조기 종료 없이 8초   // 조기 페이드아웃 감시
         if (Date.now() - t0 >= HINT_B_MIN && !near()) done();
@@ -4747,7 +4748,7 @@
       },
       // 🪧 시설 첫 접근 비차단 배너 — 입력을 안 받아 이동이 안 끊긴다(상세 규칙은 입장 후 모달 담당)
       openDecorAlbum(html) { $('topleft').classList.remove('open'); $('decor-body').innerHTML = html; $('decor-body').scrollTop = 0; $('decor-album').classList.add('show'); $('decor-album').setAttribute('aria-hidden', 'false'); document.body.classList.add('decor-open'); },
-      showHintBanner({ ico, img, title, line, near, attention, onTap, onShow, onDismiss, slotBottom, slotQuest, kind = 'misc', key, burn }) { hintBQ = enqueueBanner(hintBQ, { ico, img, title, line, near, attention, onTap, onShow, onDismiss, slotBottom, slotQuest, kind, key, burn }); if (!hintBShowing) nextHintBanner(); },
+      showHintBanner({ ico, img, title, line, near, attention, onTap, onShow, onDismiss, slotBottom, slotQuest, kind = 'misc', key, burn, live }) { hintBQ = enqueueBanner(hintBQ, { ico, img, title, line, near, attention, onTap, onShow, onDismiss, slotBottom, slotQuest, kind, key, burn, live }); if (!hintBShowing) nextHintBanner(); },
       // 튜토리얼 코치 진행 중 여부 — game.js 가 근접 배너를 억제할 때 확인
       coachActive() { return tutIdx >= 0 || !!spot?.active(); },
       spotActive() { return !!spot?.active(); },

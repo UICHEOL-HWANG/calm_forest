@@ -1618,7 +1618,7 @@ function firstHint(key, ico, title, body, place = hintPlace()) {
 // 튜토리얼(코치) 진행 중엔 억제하고 '본 것' 처리도 안 함 — 코치 지시와 겹치지 않게, 졸업 후 첫 접근 때 보여준다.
 const placeBannersQueued = new Set();
 /** 띄웠으면 true — 호출부가 "처음 도달"을 계측할 수 있게(🌊 sea_gate_hint). */
-function firstHintBanner(key, ico, title, line) {
+function firstHintBanner(key, ico, title, line, onShown) {
   if (gameState.hintsSeen[key]) return false;
   if (ui.coachActive?.()) return false;
   if (placeBannersQueued.has(key)) return false;
@@ -1627,7 +1627,7 @@ function firstHintBanner(key, ico, title, line) {
   // 여러 시설을 연달아 지나치면 이미 떠난 곳의 배너는 짧게 흘려보낸다(큐 적체 방지)
   const at = { x: player.position.x, z: player.position.z };
   ui.showHintBanner?.({ ico, title, line, near: () => dist2D(at, player.position) < 3.5,
-    kind: 'place', key: 'place-' + key, burn: () => { gameState.hintsSeen[key] = true; requestSave(); } });
+    kind: 'place', key: 'place-' + key, burn: () => { gameState.hintsSeen[key] = true; requestSave(); onShown?.(); } });
   return true;
 }
 

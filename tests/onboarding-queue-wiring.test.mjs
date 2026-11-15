@@ -18,7 +18,7 @@ test('the merchant welcome visit waits out the spotlight, E1 sheet and cutscenes
 });
 
 test('a banner on screen steps aside for a modal and comes back later', () => {
-  assert.match(html, /if \(!ui\.anyModalOpen\(\)\) return;\n\s*hintBQ = enqueueBanner\(hintBQ, \{ \.\.\.item, burn: null \}\);\n\s*done\('modal'\);/);
+  assert.match(html, /if \(!ui\.anyModalOpen\(\)\) return;\n\s*hintBQ = enqueueBanner\(hintBQ, yieldedBanner\(item\)\);\n\s*done\('modal', true\);/);
   assert.match(html, /clearInterval\(watch\); clearInterval\(yieldT\);/);
 });
 

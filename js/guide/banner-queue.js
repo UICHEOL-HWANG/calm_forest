@@ -17,14 +17,18 @@ function featureReady(ctx) {
 
 function eligible(item, ctx) {
   if (!ctx.visible) return false;
-  if (ctx.tutorial && item.kind !== 'tutorial') return false;
+  if ((ctx.tutorial || ctx.modalDue) && item.kind !== 'tutorial') return false;
   return item.kind !== 'feature' || featureReady(ctx);
 }
 
 export function pickBanner(queue, ctx) {
-  const item = [...queue].sort((a, b) => rank(b) - rank(a)).find(i => eligible(i, ctx));
-  return item ? { item, rest: Object.freeze(queue.filter(i => i !== item)) } : null;
+  const alive = queue.filter(i => !i.live || i.live());
+  const item = [...alive].sort((a, b) => rank(b) - rank(a)).find(i => eligible(i, ctx)) || null;
+  if (!item && alive.length === queue.length) return null;
+  return { item, rest: Object.freeze(alive.filter(i => i !== item)) };
 }
+
+export const yieldedBanner = (item) => Object.freeze({ ...item, burn: null, onShow: null });
 
 export const noteBannerShown = (stats, item, now) => item.kind === 'feature'
   ? Object.freeze({ lastFeatureAt: now, featuresShown: stats.featuresShown + 1 })

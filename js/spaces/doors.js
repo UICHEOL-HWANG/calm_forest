@@ -360,8 +360,8 @@ export function updateDoorInteract() {
     const locked = mapLocked('sea');   // 🧪 [베타 2차] 프레임당 한 번만 판정(프롬프트·배너 억제 공용)
     if (locked) { nd = 'sea'; prompt = lockLine('sea', mapOpenDay(authState.mapOrder, 'sea')); }
     // [GA4] 입구 첫 도달(세이브당 1회) — sea_enter 와 짝지어 "왔는데 안 들어갔나"를 본다
-    if (!locked && firstHintBanner('seaGate', '🌊', '바다터', '먼 바다 대형 물고기와 줄다리기 낚시'))
-      trackEvent('sea_gate_hint', { night: isNight(), weather: WEATHER });
+    if (!locked) firstHintBanner('seaGate', '🌊', '바다터', '먼 바다 대형 물고기와 줄다리기 낚시',
+      () => trackEvent('sea_gate_hint', { night: isNight(), weather: WEATHER }));
   } else if (!indoor && isOpen('orchard') && dist2D(player.position, ORCHARD_GATE) < ORCHARD_PROMPT_R) {
     nd = 'orchard';
     const locked = mapLocked('orchard');

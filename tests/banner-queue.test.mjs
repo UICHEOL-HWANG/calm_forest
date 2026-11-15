@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   BANNER_PRIORITY, BANNER_BURST_MS, BANNER_FEATURE_GAP_MS, BANNER_STATS0,
-  enqueueBanner, pickBanner, noteBannerShown,
+  enqueueBanner, pickBanner, noteBannerShown, yieldedBanner,
 } from '../js/guide/banner-queue.js';
 
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
@@ -45,6 +45,31 @@ test('during the tutorial only tutorial banners show', () => {
   assert.equal(pickBanner(q({ kind: 'quest' }), ctx({ tutorial: true })), null);
 });
 
+test('a modal on its way holds every banner except tutorial ones', () => {
+  const queue = q({ kind: 'place', key: 'p' }, { kind: 'tutorial', key: 't' });
+  assert.equal(pickBanner(queue, ctx({ modalDue: true })).item.key, 't');
+  assert.equal(pickBanner(q({ kind: 'quest' }), ctx({ modalDue: true })), null);
+});
+
+test('a banner whose moment has passed is dropped instead of shown late', () => {
+  const queue = q({ kind: 'place', key: 'gone', live: () => false }, { kind: 'misc', key: 'here', live: () => true });
+  const p = pickBanner(queue, ctx());
+  assert.equal(p.item.key, 'here');
+  assert.deepEqual(p.rest.map(i => i.key), []);
+  assert.deepEqual(pickBanner(q({ key: 'x', live: () => false }), ctx()), { item: null, rest: [] });
+});
+
+test('a banner that steps aside for a modal comes back without its show hooks', () => {
+  const onDismiss = () => {};
+  const item = { kind: 'feature', key: 'k', burn: () => {}, onShow: () => {}, onDismiss };
+  const again = yieldedBanner(item);
+  assert.equal(again.burn, null);
+  assert.equal(again.onShow, null);
+  assert.equal(again.onDismiss, onDismiss);
+  assert.ok(Object.isFrozen(again));
+  assert.equal(typeof item.onShow, 'function');
+});
+
 test('first minute: at most one feature banner, then 20 s apart', () => {
   const queue = q({ kind: 'feature', key: 'weekly' }, { kind: 'feature', key: 'neighbor' }, { kind: 'feature', key: 'auction' });
   const start = 1_000;
@@ -78,6 +103,10 @@ test('index.html picks banners through the queue and checks they can be seen', (
   const next = html.slice(html.indexOf('function nextHintBanner('), html.indexOf('// 🗺️ 마지막으로 받은 마을 지명'));
   assert.match(next, /pickBanner\(hintBQ, bannerCtx\(\)\)/);
   assert.match(next, /item\.burn\?\.\(\)/);
+  assert.match(next, /hintBQ = enqueueBanner\(hintBQ, yieldedBanner\(item\)\);\s*done\('modal', true\);/);
+  assert.match(next, /if \(!quiet\) try \{ item\.onDismiss\?\.\(reason\); \}/);
+  assert.match(html, /modalDue: modalQueue\.due\(\)/);
+  assert.doesNotMatch(html.slice(html.indexOf('function bannerVisibleNow('), html.indexOf('function bannerCtx(')), /modalQueue\.due/);
   assert.match(html, /function bannerVisibleNow\(\)[\s\S]{0,400}getComputedStyle\(\$\('hint-banner'\)\)\.display !== 'none'/);
   assert.match(html, /body\.hb-chain #story-chip \{ display: none !important; \}/);
 });
@@ -86,7 +115,13 @@ test('callers tag their banners and burn once-flags only when shown', () => {
   const game = read('../js/game.js');
   const fhb = game.slice(game.indexOf('function firstHintBanner('), game.indexOf('let indoor = false;'));
   assert.match(fhb, /kind: 'place', key/);
-  assert.match(fhb, /burn: \(\) => \{ gameState\.hintsSeen\[key\] = true;/);
+  assert.match(fhb, /burn: \(\) => \{ gameState\.hintsSeen\[key\] = true; requestSave\(\); onShown\?\.\(\); \}/);
+  assert.match(fhb, /function firstHintBanner\(key, ico, title, line, onShown\)/);
+  for (const f of ['../js/spaces/doors.js', '../js/spaces/dream.js', '../js/spaces/mirror.js']) {
+    assert.doesNotMatch(read(f), /firstHintBanner\([^\n]*\)\)\s*(trackEvent|T\.onboard)/, f);
+  }
+  assert.match(read('../js/spaces/visitors.js'), /kind: 'place', key: `visitor-\$\{id\}`, live: \(\) => atFarm/);
+  assert.match(read('../js/spaces/mine.js'), /kind: 'place', key: 'gem-fog', live: \(\) => \$w\.atMine/);
   assert.match(read('../js/weekly/bridge.js'), /kind: 'feature', key: 'weekly-market'/);
   assert.match(read('../js/weekly/index.js'), /env\.showBanner\(\(\) => markBanner\(s\.week\)\)/);
   assert.match(read('../js/spaces/neighbor.js'), /kind: 'feature', key: 'neighbor-daily'/);

@@ -112,7 +112,7 @@ function onArrive(id, mesh, at) {
   const v = visitorOf(id);
   if (gameState.dex.visitor?.[id]) { Sound.starGood?.(2); return; }
   Sound.starUnlock?.();
-  ui.showHintBanner?.({ ico: '✨', title: t(ARRIVE_COPY), line: `${v.ico} ${t(v.name)}`, attention: true });
+  ui.showHintBanner?.({ ico: '✨', title: t(ARRIVE_COPY), line: `${v.ico} ${t(v.name)}`, attention: true, kind: 'place', key: `visitor-${id}`, live: () => atFarm });
   edgeWatch = { mesh, x: at.x, z: at.z, ico: v.ico, left: EDGE_SEC };
 }
 
