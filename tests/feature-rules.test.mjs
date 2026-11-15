@@ -65,7 +65,17 @@ test('each arrow names its destination', () => {
     'weekly-market': '주말 장터로 가요',
     concert: '음악회 무대로 가요',
     auction: '저녁 경매로 가요',
+    house: '집 터로 가요',
   });
+});
+
+test('the house compass names the house site', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../js/spaces/house-guide.js', import.meta.url), 'utf8');
+  assert.match(src, /\.textContent = deps\.translate\(ARROW_LABEL\.house\);/);
+  assert.doesNotMatch(src, /화살표를 따라가요/);
+  const en = readFileSync(new URL('../js/i18n-en.js', import.meta.url), 'utf8');
+  assert.equal(en.split("'집 터로 가요':").length, 2);
 });
 
 test('first-visit lines are one short line per place', () => {

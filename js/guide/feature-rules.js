@@ -21,6 +21,7 @@ export const ARROW_LABEL = Object.freeze({
   'weekly-market': '주말 장터로 가요',
   concert: '음악회 무대로 가요',
   auction: '저녁 경매로 가요',
+  house: '집 터로 가요',
 });
 
 export const FIRST_VISIT = Object.freeze({

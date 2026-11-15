@@ -2,6 +2,7 @@
 // Camera and modal ownership are supplied by game.js so this cannot interrupt another cutscene.
 import * as THREE from 'three';
 import { HOUSE_GUIDE_WOOD, houseGuideArm, houseGuideEligible } from '../house-guide-rules.js';
+import { ARROW_LABEL } from '../guide/feature-rules.js';
 
 const DURATION = 4.5;
 const IN = 1.25;
@@ -56,7 +57,7 @@ export function createHouseGuide(deps) {
     compass = document.createElement('div');
     compass.id = 'house-guide-compass';
     compass.innerHTML = '<div class="hg-pointer"></div><div class="hg-hint"></div>';
-    compass.querySelector('.hg-hint').textContent = deps.translate('화살표를 따라가요!');
+    compass.querySelector('.hg-hint').textContent = deps.translate(ARROW_LABEL.house);
     document.body.appendChild(compass);
     groundRing = new THREE.Mesh(
       new THREE.RingGeometry(1.09, 1.20, 64),
