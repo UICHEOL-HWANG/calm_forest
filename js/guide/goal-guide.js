@@ -99,6 +99,7 @@ export function createGoalGuide(deps) {
     }
     if (key === 'farmBranch') return inV ? { at: deps.worldTree, g: GOALS.farmBranch } : null;
     if (key.startsWith('story_')) return storyTarget(key, inV);
+    if (key === 'farm' && deps.atFarm()) { const at = deps.farmPlot?.(); return at ? { at, g: GOALS.farm } : null; }
     const spot = deps.villageSpots()[key];
     if (spot) return inV ? { at: spot.at, via: spot.via || null, g: GOALS[key] } : null;
     if (!inMine) return null;
@@ -124,7 +125,8 @@ export function createGoalGuide(deps) {
     if (deps.coaching()) {
       const step = gs.hintsSeen?.tutStep;
       const houseCompass = gs.houseGuide?.arm === 'guide' && (gs.houseStage | 0) === 0 && deps.inVillage();
-      const g = tutGoal(step, { wood: gs.inventory.wood || 0, houseCompass });
+      const inv = gs.inventory;
+      const g = tutGoal(step, { wood: inv.wood || 0, stone: inv.stone || 0, coins: inv.coins || 0, houseCompass });
       if (g) return { flow: 'tut', step, ...g };
     }
     if (!seen('guideFarmTab') && deps.farmBranchDue()) return { flow: 'tree', step: 'farm', key: 'farmBranch', cine: true };

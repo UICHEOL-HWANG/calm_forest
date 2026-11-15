@@ -1,4 +1,5 @@
 import { HOUSE_GUIDE_WOOD } from '../house-guide-rules.js';
+import { BUILD_STAGES } from '../house-cost.js';
 
 export const GOALS = {
   tree: { ico: '🪓', label: '나무', title: '🪓 나무 베기' },
@@ -28,13 +29,33 @@ export const CINE_SUB = '다음 목적지';
 export const MERCHANT_WOOD = 5;
 export const MINER_COAL = 3;
 
-export function tutGoal(step, { wood = 0, houseCompass = false } = {}) {
+const WALL_COST = BUILD_STAGES[1].cost;
+const ROOF_COST = BUILD_STAGES[2].cost;
+
+function buildGoal(cost, site, { wood, stone, coins }) {
+  if (wood < cost.wood) return { key: 'tree', cine: false };
+  if (stone < (cost.stone || 0)) return { key: 'cave', cine: false };
+  if (coins < (cost.coins || 0)) return { key: 'farm', cine: false };
+  return { key: site, cine: true };
+}
+
+export function tutGoal(step, { wood = 0, stone = 0, coins = 0, houseCompass = false } = {}) {
+  const inv = { wood, stone, coins };
   if (step === 'sell') return wood < MERCHANT_WOOD ? { key: 'tree', cine: false } : null;
   if (step === 'house1') {
     if (wood < HOUSE_GUIDE_WOOD) return { key: 'tree', cine: false };
     return houseCompass ? null : { key: 'house', cine: false };
   }
+  if (step === 'house2') return buildGoal(WALL_COST, 'wall', inv);
+  if (step === 'build') return buildGoal(ROOF_COST, 'roof', inv);
+  if (step === 'harvest' && coins >= ROOF_COST.coins) return buildGoal(ROOF_COST, 'roof', inv);
   return TUT_KEYS[step] ? { key: TUT_KEYS[step], cine: true } : null;
+}
+
+export function farmPlotTarget(plots, center) {
+  if (!plots.length) return center;
+  const p = plots.find(q => q.state === 'mature') || plots.find(q => q.state === 'empty') || plots.find(q => q.state === 'growing' && !q.watered);
+  return p ? { x: p.x, z: p.z } : null;
 }
 
 export function minerGoal(d, inv = {}) {

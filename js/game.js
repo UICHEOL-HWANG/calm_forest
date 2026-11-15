@@ -66,7 +66,7 @@ import { logEcon, startMetrics } from './metrics.js';            // [계측] 경
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme, audioBus, isBGMOn, startBGM, stopBGM } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
 import { t, LANG, aiBucket, clientId } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
 import { createHouseGuide } from './spaces/house-guide.js';   // 🏠 목재 15개 → 집터 조망 + 방향 안내 50:50
-import { rearmMerchant, detourPoint } from './guide/guide-rules.js';
+import { rearmMerchant, detourPoint, farmPlotTarget } from './guide/guide-rules.js';
 import { createGoalGuide } from './guide/goal-guide.js';
 import { guideArbiter } from './guide/arbiter.js';
 import { e6Decision } from './exp-e6-boot.js';
@@ -3120,6 +3120,7 @@ export async function enterGame() {
       };
     },
     atFarm: () => atFarm,
+    farmPlot: () => farmPlotTarget(plots, { x: FARM.x, z: FARM.z }),
     exitSpot: () => {
       if (indoor) return houseFloor === 0 ? { x: INT.x, z: INT.z - INT_HALF } : null;
       if (atFarm) return { x: FARM.x, z: FARM.z + farmHalf() };
