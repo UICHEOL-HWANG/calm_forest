@@ -83,6 +83,11 @@ export function recordGive(st, day, { stage, item, accepted, today_left, village
 
 export const recordCap = (st, day) => ({ ...st, day, today: PLAZA_DAILY_CAP });
 
+export function markFull(st, stage, item) {
+  const row = stage === myStage(st) ? stageRows(st).find(r => r.item === item) : null;
+  return row ? { ...st, given: { ...st.given, [keyOf(stage, item)]: row.need } } : st;
+}
+
 export const syncToday = (st, day, left) => (Number.isInteger(left)
   ? { ...st, day, today: Math.min(PLAZA_DAILY_CAP, Math.max(0, PLAZA_DAILY_CAP - left)) } : st);
 
@@ -123,6 +128,20 @@ export function lampGrant(k) {
 }
 
 export const claimLamp = (st, k) => ({ ...st, lamps: stageList([...st.lamps, k]) });
+
+export function lampPlan(start, claims, isGuest) {
+  return claims.reduce(({ st: s, gives, stored, owed }, k) => {
+    const g = lampGrant(k);
+    const d = g.decor ? decorPlan(s, g.decor, isGuest) : { st: s, grant: false };
+    const late = g.decor && !d.grant && d.st.owed.includes(g.decor) && !s.got.includes(g.decor);
+    return {
+      st: claimLamp(d.st, k),
+      gives: g.give ? [...gives, [k, g.give]] : gives,
+      stored: d.grant ? [...stored, g.decor] : stored,
+      owed: late ? [...owed, k] : owed,
+    };
+  }, { st: start, gives: [], stored: [], owed: [] });
+}
 
 export const doubleOpen = (st, k) => st.lamps.includes(k) && !WINTER_LAMP_REWARD[k].decor && !st.doubled.includes(k);
 

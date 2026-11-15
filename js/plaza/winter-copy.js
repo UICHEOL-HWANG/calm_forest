@@ -21,6 +21,7 @@ export const WINTER_COPY = {
     note: '등불이 켜지면 보탠 분 모두 선물을 받아요',
   },
   lampToast: '🏮 등불 {0}개가 켜졌어요! 선물을 받았어요',
+  lampToastGuest: '🏮 등불 {0}개가 켜졌어요! 로그인하면 선물을 받아요',
   fireworks: '🎆 12월 31일, 마을 등불이 모두 켜졌어요',
   banner: { title: '❄️ 겨울 분수를 함께 지어요', line: '광장에서 재료를 보태 내 분수를 지어요' },
   card: { name: '겨울 분수', title: '❄️ 내 분수', desc: '광장 분수에 재료 보태기', how: '광장 분수에서 보태요' },

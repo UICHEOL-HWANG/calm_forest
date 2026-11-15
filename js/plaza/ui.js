@@ -65,8 +65,8 @@ const CSS = `
 .pz-village .pz-top { display: flex; justify-content: space-between; align-items: baseline; font-weight: 800; }
 .pz-lamps { letter-spacing: 1px; }
 .pz-lamps .off { opacity: .3; }
-.pz-c .pz-top { flex-wrap: wrap; }
-.pz-c .pz-name { flex: 0 0 auto; }
+.pz-fountain .pz-c .pz-top { flex-wrap: wrap; }
+.pz-fountain .pz-c .pz-name { flex: 0 0 auto; }
 @media (max-height: 640px) {
   #plaza-modal .tut-card { padding: 12px 14px 10px; }
   #plaza-modal h2 { font-size: 16px; margin: 0 0 2px; }
@@ -239,7 +239,7 @@ function renderFountain(ctx) {
   else {
     const me = el('div', 'pz-me');
     me.appendChild(el('span', 'pz-chip warm', fill(PLAZA_COPY.todayLeft, ctx.todayLeft)));
-    const list = el('div', 'pz-list');
+    const list = el('div', 'pz-list pz-fountain');
     for (const r of ctx.rows) { const it = PLAZA_ITEMS[r.item]; if (it) list.appendChild(itemRow(ctx, r, it, winterBtns(ctx, r))); }
     card.append(me, list);
     const ad = ctx.adShort?.();

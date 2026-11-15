@@ -13,8 +13,8 @@ import { buildPath } from './path.js';
 import { buildFountain } from './fountain.js';
 import { buildWinterPlaza, buildFireworks } from './winter-build.js';
 import { winterPropSolids, plazaPathSolids } from './solids.js';
-import { winterDefault, myStage, stageRows, todayLeft, recordGive, recordCap, syncToday, kstDay, villageStage, litLamps,
-         lampClaims, lampGrant, claimLamp, decorPlan, settleOwed, fireworksDue, FOUNTAIN_DONE } from './winter-rules.js';
+import { winterDefault, myStage, stageRows, todayLeft, recordGive, recordCap, syncToday, markFull, kstDay, villageStage, litLamps,
+         lampClaims, lampPlan, decorPlan, settleOwed, fireworksDue, FOUNTAIN_DONE } from './winter-rules.js';
 import { WINTER_COPY, winterToast } from './winter-copy.js';
 import { fill, stagePct } from './copy.js';
 import { openPlazaModal, renderPlazaModal } from './ui.js';
@@ -91,14 +91,6 @@ function settle() {
   ui.toast?.(WINTER_COPY.stored, 3600);
 }
 
-function lampPlan(start, claims) {
-  return claims.reduce(({ st: s, gives, stored }, k) => {
-    const g = lampGrant(k);
-    const d = g.decor ? decorPlan(s, g.decor, guest()) : { st: s, grant: false };
-    return { st: claimLamp(d.st, k), gives: g.give ? [...gives, [k, g.give]] : gives, stored: d.grant ? [...stored, g.decor] : stored };
-  }, { st: start, gives: [], stored: [] });
-}
-
 function claimLamps() {
   if (!saveRestored || !economy()) return;
   const t = total(), before = st(), vs = villageStage(t);
@@ -106,14 +98,14 @@ function claimLamps() {
   const claims = lampClaims(before, t).filter(k => WINTER_LAMP_REWARD[k]);
   const moved = villageStage(before.total) !== vs;
   if (!seen.length && !claims.length && !moved) return;
-  const plan = lampPlan({ ...before, seenLamp: Math.max(before.seenLamp, vs), total: t }, claims);
+  const plan = lampPlan({ ...before, seenLamp: Math.max(before.seenLamp, vs), total: t }, claims, guest());
   for (const id of plan.stored) addStored(id);
   for (const [k, g] of plan.gives) giveReward(g, 'plaza_lamp', `lamp${k}`);
   commit(plan.st);
   for (const k of seen) trackEvent('plaza_lamp_stage', { season: def.id, stage: k, via: 'seen' });
   for (const k of claims) {
     trackEvent('plaza_lamp_stage', { season: def.id, stage: k, via: 'reward' });
-    modalQueue.request({ kind: 'result', key: `lamp-${def.id}-${k}`, show: () => ui.toast?.(fill(WINTER_COPY.lampToast, k * 3), 4200) });
+    modalQueue.request({ kind: 'result', key: `lamp-${def.id}-${k}`, show: () => ui.toast?.(fill(plan.owed.includes(k) ? WINTER_COPY.lampToastGuest : WINTER_COPY.lampToast, k * 3), 4200) });
   }
 }
 
@@ -148,10 +140,17 @@ async function onGive(item, qty) {
     const day = dayNow(), left = raw?.today_left;
     trackEvent(r.event, { season: def.id, item, ...r.params });
     if (r.spend > 0) {
-      gameState.inventory[item] = Math.max(0, (gameState.inventory[item] || 0) - r.spend);
-      commit(syncToday(recordGive(st(), day, { stage, item, accepted: r.spend, today_left: left, village_before: raw.village_before }), day, left));
+      const row = stage === myStage(st()) ? stageRows(st()).find(x => x.item === item) : null;
+      const n = Math.max(0, Math.min(r.spend, row ? row.need - row.have : 0));
+      gameState.inventory[item] = Math.max(0, (gameState.inventory[item] || 0) - n);
+      commit(syncToday(recordGive(st(), day, { stage, item, accepted: n, today_left: left, village_before: raw.village_before }), day, left));
       refreshInventoryUI();
-      ui.toast?.(winterToast(r.toastKey, item, r.spend));
+      ui.toast?.(winterToast(r.toastKey, item, n));
+      afterGive(stage);
+      await refreshWinter(true);
+    } else if (r.params.reason === 'need' && stage === myStage(st())) {
+      commit(syncToday(markFull(st(), stage, item), day, left));
+      ui.toast?.(winterToast(r.toastKey, item, 0));
       afterGive(stage);
       await refreshWinter(true);
     } else {

@@ -422,6 +422,7 @@ export const EN = {
   '마을 등불이 모두 켜졌어요': 'All village lanterns are lit',
   '등불이 켜지면 보탠 분 모두 선물을 받아요': 'When lanterns light up, everyone who chipped in gets a gift',
   '🏮 등불 {0}개가 켜졌어요! 선물을 받았어요': '🏮 {0} lanterns are lit! You got a gift',
+  '🏮 등불 {0}개가 켜졌어요! 로그인하면 선물을 받아요': '🏮 {0} lanterns are lit! Log in to get your gift',
   '🎆 12월 31일, 마을 등불이 모두 켜졌어요': '🎆 December 31st, every village lantern is lit',
   '❄️ 겨울 분수를 함께 지어요': '❄️ Build winter fountains together',
   '광장에서 재료를 보태 내 분수를 지어요': 'Bring materials to the plaza and build your fountain',

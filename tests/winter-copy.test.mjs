@@ -33,3 +33,9 @@ test('확정 문구 조합', () => {
   assert.equal(ARROW_LABEL.fountain, '광장으로 가요');
   assert.deepEqual(FIRST_VISIT.fountain, { key: 'visitFountain', ico: '❄️', title: '겨울 분수', line: '재료를 보태면 내 분수가 올라가요' });
 });
+
+test('게스트 등불 토스트는 로그인 안내, 영어 번역이 있다', async () => {
+  const { readFileSync } = await import('node:fs');
+  assert.equal(WINTER_COPY.lampToastGuest, '🏮 등불 {0}개가 켜졌어요! 로그인하면 선물을 받아요');
+  assert.ok(readFileSync(new URL('../js/i18n-en.js', import.meta.url), 'utf8').includes(`'${WINTER_COPY.lampToastGuest}':`));
+});

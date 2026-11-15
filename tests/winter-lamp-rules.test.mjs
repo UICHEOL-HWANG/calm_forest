@@ -98,3 +98,27 @@ test('fireworksDue: 시즌 마지막 KST 날(12/31)에 마을 3단계', () => {
   assert.equal(fireworksDue(WINTER, at('2026-12-31T20:00:00+09:00'), 800), false);
   assert.equal(fireworksDue(WINTER, at('2027-01-01T00:30:00+09:00'), 1500), false);
 });
+
+test('lampPlan: 1단계 코인·2단계 씨앗, 3단계 꾸미기는 로그인이면 한 번만 보관함', async () => {
+  const { lampPlan } = await import('../js/plaza/winter-rules.js');
+  const p = lampPlan(S({ joined: 0 }), [1, 2, 3], false);
+  assert.deepEqual(p.gives, [[1, { coins: 30 }], [2, { seed_wheat: 1, seed_corn: 1, seed_grape: 1 }]]);
+  assert.deepEqual(p.stored, ['winterlamp']);
+  assert.deepEqual(p.owed, []);
+  assert.deepEqual(p.st.lamps, [1, 2, 3]);
+  assert.deepEqual(p.st.got, ['winterlamp']);
+  const again = lampPlan(p.st, [3], false);
+  assert.deepEqual(again.stored, []);
+  assert.deepEqual(again.gives, []);
+});
+
+test('lampPlan: 게스트 3단계 꾸미기는 보관함이 아니라 owed', async () => {
+  const { lampPlan } = await import('../js/plaza/winter-rules.js');
+  const start = S({ joined: 0 });
+  const p = lampPlan(start, [3], true);
+  assert.deepEqual(p.stored, []);
+  assert.deepEqual(p.owed, [3]);
+  assert.deepEqual(p.st.owed, ['winterlamp']);
+  assert.deepEqual(p.st.got, []);
+  assert.deepEqual(start, S({ joined: 0 }));
+});

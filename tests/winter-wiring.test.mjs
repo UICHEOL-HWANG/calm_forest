@@ -44,3 +44,12 @@ test('stage_seen 의 day_n 기준일은 시즌 정의에서 온다', () => {
   assert.ok(src.includes('DEF.opensKst'));
   assert.ok(!src.includes('PLAZA_OPENS_KST'));
 });
+
+test('기부 차감은 기록과 같은 한 값, need 거절은 markFull, 줄바꿈 CSS 는 분수 창만', () => {
+  const src = read('js/plaza/winter.js'), ui = read('js/plaza/ui.js');
+  assert.ok(src.includes('markFull('));
+  assert.ok(!src.includes('- r.spend'));
+  assert.ok(!src.includes('function lampPlan'));
+  assert.ok(!ui.includes('\n.pz-c .pz-top { flex-wrap'));
+  assert.ok(ui.includes('.pz-fountain .pz-c .pz-top { flex-wrap: wrap; }'));
+});

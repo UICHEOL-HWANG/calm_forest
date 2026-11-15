@@ -116,3 +116,15 @@ test('광장 세이브에 winter 칸이 생기고 옛 세이브는 빈 칸', () 
   assert.deepEqual(restorePlaza({ lastStage: 4 }).winter, {});
   assert.deepEqual(restorePlaza({ winter: { 'winter-2026': { given: { '1:wood': 3 } } } }).winter['winter-2026'].given, { '1:wood': 3 });
 });
+
+test('markFull: 지금 단계 품목만 need 로 채우고 원본은 그대로', async () => {
+  const { markFull } = await import('../js/plaza/winter-rules.js');
+  const s = S({ '1:wood': 5 });
+  const a = markFull(s, 1, 'wood');
+  assert.equal(a.given['1:wood'], 20);
+  assert.equal(s.given['1:wood'], 5);
+  assert.equal(myStage(markFull(a, 1, 'stone')), 2);
+  assert.equal(markFull(s, 2, 'coal'), s);
+  assert.equal(markFull(s, 1, 'fish'), s);
+  assert.equal(markFull(s, '1', 'wood'), s);
+});
