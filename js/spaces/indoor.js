@@ -14,6 +14,7 @@ import {
   setHeldTool, solidBox, solidCircle, spawnFloatText, ui, woodMat,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
+import { pickedTarget, releaseOnWalk } from '../outdoor-move.js';
 import { DECOR, DECOR_SCALE, FARM_PLACE_MSG, OUTDOOR, OUTDOOR_REACH } from '../data/catalog.js';
 import { PLAYER_R } from '../data/character.js';
 import { FARM, INT, MOUNTAIN_LANDMARK, MOUNTAIN_LANDMARK_R, ROOF_Y } from '../data/places.js';
@@ -779,7 +780,7 @@ export function decorClampZ(z) { const h = curHalf(); return Math.max(INT.z - h 
 export function startDecorPlacing(id, picked = null) {
   $w.placingDecor = id; $w.pickedDecor = picked; $w.decorTapHintShown = false;
   setHeldDecor(id);
-  if (picked) $w.decorTarget = { x: picked.wx, z: picked.wz, pinned: true };   // 들어 올린 자리에서 시작
+  if (picked) $w.decorTarget = pickedTarget(picked.wx, picked.wz, player.position.x, player.position.z);   // 들어 올린 자리에서 시작
   else decorTarget.pinned = false;
   buildDecorGhost(id);
 }
@@ -871,6 +872,7 @@ export function updateDecorGhost() {
   // 🪵 야외 장식은 발밑에 놓인다(placeOutdoor) — 고스트도 딱 그 자리에 두어 "어느 방향으로 놓일지"만 보여 준다.
   //   ↻회전 버튼은 이미 떴지만 미리보기도 반영도 없어서 "회전이 안 되는 것 같다"는 피드백이 나왔다(2026-09-11).
   if (ghostOutdoor) {
+    $w.outdoorTarget = releaseOnWalk(outdoorTarget, player.position.x, player.position.z);
     const fdef = OUTDOOR.find(d => d.id === placingOutdoor);
     const ax = outdoorTarget.pinned ? outdoorTarget.x : player.position.x;   // 탭으로 조준한 자리(없으면 발밑)
     const az = outdoorTarget.pinned ? outdoorTarget.z : player.position.z;
@@ -889,6 +891,7 @@ export function updateDecorGhost() {
     updateHabitatMeter();   // 🦋 정보가 필요한 순간은 정확히 "지금 어디에 놓을까" 다
     return;
   }
+  $w.decorTarget = releaseOnWalk(decorTarget, player.position.x, player.position.z);
   if (!decorTarget.pinned) {
     // 발 앞 거리 — 긴 가구(침대·큰 식탁)를 돌려 놓을 때 상자가 캐릭터를 덮어 놓는 순간 튕기지 않게 발자국만큼 띄운다
     const fdef = DECOR.find(d => d.id === placingDecor);

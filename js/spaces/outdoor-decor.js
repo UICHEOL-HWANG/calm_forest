@@ -18,7 +18,7 @@ import { CARVE_DESIGNS } from './carving.js';
 import { addGift, giftLove, parseKeptGift, takeGift } from './carve-gift.js';
 import { gainAffinity, giftAffinity } from '../affinity/index.js';
 import { CELL as FARM_CELL, FARM_BUILDINGS, buildingCells, rotatedFp, storageTotal } from '../farm-building.js';
-import { OUTDOOR_TAP_REACH, outdoorDistance } from '../outdoor-move.js';
+import { OUTDOOR_TAP_REACH, outdoorDistance, pickedTarget } from '../outdoor-move.js';
 import { Sound } from '../sound.js';
 import { buildDecorGhost, removeDecorGhost } from '../spaces/indoor.js';
 
@@ -101,7 +101,7 @@ export function pickOutdoor(m) {
   // 저장 레코드는 목록에 남긴다(들고 있는 동안 세이브돼도 분실 없음) — 놓으면 placeOutdoor 가 좌표만 갱신, 보관하면 storeOutdoor 가 뺀다
   m.traverse(o => { if (o.isMesh) { const hi = houseWindows.indexOf(o.material); if (hi >= 0) houseWindows.splice(hi, 1); } });   // 🏮 밤 점등 목록에서도 제거(다시 놓으면 새로 등록)
   $w.placingOutdoor = rec.id; $w.pickedOutdoor = { id: rec.id, x: rec.x, z: rec.z, rot: rec.rot || 0, farm: atFarm, rec };
-  $w.outdoorTarget = { x: rec.x, z: rec.z, pinned: true };   // 들어 올린 자리에서 시작(실내 가구와 같은 손맛)
+  $w.outdoorTarget = pickedTarget(rec.x, rec.z, player.position.x, player.position.z);   // 들어 올린 자리에서 시작(실내 가구와 같은 손맛)
   $w.decorRot = rec.rot || 0; buildDecorGhost(rec.id, true);   // 들던 방향 그대로 이어서 ↻회전
   Sound.blip(); trackEvent('pick_outdoor', { item: rec.id }); // [GA4] 옮기기 시작
   ui.onOutdoorPicked?.(OUTDOOR.find(d => d.id === rec.id));
