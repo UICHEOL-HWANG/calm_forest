@@ -115,7 +115,7 @@ test('game.js passes the guide environment through the existing weekly lines', (
   assert.match(game, /guide: GE/);
   assert.match(game, /guideEnv: wb\.guideEnv/);
   assert.match(game, /otherGuide: \(name\) => !guideMay\(name\), featureOpen: \(\) => featureGuidesOpen\(gameState\), track: trackEvent \};/);
-  assert.match(game, /guideArbiter\.register\(\{ name: 'weekly', active: weeklyGuideActive \}\);/);
+  assert.match(game, /guideArbiter\.register\(\{ name: 'weekly', active: weeklyGuideActive, priority: weeklyPriority \}\);/);
   assert.match(read('js/weekly/index.js'), /export function weeklyGuideActive\(\) \{ return !!live && !!guides\[live\]\?\.active; \}/);
 });
 
