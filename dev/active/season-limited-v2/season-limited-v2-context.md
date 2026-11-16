@@ -1,6 +1,6 @@
 # season-limited-v2 컨텍스트
 
-Last Updated: 2026-11-16 (Task 1~8 완료·로컬 커밋, 미푸시. 다음: Task 9 설계 승인)
+Last Updated: 2026-11-16 (Task 1~9 완료·스탬프 카드 수치 확정·로컬 커밋, 미푸시)
 
 ## 위치
 
