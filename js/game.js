@@ -78,6 +78,7 @@ import { rewardedAvailable, showRewarded } from './ads/admob.js';
 import { createTossRewarded } from './ads/toss-rewarded.js';
 import { warmShaders } from './render/shader-warm.js';
 import { warmBeforeReveal } from './render/reveal-warm.js';
+import { activeBootVeil } from './boot-screen.js';
 import { createFarmRush } from './ads/farm-rush.js';
 import { repeatOpen, rushSlots, sellBonus, houseShort as houseShortOf, bridgeShort, farmStageShort, prepassGrant, shortAdParts, CAFE_CAPS, adQuiet, AD_PARTS } from './guide/prepass-rules.js';
 import { sanitizeHouseGuide } from './house-guide-rules.js';
@@ -3020,7 +3021,7 @@ export async function enterGame() {
     window.__outdoor = (id, x, z, rot = 0) => placeOutdoor(x, z, true, id, rot);
     window.__goFloor = goFloor;                       // 🪜 실내 층 이동(검수용) — goFloor 는 모듈 지역 함수라 여기서만 노출
   }
-  await warmBeforeReveal({ warm: async () => { await warmShaders(renderer, scene, camera); await shootMapNow(); }, veil: revealVeil(), hold: (v) => { holdRender = v; } });
+  await warmBeforeReveal({ warm: async () => { await warmShaders(renderer, scene, camera); await shootMapNow(); }, veil: activeBootVeil() || revealVeil(), hold: (v) => { holdRender = v; } });
   // 테스트: ?river=1 — 나루터(강 공간)에서 시작. ?time=0.8 과 조합하면 밤 물길 확인
   if (_wq.get('river') === '1') setTimeout(() => enterRiver(), 60);
   // 테스트: ?mist=1 — 안개 낀 숲에서 시작. ?weather=fog 와 조합하면 🌟황금 정령 확인
