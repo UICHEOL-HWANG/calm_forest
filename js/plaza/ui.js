@@ -13,6 +13,9 @@ import { buyPlan } from './rewards.js';
 import { currentItems, nextTier } from './rules.js';
 import { donateButtons } from './donate.js';
 import { PLAZA_COPY, fill, subtitleText, nextTierText, tierLabel, stagePct } from './copy.js';
+import { WINTER_LAMPS } from '../data/plaza.js';
+import { winterButtons, litLamps, nextLampLeft, FOUNTAIN_DONE } from './winter-rules.js';
+import { WINTER_COPY } from './winter-copy.js';
 
 
 const CSS = `
@@ -58,6 +61,12 @@ const CSS = `
 .pz-claim { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .pz-claim button { border: 0; border-radius: 12px; padding: 10px 18px; font-weight: 800; font-size: 14px; cursor: pointer; background: #f0b44c; color: #4a2a08; }
 .pz-claim button[disabled] { background: #e4e7e3; color: #8f978e; cursor: default; }
+.pz-village { flex: 0 0 auto; display: flex; flex-direction: column; gap: 5px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed #d7dee5; }
+.pz-village .pz-top { display: flex; justify-content: space-between; align-items: baseline; font-weight: 800; }
+.pz-lamps { letter-spacing: 1px; }
+.pz-lamps .off { opacity: .3; }
+.pz-fountain .pz-c .pz-top { flex-wrap: wrap; }
+.pz-fountain .pz-c .pz-name { flex: 0 0 auto; }
 @media (max-height: 640px) {
   #plaza-modal .tut-card { padding: 12px 14px 10px; }
   #plaza-modal h2 { font-size: 16px; margin: 0 0 2px; }
@@ -107,12 +116,12 @@ function buttons(ctx, row) {
 const haveText = (ctx, item) => `🎒 ${ctx.inv?.[item] || 0}`;
 const rowClass = (base, row) => base + (row.have >= row.need ? ' pz-done' : '');
 
-function itemRow(ctx, row, it) {
+function itemRow(ctx, row, it, btns = buttons(ctx, row)) {
   const r = el('div', rowClass('pz-c', row));
   const info = el('div', 'pz-info'), top = el('div', 'pz-top');
   top.append(el('span', 'pz-name', it.name), el('span', 'pz-num', `${row.have}/${row.need} · ${haveText(ctx, row.item)}`));
   info.append(top, bar(row.have, row.need));
-  r.append(el('div', 'pz-ico', it.ico), info, buttons(ctx, row));
+  r.append(el('div', 'pz-ico', it.ico), info, btns);
   return r;
 }
 
@@ -192,7 +201,56 @@ function renderPlaque(ctx) {
   card.appendChild(claim);
 }
 
-const TITLE = { box: () => PLAZA_COPY.title, stall: () => PLAZA_COPY.stall.title, plaque: () => PLAZA_COPY.plaque.title };
+function winterBtns(ctx, row) {
+  const wrap = el('div', 'pz-btns');
+  for (const d of winterButtons(ctx.inv, ctx.todayLeft, row)) {
+    const b = el('button', d.cls, d.label);
+    b.disabled = !!ctx.busy || !d.on;
+    b.onclick = () => ctx.onDonate?.(row.item, d.qty);
+    wrap.appendChild(b);
+  }
+  return wrap;
+}
+
+function fountainBar(stage) {
+  const s = el('div', 'pz-stage'), top = el('div', 'pz-top');
+  top.append(el('span', 'pz-num', WINTER_COPY.myBar), el('span', 'pz-pct', `${stage}/${FOUNTAIN_DONE}`));
+  s.append(top, bar(stage, FOUNTAIN_DONE));
+  return s;
+}
+
+function lampsBlock(ctx) {
+  const lit = litLamps(ctx.total), left = nextLampLeft(ctx.total);
+  const v = el('div', 'pz-village'), top = el('div', 'pz-top');
+  top.append(el('span', 'pz-name', WINTER_COPY.village.title), el('span', 'pz-num', `${lit}/${WINTER_LAMPS}`));
+  const row = el('div', 'pz-lamps');
+  for (let i = 0; i < WINTER_LAMPS; i++) row.appendChild(el('span', i < lit ? '' : 'off', '🏮'));
+  v.append(top, bar(lit, WINTER_LAMPS), row,
+    el('div', 'pz-desc', left > 0 ? fill(WINTER_COPY.village.next, left) : WINTER_COPY.village.all),
+    el('div', 'pz-desc', WINTER_COPY.village.note));
+  for (const k of ctx.lamps || []) { const p = ctx.adDouble?.(k); if (p) v.appendChild(p); }
+  return v;
+}
+
+function renderFountain(ctx) {
+  card.append(el('p', 'pz-sub', fill(WINTER_COPY.subtitle, ctx.stage, WINTER_COPY.stages[ctx.stage] || '')), fountainBar(ctx.stage));
+  if (ctx.phase !== 'active') card.appendChild(el('div', 'pz-note', ctx.phase === 'after' ? WINTER_COPY.closed : WINTER_COPY.toast.season));
+  else if (ctx.stage >= FOUNTAIN_DONE) card.appendChild(el('div', 'pz-note', WINTER_COPY.doneNote));
+  else {
+    const me = el('div', 'pz-me');
+    me.appendChild(el('span', 'pz-chip warm', fill(PLAZA_COPY.todayLeft, ctx.todayLeft)));
+    const list = el('div', 'pz-list pz-fountain');
+    for (const r of ctx.rows) { const it = PLAZA_ITEMS[r.item]; if (it) list.appendChild(itemRow(ctx, r, it, winterBtns(ctx, r))); }
+    card.append(me, list);
+    const ad = ctx.adShort?.();
+    if (ad) card.appendChild(ad);
+    card.appendChild(el('div', 'pz-desc', WINTER_COPY.yardNote));
+  }
+  if (ctx.guest) card.appendChild(el('div', 'pz-desc', WINTER_COPY.guestLine));
+  card.appendChild(lampsBlock(ctx));
+}
+
+const TITLE = { box: () => PLAZA_COPY.title, stall: () => PLAZA_COPY.stall.title, plaque: () => PLAZA_COPY.plaque.title, fountain: () => WINTER_COPY.title };
 
 export function renderPlazaModal(ctx) {
   if (!card || !ctx) return;
@@ -201,6 +259,7 @@ export function renderPlazaModal(ctx) {
   if (ctx.kind === 'box') renderBox(ctx);
   else if (ctx.kind === 'stall') renderStall(ctx);
   else if (ctx.kind === 'plaque') renderPlaque(ctx);
+  else if (ctx.kind === 'fountain') renderFountain(ctx);
   const act = el('div', 'dm-actions'), close = el('button', '', '닫기');
   close.onclick = closePlazaModal;
   act.appendChild(close);

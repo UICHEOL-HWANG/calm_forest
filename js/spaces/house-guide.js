@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { HOUSE_GUIDE_WOOD, houseGuideArm, houseGuideEligible } from '../house-guide-rules.js';
 import { ARROW_LABEL } from '../guide/feature-rules.js';
+import { createFootRing, footAngle, footHintCss } from '../guide/foot-ring.js';
 
 const DURATION = 4.5;
 const IN = 1.25;
@@ -26,9 +27,6 @@ export function createHouseGuide(deps) {
   let fromPos, fromQuat, toPos, toQuat;
   let keyHandler = null;
   const look = new THREE.Vector3();
-  const right = new THREE.Vector3();
-  const up = new THREE.Vector3();
-  const delta = new THREE.Vector3();
 
   function mount() {
     if (compass) return;
@@ -42,36 +40,23 @@ export function createHouseGuide(deps) {
       #house-guide-modal.show .hg-bar{transform:translateY(0)}
       #house-guide-modal .hg-caption{position:absolute;left:12px;right:12px;bottom:0;height:clamp(48px,9vh,90px);display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.2;color:white;font-weight:750;font-size:clamp(18px,2.2vw,24px);text-shadow:0 1px 6px #000;opacity:0;transition:opacity .5s ease .5s}
       #house-guide-modal.show .hg-caption{opacity:1}
-      #house-guide-compass{position:fixed;z-index:25;width:clamp(80px,10vw,155px);aspect-ratio:1;display:none;pointer-events:none;transform:translate(-50%,-50%)}
-      #house-guide-compass .hg-pointer{position:absolute;left:50%;top:50%;width:100%;height:100%;transform:translate(-50%,-50%) rotate(var(--hg-angle,-48deg)) translateY(-45%);animation:hg-pulse 1.5s ease-in-out infinite}
-      #house-guide-compass .hg-pointer::before{content:'';position:absolute;left:43%;top:1%;width:14%;height:31%;background:#88d7a0;border-radius:6px;box-shadow:0 0 9px #d5ffdc}
-      #house-guide-compass .hg-pointer::after{content:'';position:absolute;left:31%;top:-6%;width:38%;height:28%;background:#a0e9ac;clip-path:polygon(50% 0,100% 100%,50% 78%,0 100%);filter:drop-shadow(0 0 5px #fff)}
-      #house-guide-compass .hg-hint{position:absolute;top:110%;left:50%;transform:translateX(-50%);white-space:nowrap;padding:7px 12px;border-radius:14px;background:rgba(255,255,245,.94);color:#365b40;font-size:13px;font-weight:700;box-shadow:0 3px 12px #315b3428;display:none}
+      #house-guide-compass{position:fixed;z-index:25;width:0;height:0;display:none;pointer-events:none}
+      ${footHintCss('#house-guide-compass .hg-hint')}
+      #house-guide-compass .hg-hint{display:none}
       #house-guide-compass.remind .hg-hint{display:block}
-      #house-guide-compass.remind .hg-pointer{animation:hg-attention 2.8s ease-in-out infinite}
-      @keyframes hg-pulse{50%{transform:translate(-50%,-50%) rotate(var(--hg-angle,-48deg)) translateY(-45%) scale(1.08)}}
-      @keyframes hg-attention{0%,22%,100%{transform:translate(-50%,-50%) rotate(var(--hg-angle,-48deg)) translateY(-45%) scale(1)}6%,16%{transform:translate(-50%,-50%) rotate(var(--hg-angle,-48deg)) translateY(-55%) scale(1.2)}11%{transform:translate(-50%,-50%) rotate(var(--hg-angle,-48deg)) translateY(-45%) scale(1)}}
-      @media(prefers-reduced-motion:reduce){#house-guide-compass .hg-pointer,#house-guide-compass.remind .hg-pointer{animation:none}}
     `;
     document.head.appendChild(style);
     compass = document.createElement('div');
     compass.id = 'house-guide-compass';
-    compass.innerHTML = '<div class="hg-pointer"></div><div class="hg-hint"></div>';
+    compass.innerHTML = '<div class="hg-hint"></div>';
     compass.querySelector('.hg-hint').textContent = deps.translate(ARROW_LABEL.house);
     document.body.appendChild(compass);
-    groundRing = new THREE.Mesh(
-      new THREE.RingGeometry(1.09, 1.20, 64),
-      new THREE.MeshBasicMaterial({ color: 0xfff9d2, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false })
-    );
-    groundRing.rotation.x = -Math.PI / 2;
-    groundRing.position.y = 0.06;
-    groundRing.visible = false;
-    deps.player.add(groundRing);
+    groundRing = createFootRing(THREE, deps.player.parent);
   }
 
   function hideCompass() {
     if (compass) compass.style.display = 'none';
-    if (groundRing) groundRing.visible = false;
+    groundRing?.hide();
     idleSince = 0;
     nextReminder = 0;
     compass?.classList.remove('remind');
@@ -167,19 +152,15 @@ export function createHouseGuide(deps) {
       deps.save();
     }
     pointing = distance > 3.2 && deps.inVillage();
-    if (!may || distance <= 3.2 || document.hidden || !deps.inVillage() || !deps.cameraFree() || deps.modalOpen()) {
+    if (!may || distance <= 3.2 || document.hidden || !deps.player.visible || !deps.inVillage() || !deps.cameraFree() || deps.modalOpen()) {
       hideCompass(); return;
     }
     const at = deps.projectPlayer();
     if (!at) { hideCompass(); return; }
-    delta.subVectors(deps.house, deps.player.position);
-    right.set(1, 0, 0).applyQuaternion(deps.camera.quaternion);
-    up.set(0, 1, 0).applyQuaternion(deps.camera.quaternion);
     compass.style.left = at.x + 'px';
     compass.style.top = (at.y - 22) + 'px';
-    compass.style.setProperty('--hg-angle', Math.atan2(delta.dot(right), delta.dot(up)) + 'rad');
     compass.style.display = 'block';
-    groundRing.visible = true;
+    groundRing.show(deps.player.position.x, deps.player.position.y, deps.player.position.z, footAngle(deps.player.position, deps.house));
     const now = performance.now();
     if (!idleSince || Math.hypot(deps.player.position.x - idleX, deps.player.position.z - idleZ) > 0.15) {
       idleSince = now;

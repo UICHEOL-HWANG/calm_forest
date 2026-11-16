@@ -66,7 +66,7 @@ test('restorePlaza: 옛 세이브·깨진 값은 기본값, 새 객체 반환', 
   assert.deepEqual(restorePlaza(undefined), plazaDefault());
   const saved = { lastStage: 3, claimed: { 'harvest-2026': 'gold' }, invited: 'harvest-2026', converted: {}, seen: { 2: true, arrived: true } };
   const r = restorePlaza(saved);
-  assert.deepEqual(r, saved); assert.notEqual(r, saved);
+  assert.deepEqual(r, { ...saved, winter: {} }); assert.notEqual(r, saved);
   assert.equal(restorePlaza({ lastStage: 'x' }).lastStage, 0);
   assert.equal(restorePlaza({ lastStage: 99 }).lastStage, 4);
   assert.deepEqual(restorePlaza({ claimed: { a: 'hack' } }).claimed, {});

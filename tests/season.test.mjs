@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { SEASONS, SEASON_DAYS, seasonById, seasonInfo, seasonNotice, seasonOf, seasonStatusLine, weatherFromRoll } from '../js/season.js';
+import { SEASONS, SEASON_DAYS, seasonById, seasonInfo, seasonLimited, seasonNotice, seasonOf, seasonStatusLine, weatherFromRoll } from '../js/season.js';
 import { DEX_GATES, gateOpen, weatherOpen, rollKind } from '../js/dex-gates.js';
 import { pickMissingDex } from '../js/museum.js';
 import { readFileSync } from 'node:fs';
@@ -9,6 +9,13 @@ import { readFileSync } from 'node:fs';
 const src = f => readFileSync(new URL('../js/data/' + f, import.meta.url), 'utf8');
 const FISH_KINDS = new Function('return ' + src('catalog.js').match(/export const FISH_KINDS = (\[[\s\S]*?\n\]);/)[1])();
 const DEX = { fish: new Function('return ' + src('dex.js').match(/^  fish: (\[[\s\S]*?\n  \]),/m)[1])() };
+const dexCat = cat => new Function('return ' + src('dex.js').match(new RegExp('^  ' + cat + ': (\\[[\\s\\S]*?\\n  \\]),', 'm'))[1])();
+DEX.bug = dexCat('bug');
+DEX.forage = dexCat('forage');
+const placesTable = name => new Function('return ' + src('places.js').match(new RegExp('export const ' + name + ' = (\\[[\\s\\S]*?\\n\\]);'))[1])();
+const BUG_KINDS = placesTable('BUG_KINDS');
+const FORAGE_KINDS = placesTable('FORAGE_KINDS');
+const SEASON_IDS = SEASONS.map(s => s.id);
 
 const addDays = (date, n) => new Date(Date.parse(date + 'T00:00:00Z') + n * 86400000).toISOString().slice(0, 10);
 
@@ -95,31 +102,67 @@ test('큐레이터 의뢰: 철 지난 한정 어종은 고르지 않는다', () 
   }
 });
 
-test('안내 문구 — 새 계절 · 끝나기 3일 전(못 낚았을 때만) · 평소엔 빈 문자열', () => {
-  const carp = { id: 'maple_carp', name: '단풍 잉어', ico: '🍁' };
-  const at = (day) => seasonInfo(addDays('2026-10-09', day - 1));
-  assert.equal(seasonNotice(at(1), carp, false, true), '🍂 가을이 왔어요! 14일 동안 호수에서 🍁 단풍 잉어가 낚여요.');
-  assert.equal(seasonNotice(at(5), carp, false, false), '', '중간엔 조용히');
-  assert.equal(seasonNotice(at(12), carp, false, false), '⏳ 가을이 3일 남았어요 — 🍁 단풍 잉어는 지금만 낚여요!');
-  assert.equal(seasonNotice(at(14), carp, true, false), '', '이미 낚았으면 재촉하지 않는다');
-  assert.equal(seasonNotice(at(1), null, false, true), '', '한정 어종이 없으면 아무 말도 안 한다');
-  assert.equal(seasonNotice(seasonInfo('2026-09-25'), { name: '동글 복어', ico: '🐡' }, false, true),
-    '☀️ 여름이 왔어요! 14일 동안 호수에서 🐡 동글 복어가 낚여요.');
-});
+const LIM = [
+  { cat: 'fish', id: 'sakura_trout', name: '벚꽃 송어', ico: '🌸', owned: true },
+  { cat: 'bug', id: 'petal', name: '꽃잎반디', ico: '🌸', owned: false },
+  { cat: 'forage', id: 'mugwort', name: '어린 쑥', ico: '🌱', owned: false },
+];
+const SPRING = { season: seasonById('spring'), left: 3 };
+const TABLES = { fish: FISH_KINDS, bug: BUG_KINDS, forage: FORAGE_KINDS, dex: DEX };
 
-test('HUD 상태 문구 — 낚았으면 ✅', () => {
-  const s = { season: seasonById('winter'), left: 2 };
-  const smelt = { id: 'ice_smelt', name: '얼음 빙어', ico: '❄️' };
-  assert.equal(seasonStatusLine(s, smelt, false), '❄️ 겨울 · 2일 남음 — 이번 계절 한정: 얼음 빙어');
-  assert.equal(seasonStatusLine(s, smelt, true), '❄️ 겨울 · 2일 남음 — 이번 계절 한정 얼음 빙어도 낚았어요 ✅');
-});
-
-test('안내 문구는 영어 사전 패턴으로 덮인다', () => {
-  const en = readFileSync(new URL('../js/i18n-en.js', import.meta.url), 'utf8');
-  for (const key of ['{0} {1}이 왔어요! {2}일 동안 호수에서 {3} {4}가 낚여요.', '⏳ {0}이 {1}일 남았어요 — {2} {3}는 지금만 낚여요!',
-                     '{0} {1} · {2}일 남음 — 이번 계절 한정: {3}', '{0} {1} · {2}일 남음 — 이번 계절 한정 {3}도 낚았어요 ✅']) {
-    assert.ok(en.includes(`'${key}'`), key);
+test('seasonLimited: one fish, one bug, one forage for every season', () => {
+  for (const id of SEASON_IDS) {
+    const list = seasonLimited(id, TABLES);
+    assert.deepEqual(list.map(x => x.cat), ['fish', 'bug', 'forage']);
+    for (const x of list) assert.ok(x.id && x.name && x.ico, JSON.stringify(x));
   }
+  assert.deepEqual(seasonLimited('spring', TABLES).map(x => x.id), ['sakura_trout', 'petal', 'mugwort']);
+  assert.deepEqual(seasonLimited('nope', TABLES), []);
+});
+
+test('seasonNotice: new season, last three days with something missing, otherwise empty', () => {
+  assert.equal(seasonNotice({ season: seasonById('spring'), left: 14 }, LIM, true),
+    '🌸 봄이 왔어요! 봄에만 나오는 물고기·반디·채집물 3종을 찾아보세요.');
+  assert.equal(seasonNotice(SPRING, LIM, false),
+    '⏳ 봄이 3일 남았어요. 아직 못 만난 봄 한정: 🌸 꽃잎반디, 🌱 어린 쑥');
+  assert.equal(seasonNotice(SPRING, LIM.map(x => ({ ...x, owned: true })), false), '');
+  assert.equal(seasonNotice({ season: seasonById('spring'), left: 4 }, LIM, false), '');
+  assert.equal(seasonNotice(SPRING, [], true), '');
+  assert.ok(!seasonNotice(SPRING, LIM, false).includes('—'));
+});
+
+test('seasonStatusLine: shows owned count', () => {
+  assert.equal(seasonStatusLine(SPRING, LIM), '🌸 봄 · 3일 남음 · 한정 1/3');
+  assert.equal(seasonStatusLine(SPRING, []), '🌸 봄 · 3일 남음');
+});
+
+test('season lines are covered by the English dictionary in every season', async () => {
+  globalThis.location ??= { search: '?lang=en', hostname: 'localhost', href: 'http://localhost/', reload() {} };
+  globalThis.localStorage ??= { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+  globalThis.crypto ??= { randomUUID: () => 'test-uuid' };
+  const { t, setLang } = await import('../js/i18n.js');
+  setLang('en');
+  for (const id of SEASON_IDS) {
+    const lim = seasonLimited(id, TABLES);
+    const s = { season: seasonById(id), left: 2 };
+    const lines = [seasonNotice({ ...s, left: 14 }, lim, true), seasonNotice(s, lim, false),
+      seasonNotice(s, lim.map((x, i) => ({ ...x, owned: i !== 1 })), false), seasonStatusLine(s, lim.map((x, i) => ({ ...x, owned: i === 0 })))];
+    for (const line of lines) assert.doesNotMatch(t(line), /[가-힣]/, `${line} -> ${t(line)}`);
+  }
+});
+
+test('계절 마지막 하루는 영어로 1 day 단수', async () => {
+  const { t, setLang } = await import('../js/i18n.js');
+  setLang('en');
+  const lim = seasonLimited('spring', TABLES);
+  const s = { season: seasonById('spring'), left: 1 };
+  const notice = t(seasonNotice(s, lim, false));
+  const hud = t(seasonStatusLine(s, lim));
+  for (const line of [notice, hud]) {
+    assert.match(line, /\b1 day\b/, line);
+    assert.doesNotMatch(line, /1 days/, line);
+  }
+  assert.match(t(seasonStatusLine({ ...s, left: 3 }, lim)), /3 days left/);
 });
 
 // ── 🎨 풍경 · 🌸🍂 흩날림 ─────────────────────────────────────

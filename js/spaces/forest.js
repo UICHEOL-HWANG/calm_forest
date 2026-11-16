@@ -91,6 +91,43 @@ export function forageMesh(kind) {
       const cap = new THREE.Mesh(new THREE.SphereGeometry(0.115, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2), clayMat(0x8a5f3a, false));
       cap.position.set(mx, 0.2, mz); g.add(cap);
     });
+  } else if (kind.id === 'mugwort') {
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2 + 0.4;
+      const sprout = new THREE.Mesh(new THREE.SphereGeometry(0.5, 7, 5), clayMat(i % 2 ? kind.color : 0xb6d9a2));
+      sprout.position.set(Math.cos(a) * 0.105, 0.225, Math.sin(a) * 0.105);
+      sprout.scale.set(0.195, 0.45, 0.105); sprout.rotation.set(Math.sin(a) * 0.5, -a, Math.cos(a) * 0.5); sprout.castShadow = true; g.add(sprout);
+    }
+  } else if (kind.id === 'wildgrape') {
+    [[0x5f9a4a, 0.4, 0.14, 0.5, 0.42, 0.03], [0x4f8a3e, 2.6, 0.12, 0.42, 0.36, 0.035]].forEach(([c, a, r, len, wid, y]) => {
+      const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.5, 7, 4), clayMat(c));
+      leaf.position.set(Math.cos(a) * r, y, Math.sin(a) * r); leaf.scale.set(len, 0.05, wid); leaf.rotation.y = -a; g.add(leaf);
+    });
+    [[0, 0.1, 0], [0.12, 0.09, 0.04], [-0.11, 0.09, 0.05], [0.04, 0.09, -0.12], [-0.06, 0.09, -0.09], [0.06, 0.09, 0.12], [0, 0.2, 0.01], [0.07, 0.19, -0.05], [-0.06, 0.19, 0.04]].forEach(([x, y, z]) => {
+      const b = new THREE.Mesh(new THREE.SphereGeometry(0.075, 8, 6), clayMat(kind.color, false));
+      b.position.set(x, y, z); b.castShadow = y > 0.15; g.add(b);
+    });
+  } else if (kind.id === 'chestnut') {
+    const burr = new THREE.Mesh(new THREE.SphereGeometry(0.26, 10, 5, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), clayMat(0x8a6a2a));
+    burr.position.y = 0.16; burr.scale.set(1, 0.6, 1); burr.castShadow = true; g.add(burr);
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.12, 4), clayMat(0x9aa040));
+      spike.position.set(Math.cos(a) * 0.25, 0.17, Math.sin(a) * 0.25); spike.rotation.set(Math.sin(a) * 1.2, 0, -Math.cos(a) * 1.2); g.add(spike);
+    }
+    [[0, 0.06], [-0.08, -0.06], [0.09, -0.05]].forEach(([x, z]) => {
+      const nut = new THREE.Mesh(new THREE.SphereGeometry(0.085, 8, 6), clayMat(kind.color, false));
+      nut.position.set(x, 0.15, z); nut.scale.set(1, 0.8, 1.15); g.add(nut);
+    });
+  } else if (kind.id === 'pinecone') {
+    [0.19, 0.17, 0.145, 0.11, 0.075].forEach((r, k) => {
+      const scale = new THREE.Mesh(new THREE.ConeGeometry(r, 0.16, 8), clayMat(k % 2 ? kind.color : 0x6e5238));
+      scale.position.y = 0.075 + k * 0.105; scale.rotation.y = k * 0.4; scale.castShadow = k === 0; g.add(scale);
+      const frost = new THREE.Mesh(new THREE.TorusGeometry(r * 0.95, 0.018, 3, 12), clayMat(0xeef4fa));
+      frost.position.y = k * 0.105 - 0.005; frost.rotation.x = Math.PI / 2; g.add(frost);
+    });
+    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.062, 6, 4), clayMat(0xf4f8fc));
+    tip.position.y = 0.525; g.add(tip);
   } else {   // herb — 길쭉한 잎 다발
     for (let i = 0; i < 6; i++) {
       const a = (i / 6) * Math.PI * 2;

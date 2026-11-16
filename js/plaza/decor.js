@@ -12,6 +12,7 @@
 // =============================================================
 import * as THREE from 'three';
 import { houseWindows, mergeGeos, paintGeo, vtxMat } from '../game.js';
+import { yardFountainMesh, yardLampMesh } from './winter-build.js';
 
 // build.js PAL 과 같은 계열(straw·pumpkin·wood·woodDark·leaf 는 같은 값) — 광장과 한 벌로 읽히게
 const PAL = {
@@ -142,7 +143,10 @@ function assemble(build) {
 }
 
 // id 가 광장 장식이 아니면 null — outdoorMesh 가 기존 분기로 넘어간다
+const WINTER_MODELS = { winterfountain: yardFountainMesh, winterlamp: yardLampMesh };
+
 export function plazaDecorMesh(id) {
+  if (WINTER_MODELS[id]) return WINTER_MODELS[id]();
   const build = MODELS[id];
   return build ? assemble(build) : null;
 }

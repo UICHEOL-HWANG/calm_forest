@@ -95,3 +95,68 @@ test('🐟 연못 문구', () => {
   assert.deepEqual(messageFor({ kind: 'pond' }, 'ko'), { title: '🐟 연못 물고기들이 기다려요', body: '오늘 먹이를 주러 와 주세요 🌿' });
   assert.deepEqual(messageFor({ kind: 'pond' }, 'en'), { title: '🐟 Your pond fish are waiting', body: 'Come feed them today 🌿' });
 });
+
+import { readFileSync } from 'node:fs';
+import { seasonCtx, SEASON_LIMITED_IDS } from '../functions/push/season-limited.js';
+
+const CTX = { id: 'spring', name: '봄', ico: '🌸', left: 3,
+  limited: [{ cat: 'fish', id: 'sakura_trout' }, { cat: 'bug', id: 'petal' }, { cat: 'forage', id: 'mugwort' }] };
+const AWAY = row({ updated_at: '2026-10-12T05:00:00Z' });
+
+test('season push: last three days, something missing, not sent this season', () => {
+  const r = { ...AWAY, dex: { fish: { sakura_trout: 1 }, bug: {}, forage: {} }, season_7d: 0 };
+  assert.deepEqual(pickPush(r, D, null, CTX), { kind: 'season', season: 'spring' });
+});
+
+test('season push: silent when everything is owned, already sent, too early, played today, or column missing', () => {
+  const all = { fish: { sakura_trout: 1 }, bug: { petal: 1 }, forage: { mugwort: 1 } };
+  assert.equal(pickPush({ ...AWAY, dex: all, season_7d: 0 }, D, null, CTX), null);
+  assert.equal(pickPush({ ...AWAY, dex: {}, season_7d: 1 }, D, null, CTX), null);
+  assert.equal(pickPush({ ...AWAY, dex: {}, season_7d: 0 }, D, null, { ...CTX, left: 4 }), null);
+  assert.equal(pickPush(row({ dex: {}, season_7d: 0 }), D, null, CTX), null);
+  assert.equal(pickPush({ ...AWAY, dex: {} }, D, null, CTX), null);
+});
+
+test('season push: ranks below night and above return; missing ctx keeps old behaviour', () => {
+  const r = { ...AWAY, dex: {}, season_7d: 0 };
+  assert.equal(pickPush(r, D, { visited: true }, CTX).kind, 'night');
+  const away5 = { ...r, updated_at: '2026-10-08T05:00:00Z' };
+  assert.equal(pickPush(away5, D, null, CTX).kind, 'season');
+  assert.equal(pickPush(away5, D, null, undefined).kind, 'return');
+  assert.equal(pickPush({ ...r, dex: null }, D, null, CTX).kind, 'season');
+});
+
+test('season push message: confirmed ko copy for all four seasons, en has no Korean', () => {
+  assert.deepEqual(messageFor({ kind: 'season', season: 'spring' }, 'ko', CTX),
+    { title: '🌸 봄이 3일 남았어요', body: '봄에만 나오는 물고기·반디·채집물, 도감에 아직 빈칸이 있어요' });
+  for (const [id, name] of [['summer', '여름'], ['autumn', '가을'], ['winter', '겨울']]) {
+    const m = messageFor({ kind: 'season', season: id }, 'ko', { ...CTX, id, name, ico: '🌿', left: 2 });
+    assert.equal(m.title, `🌿 ${name}이 2일 남았어요`);
+    assert.ok(!(m.title + m.body).includes('—'));
+  }
+  const en = messageFor({ kind: 'season', season: 'spring' }, 'en', CTX);
+  assert.doesNotMatch(en.title + en.body, /[가-힣]/);
+});
+
+test('seasonCtx: built from the KST date, matches the client season tables', () => {
+  const c = seasonCtx('2026-11-17');
+  assert.deepEqual({ id: c.id, name: c.name, left: c.left }, { id: 'spring', name: '봄', left: 3 });
+  assert.deepEqual(c.limited, CTX.limited);
+  const src = f => readFileSync(new URL('../js/data/' + f, import.meta.url), 'utf8');
+  const table = (file, name) => new Function('return ' + src(file).match(new RegExp('export const ' + name + ' = (\\[[\\s\\S]*?\\n\\]);'))[1])();
+  const fish = table('catalog.js', 'FISH_KINDS'), bug = table('places.js', 'BUG_KINDS'), forage = table('places.js', 'FORAGE_KINDS');
+  for (const [season, list] of Object.entries(SEASON_LIMITED_IDS)) {
+    assert.deepEqual(list, [
+      { cat: 'fish', id: fish.find(k => k.season === season).rarity },
+      { cat: 'bug', id: bug.find(k => k.season === season).id },
+      { cat: 'forage', id: forage.find(k => k.season === season).id },
+    ], season);
+  }
+  assert.deepEqual(Object.keys(SEASON_LIMITED_IDS).sort(), ['autumn', 'spring', 'summer', 'winter']);
+});
+
+test('season push in English says 1 day, not 1 days', () => {
+  const ctx = { id: 'spring', name: '봄', ico: '🌸', left: 1, limited: [] };
+  assert.equal(messageFor({ kind: 'season' }, 'en', ctx).title, '🌸 1 day of spring left');
+  assert.equal(messageFor({ kind: 'season' }, 'en', { ...ctx, left: 3 }).title, '🌸 3 days of spring left');
+});

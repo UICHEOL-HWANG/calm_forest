@@ -151,3 +151,15 @@ test('onBuy refuses an item with no art before planning, granting, spending or s
   assert.ok(guard >= 0);
   for (const later of ['buyPlan(', 'grantDecorItem(', 'saveCommit(', 'spend(']) assert.ok(guard < buy.indexOf(later), later);
 });
+
+test('the weekly board and the weekend market are labelled on the village map', () => {
+  const lines = read('js/game.js').split('\n');
+  const board = lines.find(l => l.includes("name: '주간 의뢰판'"));
+  const market = lines.find(l => l.includes("name: '주말 장터'"));
+  assert.ok(board && board.includes('BOARD_POS.x') && board.includes('BOARD_POS.z'));
+  assert.ok(market && market.includes('MARKET_POS.x') && market.includes('MARKET_POS.z'));
+  assert.match(read('js/weekly/index.js'), /export \{ BOARD_POS, MARKET_POS \}/);
+  const en = read('js/i18n-en.js');
+  assert.ok(en.includes("'주간 의뢰판': 'Weekly board'"));
+  assert.ok(en.includes("'주말 장터': 'Weekend market'"));
+});

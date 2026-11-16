@@ -14,7 +14,7 @@ test('game.js 에는 광장 연결 줄만 — 로직은 js/plaza/ 에', () => {
 
 test('game.js 연결 지점이 전부 있다', () => {
   const game = read('js/game.js');
-  for (const needle of ["from './plaza/index.js'", 'initPlaza()', 'updatePlaza(dt', 'plazaSpotNow()', 'plazaScatterBlocks(',
+  for (const needle of ["from './plaza/index.js'", 'initPlaza(GE)', 'updatePlaza(dt', 'plazaSpotNow()', 'plazaScatterBlocks(',
                         'plaza: plazaDefault()', 'restorePlaza(saved.plaza)']) {
     assert.ok(game.includes(needle), `game.js 에 ${needle} 연결이 없다`);
   }

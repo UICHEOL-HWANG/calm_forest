@@ -1,5 +1,5 @@
 export const GUIDE_PRIORITY = Object.freeze({
-  coach: 100, house: 90, goal: 80, port: 70, restaurant: 60, yard: 50, affinity: 40, weekly: 30, concert: 20, auction: 10,
+  coach: 100, house: 90, goal: 80, port: 70, restaurant: 60, yard: 50, affinity: 40, weekly: 30, fountain: 25, concert: 20, auction: 10,
 });
 
 const claiming = (e) => !!e.active() || !!e.wants?.();
@@ -8,8 +8,8 @@ const prio = (p) => (typeof p === 'function' ? p() : p);
 export function createArbiter(table = GUIDE_PRIORITY) {
   let entries = Object.freeze([]);
 
-  function register({ name, priority = table[name] ?? -Infinity, active, wants }) {
-    const entry = Object.freeze({ name, priority, active, wants });
+  function register({ name, priority = table[name] ?? -Infinity, active, wants, target }) {
+    const entry = Object.freeze({ name, priority, active, wants, target });
     entries = Object.freeze([...entries.filter(e => e.name !== name), entry]);
     return () => { entries = Object.freeze(entries.filter(e => e !== entry)); };
   }
@@ -28,7 +28,18 @@ export function createArbiter(table = GUIDE_PRIORITY) {
 
   const anyActive = (except) => entries.some(e => e.name !== except && !!e.active());
 
-  return { register, mayShow, anyActive, busy: () => anyActive() };
+  function focus() {
+    let best = null, rank = -Infinity;
+    for (const e of entries) {
+      const p = prio(e.priority);
+      if (p <= rank) continue;
+      const t = e.target?.();
+      if (t) { best = t; rank = p; }
+    }
+    return best;
+  }
+
+  return { register, mayShow, anyActive, busy: () => anyActive(), focus };
 }
 
 export const guideArbiter = createArbiter();

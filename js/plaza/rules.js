@@ -3,6 +3,7 @@
 //  🌾 수확제 광장 — 순수 계산(게임 상태·DOM·네트워크 없음). tests/plaza-rules.test.mjs
 // =============================================================
 import { PLAZA_TIERS, PLAZA_OPENS_KST, PLAZA_LEAF_COINS, PLAZA, PLAZA_R, PLAZA_PATH, PLAZA_ARCH } from '../data/plaza.js';
+import { restoreWinterMap } from './winter-rules.js';
 
 const MAX_VISUAL = 4;   // 0 = 없음, 1~3 = 공사 단계, 4 = 완공
 const TIER_IDS = new Set(PLAZA_TIERS.map(t => t.id));
@@ -56,7 +57,7 @@ export function leafToCoins(n) {
 }
 
 export function plazaDefault() {
-  return { lastStage: 0, claimed: {}, invited: '', converted: {}, seen: {} };
+  return { lastStage: 0, claimed: {}, invited: '', converted: {}, seen: {}, winter: {} };
 }
 
 const plainObj = (o) => (o && typeof o === 'object' && !Array.isArray(o) ? o : {});
@@ -70,6 +71,7 @@ export function restorePlaza(saved) {
     invited: typeof saved.invited === 'string' ? saved.invited : '',
     converted: onlyTrue(saved.converted),
     seen: onlyTrue(saved.seen),
+    winter: restoreWinterMap(saved.winter),
   };
 }
 

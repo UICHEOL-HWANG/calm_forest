@@ -31,11 +31,15 @@ import { cosOnboardView } from '../cos-onboard.js';
 import { minerCard, jobCard } from '../delve/miner-card.js';
 import { delveJobProgress } from './delve.js';
 import { portCard } from '../port/card.js';
+import { fountainCard } from '../plaza/winter-card.js';
+import { featureGuidesOpen } from '../guide/feature-rules.js';
 import { port } from '../port/index.js';
 import { Sound } from '../sound.js';
 import { inVillage2 } from '../spaces/doors.js';
 import * as THREE from 'three';
 import { shopCueVisible } from './shop-cue-rules.js';
+import { guideArbiter } from '../guide/arbiter.js';
+import { markGuided } from '../guide/quiet.js';
 
 // id별 퀘스트 진행 상태(없으면 생성)
 export function npcState(id) {
@@ -368,11 +372,14 @@ export function npcGlyph(o) {
 let glyphsHidden = false;
 let hudHidden = false;
 let showHidden = false;
+let quietNpc = null;
 
 function applyGlyphs() {
   glyphsHidden = hudHidden || showHidden;
-  for (const o of npcObjs) if (o.sprite) o.sprite.visible = !glyphsHidden && !!o.lastGlyph;
+  for (const o of npcObjs) if (o.sprite) o.sprite.visible = !glyphsHidden && !!o.lastGlyph && o.def.id !== quietNpc;
 }
+
+export function setNpcGlyphQuiet(id) { quietNpc = id || null; applyGlyphs(); }
 
 export function setNpcGlyphsHidden(on) { hudHidden = !!on; applyGlyphs(); }
 export function setNpcGlyphsShowHidden(on) { showHidden = !!on; applyGlyphs(); }
@@ -383,7 +390,7 @@ export function updateNPCGlyph(o) {
   if (g === o.lastGlyph) return; o.lastGlyph = g;
   const c = o.ctx; c.clearRect(0, 0, 128, 128);
   if (!g) { o.sprite.visible = false; o.tex.needsUpdate = true; return; }
-  o.sprite.visible = !glyphsHidden;
+  o.sprite.visible = !glyphsHidden && o.def.id !== quietNpc;
   c.fillStyle = g === '✓' ? '#8fd6a0' : g === '!' ? '#ffd27a' : g === '💌' ? '#ffffff' : '#cfe3ff';
   roundRect(c, 18, 14, 92, 82, 22); c.fill();
   c.beginPath(); c.moveTo(54, 94); c.lineTo(74, 94); c.lineTo(60, 118); c.closePath(); c.fill();
@@ -876,8 +883,8 @@ export function questPanelTop() {
 //    살아 있는 의뢰가 화면에서 사라진다(규칙·회귀 테스트는 js/quests.js activeQuestList).
 //    pin(nearNPC)은 "지금 눈앞에 있는 사람을 맨 위로" 라는 힌트일 뿐 — 멀어지면 저절로 풀린다.
 export function refreshQuestPanel() {
-  const views = [...npcObjs.filter(o => !o.hidden).map(o => questView(o)), onboardView(gameState.progress?.orchardQuest, orchardWheat()), cosOnboardView(gameState.progress?.cosQuest), minerCard(gameState.delve, gameState.inventory, atMine), jobCard(gameState.delve, gameState.inventory, atMine, todayStr(), delveJobProgress()), portCard(gameState.port, port.active)].filter(Boolean);   // 🌾→🍎 과수원 가는 길(주민에게 말 안 걸어도 뜬다)
-  ui.setQuest?.(activeQuestList(views, { top: questPanelTop(), pinId: views.find(v => v.id === 'delve_miner' || v.id === 'delve_job')?.id || nearNPC?.def.id || null }));
+  const views = [...npcObjs.filter(o => !o.hidden).map(o => questView(o)), onboardView(gameState.progress?.orchardQuest, orchardWheat()), cosOnboardView(gameState.progress?.cosQuest), minerCard(gameState.delve, gameState.inventory, atMine), jobCard(gameState.delve, gameState.inventory, atMine, todayStr(), delveJobProgress()), portCard(gameState.port, port.active), fountainCard(gameState.plaza, Date.now(), featureGuidesOpen(gameState))].filter(Boolean);   // 🌾→🍎 과수원 가는 길(주민에게 말 안 걸어도 뜬다)
+  ui.setQuest?.(activeQuestList(markGuided(views, guideArbiter.focus()), { top: questPanelTop(), pinId: views.find(v => v.id === 'delve_miner' || v.id === 'delve_job')?.id || nearNPC?.def.id || null }));
 }
 
 // ── 🔓 마을 해금 — 숨김·귀환(규칙은 js/world/unlocks.js, 판정·호출은 game.js syncUnlocks) ──────────

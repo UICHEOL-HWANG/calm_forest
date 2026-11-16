@@ -259,6 +259,8 @@ export const OUTDOOR = [
   { id: 'pumpkins',         name: '호박 더미',      ico: '🎃', cost: { leaf: 60 }, desc: '수확제 좌판에서 산 호박 더미', hidden: true },
   { id: 'pumpkinlamp',      name: '호박 등불',      ico: '🏮', cost: { leaf: 9999 }, desc: '수확제 광장 🥈 보상 — 밤에 은은히', hidden: true },
   { id: 'harvestscarecrow', name: '수확제 허수아비', ico: '🧑‍🌾', cost: { leaf: 9999 }, desc: '수확제 광장 🥇 보상', hidden: true },
+  { id: 'winterfountain',   name: '꼬마 분수',      ico: '⛲', cost: { coins: 9999 }, desc: '겨울 분수를 다 지은 선물', hidden: true, box: [1.5, 1.5] },
+  { id: 'winterlamp',       name: '겨울 등불',      ico: '🏮', cost: { coins: 9999 }, desc: '마을 등불 선물. 밤에 빛나요', hidden: true },
   { id: 'summitflag', name: '정상 깃발', ico: '🚩', cost: { coins: 9999 }, desc: '산장 카페에서 산 정상 깃발', hidden: true },
   { id: 'moonswing',   name: '달빛 그네', ico: '🌙', cost: { coins: 9999 }, desc: '경매에서 산 달빛 그네', hidden: true },
   { id: 'lanternarch', name: '등불 아치', ico: '🏮', cost: { coins: 9999 }, desc: '경매에서 산 등불 아치', hidden: true },

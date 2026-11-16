@@ -53,7 +53,7 @@ for (const [lang, read] of BOTH) test(`[${lang}] fragment 에 문서 껍데기·
 });
 
 // 1부(sec-01..21) + 2부 간지(sec-22) + 2부 10장(sec-23..32, 2026-10-28 물가 장) — docs: dev/active/guide-device
-const SECTION_COUNT = 32;
+const SECTION_COUNT = 34;
 for (const [lang, read] of BOTH) test(`[${lang}] 섹션 ${SECTION_COUNT}개 · id sec-01..sec-${SECTION_COUNT} · 각각 eyebrow + h2[data-chip]`, () => {
   const h = read();
   const secs = [...h.matchAll(/<section class="gd-sec" id="(sec-\d\d)">/g)].map(m => m[1]);
@@ -98,7 +98,7 @@ test('삽 안내 — 도구 표·밭 없애기 단락·FAQ·도감 종수', () =
   assert.match(h, /<b>🪏 밭 없애기<\/b>/, '농사 섹션에 "밭 없애기" 단락이 없다');
   assert.match(h, /6초 안에/, '6초 유예 안내가 없다');
   assert.match(h, /<td>밭을 없애고 싶어요<\/td>/, 'FAQ 에 "밭을 없애고 싶어요" 가 없다');
-  assert.match(h, /📖 도감 - 77종/, '도감 종수가 77 이 아니다 — js/data/dex.js DEX 합계와 맞춘다');
+  assert.match(h, /📖 도감 - 85종/, '도감 종수가 85 이 아니다 — js/data/dex.js DEX 합계와 맞춘다');
   assert.match(h, /광물 4 ·/, '광물 4종(수정 포함)');
   assert.match(h, /<td>1층<\/td><td>작물 · 물고기 \(14\)<\/td>/);
   assert.match(h, /<td>특별전<\/td><td>요리 · 광물 \(15\)<\/td>/);

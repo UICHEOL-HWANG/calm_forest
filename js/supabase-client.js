@@ -719,6 +719,7 @@ async function plazaCall(fn, args) {
 }
 export function plazaDonate(season, item, qty) { return plazaCall('plaza_donate', { p_season: season, p_item: item, p_qty: qty }); }
 export function plazaMine(season) { return plazaCall('plaza_mine', { p_season: season }); }
+export function plazaGive(season, stage, item, qty) { return plazaCall('plaza_give', { p_season: season, p_stage: stage, p_item: item, p_qty: qty }); }
 
 // ── 🏡 이웃 마을 RPC — 판정은 전부 서버(migrate_neighbors.sql). 여기선 호출만 ──
 //    오프라인·에러는 { ok:false, reason } 로 통일 → 호출부(js/neighbors/api.js)가 토스트·트래킹을 맡는다(조용히 삼키지 않는다)

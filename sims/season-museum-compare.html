@@ -1,0 +1,112 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>박물관 2층 시안 비교</title>
+<style>
+  :root{--bg:#2a2a28;--card:rgba(255,255,255,.94);--ink:#2f3f2f;--accent:#2f5e2f;--warn:#a0522d}
+  html,body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:var(--ink)}
+  #grid{display:grid;grid-template-columns:repeat(2,1fr);max-width:1400px;margin:0 auto;gap:8px;padding:8px;box-sizing:border-box}
+  .cell{position:relative;background:#1e1e1c;border-radius:10px;overflow:hidden;aspect-ratio:4/3}
+  .cell canvas{display:block;width:100%;height:100%}
+  .lab{position:absolute;left:8px;bottom:8px;right:8px;background:var(--card);padding:6px 10px;border-radius:8px;font-size:12.5px;line-height:1.5}
+  .lab b{font-size:14px;color:var(--accent)}
+  .lab i{font-style:normal;color:var(--warn);font-weight:700}
+    @media (max-width:520px){#grid{grid-template-columns:1fr;padding:8px 16px}}
+</style>
+<div id="grid"></div>
+<script type="importmap">{"imports":{"three":"../vendor/three/three.module.js"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { museumLayout, stairBox } from '../js/museum/layout.js';
+import { exhibitParts } from '../js/museum/exhibit-parts.js';
+import { buildExhibitMesh } from '../js/museum/exhibit-build.js';
+import { MUSEUM_FLOORS } from '../js/museum.js';
+import { DEX } from '../js/data/dex.js';
+
+const NEW_FORAGE = [['mugwort', 0x9cc98a], ['wildgrape', 0x6b4fa3], ['chestnut', 0x9b6236], ['pinecone', 0x8a6a4a]];
+const NEW_IDS = new Set(['petal', 'ember', 'amber', 'frost', ...NEW_FORAGE.map(f => f[0])]);
+const DEXN = { ...DEX, forage: [...DEX.forage, ...NEW_FORAGE.map(([id]) => ({ id }))] };
+const OLD = { ...DEX, bug: DEX.bug.filter(e => !NEW_IDS.has(e.id)) };
+const theme = id => MUSEUM_FLOORS.find(f => f.id === id).theme;
+const entries = (dex, cats) => cats.flatMap(c => (dex[c] || []).map(e => ({ cat: c, id: e.id })));
+
+const F2 = MUSEUM_FLOORS.find(f => f.id === 2).cats;
+const F4 = MUSEUM_FLOORS.find(f => f.id === 4).cats;
+const PANELS = [
+  { t: 'A. 2층을 회랑 배치로 (추천)', d: '25칸 · 가운데 낮은 탁자. 층 해금 조건 그대로', layout: 'gallery', floor: 2, items: entries(DEXN, F2) },
+  { t: 'B-1. 2층 (반디·채집물만)', d: '16칸 · 벽 유리장 그대로', layout: 'wall', floor: 2, items: entries(DEXN, ['forage', 'bug']) },
+  { t: 'B-2. 특별전 (+발굴·흔적·방문객)', d: '24칸 · <i>층별 진행도 숫자가 바뀜</i>', layout: 'gallery', floor: 4, items: entries(DEXN, [...F4, 'dig', 'track', 'visitor']) },
+  { t: 'C. 지금 2층 (새 8종 전시 안 함)', d: '17칸 · <i>계절 물고기만 전시되고 반디·채집물은 빠짐</i>', layout: 'wall', floor: 2, items: entries(OLD, F2) },
+];
+
+const mat = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.9, ...o });
+const M = { wood: mat(0xb5834f), stone: mat(0xcfc7b0), trim: mat(0xf2ece0),
+  glass: mat(0xbfe3ea, { roughness: 0.3, transparent: true, opacity: 0.28, side: THREE.DoubleSide }) };
+const box = (g, w, h, d, x, y, z, m, ry = 0) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.rotation.y = ry; o.castShadow = o.receiveShadow = true; g.add(o); return o; };
+
+function exhibit(it) {
+  const nf = NEW_FORAGE.find(f => f[0] === it.id);
+  if (nf) {
+    const g = new THREE.Group(), m = mat(nf[1]);
+    for (const [x, z, s] of [[0, 0, 1], [0.26, 0.12, 0.7], [-0.2, -0.18, 0.55]]) {
+      const o = new THREE.Mesh(new THREE.IcosahedronGeometry(0.14 * s, 0), m); o.position.set(x * 0.6, 0.14 * s, z * 0.6); g.add(o);
+    }
+    return g;
+  }
+  return buildExhibitMesh(THREE, exhibitParts(it.cat, it.id)) || new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 6), mat(0xaaaaaa));
+}
+function seat(o) { o.updateWorldMatrix(true, true); const b = new THREE.Box3().setFromObject(o); o.position.y -= b.min.y; return o; }
+function marker(g, s) {
+  const r = new THREE.Mesh(new THREE.RingGeometry(0.4, 0.5, 24), new THREE.MeshBasicMaterial({ color: 0xffd24a }));
+  r.rotation.x = -Math.PI / 2;
+  if (s.kind === 'open') r.position.set(s.x, 0.84, s.z);
+  else r.position.set(s.x + Math.round(Math.sin(s.ry)) * 0.85, 0.02, s.z + Math.round(Math.cos(s.ry)) * 0.85);
+  g.add(r);
+}
+
+function room(p) {
+  const lay = museumLayout(p.layout, p.items.length), { hw, hd } = lay.dims, th = theme(p.floor), g = new THREE.Group();
+  box(g, hw * 2, 0.1, hd * 2, 0, -0.05, 0, mat(th.floor));
+  const wm = mat(th.wall);
+  box(g, hw * 2, 3, 0.2, 0, 1.5, -hd, wm);
+  box(g, 0.2, 3, hd * 2, -hw, 1.5, 0, wm);
+  box(g, 0.2, 3, hd * 2, hw, 1.5, 0, wm);
+  for (const sx of [-1, 1]) { stairBox(sx, lay.dims); for (let i = 0; i < 5; i++) box(g, 0.5, 0.22 * (i + 1), 1.5, sx * (hw - 2.9 + i * 0.5), 0.11 * (i + 1), -hd + 1.0, M.stone); }
+  for (const t of lay.tables) { box(g, t.w, 0.75, t.d, t.x, 0.375, t.z, M.wood); box(g, t.w + 0.2, 0.08, t.d + 0.1, t.x, 0.79, t.z, M.stone); }
+  lay.slots.forEach((s, i) => {
+    const it = p.items[i], ex = seat(exhibit(it));
+    if (s.kind === 'open') {
+      box(g, 0.55, 0.03, 0.55, s.x, 0.815, s.z, M.stone, s.ry);
+      ex.scale.setScalar(1.3); ex.position.set(s.x, 0.83, s.z);
+    } else {
+      box(g, 0.95, 0.12, 0.7, s.x, 0.9, s.z, M.stone, s.ry);
+      box(g, 0.8, 0.85, 0.58, s.x, 0.46, s.z, M.wood, s.ry);
+      box(g, 0.86, 0.88, 0.54, s.x, 1.41, s.z, M.glass, s.ry);
+      box(g, 0.94, 0.07, 0.62, s.x, 1.88, s.z, M.trim, s.ry);
+      ex.scale.setScalar(1.15); ex.position.set(s.x, 0.97, s.z);
+    }
+    ex.rotation.y = s.ry + 0.35; g.add(ex);
+    if (NEW_IDS.has(it.id)) marker(g, s);
+  });
+  return { g, hw };
+}
+
+const grid = document.getElementById('grid');
+for (const p of PANELS) {
+  const cell = document.createElement('div'); cell.className = 'cell';
+  cell.innerHTML = `<div class="lab"><b>${p.t}</b><br>${p.d}</div>`;
+  const cv = document.createElement('canvas'); cell.prepend(cv); grid.append(cell);
+  const r = new THREE.WebGLRenderer({ canvas: cv, antialias: true, preserveDrawingBuffer: true });
+  r.shadowMap.enabled = true; r.outputColorSpace = THREE.SRGBColorSpace;
+  const scene = new THREE.Scene(); scene.background = new THREE.Color(0x1e1e1c);
+  const { g, hw } = room(p); scene.add(g);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x9a8a70, 1.4));
+  const sun = new THREE.DirectionalLight(theme(p.floor).light, 1.6); sun.position.set(4, 12, 6); sun.castShadow = true;
+  Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12 }); sun.shadow.mapSize.set(1024, 1024); scene.add(sun);
+  const cam = new THREE.PerspectiveCamera(40, 4 / 3, 0.1, 100);
+  const dist = hw * 2.15 + 4, ang = 47 * Math.PI / 180;
+  cam.position.set(0, Math.sin(ang) * dist, Math.cos(ang) * dist + 1.2); cam.lookAt(0, 0, 0.9);
+  const draw = () => { const w = cv.clientWidth, h = cv.clientHeight; r.setPixelRatio(devicePixelRatio); r.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); r.render(scene, cam); };
+  new ResizeObserver(draw).observe(cv); draw();
+}
+</script>

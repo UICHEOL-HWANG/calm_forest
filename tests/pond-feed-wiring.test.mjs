@@ -105,7 +105,7 @@ test('안내 중 무관한 HUD·NPC 말풍선 숨김 배선', () => {
   assert.match(g, /deps\.setHudHidden\(hidden\)/);
   const n = src('js/spaces/npc.js');
   assert.match(n, /export function setNpcGlyphsHidden\(on\)/);
-  assert.match(n, /o\.sprite\.visible = !glyphsHidden;/);
+  assert.match(n, /o\.sprite\.visible = !glyphsHidden && o\.def\.id !== quietNpc;/);
   assert.match(src('js/game.js'), /setHudHidden: setNpcGlyphsHidden,/);
 });
 

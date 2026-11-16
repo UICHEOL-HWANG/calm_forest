@@ -1,4 +1,5 @@
 import { planAround, nextPoint, pathLength, guideStatus, blocked } from './route.js';
+import { createFootRing, footAngle, footHintCss } from '../guide/foot-ring.js';
 
 export const GUIDE_TUNING = Object.freeze({ pad: 0.9, gap: 1.6, reach: 1.4, replan: 0.75, near: 15, edge: { side: 44, top: 104, bottom: 132 } });
 
@@ -25,12 +26,8 @@ export function nearBlockers(all, from, to, near) {
     : b.x2 > minX && b.x1 < maxX && b.z2 > minZ && b.z1 < maxZ));
 }
 
-const CSS = `#auction-guide-compass{position:fixed;z-index:25;width:clamp(80px,10vw,120px);aspect-ratio:1;display:none;pointer-events:none;transform:translate(-50%,-50%)}
-#auction-guide-compass .ag-pointer{position:absolute;left:50%;top:50%;width:100%;height:100%;transform:translate(-50%,-50%) rotate(var(--ag-angle,0rad)) translateY(-45%);animation:ag-pulse 1.5s ease-in-out infinite}
-#auction-guide-compass .ag-pointer::before{content:'';position:absolute;left:43%;top:1%;width:14%;height:31%;background:#88d7a0;border-radius:6px;box-shadow:0 0 9px #d5ffdc}
-#auction-guide-compass .ag-pointer::after{content:'';position:absolute;left:31%;top:-6%;width:38%;height:28%;background:#a0e9ac;clip-path:polygon(50% 0,100% 100%,50% 78%,0 100%);filter:drop-shadow(0 0 5px #fff)}
-#auction-guide-compass .ag-hint{position:absolute;top:110%;left:50%;transform:translateX(-50%);white-space:nowrap;padding:7px 12px;border-radius:14px;background:rgba(255,255,245,.94);color:#365b40;font-size:13px;font-weight:700;box-shadow:0 3px 12px #315b3428}
-@keyframes ag-pulse{50%{transform:translate(-50%,-50%) rotate(var(--ag-angle,0rad)) translateY(-45%) scale(1.08)}}
+const CSS = `#auction-guide-compass{position:fixed;z-index:25;width:0;height:0;display:none;pointer-events:none}
+${footHintCss('#auction-guide-compass .ag-hint')}
 #auction-guide-mark{position:fixed;z-index:26;display:none;pointer-events:none;transform:translate(-50%,-100%);flex-direction:column;align-items:center;gap:2px}
 #auction-guide-mark.show{display:flex}
 #auction-guide-mark .ag-tri{width:30px;height:24px;background:#f2c14e;clip-path:polygon(0 0,100% 0,50% 100%);filter:drop-shadow(0 2px 3px rgba(80,50,0,.45));animation:ag-bob 1.1s ease-in-out infinite}
@@ -40,11 +37,11 @@ const CSS = `#auction-guide-compass{position:fixed;z-index:25;width:clamp(80px,1
 #auction-guide-edge.show{display:flex}
 #auction-guide-edge .ag-disc{width:46px;height:46px;border-radius:50%;background:rgba(255,250,235,.95);box-shadow:0 3px 10px rgba(80,50,0,.3);display:grid;place-items:center}
 #auction-guide-edge .ag-head{width:24px;height:26px;background:#f2c14e;clip-path:polygon(50% 0,100% 100%,50% 76%,0 100%);transform:rotate(var(--ag-angle,0rad))}
-@media(prefers-reduced-motion:reduce){#auction-guide-compass .ag-pointer,#auction-guide-mark .ag-tri{animation:none}}`;
+@media(prefers-reduced-motion:reduce){#auction-guide-mark .ag-tri{animation:none}}`;
 
 export function createAuctionGuide(deps) {
   const P = `${deps.name || 'auction'}-guide`;
-  let active = false, route = [], point = null, replanAt = 0, compass = null, mark = null, edge = null, ring = null, clock = 0, markDist = null, edgeDist = null, shownLabel = '';
+  let active = false, route = [], point = null, replanAt = 0, compass = null, foot = null, mark = null, edge = null, ring = null, clock = 0, markDist = null, edgeDist = null, shownLabel = '';
   const v = { right: new deps.THREE.Vector3(), up: new deps.THREE.Vector3(), d: new deps.THREE.Vector3() };
   const spotAt = { x: deps.spot.x, y: 0, z: deps.spot.z };
 
@@ -56,7 +53,7 @@ export function createAuctionGuide(deps) {
     document.head.appendChild(style);
     compass = document.createElement('div');
     compass.id = `${P}-compass`;
-    compass.innerHTML = '<div class="ag-pointer"></div><div class="ag-hint"></div>';
+    compass.innerHTML = '<div class="ag-hint"></div>';
     compass.querySelector('.ag-hint').textContent = deps.t(deps.follow);
     mark = document.createElement('div');
     mark.id = `${P}-mark`;
@@ -76,6 +73,7 @@ export function createAuctionGuide(deps) {
     ring.position.set(deps.spot.x, 0.07, deps.spot.z);
     ring.visible = false;
     deps.scene.add(ring);
+    foot = createFootRing(THREE, deps.scene);
   }
 
   function hide() {
@@ -84,6 +82,7 @@ export function createAuctionGuide(deps) {
     mark.classList.remove('show');
     edge.classList.remove('show');
     ring.visible = false;
+    foot.hide();
   }
 
   function pos() { return { x: deps.player.position.x, z: deps.player.position.z }; }
@@ -168,15 +167,15 @@ export function createAuctionGuide(deps) {
       else replanAt = clock + GUIDE_TUNING.replan;
     }
     point = route[0];
-    if (!deps.visible() || document.hidden) { hide(); return; }
+    if (!deps.visible() || document.hidden || !deps.player.visible) { hide(); return; }
     const feet = deps.project(deps.player.position, 0);
     if (!feet) { hide(); return; }
     const at = deps.project(spotAt, 1.4);
     const w = window.innerWidth, h = window.innerHeight;
     compass.style.left = feet.x + 'px';
     compass.style.top = (feet.y - 22) + 'px';
-    compass.style.setProperty('--ag-angle', angleTo(point) + 'rad');
     compass.style.display = 'block';
+    foot.show(deps.player.position.x, deps.player.position.y, deps.player.position.z, footAngle(deps.player.position, point));
     ring.visible = true;
     ring.material.opacity = 0.6 + 0.3 * Math.sin(clock * 4);
     drawTarget(pathLength(here, route), at, w, h);
