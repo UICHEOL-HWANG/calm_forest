@@ -26,6 +26,13 @@ export const WEEKLY_COPY = Object.freeze({
     loginBtn: '🔐 로그인 후 구매 가능',
     closed: '금요일부터 일요일까지 주말 장터가 열려요',
   }),
+  where: Object.freeze({
+    outdoor: '🔨 작업대 🌷 야외에 있어요',
+    indoor: '🏠 집 안 🎨 꾸미기에 있어요',
+    indoorNoHouse: '🏠 집을 지으면 🎨 꾸미기에서 꺼낼 수 있어요',
+    go: '길 안내',
+    houseReady: '장터에서 산 물건이 🎨 꾸미기에서 기다려요',
+  }),
   quests: Object.freeze({
     w_harvest: '밭 25칸 수확하기',
     w_water: '물 40번 주기',

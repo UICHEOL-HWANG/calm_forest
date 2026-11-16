@@ -19,6 +19,8 @@ export function placeGuideReady({ eligible, done, tries, idleSec }) {
 export const ARROW_LABEL = Object.freeze({
   'weekly-board': '주간 의뢰판으로 가요',
   'weekly-market': '주말 장터로 가요',
+  'weekly-bench': '작업대로 가요',
+  'weekly-house': '집으로 가요',
   concert: '음악회 무대로 가요',
   auction: '저녁 경매로 가요',
   house: '집 터로 가요',

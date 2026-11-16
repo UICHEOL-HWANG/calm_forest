@@ -181,3 +181,24 @@ test('closing the dialog removes the Escape listener it added', () => {
   assert.equal(listeners.remove.at(-1)[1], handler);
   assert.ok(!rootEl().classList.contains('show'));
 });
+
+test('owned item shows where it waits and the guide button closes the market and asks for the way', () => {
+  let asked = null;
+  const theme = MARKET_THEMES[0];
+  showMarket({ state: () => base, theme, open: true, isGuest: false, ownsDecor: (id) => id === theme.hero.id, whereOf: () => ({ key: 'outdoor', guide: 'bench' }), onGuide: (g) => { asked = g; }, onBuy: () => ({ ok: true }) });
+  const root = rootEl();
+  assert.ok(textOf(root).includes(WEEKLY_COPY.where.outdoor));
+  const btn = root.querySelector('.wk-where').children.find(c => c.tag === 'button');
+  assert.equal(btn.textContent, WEEKLY_COPY.where.go);
+  btn.onclick();
+  assert.equal(asked, 'bench');
+  assert.ok(!rootEl().classList.contains('show'));
+});
+
+test('houseless indoor line has no guide button', () => {
+  const theme = MARKET_THEMES[0];
+  showMarket({ state: () => base, theme, open: true, isGuest: false, ownsDecor: (id) => id === theme.props[0].id, whereOf: () => ({ key: 'indoorNoHouse', guide: null }), onGuide: () => {}, onBuy: () => ({ ok: true }) });
+  assert.ok(textOf(rootEl()).includes(WEEKLY_COPY.where.indoorNoHouse));
+  assert.equal(rootEl().querySelector('.wk-where').children.find(c => c.tag === 'button'), undefined);
+  closeWeekly();
+});
