@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { REWARD_CAP, NOTICE_MAX, EMOJI_IDS, houseSolidR } from '../js/neighbors/rules.js';
 import { YARD_R, DECOR_MAX, ROOM_MAX, ROOM_MAX_XY } from '../js/neighbors/sanitize.js';
+import { MAX_POND_STAGE } from '../js/pond/stage.js';
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 const SQL = read('sql/migrations/migrate_neighbors.sql');
@@ -59,7 +60,11 @@ test('🐟 연못 — _nb_pond·neighbor_showcase 가 최종본과 같고 id 목
   const pond = (s) => s.match(/create or replace function public\._nb_pond[\s\S]*?\n\$\$;/)[0];
   const show = (s) => s.match(/create or replace function public\.neighbor_showcase[\s\S]*?\nend \$\$;/)[0];
   const POND_SQL = read('sql/migrations/migrate_neighbor_pond.sql');
-  assert.equal(pond(POND_SQL), pond(SQL));
+  const STAGE_SQL = read('sql/migrations/migrate_neighbor_pond_stage.sql');
+  assert.equal(pond(STAGE_SQL), pond(SQL));
+  assert.equal(pond(POND_SQL), pond(SQL).replace(/,\n    'stage', [^\n]*(?=\);\n)/, ''));
+  assert.ok(pond(SQL).includes(`'stage', case when p_state #>> '{hintsSeen,pondStage}' ~ '^[0-9]{1,9}$' then least(${MAX_POND_STAGE}, greatest(1, (p_state #>> '{hintsSeen,pondStage}')::int)) else 1 end);`));
+  assert.doesNotMatch(STAGE_SQL, /neighbor_showcase/);
   assert.equal(show(POND_SQL), show(SQL));
   assert.match(show(SQL), /'coop',[^\n]*,\n\s+'pond',\s+_nb_pond\(s\)\n/);
   const river = ['sakura_trout', 'puffer', 'maple_carp', 'ice_smelt', 'rare', 'uncommon', 'common'];
@@ -71,6 +76,6 @@ test('🐟 연못 — _nb_pond·neighbor_showcase 가 최종본과 같고 id 목
   assert.ok(pond(SQL).includes(`k.key ${inList(sea)}`));
   assert.ok(pond(SQL).includes(`array_position(${list(sea)}, k.key)`));
   const rev = 'revoke all on function public._nb_pond(jsonb) from public, anon, authenticated;';
-  assert.ok(SQL.includes(rev) && POND_SQL.includes(rev));
+  assert.ok(SQL.includes(rev) && POND_SQL.includes(rev) && STAGE_SQL.includes(rev));
   assert.ok(pond(SQL).includes('set search_path = public'));
 });

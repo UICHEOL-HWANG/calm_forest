@@ -12,6 +12,7 @@ import { petKindOf, stageOf } from '../pet/rules.js';
 import { normalizeHouseStyle } from '../house-stage7.js';
 import { normalizeFloor } from '../house-floors.js';
 import { POND_MAX_RIVER } from '../pond/rules.js';
+import { MAX_POND_STAGE } from '../pond/stage.js';
 
 export const YARD_R = 14;
 export const DECOR_MAX = 40;
@@ -67,7 +68,9 @@ export function sanitizeShowcase(raw, ctx) {
   const pondFish = [...new Set((Array.isArray(rp.fish) ? rp.fish : []).filter(id => typeof id === 'string' && riverIds.includes(id)))].slice(0, POND_MAX_RIVER);
   const sw = rp.sea && typeof rp.sea === 'object' ? rp.sea : null;
   const pondSea = sw && (ctx.seaIds || []).includes(sw.sp) && num(sw.w) != null && sw.w > 0 ? { sp: sw.sp, w: sw.w } : null;
-  const pond = { fish: pondFish, sea: pondSea, has: pondFish.length > 0 || !!pondSea };
+  const ps = num(rp.stage);
+  const pond = { fish: pondFish, sea: pondSea, has: pondFish.length > 0 || !!pondSea,
+                 stage: ps != null && Number.isInteger(ps) && ps >= 1 && ps <= MAX_POND_STAGE ? ps : 1 };
 
   return {
     nickname: nick ? [...nick].slice(0, 16).join('') : NICK_FALLBACK,   // 코드 포인트 기준 — 이모지를 반으로 자르지 않게

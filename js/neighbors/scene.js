@@ -14,15 +14,15 @@ import { prepHouseMeshes, unregisterWindows } from '../spaces/house.js';
 import { spawnPet } from '../pet/render.js';
 import { DOOR_COLORS, NEIGHBOR, NEIGHBOR_R, ROOF_COLORS, SEA_SPECIES, WALL_COLORS } from '../data/places.js';
 import { stage7Boxes } from '../house-stage7.js';
-import { hostSpot, houseSolidR } from './rules.js';
+import { hostSpot, houseSolidR, neighborPond, pondCovers } from './rules.js';
 import { buildPond } from '../pond/build.js';
-import { pickPondSpot } from '../pond/rules.js';
-import { POND_SPOTS, POND_R } from '../data/pond.js';
+import { pondFishLimits } from '../pond/stage.js';
 import { emojiSprite } from '../spaces/kitchen-stage.js';
 import { hostStand } from './indoor-rules.js';
 
 export const GROUND_R = NEIGHBOR_R + 18;   // 34 — 언덕 끝 허공이 안 보이게(과수원 ORCHARD_HALF+16 과 같은 교훈). shadow-scope: 700−34−18 = 648m
 const TREE_SPOTS = [[-15, -8], [-17, 3], [-13, 11], [15, -8], [17, 3], [13, 11], [-7, -16], [7, -16]];
+const CANOPY_R = 1.1;
 const PAL = { roof: ROOF_COLORS, wall: WALL_COLORS, door: DOOR_COLORS };
 
 /** 🎨 game.js applyHouseStyle 와 같은 규칙 — 0번 = 그 모델 기본색(prepHouseMeshes 가 baseColor 로 기억), 1~4 = 공용 팔레트.
@@ -68,7 +68,7 @@ function disposeGeos(root) {
 }
 
 // 고정 세트 — 바닥 · 울타리(남쪽 출구만 비움) · 나무 8그루
-function fixedSet() {
+function fixedSet(pond) {
   const g = new THREE.Group();
   const ground = new THREE.Mesh(new THREE.CircleGeometry(GROUND_R, 48).rotateX(-Math.PI / 2),
     new THREE.MeshStandardMaterial({ color: 0xa9d68f, roughness: 1 }));
@@ -79,15 +79,17 @@ function fixedSet() {
   for (let i = 0; i < 48; i++) {
     const a = (i / 48) * Math.PI * 2;
     if (Math.abs(a - Math.PI / 2) < 0.22) continue;   // +z(남쪽, 카메라 쪽) = 나가는 길
+    if (pondCovers(pond, Math.cos(a) * R, Math.sin(a) * R)) continue;
     const post = new THREE.Mesh(postGeo, wood);
     post.position.set(NEIGHBOR.x + Math.cos(a) * R, 0.35, NEIGHBOR.z + Math.sin(a) * R); g.add(post);
   }
   const trunk = new THREE.MeshStandardMaterial({ color: 0x8a6440, roughness: 0.95, flatShading: true });
   const leaf = new THREE.MeshStandardMaterial({ color: 0x6fb46a, roughness: 0.9, flatShading: true });
   for (const [x, z] of TREE_SPOTS) {
+    if (pondCovers(pond, x, z, CANOPY_R)) continue;
     const t = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.24, 1.2, 6), trunk);
     t.position.set(NEIGHBOR.x + x, 0.6, NEIGHBOR.z + z); t.castShadow = true; g.add(t);
-    const c = new THREE.Mesh(new THREE.ConeGeometry(1.1, 2.4, 7), leaf);
+    const c = new THREE.Mesh(new THREE.ConeGeometry(CANOPY_R, 2.4, 7), leaf);
     c.position.set(NEIGHBOR.x + x, 2.2, NEIGHBOR.z + z); c.castShadow = true; g.add(c);
   }
   return g;
@@ -121,7 +123,8 @@ export function buildNeighborScene(view) {
   };
 
   try {
-    group.add(fixedSet());
+    const ps = neighborPond(view.pond, view.outdoor);
+    group.add(fixedSet(ps));
 
     const house = view.houseStage >= 3 ? buildHouseModel(THREE, view.houseStage, view.style || undefined) : earlyHouse(view.houseStage);
     if (view.houseStage >= 3) house.add(mountHouseAddons(THREE, view.houseStage, view.addons, view.style || undefined));
@@ -135,16 +138,13 @@ export function buildNeighborScene(view) {
       group.add(m);
     }
 
-    if (view.pond?.has) {
-      const ps = pickPondSpot(POND_SPOTS, view.outdoor, POND_R);
-      if (ps) {
-        const p = buildPond({ fishMesh, mergeGeos, paintGeo, emojiSprite });
-        p.group.position.set(NEIGHBOR.x + ps.dx, 0, NEIGHBOR.z + ps.dz);
-        p.setContents(view.pond, (sp) => SEA_SPECIES.find(s => s.id === sp)?.color ?? 0x6f8fa8);
-        group.add(p.group);
-        pondUpdate = (dt) => p.update(dt);
-        pondDispose = () => p.dispose();
-      }
+    if (ps) {
+      const p = buildPond({ fishMesh, mergeGeos, paintGeo, emojiSprite, r: ps.r, stage: ps.stage });
+      p.group.position.set(NEIGHBOR.x + ps.dx, 0, NEIGHBOR.z + ps.dz);
+      p.setContents(view.pond, (sp) => SEA_SPECIES.find(s => s.id === sp)?.color ?? 0x6f8fa8, pondFishLimits(ps.stage));
+      group.add(p.group);
+      pondUpdate = (dt) => p.update(dt);
+      pondDispose = () => p.dispose();
     }
 
     //  전역 등록(창문 점등·충돌체)은 장식까지 다 지은 뒤에 — 그래도 아래서 터지면 catch 가 dispose 로 되돌린다

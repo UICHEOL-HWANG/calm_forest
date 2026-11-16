@@ -145,7 +145,8 @@ returns jsonb language sql immutable set search_path = public as $$
   )
   select jsonb_build_object(
     'fish', coalesce((select jsonb_agg(id order by t, array_position(array['sakura_trout','puffer','maple_carp','ice_smelt','rare','uncommon','common'], id)) from fish), '[]'::jsonb),
-    'sea', (select jsonb_build_object('sp', sp, 'w', w) from sea));
+    'sea', (select jsonb_build_object('sp', sp, 'w', w) from sea),
+    'stage', case when p_state #>> '{hintsSeen,pondStage}' ~ '^[0-9]{1,9}$' then least(3, greatest(1, (p_state #>> '{hintsSeen,pondStage}')::int)) else 1 end);
 $$;
 
 -- 후보 = 공개(행 없으면 공개) + 관리자 숨김 아님 + 비익명 + 7일 안에 저장 + 집 1단계 이상 + 본인 제외. 하루 고정 정렬(리롤 불가)
