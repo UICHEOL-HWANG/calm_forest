@@ -487,3 +487,4 @@ affinity_letter_open,social,npc_affinity,2,N,not_fired,0,0,,,npc|stage,js/affini
 affinity_reward_claim,economy,npc_affinity,2,N,not_fired,0,0,,,npc|stage,js/affinity/index.js:135,"편지에 동봉된 꾸러미·보상을 받았을 때",
 npc_book_open,ui,npc_affinity,2,N,not_fired,0,0,,,from|npc,js/affinity/index.js:188,"주민 수첩을 열었을 때 (from=chip/menu)",
 affinity_intro_open,onboarding,npc_affinity,2,N,not_fired,0,0,,,npc|from,js/affinity/index.js:269,"호감도 소개 카드가 열렸을 때 (from=npc/tracker)",
+boot_timing,system,boot,3,N,not_fired,0,0,,,first_run|reached|total_ms|world_ms|steps,index.html:6446,"앱·웹 첫 화면까지 걸린 시간(실행 1번에 1회). first_run=1 이 기기 첫 실행(로그인 기록도 없음)·0 아님·-1 저장소 못 읽음. steps=단계 기호+0.1초 단위 누적(b 부팅 스크립트·m 게임 모듈·r 렌더러·w 마을·h 집·n 주민·x 후처리·W 로딩 화면 걷힘·L 로그인 화면·e 플레이 진입·v 세이브 받음·P 플레이 시작·s 셰이더), reached=play, 또는 플레이 전에 백그라운드로 나가면 bg_<마지막 단계>(실행당 1번 더)",

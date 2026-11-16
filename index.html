@@ -4239,6 +4239,10 @@
     import { RIVER_LEN } from './js/boat/consts.js';
     import { questPanelView } from './js/quest-panel-view.js';
     import { trackLogin, trackEvent, setGaUser, onTrack, setInstallUserProps, setSurveyUserProps } from './js/analytics.js';
+    import { bootTiming } from './js/boot-timing.js';
+    bootTiming.use(trackEvent);
+    bootTiming.mark('b');
+    document.addEventListener('visibilitychange', () => { if (document.hidden) bootTiming.send(null); });
     import { bootMetaPixel, metaFromTrack, metaSignup } from './js/meta-pixel.js';   // 📣 Meta Pixel(웹 전용) — 광고 → 가입 → 결제 여정
     import { bootInstallReferrer, syncInstallAttribution, cachedInstallAttribution } from './js/install-referrer-boot.js';   // 📲 안드로이드 설치 채널(Play Install Referrer)
     import { bootInstallSurvey, syncInstallSurvey } from './js/install-survey-ui.js';   // 🧭 첫 실행 "어디서 알게 되셨어요?"(iOS 전원·안드로이드 링크 없이 온 사람)
@@ -6328,6 +6332,7 @@
     });
     function showLoginScreen(offline, why = offline ? 'offline' : 'no_session') {
       $('login-screen').classList.add('show');
+      bootTiming.mark('L');
       $('loading').style.display = 'none';
       $('login-note').textContent = offline
         ? '⚠️ Supabase 키 미설정 — 지금은 게스트(오프라인)만 가능. config.js에 anon key를 넣으면 구글 로그인이 동작합니다.'
@@ -6378,6 +6383,7 @@
     function ensureWorld() {
       if (!worldP) {
         worldP = loadGameModules().then(() => {
+          bootTiming.mark('m');
           setIcon($('season-emoji'), Input.seasonIco());
           initCafeGuests();
           initNightVisit();
@@ -6385,6 +6391,7 @@
           gameUi = installGameUi({ $, ui, layoutBuffs, TOUCH, spot, refreshActionIcon, escapeHtml, isGuestNow, lastInv: () => lastInv, shell: () => shell, setPlacingDecorItem: (d) => { placingDecorItem = d; } });
           return bootWorld(ui);
         }).then(() => {
+          bootTiming.mark('W');
           $('loading').style.display = 'none';
           revealWorld();
         });
@@ -6394,6 +6401,7 @@
     }
     async function enterPlay(via) {                  // 로그인 완료 → 실제 플레이 (via: login 이벤트 수단을 직접 줄 때만 — 🧪 E2 'guest_deferred')
       if (started) return; started = true;
+      bootTiming.mark('e');
       try { await ensureWorld(); } catch { return; }
       $('login-screen').classList.remove('show');
       loginDwell.stop();
@@ -6434,6 +6442,8 @@
 
       showLoginStatus(authState);
       await enterGame();                             // 저장 로드 + 조작/로깅 on
+      bootTiming.mark('P');
+      bootTiming.send('play');
       hintBSession = Date.now();
       if (IS_NATIVE) { initTenjinOnce(!Input.needsTutorial()); void trackTenjinGameStart(); }
       maybeHudTour();
