@@ -151,6 +151,20 @@ test('season lines are covered by the English dictionary in every season', async
   }
 });
 
+test('계절 마지막 하루는 영어로 1 day 단수', async () => {
+  const { t, setLang } = await import('../js/i18n.js');
+  setLang('en');
+  const lim = seasonLimited('spring', TABLES);
+  const s = { season: seasonById('spring'), left: 1 };
+  const notice = t(seasonNotice(s, lim, false));
+  const hud = t(seasonStatusLine(s, lim));
+  for (const line of [notice, hud]) {
+    assert.match(line, /\b1 day\b/, line);
+    assert.doesNotMatch(line, /1 days/, line);
+  }
+  assert.match(t(seasonStatusLine({ ...s, left: 3 }, lim)), /3 days left/);
+});
+
 // ── 🎨 풍경 · 🌸🍂 흩날림 ─────────────────────────────────────
 import { SEASON_PALETTE, SEASON_DRIFT, applySeasonPalette } from '../js/season.js';
 import { createSeasonDrift, DRIFT_BOX, DRIFT_TOP } from '../js/season-fx.js';

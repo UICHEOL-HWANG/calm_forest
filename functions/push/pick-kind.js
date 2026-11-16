@@ -79,7 +79,7 @@ export function messageFor(pick, lang = 'ko', seasonCtx) {
   const en = lang === 'en';
   if (pick.kind === 'season' && seasonCtx) {
     const s = SEASON_EN[seasonCtx.id] || 'this season';
-    return en ? { title: `${seasonCtx.ico} ${seasonCtx.left} days of ${s} left`, body: `Some ${s}-only fish, fireflies or forage are still missing from your guide` }
+    return en ? { title: `${seasonCtx.ico} ${seasonCtx.left} day${seasonCtx.left === 1 ? '' : 's'} of ${s} left`, body: `Some ${s}-only fish, fireflies or forage are still missing from your guide` }
               : { title: `${seasonCtx.ico} ${seasonCtx.name}이 ${seasonCtx.left}일 남았어요`, body: `${seasonCtx.name}에만 나오는 물고기·반디·채집물, 도감에 아직 빈칸이 있어요` };
   }
   if (pick.kind === 'night') {

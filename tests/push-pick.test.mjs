@@ -154,3 +154,9 @@ test('seasonCtx: built from the KST date, matches the client season tables', () 
   }
   assert.deepEqual(Object.keys(SEASON_LIMITED_IDS).sort(), ['autumn', 'spring', 'summer', 'winter']);
 });
+
+test('season push in English says 1 day, not 1 days', () => {
+  const ctx = { id: 'spring', name: '봄', ico: '🌸', left: 1, limited: [] };
+  assert.equal(messageFor({ kind: 'season' }, 'en', ctx).title, '🌸 1 day of spring left');
+  assert.equal(messageFor({ kind: 'season' }, 'en', { ...ctx, left: 3 }).title, '🌸 3 days of spring left');
+});
