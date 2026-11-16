@@ -38,6 +38,7 @@ import { easeFor, nextDda, ddaOutcome, defaultDifficulty, mergeDifficulty, PROBE
 import { spotToolStep, spotWant, spotKeep, SPOT_REASON, IDLE as SPOT_IDLE } from './spot-tool-auto.js';
 import { treeFallPose, TREE_FALL_IMPACT, TREE_FALL_PIVOT } from './tree-fall.js';   // 🌳 벌목 쓰러짐(기우뚱 쿵 바운스)
 import { trackChop, trackEvent, onTrack } from './analytics.js';          // [GA4] 이벤트
+import { bootTiming } from './boot-timing.js';
 import { PLATFORM, IS_TOSS, loadTossSDK } from './platform.js';
 import { createPerfSampler, perfContext, countLitPoints } from './perf-sample.js';   // 📱 플레이 앱 기기별 FPS(세션당 1회 perf_sample)
 import { createQualityGovernor, QUALITY_STEPS } from './adaptive-quality.js';
@@ -2659,11 +2660,16 @@ export async function bootWorld(uiCallbacks) {
   initRenderer();
   initScene();
   initLights();
+  bootTiming.mark('r');
   buildWorld();
+  bootTiming.mark('w');
   buildHouseGhost();
   buildInterior();          // 집 실내 방(꾸미기 공간)
+  bootTiming.mark('h');
   buildNPCs();              // 마을 주민들
+  bootTiming.mark('n');
   initPostProcessing();
+  bootTiming.mark('x');
   initMapSnapshot({ renderer, scene, mobile: IS_MOBILE, sunLight, hemiLight, onShot: (c) => ui.setMapSnapshot?.(c),
     transients: () => [player, pet3d, rainLines, seasonDrift?.mesh, fireflies, stars, ...chickens, ...npcObjs.map(o => o.group)],
     signature: () => mapSignature({ season: SEASON, houseStage: gameState.houseStage, unlocks: unlockOpen, outdoor: gameState.outdoor }),
@@ -2675,7 +2681,7 @@ export async function bootWorld(uiCallbacks) {
   player.visible = false;   // 로그인 중엔 캐릭터 숨김(카메라 자동 오빗)
   mode = 'attract';
   animate();
-  setTimeout(() => warmShaders(renderer, scene, camera), 0);
+  setTimeout(() => warmShaders(renderer, scene, camera).then(() => bootTiming.mark('s')), 0);
 }
 
 // ② 로그인 완료 후 실제 플레이 시작 (저장 로드 + 로깅 + 조작 on)
@@ -2684,6 +2690,7 @@ export async function enterGame() {
   //   읽기에 실패했는데 그냥 들여보내면 새 마을이 만들어지고, 30초 뒤 자동저장이
   //   서버의 멀쩡한 마을을 덮어쓴다(2026-09-14·09-11 사고 2건). 판정은 js/save-guard.js.
   let load = await loadGame();
+  bootTiming.mark('v');
   if (!load.canPlay) ui.setLoadWait?.(true);     // 🌙 "잠시만요, 마을을 찾는 중이에요" — 루프 밖에서 한 번만
   for (let tries = 0; !load.canPlay; tries++) {
     // [GA4] 갇힌 사람을 셀 분모. recovered 만 쏘면 영영 못 들어온 사람이 통계에서 사라진다.
