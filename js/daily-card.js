@@ -1,4 +1,5 @@
 import { SEVERE_INFO } from './data/world.js';
+import { seasonNotice } from './season.js';
 
 const TODAY = {
   clear: ['☀️ 맑음', '농사하기 좋은 날'],
@@ -14,16 +15,8 @@ const TOMORROW = {
 };
 const LABELS = ['STREAK', '오늘 보상', '오늘', '내일', 'NEW', '좋아요 🌱'];
 
-function josa(word, withJong, noJong) {
-  const c = word.charCodeAt(word.length - 1) - 0xac00;
-  return c >= 0 && c <= 11171 && c % 28 ? withJong : noJong;
-}
-
-function seasonLine({ season, seasonLeft, fish, fishOwned, seasonNew }) {
-  if (!fish || !season) return null;
-  if (seasonNew) return `${season.ico} ${season.name}${josa(season.name, '이', '가')} 왔어요 · ${seasonLeft}일 동안 ${fish.ico} ${fish.name}${josa(fish.name, '이', '가')} 낚여요`;
-  if (seasonLeft <= 3 && !fishOwned) return `⏳ ${season.name} ${seasonLeft}일 남음 · ${fish.ico} ${fish.name}${josa(fish.name, '은', '는')} 지금만 낚여요`;
-  return null;
+function seasonLine({ season, seasonLeft, limited, seasonNew }) {
+  return (season && seasonNotice({ season, left: seasonLeft }, limited, seasonNew)) || null;
 }
 
 export function dailyCardView(input) {

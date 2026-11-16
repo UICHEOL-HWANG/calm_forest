@@ -6,7 +6,8 @@
 import { gameState, player, dist2D, ui, scene, solidCircle, removeSolid, obstacles, giveReward, refreshInventoryUI, requestSave, awardBadge, mode } from '../game.js';
 import { trackEvent } from '../analytics.js';
 import { state as authState } from '../supabase-client.js';   // 🔐 게스트(익명)는 기부 불가 — plaza_mine 호출 자체를 건너뛴다
-import { PLAZA, PLAZA_R, PLAZA_BOX, PLAZA_STALL_POS, PLAZA_SEASON, PLAZA_VIEW_R, PLAZA_OPENS_KST } from '../data/plaza.js';
+import { PLAZA, PLAZA_R, PLAZA_BOX, PLAZA_STALL_POS, PLAZA_VIEW_R } from '../data/plaza.js';
+import { pickSeason, SEASON_OVERRIDE } from './seasons.js';
 import { plazaPropSolids, plazaPathSolids } from './solids.js';
 import { plazaBlocks, siteOpen, seasonPhase, visualStage, tierOf, currentItems, stageSeenPlan, gateOpens, economyAllowed, nearPollDue, normalizeMineReason } from './rules.js';
 import { progress, donate, mine as fetchMine } from './net.js';
@@ -17,9 +18,11 @@ import { buyPlan, claimPlan, convertPlan } from './rewards.js';
 import { buildPlaza } from './build.js';
 import { buildPath } from './path.js';
 import { updateInvite } from './invite.js';
+import { initWinter, updateWinter, refreshWinter, winterSpot, winterSpotNow, openWinter, winterPhase, addStored } from './winter.js';
 
 export { plazaDefault, restorePlaza } from './rules.js';
 export { plazaDecorMesh } from './decor.js';
+export { fountainSpotNow } from './winter.js';
 
 const DEBUG_STAGE = (() => {                       // ?plaza=0|1|2|3|4 — 검수용 단계 고정(DEV_PARAMS: 기록 안 됨)
   const v = new URLSearchParams(location.search).get('plaza');
@@ -29,7 +32,9 @@ const BOX_R = 2.0;
 const STALL_R = 2.0;
 // 시즌 id — localhost 에서만 ?plazaSeason= 으로 바꿀 수 있다(Task 8 의 dev-plaza 시즌 검증용). 모든 서버 호출·트래킹은 SEASON 을 쓴다
 const IS_LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-export const SEASON = (IS_LOCAL && new URLSearchParams(location.search).get('plazaSeason')) || PLAZA_SEASON;
+const DEF = pickSeason(Date.now(), SEASON_OVERRIDE);
+export const SEASON = DEF.id;
+const WINTER = DEF.kind === 'winter';
 
 let spotNow = null;
 let shownStage = -1;
@@ -39,7 +44,7 @@ let saveRestored = false;   // ⚠️ initPlaza() 가 applySave() 보다 먼저 
 
 const viewedStages = new Set();          // 세션·단계당 1회
 let lastPathAt = -1e9;                    // 돌길 위를 마지막으로 밟은 시각
-const OPENS_MS = Date.parse(`${PLAZA_OPENS_KST}T00:00:00+09:00`);
+const OPENS_MS = Date.parse(`${DEF.opensKst}T00:00:00+09:00`);
 
 function trackView() {
   if (shownStage <= 0 || viewedStages.has(shownStage)) return;
@@ -82,6 +87,7 @@ export function plazaScatterBlocks(x, z, pad = 2) {
 }
 
 export function phaseNow() {
+  if (WINTER) return winterPhase();
   if (DEBUG_STAGE !== null) return DEBUG_STAGE === 4 ? 'after' : DEBUG_STAGE === 0 ? 'before' : 'active';
   return seasonPhase(lastProg, Date.now());
 }
@@ -106,6 +112,7 @@ function applyStage(stage) {
 }
 
 export async function refresh(force = false) {
+  if (WINTER) return refreshWinter(force);
   const p = await progress.get(SEASON, { force });
   if (p && !fake) lastProg = p;
   if (DEBUG_STAGE === null) { applyStage(visualStage(lastProg, gameState.plaza.lastStage)); maybeConvert(); }
@@ -113,7 +120,8 @@ export async function refresh(force = false) {
 
 export { refresh as refreshPlaza };   // ⚠️ applySave 끝에서 재조회용으로 부른다(game.js 는 이 한 줄만 안다) — 게이트는 아니다, updatePlaza 가 연다
 
-export function initPlaza() {
+export function initPlaza(ge) {
+  if (WINTER) { initWinter(DEF, ge, DEBUG_STAGE); return; }
   applyStage(DEBUG_STAGE ?? visualStage(null, gameState.plaza.lastStage));
   maybeConvert();   // saveRestored 가 false 라 내부에서 no-op(?plaza= 검수 중에도 안전)
   refresh();
@@ -122,6 +130,7 @@ export function initPlaza() {
 let viewCheck = 0;
 let lastNearPollAt = -Infinity;   // 🚪 시즌 시작 전엔 매초 대신 10분에 한 번만 확인(nearPollDue)
 export function updatePlaza(dt, inVillage) {
+  if (WINTER) { updateWinter(dt, inVillage); return; }
   // 🚪 부팅 게이트 — 첫 play 프레임에 딱 한 번. applySave() 는 저장이 있을 때만 도는데(오프라인·신규
   //   게스트·failed_fresh 는 load.state 가 null 이라 아예 안 불림) mode 는 모든 부팅 경로에서 결국 'play' 가
   //   된다. 그때까지 gameState.plaza 는 최종 상태다(복원됐거나, 애초에 plazaDefault() 가 정답이었거나).
@@ -145,6 +154,7 @@ export function updatePlaza(dt, inVillage) {
 }
 
 export function plazaSpot(pos) {
+  if (WINTER) return winterSpot(pos);
   const phase = phaseNow();
   if (shownStage <= 0 || phase === 'before') { spotNow = null; return null; }
   if (dist2D(PLAZA_BOX, pos) < BOX_R) spotNow = phase === 'after' || shownStage === 4 ? 'plaque' : 'box';
@@ -153,17 +163,11 @@ export function plazaSpot(pos) {
   return spotNow;
 }
 
-export function plazaSpotNow() { return spotNow; }
+export function plazaSpotNow() { return WINTER ? winterSpotNow() : spotNow; }
 
 // 🧾 모달 상태 — 내 기록(plaza_mine)은 열 때마다 새로 받는다(오늘 남은 수가 날마다 바뀐다)
 let mineNow = null, mineReason = null, busy = false, modalKind = null;
 let fake = null;   // localhost 전용 __plazaFake 로 넣은 가짜 진행률(시안 검수용) — 켜져 있으면 서버 값으로 덮지 않는다
-
-// 🧺 보관함에 1개 — 작업대 장식 탭에서 값 없이 꺼내 놓는다(js/workbench/bench-view.js outView 가 hidden 품목을 보관분 있을 때만 보인다)
-function addStored(id) {
-  const stored = gameState.outdoorStored || {};
-  gameState.outdoorStored = { ...stored, [id]: (stored[id] || 0) + 1 };
-}
 
 // 🍂 좌판 구매 — 단풍잎을 빼고 보관함에 넣는다(서버 없이 로컬 세이브)
 //   ⚠️ 인벤토리는 다른 모듈이 객체째 캐시한다 → 새 객체로 갈아끼우지 않고 필드 대입(onDonate 와 같은 규칙)
@@ -217,6 +221,7 @@ const ctx = () => ({ kind: modalKind, prog: lastProg, mine: mineNow, mineReason,
                      onDonate, onBuy, onClaim, onClose: () => { modalKind = null; } });
 
 export async function openPlaza() {
+  if (WINTER) { openWinter(); return; }
   modalKind = plazaSpotNow();
   if (!modalKind) return;
   if (!fake && (modalKind === 'box' || modalKind === 'plaque')) {
@@ -277,4 +282,4 @@ if (IS_LOCAL && typeof window !== 'undefined') {
 }
 
 export const plazaView = { stage: () => shownStage, progress: () => lastProg };
-export const plazaMapVisible = () => shownStage > 0;   // 🗺️ 시즌 전(0단계)엔 지도에서 완전히 숨긴다
+export const plazaMapVisible = () => WINTER || shownStage > 0;   // 🗺️ 시즌 전(0단계)엔 지도에서 완전히 숨긴다

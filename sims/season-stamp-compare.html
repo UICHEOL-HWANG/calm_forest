@@ -1,0 +1,130 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>계절 스탬프 카드 시안</title>
+<style>
+  :root{--bg:#2a3a30;--card:#f6f0e4;--tile:#fff;--ink:#24382d;--muted:#6f7d72;--gold:#ffe9a8;--goldInk:#6b4a10;--lav:#ece6ff;--pink:#f7b7cf;--stamp:#d9486b}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:var(--ink)}
+  main{display:grid;grid-template-columns:repeat(3,minmax(0,380px));gap:22px;justify-content:center;padding:22px 16px}
+  h2{color:#e8f0e0;font-size:15px;margin:0 0 8px}
+  h2 small{display:block;font-weight:500;opacity:.75;font-size:12px;margin-top:3px}
+  .card{background:var(--card);border-radius:28px;padding:14px}
+  .hero{background:var(--ink);color:#fff;border-radius:18px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center}
+  .hero small{display:block;font-size:10.5px;letter-spacing:.08em;opacity:.6;font-weight:800}
+  .hero b{font-size:20px}
+  .hero em{font-style:normal;font-size:12px;opacity:.75}
+  .bar{height:8px;background:#e6dccb;border-radius:9px;margin:10px 2px 4px;overflow:hidden}
+  .bar i{display:block;height:100%;width:37.5%;background:linear-gradient(90deg,#f39bbb,#e0628a);border-radius:9px}
+  .marks{display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:var(--muted);padding:0 2px}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:10px}
+  .cell{background:var(--tile);border-radius:14px;aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:4px;position:relative}
+  .cell .ic{font-size:22px;line-height:1}
+  .cell span{font-size:10.5px;font-weight:700;margin-top:5px;line-height:1.25}
+  .cell.off{background:#efe8da}
+  .cell.off .ic{filter:grayscale(1);opacity:.45}
+  .cell.off span{color:var(--muted)}
+  .cell.on::after{content:"";position:absolute;inset:5px;border:2.5px solid var(--stamp);border-radius:50%;opacity:.55;transform:rotate(-12deg)}
+  .rewards{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+  .rw{border-radius:16px;padding:10px 12px}
+  .rw small{display:block;font-size:10.5px;font-weight:800;opacity:.6}
+  .rw b{font-size:14px}
+  .rw.mid{background:var(--gold);color:var(--goldInk)}
+  .rw.end{background:var(--lav);color:#4b3a8a}
+  .ok{margin-top:10px;background:#d6ecd6;border-radius:16px;text-align:center;padding:12px;font-weight:800}
+  .tile{background:var(--tile);border-radius:18px;padding:12px;margin-top:8px}
+  .tile small{display:block;font-size:10.5px;font-weight:800;opacity:.5;letter-spacing:.06em}
+  .strip{display:flex;gap:5px;margin-top:6px;align-items:center}
+  .strip i{flex:1;height:22px;border-radius:7px;background:#efe8da;display:grid;place-items:center;font-style:normal;font-size:12px}
+  .strip i.on{background:var(--pink)}
+  .strip b{font-size:13px;margin-left:6px;white-space:nowrap}
+  .sheet{background:var(--tile);border-radius:22px;padding:12px 14px;margin-top:12px}
+  .row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f0eadf;font-size:13.5px;font-weight:600}
+  .row:last-child{border:0}
+  .row .ic{width:26px;text-align:center;font-size:18px}
+  .row em{margin-left:auto;font-style:normal;font-size:12px;color:var(--muted);font-weight:700}
+  .row.on em{color:var(--stamp)}
+  .pass{background:#fbf6ea;border-radius:28px;padding:16px;border:2px dashed #e2d3b8}
+  .pass .top{display:flex;align-items:center;gap:10px}
+  .pass .top .flag{width:46px;height:46px;border-radius:14px;background:var(--pink);display:grid;place-items:center;font-size:26px}
+  .pass .top b{font-size:18px;display:block}
+  .pass .top em{font-style:normal;font-size:12px;color:var(--muted)}
+  .circles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+  .c{aspect-ratio:1;border-radius:50%;border:2px dashed #d8c7a8;display:grid;place-items:center;text-align:center;position:relative}
+  .c .ic{font-size:22px;filter:grayscale(1);opacity:.4}
+  .c.on{border:3px solid var(--stamp);background:#fff;transform:rotate(-8deg)}
+  .c.on .ic{filter:none;opacity:1}
+  .st{display:flex;flex-direction:column;align-items:center;gap:5px;font-size:10.5px;font-weight:700;color:var(--muted)}
+  .st .c{width:100%}
+  .st.on{color:var(--ink)}
+  .ribbon{margin-top:14px;display:flex;gap:8px}
+  .ribbon div{flex:1;border-radius:14px;padding:9px 10px;font-size:12px;font-weight:700}
+  @media (max-width:900px){main{grid-template-columns:minmax(0,380px)}}
+</style>
+<main>
+  <section>
+    <h2>A. 칸 격자 카드<small>출석 카드와 같은 모양. 8칸 격자에 도장이 찍힌다</small></h2>
+    <div class="card">
+      <div class="hero"><div><small>SEASON STAMP</small><b>🌸 봄 스탬프 3/8</b></div><em>12일 남음</em></div>
+      <div class="bar"><i></i></div>
+      <div class="marks"><span>0</span><span>4칸 🪙</span><span>8칸 🎁</span></div>
+      <div class="grid">
+        <div class="cell on"><div class="ic">🌸</div><span>벚꽃 송어</span></div>
+        <div class="cell off"><div class="ic">🌸</div><span>꽃잎반디</span></div>
+        <div class="cell on"><div class="ic">🌱</div><span>어린 쑥</span></div>
+        <div class="cell off"><div class="ic">📅</div><span>출석 3일</span></div>
+        <div class="cell on"><div class="ic">🥕</div><span>수확 20번</span></div>
+        <div class="cell off"><div class="ic">🍳</div><span>요리 1번</span></div>
+        <div class="cell off"><div class="ic">🏡</div><span>이웃 방문</span></div>
+        <div class="cell off"><div class="ic">🌦️</div><span>날씨 2종</span></div>
+      </div>
+      <div class="rewards">
+        <div class="rw mid"><small>4칸</small><b>🪙 30</b></div>
+        <div class="rw end"><small>8칸</small><b>🎁 봄 꾸미기</b></div>
+      </div>
+      <div class="ok">좋아요 🌱</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>B. 출석 카드 한 줄 + 펼침 목록<small>출석 카드에는 8칸 띠만, 누르면 할 일 목록</small></h2>
+    <div class="card">
+      <div class="hero"><div><small>STREAK</small><b>3일 연속 🔥</b></div><em>●●●○○○○</em></div>
+      <div class="tile"><small>봄 스탬프</small>
+        <div class="strip"><i class="on">🌸</i><i>🌸</i><i class="on">🌱</i><i>📅</i><i class="on">🥕</i><i>🍳</i><i>🏡</i><i>🌦️</i><b>3/8</b></div>
+      </div>
+      <div class="sheet">
+        <div class="row on"><span class="ic">🌸</span>벚꽃 송어 낚기<em>완료</em></div>
+        <div class="row"><span class="ic">🌸</span>꽃잎반디 잡기<em>밤 계곡</em></div>
+        <div class="row on"><span class="ic">🌱</span>어린 쑥 줍기<em>완료</em></div>
+        <div class="row"><span class="ic">📅</span>봄에 3일 출석<em>1/3</em></div>
+        <div class="row on"><span class="ic">🥕</span>작물 20번 수확<em>완료</em></div>
+        <div class="row"><span class="ic">🍳</span>요리 1번<em>0/1</em></div>
+        <div class="row"><span class="ic">🏡</span>이웃 마을 구경<em>0/1</em></div>
+        <div class="row"><span class="ic">🌦️</span>날씨 2종 만나기<em>1/2</em></div>
+      </div>
+      <div class="rewards">
+        <div class="rw mid"><small>4칸</small><b>🪙 30</b></div>
+        <div class="rw end"><small>8칸</small><b>🎁 봄 꾸미기</b></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>C. 여권 도장 페이지<small>동그란 도장 자리, 찍힌 칸은 기울어진 도장</small></h2>
+    <div class="pass">
+      <div class="top"><div class="flag">🌸</div><div><b>봄 여행 수첩</b><em>도장 3/8 · 12일 남음</em></div></div>
+      <div class="circles">
+        <div class="st on"><div class="c on"><span class="ic">🌸</span></div><span>벚꽃 송어</span></div>
+        <div class="st"><div class="c"><span class="ic">🌸</span></div><span>꽃잎반디</span></div>
+        <div class="st on"><div class="c on"><span class="ic">🌱</span></div><span>어린 쑥</span></div>
+        <div class="st"><div class="c"><span class="ic">📅</span></div><span>출석 3일</span></div>
+        <div class="st on"><div class="c on"><span class="ic">🥕</span></div><span>수확 20번</span></div>
+        <div class="st"><div class="c"><span class="ic">🍳</span></div><span>요리 1번</span></div>
+        <div class="st"><div class="c"><span class="ic">🏡</span></div><span>이웃 방문</span></div>
+        <div class="st"><div class="c"><span class="ic">🌦️</span></div><span>날씨 2종</span></div>
+      </div>
+      <div class="ribbon"><div style="background:var(--gold);color:var(--goldInk)">4칸 🪙 30</div><div style="background:var(--lav);color:#4b3a8a">8칸 🎁 봄 꾸미기</div></div>
+    </div>
+  </section>
+</main>

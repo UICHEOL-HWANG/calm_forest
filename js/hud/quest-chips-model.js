@@ -26,7 +26,7 @@ export function chipState({ list, tracker, unread }) {
 
 export function snapshot(list, tracker) {
   return {
-    q: Object.fromEntries(list.map(q => [q.id || q.title, ratio(q)])),
+    q: Object.fromEntries(list.filter(q => !q.guided).map(q => [q.id || q.title, ratio(q)])),
     a: tracker && !tracker.start ? { [tracker.npc]: tracker.value ?? tracker.pct ?? 0 } : {},
   };
 }

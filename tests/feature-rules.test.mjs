@@ -66,6 +66,7 @@ test('each arrow names its destination', () => {
     concert: '음악회 무대로 가요',
     auction: '저녁 경매로 가요',
     house: '집 터로 가요',
+    fountain: '광장으로 가요',
   });
 });
 
@@ -79,7 +80,7 @@ test('the house compass names the house site', async () => {
 });
 
 test('first-visit lines are one short line per place', () => {
-  assert.deepEqual(Object.keys(FIRST_VISIT), ['weekly', 'concert', 'auction', 'pond']);
+  assert.deepEqual(Object.keys(FIRST_VISIT), ['weekly', 'concert', 'auction', 'pond', 'fountain']);
   for (const v of Object.values(FIRST_VISIT)) {
     assert.match(v.key, /^visit[A-Z]\w+$/);
     assert.ok(v.ico && v.title && v.line);

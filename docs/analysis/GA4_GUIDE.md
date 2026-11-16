@@ -114,6 +114,8 @@
 | `plaza_donate` | 기부 시도 결과(규칙 거절 포함) | `season`, `item`, `stage`, `requested`, `accepted`, `reason`(ok/cap/need/full), `today_left`, `my_total` |
 | `plaza_donate_fail` | 기부 통신·권한·기간 실패(인벤토리 무변경) | `season`, `item`, `reason`(offline/upstream/auth/season/qty/login) |
 | `plaza_stage_seen` | 새 단계를 처음 봄 | `season`, `stage`, `day_n`(시즌 N일차) |
+| `plaza_fountain_stage` | ❄️ 내 분수가 다음 단계에 오름(겨울 시즌) | `season`, `stage`(2~4, 4=완공), `guest`(1/0) |
+| `plaza_lamp_stage` | 🏮 마을 등불 단계를 처음 봄·그 단계 선물 받음 | `season`, `stage`(1~3), `via`(seen/reward) |
 | `plaza_stall_buy` | 수확제 좌판 구매(🍂) | `season`, `item`, `price`, `leaf_left` |
 | `plaza_reward_claim` | 완공 등급 보상 수령 | `season`, `tier`(bronze/silver/gold), `my_total` |
 | `plaza_leaf_convert` | 시즌 후 남은 🍂 → 🪙 환전 | `season`, `leaves`, `coins` |
