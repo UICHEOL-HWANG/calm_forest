@@ -3190,7 +3190,7 @@ export async function enterGame() {
   spawnWorkers();                       // 🧑‍🌾 고용한 일꾼 3D — 세이브 복원 뒤(밭 단계가 정해진 다음)
   catchUpWorkers();                     // 🧑‍🌾 오프라인 정산 — 월급 + 60초 스텝(최대 12시간) + 요약 모달
   respawnPet();                         // 🐾 펫 3D — 세이브 복원 뒤. ⚠️ 여기에 정산은 없다(펫은 오프라인에 아무것도 안 한다)
-  if (SEVERE_TOMORROW) {                // 🔮 내일 궂은 날씨 예고 — 다른 안내와 안 겹치게 늦게
+  if (SEVERE_TOMORROW && gameState.tutorialSeen) { // 🔮 내일 궂은 날씨 예고 — 다른 안내와 안 겹치게 늦게
     const s = SEVERE_INFO[SEVERE_TOMORROW];
     setTimeout(() => ui.toast?.(`${s.ico} 내일 ${s.name} 예보! 오늘 수확하거나 작업대에서 🛡️ 덮개를 준비하세요`, 3600, { afterDialog: true }), 3000);
   }
