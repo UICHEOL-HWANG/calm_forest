@@ -113,3 +113,9 @@ test('영어 사전에 단계 문구 3개가 있다', () => {
   const en = read('js/i18n-en.js');
   for (const s of BOOT_STEPS) assert.match(en, new RegExp(`'${s.text}':`));
 });
+
+test('토스 번들도 B 화면 — 첫 페인트 전에 html.boot-b, 곰 마크를 함께 싣는다', () => {
+  const ait = read('scripts/build-ait.mjs');
+  assert.match(ait, /<script>window\.__APPS_IN_TOSS__ = true; document\.documentElement\.classList\.add\('boot-b'\);<\/script>/);
+  assert.match(ait, /cpSync\('assets\/boot', 'dist-toss\/assets\/boot'/);
+});
