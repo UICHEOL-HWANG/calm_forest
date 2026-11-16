@@ -2,6 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { POND_R, POND_SPOTS, POND_HOUSE_CLEAR, POND_STAGE_R, POND_BIG_SPOT } from '../js/data/pond.js';
+import { ISLE, ISLE_R, STREAM_HALF, BANK_W } from '../js/world/bridge.js';
+import { walkLimit } from '../js/world/walk-bounds.js';
 
 const places = readFileSync(new URL('../js/data/places.js', import.meta.url), 'utf8');
 const npcSrc = readFileSync(new URL('../js/data/npcs.js', import.meta.url), 'utf8');
@@ -75,6 +77,26 @@ test('넓은 자리는 3단계 반지름에서도 집·물가·시설·주민·�
     return [{ x: Number(pos[1]), z: Number(pos[2]), roam: roam ? Number(roam[1]) : 0 }];
   });
   for (const n of npcs) assert.ok(d(p, n) >= R + 2 + n.roam, JSON.stringify(n));
+});
+
+test('넓은 자리 남쪽(카메라 쪽)에는 집도 시설도 서 있지 않다', () => {
+  const R = POND_STAGE_R[POND_STAGE_R.length - 1];
+  const p = abs(POND_BIG_SPOT);
+  const re = /export const ([A-Z_]+) = new THREE\.Vector3\((-?[\d.]+), 0, (-?[\d.]+)\)/g;
+  const tall = [...places.matchAll(re)]
+    .map(m => ({ name: m[1], x: Number(m[2]), z: Number(m[3]), r: m[1] === 'HOUSE_POS' ? 3.9 : 2.5 }))
+    .filter(g => Math.abs(g.x) < 45 && Math.abs(g.z) < 45);
+  for (const g of tall) {
+    const south = g.z - p.z;
+    assert.ok(!(south > 0 && south < R + 7 && Math.abs(g.x - p.x) < R + g.r), g.name);
+  }
+});
+
+test('넓은 자리는 박물관 물길과 겹치지 않고 마을 걷는 범위 안이다', () => {
+  const R = POND_STAGE_R[POND_STAGE_R.length - 1];
+  const p = abs(POND_BIG_SPOT);
+  assert.ok(d(p, ISLE) >= ISLE_R + STREAM_HALF + BANK_W + R + 1);
+  assert.ok(Math.hypot(p.x, p.z) + R + 1 <= walkLimit(Math.atan2(p.z, p.x)));
 });
 
 test('안개의 숲 입구와 10 이상 떨어진다', () => {
