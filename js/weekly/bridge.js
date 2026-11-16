@@ -2,6 +2,8 @@ import { createAuctionGuide } from '../auction/guide.js';
 import { ARROW_LABEL } from '../guide/feature-rules.js';
 import { walkLimit } from '../world/walk-bounds.js';
 import { WEEKLY_COPY } from './copy.js';
+import { whereOf } from './rules.js';
+import { MARKET_ITEM_IDS } from '../data/weekly.js';
 
 const SPACE = Object.freeze({ delve: 'mine', sled: 'mountain', star: 'observatory', neighbor: 'neighbor', serve: 'cafe', carve: 'bench' });
 
@@ -23,7 +25,16 @@ export function makeWeeklyBridge(env) {
     }
     return true;
   };
-  return { canDo, owns, grant, guideEnv: env.guide ? makeGuideEnv(env.guide) : null };
+  const where = (item) => {
+    const g = env.gameState();
+    const stored = item.kind === 'indoor' ? g.house?.stored?.[item.id] : g.outdoorStored?.[item.id];
+    return whereOf(item, { stored: stored || 0, hasHouse: (g.houseStage || 0) >= 3 });
+  };
+  const storedIndoor = () => {
+    const stored = env.gameState().house?.stored || {};
+    return MARKET_ITEM_IDS.filter(id => (stored[id] || 0) > 0).length;
+  };
+  return { canDo, owns, grant, where, storedIndoor, guideEnv: env.guide ? makeGuideEnv(env.guide) : null };
 }
 
 const body = () => document.body.classList;

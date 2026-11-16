@@ -10,19 +10,19 @@ const MODULE_RE = /<script type="module"(?: src="(\.\/js\/[^"]+\.js)")?>([\s\S]*
 const IMPORTMAP_RE = /[ \t]*<script type="importmap">[\s\S]*?<\/script>[ \t]*\n?/;
 const OUT_SUBDIR = 'js/b';
 
-const threeFromVendor = {
+const threeFromVendor = (outDir) => ({
   name: 'three-from-vendor',
   setup(b) {
-    b.onResolve({ filter: /^three(\/addons\/.+)?$/ }, ({ path: p }) => ({
-      path: p === 'three'
-        ? path.join(VENDOR_THREE, 'three.module.js')
+    b.onResolve({ filter: /^three(-core|\/addons\/.+)?$/ }, ({ path: p }) => ({
+      path: p === 'three' ? path.resolve(outDir, 'js/three-lite.js')
+        : p === 'three-core' ? path.join(VENDOR_THREE, 'three.module.js')
         : path.join(VENDOR_THREE, 'addons', p.slice('three/addons/'.length)),
     }));
     b.onResolve({ filter: /^https:\/\// }, ({ path: p }) => (
       p === SUPABASE_CDN ? { path: path.join(VENDOR, 'supabase.js') } : { path: p, external: true }
     ));
   },
-};
+});
 
 function collectScripts(html, outDir) {
   const scripts = [];
@@ -64,7 +64,7 @@ export async function bundleBoot(outDir) {
       outdir: path.join(outDir, OUT_SUBDIR),
       entryNames: '[name]-[hash]',
       chunkNames: 'c-[hash]',
-      plugins: [threeFromVendor],
+      plugins: [threeFromVendor(outDir)],
       metafile: true,
       logLevel: 'error',
     });

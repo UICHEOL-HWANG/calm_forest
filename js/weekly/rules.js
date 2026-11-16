@@ -112,6 +112,12 @@ export function claim(state, questId) {
 export const adTicketOpen = (state) => state.tickets < TICKET_CAP;
 export const adTicket = (state) => ({ ...state, tickets: Math.min(TICKET_CAP, state.tickets + 1) });
 
+export function whereOf(item, { stored, hasHouse }) {
+  if (!(stored > 0)) return null;
+  if (item.kind === 'outdoor') return { key: 'outdoor', guide: 'bench' };
+  return hasHouse ? { key: 'indoor', guide: 'house' } : { key: 'indoorNoHouse', guide: null };
+}
+
 export function buyPlan(state, item, ctx) {
   if (!ctx.open) return { ok: false, reason: 'closed' };
   if (ctx.isGuest) return { ok: false, reason: 'guest' };

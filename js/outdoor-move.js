@@ -72,3 +72,15 @@ export function canPromptOutdoorMove({ hasPrompt, placing, nearNPC, outdoorZone,
 export function outdoorDistance(px, pz, x, z, halfW = 0, halfD = 0) {
   return Math.hypot(Math.max(0, Math.abs(px - x) - halfW), Math.max(0, Math.abs(pz - z) - halfD));
 }
+
+export const PICK_WALK_RELEASE = 0.5;
+
+export function pickedTarget(x, z, px, pz) {
+  return { x, z, pinned: true, from: { x: px, z: pz } };
+}
+
+export function releaseOnWalk(target, px, pz) {
+  if (!target.pinned || !target.from) return target;
+  if (Math.hypot(px - target.from.x, pz - target.from.z) <= PICK_WALK_RELEASE) return target;
+  return { ...target, pinned: false, from: null };
+}

@@ -38,6 +38,7 @@ import { easeFor, nextDda, ddaOutcome, defaultDifficulty, mergeDifficulty, PROBE
 import { spotToolStep, spotWant, spotKeep, SPOT_REASON, IDLE as SPOT_IDLE } from './spot-tool-auto.js';
 import { treeFallPose, TREE_FALL_IMPACT, TREE_FALL_PIVOT } from './tree-fall.js';   // 🌳 벌목 쓰러짐(기우뚱 쿵 바운스)
 import { trackChop, trackEvent, onTrack } from './analytics.js';          // [GA4] 이벤트
+import { bootTiming } from './boot-timing.js';
 import { PLATFORM, IS_TOSS, loadTossSDK } from './platform.js';
 import { createPerfSampler, perfContext, countLitPoints } from './perf-sample.js';   // 📱 플레이 앱 기기별 FPS(세션당 1회 perf_sample)
 import { createQualityGovernor, QUALITY_STEPS } from './adaptive-quality.js';
@@ -78,6 +79,7 @@ import { rewardedAvailable, showRewarded } from './ads/admob.js';
 import { createTossRewarded } from './ads/toss-rewarded.js';
 import { warmShaders } from './render/shader-warm.js';
 import { warmBeforeReveal } from './render/reveal-warm.js';
+import { activeBootVeil } from './boot-screen.js';
 import { createFarmRush } from './ads/farm-rush.js';
 import { repeatOpen, rushSlots, sellBonus, houseShort as houseShortOf, bridgeShort, farmStageShort, prepassGrant, shortAdParts, CAFE_CAPS, adQuiet, AD_PARTS } from './guide/prepass-rules.js';
 import { sanitizeHouseGuide } from './house-guide-rules.js';
@@ -85,7 +87,7 @@ import { initPlaza, updatePlaza, plazaSpotNow, openPlaza, plazaScatterBlocks, pl
 import { defaultToolStars, restoreToolStars, restoreForge, forgeCancel } from './workbench/rules.js';
 import { forgeView, forgeBegin, forgeAbort, forgeFinish, settleForge, forgeRushReady } from './workbench/forge.js';
 import { initAuction, updateAuction, auctionMapSpot, auctionSpotNow, openAuction, auctionScatterBlocks, auctionOutdoorMesh, auctionDefault, restoreAuction, auctionGuideActive } from './auction/index.js';
-import { initWeekly, updateWeekly, weeklyNote, weeklySpotNow, openWeekly, weeklyDefault, restoreWeekly, weeklyScatterBlocks, weeklyDecorMesh, weeklyDev, weeklyGuideActive, weekIndex, BOARD_POS, MARKET_POS } from './weekly/index.js';
+import { initWeekly, updateWeekly, weeklyNote, weeklySpotNow, openWeekly, weeklyDefault, restoreWeekly, weeklyScatterBlocks, weeklyDecorMesh, weeklyDev, weeklyGuideActive, weeklyPriority, weekIndex, BOARD_POS, MARKET_POS } from './weekly/index.js';
 import { makeWeeklyBridge } from './weekly/bridge.js';
 import { initConcert, updateConcert, concertSpotNow, openConcert, concertDefault, restoreConcert, concertScatterBlocks, concertDecorMesh, concertDev, STAGE_POS, concertGuideActive } from './concert/index.js';
 import { makeConcertBridge } from './concert/bridge.js';
@@ -1672,7 +1674,7 @@ function tickGuideQuiet() {
   setNpcGlyphQuiet(focus?.npc);
   refreshQuestPanel();
 }
-guideArbiter.register({ name: 'weekly', active: weeklyGuideActive });
+guideArbiter.register({ name: 'weekly', active: weeklyGuideActive, priority: weeklyPriority });
 guideArbiter.register({ name: 'concert', active: concertGuideActive });
 guideArbiter.register({ name: 'auction', active: auctionGuideActive });
 const guideRevamp = guideRevampOn(e6Decision());
@@ -2659,11 +2661,16 @@ export async function bootWorld(uiCallbacks) {
   initRenderer();
   initScene();
   initLights();
+  bootTiming.mark('r');
   buildWorld();
+  bootTiming.mark('w');
   buildHouseGhost();
   buildInterior();          // 집 실내 방(꾸미기 공간)
+  bootTiming.mark('h');
   buildNPCs();              // 마을 주민들
+  bootTiming.mark('n');
   initPostProcessing();
+  bootTiming.mark('x');
   initMapSnapshot({ renderer, scene, mobile: IS_MOBILE, sunLight, hemiLight, onShot: (c) => ui.setMapSnapshot?.(c),
     transients: () => [player, pet3d, rainLines, seasonDrift?.mesh, fireflies, stars, ...chickens, ...npcObjs.map(o => o.group)],
     signature: () => mapSignature({ season: SEASON, houseStage: gameState.houseStage, unlocks: unlockOpen, outdoor: gameState.outdoor }),
@@ -2675,7 +2682,7 @@ export async function bootWorld(uiCallbacks) {
   player.visible = false;   // 로그인 중엔 캐릭터 숨김(카메라 자동 오빗)
   mode = 'attract';
   animate();
-  setTimeout(() => warmShaders(renderer, scene, camera), 0);
+  setTimeout(() => warmShaders(renderer, scene, camera).then(() => bootTiming.mark('s')), 0);
 }
 
 // ② 로그인 완료 후 실제 플레이 시작 (저장 로드 + 로깅 + 조작 on)
@@ -2684,6 +2691,7 @@ export async function enterGame() {
   //   읽기에 실패했는데 그냥 들여보내면 새 마을이 만들어지고, 30초 뒤 자동저장이
   //   서버의 멀쩡한 마을을 덮어쓴다(2026-09-14·09-11 사고 2건). 판정은 js/save-guard.js.
   let load = await loadGame();
+  bootTiming.mark('v');
   if (!load.canPlay) ui.setLoadWait?.(true);     // 🌙 "잠시만요, 마을을 찾는 중이에요" — 루프 밖에서 한 번만
   for (let tries = 0; !load.canPlay; tries++) {
     // [GA4] 갇힌 사람을 셀 분모. recovered 만 쏘면 영영 못 들어온 사람이 통계에서 사라진다.
@@ -3020,7 +3028,7 @@ export async function enterGame() {
     window.__outdoor = (id, x, z, rot = 0) => placeOutdoor(x, z, true, id, rot);
     window.__goFloor = goFloor;                       // 🪜 실내 층 이동(검수용) — goFloor 는 모듈 지역 함수라 여기서만 노출
   }
-  await warmBeforeReveal({ warm: async () => { await warmShaders(renderer, scene, camera); await shootMapNow(); }, veil: revealVeil(), hold: (v) => { holdRender = v; } });
+  await warmBeforeReveal({ warm: async () => { await warmShaders(renderer, scene, camera); await shootMapNow(); }, veil: activeBootVeil() || revealVeil(), hold: (v) => { holdRender = v; } });
   // 테스트: ?river=1 — 나루터(강 공간)에서 시작. ?time=0.8 과 조합하면 밤 물길 확인
   if (_wq.get('river') === '1') setTimeout(() => enterRiver(), 60);
   // 테스트: ?mist=1 — 안개 낀 숲에서 시작. ?weather=fog 와 조합하면 🌟황금 정령 확인
@@ -3739,7 +3747,7 @@ function buildWorld() {
   initPlaza(GE);
   { const wb = makeWeeklyBridge({ gameState: () => gameState, patch: (p) => Object.assign(gameState, p), questAvailable, questCtx, isOpen, guide: GE });
     { const cb = makeConcertBridge({ getPlayer: () => player, THREE, getPlayerRig: () => ({ anchor: playerAnchor, arms: playerArms, def: curAnimal }), setCameraRig, hideTool: (h) => { if (heldGroup) heldGroup.visible = !h; }, hideLabels: setNpcGlyphsShowHidden, isBgmOn: isBGMOn, startBgm: startBGM, stopBgm: stopBGM }); initConcert({ getState: () => gameState.concert, setState: (s) => { gameState.concert = s; }, requestSave, isGuest: () => authState.isGuest !== false, login: () => ui.loginNudge?.('shop'), ownsDecor: wb.owns, grantDecorItem: wb.grant, today: todayStr, stopMove: () => Input.setAnalog(0, 0), roll: () => rollDifficulty('concert'), settle: (o) => settleDifficulty('concert', o), diffParams, abandon: (r, stage, extra) => trackDiffAbandon('concert', r, stage, extra), audio: audioBus, stage: cb.stage, bgm: cb.bgm, night: () => nightLevel, scene, solidCircle, THREE, guideEnv: wb.guideEnv, adButton: (grant) => adPill('concert_play', grant) }); }
-    initWeekly({ getState: () => gameState.weekly, setState: (s) => { gameState.weekly = s; }, canDo: wb.canDo, isGuest: () => authState.isGuest !== false, ownsDecor: wb.owns, grantDecorItem: wb.grant, now: () => DEV_NOW || Date.now(), night: () => nightLevel, stopMove: () => Input.setAnalog(0, 0), login: () => ui.loginNudge?.('shop'), requestSave, scene, solidCircle, THREE, guideEnv: wb.guideEnv, adButton: (grant, done) => adPill('weekly_ticket', grant, done) }); }
+    initWeekly({ getState: () => gameState.weekly, setState: (s) => { gameState.weekly = s; }, canDo: wb.canDo, isGuest: () => authState.isGuest !== false, ownsDecor: wb.owns, grantDecorItem: wb.grant, whereOf: wb.where, storedIndoor: wb.storedIndoor, placeSpots: { bench: { x: BENCH.x, z: BENCH.z }, house: { x: HOUSE_POS.x, z: HOUSE_POS.z + 3 } }, toast: (...a) => ui.toast?.(...a), now: () => DEV_NOW || Date.now(), night: () => nightLevel, stopMove: () => Input.setAnalog(0, 0), login: () => ui.loginNudge?.('shop'), requestSave, scene, solidCircle, THREE, guideEnv: wb.guideEnv, adButton: (grant, done) => adPill('weekly_ticket', grant, done) }); }
   lockFrom('market'); spawnMarketBoard(); lockTo(); // 📊 시세 전광판(상점 옆)
   spawnFarmGate();    // 텃밭 입구 게이트
   rebuildFarm(true);  // 개인 텃밭 필드(1단계) — 세이브에 단계가 있으면 applySave 가 다시 짓는다

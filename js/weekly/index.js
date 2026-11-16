@@ -10,6 +10,7 @@ export { weekIndex };
 
 import { hasItemArt, weeklyDecorMesh } from './items.js';
 import { makeThumbs } from './thumbs.js';
+import { GUIDE_PRIORITY } from '../guide/arbiter.js';
 
 export { weeklyDefault, restoreWeekly, weeklyDecorMesh };
 
@@ -24,6 +25,8 @@ const guides = {};
 const reached = new Set();
 const tried = new Set();
 let live = null;
+let placeGuide = null;
+const PLACE_R = Object.freeze({ bench: SPOT_R, house: 3 });
 let liveSec = 0;
 const BANNER_KEY = 'cf_weekly_banner_week';
 const SPOTS = { market: MARKET_POS, board: BOARD_POS };
@@ -99,6 +102,7 @@ export function initWeekly(d) {
   bannerRead = false;
   bannerMem = null;
   reachedWeek = null;
+  placeGuide = null;
   reached.clear();
   tried.clear();
   for (const k of Object.keys(guides)) delete guides[k];
@@ -139,13 +143,16 @@ function tickGuide(dt, inVillage, pos) {
   if (s.week !== reachedWeek) { reachedWeek = s.week; reached.clear(); }
   const now = deps.now();
   const gates = { need: guideNeed(s, now, tried), inVillage, pastOnboarding: env.pastOnboarding(), uiBusy: env.uiBusy() };
-  const target = guideTarget({ ...gates, cameraFree: env.cameraFree(), otherGuide: env.otherGuide('weekly') });
+  if (placeGuide && !inVillage && !live) placeGuide = null;
+  const free = { cameraFree: env.cameraFree(), otherGuide: env.otherGuide('weekly') };
+  const asked = placeGuide && deps.placeSpots?.[placeGuide] ? guideTarget({ ...gates, ...free, need: placeGuide, pastOnboarding: true }) : null;
+  const target = asked || guideTarget({ ...gates, ...free });
   if (live && (target !== live || !guides[live].active || guideStalled(liveSec))) {
     const was = live;
-    const arrived = !guides[was].active && dist(pos, SPOTS[was]) < SPOT_R;
+    const arrived = !guides[was].active && dist(pos, spotOf(was)) < reachOf(was);
     const stalled = guideStalled(liveSec);
     stopGuide();
-    if (arrived || stalled) reached.add(was);
+    if (PLACE_R[was]) { if (arrived || stalled || !inVillage) placeGuide = null; } else if (arrived || stalled) reached.add(was);
   }
   if (target && !reached.has(target)) runGuide(env, target, dt);
   const gate = inVillage && gates.pastOnboarding && !gates.uiBusy;
@@ -156,7 +163,7 @@ function tickGuide(dt, inVillage, pos) {
 
 function runGuide(env, target, dt) {
   if (!live) {
-    guides[target] ??= env.makeGuide(`weekly-${target}`, SPOTS[target], SPOT_R);
+    guides[target] ??= env.makeGuide(`weekly-${target}`, spotOf(target), reachOf(target));
     guides[target].start();
     live = target;
     liveSec = 0;
@@ -166,7 +173,16 @@ function runGuide(env, target, dt) {
   guides[live].update(dt);
 }
 
+const spotOf = (name) => SPOTS[name] || deps.placeSpots?.[name];
+const reachOf = (name) => PLACE_R[name] || SPOT_R;
+
+export function weeklyHouseReady() {
+  if (deps?.storedIndoor?.() > 0) deps.toast?.(WEEKLY_COPY.where.houseReady, 3600, { afterDialog: true });
+}
+
 export function weeklySpotNow() { return spot; }
+
+export const weeklyPriority = () => (placeGuide ? GUIDE_PRIORITY.goal + 5 : GUIDE_PRIORITY.weekly);
 
 export function weeklyGuideActive() { return !!live && !!guides[live]?.active; }
 
@@ -236,7 +252,7 @@ export function openWeekly() {
     if (s.seenMarket !== s.week) saveCommit({ ...s, seenMarket: s.week });
     const theme = themeFor(s.week);
     const ids = [theme.hero, ...theme.props].map(i => i.id).filter(hasItemArt);
-    return showMarket({ state, theme, isOpen: () => marketOpen(deps.now()), isGuest: deps.isGuest(), ownsDecor: deps.ownsDecor, hasArt: hasItemArt, thumbs: thumbsOf(ids), onBuy, onLogin, onOpen: deps.stopMove });
+    return showMarket({ state, theme, isOpen: () => marketOpen(deps.now()), isGuest: deps.isGuest(), ownsDecor: deps.ownsDecor, hasArt: hasItemArt, thumbs: thumbsOf(ids), whereOf: deps.whereOf, onGuide: (g) => { placeGuide = g; tried.add(g); }, onBuy, onLogin, onOpen: deps.stopMove });
   }
   trackBoardOpen(s.week, s.quests.filter(id => progressOf(s, id).done).length);
   if (s.seenBoard !== s.week) saveCommit({ ...s, seenBoard: s.week });

@@ -30,7 +30,7 @@ test('build-cap: 플래그 주입 · vendor 치환 · API_BASE 절대 URL · SW 
   try {
     execFileSync('node', ['scripts/build-cap.mjs'], { stdio: 'pipe' });
     const html = readFileSync('dist-cap/index.html', 'utf8');
-    assert.match(html, /<head>\s*<script>window\.__ANDROID__ = true;<\/script>/);
+    assert.match(html, /<head>\s*<script>window\.__ANDROID__ = true; document\.documentElement\.classList\.add\('boot-b'\);<\/script>/);
     assert.doesNotMatch(html, /importmap/);
     assert.match(html, /<script type="module" src="\.\/js\/b\/main-[A-Z0-9]+\.js"><\/script>/);
     const bundled = readdirSync('dist-cap/js/b').map(f => readFileSync(`dist-cap/js/b/${f}`, 'utf8')).join('\n');
@@ -55,7 +55,7 @@ test('build-cap ios: __IOS__ 만 주입(안드로이드 플래그 없음) · 외
   try {
     execFileSync('node', ['scripts/build-cap.mjs', 'ios'], { stdio: 'pipe' });
     const html = readFileSync('dist-cap/index.html', 'utf8');
-    assert.match(html, /<head>\s*<script>window\.__IOS__ = true;<\/script>/);
+    assert.match(html, /<head>\s*<script>window\.__IOS__ = true; document\.documentElement\.classList\.add\('boot-b'\);<\/script>/);
     assert.doesNotMatch(html, /__ANDROID__/);
     assert.doesNotMatch(html, /id="login-links"/, 'App Store 3.1.1 — 외부 결제 안내 링크는 앱 번들에 없어야 한다');
   } finally {
@@ -81,7 +81,7 @@ test('build-cap: ADS_TEST=1 이면 테스트 플래그와 검증 버튼을 넣�
   try {
     execFileSync('node', ['scripts/build-cap.mjs', 'ios'], { stdio: 'pipe', env: { ...process.env, ADS_TEST: '1' } });
     const html = readFileSync('dist-cap/index.html', 'utf8');
-    assert.match(html, /<script>window\.__IOS__ = true; window\.__ADS_TEST__ = true;<\/script>/);
+    assert.match(html, /<script>window\.__IOS__ = true; window\.__ADS_TEST__ = true; document\.documentElement\.classList\.add\('boot-b'\);<\/script>/);
     assert.match(html, /<script type="module" src="\.\/js\/ads\/rewarded-debug\.js"><\/script>/);
     assert.ok(existsSync('dist-cap/js/ads/rewarded-debug.js'));
   } finally {
@@ -96,7 +96,7 @@ test('build-cap: 모르는 타깃은 실패(조용히 안드로이드 번들이 
 
 test('웹 원본은 CDN 그대로 — 앱 치환이 공통 경로에 새지 않는다', () => {
   const html = readFileSync('index.html', 'utf8');
-  assert.match(html, /"three": "https:\/\/unpkg\.com\/three@0\.160\.0\/build\/three\.module\.js"/);
+  assert.match(html, /"three-core": "https:\/\/unpkg\.com\/three@0\.160\.0\/build\/three\.module\.js"/);
   assert.doesNotMatch(html, /__ANDROID__ = true/);
 });
 

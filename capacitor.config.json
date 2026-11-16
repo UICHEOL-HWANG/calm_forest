@@ -7,10 +7,10 @@
     "androidScheme": "https"
   },
   "android": {
-    "backgroundColor": "#1b2a1f"
+    "backgroundColor": "#dfe8d8"
   },
   "ios": {
-    "backgroundColor": "#1b2a1f",
+    "backgroundColor": "#dfe8d800",
     "contentInset": "never"
   },
   "plugins": {

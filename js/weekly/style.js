@@ -83,6 +83,9 @@ export const WEEKLY_CSS = `
 #weekly-modal .wk-short, #weekly-modal .wk-own { display: grid; place-items: center; min-height: 46px; border-radius: 10px; font-size: 14px; font-weight: 800; text-align: center; }
 #weekly-modal .wk-short { background: #fde3d3; color: #8a3518; border: 2px dashed #d9967a; }
 #weekly-modal .wk-own { color: #b23a26; border: 3px solid #b23a26; transform: rotate(-3deg); }
+#weekly-modal .wk-where { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; justify-content: space-between; background: #f3e4c4; border-radius: 10px; padding: 6px 6px 6px 12px; color: #4a2c10; font-size: 12.5px; font-weight: 800; line-height: 1.35; }
+#weekly-modal .wk-where p { margin: 0; flex: 1 1 8em; }
+#weekly-modal .wk-where button { min-height: 40px; border: 0; border-radius: 10px; padding: 0 12px; background: #2f6b4f; color: #fff; font-weight: 900; font-size: 13.5px; white-space: nowrap; }
 #weekly-modal .wk-guest { background: #fffdf5; border-radius: 10px; padding: 10px 10px 10px 12px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: 13px; font-weight: 800; color: #3e2f7a; line-height: 1.4; box-shadow: 0 4px 10px rgba(60,30,10,.25); }
 #weekly-modal .wk-guest button { min-height: 44px; border: 0; border-radius: 10px; padding: 0 14px; background: #4b3a8a; color: #fff; font-weight: 900; font-size: 14px; white-space: nowrap; }
 .wk-fly { position: fixed; z-index: 60; left: 0; top: 0; font-size: 22px; line-height: 1; pointer-events: none; animation: wk-fly ${FLY_MS}ms cubic-bezier(.3,.7,.2,1) forwards; }
