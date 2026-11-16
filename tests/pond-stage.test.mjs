@@ -1,0 +1,101 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import {
+  POND_STAGES, MAX_POND_STAGE, pondStageOf, pondRadius, pondSpotFor, pondStageInfo,
+  pondDecorInWay, pondFishLimits, pondActR, pondViewR,
+} from '../js/pond/stage.js';
+import { POND_R, POND_STAGE_R, POND_BIG_SPOT, POND_SPOTS } from '../js/data/pond.js';
+import { pondView } from '../js/pond/rules.js';
+import { pondStageShort } from '../js/guide/prepass-rules.js';
+
+test('단계 표 — 3단계, 1단계는 지금 연못 그대로', () => {
+  assert.equal(POND_STAGES.length, 3);
+  assert.equal(MAX_POND_STAGE, 3);
+  assert.deepEqual([...POND_STAGE_R], [2.0, 2.9, 3.9]);
+  assert.equal(pondRadius(1), POND_R);
+  assert.equal(pondRadius(2), 2.9);
+  assert.equal(pondRadius(3), 3.9);
+  assert.equal(POND_STAGES[0].cost, null);
+  assert.deepEqual(POND_STAGES[1].cost, { stone: 20, wood: 20, coins: 200 });
+  assert.deepEqual(POND_STAGES[2].cost, { stone: 60, wood: 40, coins: 500 });
+  assert.deepEqual(POND_STAGES.map(s => s.book), [0, 4, 8]);
+});
+
+test('pondStageOf — 없거나 이상한 값은 1단계, 범위를 넘으면 잘라 낸다', () => {
+  assert.equal(pondStageOf(undefined), 1);
+  assert.equal(pondStageOf({}), 1);
+  assert.equal(pondStageOf({ pondStage: 2 }), 2);
+  assert.equal(pondStageOf({ pondStage: 9 }), 3);
+  assert.equal(pondStageOf({ pondStage: 0 }), 1);
+  assert.equal(pondStageOf({ pondStage: 'x' }), 1);
+  assert.equal(pondStageOf({ pondStage: 2.7 }), 2);
+});
+
+test('pondSpotFor — 1단계는 고른 작은 자리, 2단계부터는 넓은 자리 하나', () => {
+  assert.equal(pondSpotFor(1, POND_SPOTS[1]), POND_SPOTS[1]);
+  assert.equal(pondSpotFor(2, POND_SPOTS[1]), POND_BIG_SPOT);
+  assert.equal(pondSpotFor(3, null), POND_BIG_SPOT);
+});
+
+test('pondStageInfo — 수첩 종 수와 재료가 모두 차야 넓힐 수 있다', () => {
+  const rich = { stone: 26, wood: 20, coins: 310 };
+  const ok = pondStageInfo(1, rich, 5);
+  assert.equal(ok.maxed, false);
+  assert.equal(ok.next.stage, 2);
+  assert.deepEqual(ok.book, { need: 4, have: 5, ok: true });
+  assert.deepEqual(ok.items, [{ k: 'stone', need: 20, have: 26 }, { k: 'wood', need: 20, have: 20 }, { k: 'coins', need: 200, have: 310 }]);
+  assert.equal(ok.affordable, true);
+
+  assert.equal(pondStageInfo(1, rich, 3).affordable, false);
+  assert.equal(pondStageInfo(1, rich, 3).book.ok, false);
+  assert.equal(pondStageInfo(1, { ...rich, wood: 12 }, 5).affordable, false);
+  assert.equal(pondStageInfo(1, undefined, 5).items[0].have, 0);
+
+  const top = pondStageInfo(3, rich, 11);
+  assert.equal(top.maxed, true);
+  assert.equal(top.next, null);
+  assert.equal(top.affordable, false);
+});
+
+test('pondStageShort — 광고 자리는 모자란 돌·목재만, 코인은 넣지 않는다', () => {
+  const s = pondStageShort(1, { stone: 26, wood: 12, coins: 100 });
+  assert.equal(s.slot, 'pond2');
+  assert.deepEqual(s.list, [{ k: 'wood', need: 20, have: 12, more: 8 }]);
+  assert.equal(pondStageShort(1, { stone: 20, wood: 20, coins: 0 }), null);
+  assert.equal(pondStageShort(2, { stone: 0, wood: 0 }).slot, 'pond3');
+  assert.equal(pondStageShort(3, {}), null);
+});
+
+test('pondDecorInWay — 넓은 자리에 놓인 꾸미기 수, 1단계에는 없다', () => {
+  const at = (dx, dz) => ({ dx: POND_BIG_SPOT.dx + dx, dz: POND_BIG_SPOT.dz + dz });
+  assert.equal(pondDecorInWay([at(0, 0)], 1), 0);
+  assert.equal(pondDecorInWay([at(0, 0), at(20, 0)], 2), 1);
+  assert.equal(pondDecorInWay([at(3.6, 0)], 2), 0);
+  assert.equal(pondDecorInWay([at(3.6, 0)], 3), 1);
+  assert.equal(pondDecorInWay(undefined, 3), 0);
+});
+
+test('pondFishLimits — 2단계부터 바다 대어 4마리, 3단계는 강 물고기 종당 2마리', () => {
+  assert.deepEqual(pondFishLimits(1), { seaMax: 1, riverDup: 1 });
+  assert.deepEqual(pondFishLimits(2), { seaMax: 4, riverDup: 1 });
+  assert.deepEqual(pondFishLimits(3), { seaMax: 4, riverDup: 2 });
+});
+
+test('버튼·구경 거리는 반지름을 따라 커지고 1단계는 예전 값과 같다', () => {
+  assert.ok(Math.abs(pondActR(1) - 3.4) < 1e-9);
+  assert.ok(Math.abs(pondViewR(1) - 5) < 1e-9);
+  assert.ok(Math.abs(pondActR(3) - 5.3) < 1e-9);
+  assert.ok(Math.abs(pondViewR(3) - 6.9) < 1e-9);
+});
+
+test('pondView — 바다 대어를 무거운 순으로 seaMax 마리까지, 기본은 1마리', () => {
+  const state = { dexFish: { common: 1 }, seaBest: { tuna: 30, mackerel: 4, squid: 9, flounder: 0 } };
+  const ids = { riverIds: ['common'], seaIds: ['mackerel', 'squid', 'tuna', 'flounder'] };
+  const one = pondView(state, ids);
+  assert.deepEqual(one.sea, { sp: 'tuna', w: 30 });
+  assert.deepEqual(one.seas, [{ sp: 'tuna', w: 30 }]);
+  const four = pondView(state, ids, { seaMax: 4 });
+  assert.deepEqual(four.sea, { sp: 'tuna', w: 30 });
+  assert.deepEqual(four.seas, [{ sp: 'tuna', w: 30 }, { sp: 'squid', w: 9 }, { sp: 'mackerel', w: 4 }]);
+  assert.deepEqual(pondView({ dexFish: { common: 1 } }, ids, { seaMax: 4 }).seas, []);
+});

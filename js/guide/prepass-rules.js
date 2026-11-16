@@ -2,6 +2,7 @@ import { BUILD_STAGES } from '../house-cost.js';
 import { shortfall, shortParts } from './story-steps.js';
 import { BRIDGE_COST } from '../world/bridge.js';
 import { farmStageInfo } from '../farm-stage.js';
+import { pondStageInfo } from '../pond/stage.js';
 
 export const PREPASS_CAPS = Object.freeze({ wood: 10, stone: 6, coal: 1, coins: 40 });
 export const CAFE_CAPS = Object.freeze({ crop: 3, forage: 3, fish: 2, egg: 2, flour: 2, juice: 1 });
@@ -101,6 +102,14 @@ export function farmStageShort(stage, inv) {
   if (info.maxed) return null;
   const list = shortfall(info.next.cost, inv);
   return list.length ? { slot: `farm${info.next.stage}`, ico: '📐', verb: '밭 넓히기', list } : null;
+}
+
+export function pondStageShort(stage, inv) {
+  const info = pondStageInfo(stage, inv, 0);
+  if (info.maxed) return null;
+  const { coins, ...materials } = info.next.cost;
+  const list = shortfall(materials, inv);
+  return list.length ? { slot: `pond${info.next.stage}`, ico: '🌊', verb: '연못 넓히기', list } : null;
 }
 
 export function shortAdParts(give, lang) {

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { POND_R, POND_SPOTS, POND_HOUSE_CLEAR } from '../js/data/pond.js';
+import { POND_R, POND_SPOTS, POND_HOUSE_CLEAR, POND_STAGE_R, POND_BIG_SPOT } from '../js/data/pond.js';
 
 const places = readFileSync(new URL('../js/data/places.js', import.meta.url), 'utf8');
 const npcSrc = readFileSync(new URL('../js/data/npcs.js', import.meta.url), 'utf8');
@@ -52,6 +52,29 @@ test('주민 자리와 R+2 이상 떨어진다', () => {
       assert.ok(d(a, n) >= POND_R + 2 + n.roam, `${JSON.stringify(s)} vs NPC ${JSON.stringify(n)} dist ${d(a, n).toFixed(2)}`);
     }
   }
+});
+
+test('넓은 자리는 3단계 반지름에서도 집·물가·시설·주민·안개 숲을 비켜 선다', () => {
+  const R = POND_STAGE_R[POND_STAGE_R.length - 1];
+  const p = abs(POND_BIG_SPOT);
+  assert.equal(R, 3.9);
+  assert.ok(Math.hypot(POND_BIG_SPOT.dx, POND_BIG_SPOT.dz) >= 3.9 + R + 0.6);
+  assert.ok(p.x + R <= -11.95 - 0.5, '한옥 집 서쪽 끝');
+  assert.ok(d(p, vec(places, 'LAKE')) >= 6 + R + 1);
+  assert.ok(d(p, vec(places, 'DOCK_POND')) >= 7 + R + 1);
+  assert.ok(d(p, vec(places, 'MIST_GATE')) >= 10);
+  const re = /export const ([A-Z_]+) = new THREE\.Vector3\((-?[\d.]+), 0, (-?[\d.]+)\)/g;
+  const gates = [...places.matchAll(re)]
+    .map(m => ({ name: m[1], x: Number(m[2]), z: Number(m[3]) }))
+    .filter(g => g.name !== 'HOUSE_POS' && Math.abs(g.x) < 45 && Math.abs(g.z) < 45);
+  for (const g of gates) assert.ok(d(p, g) >= R + 2.5, g.name);
+  const npcs = npcSrc.split('\n').flatMap(line => {
+    const pos = line.match(/pos: \[(-?[\d.]+), 0, (-?[\d.]+)\]/);
+    if (!pos) return [];
+    const roam = line.match(/roam: ([\d.]+)/);
+    return [{ x: Number(pos[1]), z: Number(pos[2]), roam: roam ? Number(roam[1]) : 0 }];
+  });
+  for (const n of npcs) assert.ok(d(p, n) >= R + 2 + n.roam, JSON.stringify(n));
 });
 
 test('안개의 숲 입구와 10 이상 떨어진다', () => {
