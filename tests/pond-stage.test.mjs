@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   POND_STAGES, MAX_POND_STAGE, pondStageOf, pondRadius, pondSpotFor, pondStageInfo,
-  pondDecorInWay, pondFishLimits, pondActR, pondViewR, pondBigSpotBlocks,
+  pondDecorInWay, pondFishLimits, pondActR, pondViewR, pondBigSpotBlocks, applyExpand,
 } from '../js/pond/stage.js';
 import { POND_R, POND_STAGE_R, POND_BIG_SPOT, POND_SPOTS } from '../js/data/pond.js';
 import { pondView } from '../js/pond/rules.js';
@@ -108,4 +108,33 @@ test('pondBigSpotBlocks — 넓은 자리의 3단계 반지름과 여유 안쪽�
   assert.equal(pondBigSpotBlocks(house, c.x + 4.0, c.z), false);
   assert.equal(pondBigSpotBlocks(house, c.x + 4.0, c.z, 2), true);
   assert.equal(pondBigSpotBlocks(house, c.x, c.z + 6, 2), false);
+});
+
+test('applyExpand — 딱 맞는 재료로 사면 0이 되고 음수가 되지 않으며 원본은 그대로다', () => {
+  const inv = { stone: 20, wood: 20, coins: 200, fish: 3 };
+  const hints = { pond: true, pondStage: 1 };
+  const out = applyExpand(inv, hints, pondStageInfo(1, inv, 4), true);
+  assert.deepEqual(out.inventory, { stone: 0, wood: 0, coins: 0, fish: 3 });
+  assert.deepEqual(out.hintsSeen, { pond: true, pondStage: 2 });
+  assert.equal(out.stage, 2);
+  assert.deepEqual(out.cost, { stone: 20, wood: 20, coins: 200 });
+  assert.deepEqual(inv, { stone: 20, wood: 20, coins: 200, fish: 3 });
+  assert.deepEqual(hints, { pond: true, pondStage: 1 });
+});
+
+test('applyExpand — 살 수 없으면 아무것도 바꾸지 않는다', () => {
+  const inv = { stone: 26, wood: 12, coins: 310 };
+  assert.equal(applyExpand(inv, {}, pondStageInfo(1, inv, 5), false), null);
+  assert.equal(applyExpand(inv, {}, pondStageInfo(1, inv, 5), true), null);
+  assert.equal(applyExpand({ stone: 99, wood: 99, coins: 999 }, { pondStage: 3 }, pondStageInfo(3, {}, 11), true), null);
+  assert.equal(applyExpand(undefined, undefined, pondStageInfo(1, undefined, 5), true), null);
+  assert.deepEqual(inv, { stone: 26, wood: 12, coins: 310 });
+});
+
+test('applyExpand — 연달아 두 번 사면 두 번째는 3단계 값으로 따로 판정된다', () => {
+  const first = applyExpand({ stone: 30, wood: 30, coins: 300 }, {}, pondStageInfo(1, { stone: 30, wood: 30, coins: 300 }, 8), true);
+  assert.equal(first.stage, 2);
+  const again = applyExpand(first.inventory, first.hintsSeen, pondStageInfo(first.stage, first.inventory, 8), true);
+  assert.equal(again, null);
+  assert.deepEqual(first.inventory, { stone: 10, wood: 10, coins: 100 });
 });

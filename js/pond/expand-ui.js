@@ -2,7 +2,7 @@ import { gameState, ui, requestSave, refreshInventoryUI, guideShortAd } from '..
 import { trackEvent } from '../analytics.js';
 import { logEcon } from '../metrics.js';
 import { pondStageShort } from '../guide/prepass-rules.js';
-import { pondStageInfo, pondExpandView, pondDecorInWay } from './stage.js';
+import { pondStageInfo, pondExpandView, pondDecorInWay, applyExpand } from './stage.js';
 import { pondStage, pondExists, rebuildPond, outdoorRel } from './index.js';
 import { pondBook } from './feed.js';
 import { openBook, closeBook, isBookOpen } from '../hud/collection-book.js';
@@ -58,17 +58,21 @@ export function openPondExpand() {
 
 export function expandPond() {
   const { info, view } = current();
-  if (!view?.canBuy) return false;
-  const next = info.next;
-  for (const k in next.cost) gameState.inventory[k] -= next.cost[k];
-  logEcon('pond_expand', 'stage' + next.stage, -next.cost.coins, gameState.inventory.coins);
+  const out = applyExpand(gameState.inventory, gameState.hintsSeen, info, !!view?.canBuy);
+  if (!out) return false;
+  Object.assign(gameState.inventory, out.inventory);
+  gameState.hintsSeen = out.hintsSeen;
+  logEcon('pond_expand', 'stage' + out.stage, -out.cost.coins, gameState.inventory.coins);
   refreshInventoryUI();
-  gameState.hintsSeen.pondStage = next.stage;
-  rebuildPond();
-  trackEvent('pond_expand', { stage: next.stage, wood: next.cost.wood, stone: next.cost.stone, coins: next.cost.coins });
+  trackEvent('pond_expand', { stage: out.stage, wood: out.cost.wood, stone: out.cost.stone, coins: out.cost.coins });
   requestSave();
   closeBook();
-  ui.toast?.(POND_COPY.growDone[next.stage], DONE_TOAST_MS);
-  if (next.stage === MOVE_STAGE) yardGuidePointTo('pond');
+  try {
+    rebuildPond();
+  } catch (err) {
+    console.error('[pond] rebuild after expand failed', err);
+  }
+  ui.toast?.(POND_COPY.growDone[out.stage], DONE_TOAST_MS);
+  if (out.stage === MOVE_STAGE) yardGuidePointTo('pond');
   return true;
 }

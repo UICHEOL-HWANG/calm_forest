@@ -52,6 +52,18 @@ export function pondExpandView(info, decorInWay = 0) {
   return { rows, hint: blocked ? 'decor' : rows.find(r => !r.ok)?.k ?? null, canBuy: info.affordable && !blocked };
 }
 
+export function applyExpand(inventory, hintsSeen, info, canBuy) {
+  const cost = info?.next?.cost;
+  if (!canBuy || !cost) return null;
+  const inv = { ...inventory };
+  for (const [k, need] of Object.entries(cost)) {
+    const have = inv[k] || 0;
+    if (have < need) return null;
+    inv[k] = have - need;
+  }
+  return { inventory: inv, hintsSeen: { ...hintsSeen, pondStage: info.next.stage }, stage: info.next.stage, cost };
+}
+
 export function pondGrowTipDue(hintsSeen, bookGot) {
   const next = POND_STAGES[pondStageOf(hintsSeen)];
   if (!next || !(bookGot >= next.book)) return 0;

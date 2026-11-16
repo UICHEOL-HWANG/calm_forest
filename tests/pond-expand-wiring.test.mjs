@@ -67,11 +67,11 @@ test('넓히기 창: 광고는 기존 모자람 광고 도우미로, 구매 순�
   assert.match(f, /const short = pondStageShort\(info\.cur\.stage, gameState\.inventory\);/);
   assert.match(f, /short \? guideShortAd\(short\.slot, short\.list, /);
   assert.doesNotMatch(f, /rewarded|prepassArm|repeatOpen/);
-  assert.match(f, /if \(!view\?\.canBuy\) return false;/);
-  assert.match(f, /for \(const k in next\.cost\) gameState\.inventory\[k\] -= next\.cost\[k\];/);
-  assert.match(f, /logEcon\('pond_expand', 'stage' \+ next\.stage, -next\.cost\.coins, gameState\.inventory\.coins\);/);
-  assert.match(f, /trackEvent\('pond_expand', \{ stage: next\.stage, wood: next\.cost\.wood, stone: next\.cost\.stone, coins: next\.cost\.coins \}\);/);
-  const order = ['gameState.inventory[k] -=', 'logEcon(', 'refreshInventoryUI()', 'gameState.hintsSeen.pondStage = next.stage', 'rebuildPond()', "trackEvent('pond_expand'", 'requestSave()', 'closeBook()', 'ui.toast?.('];
+  assert.match(f, /const out = applyExpand\(gameState\.inventory, gameState\.hintsSeen, info, !!view\?\.canBuy\);/);
+  assert.match(f, /if \(!out\) return false;/);
+  assert.match(f, /logEcon\('pond_expand', 'stage' \+ out\.stage, -out\.cost\.coins, gameState\.inventory\.coins\);/);
+  assert.match(f, /trackEvent\('pond_expand', \{ stage: out\.stage, wood: out\.cost\.wood, stone: out\.cost\.stone, coins: out\.cost\.coins \}\);/);
+  const order = ['Object.assign(gameState.inventory, out.inventory)', 'gameState.hintsSeen = out.hintsSeen', 'logEcon(', 'refreshInventoryUI()', "trackEvent('pond_expand'", 'requestSave()', 'closeBook()', 'rebuildPond()', 'ui.toast?.('];
   const at = order.map(s => f.indexOf(s));
   assert.ok(at.every(i => i >= 0), JSON.stringify(at));
   assert.deepEqual([...at].sort((a, b) => a - b), at);
@@ -90,7 +90,7 @@ test('옮겨 간 연못 안내: 2단계로 넓힐 때만, 연못 행동 거리�
   assert.equal(s.done({ nearPond: true }), true);
   const f = src('js/pond/expand-ui.js');
   assert.match(f, /const MOVE_STAGE = 2;/);
-  assert.match(f, /if \(next\.stage === MOVE_STAGE\) yardGuidePointTo\('pond'\);/);
+  assert.match(f, /if \(out\.stage === MOVE_STAGE\) yardGuidePointTo\('pond'\);/);
   assert.equal((f.match(/yardGuidePointTo\(/g) || []).length, 1);
   assert.match(f, /foot: info\.next\.stage === MOVE_STAGE \? el\('div', 'cb-hint', POND_COPY\.growWhere\) : null,/);
   assert.ok(f.indexOf('ui.toast?.(') < f.indexOf("yardGuidePointTo('pond')"));
