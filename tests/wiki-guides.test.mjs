@@ -24,7 +24,7 @@ test('분류 대문: 14개 모두 공략 절 8개 이상, 본문 1000자 이상'
   }
 });
 
-test('개별 문서: 87개 모두 공략 메모 300자 이상, 페이지 전체 450자 이상', () => {
+test('개별 문서: 95개 모두 공략 메모 300자 이상, 페이지 전체 450자 이상', () => {
   for (const e of wiki.entries) {
     const total = entryGuide(e, wiki.entries, backlinks).reduce((n, p) => n + plainLen(p), 0);
     assert.ok(total >= 300, `${e.cat}/${e.id} 공략 ${total}자`);

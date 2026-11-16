@@ -15,6 +15,7 @@ import { storeHeaders, storeReady } from './api/_ai-store.js';
 import { judgeNight } from './api/_night-judge.js';
 import { getAccessToken, readServiceAccount, sendFcm } from './push/fcm.js';
 import { kstDates, nightInput, pickPush, messageFor } from './push/pick-kind.js';
+import { seasonCtx } from './push/season-limited.js';
 import { isMarketTick, marketBudget, runMarketPush } from './push/market.js';
 
 export const PUSH_BUDGET = 40;
@@ -36,6 +37,7 @@ export async function runPush(env, { now = Date.now(), fetch: fetchFn = fetch } 
   const sa = readServiceAccount(env);
   if (!storeReady(env) || !sa) return { skipped: 'not-configured' };
   const dates = kstDates(now);
+  const season = seasonCtx(dates.today);
   const rest = path => `${env.SUPABASE_URL}/rest/v1/${path}`;
 
   let rows;
@@ -54,14 +56,14 @@ export async function runPush(env, { now = Date.now(), fetch: fetchFn = fetch } 
   let sent = 0, failed = 0;
   for (const row of rows) {
     try {
-      const pick = pickPush(row, dates, await judgeFor(env, row, dates));
+      const pick = pickPush(row, dates, await judgeFor(env, row, dates), season);
       if (!pick) { checked.push(row.token); continue; }
       if (sent + failed + dead.length >= PUSH_BUDGET) break;   // 남은 사람은 다음 tick
       accessToken ??= await getAccessToken(env, { fetch: fetchFn, now });
       if (!accessToken) { stop = 'fcm-auth'; break; }          // 이 사람부터는 표시 안 함 → 다음 tick 재시도
 
       const id = crypto.randomUUID();
-      const { title, body } = messageFor(pick, row.lang);
+      const { title, body } = messageFor(pick, row.lang, season);
       const r = await sendFcm({ projectId: sa.project_id, accessToken, token: row.token, title, body,
         data: { kind: pick.kind, send_id: id } }, { fetch: fetchFn });
       // 401·403 = 서비스 계정·프로젝트 설정 문제 — 모두에게 똑같이 실패하므로 여기서 멈춘다(표시 안 함)
@@ -79,9 +81,11 @@ export async function runPush(env, { now = Date.now(), fetch: fetchFn = fetch } 
     }
   }
 
+  let logsFailed;
   try {
     if (logs.length) {
-      await fetchFn(rest('push_logs'), { method: 'POST', headers: storeHeaders(env, 'return=minimal'), body: JSON.stringify(logs) });
+      const lr = await fetchFn(rest('push_logs'), { method: 'POST', headers: storeHeaders(env, 'return=minimal'), body: JSON.stringify(logs) });
+      if (!lr.ok) { logsFailed = lr.status; console.warn('[push] logs failed', lr.status); }
     }
     const m = await fetchFn(rest('rpc/push_mark'), { method: 'POST', headers: storeHeaders(env),
       body: JSON.stringify({ p_today: dates.today, p_checked: checked, p_dead: dead }) });
@@ -91,7 +95,7 @@ export async function runPush(env, { now = Date.now(), fetch: fetchFn = fetch } 
     console.warn('[push] mark failed', e?.message);
     return { candidates: rows.length, sent, failed, dead: dead.length, checked: checked.length, error: 'mark' };
   }
-  return { candidates: rows.length, sent, failed, dead: dead.length, checked: checked.length, ...(stop ? { error: stop } : {}) };
+  return { candidates: rows.length, sent, failed, dead: dead.length, checked: checked.length, ...(stop ? { error: stop } : {}), ...(logsFailed ? { logs_failed: logsFailed } : {}) };
 }
 
 const NIGHT_WORST_CASE = { candidates: 1, sent: PUSH_BUDGET, failed: 0, dead: 0 };

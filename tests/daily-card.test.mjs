@@ -5,11 +5,15 @@ import { dailyCardView, dailyCardTexts } from '../js/daily-card.js';
 
 const COINS = [5, 8, 12, 16, 20, 25, 30];
 const AUTUMN = { id: 'autumn', ico: '🍂', name: '가을' };
-const CARP = { ico: '🐟', name: '단풍 잉어' };
+const LIM = [
+  { cat: 'fish', id: 'maple_carp', name: '단풍 잉어', ico: '🍁', owned: false },
+  { cat: 'bug', id: 'amber', name: '단풍반디', ico: '🍁', owned: true },
+  { cat: 'forage', id: 'chestnut', name: '알밤', ico: '🌰', owned: false },
+];
 const base = {
   streak: 3, reward: { coins: 12 }, coinsTable: COINS,
   weather: 'rain', forecast: 'fog', severe: null, forecastInDex: false,
-  season: AUTUMN, seasonLeft: 10, fish: CARP, fishOwned: false, seasonNew: false,
+  season: AUTUMN, seasonLeft: 10, limited: LIM, seasonNew: false,
 };
 
 test('연속 일수와 7칸 점: 지난 날 on, 오늘 now, 남은 날 off', () => {
@@ -54,11 +58,16 @@ test('내일 서리·태풍 예보는 경고 칸으로', () => {
 });
 
 test('계절 칸: 새 계절 첫 접속 · 끝나기 3일 전(못 낚음)만, 나머지는 없음', () => {
-  assert.equal(dailyCardView({ ...base, seasonNew: true }).season, '🍂 가을이 왔어요 · 10일 동안 🐟 단풍 잉어가 낚여요');
-  assert.equal(dailyCardView({ ...base, seasonLeft: 3 }).season, '⏳ 가을 3일 남음 · 🐟 단풍 잉어는 지금만 낚여요');
-  assert.equal(dailyCardView({ ...base, seasonLeft: 3, fishOwned: true }).season, null);
+  assert.equal(dailyCardView({ ...base, seasonNew: true }).season, '🍂 가을이 왔어요! 가을에만 나오는 물고기·반디·채집물 3종을 찾아보세요.');
+  assert.equal(dailyCardView({ ...base, seasonLeft: 3 }).season, '⏳ 가을이 3일 남았어요. 아직 못 만난 가을 한정: 🍁 단풍 잉어, 🌰 알밤');
   assert.equal(dailyCardView(base).season, null);
-  assert.equal(dailyCardView({ ...base, fish: null, seasonNew: true }).season, null);
+  assert.equal(dailyCardView({ ...base, limited: [], seasonNew: true }).season, null);
+});
+
+test('daily card: season line is empty when every seasonal entry is owned', () => {
+  const view = dailyCardView({ ...base, seasonLeft: 2, limited: LIM.map(x => ({ ...x, owned: true })) });
+  assert.equal(view.season, null);
+  assert.ok(!JSON.stringify(view).includes('남았어요'));
 });
 
 test('문구에 엠대시를 쓰지 않는다', () => {
@@ -72,12 +81,12 @@ globalThis.crypto ??= { randomUUID: () => 'test-uuid' };
 const { t, setLang } = await import('../js/i18n.js');
 setLang('en');
 
-const SEASONS = [['spring', '🌸', '봄', '벚꽃 송어'], ['summer', '☀️', '여름', '동글 복어'], ['autumn', '🍂', '가을', '단풍 잉어'], ['winter', '❄️', '겨울', '얼음 빙어']];
+const SEASONS = [['spring', '🌸', '봄', ['벚꽃 송어', '꽃잎반디', '어린 쑥']], ['summer', '☀️', '여름', ['동글 복어', '불씨반디', '머루']], ['autumn', '🍂', '가을', ['단풍 잉어', '단풍반디', '알밤']], ['winter', '❄️', '겨울', ['얼음 빙어', '눈꽃반디', '솔방울']]];
 const CASES = [];
 for (const w of ['clear', 'rain', 'snow', 'fog']) for (const f of ['clear', 'rain', 'snow', 'fog']) CASES.push({ ...base, weather: w, forecast: f });
 for (const s of ['frost', 'storm']) CASES.push({ ...base, severe: s });
-for (const [id, ico, name, fish] of SEASONS) {
-  const p = { ...base, season: { id, ico, name }, fish: { ico: '🐟', name: fish } };
+for (const [id, ico, name, names] of SEASONS) {
+  const p = { ...base, season: { id, ico, name }, limited: names.map((n, i) => ({ cat: ['fish', 'bug', 'forage'][i], id: n, name: n, ico: '🌿', owned: i === 1 })) };
   CASES.push({ ...p, seasonNew: true }, { ...p, seasonLeft: 2 });
 }
 for (const n of [1, 6, 7, 12]) CASES.push({ ...base, streak: n, reward: n % 7 ? { coins: 20 } : { coins: 30, gem: 1 } });

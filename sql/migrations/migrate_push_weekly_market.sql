@@ -4,7 +4,7 @@ set local lock_timeout = '3s';
 alter table public.push_tokens add column if not exists market_week int;
 
 alter table public.push_logs drop constraint if exists push_logs_kind_check;
-alter table public.push_logs add constraint push_logs_kind_check check (kind in ('night', 'craft', 'return', 'market'));
+alter table public.push_logs add constraint push_logs_kind_check check (kind in ('night', 'craft', 'return', 'pond', 'market', 'season'));
 
 create or replace function public.push_market_candidates(p_week int, p_today date, p_limit int default 100)
 returns table (token text, user_id uuid, lang text, updated_at timestamptz)

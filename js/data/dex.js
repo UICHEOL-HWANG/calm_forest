@@ -53,6 +53,10 @@ export const DEX = {
     { id: 'berry',    name: '산딸기',   ico: '🫐' },
     { id: 'acorn',    name: '도토리',   ico: '🌰' },
     { id: 'herb',     name: '숲 약초',  ico: '🌿' },
+    { id: 'mugwort',   name: '어린 쑥', ico: '🌱', season: 'spring' },
+    { id: 'wildgrape', name: '머루',    ico: '🍇', season: 'summer' },
+    { id: 'chestnut',  name: '알밤',    ico: '🌰', season: 'autumn' },
+    { id: 'pinecone',  name: '솔방울',  ico: '🌲', season: 'winter' },
   ],
   // 🌟 반딧불이 — 밤에 남쪽 계곡에서 🦋포충망으로 잡아야 채워짐(밤 재방문 훅)
   bug: [
@@ -60,6 +64,10 @@ export const DEX = {
     { id: 'blue',    name: '푸른반디',   ico: '🔵' },
     { id: 'green',   name: '초록반디',   ico: '🟢' },   // 🌧️ 비 온 날 잘 나옴
     { id: 'rainbow', name: '무지개반디', ico: '🌈' },   // 🌫️ 안개 낀 날 잘 나옴
+    { id: 'petal',   name: '꽃잎반디',   ico: '🌸', season: 'spring' },
+    { id: 'ember',   name: '불씨반디',   ico: '🔥', season: 'summer' },
+    { id: 'amber',   name: '단풍반디',   ico: '🍁', season: 'autumn' },
+    { id: 'frost',   name: '눈꽃반디',   ico: '❄️', season: 'winter' },
   ],
   // 🐾 밤손님 흔적 — 밤사이 다녀간 흔적을 조사해야 채워짐(다음날 재방문 훅)
   track: [

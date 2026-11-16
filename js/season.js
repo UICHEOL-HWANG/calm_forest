@@ -78,7 +78,6 @@ export const SEASON_DRIFT = {
 };
 
 // ── 안내 문구 — game.js 는 상태만 넘기고 여기서 문장을 만든다(테스트 가능하게) ──
-//   fish = { id, name, ico } 그 계절 한정 어종 · owned = 이미 도감에 있나
 //   ⚠️ 문장 틀을 바꾸면 js/i18n-en.js 의 패턴 키도 같이 바꾼다.
 
 // 받침 유무로 조사 고르기 — js/spaces/cafe.js josa 와 같은 규칙(그쪽은 three 를 끌고 와서 import 하지 않는다)
@@ -87,17 +86,29 @@ function josa(word, withJong, noJong) {
   return c >= 0 && c <= 11171 && c % 28 ? withJong : noJong;
 }
 
-/** 출석 모달 한 줄 — 새 계절 첫 접속 · 끝나기 3일 전(아직 못 낚았을 때). 할 말이 없으면 '' */
-export function seasonNotice({ season, left }, fish, owned, isNew) {
-  if (!fish) return '';
-  if (isNew) return `${season.ico} ${season.name}${josa(season.name, '이', '가')} 왔어요! ${left}일 동안 호수에서 ${fish.ico} ${fish.name}${josa(fish.name, '이', '가')} 낚여요.`;
-  if (left <= 3 && !owned) return `⏳ ${season.name}${josa(season.name, '이', '가')} ${left}일 남았어요 — ${fish.ico} ${fish.name}${josa(fish.name, '은', '는')} 지금만 낚여요!`;
+const LIMITED_CATS = { fish: '물고기', bug: '반디', forage: '채집물' };
+
+export function seasonLimited(seasonId, { fish = [], bug = [], forage = [], dex = {} } = {}) {
+  const out = [];
+  const f = fish.find(k => k.season === seasonId);
+  if (f) out.push({ cat: 'fish', id: f.rarity, name: f.name, ico: dex.fish?.find(d => d.id === f.rarity)?.ico || '🐟' });
+  const b = bug.find(k => k.season === seasonId);
+  if (b) out.push({ cat: 'bug', id: b.id, name: b.name, ico: b.ico });
+  const g = forage.find(k => k.season === seasonId);
+  if (g) out.push({ cat: 'forage', id: g.id, name: g.name, ico: g.ico });
+  return out;
+}
+
+export function seasonNotice({ season, left }, limited, isNew) {
+  if (!limited?.length) return '';
+  const ga = josa(season.name, '이', '가');
+  if (isNew) return `${season.ico} ${season.name}${ga} 왔어요! ${season.name}에만 나오는 ${limited.map(x => LIMITED_CATS[x.cat]).join('·')} ${limited.length}종을 찾아보세요.`;
+  const missing = limited.filter(x => !x.owned);
+  if (left <= 3 && missing.length) return `⏳ ${season.name}${ga} ${left}일 남았어요. 아직 못 만난 ${season.name} 한정: ${missing.map(x => `${x.ico} ${x.name}`).join(', ')}`;
   return '';
 }
 
-/** HUD 계절 아이콘을 눌렀을 때 — 지금 계절·남은 날·한정 어종(낚았는지) */
-export function seasonStatusLine({ season, left }, fish, owned) {
+export function seasonStatusLine({ season, left }, limited) {
   const head = `${season.ico} ${season.name} · ${left}일 남음`;
-  if (!fish) return head;
-  return owned ? `${head} — 이번 계절 한정 ${fish.name}도 낚았어요 ✅` : `${head} — 이번 계절 한정: ${fish.name}`;
+  return limited?.length ? `${head} · 한정 ${limited.filter(x => x.owned).length}/${limited.length}` : head;
 }

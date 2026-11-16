@@ -1,7 +1,7 @@
 // =============================================================
 //  calm forest · 🔔 푸시 — 오늘 누구에게 무엇을 보낼지(순수)
 //  ------------------------------------------------------------
-//  유저당 하루 1통. 우선순위 🦝 밤손님 예고 > 🔥🫙 가공 완료 > 🐟 연못 > 🌱 복귀.
+//  유저당 하루 1통. 우선순위 🦝 밤손님 예고 > 🔥🫙 가공 완료 > 🐟 연못 > 🍂 계절 끝 > 🌱 복귀.
 //  "돌아올 이유가 실제로 있는 날"에만 보낸다 — 이유 없는 날은 조용히(힐링 톤). 🌱 는 밭이 비었으면 출석 선물 문구(bare).
 //  날짜는 KST 기준(세이브의 날짜는 기기 로컬이지만 1차 유저는 한국).
 //  row 는 push_candidates RPC 한 줄(sql/migrations/migrate_push_tokens.sql).
@@ -42,7 +42,7 @@ export function nightInput(row, date, dates) {
 
 /** → { kind:'night' } | { kind:'craft', stations } | { kind:'pond' } | { kind:'return', bare? } | null
  *  night: 이 유저의 judgeNight 결과(대상이 아니면 null) */
-export function pickPush(row, dates, night) {
+export function pickPush(row, dates, night, seasonCtx) {
   const lastMs = Date.parse(row.updated_at) || 0;
   const awayDays = (dates.todayStartMs + DAY_MS - lastMs) / DAY_MS;   // 오늘 자정 기준 경과일
   if (awayDays > GIVE_UP_DAYS) return null;
@@ -56,6 +56,10 @@ export function pickPush(row, dates, night) {
     if (stations.length) return { kind: 'craft', stations };
   }
   if (lastMs < dates.todayStartMs && row.pond_day === dates.yesterday) return { kind: 'pond' };
+  if (seasonCtx && seasonCtx.left <= 3 && lastMs < dates.todayStartMs && row.season_7d === 0) {
+    const dex = row.dex || {};
+    if (seasonCtx.limited.some(x => !dex[x.cat]?.[x.id])) return { kind: 'season', season: seasonCtx.id };
+  }
 
   if (awayDays >= RETURN_AFTER_DAYS && (row.returns_7d | 0) < RETURN_MAX_7D) {
     return sprouting(row.plots).length ? { kind: 'return' } : { kind: 'return', bare: true };
@@ -69,8 +73,15 @@ const STATION = {
 };
 
 /** 확정 문구(2026-10-12 사용자 검수) — lang 은 'ko' | 'en' */
-export function messageFor(pick, lang = 'ko') {
+const SEASON_EN = { spring: 'spring', summer: 'summer', autumn: 'autumn', winter: 'winter' };
+
+export function messageFor(pick, lang = 'ko', seasonCtx) {
   const en = lang === 'en';
+  if (pick.kind === 'season' && seasonCtx) {
+    const s = SEASON_EN[seasonCtx.id] || 'this season';
+    return en ? { title: `${seasonCtx.ico} ${seasonCtx.left} days of ${s} left`, body: `Some ${s}-only fish, fireflies or forage are still missing from your guide` }
+              : { title: `${seasonCtx.ico} ${seasonCtx.name}이 ${seasonCtx.left}일 남았어요`, body: `${seasonCtx.name}에만 나오는 물고기·반디·채집물, 도감에 아직 빈칸이 있어요` };
+  }
   if (pick.kind === 'night') {
     return en ? { title: '🌙 Something feels off at the farm', body: 'Someone might visit tonight.' }
               : { title: '🌙 밭이 조금 수상해요', body: '오늘 밤 누군가 찾아올지도 몰라요.' };
