@@ -63,3 +63,17 @@ test('P1: 연못 위치·근처·모으기·연못 생긴 날', () => {
   assert.match(src('js/pond/build.js'), /gather\(sec\)/);
   assert.match(src('js/data/pond.js'), /export const POND_ACT_R = 3\.4;/);
 });
+
+test('P2: 단계별 반지름·자리·충돌체·마당 치우기·지도', () => {
+  const p = src('js/pond/index.js');
+  for (const fn of ['pondStage', 'rebuildPond', 'pondMapKey', 'pondPatchBlocks']) assert.match(p, new RegExp(`export function ${fn}\\(`));
+  for (const call of ['pondSpotFor(', 'pondRadius(', 'pondActR(', 'pondViewR(', 'pondFishLimits(', 'removeSolid(', 'obstacles.push(', 'clearYard(']) assert.ok(p.includes(call), call);
+  assert.doesNotMatch(p, /POND_ACT_R|POND_VIEW_R/);
+  const b = src('js/pond/build.js');
+  assert.ok(b.includes('export function buildPond({ fishMesh, mergeGeos, paintGeo, emojiSprite, r = POND_R, stage = 1 })'));
+  assert.ok(b.includes('setContents(view, seaColorOf, limits'));
+  assert.match(b, /grow\(/);
+  const g = src('js/game.js');
+  assert.ok(g.includes('pond: pondMapKey()'));
+  assert.ok(g.includes('pondPatchBlocks('));
+});

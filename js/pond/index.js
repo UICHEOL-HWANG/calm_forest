@@ -1,10 +1,15 @@
-import { gameState, scene, solidCircle, ui, player, dist2D, fishMesh, mergeGeos, paintGeo, requestSave } from '../game.js';
+import {
+  gameState, scene, solidCircle, removeSolid, obstacles, trees, swayables, grassClumps, ui, player, dist2D, fishMesh, mergeGeos, paintGeo,
+  requestSave,
+} from '../game.js';
 import { emojiSprite } from '../spaces/kitchen-stage.js';
 import { trackEvent } from '../analytics.js';
 import { FISH_KINDS } from '../data/catalog.js';
 import { SEA_SPECIES, HOUSE_POS } from '../data/places.js';
-import { POND_R, POND_SPOTS, POND_VIEW_R, POND_VIEW_SEC, POND_ACT_R } from '../data/pond.js';
+import { POND_R, POND_SPOTS, POND_VIEW_SEC } from '../data/pond.js';
 import { pondView, pondChanges, pickPondSpot, pondBlocks, pondToastDue, shouldTrackCreated } from './rules.js';
+import { pondStageOf, pondRadius, pondSpotFor, pondActR, pondViewR, pondFishLimits, pondBigSpotBlocks } from './stage.js';
+import { clearYard } from './yard-clear.js';
 import { buildPond } from './build.js';
 import { POND_COPY } from './copy.js';
 import { kstDate } from '../kst-date.js';
@@ -15,30 +20,54 @@ const RIVER_IDS = FISH_KINDS.map(k => k.rarity);
 const SEA_IDS = SEA_SPECIES.map(s => s.id);
 const seaColorOf = (sp) => SEA_SPECIES.find(s => s.id === sp)?.color ?? 0x6f8fa8;
 
-let pond = null, solid = null, last = null, nearSec = 0, viewedDay = null, toastPending = false, toastWait = 0;
+const YARD_PAD = 0.6, PATCH_PAD = 0.3, GROW_SEC = 2;
+
+let pond = null, solid = null, block = null, built = 0, last = null, nearSec = 0, viewedDay = null, toastPending = false, toastWait = 0;
 
 const kstDay = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
 const outdoorRel = () => (Array.isArray(gameState.outdoor) ? gameState.outdoor : [])
   .filter(o => Number.isFinite(o?.x) && Number.isFinite(o?.z))
   .map(o => ({ dx: o.x - HOUSE_POS.x, dz: o.z - HOUSE_POS.z }));
 
+export function pondStage() {
+  return pondStageOf(gameState.hintsSeen);
+}
+
+function teardown() {
+  if (!pond) return;
+  scene.remove(pond.group);
+  pond.dispose();
+  removeSolid(solid);
+  const i = obstacles.indexOf(block);
+  if (i >= 0) obstacles.splice(i, 1);
+  pond = null; solid = null; block = null; built = 0;
+}
+
 function ensureBuilt() {
-  if (pond) return true;
-  const spot = pickPondSpot(POND_SPOTS, outdoorRel(), POND_R);
+  const stage = pondStage();
+  if (pond && built === stage) return true;
+  const spot = pondSpotFor(stage, pickPondSpot(POND_SPOTS, outdoorRel(), POND_R));
   if (!spot) return false;
-  pond = buildPond({ fishMesh, mergeGeos, paintGeo, emojiSprite });
-  pond.group.position.set(HOUSE_POS.x + spot.dx, 0, HOUSE_POS.z + spot.dz);
+  teardown();
+  const r = pondRadius(stage), x = HOUSE_POS.x + spot.dx, z = HOUSE_POS.z + spot.dz;
+  if (stage >= 2) clearYard({ scene, trees, obstacles, swayables, grassClumps, removeSolid }, x, z, r + YARD_PAD);
+  pond = buildPond({ fishMesh, mergeGeos, paintGeo, emojiSprite, r, stage });
+  pond.group.position.set(x, 0, z);
   scene.add(pond.group);
-  solid = solidCircle(pond.group.position.x, pond.group.position.z, POND_R + 0.1);
+  solid = solidCircle(x, z, r + 0.1);
+  block = { x, z, r: r + 0.1 };
+  obstacles.push(block);
+  built = stage;
   return true;
 }
 
 export function refreshPond(trigger) {
   if (!spaceLinkOn(e3Decision())) return;
-  const view = pondView({ dexFish: gameState.dex?.fish, seaBest: gameState.sea?.best }, { riverIds: RIVER_IDS, seaIds: SEA_IDS });
+  const limits = pondFishLimits(pondStage());
+  const view = pondView({ dexFish: gameState.dex?.fish, seaBest: gameState.sea?.best }, { riverIds: RIVER_IDS, seaIds: SEA_IDS }, limits);
   if (!view.has || !ensureBuilt()) return;
   const changes = pondChanges(last, view);
-  pond.setContents(view, seaColorOf);
+  pond.setContents(view, seaColorOf, limits);
   last = view;
   for (const c of changes) {
     if (c.type === 'created') {
@@ -54,6 +83,13 @@ export function refreshPond(trigger) {
   }
 }
 
+export function rebuildPond() {
+  if (!spaceLinkOn(e3Decision())) return;
+  teardown();
+  refreshPond('expand');
+  pond?.grow(GROW_SEC);
+}
+
 export function updatePond(dt, inVillage) {
   if (!pond) return;
   pond.group.visible = inVillage;
@@ -67,7 +103,7 @@ export function updatePond(dt, inVillage) {
     requestSave();
   }
   pond.update(dt);
-  const near = dist2D(player.position, pond.group.position) < POND_VIEW_R;
+  const near = dist2D(player.position, pond.group.position) < pondViewR(built);
   nearSec = near ? nearSec + dt : 0;
   if (nearSec >= POND_VIEW_SEC) {
     const day = kstDay();
@@ -82,6 +118,14 @@ export function pondScatterBlocks(x, z, pad = 0) {
   return pondBlocks(POND_SPOTS, HOUSE_POS, x, z, POND_R, pad);
 }
 
+export function pondPatchBlocks(x, z, patchR) {
+  return pondBigSpotBlocks(HOUSE_POS, x, z, patchR + PATCH_PAD);
+}
+
+export function pondMapKey() {
+  return pondExists() ? `${built}@${pond.group.position.x.toFixed(1)},${pond.group.position.z.toFixed(1)}` : '';
+}
+
 export function pondExists() {
   return !!pond && !!last?.has;
 }
@@ -91,7 +135,7 @@ export function pondPos() {
 }
 
 export function pondNear() {
-  return pondExists() && pond.group.visible && dist2D(player.position, pond.group.position) < POND_ACT_R;
+  return pondExists() && pond.group.visible && dist2D(player.position, pond.group.position) < pondActR(built);
 }
 
 export function pondCount() {

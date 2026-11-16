@@ -52,6 +52,10 @@ export function pondDecorInWay(outdoorRel, stage) {
     .filter(o => Math.hypot(o.dx - POND_BIG_SPOT.dx, o.dz - POND_BIG_SPOT.dz) < reach).length;
 }
 
+export function pondBigSpotBlocks(house, x, z, pad = 0) {
+  return Math.hypot(house.x + POND_BIG_SPOT.dx - x, house.z + POND_BIG_SPOT.dz - z) < pondRadius(MAX_POND_STAGE) + pad;
+}
+
 export function pondFishLimits(stage) {
   const s = clampStage(stage);
   return { seaMax: s >= 2 ? 4 : 1, riverDup: s >= 3 ? 2 : 1 };

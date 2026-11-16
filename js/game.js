@@ -94,7 +94,7 @@ import { makeConcertBridge } from './concert/bridge.js';
 import { refreshPond, updatePond, pondScatterBlocks } from './pond/index.js';
 import { feedPond, openPondBook } from './pond/feed.js';
 import { POND_COPY } from './pond/copy.js';
-import { pondPos, pondNear } from './pond/index.js';
+import { pondPos, pondNear, pondMapKey, pondPatchBlocks } from './pond/index.js';
 import { installYardGuide } from './pond/yard-guide.js';
 import { yardIdle } from './pond/yard-steps.js';
 import { featureGuidesOpen, houseGoalDue, placeGuideReady, FIRST_VISIT } from './guide/feature-rules.js';
@@ -2673,7 +2673,7 @@ export async function bootWorld(uiCallbacks) {
   bootTiming.mark('x');
   initMapSnapshot({ renderer, scene, mobile: IS_MOBILE, sunLight, hemiLight, onShot: (c) => ui.setMapSnapshot?.(c),
     transients: () => [player, pet3d, rainLines, seasonDrift?.mesh, fireflies, stars, ...chickens, ...npcObjs.map(o => o.group)],
-    signature: () => mapSignature({ season: SEASON, houseStage: gameState.houseStage, unlocks: unlockOpen, outdoor: gameState.outdoor }),
+    signature: () => mapSignature({ season: SEASON, houseStage: gameState.houseStage, unlocks: unlockOpen, outdoor: gameState.outdoor, pond: pondMapKey() }),
     daylight: (fn) => { const t0 = timeOfDay, p0 = dayPaused; try { timeOfDay = 0.5; dayPaused = true; updateDayNight(0); fn(); } finally { timeOfDay = t0; dayPaused = p0; updateDayNight(0); } } });
   initInput();
   initSound();
@@ -3690,9 +3690,10 @@ function buildWorld() {
   // 바닥 얼룩 — 한 번 깔면 끝까지 안 건드리는 정적 소품이라 지오메트리 하나로 합쳐 1드로우콜로
   const patchGeos = [];
   for (let i = 0; i < 40; i++) {
-    const r = 6 + Math.random() * 26, a = Math.random() * Math.PI * 2;
+    const r = 6 + Math.random() * 26, a = Math.random() * Math.PI * 2, patchR = 1 + Math.random() * 2.5;
     if (dist2D({ x: Math.cos(a) * r, z: Math.sin(a) * r }, SEA_COVE) < SEA_COVE.r + 1) continue;  // 🌊 후미 물 위 제외
-    patchGeos.push(new THREE.CircleGeometry(1 + Math.random() * 2.5, 12)
+    if (pondPatchBlocks(Math.cos(a) * r, Math.sin(a) * r, patchR)) continue;
+    patchGeos.push(new THREE.CircleGeometry(patchR, 12)
       .rotateX(-Math.PI / 2).translate(Math.cos(a) * r, 0.01, Math.sin(a) * r));
   }
   if (patchGeos.length) {
@@ -8835,7 +8836,7 @@ export {
   decorTarget, dexDiscover, diffParams, disposeTree, doSleep, dropKilnFlames, dist2D, doPlayerAction, dockGroup, duelFetcher, easeOutBack,
   farmActionFirst, farmBuildingRecs, farmCropMeshes, farmGroup, farmHalf, farmSoilMesh, fertTarget, finishPetJob,
   firstHint, firstHintBanner, fishDiff, fishMesh, fishState, floatTexts, forageNodes, forecastLine, forestGroup,
-  gambrelRoofSlabs, gambrelSolid, gameState, ghostOutdoor, giveReward, gladeBugs, gladeGroup, habitatCells, habitatCtx,
+  gambrelRoofSlabs, gambrelSolid, gameState, ghostOutdoor, giveReward, gladeBugs, gladeGroup, grassClumps, habitatCells, habitatCtx,
   habitatEnvAt, handAnchor, tailPivot, harvestTexture, heldGroup, heldToolMesh, houseCollider, houseFloor, houseGhost, houseGroup,
   houseSign, houseSignCtx, houseSignTex, houseWindows, indoor, interiorFloor, interiorFloors, interiorGroup,
   interiorLamp, isBlocked, isNight, keys, kitchenFinish, kitchenStart, lastDoorPrompt, lastFloorChoiceKey,

@@ -74,10 +74,10 @@ export function bookTone(src, tone = BOOK_TONE) {
   return out;
 }
 
-export function mapSignature({ season, houseStage, unlocks, outdoor }) {
+export function mapSignature({ season, houseStage, unlocks, outdoor, pond }) {
   const u = [...(unlocks || [])].sort().join(',');
   const o = (outdoor || []).map(r => `${r.id}@${(+r.x).toFixed(1)},${(+r.z).toFixed(1)}/${r.rot ?? 0}`).sort().join(';');
-  return `${season}|${houseStage}|${u}|${o}`;
+  return `${season}|${houseStage}|${u}|${o}|${pond ?? ''}`;
 }
 
 const hasLight = o => { let found = false; o.traverse(c => { if (c.isLight) found = true; }); return found; };

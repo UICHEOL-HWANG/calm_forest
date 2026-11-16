@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   POND_STAGES, MAX_POND_STAGE, pondStageOf, pondRadius, pondSpotFor, pondStageInfo,
-  pondDecorInWay, pondFishLimits, pondActR, pondViewR,
+  pondDecorInWay, pondFishLimits, pondActR, pondViewR, pondBigSpotBlocks,
 } from '../js/pond/stage.js';
 import { POND_R, POND_STAGE_R, POND_BIG_SPOT, POND_SPOTS } from '../js/data/pond.js';
 import { pondView } from '../js/pond/rules.js';
@@ -98,4 +98,14 @@ test('pondView — 바다 대어를 무거운 순으로 seaMax 마리까지, 기
   assert.deepEqual(four.sea, { sp: 'tuna', w: 30 });
   assert.deepEqual(four.seas, [{ sp: 'tuna', w: 30 }, { sp: 'squid', w: 9 }, { sp: 'mackerel', w: 4 }]);
   assert.deepEqual(pondView({ dexFish: { common: 1 } }, ids, { seaMax: 4 }).seas, []);
+});
+
+test('pondBigSpotBlocks — 넓은 자리의 3단계 반지름과 여유 안쪽만 막는다', () => {
+  const house = { x: -8, z: -8 };
+  const c = { x: house.x + POND_BIG_SPOT.dx, z: house.z + POND_BIG_SPOT.dz };
+  assert.equal(pondBigSpotBlocks(house, c.x, c.z), true);
+  assert.equal(pondBigSpotBlocks(house, c.x + 3.8, c.z), true);
+  assert.equal(pondBigSpotBlocks(house, c.x + 4.0, c.z), false);
+  assert.equal(pondBigSpotBlocks(house, c.x + 4.0, c.z, 2), true);
+  assert.equal(pondBigSpotBlocks(house, c.x, c.z + 6, 2), false);
 });

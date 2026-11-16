@@ -72,6 +72,7 @@ test('the map signature changes with unlocks, outdoor decor, house stage and sea
     { outdoor: [{ id: 'lamp', x: 1, z: 2, rot: 0 }] },
     { houseStage: 4 },
     { season: 'winter' },
+    { pond: '2@-16.5,-11.0' },
   ]) assert.notEqual(S.mapSignature({ ...base, ...changed }), sig, JSON.stringify(Object.keys(changed)));
   assert.equal(typeof S.mapSignature({ season: 'spring', houseStage: 0, unlocks: null, outdoor: [] }), 'string');
 });
