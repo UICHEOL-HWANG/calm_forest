@@ -1,0 +1,11 @@
+# tasks
+- [x] 워크트리·dev docs
+- [x] 테스트 먼저(모바일 판정·가벼운 재질·연결·묶음 평가)
+- [x] lite-material.js · three-lite.js
+- [x] importmap · bundle-boot · build-cap · prologue-set
+- [x] npm test 6039 통과
+- [x] 브라우저 모바일(1848개 전부 Lite)·데스크톱(Standard) 확인
+- [x] 빌드 web·itch·ait·cap ios/android
+- [x] iOS 시뮬레이터 1회: 첫 화면 8.4s(기존 9.4~14.5), 워밍업 5.8s(기존 8.0~16.5)
+- [x] code-reviewer: 이름 import 로 바꿔 묶음 +10.8KB → +1.2KB
+- [ ] 커밋(승인 대기) · 실기기·안드로이드 측정

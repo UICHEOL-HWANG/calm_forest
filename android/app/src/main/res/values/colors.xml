@@ -2,4 +2,5 @@
 <resources>
     <!-- 🔔 푸시 알림 강조색(상태바 아이콘·알림 헤더) — functions/push/fcm.js 의 color 와 같다 -->
     <color name="push_accent">#5F9E6E</color>
+    <color name="boot_bg">#DFE8D8</color>
 </resources>

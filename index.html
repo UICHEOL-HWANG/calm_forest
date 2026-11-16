@@ -7,6 +7,7 @@
 <meta name="application-name" content="고요한 숲" />
 <meta name="apple-mobile-web-app-title" content="고요한 숲" />
 <meta name="theme-color" content="#bfe8c9" />
+<script>if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && /[?&]bootb=1/.test(location.search)) document.documentElement.classList.add('boot-b');</script>
 <meta name="description" content="농사·낚시·잠수·집 꾸미기를 즐기는 로우폴리 3D 힐링 게임. 설치 없이 웹과 앱에서 바로 플레이." />
 <!-- 구글 서치콘솔 소유확인 — 삭제하면 색인 데이터 접근이 끊깁니다 -->
 <meta name="google-site-verification" content="GiZimkuR7Ek0fqWjnEuQtwlpdnW0kbQjKDPgeiOiroo" />
@@ -2858,9 +2859,31 @@
   body.pre-world::before { content: ""; position: fixed; inset: 0; z-index: 5; pointer-events: none;
     background: #cfd8c4 url("assets/social/login-bg.webp") center / cover no-repeat; transition: opacity .8s ease; }
   body.pre-world.world-ready::before { opacity: 0; }
+  #loading .boot-mark, #loading .boot-bar, #loading .boot-step { display: none; }
+  html.boot-b { background: #dfe8d8; }
+  html.boot-b #loading.boot-bg { color: #3c5245; text-shadow: none; transition: clip-path 1.1s cubic-bezier(.65,0,.35,1), opacity .5s ease;
+    background: radial-gradient(120% 80% at 50% 40%, #f4f7ef 0%, #dfe8d8 70%, #cfdcc6 100%); clip-path: circle(85% at 50% 42%); }
+  html.boot-b #loading.boot-bg .load-pill { display: none; }
+  html.boot-b #loading.boot-bg .boot-mark { display: block; position: absolute; left: 50%; top: 42%; width: 92px; height: 92px; margin: -46px 0 0 -46px; border-radius: 25%;
+    background: url("assets/boot/mark.png") center / cover; box-shadow: 0 12px 30px rgba(20,40,30,.25); transition: opacity .6s ease, transform .9s cubic-bezier(.16,1,.3,1); }
+  html.boot-b #loading.boot-bg .boot-bar { display: block; position: absolute; left: 23%; right: 23%; top: calc(42% + 74px); height: 4px; border-radius: 4px; overflow: hidden;
+    background: rgba(47,107,79,.18); transition: opacity .5s ease; }
+  html.boot-b #loading.boot-bg .boot-bar i { position: absolute; inset: 0; border-radius: 4px; background: #2f6b4f; transform-origin: left center;
+    transform: scaleX(var(--to, .12)); transition: transform 6s cubic-bezier(.16,1,.3,1); }
+  html.boot-b #loading.boot-bg .boot-step { display: block; position: absolute; left: 0; right: 0; top: calc(42% + 92px); text-align: center; font-size: 13px; font-weight: 600; transition: opacity .4s ease; }
+  html.boot-b #loading.boot-open { clip-path: circle(0% at 50% 42%); }
+  html.boot-b #loading.boot-open .boot-mark { transform: scale(.6); opacity: 0; }
+  html.boot-b #loading.boot-open .boot-bar, html.boot-b #loading.boot-open .boot-step { opacity: 0; }
+  html.boot-b #loading.boot-open .boot-bar i { transition-duration: .35s; }
+  html.boot-b #loading.boot-fade { opacity: 0; }
+  @media (prefers-reduced-motion: reduce) {
+    html.boot-b #loading.boot-bg, html.boot-b #loading.boot-bg .boot-bar i { transition: opacity .3s ease; }
+    html.boot-b #loading.boot-open { clip-path: circle(85% at 50% 42%); opacity: 0; }
+  }
   /* 🧭 첫 실행 "어디서 알게 되셨어요?"(시안 A) — 로딩 위 가운데 카드·2열 보기. 로딩이 먼저 끝나도 크림 막으로 게임을 가린다 */
   #survey-card { position: fixed; inset: 0; z-index: 33; display: none; place-items: center; background: rgba(255,247,236,0.72); padding: 0 14px; }
   #survey-card.show { display: grid; }
+  html.boot-b #survey-card { background: rgba(223,232,216,.55); }
   #survey-card .sv-card { width: min(420px, 100%); max-height: calc(100dvh - 24px); overflow-y: auto; box-sizing: border-box; background: #fff; border-radius: 22px; box-shadow: 0 14px 40px rgba(30,50,40,0.22); padding: 18px 14px 12px; color: var(--ink); animation: floatUp .4s ease both; }
   #survey-card h2 { margin: 0 0 4px; font-size: 17px; text-align: center; word-break: keep-all; }
   #survey-card .sv-hint { font-size: 12.5px; opacity: .7; text-align: center; margin: 0 0 12px; }
@@ -4169,7 +4192,7 @@
     </div>
   </div>
 
-  <div id="loading" class="boot-bg"><span class="load-pill">고요한 숲 불러오는 중<span class="load-dots" aria-hidden="true"><i></i><i></i><i></i></span></span></div>
+  <div id="loading" class="boot-bg"><span class="load-pill">고요한 숲 불러오는 중<span class="load-dots" aria-hidden="true"><i></i><i></i><i></i></span></span><i class="boot-mark" aria-hidden="true"></i><span class="boot-bar" aria-hidden="true"><i></i></span><span class="boot-step" role="status" aria-live="polite">숲길을 여는 중</span></div>
   <div id="survey-card"></div><!-- 🧭 첫 실행 설문(js/install-survey-ui.js) — #loading 안에 넣으면 setLoadWait 가 덮어쓴다 -->
 
   <!-- 🌐 로딩 화면만 먼저 번역한다 — 아래 큰 모듈 스크립트에 맡기면 늦는다.
@@ -4201,7 +4224,8 @@
   <script type="importmap">
   {
     "imports": {
-      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three": "./js/three-lite.js",
+      "three-core": "https://unpkg.com/three@0.160.0/build/three.module.js",
       "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
     }
   }
@@ -4239,6 +4263,10 @@
     import { RIVER_LEN } from './js/boat/consts.js';
     import { questPanelView } from './js/quest-panel-view.js';
     import { trackLogin, trackEvent, setGaUser, onTrack, setInstallUserProps, setSurveyUserProps } from './js/analytics.js';
+    import { bootTiming } from './js/boot-timing.js';
+    bootTiming.use(trackEvent);
+    bootTiming.mark('b');
+    document.addEventListener('visibilitychange', () => { if (document.hidden) bootTiming.send(null); });
     import { bootMetaPixel, metaFromTrack, metaSignup } from './js/meta-pixel.js';   // 📣 Meta Pixel(웹 전용) — 광고 → 가입 → 결제 여정
     import { bootInstallReferrer, syncInstallAttribution, cachedInstallAttribution } from './js/install-referrer-boot.js';   // 📲 안드로이드 설치 채널(Play Install Referrer)
     import { bootInstallSurvey, syncInstallSurvey } from './js/install-survey-ui.js';   // 🧭 첫 실행 "어디서 알게 되셨어요?"(iOS 전원·안드로이드 링크 없이 온 사람)
@@ -4262,8 +4290,11 @@
     import { Sound, startBGM, toggleBGM } from './js/sound.js';
     import { t, LANG, setLang, translateDom, watchDom } from './js/i18n.js';   // 🌐 i18n(한국어 원문 키 사전)
     import { TUNING, isBetaA, betaDay } from './js/tuning.js';
+    import { createBootScreen } from './js/boot-screen.js';
 
     const $ = (id) => document.getElementById(id);
+    const bootScreen = document.documentElement.classList.contains('boot-b') ? createBootScreen($('loading'), { t }) : null;
+    bootScreen?.step(0);
 
     // 🔒 DB·서버에서 온 문자열을 innerHTML 에 끼울 때는 반드시 이걸 거친다(닉네임·날씨 등).
     const escapeHtml = (s) => String(s).replace(/[&<>"']/g,
@@ -4745,6 +4776,7 @@
       setLoadWait(on, stuck = false) {
         const el = $('loading');
         if (!el) return;
+        if (bootScreen?.isUp() && !stuck && el.dataset.stuck !== '1') { if (on) bootScreen.step(2); return; }
         el.style.display = on ? '' : 'none';
         if (!on) return;
         if (!stuck) { el.textContent = t('🌙 잠시만요, 마을을 찾는 중이에요'); return; }
@@ -6328,7 +6360,8 @@
     });
     function showLoginScreen(offline, why = offline ? 'offline' : 'no_session') {
       $('login-screen').classList.add('show');
-      $('loading').style.display = 'none';
+      bootTiming.mark('L');
+      if (bootScreen?.isUp()) bootScreen.dismiss(); else $('loading').style.display = 'none';
       $('login-note').textContent = offline
         ? '⚠️ Supabase 키 미설정 — 지금은 게스트(오프라인)만 가능. config.js에 anon key를 넣으면 구글 로그인이 동작합니다.'
         : (why === 'toss_fail' || why === 'pgs_fail')
@@ -6378,13 +6411,17 @@
     function ensureWorld() {
       if (!worldP) {
         worldP = loadGameModules().then(() => {
+          bootTiming.mark('m');
           setIcon($('season-emoji'), Input.seasonIco());
           initCafeGuests();
           initNightVisit();
           initDuel();
           gameUi = installGameUi({ $, ui, layoutBuffs, TOUCH, spot, refreshActionIcon, escapeHtml, isGuestNow, lastInv: () => lastInv, shell: () => shell, setPlacingDecorItem: (d) => { placingDecorItem = d; } });
+          if (bootScreen) { bootScreen.step(1); return nextPaint().then(() => bootWorld(ui)); }
           return bootWorld(ui);
         }).then(() => {
+          bootTiming.mark('W');
+          if (bootScreen) { bootScreen.step(2); return; }
           $('loading').style.display = 'none';
           revealWorld();
         });
@@ -6394,6 +6431,7 @@
     }
     async function enterPlay(via) {                  // 로그인 완료 → 실제 플레이 (via: login 이벤트 수단을 직접 줄 때만 — 🧪 E2 'guest_deferred')
       if (started) return; started = true;
+      bootTiming.mark('e');
       try { await ensureWorld(); } catch { return; }
       $('login-screen').classList.remove('show');
       loginDwell.stop();
@@ -6433,7 +6471,9 @@
       });
 
       showLoginStatus(authState);
-      await enterGame();                             // 저장 로드 + 조작/로깅 on
+      try { await enterGame(); } catch (e) { if (bootScreen?.isUp()) showWorldFailed(); throw e; }   // 저장 로드 + 조작/로깅 on
+      bootTiming.mark('P');
+      bootTiming.send('play');
       hintBSession = Date.now();
       if (IS_NATIVE) { initTenjinOnce(!Input.needsTutorial()); void trackTenjinGameStart(); }
       maybeHudTour();
@@ -7167,7 +7207,7 @@
     });
 
     (async () => {
-      if (IS_NATIVE) { void bootTenjin(); onTrack(tenjinFromTrack); }
+      if (IS_NATIVE) { if (!IS_IOS) void bootTenjin(); onTrack(tenjinFromTrack); }
       preloadSupabase().catch(() => {});
       bootReferral({ track: trackEvent });           // 🤝 ?invite= 보관 — 인증(구글 리다이렉트)이 쿼리를 지우기 전에
       promoGift().then(m => m.bootPromoGift({ track: trackEvent })).catch(() => null);
@@ -7206,6 +7246,7 @@
         });
       } catch (e) { surveyDecide(false); }
       if (await surveyDecided) await surveyP;
+      if (IS_IOS) void bootTenjin();
       if (loginFirstBoot) document.body.classList.add('pre-world');
       else await ensureWorld();                      // ① 씬을 로그인 배경으로 먼저 부팅
       await surveyP;                                 // 🧭 설문에 아직 답하는 중이면 기다린다 — 🤝 초대 코드가 enterPlay 전에 cf_invite 에 있어야 한다

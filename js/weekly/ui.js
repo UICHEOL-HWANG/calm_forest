@@ -22,7 +22,8 @@ export function marketView(state, theme, ctx) {
     const copy = WEEKLY_COPY.items[item.id] || { name: item.id, desc: '' };
     const short = Math.max(0, item.cost - state.tickets);
     const status = !ctx.open ? 'closed' : ctx.hasArt && !ctx.hasArt(item.id) ? 'soon' : ctx.isGuest ? 'guest' : ctx.ownsDecor(item.id) ? 'owned' : short > 0 ? 'short' : 'buy';
-    return { id: item.id, name: copy.name, desc: copy.desc, cost: item.cost, status, short };
+    const where = status === 'owned' && ctx.whereOf ? ctx.whereOf(item) : null;
+    return { id: item.id, name: copy.name, desc: copy.desc, cost: item.cost, status, short, where };
   });
   return { open: ctx.open, tickets: state.tickets, rows };
 }
@@ -237,10 +238,23 @@ function itemAct(args, row, item) {
     act.append(s);
   } else if (row.status === 'owned') {
     act.append(el('div', 'wk-own', WEEKLY_COPY.market.owned));
+    if (row.where) act.append(whereLine(args, row.where));
   } else {
     return null;
   }
   return act;
+}
+
+function whereLine(args, where) {
+  const w = el('div', 'wk-where');
+  w.append(el('p', null, WEEKLY_COPY.where[where.key]));
+  if (where.guide && args.onGuide) {
+    const b = el('button', null, WEEKLY_COPY.where.go);
+    b.type = 'button';
+    b.onclick = () => { closeWeekly(); args.onGuide(where.guide); };
+    w.append(b);
+  }
+  return w;
 }
 
 function itemBody(row) {
@@ -263,7 +277,7 @@ function guestBox(args) {
 
 function drawMarket(args) {
   const items = [args.theme.hero, ...args.theme.props];
-  const v = marketView(args.state(), args.theme, { open: args.isOpen ? args.isOpen() : args.open, isGuest: args.isGuest, ownsDecor: args.ownsDecor, hasArt: args.hasArt });
+  const v = marketView(args.state(), args.theme, { open: args.isOpen ? args.isOpen() : args.open, isGuest: args.isGuest, ownsDecor: args.ownsDecor, hasArt: args.hasArt, whereOf: args.whereOf });
   const art = args.thumbs || {};
   const dlg = shell('market', WEEKLY_COPY.market.title);
   dlg.append(el('div', 'wk-awn'));

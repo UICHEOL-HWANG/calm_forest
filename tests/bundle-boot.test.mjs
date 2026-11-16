@@ -41,12 +41,14 @@ test('bundle-boot: 모듈 스크립트가 묶음 src 로 바뀌고 순서(번역
 test('bundle-boot: three 를 묶음에 넣어 importmap·unpkg 가 사라진다', async () => {
   const dir = stage();
   try {
-    await bundleBoot(dir);
+    const { metafile } = await bundleBoot(dir);
     const html = readFileSync(path.join(dir, 'index.html'), 'utf8');
+    assert.ok(Object.keys(metafile.inputs).some(f => f.endsWith('js/three-lite.js')), "'three' 가 three-lite 를 거쳐야 모바일 가벼운 재질이 묶인다");
     assert.doesNotMatch(html, /importmap/);
     assert.doesNotMatch(html, /unpkg\.com/);
     const all = readdirSync(path.join(dir, 'js/b')).map(f => readFileSync(path.join(dir, 'js/b', f), 'utf8')).join('\n');
     assert.doesNotMatch(all, /from\s*["']three(?:\/addons\/[^"']*)?["']/, '맨 이름 three import 가 남았다');
+    assert.doesNotMatch(all, /from\s*["']three-core["']/, 'three-core 는 vendor 로 묶여야 한다');
     assert.doesNotMatch(all, /esm\.sh\/@supabase/, 'supabase 는 vendor 한 파일로 묶여야 한다(esm.sh 는 17개로 쪼개 받는다)');
     assert.match(all, /esm\.sh\/@apps-in-toss\/web-framework/, '토스 SDK 는 외부 동적 import 로 남아야 한다');
   } finally { rmSync(dir, { recursive: true, force: true }); }
