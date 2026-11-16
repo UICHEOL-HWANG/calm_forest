@@ -77,7 +77,7 @@ test('다리 수리는 bridge_fixed 한 번', () => {
 });
 
 test('슬롯은 고정 그룹표로 묶고 모르는 슬롯은 other', () => {
-  const cases = { house1: 'house', house3: 'house', bridge: 'house', farm2: 'house', farm3: 'house', branch_a: 'house', cafe_order: 'cafe',
+  const cases = { house1: 'house', house3: 'house', bridge: 'house', farm2: 'house', farm3: 'house', pond2: 'house', pond3: 'house', branch_a: 'house', cafe_order: 'cafe',
     farm_rush: 'rush', craft_rush: 'rush', orchard_x: 'rush', forge_y: 'rush', sell_bonus: 'sell', daily_double: 'daily', pond_feed_more: 'pond',
     affinity_heart: 'limit', concert_play: 'limit', weekly_ticket: 'limit', quest_reroll: 'reroll', drop_reroll_a: 'reroll',
     restaurant_double: 'double', bait_box: 'double', nope: 'other', undefined: 'other' };

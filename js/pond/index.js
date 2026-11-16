@@ -8,7 +8,8 @@ import { FISH_KINDS } from '../data/catalog.js';
 import { SEA_SPECIES, HOUSE_POS } from '../data/places.js';
 import { POND_R, POND_SPOTS, POND_VIEW_SEC } from '../data/pond.js';
 import { pondView, pondChanges, pickPondSpot, pondBlocks, pondToastDue, shouldTrackCreated } from './rules.js';
-import { pondStageOf, pondRadius, pondSpotFor, pondActR, pondViewR, pondFishLimits, pondBigSpotBlocks } from './stage.js';
+import { pondStageOf, pondRadius, pondSpotFor, pondActR, pondViewR, pondFishLimits, pondBigSpotBlocks, pondGrowTipDue } from './stage.js';
+import { pondBook } from './feed.js';
 import { clearYard } from './yard-clear.js';
 import { buildPond } from './build.js';
 import { POND_COPY } from './copy.js';
@@ -22,10 +23,10 @@ const seaColorOf = (sp) => SEA_SPECIES.find(s => s.id === sp)?.color ?? 0x6f8fa8
 
 const YARD_PAD = 0.6, PATCH_PAD = 0.3, GROW_SEC = 2;
 
-let pond = null, solid = null, block = null, built = 0, last = null, nearSec = 0, viewedDay = null, toastPending = false, toastWait = 0;
+let pond = null, solid = null, block = null, built = 0, last = null, nearSec = 0, viewedDay = null, toastPending = false, toastWait = 0, tip = 0;
 
 const kstDay = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
-const outdoorRel = () => (Array.isArray(gameState.outdoor) ? gameState.outdoor : [])
+export const outdoorRel = () => (Array.isArray(gameState.outdoor) ? gameState.outdoor : [])
   .filter(o => Number.isFinite(o?.x) && Number.isFinite(o?.z))
   .map(o => ({ dx: o.x - HOUSE_POS.x, dz: o.z - HOUSE_POS.z }));
 
@@ -81,6 +82,8 @@ export function refreshPond(trigger) {
       if (trigger !== 'load') pond.pop(c.type === 'sea' ? '🌊' : '🐟');
     }
   }
+  const due = pondGrowTipDue(gameState.hintsSeen, pondBook().got);
+  if (due !== tip) { tip = due; toastWait = 0; }
 }
 
 export function rebuildPond() {
@@ -99,7 +102,13 @@ export function updatePond(dt, inVillage) {
   if (pondToastDue({ pending: toastPending, seen: !!gameState.hintsSeen.pond, inVillage, waitedSec: toastWait })) {
     gameState.hintsSeen.pond = true;
     toastPending = false;
+    toastWait = 0;
     ui.toast?.(POND_COPY.created, 4200);
+    requestSave();
+  } else if (pondToastDue({ pending: tip, inVillage, waitedSec: toastWait })) {
+    gameState.hintsSeen.pondGrowTip = tip;
+    tip = 0;
+    ui.toast?.(POND_COPY.growTip.replace('{0}', pondBook().got), 4200);
     requestSave();
   }
   pond.update(dt);

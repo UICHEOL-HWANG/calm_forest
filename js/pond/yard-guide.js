@@ -2,7 +2,7 @@ import { createGuide } from '../guide/runner.js';
 import { createGuideView } from '../guide/view.js';
 import { SEA_GATE } from '../data/places.js';
 import { feedStatus } from './actions.js';
-import { yardIdle, yardReady, yardSteps, goStep, hudHidden, d1Ready, d1Steps, guideStalled, bridgeDone, YARD_PIER } from './yard-steps.js';
+import { yardIdle, yardReady, yardSteps, goStep, movedStep, hudHidden, d1Ready, d1Steps, guideStalled, bridgeDone, YARD_PIER } from './yard-steps.js';
 import { POND_COPY } from './copy.js';
 
 export const YARD_HUD_CLASS = 'yard-guiding';
@@ -95,6 +95,10 @@ export function createYardGuide(deps) {
     suspend,
     pointTo(kind) {
       if (flow === 'yard_fill' || flow === 'pond_d1') return;
+      if (kind === 'pond') {
+        if (!deps.held?.()) run('pond_moved', [movedStep(POND_COPY.growMoved)]);
+        return;
+      }
       const sea = kind === 'sea';
       run('pond_go', [goStep(sea ? { x: SEA_GATE.x, z: SEA_GATE.z } : YARD_PIER, sea ? POND_COPY.goStepSea : POND_COPY.goStepLake)]);
     },

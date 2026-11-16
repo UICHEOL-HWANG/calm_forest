@@ -45,6 +45,19 @@ export function pondStageInfo(stage, inventory, bookGot) {
   return { maxed: false, cur, next, book, items, affordable: book.ok && items.every(i => i.have >= i.need) };
 }
 
+export function pondExpandView(info, decorInWay = 0) {
+  if (info.maxed) return null;
+  const rows = [{ k: 'book', need: info.book.need, have: info.book.have }, ...info.items].map(r => ({ ...r, ok: r.have >= r.need }));
+  const blocked = decorInWay > 0;
+  return { rows, hint: blocked ? 'decor' : rows.find(r => !r.ok)?.k ?? null, canBuy: info.affordable && !blocked };
+}
+
+export function pondGrowTipDue(hintsSeen, bookGot) {
+  const next = POND_STAGES[pondStageOf(hintsSeen)];
+  if (!next || !(bookGot >= next.book)) return 0;
+  return (hintsSeen?.pondGrowTip | 0) >= next.stage ? 0 : next.stage;
+}
+
 export function pondDecorInWay(outdoorRel, stage) {
   if (clampStage(stage) < 2) return 0;
   const reach = pondRadius(stage) + DECOR_PAD;

@@ -7,6 +7,12 @@ const CSS = `
 #cb-head:empty{display:none}
 #cb-head{margin-bottom:10px}
 .cb-head{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:#e6eff2;border-radius:12px;padding:8px 10px;font-size:13px}
+.cb-head.no{background:#fbeee6}
+.cb-rows{display:grid;gap:5px}
+.cb-num b{margin-left:6px;color:#3f8f52}
+#cb-foot:empty{display:none}
+#cb-foot{margin-top:10px}
+#cb-foot .cb-hint{margin-top:0}
 .cb-sec{font-size:12px;color:#6b5b4a;margin:8px 0 5px}
 .cb-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 .cb-slot{aspect-ratio:1;border-radius:12px;background:#eef3f5;border:2px solid #9cc3d6;display:grid;place-items:center;font-size:24px;position:relative;cursor:pointer;padding:0;color:inherit}
@@ -16,8 +22,11 @@ const CSS = `
 .cb-hint{display:flex;gap:8px;align-items:center;justify-content:space-between;min-height:40px;margin-top:10px;padding:8px 10px;border-radius:12px;background:#f3ead8;font-size:13px}
 .cb-btn{border:0;border-radius:10px;padding:8px 12px;font-weight:700;background:#4e7f9a;color:#fff;font-size:13px;white-space:nowrap;cursor:pointer}
 .cb-btn.ghost{background:#e7dcc8;color:#2b2118}
+.cb-btn:disabled{background:#c9c2b6;cursor:default}
+.cb-hint span:empty{display:none}
+.cb-hint span:empty+.cb-btn{flex:1}
 .cb-close{display:block;width:100%;margin-top:10px}
-@media (max-height:520px){.cb-card{padding:10px 12px 8px}.cb-grid{grid-template-columns:repeat(7,1fr)}.cb-slot{font-size:18px}}
+@media (max-height:520px){.cb-card{padding:10px 12px 8px}.cb-grid{grid-template-columns:repeat(7,1fr)}.cb-slot{font-size:18px}.cb-title{margin-bottom:4px}.cb-head,.cb-hint{padding:3px 10px}.cb-sec{margin:4px 0 3px}#cb-head{margin-bottom:6px}#cb-foot,.cb-hint,.cb-close{margin-top:6px}#cb-foot .cb-hint{min-height:0;padding:5px 10px}}
 `;
 
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -37,7 +46,7 @@ function mount() {
   document.head.append(st);
   const m = document.createElement('div');
   m.id = 'collection-book-modal';
-  m.innerHTML = '<div class="cb-card"><h2 class="cb-title"><span id="cb-title"></span><small id="cb-count"></small></h2><div id="cb-head"></div><div id="cb-body"></div><div class="cb-hint" id="cb-hint"></div><button class="cb-btn ghost cb-close" id="cb-close"></button></div>';
+  m.innerHTML = '<div class="cb-card"><h2 class="cb-title"><span id="cb-title"></span><small id="cb-count"></small></h2><div id="cb-head"></div><div id="cb-body"></div><div id="cb-foot"></div><div class="cb-hint" id="cb-hint"></div><button class="cb-btn ghost cb-close" id="cb-close"></button></div>';
   m.addEventListener('click', e => { if (e.target === m) closeBook(); });
   document.body.append(m);
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && isBookOpen()) closeBook(); });
@@ -49,11 +58,13 @@ function setHint(info) {
   const line = document.createElement('span');
   line.textContent = info?.line ?? model.hint;
   box.append(line);
-  if (!info?.go) return;
+  const go = info ? info.go : model.go;
+  if (!go) return;
   const b = document.createElement('button');
   b.className = 'cb-btn';
-  b.textContent = info.go.label;
-  b.onclick = info.go.onClick;
+  b.textContent = go.label;
+  b.disabled = !!go.disabled;
+  b.onclick = go.onClick;
   box.append(b);
 }
 
@@ -76,6 +87,9 @@ export function openBook(next) {
   const head = $('cb-head');
   head.textContent = '';
   if (next.head) head.append(next.head);
+  const foot = $('cb-foot');
+  foot.textContent = '';
+  if (next.foot) foot.append(next.foot);
   const body = $('cb-body');
   body.innerHTML = bookHtml(next);
   for (const el of body.querySelectorAll('.cb-slot')) {

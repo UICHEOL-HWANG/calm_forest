@@ -17,7 +17,7 @@ const RV_STEPS = [[3, 'rv_complete_3'], [10, 'rv_complete_10']];
 const TALLY_KEY = 'cf_tj_rv';
 
 const GROUP_RULES = [
-  ['house', /^(house\d+|bridge|farm\d+|branch_.+|fountain_short)$/],
+  ['house', /^(house\d+|bridge|farm\d+|pond\d+|branch_.+|fountain_short)$/],
   ['cafe', /^cafe_order$/],
   ['rush', /^(farm_rush|craft_rush|orchard_.+|forge_.+)$/],
   ['sell', /^sell_bonus$/],
