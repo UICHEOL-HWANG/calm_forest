@@ -36,6 +36,22 @@
 - [ ] 병합·배포(5곳) · 운영 SQL(배포 날, prod 함수 정의 비교 후) · E3 사전등록에 P1 시작일
 - [ ] 다음 날 BQ 재검증(pond_feed·pond_book_open·guide_step yard_fill·fishing_catch assist)
 
-## P2 넓히기 · 꾸미기
+## P2-a 연못 넓히기 — 구현 완료(11/17), 브랜치 feat/pond-expand (worktree .claude/worktrees/pond-expand), 미푸시·미병합·미배포
+계획 `docs/superpowers/plans/2026-11-17-pond-expand.md`. 꾸미기 소품은 P2-b 로 분리(사용자 11/17).
+- [x] 단계 표·자리 규칙 `js/pond/stage.js` (반지름 2.0/2.9/3.9, 수첩 4·8종, 돌 20·목재 20·코인 200 / 돌 60·목재 40·코인 500)
+- [x] 반지름 따라 커지는 연못, 3단계 섬·징검다리, 바다 대어 4마리·강 물고기 종당 2마리
+- [x] 2단계부터 넓은 자리로 이사(사용자 11/17 B안). 자리 = 꾸미기 가게 서쪽 빈터 world (-24, -9), **사용자 확정 대기**(후보 캡처 site-{a,b,c}-*.png)
+- [x] 충돌·주민 장애물·버튼 거리, 나무·풀·꽃·바닥 무늬 치우기, 지도 다시 찍기
+- [x] 넓히기 창(수첩 창 재사용)·구매·광고 자리 pond2/pond3·`pond_expand` 기록·영어 문구
+- [x] 2단계 구매 뒤 새 연못까지 화살표 안내(`pond_moved`), 넓힐 수 있을 때 한 번 알림
+- [x] 이웃 구경 화면(stage), SQL `sql/migrations/migrate_neighbor_pond_stage.sql` 작성(**운영 미적용**)
+- [x] 코드 리뷰 반영(구매 뒤 저장을 다시 짓기보다 먼저, 순수 함수 `applyExpand` 테스트)
+- [x] npm test 6121 통과, 웹 빌드 성공, 캡처 p2-*.png
+- [ ] 새 문구 12종 사용자 검수
+- [ ] 넓은 자리 안에 이미 갈아 둔 밭 칸 처리(미처리)
+- [ ] 실기기 확인(광고 실제 노출, 가로 폰), 다음 날 BQ 재검증(`pond_expand`, `prepass_eligible` slot pond2/pond3)
+- [ ] 병합·배포(5곳)·운영 SQL(배포 날, prod 함수 정의 비교 후)
+
+## P2-b 꾸미기 소품
 ## P3 이름 붙이기
 ## P4 마당 식탁

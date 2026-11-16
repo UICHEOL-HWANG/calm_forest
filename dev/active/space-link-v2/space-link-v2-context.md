@@ -1,6 +1,18 @@
 # 공간 연결 2차 · 컨텍스트
 
-Last Updated: 2026-11-12 16:50 KST
+Last Updated: 2026-11-17 KST
+
+## P2-a 연못 넓히기 결과 (11/17)
+- 브랜치 `feat/pond-expand`, worktree `.claude/worktrees/pond-expand`, 커밋 d0489661..df61bc66
+- 저장은 `hintsSeen.pondStage`(정수 1~3)·`hintsSeen.pondGrowTip` 뿐. 새 최상위 필드 없음 → 5곳 동시 배포 불필요(옛 클라이언트가 지우지 않음)
+- 넓은 자리 고르는 규칙에 "남쪽(카메라 쪽)에 집·시설이 없을 것"이 빠져 처음 자리(-16.5,-11)는 꾸미기 가게에 가려졌다. `tests/pond-spots.test.mjs` 에 시야·박물관 물길·걷는 범위 검사를 추가했고 지금 자리는 (-24,-9)
+- 집에서 16칸 안에는 반지름 3.9가 시야까지 통과하는 자리가 없다(격자 탐색). 그래서 2단계부터는 마당이 아니라 가게 옆
+- 새 모듈: `js/pond/stage.js`(규칙)·`shape.js`(배치)·`yard-clear.js`(나무·풀·꽃 치우기)·`expand-ui.js`(창·구매). `js/game.js` 는 연결만
+- 지도는 그림 파일이 아니라 위에서 찍는 실시간 화면. `mapSignature` 에 `pondMapKey()` 를 넣어 넓힌 뒤 다시 찍는다
+- 주민·상인은 `colliders` 가 아니라 `obstacles` 만 본다 → 연못도 `obstacles` 에 넣었다(1단계 포함)
+- 이웃 마당은 울타리 반지름 17.2라 넓은 자리(집에서 16)가 울타리 선에 걸린다 → 그 자리 울타리 말뚝 3~4개와 나무 1그루를 뺀다
+- 검증: 오프라인 게스트 + Supabase 차단 + 헤드리스 크롬. 개발 세션은 기록을 버리므로 `trackEvent`·`logEcon` 은 계측용 테스트 서버로 확인. 광고 버튼은 `?prepass=1`
+- 미처리: 넓은 자리 안의 갈아 둔 밭 칸, 이웃 화면의 바다 대어는 1마리 그대로
 
 ## P1 구현 결과 (11/12)
 - 브랜치 `feat/space-link-p1`, 커밋 12개(6d10b36c..08ccc270), worktree `.claude/worktrees/space-link-p1`, 미리보기 설정 `space-link-p1`(포트 8891)
