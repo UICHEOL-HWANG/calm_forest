@@ -18,7 +18,9 @@ import { splitLines } from './card.js';
 import { steer, pushOutOfIsland, pushOutOfCircles, fastStep } from './sail.js';
 import { seaHoldRod } from '../spaces/sea.js';
 import { setIslandHud, updateBasket } from './basket.js';
-import { pickQuestGuide, questSteps, askSteps } from './quest-guide.js';
+import { pickQuestGuide, questSteps, askSteps, portFocus } from './quest-guide.js';
+import { guideArbiter } from '../guide/arbiter.js';
+import { quiets } from '../guide/quiet.js';
 import { initFishing, castSpot, castLine, twitchRod, hookFish, reelIn, clearFishing, tickFishing, fishingState } from './fishing.js';
 
 export const port = { active: false };
@@ -38,6 +40,7 @@ const ZONE_COL = { near: 0xbfe6ff, far: 0x9fd0ff, night: 0xffd27a, pier: 0xbfe6f
 let guide = null, view = null, guideHome = false, pointKey = null;
 export const guideActive = () => !!guide?.active();
 export const guideHides = () => guideActive() && guide.index() < 10;
+export const guideFocus = () => (!port.active || P.phase !== 'island' ? null : guide ? portFocus(guide.current()?.id, null) : qShown ? portFocus(null, qPick) : null);
 const ROD_READY_R = 5;
 const MARKET_R = 3.2, HUT_R = 2.8, LIGHT_R = 3, SELL_CONFIRM_MS = 4000;
 const sellArm = { until: 0, text: '' };
@@ -189,10 +192,10 @@ function drawGlyph(o, g) {
 
 function residentsTick() {
   env.player.position.y = LAND_Y;
-  const pq = portState().quests;
+  const pq = portState().quests, focus = guideArbiter.focus();
   for (const q of QUESTS) {
     const o = glyphs[q.id];
-    drawGlyph(o, glyphOf(q, pq[q.id]));
+    drawGlyph(o, quiets(focus, 'npc', `port:${q.id}`) ? '' : glyphOf(q, pq[q.id]));
     if (o.sprite.visible) o.sprite.position.y = o.y0 + Math.sin(P.t * 2.5 + q.pos[0]) * 0.08;
   }
   if (talk && env.player.position.distanceTo(npcs[talk.id].position) >= TALK_CLOSE_R) closeTalk();

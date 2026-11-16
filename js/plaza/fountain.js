@@ -7,12 +7,10 @@
 //  ⚠️ shared() 자원 금지 — dispose() 가 전부 해제한다.
 // =============================================================
 import * as THREE from 'three';
-import { mergeGeos, houseWindows, paintGeo, vtxMat, scene } from '../game.js';
-import { PLAZA } from '../data/plaza.js';
+import { mergeGeos, houseWindows, paintGeo, vtxMat } from '../game.js';
+import { PLAZA, PLAZA_FOUNTAIN } from '../data/plaza.js';
 import { fountainStageParts, FOUNTAIN_LAMPS, FOUNTAIN_LAST_STAGE } from './fountain-stages.js';
 
-// 광장 로컬 좌표 — 명판(-1.6, 3.1)과 짝을 이루는 앞쪽 오른편
-export const FOUNTAIN_LOCAL = { x: 1.6, z: 2.8 };
 const FOUNTAIN_SCALE = 1.3;                                        // 캐릭터와 키가 같으면 랜드마크로 약하다(B 캡처)
 
 const PAL = {
@@ -98,7 +96,7 @@ function bucketMat(b) {
 export function buildFountain(stage = FOUNTAIN_LAST_STAGE) {
   const group = new THREE.Group();
   group.name = 'plazaFountain';
-  group.position.set(PLAZA.x + FOUNTAIN_LOCAL.x, 0, PLAZA.z + FOUNTAIN_LOCAL.z);
+  group.position.set(PLAZA.x + PLAZA_FOUNTAIN.x, 0, PLAZA.z + PLAZA_FOUNTAIN.z);
   group.scale.setScalar(FOUNTAIN_SCALE);
   const buckets = new Map();
   const add = (k, geo) => {
@@ -122,16 +120,5 @@ export function buildFountain(stage = FOUNTAIN_LAST_STAGE) {
       for (const m of group.children) m.geometry.dispose();
       for (const mat of mats) { const i = houseWindows.indexOf(mat); if (i >= 0) houseWindows.splice(i, 1); mat.dispose(); }
     },
-  };
-}
-
-// 🧪 시안 미리보기(localhost 전용) — 게이트 통과 후 시즌 연결 때 삭제
-if (typeof window !== 'undefined' && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) {
-  let cur = null;
-  window.__fountain = (stage = FOUNTAIN_LAST_STAGE) => {
-    if (cur) { scene.remove(cur.group); cur.dispose(); }
-    cur = buildFountain(stage);
-    scene.add(cur.group);
-    return fountainStageParts(stage);
   };
 }

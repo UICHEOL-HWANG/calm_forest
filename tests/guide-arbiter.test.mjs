@@ -11,9 +11,9 @@ function full() {
   return { a, live };
 }
 
-test('priority order runs coach, house, goal, port, restaurant, yard, affinity, weekly, concert, auction', () => {
+test('priority order runs coach, house, goal, port, restaurant, yard, affinity, weekly, fountain, concert, auction', () => {
   const names = Object.entries(GUIDE_PRIORITY).sort((x, y) => y[1] - x[1]).map(([n]) => n);
-  assert.deepEqual(names, ['coach', 'house', 'goal', 'port', 'restaurant', 'yard', 'affinity', 'weekly', 'concert', 'auction']);
+  assert.deepEqual(names, ['coach', 'house', 'goal', 'port', 'restaurant', 'yard', 'affinity', 'weekly', 'fountain', 'concert', 'auction']);
 });
 
 test('a free arbiter lets every guide show', () => {
@@ -25,7 +25,7 @@ test('a free arbiter lets every guide show', () => {
 test('an active guide hides every lower one and none above it', () => {
   const { a, live } = full();
   live.yard.set(true);
-  assert.deepEqual(Object.keys(GUIDE_PRIORITY).filter(n => !a.mayShow(n)), ['affinity', 'weekly', 'concert', 'auction']);
+  assert.deepEqual(Object.keys(GUIDE_PRIORITY).filter(n => !a.mayShow(n)), ['affinity', 'weekly', 'fountain', 'concert', 'auction']);
   assert.equal(a.mayShow('yard'), true);
   assert.equal(a.busy(), true);
 });

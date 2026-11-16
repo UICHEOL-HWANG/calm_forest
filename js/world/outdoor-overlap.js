@@ -1,5 +1,5 @@
 import { AFF_BOX, AFF_SOLID_K } from '../data/affinity-decor.js';
-const SMALL = ['postlamp', 'scarecrow', 'spiritlamp', 'ghostlamp', 'pumpkinlamp', 'harvestscarecrow', 'promoballoon'];
+const SMALL = ['postlamp', 'scarecrow', 'spiritlamp', 'ghostlamp', 'pumpkinlamp', 'harvestscarecrow', 'winterlamp', 'promoballoon'];
 const FLAT = ['path', 'flowerbed'];
 const KILN_HALF = [1.01, 0.58];
 const GAP = 0.05;

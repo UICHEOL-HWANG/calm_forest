@@ -29,7 +29,7 @@ export function makeWeeklyBridge(env) {
 const body = () => document.body.classList;
 const BIG_SOLID = 0.6;
 
-function makeGuideEnv(g) {
+export function makeGuideEnv(g) {
   const uiBusy = () => !!g.ui.anyModalOpen?.() || !!g.ui.coachActive?.() || body().contains('spot-on');
   const solids = () => {
     const live = g.colliders.filter(c => !c.off && !c.lock);

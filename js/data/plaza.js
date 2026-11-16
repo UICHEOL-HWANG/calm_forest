@@ -20,7 +20,7 @@ export const PLAZA_TIERS = [
 ];
 export const PLAZA_ITEMS = {
   wood: { ico: '🪵', name: '목재' }, stone: { ico: '🪨', name: '돌' }, coal: { ico: '⚫', name: '석탄' },
-  crop: { ico: '🥕', name: '작물' }, forage: { ico: '🍄', name: '채집물' },
+  crop: { ico: '🥕', name: '작물' }, forage: { ico: '🍄', name: '채집물' }, fish: { ico: '🐟', name: '물고기' },
 };
 export const PLAZA_STAGE_NAMES = ['', '터 다지기', '돌바닥 깔기', '수확제 장식', '완공'];
 export const PLAZA_STALL = [
@@ -55,3 +55,23 @@ export const PLAZA_ARCH_HALF = 0.8;                  // 기둥 간격의 절반
 export const PLAZA_BUNTING_POSTS = [
   [15.8, 0.6, 2.2], [17.2, 0.8, 2.2], [18.7, 1.1, 2.2], [20.1, 1.3, 2.2], [21.5, 1.9, 1.7], [23.0, 2.1, 1.7], [24.4, 1.9, 1.7],
 ];
+
+export const PLAZA_SEASONS = Object.freeze([
+  Object.freeze({ id: 'harvest-2026', kind: 'harvest', opensKst: '2026-10-09', closesKst: '2026-10-23', guests: false }),
+  Object.freeze({ id: 'winter-2026', kind: 'winter', opensKst: '2026-12-18', closesKst: '2027-01-01', guests: true }),
+]);
+export const WINTER_NEEDS = Object.freeze([
+  Object.freeze({ stage: 1, item: 'stone', need: 15 }), Object.freeze({ stage: 1, item: 'wood', need: 20 }),
+  Object.freeze({ stage: 2, item: 'coal', need: 10 }), Object.freeze({ stage: 2, item: 'stone', need: 25 }),
+  Object.freeze({ stage: 3, item: 'fish', need: 10 }), Object.freeze({ stage: 3, item: 'forage', need: 15 }),
+]);
+export const WINTER_LAMP_THRESHOLDS = Object.freeze([300, 800, 1500]);
+export const WINTER_LAMPS = 9;
+export const WINTER_LAMP_R = 5.4;
+export const WINTER_LAMP_REWARD = Object.freeze({
+  1: Object.freeze({ coins: 30 }),
+  2: Object.freeze({ seed_wheat: 1, seed_corn: 1, seed_grape: 1 }),
+  3: Object.freeze({ decor: 'winterlamp' }),
+});
+export const WINTER_SHORT_MAX = 10;
+export const PLAZA_FOUNTAIN = Object.freeze({ x: 1.6, z: 2.8 });

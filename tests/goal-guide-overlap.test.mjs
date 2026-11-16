@@ -41,5 +41,5 @@ test('안내 열 가지가 모두 중재자에 등록되고 각자 물러날 자
   assert.match(aff, /export const affinityPriority = \(\) => \(asking \|\| affinityGuideActive\(\) \? GUIDE_PRIORITY\.goal \+ 5 : GUIDE_PRIORITY\.affinity\);/);
   assert.match(aff, /if \(!ok\) \{ ui\.toast\?\.\(t\('[^']+'\), 2600\); return false; \}/);
   assert.doesNotMatch(aff, /pending/);
-  assert.match(game, /register\(\{ name: 'affinity', active: affinityGuideActive, priority: affinityPriority \}\);/);
+  assert.match(game, /register\(\{ name: 'affinity', active: affinityGuideActive, priority: affinityPriority, target: affinityFocus \}\);/);
 });

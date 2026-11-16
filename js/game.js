@@ -69,6 +69,7 @@ import { createHouseGuide } from './spaces/house-guide.js';   // 🏠 목재 15�
 import { rearmMerchant, detourPoint, farmPlotTarget } from './guide/guide-rules.js';
 import { createGoalGuide } from './guide/goal-guide.js';
 import { guideArbiter } from './guide/arbiter.js';
+import { focusKey, sameGoal } from './guide/quiet.js';
 import { e6Decision } from './exp-e6-boot.js';
 import { guideRevampOn } from './exp-e6.js';
 import { createHouseShort } from './guide/house-short.js';
@@ -80,11 +81,11 @@ import { warmBeforeReveal } from './render/reveal-warm.js';
 import { createFarmRush } from './ads/farm-rush.js';
 import { repeatOpen, rushSlots, sellBonus, houseShort as houseShortOf, bridgeShort, farmStageShort, prepassGrant, shortAdParts, CAFE_CAPS, adQuiet, AD_PARTS } from './guide/prepass-rules.js';
 import { sanitizeHouseGuide } from './house-guide-rules.js';
-import { initPlaza, updatePlaza, plazaSpotNow, openPlaza, plazaScatterBlocks, plazaDefault, restorePlaza, refreshPlaza, plazaDecorMesh, plazaMapVisible } from './plaza/index.js';
+import { initPlaza, updatePlaza, plazaSpotNow, openPlaza, plazaScatterBlocks, plazaDefault, restorePlaza, refreshPlaza, plazaDecorMesh, plazaMapVisible, fountainSpotNow } from './plaza/index.js';
 import { defaultToolStars, restoreToolStars, restoreForge, forgeCancel } from './workbench/rules.js';
 import { forgeView, forgeBegin, forgeAbort, forgeFinish, settleForge, forgeRushReady } from './workbench/forge.js';
 import { initAuction, updateAuction, auctionMapSpot, auctionSpotNow, openAuction, auctionScatterBlocks, auctionOutdoorMesh, auctionDefault, restoreAuction, auctionGuideActive } from './auction/index.js';
-import { initWeekly, updateWeekly, weeklyNote, weeklySpotNow, openWeekly, weeklyDefault, restoreWeekly, weeklyScatterBlocks, weeklyDecorMesh, weeklyDev, weeklyGuideActive, weekIndex } from './weekly/index.js';
+import { initWeekly, updateWeekly, weeklyNote, weeklySpotNow, openWeekly, weeklyDefault, restoreWeekly, weeklyScatterBlocks, weeklyDecorMesh, weeklyDev, weeklyGuideActive, weekIndex, BOARD_POS, MARKET_POS } from './weekly/index.js';
 import { makeWeeklyBridge } from './weekly/bridge.js';
 import { initConcert, updateConcert, concertSpotNow, openConcert, concertDefault, restoreConcert, concertScatterBlocks, concertDecorMesh, concertDev, STAGE_POS, concertGuideActive } from './concert/index.js';
 import { makeConcertBridge } from './concert/bridge.js';
@@ -227,7 +228,7 @@ import {
   buildSea, enterSea, exitSea, seaAction, seaCamera, seaPrompt, spawnSeaCove, spawnSeaGate, updateSea, updateSeaVisuals,
 } from './spaces/sea.js';   // 📦 🌊 바다터 — 대형 낚시 (docs/design/SEA_FISHING_PLAN.md · 프로토타입 sims/sea-sim.html)
 import { spawnPortPier } from './port/pier.js';
-import { port, enterPort, portAction, clampPort, portOwnsMovement, bindPortEnv, updatePortGuide, maybeStartPortGuide, guideActive as portGuideActive } from './port/index.js';
+import { port, enterPort, portAction, clampPort, portOwnsMovement, bindPortEnv, updatePortGuide, maybeStartPortGuide, guideActive as portGuideActive, guideFocus as portGuideFocus } from './port/index.js';
 import { openSeaPick } from './spaces/sea-pick.js';
 import { mudflat, mudflatAction, mudflatSpeedMult, clampMudflat, enterMudflat, mudflatDebug, setMudflatCam } from './spaces/mudflat.js';
 import { dive, diveAction, diveSpeedMult, clampDive, enterDive, diveAtmosphere, diveDebug } from './spaces/dive.js';
@@ -287,7 +288,7 @@ import {
   affinityChip, affinityIntroFor, affinityLetters, affinityTracker, affinityVisible, claimLetter, introNpcForStart, markIntroSeen, npcBook, onLettersChanged, owlDailyAffinity, readLetter,
   syncAffinityLetters, trackBookOpen, unreadLetterCount, heartAdReady, heartAd,
 } from './affinity/index.js';
-import { affinityGuideActive, affinityPriority, startAffinityGuide, updateAffinityGuide } from './affinity/guide.js';
+import { affinityFocus, affinityGuideActive, affinityPriority, startAffinityGuide, updateAffinityGuide } from './affinity/guide.js';
 import {
   rebuildFarm, spawnFarmGate, surveyBenchWorld, surveyDeskWorld,
 } from './spaces/farm-field.js';   // 📦 🪧 표지판·텃밭 게이트·측량소·텃밭 필드 (구역 머리말 — 분리 2단계)
@@ -333,7 +334,7 @@ import {
   _chipGeo, _confGeo, _dropGeo, _leafGeo, makeParticle, rndSpin, updateFloatTexts, updateParticles, updatePops,
 } from './spaces/fx.js';   // 📦 팝 애니메이션(밭/작물/집 부재 톡 튀어오름)
 import {
-  PLOT_KEEP_OUT, badgeColor, buildNPCs, merchantVisit, npcState, questView, refreshQuestPanel, setNpcGlyphsHidden, setNpcGlyphsShowHidden, setNpcHidden, shadeToLum, startNpcReturn,
+  PLOT_KEEP_OUT, badgeColor, buildNPCs, merchantVisit, npcState, questView, refreshQuestPanel, setNpcGlyphQuiet, setNpcGlyphsHidden, setNpcGlyphsShowHidden, setNpcHidden, shadeToLum, startNpcReturn,
   talkToNPC, updateMerchantVisit, updateNPC, updateNPCGlyph, updateNPCInteract, updateOwlVisit, updateShopCue,
 } from './spaces/npc.js';   // 📦 NPC (마을 주민 다중) + 퀘스트 체인
 import { restoreAura } from './aura/recipe.js';
@@ -1658,11 +1659,22 @@ let goalGuide = null;
 const guideMay = (name) => guideArbiter.mayShow(name);
 guideArbiter.register({ name: 'coach', active: () => goalGuide?.pointing === 'tut' });
 guideArbiter.register({ name: 'house', active: () => !!houseGuidance?.pointing });
-guideArbiter.register({ name: 'goal', active: () => !!goalGuide?.cinematic || (!!goalGuide?.pointing && goalGuide.pointing !== 'tut') });
-guideArbiter.register({ name: 'port', active: portGuideActive });
+guideArbiter.register({ name: 'goal', active: () => !!goalGuide?.cinematic || (!!goalGuide?.pointing && goalGuide.pointing !== 'tut'), target: () => goalGuide?.focus ?? null });
+guideArbiter.register({ name: 'port', active: portGuideActive, target: portGuideFocus });
 guideArbiter.register({ name: 'restaurant', active: restaurantGuideActive });
 guideArbiter.register({ name: 'yard', active: () => !!yardGuide?.active() });
-guideArbiter.register({ name: 'affinity', active: affinityGuideActive, priority: affinityPriority });
+guideArbiter.register({ name: 'affinity', active: affinityGuideActive, priority: affinityPriority, target: affinityFocus });
+let quietKey = '';
+function tickGuideQuiet() {
+  const focus = guideArbiter.focus();
+  const key = focusKey(focus);
+  if (key === quietKey) return;
+  quietKey = key;
+  const sv = focus?.text ? storyView() : null;
+  document.body.classList.toggle('goal-same', !!focus && (!!focus.story || sameGoal(focus.text, sv?.chapters?.[sv.ch]?.goal)));
+  setNpcGlyphQuiet(focus?.npc);
+  refreshQuestPanel();
+}
 guideArbiter.register({ name: 'weekly', active: weeklyGuideActive });
 guideArbiter.register({ name: 'concert', active: concertGuideActive });
 guideArbiter.register({ name: 'auction', active: auctionGuideActive });
@@ -1675,7 +1687,7 @@ function countHint(key) {
   gameState.hintsSeen = { ...gameState.hintsSeen, [key]: (gameState.hintsSeen[key] | 0) + 1 };
   requestSave();
 }
-const FIRST_VISIT_AT = { weekly: () => weeklySpotNow() === 'board', concert: () => concertSpotNow(), auction: () => auctionSpotNow(), pond: () => inVillage2() && pondNear() };
+const FIRST_VISIT_AT = { weekly: () => weeklySpotNow() === 'board', concert: () => concertSpotNow(), auction: () => auctionSpotNow(), pond: () => inVillage2() && pondNear(), fountain: () => fountainSpotNow() };
 function tickFirstVisits() {
   if (!featureGuidesOpen(gameState)) return;
   for (const [id, at] of Object.entries(FIRST_VISIT_AT)) {
@@ -3043,7 +3055,7 @@ export async function enterGame() {
       const b = document.body.classList;
       return adQuiet({
         tutorial: !gameState.tutorialSeen || !b.contains('playing') || ![undefined, null, 'done'].includes(gameState.hintsSeen?.tutStep),
-        coaching: b.contains('coaching') || !!document.querySelector('.show > .tut-card'),
+        coaching: b.contains('coaching') || !!document.querySelector('#tutorial-modal.show'),
         spotlight: b.contains('spot-on'),
         e1: e1Pending() || b.contains('e1-pending'),
         cutscene: !!intro || b.contains('intro-open') || b.contains('cine-open') || !!goalGuide?.cinematic || !!houseGuidance?.cinematic,
@@ -3725,9 +3737,9 @@ function buildWorld() {
   lockFrom('kitchen'); spawnKitchen(); lockTo();     // 🍳 자유주방(요리 미니게임) · 🔓 lockFrom/lockTo = 해금 전엔 숨는 시설(syncUnlocks)
   lockFrom('shop'); spawnShop(); lockTo();        // 상점 좌판
   spawnRankBoard();   // 🏆 랭킹 게시판(리더보드)
-  initPlaza();                // 🌾 수확제 광장(시즌 터·돌길)
   initAuction();
   const GE = { THREE, scene, lake: { x: LAKE.x, z: LAKE.z, r: LAKE_R }, get camera() { return camera; }, get player() { return player; }, get ui() { return ui; }, t, colliders, isOpen, cameraFree, project: projectToScreen, inVillage: inVillage2, otherGuide: (name) => !guideMay(name), featureOpen: () => featureGuidesOpen(gameState), track: trackEvent };
+  initPlaza(GE);
   { const wb = makeWeeklyBridge({ gameState: () => gameState, patch: (p) => Object.assign(gameState, p), questAvailable, questCtx, isOpen, guide: GE });
     { const cb = makeConcertBridge({ getPlayer: () => player, THREE, getPlayerRig: () => ({ anchor: playerAnchor, arms: playerArms, def: curAnimal }), setCameraRig, hideTool: (h) => { if (heldGroup) heldGroup.visible = !h; }, hideLabels: setNpcGlyphsShowHidden, isBgmOn: isBGMOn, startBgm: startBGM, stopBgm: stopBGM }); initConcert({ getState: () => gameState.concert, setState: (s) => { gameState.concert = s; }, requestSave, isGuest: () => authState.isGuest !== false, login: () => ui.loginNudge?.('shop'), ownsDecor: wb.owns, grantDecorItem: wb.grant, today: todayStr, stopMove: () => Input.setAnalog(0, 0), roll: () => rollDifficulty('concert'), settle: (o) => settleDifficulty('concert', o), diffParams, abandon: (r, stage, extra) => trackDiffAbandon('concert', r, stage, extra), audio: audioBus, stage: cb.stage, bgm: cb.bgm, night: () => nightLevel, scene, solidCircle, THREE, guideEnv: wb.guideEnv, adButton: (grant) => adPill('concert_play', grant) }); }
     initWeekly({ getState: () => gameState.weekly, setState: (s) => { gameState.weekly = s; }, canDo: wb.canDo, isGuest: () => authState.isGuest !== false, ownsDecor: wb.owns, grantDecorItem: wb.grant, now: () => DEV_NOW || Date.now(), night: () => nightLevel, stopMove: () => Input.setAnalog(0, 0), login: () => ui.loginNudge?.('shop'), requestSave, scene, solidCircle, THREE, guideEnv: wb.guideEnv, adButton: (grant, done) => adPill('weekly_ticket', grant, done) }); }
@@ -6213,7 +6225,7 @@ function placeOutdoor(wx, wz, silent = false, id = placingOutdoor, rot = null) {
     } else if (def.box) {
       const [hw, hd] = (ry % 2) ? [def.box[1] / 2, def.box[0] / 2] : [def.box[0] / 2, def.box[1] / 2];
       solid = solidBox(wx - hw, wz - hd, wx + hw, wz + hd);
-    } else solid = ['fence', 'stonewall', 'postlamp', 'brazier', 'scarecrow', 'spiritlamp', 'ghostlamp', 'gravefence', 'haybale', 'pumpkins', 'pumpkinlamp', 'harvestscarecrow', 'moonswing', 'lanternarch', 'starvane', 'promoballoon'].includes(id) ? solidCircle(wx, wz, ['postlamp', 'scarecrow', 'spiritlamp', 'ghostlamp', 'pumpkinlamp', 'harvestscarecrow', 'starvane', 'promoballoon'].includes(id) ? 0.22 : 0.5) : null;   // 🎃 거미줄 아치(webarch)는 걸어서 통과한다 · 🌾 수확제 4종은 목록에 없어 통과했다(2026-10-09)
+    } else solid = ['fence', 'stonewall', 'postlamp', 'brazier', 'scarecrow', 'spiritlamp', 'ghostlamp', 'gravefence', 'haybale', 'pumpkins', 'pumpkinlamp', 'harvestscarecrow', 'winterlamp', 'moonswing', 'lanternarch', 'starvane', 'promoballoon'].includes(id) ? solidCircle(wx, wz, ['postlamp', 'scarecrow', 'spiritlamp', 'ghostlamp', 'pumpkinlamp', 'harvestscarecrow', 'winterlamp', 'starvane', 'promoballoon'].includes(id) ? 0.22 : 0.5) : null;   // 🎃 거미줄 아치(webarch)는 걸어서 통과한다 · 🌾 수확제 4종은 목록에 없어 통과했다(2026-10-09)
   }
   m.userData.rec = rec; m.userData.obstacle = ob; m.userData.solid = solid;   // 🪵 들어 올릴 때 레코드·밭 금지 구역·충돌체를 같이 뺀다(시설은 obstacle 이 배열)
   if (STATION_IDS.includes(id)) {
@@ -6495,6 +6507,8 @@ const VILLAGE_PLACES = [
   { ico: '🌊', name: '바다터',        x: SEA_GATE.x,    z: SEA_GATE.z,    pri: 1, map: 'sea' },
   { ico: '🔨', name: '경매 무대', ...auctionMapSpot(), pri: 1 },
   { ico: '🎵', name: '음악회 무대', x: STAGE_POS.x, z: STAGE_POS.z, pri: 1 },
+  { ico: '📋', name: '주간 의뢰판', x: BOARD_POS.x, z: BOARD_POS.z, pri: 2 },
+  { ico: '🛒', name: '주말 장터', x: MARKET_POS.x, z: MARKET_POS.z, pri: 2 },
   { ico: '🌾', name: '수확제 광장', x: 23, z: -4, pri: 1, need: 'plaza' },
   { ico: '🍎', name: '과수원',        x: ORCHARD_GATE.x, z: ORCHARD_GATE.z, pri: 1, map: 'orchard' },
 ];
@@ -6700,6 +6714,7 @@ function animate() {
   updatePortGuide(mode === 'play' && (inVillage2() || port.active) && guideMay('port'));
   updateRestaurantGuide(mode === 'play' && (inVillage2() || atRestaurant) && guideMay('restaurant'));
   updateAffinityGuide(mode === 'play' && inVillage2() && guideMay('affinity'));
+  tickGuideQuiet();
   updateGateCues(t, dt);
   updateTrees(dt);
   updateOreRocks();

@@ -5,18 +5,21 @@
 //  예전엔 기부함·좌판·벤치·나무만 막아 허수아비·가로등·볏단·호박·깃발 줄 기둥을 그대로 통과했다(2026-10-09).
 //  밟고 지나가는 것(돌길·바닥)은 넣지 않는다.
 // =============================================================
-import { PLAZA, PLAZA_R, PLAZA_BOX, PLAZA_STALL_POS, PLAZA_POLE, PLAZA_ARCH, PLAZA_ARCH_HALF, PLAZA_BUNTING_POSTS } from '../data/plaza.js';
+import { PLAZA, PLAZA_R, PLAZA_BOX, PLAZA_STALL_POS, PLAZA_POLE, PLAZA_ARCH, PLAZA_ARCH_HALF, PLAZA_BUNTING_POSTS, PLAZA_FOUNTAIN, WINTER_LAMPS } from '../data/plaza.js';
+import { lampSpot } from './winter-rules.js';
 
 // 광장 로컬 좌표(중심 기준) — build.js 가 같은 값으로 그린다
 export const SCARECROW = { x: -3.9, z: -1.5 };                       // 허수아비(3·4단계 같은 자리)
-export const LAMP_POSTS = [[-3.0, -2.6], [3.0, -2.6]];               // 가로등(2단계~)
+export const LAMP_POSTS = Object.freeze([Object.freeze([-3.0, -2.6]), Object.freeze([3.0, -2.6])]);   // 가로등(2단계~)
 export const HAYBALES = [[-3.3, 2.4, 0.45], [-2.6, 2.9, 0.4]];       // 볏단 [x, z, 반지름]
 export const PUMPKIN_PILE = { x: 3.55, z: 1.6, r: 0.75 };            // 호박 셋(x 3.0~4.1, z 1.35~1.9)을 덮는 원
 
 const world = (x, z, r) => [PLAZA.x + x, PLAZA.z + z, r];
 
+export const streetLamps = ({ winter = false } = {}) => (winter ? [] : LAMP_POSTS);
+
 /** 광장 안 기물 — stage 0~4, phase 'before'|'active'|'after' */
-export function plazaPropSolids(stage, phase) {
+export function plazaPropSolids(stage, phase, { winter = false } = {}) {
   if (stage < 1) return [];
   const out = [[PLAZA_BOX.x, PLAZA_BOX.z, 0.6]];                     // 기부함(완공 후 명판)
   if (phase === 'active') out.push([PLAZA_STALL_POS.x, PLAZA_STALL_POS.z, 0.9]);
@@ -30,12 +33,12 @@ export function plazaPropSolids(stage, phase) {
   }
   if (stage >= 2) {
     out.push(world(-3.6, 0, 0.5), world(3.6, 0, 0.5));               // 벤치
-    for (const [x, z] of LAMP_POSTS) out.push(world(x, z, 0.15));
+    for (const [x, z] of streetLamps({ winter })) out.push(world(x, z, 0.15));
   }
   if (stage >= 3) {
     out.push(world(SCARECROW.x, SCARECROW.z, 0.25));
     for (const [x, z, r] of HAYBALES) out.push(world(x, z, r));
-    out.push(world(PUMPKIN_PILE.x, PUMPKIN_PILE.z, PUMPKIN_PILE.r));
+    if (!winter) out.push(world(PUMPKIN_PILE.x, PUMPKIN_PILE.z, PUMPKIN_PILE.r));
   }
   if (stage === 4) out.push(world(0, 0, 1.0));                       // 수확 나무 둘레석
   return out;
@@ -50,4 +53,16 @@ export function plazaPathSolids(stage, phase) {
     for (const [x, z] of PLAZA_BUNTING_POSTS) out.push([x, z, 0.12]);
   }
   return out;
+}
+
+export const FOUNTAIN_BASIN_R = 1.45;
+export const FOUNTAIN_LANTERN_R = 1.716;
+
+export function winterPropSolids() {
+  const lanterns = [0, 1, 2, 3].map(k => {
+    const a = Math.PI / 4 + (k / 4) * Math.PI * 2;
+    return world(PLAZA_FOUNTAIN.x + Math.cos(a) * FOUNTAIN_LANTERN_R, PLAZA_FOUNTAIN.z + Math.sin(a) * FOUNTAIN_LANTERN_R, 0.12);
+  });
+  const lamps = Array.from({ length: WINTER_LAMPS }, (_, i) => { const p = lampSpot(i); return world(p.x, p.z, 0.15); });
+  return [...plazaPropSolids(4, 'after', { winter: true }), world(PLAZA_FOUNTAIN.x, PLAZA_FOUNTAIN.z, FOUNTAIN_BASIN_R), ...lanterns, ...lamps];
 }
