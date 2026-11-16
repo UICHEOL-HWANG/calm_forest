@@ -96,7 +96,7 @@ test('build-cap: 모르는 타깃은 실패(조용히 안드로이드 번들이 
 
 test('웹 원본은 CDN 그대로 — 앱 치환이 공통 경로에 새지 않는다', () => {
   const html = readFileSync('index.html', 'utf8');
-  assert.match(html, /"three": "https:\/\/unpkg\.com\/three@0\.160\.0\/build\/three\.module\.js"/);
+  assert.match(html, /"three-core": "https:\/\/unpkg\.com\/three@0\.160\.0\/build\/three\.module\.js"/);
   assert.doesNotMatch(html, /__ANDROID__ = true/);
 });
 

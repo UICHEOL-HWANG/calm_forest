@@ -206,7 +206,7 @@ export function buildIntroSet() {
   const leafMats = [art.crown.material, ...Object.values(art.clusters).map(c => c.mesh.material)];
   art.group.traverse((o) => {
     o.castShadow = false; o.receiveShadow = false;
-    if (o.isMesh && o.material.isMeshStandardMaterial) desat(o.material);
+    if (o.isMesh && (o.material.isMeshStandardMaterial || o.material.isMeshLambertMaterial)) desat(o.material);
   });
 
   // 🏠 집 — 마을 코티지를 한 번 세워 굽고, 자리마다 복사해 한 메시로
