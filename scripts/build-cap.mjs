@@ -22,7 +22,7 @@ const FLAGS = { android: '__ANDROID__', ios: '__IOS__' };   // platform.js 가 �
 const TARGET = process.argv[2] || 'android';
 if (!FLAGS[TARGET]) throw new Error(`[build-cap] 모르는 타깃: ${TARGET} — android | ios`);
 
-const IMPORTMAP_THREE = '"three": "https://unpkg.com/three@0.160.0/build/three.module.js"';
+const IMPORTMAP_THREE = '"three-core": "https://unpkg.com/three@0.160.0/build/three.module.js"';
 const IMPORTMAP_ADDONS = '"three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"';
 const SUPABASE_IMPORT = "await import('https://esm.sh/@supabase/supabase-js@2.116.0')";
 const API_ANCHOR = "const API_BASE = '';";
@@ -43,7 +43,7 @@ let html = readFileSync('index.html', 'utf8');
 const ADS_TEST = process.env.ADS_TEST === '1';
 const adsFlag = ADS_TEST ? ' window.__ADS_TEST__ = true;' : '';
 html = replaceOnce(html, '<head>', `<head>\n  <script>window.${FLAGS[TARGET]} = true;${adsFlag}</script>`, 'index.html');   // ①
-html = replaceOnce(html, IMPORTMAP_THREE, '"three": "./vendor/three/three.module.js"', 'index.html');     // ②
+html = replaceOnce(html, IMPORTMAP_THREE, '"three-core": "./vendor/three/three.module.js"', 'index.html');     // ②
 html = replaceOnce(html, IMPORTMAP_ADDONS, '"three/addons/": "./vendor/three/addons/"', 'index.html');
 html = html.replace(/^\s*<!-- 📱 PWA[\s\S]*?-->\s*\n/gm, '');                                              // ④ 설명 주석
 html = html.replace(/^\s*<link rel="(?:icon|apple-touch-icon|manifest)"[^>]*href="\/[^"]*"[^>]*>\s*\n/gm, '');
