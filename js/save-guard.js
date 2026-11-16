@@ -72,6 +72,35 @@ export function offerReload(attempt) {
   return (Math.max(0, Math.floor(attempt) || 0)) >= RELOAD_AFTER;
 }
 
+const EXIT_SAVE_MAX_BYTES = 30000;
+const EXIT_TOKEN_MARGIN_MS = 5000;
+
+export async function sendExitSave(request, fetchFn = fetch) {
+  const res = await fetchFn(request.url, request.init);
+  if (!res.ok) throw new Error(`save ${res.status}`);
+  return { ok: true };
+}
+
+export function exitSaveRequest({ url, table, anonKey, auth, row, now }) {
+  if (!auth?.token || !row?.user_id || auth.uid !== row.user_id || !(auth.exp > now + EXIT_TOKEN_MARGIN_MS)) return null;
+  const body = JSON.stringify(row);
+  if (new TextEncoder().encode(body).length > EXIT_SAVE_MAX_BYTES) return null;
+  return {
+    url: `${url}/rest/v1/${table}`,
+    init: {
+      method: 'POST',
+      headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${auth.token}`,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates,return=minimal',
+      },
+      body,
+      keepalive: true,
+    },
+  };
+}
+
 // ── 🔌 세션이 노는 도중에 죽는 경우 ───────────────────────────────
 //   위 loadOutcome 은 "들어올 때" 만 지킨다. 몇 시간 놀던 중 refresh token 이 폐기되면
 //   (다른 기기 로그아웃·프로젝트 정지·토큰 회전 실패) supabase 가 SIGNED_OUT 을 쏘는데,

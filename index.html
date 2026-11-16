@@ -6502,8 +6502,15 @@
 
       // 진행상황 자동 저장 — 30초 주기 + 탭 숨김/종료 시 (창 닫았다 열어도 이어짐)
       setInterval(() => requestSave(), 30000);
-      document.addEventListener('visibilitychange', () => { if (document.hidden) requestSave(); });
-      window.addEventListener('beforeunload', () => { try { requestSave(); } catch (e) {} });
+      let lastExitSave = 0;
+      const exitSave = () => {
+        const now = Date.now();
+        if (now - lastExitSave < 1000) return;
+        lastExitSave = now;
+        requestSave({ keepalive: true });
+      };
+      document.addEventListener('visibilitychange', () => { if (document.hidden) exitSave(); });
+      window.addEventListener('beforeunload', exitSave);
     }
 
     // 🧪 E2 처치(skip_login) — 로그인 화면 없이 오프라인 게스트 상태로 바로 입장하고,
