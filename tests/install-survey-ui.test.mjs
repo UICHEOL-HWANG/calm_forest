@@ -222,5 +222,5 @@ test('index.html 은 설문을 띄웠으면 답을 받은 뒤에 월드를 부�
   const { readFileSync } = await import('node:fs');
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(html, /onDecide: \(v\) => surveyDecide\(v\),/);
-  assert.match(html, /if \(await surveyDecided\) await surveyP;\n\s*if \(loginFirstBoot\) document\.body\.classList\.add\('pre-world'\);\n\s*else await ensureWorld\(\);/);
+  assert.match(html, /if \(await surveyDecided\) await surveyP;\n\s*if \(IS_IOS\) void bootTenjin\(\);\n\s*if \(loginFirstBoot\) document\.body\.classList\.add\('pre-world'\);\n\s*else await ensureWorld\(\);/);
 });

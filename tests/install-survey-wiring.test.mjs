@@ -51,3 +51,9 @@ test('DB answer CHECK 와 보기 값이 같다', () => {
   const sql = read('sql/migrations/migrate_install_survey.sql');
   for (const o of SURVEY_OPTIONS) assert.ok(sql.includes(`'${o.value}'`), o.value);
 });
+
+test('iOS 추적 허용 창은 설문이 끝난 뒤에 — 설문 위에 시스템 창이 덮이면 탭이 먹히지 않는다', () => {
+  assert.match(html, /if \(await surveyDecided\) await surveyP;\n\s*if \(IS_IOS\) void bootTenjin\(\);\n\s*if \(loginFirstBoot\)/);
+  assert.match(html, /if \(IS_NATIVE\) \{ if \(!IS_IOS\) void bootTenjin\(\); onTrack\(tenjinFromTrack\); \}/, '안드로이드는 추적 허용 창이 없어 예전처럼 바로');
+  assert.equal(html.match(/bootTenjin\(\)/g).length, 2);
+});

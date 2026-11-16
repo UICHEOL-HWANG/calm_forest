@@ -7167,7 +7167,7 @@
     });
 
     (async () => {
-      if (IS_NATIVE) { void bootTenjin(); onTrack(tenjinFromTrack); }
+      if (IS_NATIVE) { if (!IS_IOS) void bootTenjin(); onTrack(tenjinFromTrack); }
       preloadSupabase().catch(() => {});
       bootReferral({ track: trackEvent });           // 🤝 ?invite= 보관 — 인증(구글 리다이렉트)이 쿼리를 지우기 전에
       promoGift().then(m => m.bootPromoGift({ track: trackEvent })).catch(() => null);
@@ -7206,6 +7206,7 @@
         });
       } catch (e) { surveyDecide(false); }
       if (await surveyDecided) await surveyP;
+      if (IS_IOS) void bootTenjin();
       if (loginFirstBoot) document.body.classList.add('pre-world');
       else await ensureWorld();                      // ① 씬을 로그인 배경으로 먼저 부팅
       await surveyP;                                 // 🧭 설문에 아직 답하는 중이면 기다린다 — 🤝 초대 코드가 enterPlay 전에 cf_invite 에 있어야 한다
