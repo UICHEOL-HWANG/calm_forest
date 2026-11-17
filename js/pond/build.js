@@ -83,8 +83,9 @@ export function buildPond({ fishMesh, mergeGeos, paintGeo, emojiSprite, r = POND
       seas.forEach((s, j) => addFish(fishMesh('common', seaColorOf(s.sp)), river.length + j, FISH_SCALE * POND_SEA_SCALE));
     },
     setRim(next) {
+      const geo = shoreGeometry({ mergeGeos, paintGeo }, r, layout, next);
       shore.geometry.dispose();
-      shore.geometry = shoreGeometry({ mergeGeos, paintGeo }, r, layout, next);
+      shore.geometry = geo;
     },
     pop(emoji) {
       const sp = emojiSprite(emoji, 0.7);

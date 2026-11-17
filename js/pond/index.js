@@ -62,6 +62,9 @@ function ensureBuilt() {
   teardown();
   const r = pondRadius(stage), x = HOUSE_POS.x + spot.dx, z = HOUSE_POS.z + spot.dz;
   if (stage >= 2) clearYard({ scene, trees, obstacles, swayables, grassClumps, removeSolid }, x, z, r + YARD_PAD, r + POND_TREE_CLEAR, POND_SOUTH_CLEAR);
+  const at = pondSignPos({ x, z }, r, HOUSE_POS);
+  clearYard({ scene, trees, obstacles, swayables, grassClumps, removeSolid }, at.x, at.z, SIGN_PAD, SIGN_TREE_CLEAR, SIGN_SOUTH_CLEAR);
+  const post = buildPondSign({ mergeGeos, paintGeo });
   rim = pondRimOf(gameState.hintsSeen);
   pond = buildPond({ fishMesh, mergeGeos, paintGeo, emojiSprite, r, stage, rim });
   pond.group.position.set(x, 0, z);
@@ -69,9 +72,7 @@ function ensureBuilt() {
   solid = solidCircle(x, z, r + 0.1);
   block = { x, z, r: r + 0.1 };
   obstacles.push(block);
-  const at = pondSignPos({ x, z }, r, HOUSE_POS);
-  clearYard({ scene, trees, obstacles, swayables, grassClumps, removeSolid }, at.x, at.z, SIGN_PAD, SIGN_TREE_CLEAR, SIGN_SOUTH_CLEAR);
-  sign = buildPondSign({ mergeGeos, paintGeo });
+  sign = post;
   sign.group.position.set(at.x, 0, at.z);
   scene.add(sign.group);
   signSolid = solidCircle(at.x, at.z, SIGN_SOLID_R);

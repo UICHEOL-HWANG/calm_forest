@@ -140,7 +140,7 @@ test('연결: 저장된 물가로 짓고, 바꿀 때는 물가 조형만 갈아 
   assert.doesNotMatch(fn, /teardown|grow|clearYard|solidCircle|obstacles/);
   const b = src('js/pond/build.js');
   assert.match(b, /r = POND_R, stage = 1, rim = 'rock' \}\)/);
-  assert.match(b, /setRim\(next\) \{\n\s*shore\.geometry\.dispose\(\);\n\s*shore\.geometry = shoreGeometry\(/);
+  assert.match(b, /setRim\(next\) \{\n\s*const geo = shoreGeometry\([^\n]*\n\s*shore\.geometry\.dispose\(\);\n\s*shore\.geometry = geo;/);
   assert.equal((b.match(/new THREE\.Mesh\(/g) || []).length, 2);
 });
 
