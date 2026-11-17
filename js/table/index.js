@@ -156,5 +156,3 @@ export function markTableRingSeen() {
   gameState.hintsSeen.tableRingSeen = true;
   requestSave();
 }
-
-export function openTableWindow() {}

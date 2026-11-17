@@ -5,15 +5,17 @@ import { TABLE_COPY } from '../js/table/copy.js';
 
 const src = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 const index = src('js/table/index.js');
+const N_TABLE_LINES = 12;
 
 test('game.js 는 연결 줄만 가진다', () => {
   const g = src('js/game.js');
-  assert.match(g, /import \{ refreshTable, updateTable, tableMapKey, tableSettling, openTableWindow \} from '\.\/table\/index\.js';/);
+  assert.match(g, /import \{ refreshTable, updateTable, tableMapKey, tableSettling, tablePos, tableNear \} from '\.\/table\/index\.js';/);
+  assert.match(g, /import \{ openCookbook, takeBite, cookbookAfterBite \} from '\.\/table\/book-ui\.js';/);
   assert.ok(g.indexOf("refreshTable('load')") > g.indexOf("refreshPond('load')"));
   assert.match(g, /syncStory\('cook'\);[^\n]*\n  refreshTable\('cook'\);/);
   assert.match(g, /updatePond\(dt, inVillage2\(\)\);\n  updateTable\(dt, inVillage2\(\)\);/);
-  assert.match(g, /if \(nearDoor === 'table'\) return openTableWindow\(\);/);
-  assert.equal(g.split('\n').filter(l => /[tT]able(MapKey|Settling|Window)|refreshTable|updateTable/.test(l)).length, 6);
+  assert.match(g, /if \(nearDoor === 'table'\) return openCookbook\(\);/);
+  assert.equal(g.split('\n').filter(l => /[tT]able(MapKey|Settling|Pos|Near|BiteAd)|refreshTable|updateTable|openCookbook|takeBite|cookbookAfterBite/.test(l)).length, N_TABLE_LINES);
 });
 
 test('문 프롬프트는 연못보다 먼저 식탁을 본다', () => {
@@ -89,13 +91,14 @@ test('지도: 식탁 자리와 모양이 바뀌면 다시 찍는다', () => {
 });
 
 test('문구: 초안 그대로, 금지 표현 없음, 영어 사전에 통문장으로', () => {
-  assert.deepEqual(TABLE_COPY, {
+  const world = { prompt: TABLE_COPY.prompt, created: TABLE_COPY.created, long: TABLE_COPY.long };
+  assert.deepEqual(world, {
     prompt: '🍽️ 마당 식탁',
     created: '🍽️ 마당에 식탁이 생겼어요. 만든 요리가 올라가요',
     long: '🍽️ 요리가 7가지가 됐어요. 긴 식탁으로 바뀌었어요',
   });
   const en = src('js/i18n-en.js');
-  for (const s of Object.values(TABLE_COPY)) {
+  for (const s of Object.values(world)) {
     assert.doesNotMatch(s, /—|놀|[⬆⬇⬅➡↑↓←→]/);
     const m = en.match(new RegExp(`'${s}': '([^']+)'`));
     assert.ok(m, s);
@@ -105,6 +108,6 @@ test('문구: 초안 그대로, 금지 표현 없음, 영어 사전에 통문장
 
 test('첫 로딩에 들어가지 않고 주석이 없다', () => {
   assert.doesNotMatch(src('index.html'), /js\/table\//);
-  for (const f of ['js/table/index.js', 'js/table/copy.js']) assert.doesNotMatch(src(f), /^\s*\/\//m);
-  assert.match(index, /export function openTableWindow\(\) \{\}/);
+  for (const f of ['js/table/index.js', 'js/table/copy.js', 'js/table/book-ui.js', 'js/table/guide-steps.js']) assert.doesNotMatch(src(f), /^\s*\/\//m);
+  assert.doesNotMatch(index, /openTableWindow/);
 });

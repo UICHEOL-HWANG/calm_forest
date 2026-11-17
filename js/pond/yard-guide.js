@@ -1,9 +1,12 @@
 import { createGuide } from '../guide/runner.js';
 import { createGuideView } from '../guide/view.js';
-import { SEA_GATE } from '../data/places.js';
+import { SEA_GATE, KITCHEN } from '../data/places.js';
 import { feedStatus } from './actions.js';
 import { yardIdle, yardReady, yardSteps, goStep, movedStep, hudHidden, d1Ready, d1Steps, guideStalled, bridgeDone, YARD_PIER } from './yard-steps.js';
 import { POND_COPY } from './copy.js';
+import { biteStatus } from '../table/rules.js';
+import { tableGuideReady, tableSteps } from '../table/guide-steps.js';
+import { TABLE_COPY } from '../table/copy.js';
 
 export const YARD_HUD_CLASS = 'yard-guiding';
 export const YARD_HUD_CSS = 'body.yard-guiding #story-chip, body.yard-guiding #quest-panel, body.yard-guiding #habitat-meter, body.yard-guiding #app-banner { display: none !important; }';
@@ -24,10 +27,13 @@ export function createYardGuide(deps) {
 
   const ctx = () => {
     const pond = deps.pondPos();
+    const h = deps.state().hintsSeen;
     return {
+      table: deps.tablePos?.() ?? null, nearTable: !!deps.tableNear?.(),
+      bitToday: biteStatus(h, deps.today()).bit, bookAfterBite: !!deps.bookAfterBite?.(),
       me: deps.player.position, pier: YARD_PIER, pond, hasPond: !!pond,
       nearLake: deps.nearLake(), fishing: deps.fishing(), nearPond: deps.pondNear(),
-      fedToday: feedStatus(deps.state().hintsSeen, deps.today()).fed,
+      fedToday: feedStatus(h, deps.today()).fed,
     };
   };
 
@@ -84,6 +90,16 @@ export function createYardGuide(deps) {
     });
   };
 
+  const startTable = () => {
+    const h = deps.state().hintsSeen;
+    h.tableGuideTries = (h.tableGuideTries | 0) + 1;
+    deps.save();
+    run('table_first', tableSteps(TABLE_COPY), () => {
+      deps.state().hintsSeen.tableGuide = true;
+      deps.save();
+    });
+  };
+
   const suspend = () => {
     lastProgressAt = performance.now() / 1000;
     setHud(false);
@@ -95,6 +111,11 @@ export function createYardGuide(deps) {
     suspend,
     pointTo(kind) {
       if (flow === 'yard_fill' || flow === 'pond_d1') return;
+      if (kind === 'kitchen') {
+        if (flow === 'table_first') { deps.state().hintsSeen.tableGuide = true; deps.save(); }
+        run('table_go', [goStep({ x: KITCHEN.x, z: KITCHEN.z }, TABLE_COPY.goStepKitchen)]);
+        return;
+      }
       if (kind === 'pond') {
         if (!deps.held?.()) run('pond_moved', [movedStep(POND_COPY.growMoved)]);
         return;
@@ -112,6 +133,9 @@ export function createYardGuide(deps) {
         } else if (d1Ready({ on, yardDone: !!h.yardFill, d1Done: !!h.pondD1, pondDay: h.pondDay, today, fedToday: feedStatus(h, today).fed, idleSec: idle })) {
           idle = 0;
           startD1();
+        } else if (tableGuideReady({ on, has: !!deps.tablePos?.(), done: !!h.tableGuide, tries: h.tableGuideTries, idleSec: idle })) {
+          idle = 0;
+          startTable();
         }
         return;
       }

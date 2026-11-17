@@ -41,7 +41,7 @@ export function bumpDay(rec, day, slot, at = { day }) {
   const s = slot in SLOT_CAPS ? { ...(rec?.s || {}), [slot]: { p: periodOf(slot, at), n: slotUsed(rec, slot, at) + 1 } } : rec?.s;
   return s ? { ...base, s } : base;
 }
-export const REPEAT_SLOTS = Object.freeze(['farm_rush', 'craft_rush', 'daily_double', 'sell_bonus', 'pond_feed_more']);
+export const REPEAT_SLOTS = Object.freeze(['farm_rush', 'craft_rush', 'daily_double', 'sell_bonus', 'pond_feed_more', 'table_bite_more']);
 const HOUSE_DONE = 3;
 const ARMS = ['ad', 'control'];
 

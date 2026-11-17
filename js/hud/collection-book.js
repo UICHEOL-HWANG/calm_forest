@@ -75,14 +75,17 @@ function setHint(info) {
   line.textContent = info?.line ?? model.hint;
   box.append(line);
   const go = info ? info.go : model.go;
-  box.style.display = line.textContent || go ? '' : 'none';
-  if (!go) return;
-  const b = document.createElement('button');
-  b.className = 'cb-btn';
-  b.textContent = go.label;
-  b.disabled = !!go.disabled;
-  b.onclick = go.onClick;
-  box.append(b);
+  const extra = info?.extra ?? null;
+  box.style.display = line.textContent || go || extra ? '' : 'none';
+  if (go) {
+    const b = document.createElement('button');
+    b.className = 'cb-btn';
+    b.textContent = go.label;
+    b.disabled = !!go.disabled;
+    b.onclick = go.onClick;
+    box.append(b);
+  }
+  if (extra) box.append(extra);
 }
 
 export function isBookOpen() {

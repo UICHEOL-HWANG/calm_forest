@@ -31,7 +31,7 @@ test('🐟 행동 버튼: 프롬프트·아이콘·분기·광고', () => {
   const g = src('js/game.js');
   assert.match(g, /if \(nearDoor === 'pond'\) return openPondBook\(\);/);
   assert.match(g, /rewarded\.button\('pond_feed_more', \['광고 보고', ' ', POND_COPY\.adMore\]/);
-  assert.match(src('js/guide/prepass-rules.js'), /'sell_bonus', 'pond_feed_more'\]/);
+  assert.match(src('js/guide/prepass-rules.js'), /'sell_bonus', 'pond_feed_more', 'table_bite_more'\]/);
 });
 
 test('마당 채우기 연결', () => {

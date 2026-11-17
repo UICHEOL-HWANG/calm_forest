@@ -18,11 +18,11 @@ const TALLY_KEY = 'cf_tj_rv';
 
 const GROUP_RULES = [
   ['house', /^(house\d+|bridge|farm\d+|pond\d+|branch_.+|fountain_short)$/],
-  ['cafe', /^cafe_order$/],
+  ['cafe', /^(cafe_order|cook_ingredient)$/],
   ['rush', /^(farm_rush|craft_rush|orchard_.+|forge_.+)$/],
   ['sell', /^sell_bonus$/],
   ['daily', /^daily_double$/],
-  ['pond', /^pond_feed_more$/],
+  ['pond', /^(pond_feed_more|table_bite_more)$/],
   ['limit', /^(affinity_heart|concert_play|weekly_ticket)$/],
   ['reroll', /^(quest_reroll|drop_reroll_.+)$/],
   ['double', /^(restaurant_double|bait_box|fountain_double)$/],

@@ -96,7 +96,9 @@ import { feedPond, openPondBook } from './pond/feed.js';
 import { openPondRim } from './pond/rim-ui.js';
 import { POND_COPY } from './pond/copy.js';
 import { pondPos, pondNear, pondMapKey, pondSettling, pondPatchBlocks } from './pond/index.js';
-import { refreshTable, updateTable, tableMapKey, tableSettling, openTableWindow } from './table/index.js';
+import { refreshTable, updateTable, tableMapKey, tableSettling, tablePos, tableNear } from './table/index.js';
+import { openCookbook, takeBite, cookbookAfterBite } from './table/book-ui.js';
+import { TABLE_COPY } from './table/copy.js';
 import { installYardGuide } from './pond/yard-guide.js';
 import { yardIdle } from './pond/yard-steps.js';
 import { featureGuidesOpen, houseGoalDue, placeGuideReady, FIRST_VISIT } from './guide/feature-rules.js';
@@ -2118,6 +2120,15 @@ export function pondFeedAdButton(onDone) {
   return rewarded.button('pond_feed_more', ['광고 보고', ' ', POND_COPY.adMore], () => feedPond('ad'), (ok, btn) => onDone?.(ok, btn));
 }
 
+export function tableBiteAdOffered() {
+  return repeatOpen(gameState.houseStage) && !!rewarded?.offer('table_bite_more');
+}
+
+export function tableBiteAdButton(id, onDone) {
+  if (!tableBiteAdOffered()) return null;
+  return rewarded.button('table_bite_more', ['광고 보고', ' ', TABLE_COPY.adMore], () => takeBite(id, 'ad'), (ok, btn) => onDone?.(ok, btn));
+}
+
 function orchardGrowGrant() {
   const st = gameState.orchard;
   const out = st && growOneTree(st.trees || [], orchardStreamWorld());
@@ -3159,6 +3170,7 @@ export async function enterGame() {
     track: trackEvent, save: requestSave, today: kstDate,
     banner: line => ui.showHintBanner?.({ ico: '🦉', title: POND_COPY.owlTitle, line, near: () => true, attention: true, kind: 'feature', key: 'yard-owl' }),
     setAssist: setFishAssist, setHudHidden: setNpcGlyphsHidden, pondPos, pondNear,
+    tablePos, tableNear, bookAfterBite: cookbookAfterBite,
     nearLake: () => dist2D(LAKE, player.position) <= LAKE_R + 2.8,
     fishing: () => fishState !== 'idle',
   });
@@ -7897,7 +7909,7 @@ function handleAction() {
   if (nearDoor === 'warehouse') return withdrawWarehouse();
   if (nearDoor === 'hireboard') return hireBoardInteract();   // 📋 일꾼 게시판 → 고용 창   // 🧺 작물 창고 옆에서 액션 = 내용물 꺼내기
   if (nearDoor === 'trace') { const tr = traceTarget(); if (tr) return investigateTrace(tr); }
-  if (nearDoor === 'table') return openTableWindow();
+  if (nearDoor === 'table') return openCookbook();
   if (nearDoor === 'pondsign') return openPondRim();
   if (nearDoor === 'pond') return openPondBook();
   if (nearDoor === 'pet') return commandPet();   // 🐾 밭 근처에서 액션 = 맡기기(물·잡초·해충 최대 5칸)
