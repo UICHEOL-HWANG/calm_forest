@@ -6,7 +6,9 @@ export const POND_SPOTS = Object.freeze([
   Object.freeze({ dx: 6, dz: 9 }),
 ]);
 export const POND_STAGE_R = Object.freeze([POND_R, 2.9, 3.9]);
-export const POND_BIG_SPOT = Object.freeze({ dx: -16, dz: -1 });
+export const POND_BIG_SPOT = Object.freeze({ dx: -8.5, dz: -3 });
+export const POND_TREE_CLEAR = 1.2;
+export const POND_SOUTH_CLEAR = 3;
 export const POND_ACT_PAD = 1.4;
 export const POND_VIEW_PAD = 3;
 export const POND_VIEW_R = 5;

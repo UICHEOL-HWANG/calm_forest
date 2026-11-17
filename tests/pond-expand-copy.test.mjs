@@ -30,8 +30,8 @@ test('확정 문구 그대로', () => {
     plots: '🌱 새 연못 자리에 밭이 있어요. 비운 뒤 넓혀 주세요',
   });
   assert.equal(POND_COPY.growBuy, '넓히기');
-  assert.equal(POND_COPY.growWhere, '🧭 넓은 연못은 꾸미기 가게 옆 빈터에 새로 자리 잡아요');
-  assert.equal(POND_COPY.growMoved, '🌊 넓은 연못이 꾸미기 가게 옆에 생겼어요. 가 보세요');
+  assert.equal(POND_COPY.growWhere, '🧭 넓은 연못은 집 서쪽 빈터에 새로 자리 잡아요');
+  assert.equal(POND_COPY.growMoved, '🌊 넓은 연못이 집 서쪽에 생겼어요. 가 보세요');
   assert.deepEqual(POND_COPY.growDone, {
     2: '🌊 연못이 넓어졌어요. 바다 대어가 4마리까지 살 수 있어요',
     3: '🏝️ 큰 연못이 됐어요. 작은 섬과 징검다리가 생겼어요',

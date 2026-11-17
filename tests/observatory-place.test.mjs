@@ -41,7 +41,7 @@ const OCCUPIED = [
   ['dock pond', p(0, -21.5, 7)],
   ['sea gate', vec3('SEA_GATE')],
   ['sea cove', SEA_COVE],
-  ['decor shop', p(-17.5, -4, 0)],
+  ['decor shop', p(-27.5, -9.5, 0)],
   ['mine gate', p(-14, 3, 0)],
   ['museum gate', p(-26, 5, 0)],
   ['forest', p(FOREST.x, FOREST.z, FOREST_R)],

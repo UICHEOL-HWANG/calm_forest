@@ -87,17 +87,18 @@ test('큰 연못에 걸리는 울타리 기둥과 나무만 뺀다', () => {
   const posts = Array.from({ length: 48 }, (_, i) => (i / 48) * Math.PI * 2).map(a => [Math.cos(a) * 17.2, Math.sin(a) * 17.2]);
   const trees = [[-15, -8], [-17, 3], [-13, 11], [15, -8], [17, 3], [13, 11], [-7, -16], [7, -16]];
   const hit = (pond, list, pad) => list.filter(([x, z]) => pondCovers(pond, x, z, pad));
-  assert.equal(pondCovers(null, -16, -1), false);
-  assert.equal(hit(at(1), posts).length + hit(at(1), trees, 1.1).length, 0);
-  assert.deepEqual(hit(at(2), trees), []);
-  assert.deepEqual(hit(at(2), trees, 1.1), [[-17, 3]]);
-  assert.deepEqual(hit(at(3), trees, 1.1), [[-17, 3]]);
-  assert.equal(hit(at(2), posts).length, 3);
-  assert.equal(hit(at(3), posts).length, 4);
-  for (const stage of [2, 3]) {
+  assert.equal(pondCovers(null, POND_BIG_SPOT.dx, POND_BIG_SPOT.dz), false);
+  for (const stage of [1, 2, 3]) {
     const p = at(stage);
+    assert.deepEqual(hit(p, posts), [], `stage ${stage} posts`);
+    assert.deepEqual(hit(p, trees, 1.1), [], `stage ${stage} trees`);
     for (const [x, z] of posts) assert.equal(pondCovers(p, x, z), Math.hypot(x - p.dx, z - p.dz) < p.r + 0.6);
   }
+  const big = at(3);
+  assert.ok(Math.hypot(big.dx, big.dz) + big.r + 0.6 < 17.2);
+  assert.equal(pondCovers(big, big.dx + big.r, big.dz), true);
+  assert.equal(pondCovers(big, big.dx + big.r + 1, big.dz, 1.1), true);
+  assert.equal(pondCovers(big, big.dx + big.r + 2, big.dz, 1.1), false);
 });
 
 test('rim 은 네 가지 id 만 받고 나머지와 옛 서버 응답은 기본 돌', () => {
