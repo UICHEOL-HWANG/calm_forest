@@ -13,6 +13,9 @@ import { pondRimOf } from './rim.js';
 import { pondBook } from './feed.js';
 import { clearYard } from './yard-clear.js';
 import { buildPond } from './build.js';
+import { pondSignPos, signNear, signPulseDue, SIGN_SOLID_R, SIGN_PULSE_SEC, SIGN_REACH } from './sign.js';
+import { buildPondSign } from './sign-build.js';
+import { guideArbiter } from '../guide/arbiter.js';
 import { POND_COPY } from './copy.js';
 import { kstDate } from '../kst-date.js';
 import { e3Decision } from '../exp-e3-boot.js';
@@ -23,7 +26,9 @@ const SEA_IDS = SEA_SPECIES.map(s => s.id);
 const seaColorOf = (sp) => SEA_SPECIES.find(s => s.id === sp)?.color ?? 0x6f8fa8;
 
 const YARD_PAD = 0.6, PATCH_PAD = 0.3, GROW_SEC = 2;
+const SIGN_PAD = 0.6, SIGN_TREE_CLEAR = SIGN_REACH + 0.2, SIGN_SOUTH_CLEAR = 2.5;
 
+let sign = null, signSolid = null, pulse = 0;
 let pond = null, solid = null, block = null, built = 0, rim = '', last = null, nearSec = 0, viewedDay = null, toastPending = false, toastWait = 0, tip = 0;
 
 const kstDay = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
@@ -42,6 +47,10 @@ function teardown() {
   removeSolid(solid);
   const i = obstacles.indexOf(block);
   if (i >= 0) obstacles.splice(i, 1);
+  scene.remove(sign.group);
+  sign.dispose();
+  removeSolid(signSolid);
+  sign = null; signSolid = null; pulse = 0;
   pond = null; solid = null; block = null; built = 0; rim = '';
 }
 
@@ -60,6 +69,12 @@ function ensureBuilt() {
   solid = solidCircle(x, z, r + 0.1);
   block = { x, z, r: r + 0.1 };
   obstacles.push(block);
+  const at = pondSignPos({ x, z }, r, HOUSE_POS);
+  clearYard({ scene, trees, obstacles, swayables, grassClumps, removeSolid }, at.x, at.z, SIGN_PAD, SIGN_TREE_CLEAR, SIGN_SOUTH_CLEAR);
+  sign = buildPondSign({ mergeGeos, paintGeo });
+  sign.group.position.set(at.x, 0, at.z);
+  scene.add(sign.group);
+  signSolid = solidCircle(at.x, at.z, SIGN_SOLID_R);
   built = stage;
   return true;
 }
@@ -106,7 +121,9 @@ export function setPondRim() {
 export function updatePond(dt, inVillage) {
   if (!pond) return;
   pond.group.visible = inVillage;
+  sign.group.visible = inVillage;
   if (solid) solid.off = !inVillage;
+  signSolid.off = !inVillage;
   if (!inVillage) { nearSec = 0; toastWait = 0; return; }
   toastWait += dt;
   if (pondToastDue({ pending: toastPending, seen: !!gameState.hintsSeen.pond, inVillage, waitedSec: toastWait })) {
@@ -123,6 +140,13 @@ export function updatePond(dt, inVillage) {
   }
   pond.update(dt);
   const near = dist2D(player.position, pond.group.position) < pondViewR(built);
+  if (signPulseDue({ seen: !!gameState.hintsSeen.pondSignSeen, inView: near, busy: guideArbiter.busy(), coach: !!ui.coachActive?.(), modal: !!ui.anyModalOpen?.() })) {
+    gameState.hintsSeen.pondSignSeen = true;
+    pulse = SIGN_PULSE_SEC;
+    requestSave();
+  }
+  pulse = Math.max(0, pulse - dt);
+  sign.update(dt, pondSignNear(), pulse);
   nearSec = near ? nearSec + dt : 0;
   if (nearSec >= POND_VIEW_SEC) {
     const day = kstDay();
@@ -159,6 +183,17 @@ export function pondPos() {
 
 export function pondNear() {
   return pondExists() && pond.group.visible && dist2D(player.position, pond.group.position) < pondActR(built);
+}
+
+export function pondSignNear() {
+  return pondExists() && sign.group.visible && signNear(sign.group.position, player.position);
+}
+
+export function markPondSignSeen() {
+  pulse = 0;
+  if (gameState.hintsSeen.pondSignSeen) return;
+  gameState.hintsSeen.pondSignSeen = true;
+  requestSave();
 }
 
 export function pondCount() {

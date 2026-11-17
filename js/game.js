@@ -93,6 +93,7 @@ import { initConcert, updateConcert, concertSpotNow, openConcert, concertDefault
 import { makeConcertBridge } from './concert/bridge.js';
 import { refreshPond, updatePond, pondScatterBlocks } from './pond/index.js';
 import { feedPond, openPondBook } from './pond/feed.js';
+import { openPondRim } from './pond/rim-ui.js';
 import { POND_COPY } from './pond/copy.js';
 import { pondPos, pondNear, pondMapKey, pondSettling, pondPatchBlocks } from './pond/index.js';
 import { installYardGuide } from './pond/yard-guide.js';
@@ -7892,6 +7893,7 @@ function handleAction() {
   if (nearDoor === 'warehouse') return withdrawWarehouse();
   if (nearDoor === 'hireboard') return hireBoardInteract();   // 📋 일꾼 게시판 → 고용 창   // 🧺 작물 창고 옆에서 액션 = 내용물 꺼내기
   if (nearDoor === 'trace') { const tr = traceTarget(); if (tr) return investigateTrace(tr); }
+  if (nearDoor === 'pondsign') return openPondRim();
   if (nearDoor === 'pond') return openPondBook();
   if (nearDoor === 'pet') return commandPet();   // 🐾 밭 근처에서 액션 = 맡기기(물·잡초·해충 최대 5칸)
   if (nearDoor === 'mine') return enterMine();

@@ -171,7 +171,7 @@ test('창: 저장과 기록이 조형 교체보다 먼저, 교체 실패는 구�
   assert.match(c, /\$\('cb-coins'\)\.textContent = next\.coins \?\? '';/);
   assert.match(c, /#cb-coins:empty,#cb-count:empty\{display:none\}/);
   for (const p of ['js/pond/rim.js', 'js/pond/rim-ui.js', 'js/pond/rim-thumbs.js', 'js/pond/shape.js', 'js/pond/build.js']) assert.doesNotMatch(src(p), /^\s*\/\//m, p);
-  assert.doesNotMatch(src('js/game.js'), /pondRim|rim-ui/);
+  assert.equal((src('js/game.js').match(/pondRim|rim-ui/g) || []).length, 1);
 });
 
 test('이벤트 표: pond_rim 행', () => {

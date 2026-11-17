@@ -3,7 +3,7 @@ import { trackEvent } from '../analytics.js';
 import { logEcon } from '../metrics.js';
 import { rimCards, applyRim } from './rim.js';
 import { rimPic, rimPicsFailed, drawRimPics } from './rim-thumbs.js';
-import { pondExists, setPondRim } from './index.js';
+import { pondExists, setPondRim, markPondSignSeen } from './index.js';
 import { openBook, isBookOpen } from '../hud/collection-book.js';
 import { POND_COPY } from './copy.js';
 
@@ -40,6 +40,7 @@ function cardEl(c, pic) {
 
 export function openPondRim() {
   if (!pondExists()) return;
+  markPondSignSeen();
   const coins = gameState.inventory.coins || 0;
   const { cards, short } = rimCards(gameState.hintsSeen, coins);
   const drawn = !rimPicsFailed();

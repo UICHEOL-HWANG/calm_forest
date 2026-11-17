@@ -17,6 +17,8 @@ import { stage7Boxes } from '../house-stage7.js';
 import { hostSpot, houseSolidR, neighborPond, neighborPondView, pondCovers } from './rules.js';
 import { buildPond } from '../pond/build.js';
 import { pondFishLimits } from '../pond/stage.js';
+import { pondSignPos } from '../pond/sign.js';
+import { buildPondSign } from '../pond/sign-build.js';
 import { emojiSprite } from '../spaces/kitchen-stage.js';
 import { hostStand } from './indoor-rules.js';
 
@@ -143,8 +145,12 @@ export function buildNeighborScene(view) {
       p.group.position.set(NEIGHBOR.x + ps.dx, 0, NEIGHBOR.z + ps.dz);
       p.setContents(neighborPondView(view.pond), (sp) => SEA_SPECIES.find(s => s.id === sp)?.color ?? 0x6f8fa8, pondFishLimits(ps.stage));
       group.add(p.group);
+      const s = buildPondSign({ mergeGeos, paintGeo, reach: false });
+      const at = pondSignPos(p.group.position, ps.r, NEIGHBOR);
+      s.group.position.set(at.x, 0, at.z);
+      group.add(s.group);
       pondUpdate = (dt) => p.update(dt);
-      pondDispose = () => p.dispose();
+      pondDispose = () => { p.dispose(); s.dispose(); };
     }
 
     //  전역 등록(창문 점등·충돌체)은 장식까지 다 지은 뒤에 — 그래도 아래서 터지면 catch 가 dispose 로 되돌린다
