@@ -8,7 +8,6 @@ export const SIGN_PULSE_SEC = 5;
 
 const SIDE_OUT = 1.6;
 const HOUSE_HALF = 3.95, HOUSE_PAD = 1.2, HOUSE_BEHIND = 5;
-const LOCAL_HOST = /^(localhost|127\.0\.0\.1|\[::1\])$/;
 
 export const SIGN_SIDES = Object.freeze([
   Object.freeze({ id: 'ese', sx: 1, sz: 1 }),
@@ -17,25 +16,17 @@ export const SIGN_SIDES = Object.freeze([
   Object.freeze({ id: 'wnw', sx: -1, sz: -1 }),
 ]);
 
-export const SIGN_RINGS = Object.freeze({
-  dash: Object.freeze({ idle: Object.freeze({ color: 0xd8cfa8, opacity: 0.5 }), active: Object.freeze({ color: 0xd4a017, opacity: 0.9 }), grow: 0 }),
-  disc: Object.freeze({ idle: Object.freeze({ color: 0xd8cfa8, opacity: 0.4 }), active: Object.freeze({ color: 0xd8a52a, opacity: 0.85 }), grow: 0.08 }),
-  pebble: Object.freeze({ idle: Object.freeze({ color: 0x9a9288, opacity: 1 }), active: Object.freeze({ color: 0xd4a017, opacity: 1 }), grow: 0 }),
+export const SIGN_RING = Object.freeze({
+  idle: Object.freeze({ color: 0xd8cfa8, opacity: 0.5 }),
+  active: Object.freeze({ color: 0xd4a017, opacity: 0.9 }),
 });
-export const SIGN_RING_DEFAULT = 'dash';
 export const SIGN_RING_EASE_SEC = 0.2;
-const RING_PARAM = Object.freeze({ 1: 'dash', 2: 'disc', 3: 'pebble' });
 
-export function signRingKind(search, hostname) {
-  if (!LOCAL_HOST.test(hostname || '')) return SIGN_RING_DEFAULT;
-  return RING_PARAM[new URLSearchParams(search || '').get('pondring')] ?? SIGN_RING_DEFAULT;
-}
-
-export function signRingLook(kind, k, pulseT) {
+export function signRingLook(k, pulseT) {
   const beat = pulseT > 0 ? Math.sin(pulseT * 4) * 0.3 + 0.7 : 0;
   const mix = Math.max(k, beat);
-  const { idle, active, grow } = SIGN_RINGS[kind];
-  return { mix, opacity: idle.opacity + (active.opacity - idle.opacity) * mix, scale: 1 + grow * mix };
+  const { idle, active } = SIGN_RING;
+  return { mix, opacity: idle.opacity + (active.opacity - idle.opacity) * mix };
 }
 
 export function signRingEase(k, active, dt) {

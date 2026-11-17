@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { POND_SPOTS, POND_STAGE_R, POND_BIG_SPOT } from '../js/data/pond.js';
 import { rimPieces } from '../js/pond/shape.js';
-import { pondSignPos, pondSignSide, signNear, signPulseDue, signParts, signRingEase, signRingLook, signRingKind, SIGN_RINGS, SIGN_RING_DEFAULT, SIGN_OUT, SIGN_REACH, SIGN_SOLID_R, SIGN_SIDES, SIGN_PLANK_W, SIGN_TOP } from '../js/pond/sign.js';
+import { pondSignPos, pondSignSide, signNear, signPulseDue, signParts, signRingEase, signRingLook, SIGN_RING, SIGN_OUT, SIGN_REACH, SIGN_SOLID_R, SIGN_SIDES, SIGN_PLANK_W, SIGN_TOP } from '../js/pond/sign.js';
 
 const src = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 const places = src('js/data/places.js');
@@ -96,29 +96,16 @@ test('바닥 고리는 판정 반지름 그대로, 물가 돌·모래 밖에 놓
   assert.match(src('js/pond/index.js'), /sign\.update\(dt, pondSignNear\(\), pulse\);/);
   assert.match(src('js/pond/index.js'), /signNear\(sign\.group\.position, player\.position\)/);
   assert.match(src('js/neighbors/scene.js'), /reach: false/);
-  assert.deepEqual(Object.keys(SIGN_RINGS), ['dash', 'disc', 'pebble']);
-  for (const look of Object.values(SIGN_RINGS).flatMap(k => [k.idle, k.active])) {
+  for (const look of [SIGN_RING.idle, SIGN_RING.active]) {
     for (const ch of [look.color >> 16, (look.color >> 8) & 255, look.color & 255]) assert.ok(ch / 255 < 0.85);
   }
-  for (const kind of Object.keys(SIGN_RINGS)) {
-    const idle = signRingLook(kind, 0, 0), on = signRingLook(kind, 1, 0);
-    assert.equal(idle.mix, 0);
-    assert.equal(on.mix, 1);
-    assert.equal(idle.opacity, SIGN_RINGS[kind].idle.opacity);
-    assert.ok(Math.abs(on.opacity - SIGN_RINGS[kind].active.opacity) < 1e-9);
-    assert.ok(on.opacity >= idle.opacity);
-    assert.ok(signRingLook(kind, 0, Math.PI / 8).mix > 0.9);
-  }
-  assert.equal(SIGN_RINGS.pebble.idle.opacity, 1);
-  assert.ok(signRingLook('disc', 1, 0).scale > 1);
-  assert.equal(signRingLook('dash', 1, 0).scale, 1);
-  assert.ok(Object.keys(SIGN_RINGS).includes(SIGN_RING_DEFAULT));
-  assert.equal(signRingKind('?pondring=2', 'localhost'), 'disc');
-  assert.equal(signRingKind('?pondring=3', '127.0.0.1'), 'pebble');
-  assert.equal(signRingKind('?pondring=1', 'localhost'), 'dash');
-  assert.equal(signRingKind('?pondring=2', 'calmforest.example'), SIGN_RING_DEFAULT);
-  assert.equal(signRingKind('?pondring=9', 'localhost'), SIGN_RING_DEFAULT);
-  assert.equal(signRingKind('', 'localhost'), SIGN_RING_DEFAULT);
+  assert.equal(signRingLook(0, 0).mix, 0);
+  assert.equal(signRingLook(1, 0).mix, 1);
+  assert.equal(signRingLook(0, 0).opacity, SIGN_RING.idle.opacity);
+  assert.ok(Math.abs(signRingLook(1, 0).opacity - SIGN_RING.active.opacity) < 1e-9);
+  assert.ok(SIGN_RING.active.opacity > SIGN_RING.idle.opacity);
+  assert.ok(signRingLook(0, Math.PI / 8).mix > 0.9);
+  for (const f of ['js/pond/sign.js', 'js/pond/sign-build.js']) assert.doesNotMatch(src(f), /pondring|location\.|disc\(|pebble\(/);
   assert.equal(signRingEase(0, true, 0.1), 0.5);
   assert.equal(signRingEase(0.5, true, 1), 1);
   assert.equal(signRingEase(0.5, false, 0.05), 0.25);
