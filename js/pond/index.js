@@ -135,6 +135,10 @@ export function pondMapKey() {
   return pondExists() ? `${built}@${pond.group.position.x.toFixed(1)},${pond.group.position.z.toFixed(1)}` : '';
 }
 
+export function pondSettling() {
+  return !!pond?.growing();
+}
+
 export function pondExists() {
   return !!pond && !!last?.has;
 }

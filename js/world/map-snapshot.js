@@ -230,7 +230,7 @@ export function tickMapSnapshot(ready, now = performance.now()) {
     else if (!dirtyAt) dirtyAt = now;
   }
   if (phase === 'compiling' && now - compileAt >= COMPILE_TIMEOUT) { compileToken += 1; phase = 'ready'; }
-  if (!due(now)) return;
+  if (!due(now) || deps.settling?.()) return;
   if (phase === 'idle') prepare(now);
   else if (phase === 'ready') { phase = 'idle'; wanted = false; takeShot(now); }
 }

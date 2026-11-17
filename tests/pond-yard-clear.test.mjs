@@ -4,12 +4,11 @@ import { clearYard } from '../js/pond/yard-clear.js';
 
 function world() {
   const removed = [], solids = [];
-  const tree = (x, z) => ({ position: { x, z }, userData: { collider: { x, z, r: 0.8 } } });
+  const tree = (x, z) => ({ position: { x, z }, userData: { collider: { x, z, r: 0.8 }, canopy: { position: { x: 0, z: 0 }, tag: `${x},${z}` } } });
   const flower = (x, z, parent) => ({ position: { x, z }, parent });
   const scene = { remove: (o) => removed.push(o) };
   const trees = [tree(0, 0), tree(3, 0), tree(9, 9)];
-  const canopy = flower(0, 2, trees[0]);
-  const swayables = [flower(1, 1, scene), flower(8, 8, scene), canopy];
+  const swayables = [flower(1, 1, scene), flower(8, 8, scene), ...trees.map(t => t.userData.canopy)];
   const obstacles = [{ x: 0, z: 0, r: 1.3 }, { x: 3, z: 0, r: 1.3 }, { x: 9, z: 9, r: 1.3 }, { x: 0.5, z: 0.5, r: 2 }];
   const grassClumps = [
     { mesh: { count: 3 }, items: [{ x: 0, z: 1 }, { x: 7, z: 7 }, { x: -1, z: -1 }] },
@@ -27,7 +26,13 @@ test('반경 안 나무는 충돌체·밭 금지 원까지 치우고 밖은 그�
   assert.deepEqual(w.deps.obstacles, [{ x: 9, z: 9, r: 1.3 }, { x: 0.5, z: 0.5, r: 2 }]);
 });
 
-test('꽃은 장면 직속만 치우고 나무 잎은 건드리지 않는다', () => {
+test('치운 나무의 잎은 흔들림 목록에서도 빠지고 남은 나무 잎은 그대로다', () => {
+  const w = world();
+  clearYard(w.deps, 0, 0, 4);
+  assert.deepEqual(w.deps.swayables.filter(s => s.tag).map(s => s.tag), ['9,9']);
+});
+
+test('꽃은 장면 직속만 치우고 남은 나무 잎은 건드리지 않는다', () => {
   const w = world();
   const out = clearYard(w.deps, 0, 0, 4);
   assert.equal(out.flowers, 1);

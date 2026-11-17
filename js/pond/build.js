@@ -82,6 +82,7 @@ export function buildPond({ fishMesh, mergeGeos, paintGeo, emojiSprite, r = POND
       growSec = sec; growLeft = sec;
       group.scale.setScalar(GROW_FROM);
     },
+    growing: () => growLeft > 0,
     update(dt) {
       t += dt;
       if (growLeft > 0) {

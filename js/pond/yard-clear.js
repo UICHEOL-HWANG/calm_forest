@@ -1,6 +1,6 @@
 const within = (o, x, z, r) => Math.hypot(o.x - x, o.z - z) < r;
 
-function clearTrees({ scene, trees, obstacles, removeSolid }, x, z, r) {
+function clearTrees({ scene, trees, obstacles, swayables, removeSolid }, x, z, r) {
   let n = 0;
   for (let i = trees.length - 1; i >= 0; i--) {
     const t = trees[i];
@@ -10,6 +10,8 @@ function clearTrees({ scene, trees, obstacles, removeSolid }, x, z, r) {
     const oi = obstacles.findIndex(o => Math.abs(o.x - t.position.x) < 0.01 && Math.abs(o.z - t.position.z) < 0.01);
     if (oi >= 0) obstacles.splice(oi, 1);
     if (t.userData?.collider) removeSolid(t.userData.collider);
+    const si = swayables.indexOf(t.userData?.canopy);
+    if (si >= 0) swayables.splice(si, 1);
     n++;
   }
   return n;

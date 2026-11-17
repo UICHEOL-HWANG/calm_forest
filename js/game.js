@@ -94,7 +94,7 @@ import { makeConcertBridge } from './concert/bridge.js';
 import { refreshPond, updatePond, pondScatterBlocks } from './pond/index.js';
 import { feedPond, openPondBook } from './pond/feed.js';
 import { POND_COPY } from './pond/copy.js';
-import { pondPos, pondNear, pondMapKey, pondPatchBlocks } from './pond/index.js';
+import { pondPos, pondNear, pondMapKey, pondSettling, pondPatchBlocks } from './pond/index.js';
 import { installYardGuide } from './pond/yard-guide.js';
 import { yardIdle } from './pond/yard-steps.js';
 import { featureGuidesOpen, houseGoalDue, placeGuideReady, FIRST_VISIT } from './guide/feature-rules.js';
@@ -2673,7 +2673,7 @@ export async function bootWorld(uiCallbacks) {
   bootTiming.mark('x');
   initMapSnapshot({ renderer, scene, mobile: IS_MOBILE, sunLight, hemiLight, onShot: (c) => ui.setMapSnapshot?.(c),
     transients: () => [player, pet3d, rainLines, seasonDrift?.mesh, fireflies, stars, ...chickens, ...npcObjs.map(o => o.group)],
-    signature: () => mapSignature({ season: SEASON, houseStage: gameState.houseStage, unlocks: unlockOpen, outdoor: gameState.outdoor, pond: pondMapKey() }),
+    signature: () => mapSignature({ season: SEASON, houseStage: gameState.houseStage, unlocks: unlockOpen, outdoor: gameState.outdoor, pond: pondMapKey() }), settling: pondSettling,
     daylight: (fn) => { const t0 = timeOfDay, p0 = dayPaused; try { timeOfDay = 0.5; dayPaused = true; updateDayNight(0); fn(); } finally { timeOfDay = t0; dayPaused = p0; updateDayNight(0); } } });
   initInput();
   initSound();
