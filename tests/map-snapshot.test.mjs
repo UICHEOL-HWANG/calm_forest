@@ -73,6 +73,7 @@ test('the map signature changes with unlocks, outdoor decor, house stage and sea
     { houseStage: 4 },
     { season: 'winter' },
     { pond: '2@-16.5,-11.0' },
+    { table: 'front/long' },
   ]) assert.notEqual(S.mapSignature({ ...base, ...changed }), sig, JSON.stringify(Object.keys(changed)));
   assert.equal(typeof S.mapSignature({ season: 'spring', houseStage: 0, unlocks: null, outdoor: [] }), 'string');
 });
@@ -103,7 +104,7 @@ test('game.js wires the snapshot module in a few lines', () => {
   assert.ok(lines.length >= 3 && lines.length <= 5, lines.join('\n'));
   assert.match(game, /initMapSnapshot\(\{/);
   assert.match(game, /tickMapSnapshot\(place === 'village'/);
-  assert.match(game, /signature: \(\) => mapSignature\([^\n]+pond: pondMapKey\(\) \}\), settling: pondSettling,/);
+  assert.match(game, /signature: \(\) => mapSignature\([^\n]+pond: pondMapKey\(\), table: tableMapKey\(\) \}\), settling: \(\) => pondSettling\(\) \|\| tableSettling\(\),/);
   assert.match(read('js/pond/index.js'), /export function pondSettling\(\) \{\n  return !!pond\?\.growing\(\);\n\}/);
   assert.match(read('js/pond/build.js'), /growing: \(\) => growLeft > 0,/);
   assert.match(game, /ui\.setMapSnapshot\?\.\(/);

@@ -7,7 +7,7 @@ import { RESTAURANT_SIGN } from '../js/restaurant/data.js';
 import { ISLE, ISLE_R, STREAM_HALF, BANK_W } from '../js/world/bridge.js';
 import { walkLimit } from '../js/world/walk-bounds.js';
 import {
-  tableFootprint, tableKeepOut, tableSiteFor, tableBlockedBy, tableCovers, segmentHitsKeepOut, tableMapKey, tableClear,
+  tableFootprint, tableKeepOut, tableSiteFor, tableSiteNext, tableBlockedBy, tableCovers, segmentHitsKeepOut, tableMapKey, tableClear,
 } from '../js/table/site.js';
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
@@ -111,6 +111,21 @@ test('자리 고르기: 꾸미기나 밭이 있으면 비키고, 둘 다 막히�
 test('둥근 식탁일 때 긴 식탁 발자국에만 걸리는 꾸미기도 자리를 막는다', () => {
   const corner = { dx: FRONT.dx + 2.0, dz: FRONT.dz };
   assert.equal(tableSiteFor({ pond: null, outdoorRel: [corner], plotsRel: [] }).id, 'back');
+});
+
+test('서 있는 식탁은 옆에 놓인 꾸미기 때문에 물러나지 않고, 연못에게만 비킨다', () => {
+  const beside = { dx: FRONT.dx + 2.1 + 0.3, dz: FRONT.dz };
+  const onBack = { dx: BACK.dx, dz: BACK.dz };
+  const next = (o, standing) => tableSiteNext({ pond: null, outdoorRel: [], plotsRel: [], ...o }, standing)?.id ?? null;
+  assert.equal(next({ outdoorRel: [beside] }, null), 'back');
+  assert.equal(next({ outdoorRel: [beside] }, 'front'), 'front');
+  assert.equal(next({ plotsRel: [beside] }, 'front'), 'front');
+  assert.equal(next({ outdoorRel: [beside], pond: smallPond(1) }, 'front'), 'back');
+  assert.equal(next({ pond: smallPond(2), outdoorRel: [onBack] }, 'front'), null);
+  assert.equal(next({}, 'back'), 'front');
+  assert.equal(next({ outdoorRel: [beside, onBack] }, 'back'), 'back');
+  assert.equal(next({ pond: smallPond(1) }, 'back'), 'back');
+  assert.equal(next({}, 'front'), 'front');
 });
 
 test('주민 금지 원은 발자국을 다 덮는다', () => {

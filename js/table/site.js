@@ -35,6 +35,13 @@ export function tableSiteFor(yard) {
   return TABLE_SITES.find(s => Object.values(siteState(s, yard)).every(v => !v)) ?? null;
 }
 
+export function tableSiteNext(yard, standing) {
+  const free = tableSiteFor(yard);
+  const at = TABLE_SITES.findIndex(s => s.id === standing);
+  if (at < 0 || (free && TABLE_SITES.indexOf(free) <= at)) return free;
+  return siteState(TABLE_SITES[at], yard).pond ? free : TABLE_SITES[at];
+}
+
 export function tableBlockedBy(yard) {
   if (tableSiteFor(yard)) return null;
   return TABLE_SITES.some(s => siteState(s, yard).decor) ? 'decor' : 'plots';

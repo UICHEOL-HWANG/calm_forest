@@ -64,3 +64,22 @@
 ## P2-b 꾸미기 소품
 ## P3 이름 붙이기
 ## P4 마당 식탁
+계획 `docs/superpowers/plans/2026-11-17-yard-table.md`. 사용자 결정: 스타일 B 원목 피크닉(시안 `sims/yard-table-sim.html` B열), 올빼미는 그대로 두고 식탁 접근만 막기, 두 자리 다 막히면 식탁 없음, 연못이 앞마당 여분 자리를 쓰면 집 뒤로, 7가지째는 커지는 연출, 나무는 발자국+1.5와 남쪽 띠.
+
+### Task 1 순수 규칙 (커밋 3c297925)
+- [x] `js/data/table.js` · `js/table/rules.js` · `js/table/site.js`, 테스트 `tests/table-rules.test.mjs` · `tests/table-site.test.mjs`
+- [x] 자리: 앞마당 (-3.5, 0.5), 집 뒤 (-11, -19). 둘 다 긴 식탁 발자국으로 배치 테스트 통과(집 뒤 자리 안개 숲 10.05)
+- [x] 남쪽 시야 테스트는 텃밭 입구 폭을 실제 값 1.38로 본다(일반 2.5면 앞마당 자리가 걸린다. 입구는 3.5 동쪽이라 안 가린다)
+
+### Task 2 월드
+- [x] 조형 `js/table/build.js`(스타일 등록표) + 임시 스타일 `style-plain.js` + 공용 접시 `plates.js`, 테스트 `tests/table-build.test.mjs`
+- [x] 생명주기 `js/table/index.js`: 짓기·치우기, 충돌체, `obstacles` 금지 원, 마당 치우기, 점선 고리, 한 번 알림, `table_created`, 연못 열쇠가 바뀌면 자리 다시 고름
+- [x] 서 있는 식탁은 옆에 놓인 꾸미기·밭에 밀리지 않는다(`tableSiteNext`). 다음 접속 때는 규칙대로 다시 고른다
+- [x] 올빼미: `setOwlNoFly` + `owlLandingSpot(..., avoidLine)`. 순찰 착지는 비행 선과 집으로 걸어올 선이 식탁+0.8에 걸리면 버린다. 배달 비행은 그대로
+- [x] 연결: `js/game.js` 6줄, `js/spaces/doors.js` 프롬프트, 지도 서명 `table`, 영어 사전 3줄, 분류표 `table_created`
+- [x] `openTableWindow()` 는 빈 자리 표시(Task 3이 채운다)
+- [x] `npm test` 6205 통과, `node scripts/build-web.mjs` 통과
+- [ ] 헤드리스 크롬 확인: 캡처 `table-*.png`, 걷기(문→식탁, 주방→식탁, 한 바퀴, 문→가게, 문→연못 팻말), 올빼미 순찰, 드로우콜
+- [ ] 스타일 B 조형(`TABLE_STYLES` 에 추가하고 `index.js` 의 `STYLE` 만 바꾼다)
+- [ ] 두 자리가 다 막혔을 때 안내 문구(Task 3)
+- [ ] 문구 검수: `🍽️ 마당 식탁`, 생김·긴 식탁 알림

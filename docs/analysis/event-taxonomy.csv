@@ -417,6 +417,7 @@ story_chapter_complete,progression,story,1,N,active,121,43,2026-08-17,2026-10-24
 story_chapter_start,progression,story,1,N,active,874,262,2026-08-17,2026-10-24,chapter|n|via,js/game.js:1217,boot = 접속 소급으로 열림(기존 완료자에게 새 장),
 story_migrated,progression,story,2,N,not_fired,0,0,,,from|to,js/game.js:2953,옛 세이브의 장 번호를 한 칸 옮긴 1회 (눈의 가지 5장 삽입; from=옛 장 수; to=새 장 수; 옛 클라이언트가 올린 장 번호를 바로잡을 때도 찍힘; 옮긴 세이브가 저장되기 전에 다시 접속하면 반복될 수 있음),
 story_modal_open,progression,story,2,N,active,125,44,2026-10-07,2026-10-24,via|ch,index.html:6709,온보딩 지도 1회 노출,
+table_created,crafting,table,2,N,not_fired,0,0,,,trigger|count,js/table/index.js:97,"마당 식탁이 처음 생겼을 때 (trigger=계기 cook 또는 existing, count=식탁에 오른 요리 수)",
 terms_open,ui,ui,2,N,not_fired,0,0,,,,index.html:5493,설정 메뉴에서 이용약관 페이지를 열었을 때,
 tool_auto,ui,ui,3,N,active,1511,22,2026-10-17,2026-10-24,reason|to,js/game.js:1788,"근처 대상(호수·집·나무)에 맞춰 도구가 자동으로 바뀌었을 때 (to=도구, reason=사유)",
 tool_tier2_craft,crafting,craft,2,N,not_fired,0,0,,,,js/spaces/cooking.js:180,도면 → 제작 전환(코인 싱크),

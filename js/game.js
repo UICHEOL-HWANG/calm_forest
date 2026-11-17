@@ -96,6 +96,7 @@ import { feedPond, openPondBook } from './pond/feed.js';
 import { openPondRim } from './pond/rim-ui.js';
 import { POND_COPY } from './pond/copy.js';
 import { pondPos, pondNear, pondMapKey, pondSettling, pondPatchBlocks } from './pond/index.js';
+import { refreshTable, updateTable, tableMapKey, tableSettling, openTableWindow } from './table/index.js';
 import { installYardGuide } from './pond/yard-guide.js';
 import { yardIdle } from './pond/yard-steps.js';
 import { featureGuidesOpen, houseGoalDue, placeGuideReady, FIRST_VISIT } from './guide/feature-rules.js';
@@ -2674,7 +2675,7 @@ export async function bootWorld(uiCallbacks) {
   bootTiming.mark('x');
   initMapSnapshot({ renderer, scene, mobile: IS_MOBILE, sunLight, hemiLight, onShot: (c) => ui.setMapSnapshot?.(c),
     transients: () => [player, pet3d, rainLines, seasonDrift?.mesh, fireflies, stars, ...chickens, ...npcObjs.map(o => o.group)],
-    signature: () => mapSignature({ season: SEASON, houseStage: gameState.houseStage, unlocks: unlockOpen, outdoor: gameState.outdoor, pond: pondMapKey() }), settling: pondSettling,
+    signature: () => mapSignature({ season: SEASON, houseStage: gameState.houseStage, unlocks: unlockOpen, outdoor: gameState.outdoor, pond: pondMapKey(), table: tableMapKey() }), settling: () => pondSettling() || tableSettling(),
     daylight: (fn) => { const t0 = timeOfDay, p0 = dayPaused; try { timeOfDay = 0.5; dayPaused = true; updateDayNight(0); fn(); } finally { timeOfDay = t0; dayPaused = p0; updateDayNight(0); } } });
   initInput();
   initSound();
@@ -3451,6 +3452,7 @@ function applySave(saved) {
   }
   refreshPlaza();   // 🌾 initPlaza() 가 세이브 복원보다 먼저 돌아 기본값을 봤으므로 여기서 다시 맞춘다
   refreshPond('load');
+  refreshTable('load');
   settleMinerRewards();
 }
 
@@ -5931,6 +5933,7 @@ function kitchenFinish(id, res = {}) {
   questEvent('cook');                                        // 요리사 퀘스트/데일리 진행
   triggerMoment();                                           // 📷 순간 줌인
   syncStory('cook');                                         // 📖 3장(마을의 맛) 진행
+  refreshTable('cook');
   // [GA4] 게임업계식 미니게임 결과 지표 — 탭별 타이밍(ms)·정확도·콤보·등급·누적 진행도까지 한 행에
   const offsets = (res.offsets || []).map(v => Math.round(v));
   const j = res.judges || {};
@@ -6767,6 +6770,7 @@ function animate() {
   updateWeekly(dt, inVillage2(), player.position);
   updateConcert(dt, inVillage2(), player.position);
   updatePond(dt, inVillage2());
+  updateTable(dt, inVillage2());
   updateShopCue(t);          // 🛒 좌판 안내 스프라이트
   if (mode === 'play') goalGuide?.update(dt);
   if (mode === 'play') yardGuide?.update(dt); else yardGuide?.suspend();
@@ -7893,6 +7897,7 @@ function handleAction() {
   if (nearDoor === 'warehouse') return withdrawWarehouse();
   if (nearDoor === 'hireboard') return hireBoardInteract();   // 📋 일꾼 게시판 → 고용 창   // 🧺 작물 창고 옆에서 액션 = 내용물 꺼내기
   if (nearDoor === 'trace') { const tr = traceTarget(); if (tr) return investigateTrace(tr); }
+  if (nearDoor === 'table') return openTableWindow();
   if (nearDoor === 'pondsign') return openPondRim();
   if (nearDoor === 'pond') return openPondBook();
   if (nearDoor === 'pet') return commandPet();   // 🐾 밭 근처에서 액션 = 맡기기(물·잡초·해충 최대 5칸)

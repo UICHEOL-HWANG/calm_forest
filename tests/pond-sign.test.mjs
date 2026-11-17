@@ -89,7 +89,8 @@ test('바닥 고리는 판정 반지름 그대로, 물가 돌·모래 밖에 놓
     assert.ok(edge >= Math.max(...rimPieces(r, 'rock').map(reach)) + 0.2, `${name} 돌`);
   }
   const b = src('js/pond/sign-build.js');
-  assert.equal((b.match(/SIGN_REACH/g) || []).length >= 4, true);
+  assert.equal((b.match(/SIGN_REACH/g) || []).length >= 3, true);
+  assert.match(b, /buildDashRing\(\{ mergeGeos, reach: SIGN_REACH \}\)/);
   assert.doesNotMatch(b, /\b1\.2\b/);
   assert.match(b, /depthWrite: false/);
   assert.doesNotMatch(b, /castShadow = true/);

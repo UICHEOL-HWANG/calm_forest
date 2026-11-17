@@ -14,18 +14,31 @@ const SHAPE = {
   cone: p => new THREE.ConeGeometry(p.w / 2, p.h, 5),
 };
 
-function dashRing(mergeGeos) {
-  const mid = SIGN_REACH - DASH_W / 2, len = (TAU / DASHES) * DASH_FILL;
-  const parts = Array.from({ length: DASHES }, (_, i) => {
-    const a = (i / DASHES) * TAU;
+export function buildDashRing({ mergeGeos, reach }) {
+  const dashes = Math.round(DASHES * reach / SIGN_REACH);
+  const mid = reach - DASH_W / 2, len = (TAU / dashes) * DASH_FILL;
+  const parts = Array.from({ length: dashes }, (_, i) => {
+    const a = (i / dashes) * TAU;
     const ends = [a, a + len].map(e => new THREE.CircleGeometry(DASH_W / 2, 8).translate(Math.cos(e) * mid, Math.sin(e) * mid, 0));
-    return [new THREE.RingGeometry(SIGN_REACH - DASH_W, SIGN_REACH, 5, 1, a, len), ...ends];
+    return [new THREE.RingGeometry(reach - DASH_W, reach, 5, 1, a, len), ...ends];
   }).flat();
-  const ring = new THREE.Mesh(mergeGeos(parts).rotateX(-Math.PI / 2),
+  const mesh = new THREE.Mesh(mergeGeos(parts).rotateX(-Math.PI / 2),
     new THREE.MeshBasicMaterial({ color: SIGN_RING.idle.color, transparent: true, opacity: SIGN_RING.idle.opacity, depthWrite: false, fog: false }));
-  ring.position.y = RING_Y;
-  ring.renderOrder = 3;
-  return ring;
+  mesh.position.y = RING_Y;
+  mesh.renderOrder = 3;
+  const idle = new THREE.Color(SIGN_RING.idle.color), gold = new THREE.Color(SIGN_RING.active.color);
+  let k = 0;
+  return {
+    mesh,
+    update(dt, active, pulseT) {
+      k = signRingEase(k, active, dt);
+      const look = signRingLook(k, pulseT);
+      mesh.material.color.copy(idle).lerp(gold, look.mix);
+      mesh.material.opacity = look.opacity;
+      mesh.rotation.y += dt * DASH_SPIN * k * SIGN_REACH / reach;
+    },
+    dispose() { mesh.geometry.dispose(); mesh.material.dispose(); },
+  };
 }
 
 export function buildPondSign({ mergeGeos, paintGeo, reach = true }) {
@@ -36,22 +49,15 @@ export function buildPondSign({ mergeGeos, paintGeo, reach = true }) {
   bubble.position.y = SIGN_BUBBLE_Y;
   bubble.material.color.setScalar(BUBBLE_TONE);
   group.add(mesh, bubble);
-  const ring = reach ? dashRing(mergeGeos) : null;
-  if (ring) group.add(ring);
-  const idle = new THREE.Color(SIGN_RING.idle.color), gold = new THREE.Color(SIGN_RING.active.color);
-  let k = 0;
+  const ring = reach ? buildDashRing({ mergeGeos, reach: SIGN_REACH }) : null;
+  if (ring) group.add(ring.mesh);
   return {
     group,
     update(dt, active, pulseT) {
-      if (!ring) return;
-      k = signRingEase(k, active, dt);
-      const look = signRingLook(k, pulseT);
-      ring.material.color.copy(idle).lerp(gold, look.mix);
-      ring.material.opacity = look.opacity;
-      ring.rotation.y += dt * DASH_SPIN * k;
+      ring?.update(dt, active, pulseT);
     },
     dispose() {
-      ring?.geometry.dispose(); ring?.material.dispose();
+      ring?.dispose();
       geo.dispose(); mesh.material.dispose();
       bubble.material.map.dispose(); bubble.material.dispose();
     },
