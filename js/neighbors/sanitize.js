@@ -12,6 +12,8 @@ import { petKindOf, stageOf } from '../pet/rules.js';
 import { normalizeHouseStyle } from '../house-stage7.js';
 import { normalizeFloor } from '../house-floors.js';
 import { POND_MAX_RIVER } from '../pond/rules.js';
+import { MAX_POND_STAGE } from '../pond/stage.js';
+import { pondRimOf } from '../pond/rim.js';
 
 export const YARD_R = 14;
 export const DECOR_MAX = 40;
@@ -20,6 +22,8 @@ export const ROOM_MAX_XY = 7.5;   // 🏠 방 반폭(7)+여유 — sql _nb_room 
 export const COSMETIC_SLOTS = Object.freeze(['head', 'neck', 'back', 'trail', 'skin']);
 const MAX_STAGE = 7;
 const PALETTE_N = 5;                      // ROOF/WALL/DOOR_COLORS 길이(js/data/places.js)
+const POND_MAX_SEAS = 4;
+export const TABLE_MAX = 11;
 const NICK_FALLBACK = '이름 없는 여행자';   // SQL 의 coalesce 와 같은 문구
 
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
@@ -66,8 +70,18 @@ export function sanitizeShowcase(raw, ctx) {
   const riverIds = ctx.pondRiverIds || [];
   const pondFish = [...new Set((Array.isArray(rp.fish) ? rp.fish : []).filter(id => typeof id === 'string' && riverIds.includes(id)))].slice(0, POND_MAX_RIVER);
   const sw = rp.sea && typeof rp.sea === 'object' ? rp.sea : null;
-  const pondSea = sw && (ctx.seaIds || []).includes(sw.sp) && num(sw.w) != null && sw.w > 0 ? { sp: sw.sp, w: sw.w } : null;
-  const pond = { fish: pondFish, sea: pondSea, has: pondFish.length > 0 || !!pondSea };
+  const seaOf = (v) => (v && typeof v === 'object' && (ctx.seaIds || []).includes(v.sp) && num(v.w) != null && v.w > 0 ? { sp: v.sp, w: v.w } : null);
+  const pondSea = seaOf(sw);
+  const pondSeas = [];
+  for (const v of Array.isArray(rp.seas) ? rp.seas : [pondSea]) {
+    const one = seaOf(v);
+    if (one && pondSeas.length < POND_MAX_SEAS && !pondSeas.some(x => x.sp === one.sp)) pondSeas.push(one);
+  }
+  const ps = num(rp.stage);
+  const pond = { fish: pondFish, sea: pondSea, seas: pondSeas, has: pondFish.length > 0 || !!pondSea || pondSeas.length > 0,
+                 stage: ps != null && Number.isInteger(ps) && ps >= 1 && ps <= MAX_POND_STAGE ? ps : 1, rim: pondRimOf({ pondRim: rp.rim }) };
+
+  const table = sanitizeTable(raw.table, ctx);
 
   return {
     nickname: nick ? [...nick].slice(0, 16).join('') : NICK_FALLBACK,   // 코드 포인트 기준 — 이모지를 반으로 자르지 않게
@@ -75,8 +89,20 @@ export function sanitizeShowcase(raw, ctx) {
     houseStage: stage,
     houseStyle: { roof: swatch(hs.roof), wall: swatch(hs.wall), door: swatch(hs.door) },
     style: normalizeHouseStyle(typeof raw.style === 'string' ? raw.style : null, stage),
-    addons, outdoor, room, pond,
+    addons, outdoor, room, pond, table,
   };
+}
+
+function sanitizeTable(raw, ctx) {
+  const recipes = ctx.recipeIds || [], tiers = ctx.tierIds || [];
+  const list = raw && typeof raw === 'object' && Array.isArray(raw.dishes) ? raw.dishes : [];
+  const dishes = [];
+  for (const d of list) {
+    if (dishes.length >= TABLE_MAX) break;
+    if (!d || typeof d !== 'object' || !recipes.includes(d.id) || !tiers.includes(d.tier) || dishes.some(x => x.id === d.id)) continue;
+    dishes.push({ id: d.id, tier: d.tier });
+  }
+  return { dishes, has: dishes.length > 0 };
 }
 
 /** 🏠 실내 가구 — 서버 _nb_room 과 같은 조건 + 이 클라가 아는 가구만 · 층은 그 집 단계로 보정 */

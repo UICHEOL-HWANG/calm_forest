@@ -93,8 +93,12 @@ import { initConcert, updateConcert, concertSpotNow, openConcert, concertDefault
 import { makeConcertBridge } from './concert/bridge.js';
 import { refreshPond, updatePond, pondScatterBlocks } from './pond/index.js';
 import { feedPond, openPondBook } from './pond/feed.js';
+import { openPondRim } from './pond/rim-ui.js';
 import { POND_COPY } from './pond/copy.js';
-import { pondPos, pondNear } from './pond/index.js';
+import { pondPos, pondNear, pondMapKey, pondSettling, pondPatchBlocks } from './pond/index.js';
+import { refreshTable, updateTable, tableMapKey, tableSettling, tablePos, tableNear } from './table/index.js';
+import { openCookbook, takeBite, cookbookAfterBite } from './table/book-ui.js';
+import { TABLE_COPY } from './table/copy.js';
 import { installYardGuide } from './pond/yard-guide.js';
 import { yardIdle } from './pond/yard-steps.js';
 import { featureGuidesOpen, houseGoalDue, placeGuideReady, FIRST_VISIT } from './guide/feature-rules.js';
@@ -2116,6 +2120,15 @@ export function pondFeedAdButton(onDone) {
   return rewarded.button('pond_feed_more', ['광고 보고', ' ', POND_COPY.adMore], () => feedPond('ad'), (ok, btn) => onDone?.(ok, btn));
 }
 
+export function tableBiteAdOffered() {
+  return repeatOpen(gameState.houseStage) && !!rewarded?.offer('table_bite_more');
+}
+
+export function tableBiteAdButton(id, onDone) {
+  if (!tableBiteAdOffered()) return null;
+  return rewarded.button('table_bite_more', ['광고 보고', ' ', TABLE_COPY.adMore], () => takeBite(id, 'ad'), (ok, btn) => onDone?.(ok, btn));
+}
+
 function orchardGrowGrant() {
   const st = gameState.orchard;
   const out = st && growOneTree(st.trees || [], orchardStreamWorld());
@@ -2673,7 +2686,7 @@ export async function bootWorld(uiCallbacks) {
   bootTiming.mark('x');
   initMapSnapshot({ renderer, scene, mobile: IS_MOBILE, sunLight, hemiLight, onShot: (c) => ui.setMapSnapshot?.(c),
     transients: () => [player, pet3d, rainLines, seasonDrift?.mesh, fireflies, stars, ...chickens, ...npcObjs.map(o => o.group)],
-    signature: () => mapSignature({ season: SEASON, houseStage: gameState.houseStage, unlocks: unlockOpen, outdoor: gameState.outdoor }),
+    signature: () => mapSignature({ season: SEASON, houseStage: gameState.houseStage, unlocks: unlockOpen, outdoor: gameState.outdoor, pond: pondMapKey(), table: tableMapKey() }), settling: () => pondSettling() || tableSettling(),
     daylight: (fn) => { const t0 = timeOfDay, p0 = dayPaused; try { timeOfDay = 0.5; dayPaused = true; updateDayNight(0); fn(); } finally { timeOfDay = t0; dayPaused = p0; updateDayNight(0); } } });
   initInput();
   initSound();
@@ -3157,6 +3170,7 @@ export async function enterGame() {
     track: trackEvent, save: requestSave, today: kstDate,
     banner: line => ui.showHintBanner?.({ ico: '🦉', title: POND_COPY.owlTitle, line, near: () => true, attention: true, kind: 'feature', key: 'yard-owl' }),
     setAssist: setFishAssist, setHudHidden: setNpcGlyphsHidden, pondPos, pondNear,
+    tablePos, tableNear, bookAfterBite: cookbookAfterBite,
     nearLake: () => dist2D(LAKE, player.position) <= LAKE_R + 2.8,
     fishing: () => fishState !== 'idle',
   });
@@ -3450,6 +3464,7 @@ function applySave(saved) {
   }
   refreshPlaza();   // 🌾 initPlaza() 가 세이브 복원보다 먼저 돌아 기본값을 봤으므로 여기서 다시 맞춘다
   refreshPond('load');
+  refreshTable('load');
   settleMinerRewards();
 }
 
@@ -3690,9 +3705,10 @@ function buildWorld() {
   // 바닥 얼룩 — 한 번 깔면 끝까지 안 건드리는 정적 소품이라 지오메트리 하나로 합쳐 1드로우콜로
   const patchGeos = [];
   for (let i = 0; i < 40; i++) {
-    const r = 6 + Math.random() * 26, a = Math.random() * Math.PI * 2;
+    const r = 6 + Math.random() * 26, a = Math.random() * Math.PI * 2, patchR = 1 + Math.random() * 2.5;
     if (dist2D({ x: Math.cos(a) * r, z: Math.sin(a) * r }, SEA_COVE) < SEA_COVE.r + 1) continue;  // 🌊 후미 물 위 제외
-    patchGeos.push(new THREE.CircleGeometry(1 + Math.random() * 2.5, 12)
+    if (pondPatchBlocks(Math.cos(a) * r, Math.sin(a) * r, patchR)) continue;
+    patchGeos.push(new THREE.CircleGeometry(patchR, 12)
       .rotateX(-Math.PI / 2).translate(Math.cos(a) * r, 0.01, Math.sin(a) * r));
   }
   if (patchGeos.length) {
@@ -3711,6 +3727,7 @@ function buildWorld() {
       || dist2D({ x, z }, DOCK_POND) < DOCK_POND_R + 2 || dist2D({ x, z }, DOCK_GATE) < 4   // 🛶 나루터 연못·데크 위엔 나무 금지
       || dist2D({ x, z }, MIST_GATE) < 5   // 🌫️ 안개 숲 입구 앞은 비워둠(자체 고목 연출이 있음)
       || dist2D({ x, z }, SHOP_POS) < 4   // 🏪 꾸미기 가게 — 반치수 2.56 + 걸어다닐 틈. 없으면 나무가 가게 안에 박힌다
+      || dist2D({ x, z }, { x: SHOP_DOOR.x, z: SHOP_DOOR.z + 3 }) < 3.5
       || dist2D({ x, z }, HOMI_STALL) < 3.2
       || dist2D({ x, z }, SEA_GATE) < 4.5  // 🌊 바다터 포구(등대·방파제)가 나무에 가리지 않게
       || dist2D({ x, z }, SEA_COVE) < SEA_COVE.r + 1.5   // 🌊 포구 후미(바닷물) 위엔 나무 금지
@@ -5928,6 +5945,7 @@ function kitchenFinish(id, res = {}) {
   questEvent('cook');                                        // 요리사 퀘스트/데일리 진행
   triggerMoment();                                           // 📷 순간 줌인
   syncStory('cook');                                         // 📖 3장(마을의 맛) 진행
+  refreshTable('cook');
   // [GA4] 게임업계식 미니게임 결과 지표 — 탭별 타이밍(ms)·정확도·콤보·등급·누적 진행도까지 한 행에
   const offsets = (res.offsets || []).map(v => Math.round(v));
   const j = res.judges || {};
@@ -6764,6 +6782,7 @@ function animate() {
   updateWeekly(dt, inVillage2(), player.position);
   updateConcert(dt, inVillage2(), player.position);
   updatePond(dt, inVillage2());
+  updateTable(dt, inVillage2());
   updateShopCue(t);          // 🛒 좌판 안내 스프라이트
   if (mode === 'play') goalGuide?.update(dt);
   if (mode === 'play') yardGuide?.update(dt); else yardGuide?.suspend();
@@ -7890,6 +7909,8 @@ function handleAction() {
   if (nearDoor === 'warehouse') return withdrawWarehouse();
   if (nearDoor === 'hireboard') return hireBoardInteract();   // 📋 일꾼 게시판 → 고용 창   // 🧺 작물 창고 옆에서 액션 = 내용물 꺼내기
   if (nearDoor === 'trace') { const tr = traceTarget(); if (tr) return investigateTrace(tr); }
+  if (nearDoor === 'table') return openCookbook();
+  if (nearDoor === 'pondsign') return openPondRim();
   if (nearDoor === 'pond') return openPondBook();
   if (nearDoor === 'pet') return commandPet();   // 🐾 밭 근처에서 액션 = 맡기기(물·잡초·해충 최대 5칸)
   if (nearDoor === 'mine') return enterMine();
@@ -8835,7 +8856,7 @@ export {
   decorTarget, dexDiscover, diffParams, disposeTree, doSleep, dropKilnFlames, dist2D, doPlayerAction, dockGroup, duelFetcher, easeOutBack,
   farmActionFirst, farmBuildingRecs, farmCropMeshes, farmGroup, farmHalf, farmSoilMesh, fertTarget, finishPetJob,
   firstHint, firstHintBanner, fishDiff, fishMesh, fishState, floatTexts, forageNodes, forecastLine, forestGroup,
-  gambrelRoofSlabs, gambrelSolid, gameState, ghostOutdoor, giveReward, gladeBugs, gladeGroup, habitatCells, habitatCtx,
+  gambrelRoofSlabs, gambrelSolid, gameState, ghostOutdoor, giveReward, gladeBugs, gladeGroup, grassClumps, habitatCells, habitatCtx,
   habitatEnvAt, handAnchor, tailPivot, harvestTexture, heldGroup, heldToolMesh, houseCollider, houseFloor, houseGhost, houseGroup,
   houseSign, houseSignCtx, houseSignTex, houseWindows, indoor, interiorFloor, interiorFloors, interiorGroup,
   interiorLamp, isBlocked, isNight, keys, kitchenFinish, kitchenStart, lastDoorPrompt, lastFloorChoiceKey,

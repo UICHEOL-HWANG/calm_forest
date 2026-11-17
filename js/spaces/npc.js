@@ -423,11 +423,16 @@ export function setOwlWings(o, spread, t) {
 
 // 내려앉을 만한 빈자리 — 주민·플레이어·나무·건물과 안 겹치는 곳. 못 찾으면 null.
 //   (안 고르고 내려앉으면 다른 주민 위나 건물 안에 착지한다)
-export function owlLandingSpot(o, cx, cz, minR, maxR) {
+let owlNoFly = null;
+export function setOwlNoFly(fn) { owlNoFly = fn; }
+
+export function owlLandingSpot(o, cx, cz, minR, maxR, avoidLine = false) {
   for (let i = 0; i < 12; i++) {
     const a = Math.random() * Math.PI * 2, r = minR + Math.random() * (maxR - minR);
     const x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r;
-    if (!npcBlocked(x, z, o)) return { x, z };
+    if (npcBlocked(x, z, o)) continue;
+    if (avoidLine && owlNoFly && (owlNoFly(o.group.position.x, o.group.position.z, x, z) || owlNoFly(x, z, o.home.x, o.home.z))) continue;
+    return { x, z };
   }
   return null;
 }
@@ -451,7 +456,7 @@ export function updateOwlFly(o, dt, t) {
     //   플레이어가 말 걸러 다가오는 중에도 날아가면 안 된다(베타: "자꾸 날아다닌다") — 가까이 있으면 앉아서 기다린다.
     const playerNear = dist2D(player.position, g.position) < OWL_STAY_R;
     if (f.t > f.next && !playerNear && mode === 'play' && !ui.anyModalOpen?.() && !ui.coachActive?.()) {   // 이따금 홈 주변을 한 바퀴
-      const spot = owlLandingSpot(o, o.home.x, o.home.z, 2.5, 5.5);
+      const spot = owlLandingSpot(o, o.home.x, o.home.z, 2.5, 5.5, true);
       if (spot) startOwlFlight(o, spot.x, spot.z);
       else f.t = 0;                              // 내려앉을 자리가 없으면 이번엔 쉰다
     }
@@ -473,7 +478,7 @@ export function updateOwlFly(o, dt, t) {
     }
     if (d <= 0.4 || f.t > 14) {
       // 순찰 비행은 한 다리 더 돌 때가 있다 — 한 번에 내려앉으면 "잠깐 뛴" 느낌이라 나는 것처럼 안 보인다
-      const nextLeg = (!f.deliver && f.legs > 0 && f.t <= 14) ? owlLandingSpot(o, o.home.x, o.home.z, 2.5, 5.5) : null;
+      const nextLeg = (!f.deliver && f.legs > 0 && f.t <= 14) ? owlLandingSpot(o, o.home.x, o.home.z, 2.5, 5.5, true) : null;
       if (nextLeg) { f.legs--; f.t = 0; f.tx = nextLeg.x; f.tz = nextLeg.z; }
       else { f.st = 'down'; f.t = 0; }
     }   // 14초 안전핀 — 목적지가 막혀도 반드시 내려온다

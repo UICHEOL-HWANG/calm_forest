@@ -17,7 +17,7 @@ mkdirSync('dist-toss', { recursive: true });
 // ① index.html: <head> 직후에 플랫폼 플래그 주입 — 모든 모듈보다 먼저 실행됨
 let html = readFileSync('index.html', 'utf8');
 if (!html.includes('<head>')) throw new Error('[build-ait] index.html 에서 <head> 를 못 찾음');
-html = html.replace('<head>', '<head>\n  <script>window.__APPS_IN_TOSS__ = true;</script>');
+html = html.replace('<head>', `<head>\n  <script>window.__APPS_IN_TOSS__ = true; document.documentElement.classList.add('boot-b');</script>`);
 // 📱 PWA manifest 링크 제거 — 번들은 토스 오리진에서 서빙되어 /manifest.webmanifest 가 404 (SW 등록은 플래그로 이미 제외)
 html = html.replace(/^\s*<!-- 📱 PWA[\s\S]*?-->\s*\n\s*<link rel="manifest"[^>]*>\s*\n/m, '');
 writeFileSync('dist-toss/index.html', html);
@@ -25,6 +25,7 @@ writeFileSync('dist-toss/index.html', html);
 // 게임 모듈(전부 절차 생성이라 정적 자산은 js/ 뿐)
 cpSync('js', 'dist-toss/js', { recursive: true });
 cpSync('assets/decor-sets', 'dist-toss/assets/decor-sets', { recursive: true });
+cpSync('assets/boot', 'dist-toss/assets/boot', { recursive: true });
 
 // 활동 기록 페이지는 Toss 번들 내부에서 WebView 세션을 이어받아 보여준다.
 // 페이지와 로컬 의존성도 함께 넣어야 앱 내부 경로에서 정상 로드된다.

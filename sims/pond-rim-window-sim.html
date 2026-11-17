@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>🪨 물가 꾸미기 · 시안 비교</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f4efe6;
+  --ink: #2b2118;
+  --muted: #6b5b4a;
+  --card: #fffaf2;
+  --line: #e2d6c4;
+  --btn: #4e7f9a;
+  --head: #e6eff2;
+  --hint: #f3ead8;
+  --sel: #4e7f9a;
+  --dis: #c9c2b6;
+  --green: #4a8a60;
+  --red: #b05050;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.page-hd { text-align: center; padding: 40px 24px 20px; }
+.page-hd h1 { font-size: 22px; font-weight: 800; margin: 0 0 6px; }
+.page-hd p  { font-size: 12px; color: var(--muted); margin: 0; }
+
+.variant-sec { padding: 0 32px 60px; }
+.variant-hd { padding: 12px 0 14px; border-top: 2px solid var(--line); margin-bottom: 20px; }
+.variant-hd h2 { font-size: 18px; font-weight: 700; margin: 0 0 4px; }
+.variant-hd p  { font-size: 12px; color: var(--muted); margin: 0; }
+
+.frames-row { display: flex; gap: 24px; align-items: flex-start; }
+.frame-wrap { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
+.frame-lbl { font-size: 10px; font-weight: 700; color: var(--muted); text-align: center; letter-spacing: .05em; text-transform: uppercase; }
+
+.f-port {
+  width: 390px; min-height: 480px;
+  background: #bfb8b0; border-radius: 24px; padding: 14px;
+  display: flex; align-items: flex-start; justify-content: center;
+  box-shadow: 0 6px 20px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.25);
+}
+.f-land {
+  width: 844px; height: 390px;
+  background: #bfb8b0; border-radius: 24px; padding: 14px;
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+  box-shadow: 0 6px 20px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.25);
+}
+.f-desk {
+  width: 580px; min-height: 480px; border-radius: 24px; padding: 24px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 6px 20px rgba(0,0,0,.2);
+  background:
+    radial-gradient(ellipse 70% 50% at 72% 55%, rgba(63,127,150,.7) 0%, transparent 60%),
+    radial-gradient(ellipse 55% 40% at 22% 40%, rgba(79,154,90,.8) 0%, transparent 50%),
+    linear-gradient(155deg, #9cc96b 0%, #6faa52 45%, #3a7a5a 100%);
+}
+
+.rim-card {
+  width: 100%; max-width: 380px;
+  background: var(--card); border-radius: 18px; padding: 14px 14px 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.24); color: var(--ink);
+}
+.rim-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.rim-title { font-size: 17px; font-weight: 700; }
+.rim-coins { font-size: 12px; color: var(--muted); font-weight: 700; background: var(--hint); padding: 3px 9px; border-radius: 20px; }
+.rim-close {
+  display: block; width: 100%; margin-top: 8px; border: 0; border-radius: 10px;
+  padding: 10px 12px; font-weight: 700; background: #e7dcc8; color: var(--ink);
+  font-size: 13px; cursor: pointer; font-family: inherit; min-height: 44px;
+}
+.rim-hint {
+  display: flex; align-items: center; gap: 6px; margin-top: 8px;
+  padding: 8px 10px; border-radius: 12px; background: var(--hint);
+  font-size: 12px; color: var(--muted); min-height: 36px;
+}
+.cb-btn {
+  border: 0; border-radius: 10px; padding: 10px 14px; font-weight: 700;
+  background: var(--btn); color: #fff; font-size: 13px; white-space: nowrap;
+  cursor: pointer; min-height: 44px; display: inline-flex; align-items: center;
+  justify-content: center; font-family: inherit;
+}
+.cb-btn[disabled] { background: var(--dis); cursor: default; }
+.cb-btn.owned    { background: var(--green); }
+
+/* == VARIANT A == */
+.va-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.va-item { border-radius: 12px; background: #edeae3; border: 2.5px solid transparent; overflow: hidden; }
+.va-item.using { border-color: var(--sel); background: #e2edf5; }
+.va-preview { width: 100%; display: block; aspect-ratio: 1; object-fit: cover; }
+.va-foot { padding: 5px 8px 6px; display: flex; align-items: center; justify-content: space-between; gap: 5px; }
+.va-name { font-size: 11px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.va-pill { flex-shrink: 0; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 20px; white-space: nowrap; }
+.va-pill.using { background: var(--sel); color: #fff; }
+.va-pill.owned { background: var(--green); color: #fff; }
+.va-pill.buy   { background: #fff; border: 1.5px solid var(--btn); color: var(--btn); }
+.va-pill.cant  { background: #f5eded; color: var(--red); border: 1.5px solid #d8b8b8; }
+
+.rim-card.land .va-grid { grid-template-columns: repeat(4,1fr); gap: 5px; }
+.rim-card.land .va-preview { height: 76px; aspect-ratio: auto; }
+.rim-card.land .rim-hint  { margin-top: 5px; padding: 5px 8px; font-size: 11px; }
+.rim-card.land .rim-close { margin-top: 5px; padding: 7px; min-height: 36px; }
+
+/* == VARIANT B == */
+.vb-big { position: relative; border-radius: 12px; overflow: hidden; background: #c8dce8; margin-bottom: 7px; line-height: 0; }
+.vb-big-img { width: 100%; display: block; max-height: 200px; object-fit: cover; }
+.vb-sel-label { font-size: 13px; font-weight: 700; text-align: center; margin-bottom: 7px; min-height: 18px; }
+.vb-chips { display: flex; gap: 5px; margin-bottom: 8px; }
+.vb-chip {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 5px 2px 4px; border-radius: 10px; background: #edeae3;
+  border: 2px solid transparent; cursor: pointer; min-height: 44px;
+}
+.vb-chip.sel { border-color: var(--sel); background: #e2edf5; }
+.vb-chip-name { font-size: 9px; font-weight: 700; text-align: center; line-height: 1.2; color: var(--ink); word-break: keep-all; }
+.vb-action { display: flex; gap: 8px; }
+.vb-action .cb-btn { flex: 1; }
+
+.rim-card.land .vb-big-img { max-height: 90px; }
+.rim-card.land .vb-sel-label { display: none; }
+.rim-card.land .vb-chips { margin-bottom: 6px; gap: 4px; }
+.rim-card.land .vb-chip { min-height: 36px; gap: 2px; padding: 3px 2px; }
+.rim-card.land .rim-hint  { margin-top: 5px; padding: 5px 8px; font-size: 11px; }
+.rim-card.land .rim-close { margin-top: 5px; padding: 7px; min-height: 36px; }
+
+/* == VARIANT C == */
+.vc-rows { display: grid; gap: 6px; }
+.vc-row {
+  display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+  border-radius: 12px; background: var(--head); border: 2px solid transparent; min-height: 52px;
+}
+.vc-row.using { background: #d6ecf6; border-color: var(--sel); }
+.vc-sw { flex-shrink: 0; width: 56px; height: 36px; border-radius: 8px; overflow: hidden; background: #b8cdd8; }
+.vc-sw img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.vc-info { flex: 1; min-width: 0; }
+.vc-name { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vc-sub  { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.vc-row.using .vc-sub { color: var(--sel); font-weight: 600; }
+.vc-price { flex-shrink: 0; }
+.vc-tag { display: inline-flex; align-items: center; padding: 4px 11px; border-radius: 20px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.vc-tag.using { background: var(--sel); color: #fff; }
+.vc-tag.owned { background: var(--green); color: #fff; cursor: pointer; }
+.vc-tag.buy   { background: #fff; border: 1.5px solid var(--btn); color: var(--btn); cursor: pointer; }
+.vc-tag.cant  { background: #f5eded; color: var(--red); border: 1.5px solid #d8b8b8; }
+
+.rim-card.land .vc-row { min-height: 44px; padding: 5px 8px; }
+.rim-card.land .vc-sw  { width: 42px; height: 26px; }
+.rim-card.land .vc-name { font-size: 12px; }
+.rim-card.land .vc-sub  { display: none; }
+.rim-card.land .rim-hint  { margin-top: 5px; padding: 5px 8px; font-size: 11px; }
+.rim-card.land .rim-close { margin-top: 5px; padding: 7px; min-height: 36px; }
+
+/* == Overview == */
+#overview { padding: 0 32px 60px; }
+.ov-hd { padding: 12px 0 14px; border-top: 2px solid var(--line); margin-bottom: 20px; }
+.ov-hd h2 { font-size: 18px; font-weight: 700; margin: 0; }
+.ov-row { display: flex; gap: 24px; align-items: flex-start; }
+.ov-cell { display: flex; flex-direction: column; gap: 8px; }
+.ov-lbl { font-size: 10px; font-weight: 700; color: var(--muted); text-align: center; letter-spacing: .05em; text-transform: uppercase; }
+</style>
+</head>
+<body>
+
+<div class="page-hd">
+  <h1>🪨 물가 꾸미기 · UI 시안 비교</h1>
+  <p>세 가지 디자인 방향 · 폰 세로 · 폰 가로 · PC 화면 · 🪙 160코인 / 흰 조약돌 소유 / 기본 돌 사용 중 / 조개와 산호 코인 부족</p>
+</div>
+
+<section class="variant-sec" id="sec-a">
+  <div class="variant-hd">
+    <h2>시안 A — 미리보기 카드</h2>
+    <p>2×2 카드 그리드. 카드마다 연못 렌더 미리보기 + 이름 + 상태 칩. 사용 중 카드는 테두리로 강조. 가로 화면에서 1줄 4칸으로 전환.</p>
+  </div>
+  <div class="frames-row">
+    <div class="frame-wrap">
+      <div class="frame-lbl">폰 세로 · 390px</div>
+      <div class="f-port"><div class="rim-card" id="va-port"></div></div>
+    </div>
+    <div class="frame-wrap">
+      <div class="frame-lbl">폰 가로 · 390px 높이</div>
+      <div class="f-land"><div class="rim-card land" id="va-land"></div></div>
+    </div>
+    <div class="frame-wrap">
+      <div class="frame-lbl">PC · 400px 카드</div>
+      <div class="f-desk"><div class="rim-card" id="va-desk"></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="variant-sec" id="sec-b">
+  <div class="variant-hd">
+    <h2>시안 B — 큰 미리보기 + 고르기 칩</h2>
+    <p>큰 연못 렌더를 위쪽에 보여 주고 하단 칩으로 선택. 버튼 하나의 문구가 상태(쓰는 중 / 바꾸기 / 🪙 150)에 따라 바뀜. 가로 화면에서도 작동.</p>
+  </div>
+  <div class="frames-row">
+    <div class="frame-wrap">
+      <div class="frame-lbl">폰 세로 · 기본 돌 선택</div>
+      <div class="f-port"><div class="rim-card" id="vb-port"></div></div>
+    </div>
+    <div class="frame-wrap">
+      <div class="frame-lbl">폰 가로 · 붉은 벽돌 선택</div>
+      <div class="f-land"><div class="rim-card land" id="vb-land"></div></div>
+    </div>
+    <div class="frame-wrap">
+      <div class="frame-lbl">PC · 조개와 산호 (코인 부족)</div>
+      <div class="f-desk"><div class="rim-card" id="vb-desk"></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="variant-sec" id="sec-c">
+  <div class="variant-hd">
+    <h2>시안 C — 다듬은 목록</h2>
+    <p>기존 목록 구조 유지. 각 행에 클로즈업 스와치 + 이름 + 상태 설명 + 태그 형식의 가격. 사용 중 행은 파란 배경·테두리로 강조. 코인 부족은 붉은 태그.</p>
+  </div>
+  <div class="frames-row">
+    <div class="frame-wrap">
+      <div class="frame-lbl">폰 세로 · 390px</div>
+      <div class="f-port"><div class="rim-card" id="vc-port"></div></div>
+    </div>
+    <div class="frame-wrap">
+      <div class="frame-lbl">폰 가로 · 390px 높이</div>
+      <div class="f-land"><div class="rim-card land" id="vc-land"></div></div>
+    </div>
+    <div class="frame-wrap">
+      <div class="frame-lbl">PC · 400px 카드</div>
+      <div class="f-desk"><div class="rim-card" id="vc-desk"></div></div>
+    </div>
+  </div>
+</section>
+
+<section id="overview">
+  <div class="ov-hd"><h2>전체 비교 · 폰 세로</h2></div>
+  <div class="ov-row">
+    <div class="ov-cell"><div class="ov-lbl">시안 A</div><div class="f-port"><div class="rim-card" id="ov-a"></div></div></div>
+    <div class="ov-cell"><div class="ov-lbl">시안 B</div><div class="f-port"><div class="rim-card" id="ov-b"></div></div></div>
+    <div class="ov-cell"><div class="ov-lbl">시안 C</div><div class="f-port"><div class="rim-card" id="ov-c"></div></div></div>
+  </div>
+</section>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+const mats=new Map();
+const clay=c=>mats.get(c)??mats.set(c,new THREE.MeshStandardMaterial({color:c,roughness:0.95,metalness:0,flatShading:true})).get(c);
+const rnd=(i,s=0)=>{const x=Math.sin(i*127.1+s*311.7)*43758.5453;return x-Math.floor(x);};
+const around=(n,R,fn)=>{for(let i=0;i<n;i++){const a=(i/n)*Math.PI*2;fn(i,a,Math.cos(a)*R,Math.sin(a)*R);}};
+const rockGeo=s=>new THREE.DodecahedronGeometry(s,0).scale(1,0.6,1);
+const rockSz=i=>0.26+(i%3)*0.05;
+const BED=0x3f7f96,RA=0xb8b0a4,RB=0xa39a8e,PAD=0x5fbf7a,REED=0x6aa84f,LOTUS=0xf5a9c4,GND=0x9cc96b;
+const PADS=[[-0.8,-0.6],[0.9,0.7],[0.2,-1.1]];
+const REEDS=[[-1.8,0.7],[-1.6,1.0],[1.5,-1.4]];
+
+const RIMS=[
+  {id:'rock',   build(a,r){around(Math.round(r*7),r+0.1,(i,_,x,z)=>a(rockGeo(rockSz(i)),i%2?RA:RB,x,0.08,z));}},
+  {id:'pebble', build(a,r){
+    const t=[0xf3eee4,0xe6dfd2,0xdcd9d2];
+    around(Math.round(r*18),r+0.16,(i,an,x,z)=>{
+      const s=0.14+rnd(i,4)*0.08,o=(i%2?.16:-.1)+(rnd(i,5)-.5)*.06;
+      a(new THREE.IcosahedronGeometry(s,1).scale(1,.6,1),t[i%3],x+Math.cos(an)*o,.05,z+Math.sin(an)*o,rnd(i,6)*3);});}},
+  {id:'brick',  build(a,r){
+    const R=r+.14,n=Math.round((Math.PI*2*R)/.52),len=(Math.PI*2*R)/n-.07;
+    around(n,R,(i,an,x,z)=>a(new THREE.BoxGeometry(len,.2,.3),i%2?0xcd8f78:0xb87862,x,.1,z,Math.PI/2-an));}},
+  {id:'shell',  build(a,r){
+    const sd=a(new THREE.RingGeometry(r-.08,r+.55,28),0xecdcb8,0,.015,0);
+    sd.rotation.x=-Math.PI/2;sd.castShadow=false;
+    const n=Math.round(r*7);
+    around(n*2,r+.22,(i,an,x,z)=>{
+      const j=i>>1,turn=rnd(i,10)*6,out=(rnd(i,11)-.5)*.2;
+      x+=Math.cos(an)*out;z+=Math.sin(an)*out;
+      if(i%2){a(new THREE.IcosahedronGeometry(.08+rnd(i,12)*.04,0).scale(1,.6,1),0xf6efe2,x,.04,z,turn);return;}
+      const k=j%4;
+      if(k===0||k===2){const s=.23+rnd(i,13)*.05;a(new THREE.SphereGeometry(s,6,3,0,Math.PI*2,0,Math.PI/2).scale(1,.55,.8),k?0xf6c6cc:0xfbf2e6,x,.02,z,turn);}
+      else if(k===1){const c=j%8===1?0xf19a80:0xf2a3b6;[[0,0,.44,0],[.1,.03,.32,-.5],[-.09,-.04,.28,.5]].forEach(([dx,dz,h,l])=>{a(new THREE.CylinderGeometry(.045,.07,h,5),c,x+dx,h/2,z+dz,turn).rotation.z=l;});}
+      else{const m=a(new THREE.ConeGeometry(.13,.34,6),0xf7d9b4,x,.11,z,turn);m.rotation.z=Math.PI/2;}
+    });}}
+];
+
+function pondGroup(r,rim){
+  const g=new THREE.Group();
+  const af=(geo,color,x=0,y=0,z=0,ry=0)=>{
+    const m=new THREE.Mesh(geo,clay(color));
+    m.position.set(x,y,z);m.rotation.y=ry;m.castShadow=true;m.receiveShadow=true;g.add(m);return m;};
+  af(new THREE.CylinderGeometry(r-.1,r-.1,.06,20),BED,0,-.18,0).castShadow=false;
+  PADS.forEach(([x,z])=>af(new THREE.CylinderGeometry(.28,.28,.02,10,1,false,.4,Math.PI*1.75),PAD,x,.07,z));
+  af(new THREE.SphereGeometry(.09,6,5),LOTUS,PADS[1][0],.12,PADS[1][1]);
+  REEDS.forEach(([x,z])=>af(new THREE.CylinderGeometry(.03,.04,.9,4),REED,x,.45,z));
+  const w=new THREE.Mesh(new THREE.CylinderGeometry(r-.05,r-.05,.04,24),
+    new THREE.MeshStandardMaterial({color:0x4aa6d0,transparent:true,opacity:.3,roughness:.25,emissive:0x184a63,emissiveIntensity:.35,depthWrite:false}));
+  w.position.y=.04;w.renderOrder=2;g.add(w);
+  rim.build(af,r);
+  return g;
+}
+
+const SZ=400;
+const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
+renderer.setSize(SZ,SZ,false);
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.setClearColor(0x9cc96b);
+const scene=new THREE.Scene();
+const hemi=new THREE.HemisphereLight(0xfff6e6,0x8a7a66,1.25);scene.add(hemi);
+const sun=new THREE.DirectionalLight(0xfff1d6,1.35);
+sun.position.set(6,12,8);sun.castShadow=true;
+sun.shadow.mapSize.set(1024,1024);sun.shadow.bias=-.0005;
+Object.assign(sun.shadow.camera,{left:-7,right:7,top:7,bottom:-7,near:1,far:40});
+scene.add(sun);
+const gnd=new THREE.Mesh(new THREE.PlaneGeometry(80,80),clay(GND));
+gnd.rotation.x=-Math.PI/2;gnd.receiveShadow=true;scene.add(gnd);
+const cam=new THREE.PerspectiveCamera(34,1,.1,200);
+
+function renderImg(rimId,dist,lx,ly,lz){
+  const rim=RIMS.find(r=>r.id===rimId);
+  const g=pondGroup(2.0,rim);
+  scene.add(g);
+  cam.position.set(lx,dist*.7,lz+dist*.72);cam.lookAt(lx,ly,lz);
+  renderer.render(scene,cam);
+  const url=renderer.domElement.toDataURL('image/jpeg',.92);
+  scene.remove(g);
+  g.traverse(o=>{if(o.isMesh)o.geometry.dispose();});
+  return url;
+}
+
+const thumbs={},swatches={};
+for(const rim of RIMS){
+  thumbs[rim.id]  =renderImg(rim.id,8.9,0,0,.1);
+  swatches[rim.id]=renderImg(rim.id,4.6,.9,0,1.7);
+}
+renderer.dispose();
+
+const COINS=160;
+const STYLES=[
+  {id:'rock',  name:'기본 돌',    cost:0,  state:'using'},
+  {id:'pebble',name:'흰 조약돌', cost:150,state:'owned'},
+  {id:'brick', name:'붉은 벽돌', cost:150,state:'buy'},
+  {id:'shell', name:'조개와 산호',cost:150,state:'cant'},
+];
+const pillTxt=s=>s.state==='using'?'쓰는 중':s.state==='owned'?'바꾸기':`🪙 ${s.cost}`;
+const subTxt =s=>({using:'현재 적용 중',owned:'구매 완료',buy:'구매 가능',cant:'코인 부족'})[s.state];
+const isOff  =s=>s.state==='using'||s.state==='cant';
+
+const el =(tag,cls,txt)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(txt!=null)n.textContent=txt;return n;};
+const mkI=(src,alt,css)=>{const i=document.createElement('img');i.src=src;i.alt=alt||'';if(css)i.style.cssText=css;return i;};
+const titleRow=()=>{const r=el('div','rim-title-row');r.append(el('span','rim-title','🪨 물가 꾸미기'),el('span','rim-coins',`🪙 ${COINS}`));return r;};
+const closeBtn=()=>el('button','rim-close','닫기');
+const hintBox =()=>el('div','rim-hint','🪙 코인이 모자라요. 상인에게 팔면 모여요');
+
+function buildA(card){
+  card.append(titleRow());
+  const grid=el('div','va-grid');
+  STYLES.forEach(s=>{
+    const item=el('div','va-item'+(s.state==='using'?' using':''));
+    const foot=el('div','va-foot');
+    foot.append(el('span','va-name',s.name),el('span',`va-pill ${s.state}`,pillTxt(s)));
+    item.append(mkI(thumbs[s.id],s.name,'width:100%;display:block;aspect-ratio:1;object-fit:cover;'),foot);
+    grid.append(item);
+  });
+  card.append(grid,hintBox(),closeBtn());
+}
+
+function buildB(card,selId){
+  const sel=STYLES.find(s=>s.id===selId)||STYLES[0];
+  card.append(titleRow());
+  const bigWrap=el('div','vb-big');
+  bigWrap.append(mkI(thumbs[sel.id],sel.name,'width:100%;display:block;max-height:200px;object-fit:cover;'));
+  card.append(bigWrap,el('div','vb-sel-label',sel.name));
+  const chips=el('div','vb-chips');
+  STYLES.forEach(s=>{
+    const chip=el('div','vb-chip'+(s.id===selId?' sel':''));
+    chip.append(mkI(thumbs[s.id],s.name,'width:38px;height:38px;border-radius:7px;object-fit:cover;display:block;flex-shrink:0;'),el('span','vb-chip-name',s.name));
+    chips.append(chip);
+  });
+  card.append(chips);
+  if(sel.state==='cant') card.append(hintBox());
+  const actRow=el('div','vb-action');
+  const btn=el('button','cb-btn',pillTxt(sel));
+  if(isOff(sel))btn.setAttribute('disabled','');
+  actRow.append(btn);
+  card.append(actRow,closeBtn());
+}
+
+function buildC(card){
+  card.append(titleRow());
+  const rows=el('div','vc-rows');
+  STYLES.forEach(s=>{
+    const row=el('div','vc-row'+(s.state==='using'?' using':''));
+    const sw=el('div','vc-sw');
+    sw.append(mkI(swatches[s.id],s.name,'width:100%;height:100%;object-fit:cover;display:block;'));
+    const info=el('div','vc-info');
+    info.append(el('div','vc-name',s.name),el('div','vc-sub',subTxt(s)));
+    const price=el('div','vc-price');
+    price.append(el('span',`vc-tag ${s.state}`,pillTxt(s)));
+    row.append(sw,info,price);
+    rows.append(row);
+  });
+  card.append(rows,hintBox(),closeBtn());
+}
+
+buildA(document.getElementById('va-port'));
+buildA(document.getElementById('va-land'));
+buildA(document.getElementById('va-desk'));
+
+buildB(document.getElementById('vb-port'),'rock');
+buildB(document.getElementById('vb-land'),'brick');
+buildB(document.getElementById('vb-desk'),'shell');
+
+buildC(document.getElementById('vc-port'));
+buildC(document.getElementById('vc-land'));
+buildC(document.getElementById('vc-desk'));
+
+buildA(document.getElementById('ov-a'));
+buildB(document.getElementById('ov-b'),'pebble');
+buildC(document.getElementById('ov-c'));
+
+window.__ready=true;
+</script>
+</body>
+</html>

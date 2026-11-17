@@ -2,6 +2,7 @@ import { BUILD_STAGES } from '../house-cost.js';
 import { shortfall, shortParts } from './story-steps.js';
 import { BRIDGE_COST } from '../world/bridge.js';
 import { farmStageInfo } from '../farm-stage.js';
+import { pondStageInfo } from '../pond/stage.js';
 
 export const PREPASS_CAPS = Object.freeze({ wood: 10, stone: 6, coal: 1, coins: 40 });
 export const CAFE_CAPS = Object.freeze({ crop: 3, forage: 3, fish: 2, egg: 2, flour: 2, juice: 1 });
@@ -40,7 +41,7 @@ export function bumpDay(rec, day, slot, at = { day }) {
   const s = slot in SLOT_CAPS ? { ...(rec?.s || {}), [slot]: { p: periodOf(slot, at), n: slotUsed(rec, slot, at) + 1 } } : rec?.s;
   return s ? { ...base, s } : base;
 }
-export const REPEAT_SLOTS = Object.freeze(['farm_rush', 'craft_rush', 'daily_double', 'sell_bonus', 'pond_feed_more']);
+export const REPEAT_SLOTS = Object.freeze(['farm_rush', 'craft_rush', 'daily_double', 'sell_bonus', 'pond_feed_more', 'table_bite_more']);
 const HOUSE_DONE = 3;
 const ARMS = ['ad', 'control'];
 
@@ -103,14 +104,23 @@ export function farmStageShort(stage, inv) {
   return list.length ? { slot: `farm${info.next.stage}`, ico: '📐', verb: '밭 넓히기', list } : null;
 }
 
+export function pondStageShort(stage, inv) {
+  const info = pondStageInfo(stage, inv, 0);
+  if (info.maxed) return null;
+  const { coins, ...materials } = info.next.cost;
+  const list = shortfall(materials, inv);
+  return list.length ? { slot: `pond${info.next.stage}`, ico: '🌊', verb: '연못 넓히기', list } : null;
+}
+
 export function shortAdParts(give, lang) {
-  const parts = ['광고 보고', ' '];
+  const en = lang === 'en';
+  const parts = ['광고 보고', en ? ' for ' : ' '];
   shortParts(Object.entries(give).map(([k, more]) => ({ k, more }))).forEach((p, i) => {
     if (i) parts.push(' · ');
     parts.push(`${p.ico} ${p.more}`);
-    if (lang !== 'en') parts.push('개');
+    if (!en) parts.push('개');
   });
-  parts.push(' ', '받기');
+  if (!en) parts.push(' ', '받기');
   return parts;
 }
 

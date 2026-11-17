@@ -7,8 +7,8 @@ const SEA = ['aji', 'buri', 'mola', 'tuna'];
 const ctx = { riverIds: RIVER, seaIds: SEA };
 
 test('도감이 비면 연못이 없다', () => {
-  assert.deepEqual(pondView({ dexFish: {}, seaBest: {} }, ctx), { fish: [], sea: null, has: false });
-  assert.deepEqual(pondView({ dexFish: null, seaBest: undefined }, ctx), { fish: [], sea: null, has: false });
+  assert.deepEqual(pondView({ dexFish: {}, seaBest: {} }, ctx), { fish: [], sea: null, seas: [], has: false });
+  assert.deepEqual(pondView({ dexFish: null, seaBest: undefined }, ctx), { fish: [], sea: null, seas: [], has: false });
 });
 
 test('물고기는 첫 발견 순, 모르는 id 는 버린다', () => {

@@ -20,6 +20,9 @@ test('새 자리 이름은 텐진 묶음 표와 맞고 문구가 있다', () => 
     assert.notEqual(rvGroup(s), 'other', s);
     assert.ok(Array.isArray(AD_PARTS[s]) && AD_PARTS[s][0] === '광고 보고', s);
   }
+  for (const s of ['pond2', 'pond3']) assert.notEqual(rvGroup(s), 'other', s);
+  assert.equal(rvGroup('table_bite_more'), 'pond');
+  assert.equal(rvGroup('cook_ingredient'), 'cafe');
 });
 
 test('자리 횟수는 날이 바뀌면 0, 주간 자리는 주가 바뀌어야 0', () => {

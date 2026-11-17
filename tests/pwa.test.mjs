@@ -7,6 +7,7 @@ import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { DECOR_SETS } from '../js/data/decor-sets.js';
 
 const ROOT = new URL('../', import.meta.url);
 const read = (p) => readFileSync(new URL(p, ROOT), 'utf8');
@@ -87,6 +88,8 @@ test('toss·itch 번들은 manifest 링크(와 설명 주석)를 제거한다 �
     assert.doesNotMatch(html, /rel="manifest"/, `${out} 에 manifest 링크가 남음`);
     assert.doesNotMatch(html, /📱 PWA —/, `${out} 에 manifest 설명 주석이 남음`);
     assert.match(html, /serviceWorker\.register/, `${out} 의 SW 등록 코드는 플래그로 막히므로 그대로 둔다`);
+    const dir = out.split('/')[0];
+    for (const s of DECOR_SETS) assert.ok(existsSync(new URL(`${dir}/${s.thumb}`, ROOT)), `${dir}/${s.thumb}`);
   }
   // 웹 배포본은 링크를 유지한다
   assert.match(read('index.html'), /rel="manifest"/);
