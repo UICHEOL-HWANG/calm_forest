@@ -22,7 +22,7 @@ import { guideArbiter } from '../guide/arbiter.js';
 import { e3Decision } from '../exp-e3-boot.js';
 import { spaceLinkOn } from '../exp-e3.js';
 
-const STYLE = 'plain', GROW_SEC = 2, OWL_PAD = 0.8, VIEW_PAD = 3;
+const STYLE = 'picnic', GROW_SEC = 2, OWL_PAD = 0.8, VIEW_PAD = 3;
 
 let table = null, ring = null, solid = null, blocks = [], site = '', shape = '', last = null, pondKey = '';
 let pulse = 0, toast = '', toastWait = 0;

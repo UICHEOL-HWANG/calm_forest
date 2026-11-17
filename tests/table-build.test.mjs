@@ -2,23 +2,23 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { TABLE_SHAPES } from '../js/data/table.js';
-import { PLAIN_STYLE } from '../js/table/style-plain.js';
+import { PICNIC_STYLE } from '../js/table/style-picnic.js';
 import { PLATE_RIM, PLATE_R, plateParts } from '../js/table/plates.js';
 
 const src = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 const SLOTS = { round: 6, long: 11 };
 const dim = (c) => [c >> 16, (c >> 8) & 255, c & 255].every(ch => ch / 255 < 0.85);
 
-test('임시 식탁은 발자국 안에 서고 바닥에서 시작한다', () => {
+test('원목 식탁은 발자국 안에 서고 바닥에서 시작한다', () => {
   for (const shape of ['round', 'long']) {
-    const { hx, hz } = TABLE_SHAPES[shape], parts = PLAIN_STYLE.parts(shape);
+    const { hx, hz } = TABLE_SHAPES[shape], parts = PICNIC_STYLE.parts(shape);
     assert.ok(parts.length >= 6, shape);
     for (const p of parts) {
       assert.ok(Math.abs(p.x) + p.w / 2 <= hx + 1e-9, `${shape} ${p.kind} x`);
       assert.ok(Math.abs(p.z) + p.d / 2 <= hz + 1e-9, `${shape} ${p.kind} z`);
       assert.ok(p.y - p.h / 2 >= -1e-9, `${shape} ${p.kind} 바닥`);
       assert.ok(dim(p.color), `${shape} ${p.kind} 밝기`);
-      assert.ok(['box', 'cyl'].includes(p.shape));
+      assert.ok(['box', 'cyl', 'log'].includes(p.shape));
     }
     for (const kind of ['top', 'cloth', 'leg', 'seat']) assert.ok(parts.some(p => p.kind === kind), `${shape} ${kind}`);
     assert.ok(Math.max(...parts.map(p => Math.abs(p.x) + p.w / 2)) >= hx - 0.2, `${shape} 가로를 채운다`);
@@ -27,7 +27,7 @@ test('임시 식탁은 발자국 안에 서고 바닥에서 시작한다', () =>
 
 test('접시 자리는 둥근 식탁 6, 긴 식탁 11, 상판 위에 서로 안 겹치게', () => {
   for (const shape of ['round', 'long']) {
-    const slots = PLAIN_STYLE.slots(shape), parts = PLAIN_STYLE.parts(shape);
+    const slots = PICNIC_STYLE.slots(shape), parts = PICNIC_STYLE.parts(shape);
     const cloth = parts.find(p => p.kind === 'cloth'), top = parts.find(p => p.kind === 'top');
     const surface = Math.max(cloth.y + cloth.h / 2, top.y + top.h / 2);
     assert.equal(slots.length, SLOTS[shape]);
@@ -64,11 +64,11 @@ test('조형: 메시 3개 이하, 글자 없음, 접시는 그림자를 드리�
   const b = src('js/table/build.js');
   assert.ok((b.match(/new THREE\.Mesh\(/g) || []).length <= 3);
   assert.doesNotMatch(b, /CanvasTexture|fillText|Sprite/);
-  assert.match(b, /export const TABLE_STYLES = Object\.freeze\(\{ plain: PLAIN_STYLE \}\);/);
+  assert.match(b, /export const TABLE_STYLES = Object\.freeze\(\{ picnic: PICNIC_STYLE \}\);/);
   assert.match(b, /export function buildTable\(\{ style, shape, dishes, mergeGeos, paintGeo \}\)/);
   assert.match(b, /plates\.castShadow = false;/);
-  assert.match(b, /TABLE_STYLES\[style\] \?\? TABLE_STYLES\.plain/);
+  assert.match(b, /TABLE_STYLES\[style\] \?\? TABLE_STYLES\.picnic/);
   for (const k of ['group', 'setDishes', 'grow', 'growing', 'update', 'dispose']) assert.match(b, new RegExp(`\\b${k}\\b`));
-  for (const f of ['js/table/build.js', 'js/table/style-plain.js', 'js/table/plates.js']) assert.doesNotMatch(src(f), /^\s*\/\//m);
-  for (const f of ['js/table/style-plain.js', 'js/table/plates.js']) assert.doesNotMatch(src(f), /from 'three'/);
+  for (const f of ['js/table/build.js', 'js/table/style-picnic.js', 'js/table/plates.js']) assert.doesNotMatch(src(f), /^\s*\/\//m);
+  for (const f of ['js/table/style-picnic.js', 'js/table/plates.js']) assert.doesNotMatch(src(f), /from 'three'/);
 });

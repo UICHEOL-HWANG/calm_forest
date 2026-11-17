@@ -1,18 +1,19 @@
 import * as THREE from 'three';
-import { PLAIN_STYLE } from './style-plain.js';
+import { PICNIC_STYLE } from './style-picnic.js';
 import { plateParts } from './plates.js';
 
-export const TABLE_STYLES = Object.freeze({ plain: PLAIN_STYLE });
+export const TABLE_STYLES = Object.freeze({ picnic: PICNIC_STYLE });
 
 const GROW_FROM = 0.2;
 const SHAPE = {
   box: p => new THREE.BoxGeometry(p.w, p.h, p.d),
   cyl: p => new THREE.CylinderGeometry(p.w / 2, p.w2 / 2, p.h, 14),
   ball: p => new THREE.IcosahedronGeometry(0.5, 0).scale(p.w, p.h, p.d),
+  log: p => new THREE.CylinderGeometry(p.h / 2, p.h / 2, p.w, 10).rotateZ(Math.PI / 2),
 };
 
 export function buildTable({ style, shape, dishes, mergeGeos, paintGeo }) {
-  const look = TABLE_STYLES[style] ?? TABLE_STYLES.plain;
+  const look = TABLE_STYLES[style] ?? TABLE_STYLES.picnic;
   const slots = look.slots(shape);
   const geoOf = (parts) => mergeGeos(parts.map(p => paintGeo(SHAPE[p.shape](p).translate(p.x, p.y, p.z), p.color)));
   const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0, flatShading: true });
