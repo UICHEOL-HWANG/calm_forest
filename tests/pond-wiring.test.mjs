@@ -63,3 +63,25 @@ test('P1: 연못 위치·근처·모으기·연못 생긴 날', () => {
   assert.match(src('js/pond/build.js'), /gather\(sec\)/);
   assert.match(src('js/data/pond.js'), /export const POND_ACT_R = 3\.4;/);
 });
+
+test('P2: 단계별 반지름·자리·충돌체·마당 치우기·지도', () => {
+  const p = src('js/pond/index.js');
+  for (const fn of ['pondStage', 'rebuildPond', 'pondMapKey', 'pondPatchBlocks']) assert.match(p, new RegExp(`export function ${fn}\\(`));
+  for (const call of ['pondSpotFor(', 'pondRadius(', 'pondActR(', 'pondViewR(', 'pondFishLimits(', 'removeSolid(', 'obstacles.push(', 'clearYard(']) assert.ok(p.includes(call), call);
+  assert.doesNotMatch(p, /POND_ACT_R|POND_VIEW_R/);
+  const b = src('js/pond/build.js');
+  assert.ok(b.includes('export function buildPond({ fishMesh, mergeGeos, paintGeo, emojiSprite, r = POND_R, stage = 1, rim = \'rock\' })'));
+  assert.ok(b.includes('setContents(view, seaColorOf, limits'));
+  assert.match(b, /grow\(/);
+  const g = src('js/game.js');
+  assert.ok(g.includes('pond: pondMapKey()'));
+  assert.ok(g.includes('pondPatchBlocks('));
+});
+
+test('넓힌 연못 둘레에는 괭이질이 막힌다: 밭 금지 거리가 넓히기 검사 거리보다 넓다', () => {
+  const hoePad = Number(src('js/game.js').match(/function isBlocked\(x, z\) \{ return obstacles\.some\(o => Math\.hypot\(x - o\.x, z - o\.z\) < o\.r \+ ([\d.]+)\); \}/)[1]);
+  const blockPad = Number(src('js/pond/index.js').match(/block = \{ x, z, r: r \+ ([\d.]+) \};/)[1]);
+  const reachPad = Number(src('js/pond/stage.js').match(/const DECOR_PAD = ([\d.]+);/)[1]);
+  assert.ok(blockPad + hoePad >= reachPad, `${blockPad} + ${hoePad} < ${reachPad}`);
+  assert.match(src('js/spaces/orchard-actions.js'), /if \(isBlocked\(gx, gz\)\) \{ ui\.toast/);
+});

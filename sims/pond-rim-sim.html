@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pond Rim Styles</title>
+<style>
+  :root { --bg: #f4efe6; --ink: #2b2118; --muted: #6b5b4a; --card: #fffaf2; --line: #e2d6c4; --btn: #4e7f9a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Pretendard", "Apple SD Gothic Neo", sans-serif; }
+  body.night { --bg: #1d2333; --ink: #eef0f6; --muted: #aab2c8; --card: #272e42; --line: #3a4360; }
+  header { padding: 14px 20px 2px; display: flex; gap: 16px; align-items: center; justify-content: space-between; }
+  h1 { margin: 0 0 3px; font-size: 20px; }
+  header p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+  button { flex: none; border: 0; background: var(--btn); color: #fff; font: inherit; font-weight: 700; font-size: 14px; padding: 10px 14px; border-radius: 10px; cursor: pointer; }
+  .grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; padding: 12px 20px 20px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .card h2 { margin: 0; padding: 9px 10px 1px; font-size: 16px; }
+  .card .how { margin: 0; padding: 0 10px 7px; color: var(--muted); font-size: 12px; line-height: 1.4; }
+  .view { position: relative; border-top: 2px solid var(--line); }
+  .view canvas { display: block; width: 100%; aspect-ratio: 1; }
+  .tag { position: absolute; left: 6px; top: 6px; background: rgba(43,33,24,.72); color: #fff; font-size: 11px; padding: 3px 7px; border-radius: 6px; }
+  @media (max-width: 900px) {
+    header { padding: 10px 16px 0; }
+    h1 { font-size: 17px; }
+    header p { display: none; }
+    .grid { grid-template-columns: repeat(2, 1fr); padding: 8px 16px 12px; gap: 8px; }
+    .card h2 { font-size: 14px; padding: 6px 8px 5px; }
+    .card .how, .view.close { display: none; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>연못 물가 꾸미기 · 시안 6종</h1>
+    <p>지금 연못과 같은 색·비율로 물가 테두리만 바꿔 본 그림입니다. 위 칸은 1단계 연못(반지름 2.0), 가운데 칸은 3단계 큰 연못(반지름 3.9, 섬과 징검다리), 아래 칸은 가까이 본 모습. 숫자는 테두리에 쓰인 조각 수입니다.</p>
+  </div>
+  <button id="toggle" type="button"></button>
+</header>
+<div class="grid" id="grid"></div>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+const POND_R = 2.0;
+const BED = 0x3f7f96, ROCK_A = 0xb8b0a4, ROCK_B = 0xa39a8e, PAD = 0x5fbf7a, REED = 0x6aa84f, LOTUS = 0xf5a9c4;
+const ISLE_TOP = 0x8fbf5a, ISLE_TREE = 0x4f9a5a, STEP = 0xd9cfc0, GROUND = 0x9cc96b;
+const PADS = [[-0.8, -0.6], [0.9, 0.7], [0.2, -1.1]];
+const REEDS = [[-1.8, 0.7], [-1.6, 1.0], [1.5, -1.4]];
+const ISLE = { x: 1.6, z: -1.2, r: 1.0 };
+const STONES = [0, 1, 2, 3].map(i => [-0.2 + 0.5 * i, 0.2 - 0.38 * i]);
+const RIVER = [0x9fb4c8, 0xe06a5a, 0x7ae0ff, 0xe8743c, 0xf5a9c4, 0xf2d16b, 0xbfe4f2];
+const SEA = [0x4a6f8f, 0x6f8fa8, 0x7a8896, 0x33628f];
+
+const mats = new Map();
+const clay = c => mats.get(c) ?? mats.set(c, new THREE.MeshStandardMaterial({ color: c, roughness: 0.95, metalness: 0, flatShading: true })).get(c);
+const rnd = (i, s = 0) => { const x = Math.sin(i * 127.1 + s * 311.7) * 43758.5453; return x - Math.floor(x); };
+
+function adder(group) {
+  let count = 0;
+  const add = (geo, color, x = 0, y = 0, z = 0, ry = 0) => {
+    const m = new THREE.Mesh(geo, clay(color));
+    m.position.set(x, y, z); m.rotation.y = ry; m.castShadow = true; m.receiveShadow = true;
+    group.add(m); count++;
+    return m;
+  };
+  return { add, count: () => count };
+}
+const around = (n, R, fn) => { for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2; fn(i, a, Math.cos(a) * R, Math.sin(a) * R); } };
+const rockGeo = size => new THREE.DodecahedronGeometry(size, 0).scale(1, 0.6, 1);
+const rockSize = i => 0.26 + (i % 3) * 0.05;
+
+const RIMS = [
+  { name: '기본 돌', how: '지금 그대로. 회색 돌 두 가지 색', unit: '돌',
+    build(add, r) { around(Math.round(r * 7), r + 0.1, (i, a, x, z) => add(rockGeo(rockSize(i)), i % 2 ? ROCK_A : ROCK_B, x, 0.08, z)); } },
+  { name: '이끼 돌', how: '같은 돌에 초록빛을 입히고 이끼를 얹음', unit: '돌+이끼',
+    build(add, r) {
+      around(Math.round(r * 7), r + 0.1, (i, a, x, z) => {
+        const s = rockSize(i);
+        add(rockGeo(s), i % 2 ? 0x8d9a7c : 0x76866a, x, 0.08, z);
+        if (i % 3 === 2) return;
+        const ox = (rnd(i, 1) - 0.5) * 0.12, oz = (rnd(i, 2) - 0.5) * 0.12;
+        add(new THREE.IcosahedronGeometry(s * 0.72, 0).scale(1, 0.45, 1), i % 2 ? 0x8fcf66 : 0x78bb5c, x + ox, 0.08 + s * 0.5, z + oz, rnd(i, 3) * 3);
+      });
+    } },
+  { name: '흰 조약돌', how: '작고 둥근 밝은 돌을 두 줄로 촘촘히', unit: '조약돌',
+    build(add, r) {
+      const tones = [0xf3eee4, 0xe6dfd2, 0xdcd9d2];
+      around(Math.round(r * 18), r + 0.16, (i, a, x, z) => {
+        const s = 0.14 + rnd(i, 4) * 0.08, out = (i % 2 ? 0.16 : -0.1) + (rnd(i, 5) - 0.5) * 0.06;
+        add(new THREE.IcosahedronGeometry(s, 1).scale(1, 0.6, 1), tones[i % 3], x + Math.cos(a) * out, 0.05, z + Math.sin(a) * out, rnd(i, 6) * 3);
+      });
+    } },
+  { name: '붉은 벽돌', how: '낮은 벽돌 두 가지 색을 번갈아', unit: '벽돌',
+    build(add, r) {
+      const R = r + 0.14, n = Math.round((Math.PI * 2 * R) / 0.52), len = (Math.PI * 2 * R) / n - 0.07;
+      around(n, R, (i, a, x, z) => add(new THREE.BoxGeometry(len, 0.2, 0.3), i % 2 ? 0xcd8f78 : 0xb87862, x, 0.1, z, Math.PI / 2 - a));
+    } },
+  { name: '통나무 말뚝', how: '높이가 조금씩 다른 말뚝. 밝은 단면', unit: '말뚝',
+    build(add, r) {
+      const R = r + 0.12, n = Math.round((Math.PI * 2 * R) / 0.42);
+      around(n, R, (i, a, x, z) => {
+        const h = 0.34 + rnd(i, 7) * 0.22, rad = 0.16 + rnd(i, 8) * 0.02;
+        add(new THREE.CylinderGeometry(rad, rad + 0.01, h, 7), i % 2 ? 0xa57e59 : 0x916c4c, x, h / 2, z, rnd(i, 9) * 3);
+        add(new THREE.CylinderGeometry(rad * 0.82, rad * 0.82, 0.02, 7), 0xead6ae, x, h + 0.005, z, rnd(i, 9) * 3);
+      });
+    } },
+  { name: '조개와 산호', how: '모래 띠 위에 조개·소라·산호', unit: '모래 1 + 장식',
+    build(add, r) {
+      const sand = add(new THREE.RingGeometry(r - 0.08, r + 0.55, 28), 0xecdcb8, 0, 0.015, 0);
+      sand.rotation.x = -Math.PI / 2; sand.castShadow = false;
+      const n = Math.round(r * 7);
+      around(n * 2, r + 0.22, (i, a, x, z) => {
+        const j = i >> 1, turn = rnd(i, 10) * 6, out = (rnd(i, 11) - 0.5) * 0.2;
+        x += Math.cos(a) * out; z += Math.sin(a) * out;
+        if (i % 2) { add(new THREE.IcosahedronGeometry(0.08 + rnd(i, 12) * 0.04, 0).scale(1, 0.6, 1), 0xf6efe2, x, 0.04, z, turn); return; }
+        const kind = j % 4;
+        if (kind === 0 || kind === 2) {
+          const s = 0.23 + rnd(i, 13) * 0.05;
+          add(new THREE.SphereGeometry(s, 6, 3, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.55, 0.8), kind ? 0xf6c6cc : 0xfbf2e6, x, 0.02, z, turn);
+        } else if (kind === 1) {
+          const col = j % 8 === 1 ? 0xf19a80 : 0xf2a3b6;
+          [[0, 0, 0.44, 0], [0.1, 0.03, 0.32, -0.5], [-0.09, -0.04, 0.28, 0.5]].forEach(([dx, dz, h, lean]) => {
+            add(new THREE.CylinderGeometry(0.045, 0.07, h, 5), col, x + dx, h / 2, z + dz, turn).rotation.z = lean;
+          });
+        } else {
+          const m = add(new THREE.ConeGeometry(0.13, 0.34, 6), 0xf7d9b4, x, 0.11, z, turn);
+          m.rotation.z = Math.PI / 2;
+        }
+      });
+    } },
+];
+
+function fishMesh(col, s) {
+  const g = new THREE.Group(); const mat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.95 });
+  g.add(new THREE.Mesh(new THREE.SphereGeometry(0.26, 8, 6).scale(1.6, 0.9, 0.7), mat));
+  g.add(new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.3, 6).rotateZ(Math.PI / 2).translate(-0.52, 0, 0), mat));
+  g.scale.setScalar(s); return g;
+}
+function swimLane(i, k) {
+  const lap = Math.floor(i / 8) * 0.15;
+  return { rx: (1.15 - (i % 4) * 0.12 + lap) * k, rz: (0.9 - (i % 4) * 0.1 + lap) * k, cx: ((i % 4) - 1.5) * 0.15 * k, cz: (i % 2 ? 0.2 : -0.2) * k,
+    speed: (i % 2 ? -1 : 1) * (0.35 + (i % 5) * 0.05), phase: i * 1.5 };
+}
+function keepOff(x, z, isle) {
+  if (!isle) return [x, z];
+  const dx = x - isle.x, dz = z - isle.z, d = Math.hypot(dx, dz), min = isle.r + 0.4;
+  return d >= min ? [x, z] : [isle.x + (dx / d) * min, isle.z + (dz / d) * min];
+}
+
+function pond(r, stage, rim) {
+  const g = new THREE.Group(), k = r / POND_R, isle = stage >= 3 ? ISLE : null;
+  const base = adder(g).add;
+  base(new THREE.CylinderGeometry(r - 0.1, r - 0.1, 0.06, 20), BED, 0, -0.18, 0).castShadow = false;
+  PADS.forEach(([x, z]) => base(new THREE.CylinderGeometry(0.28, 0.28, 0.02, 10, 1, false, 0.4, Math.PI * 1.75), PAD, x * k, 0.07, z * k));
+  base(new THREE.SphereGeometry(0.09, 6, 5), LOTUS, PADS[1][0] * k, 0.12, PADS[1][1] * k);
+  REEDS.forEach(([x, z]) => base(new THREE.CylinderGeometry(0.03, 0.04, 0.9, 4), REED, x * k, 0.45, z * k));
+  if (isle) {
+    base(new THREE.CylinderGeometry(0.8, 1.0, 0.3, 12), ISLE_TOP, isle.x, 0.05, isle.z);
+    base(new THREE.ConeGeometry(0.45, 1.2, 7), ISLE_TREE, isle.x, 0.85, isle.z);
+    STONES.forEach(([x, z]) => base(new THREE.CylinderGeometry(0.26, 0.28, 0.12, 8), STEP, x, 0.08, z));
+  }
+  const water = new THREE.Mesh(new THREE.CylinderGeometry(r - 0.05, r - 0.05, 0.04, 24),
+    new THREE.MeshStandardMaterial({ color: 0x4aa6d0, transparent: true, opacity: 0.3, roughness: 0.25, emissive: 0x184a63, emissiveIntensity: 0.35, depthWrite: false }));
+  water.position.y = 0.04; water.renderOrder = 2; g.add(water);
+
+  const river = stage >= 3 ? [...RIVER, ...RIVER] : RIVER, seas = stage >= 3 ? SEA : SEA.slice(0, 1);
+  [...river, ...seas].forEach((col, i) => {
+    const f = swimLane(i, k), a = 2 * f.speed + f.phase, m = fishMesh(col, i < river.length ? 0.62 : 0.95);
+    const [x, z] = keepOff(f.cx + Math.cos(a) * f.rx, f.cz + Math.sin(a) * f.rz, isle);
+    m.position.set(x, -0.05 + Math.sin(a * 2) * 0.03, z); m.rotation.y = -a - (Math.PI / 2) * Math.sign(f.speed); g.add(m);
+  });
+
+  const rimAdd = adder(g);
+  rim.build(rimAdd.add, r);
+  return { group: g, count: rimAdd.count() };
+}
+
+const scene = new THREE.Scene();
+const hemi = new THREE.HemisphereLight(); scene.add(hemi);
+const sun = new THREE.DirectionalLight(); sun.position.set(6, 12, 8); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.02;
+Object.assign(sun.shadow.camera, { left: -7, right: 7, top: 7, bottom: -7, near: 1, far: 40 });
+scene.add(sun);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), clay(GROUND)); ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+
+const SIZE = 560;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(SIZE, SIZE, false); renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const cam = new THREE.PerspectiveCamera(34, 1, 0.1, 200);
+
+const SIZES = [{ stage: 1, r: 2.0, dist: 8.9, tag: '1단계 · 연못' }, { stage: 3, r: 3.9, dist: 15.4, tag: '3단계 · 큰 연못' },
+  { stage: 1, r: 2.0, dist: 4.6, tag: '가까이', close: true, look: [0.9, 0, 1.7] }];
+const grid = document.getElementById('grid'), tiles = [];
+RIMS.forEach((rim, n) => {
+  const card = document.createElement('div'); card.className = 'card';
+  card.innerHTML = `<h2>${n + 1}. ${rim.name}</h2><p class="how">${rim.how}</p>`;
+  for (const sz of SIZES) {
+    const p = pond(sz.r, sz.stage, rim);
+    const view = document.createElement('div'); view.className = sz.close ? 'view close' : 'view';
+    const cv = document.createElement('canvas'); cv.width = cv.height = SIZE;
+    view.innerHTML = `<span class="tag">${sz.close ? sz.tag : `${sz.tag} · ${rim.unit} ${p.count}`}</span>`;
+    view.prepend(cv); card.appendChild(view);
+    tiles.push({ ctx: cv.getContext('2d'), group: p.group, dist: sz.dist, look: sz.look ?? [0, 0, 0.1] });
+  }
+  grid.appendChild(card);
+});
+
+const toggle = document.getElementById('toggle');
+function draw(night) {
+  document.body.classList.toggle('night', night);
+  toggle.textContent = night ? '낮으로 보기' : '밤으로 보기';
+  hemi.color.set(night ? 0x6f86c8 : 0xfff6e6); hemi.groundColor.set(night ? 0x1c2440 : 0x8a7a66); hemi.intensity = night ? 0.75 : 1.25;
+  sun.color.set(night ? 0x9db4ee : 0xfff1d6); sun.intensity = night ? 0.5 : 1.35;
+  for (const t of tiles) {
+    scene.add(t.group);
+    const [lx, ly, lz] = t.look;
+    cam.position.set(lx, t.dist * 0.7, lz + t.dist * 0.72); cam.lookAt(lx, ly, lz);
+    renderer.render(scene, cam);
+    t.ctx.drawImage(renderer.domElement, 0, 0);
+    scene.remove(t.group);
+  }
+}
+let night = new URLSearchParams(location.search).has('night');
+toggle.onclick = () => draw(night = !night);
+draw(night);
+window.__ready = true;
+</script>
+</body>
+</html>

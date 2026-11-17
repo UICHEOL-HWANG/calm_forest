@@ -74,10 +74,10 @@ export function bookTone(src, tone = BOOK_TONE) {
   return out;
 }
 
-export function mapSignature({ season, houseStage, unlocks, outdoor }) {
+export function mapSignature({ season, houseStage, unlocks, outdoor, pond, table }) {
   const u = [...(unlocks || [])].sort().join(',');
   const o = (outdoor || []).map(r => `${r.id}@${(+r.x).toFixed(1)},${(+r.z).toFixed(1)}/${r.rot ?? 0}`).sort().join(';');
-  return `${season}|${houseStage}|${u}|${o}`;
+  return `${season}|${houseStage}|${u}|${o}|${pond ?? ''}|${table ?? ''}`;
 }
 
 const hasLight = o => { let found = false; o.traverse(c => { if (c.isLight) found = true; }); return found; };
@@ -230,7 +230,7 @@ export function tickMapSnapshot(ready, now = performance.now()) {
     else if (!dirtyAt) dirtyAt = now;
   }
   if (phase === 'compiling' && now - compileAt >= COMPILE_TIMEOUT) { compileToken += 1; phase = 'ready'; }
-  if (!due(now)) return;
+  if (!due(now) || deps.settling?.()) return;
   if (phase === 'idle') prepare(now);
   else if (phase === 'ready') { phase = 'idle'; wanted = false; takeShot(now); }
 }

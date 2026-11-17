@@ -6,6 +6,13 @@
 import { kstDate } from '../kst-date.js';
 import { EXPANSIONS, STAGE_NAMES } from '../house-cost.js';
 import { stage7ExitPoint } from '../house-stage7.js';
+import { pickPondSpot } from '../pond/rules.js';
+import { pondRadius, pondSpotFor, pondFishLimits } from '../pond/stage.js';
+import { POND_SPOTS, POND_R } from '../data/pond.js';
+import { tableSiteFor } from '../table/site.js';
+import { tableShape } from '../table/rules.js';
+
+const POND_CLEAR = 0.6;
 
 export const REWARD_CAP = 3;          // neighbor_react 의 `v_rew := v_cnt < 3;`
 export const REWARD_COINS = 5;        // 토스트 '🪙+5' 와 같은 값
@@ -42,6 +49,26 @@ export function hostSpot(stage, style, origin) {
 /** js/spaces/house.js houseSolidR 와 같은 표(그쪽은 내 세이브를 읽어서 여기서 쓸 수 없다) */
 export function houseSolidR(stage) {
   return stage >= 7 ? 3.9 : stage >= 6 ? 2.7 : stage >= 5 ? 2.55 : stage >= 4 ? 2.4 : 2.2;
+}
+
+export function neighborPond(pond, outdoor) {
+  if (!pond?.has) return null;
+  const spot = pondSpotFor(pond.stage, pickPondSpot(POND_SPOTS, outdoor, POND_R));
+  return spot ? { dx: spot.dx, dz: spot.dz, r: pondRadius(pond.stage), stage: pond.stage, rim: pond.rim || 'rock' } : null;
+}
+
+export function neighborTable(table, pond, outdoor) {
+  if (!table?.has) return null;
+  const site = tableSiteFor({ pond, outdoorRel: outdoor, plotsRel: [] });
+  return site ? { dx: site.dx, dz: site.dz, shape: tableShape(table.dishes.length), site: site.id } : null;
+}
+
+export function neighborPondView(pond) {
+  return { fish: pond.fish, seas: (pond.seas || []).slice(0, pondFishLimits(pond.stage).seaMax) };
+}
+
+export function pondCovers(pond, dx, dz, pad = 0) {
+  return !!pond && Math.hypot(dx - pond.dx, dz - pond.dz) < pond.r + POND_CLEAR + pad;
 }
 
 /** neighbor_react 응답 → 화면에서 할 일. bubble 'thanks' = 재방문 말풍선(버튼 없음), null = 그대로 */

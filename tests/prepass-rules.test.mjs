@@ -45,7 +45,7 @@ test('광고 버튼 문구 조각: 상한까지 받을 만큼만 보여 준다',
   const give = prepassGrant([{ k: 'stone', more: 15 }, { k: 'coins', more: 50 }]);
   assert.deepEqual(give, { stone: 6, coins: 40 });
   assert.deepEqual(shortAdParts(give, 'ko'), ['광고 보고', ' ', '🪨 6', '개', ' · ', '🪙 40', '개', ' ', '받기']);
-  assert.deepEqual(shortAdParts(give, 'en'), ['광고 보고', ' ', '🪨 6', ' · ', '🪙 40', ' ', '받기']);
+  assert.deepEqual(shortAdParts(give, 'en'), ['광고 보고', ' for ', '🪨 6', ' · ', '🪙 40']);
 });
 
 test('장소 카드: 반경 안에서 부족한 곳 중 가장 가까운 한 곳', async () => {

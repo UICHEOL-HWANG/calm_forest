@@ -5,7 +5,8 @@ import { fileURLToPath } from 'node:url';
 import { loadWiki, WIKI_DATA_FILES } from './load-data.mjs';
 import { gitDate } from '../git-date.mjs';
 import { parseContent, SECTION_ORDER } from './content.mjs';
-import { renderDoc, renderCat, renderHome, searchIndex, buildIndex, docPath, catPath } from './render.mjs';
+import { renderDoc, renderCat, renderHome, renderArticle, searchIndex, buildIndex, docPath, catPath } from './render.mjs';
+import { loadArticles, articlePath } from './articles.mjs';
 import { buildBacklinks } from './guides.mjs';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
@@ -36,21 +37,26 @@ export async function writeWiki(dist) {
   }
   if (problems.length) throw new Error(`위키 본문 오류: ${problems.join(', ')}`);
   const catDate = Object.fromEntries(cats.map(c => [c.id, gitDate([`wiki/content/${c.id}.md`, ...WIKI_DATA_FILES])]));
-  const allDate = gitDate(['wiki/content', ...WIKI_DATA_FILES]);
+  const allDate = gitDate(['wiki/content', 'wiki/articles', ...WIKI_DATA_FILES]);
   const paths = [{ path: '/wiki/', lastmod: allDate }];
   const put = async (p, html) => {
     const file = p.endsWith('/') ? path.join(dist, p, 'index.html') : path.join(dist, `${p}.html`);
     await mkdir(path.dirname(file), { recursive: true });
     await writeFile(file, html);
   };
-  await put('/wiki/', renderHome(cats, entries));
+  const articles = loadArticles();
+  await put('/wiki/', renderHome(cats, entries, articles));
+  for (const a of articles) {
+    const lastmod = gitDate([`wiki/articles/${a.slug}.md`]);
+    await put(articlePath(a), renderArticle(a, { index, articles, lastmod }));
+    paths.push({ path: articlePath(a), lastmod });
+  }
   for (const c of cats) {
     await put(catPath(c), renderCat(c, entries.filter(e => e.cat === c.id), ctx));
     paths.push({ path: catPath(c), lastmod: catDate[c.id] });
   }
   for (const e of entries) {
     await put(docPath(e), renderDoc(e, content.get(`${e.cat}/${e.id}`), { ...ctx, lastmod: catDate[e.cat] }));
-    paths.push({ path: docPath(e), lastmod: catDate[e.cat] });
   }
   await writeFile(path.join(dist, 'wiki', 'search.json'), searchIndex(entries, cats));
   return paths;

@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>물가 꾸미기 · 진입점 시안</title>
+<style>
+:root {
+  --mint:    #bfe8c9;
+  --ink:     #4a5a4f;
+  --panel:   rgba(255,250,240,0.97);
+  --shadow:  0 6px 18px rgba(90,120,100,0.18);
+  --cream:   #fff7ec;
+  --gold:    #d9a832;
+  --gold-g:  rgba(217,168,50,0.65);
+  --bg:      #e6ede2;
+  --muted:   #6b7c6a;
+  --rule:    #c8d6c0;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, 'Apple SD Gothic Neo', sans-serif;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+/* ── page chrome ── */
+.pg-hd {
+  padding: 40px 32px 22px;
+  border-bottom: 1px solid var(--rule);
+}
+.pg-hd h1 { margin: 0 0 6px; font-size: 20px; font-weight: 800; }
+.pg-hd p  { margin: 0; color: var(--muted); max-width: 700px; }
+
+.v-sec { padding: 32px 32px 52px; border-bottom: 1px solid var(--rule); }
+.v-hd  { margin-bottom: 22px; }
+.v-hd h2 { margin: 0 0 5px; font-size: 17px; font-weight: 800; }
+.v-hd p  { margin: 0; color: var(--muted); max-width: 700px; }
+
+/* ── frames row ── */
+.row {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  overflow-x: auto;
+  padding-bottom: 10px;
+}
+.grp {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  flex-shrink: 0;
+}
+.lbl {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  text-align: center;
+}
+
+/* ── frame shells ── */
+.frame {
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+  border-radius: 10px;
+  box-shadow: 0 4px 22px rgba(0,0,0,.28);
+}
+
+/* PC 1280×800 displayed at 50% = 640×400 */
+.f-pc { width: 640px; height: 400px; }
+.f-pc .inn {
+  width: 1280px; height: 800px;
+  transform: scale(.5);
+  transform-origin: top left;
+  position: relative;
+}
+
+/* Mobile portrait logical 390×844 (source 780×1688 @2x) */
+.f-port { width: 390px; height: 844px; }
+.f-port .inn { width: 390px; height: 844px; position: relative; }
+
+/* Mobile landscape 844×390 displayed at 57% = 481×222 */
+.f-land { width: 481px; height: 222px; }
+.f-land .inn {
+  width: 844px; height: 390px;
+  transform: scale(.5703);
+  transform-origin: top left;
+  position: relative;
+}
+
+.bd { display: block; }
+.f-pc  .bd { width: 1280px; height: 800px; }
+.f-port .bd { width: 390px;  height: 844px; }
+.f-land .bd { width: 844px;  height: 390px; }
+
+/* ── HUD atoms ── */
+
+.pill {
+  position: absolute;
+  left: 50%; transform: translateX(-50%);
+  background: var(--panel);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  padding: 12px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--ink);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.pills {
+  position: absolute;
+  left: 50%; transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  pointer-events: none;
+  z-index: 5;
+  white-space: nowrap;
+}
+.pills .p1 {
+  background: var(--panel);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  padding: 12px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.pills .p2 {
+  background: rgba(255,249,228,0.97);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6a5420;
+  border: 1.5px solid rgba(205,180,100,0.4);
+}
+
+.abt {
+  position: absolute;
+  width: 88px; height: 88px;
+  border-radius: 50%;
+  background: var(--mint);
+  box-shadow: var(--shadow);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 30px;
+  pointer-events: none;
+  z-index: 5;
+}
+.abt.door { background: #d9c9ff; }
+
+.abt2 {
+  position: absolute;
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  background: rgba(255,250,232,0.97);
+  box-shadow: 0 4px 12px rgba(60,80,60,0.20), 0 0 0 2px rgba(220,210,180,0.7);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 2.5px solid var(--gold);
+  animation: rpulse 1.8s ease-out infinite;
+  pointer-events: none;
+  z-index: 6;
+}
+@keyframes rpulse {
+  0%   { box-shadow: 0 0 0 0 var(--gold-g); opacity: 1; }
+  60%  { box-shadow: 0 0 0 10px rgba(217,168,50,0); }
+  100% { box-shadow: 0 0 0 0  rgba(217,168,50,0); opacity: 1; }
+}
+
+.sign {
+  position: absolute;
+  display: flex; flex-direction: column; align-items: center;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 5;
+}
+.sbbl {
+  width: 46px; height: 46px; border-radius: 50%;
+  background: rgba(255,250,236,0.97);
+  box-shadow: 0 3px 10px rgba(60,50,30,0.3), 0 0 0 2.5px rgba(255,255,255,0.7);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; margin-bottom: 2px; flex-shrink: 0;
+}
+.sbbl.hl { box-shadow: 0 3px 10px rgba(60,50,30,0.3), 0 0 0 3px var(--gold); }
+.sbd {
+  background: #d4a85a; border: 2px solid #8c6424; border-radius: 4px;
+  padding: 5px 10px; min-width: 32px; min-height: 20px;
+  box-shadow: 2px 3px 0 rgba(0,0,0,.22); position: relative; flex-shrink: 0;
+}
+.sbd::before, .sbd::after {
+  content: ''; position: absolute; top: 50%; transform: translateY(-50%);
+  width: 5px; height: 5px; border-radius: 50%; background: #6a4010;
+}
+.sbd::before { left: 4px; }
+.sbd::after  { right: 4px; }
+.spost {
+  width: 7px; background: linear-gradient(to bottom, #c49040, #8c5820);
+  border-radius: 2px; box-shadow: 1px 2px 0 rgba(0,0,0,.18); flex-shrink: 0;
+}
+
+.bubs { position: absolute; display: flex; gap: 10px; pointer-events: none; z-index: 5; }
+.bub {
+  width: 54px; height: 54px; border-radius: 50%;
+  background: rgba(255,250,236,0.95);
+  box-shadow: 0 4px 12px rgba(60,50,30,0.22), 0 0 0 2px rgba(255,255,255,0.5);
+  display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0;
+}
+.bub.hl {
+  box-shadow: 0 4px 14px rgba(60,50,30,0.22), 0 0 0 3px var(--gold);
+  background: rgba(255,249,220,0.97);
+  transform: scale(1.08) translateY(-3px);
+}
+
+/* ── discovery strip ── */
+.disc {
+  margin-top: 24px; padding-top: 18px;
+  border-top: 1px dashed var(--rule);
+  display: flex; gap: 16px; align-items: flex-start;
+}
+.disc-frame {
+  flex-shrink: 0; width: 180px; height: 180px; border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.22); position: relative; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+.disc-txt { max-width: 320px; }
+.disc-txt strong { display: block; font-weight: 700; font-size: 12px; margin-bottom: 5px; }
+</style>
+</head>
+<body>
+
+<div class="pg-hd">
+  <h1>🪨 물가 꾸미기 · 진입점 시안 비교</h1>
+  <p>연못 근처에서 물가 꾸미기를 여는 세 가지 진입 방식을 비교합니다.
+  각 시안은 PC·모바일 세로·모바일 가로 세 화면으로 확인하세요.</p>
+</div>
+
+<!-- ═══════════
+     가. 버튼 두 개
+     ═══════════ -->
+<section class="v-sec">
+  <div class="v-hd">
+    <h2>가. 버튼 두 개</h2>
+    <p>연못 근처에 서면 하단에 두 버튼이 나타납니다.
+    PC는 나란한 두 알약, 터치는 메인 🐟 버튼 위에 작은 🪨 버튼이 붙습니다.
+    처음 접근 시 🪨 요소가 금빛으로 한 번 반짝입니다.</p>
+  </div>
+
+  <div class="row">
+    <!-- PC -->
+    <div class="grp">
+      <div class="lbl">PC 1280×800</div>
+      <div class="frame f-pc">
+        <div class="inn">
+          <img class="bd" src="../dev/active/space-link-v2/p2-stage2-big-pc.png" alt="">
+          <div class="pills" style="bottom:150px;">
+            <div class="p1">🐟 내 연못</div>
+            <div class="p2">🪨 물가 꾸미기</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile portrait -->
+    <div class="grp">
+      <div class="lbl">모바일 세로 390×844</div>
+      <div class="frame f-port">
+        <div class="inn">
+          <img class="bd" src="../dev/active/space-link-v2/p2-stage3-big-mobile.png" alt="">
+          <div class="abt door" style="right:28px; bottom:96px;">🐟</div>
+          <div class="abt2" style="right:28px; bottom:192px;">🪨</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile landscape -->
+    <div class="grp">
+      <div class="lbl">모바일 가로 844×390</div>
+      <div class="frame f-land">
+        <div class="inn">
+          <img class="bd" src="../dev/active/space-link-v2/p2-stage3-big-land.png" alt="">
+          <div class="abt door" style="right:20px; bottom:14px;">🐟</div>
+          <div class="abt2" style="right:20px; bottom:110px;">🪨</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="disc">
+    <div class="disc-frame" style="background:#4c6a46;">
+      <div style="position:relative; display:flex; flex-direction:column; align-items:center; gap:14px;">
+        <div class="ring" style="position:absolute; top:-4px; left:-4px; width:68px; height:68px;"></div>
+        <div style="width:60px; height:60px; border-radius:50%; background:rgba(255,250,232,0.97); box-shadow:0 4px 12px rgba(60,80,60,0.20); display:flex; align-items:center; justify-content:center; font-size:24px;">🪨</div>
+        <div style="width:88px; height:88px; border-radius:50%; background:#d9c9ff; box-shadow:0 6px 18px rgba(90,120,100,0.18); display:flex; align-items:center; justify-content:center; font-size:30px;">🐟</div>
+      </div>
+    </div>
+    <div class="disc-txt">
+      <strong>첫 발견 — 🪨 보조 버튼</strong>
+      연못에 처음 접근하면 🪨 버튼이 금빛으로 한 번 반짝인 뒤 조용히 대기합니다.
+      이후 방문에선 아무런 연출 없이 자리를 지킵니다.
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════
+     나. 물가 팻말
+     ═══════════ -->
+<section class="v-sec">
+  <div class="v-hd">
+    <h2>나. 물가 팻말</h2>
+    <p>연못 남쪽 물가에 작은 나무 팻말이 서 있고 위에 🪨 말풍선이 떠 있습니다.
+    팻말 근처에 서면 액션이 🪨 물가 꾸미기로 바뀌고, 멀어지면 🐟 내 연못으로 돌아옵니다.
+    말풍선은 이모지만 표시 (텍스트 없음).</p>
+  </div>
+
+  <div class="row">
+    <!-- PC at sign -->
+    <div class="grp">
+      <div class="lbl">PC · 팻말 근처</div>
+      <div class="frame f-pc">
+        <div class="inn">
+          <img class="bd" src="../dev/active/space-link-v2/p2-stage2-big-pc.png" alt="">
+          <div class="sign" style="left:490px; bottom:358px;">
+            <div class="sbbl hl">🪨</div>
+            <div class="sbd"></div>
+            <div class="spost" style="height:34px;"></div>
+          </div>
+          <div class="pill" style="bottom:150px;">🪨 물가 꾸미기</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PC away -->
+    <div class="grp">
+      <div class="lbl">PC · 연못 근처 (일반)</div>
+      <div class="frame f-pc">
+        <div class="inn">
+          <img class="bd" src="../dev/active/space-link-v2/p2-stage2-big-pc.png" alt="">
+          <div class="sign" style="left:490px; bottom:358px; opacity:.6;">
+            <div class="sbbl">🪨</div>
+            <div class="sbd"></div>
+            <div class="spost" style="height:34px;"></div>
+          </div>
+          <div class="pill" style="bottom:150px;">🐟 내 연못</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile portrait at sign -->
+    <div class="grp">
+      <div class="lbl">세로 · 팻말 근처</div>
+      <div class="frame f-port">
+        <div class="inn">
+          <img class="bd" src="../dev/active/space-link-v2/p2-stage3-big-mobile.png" alt="">
+          <div class="sign" style="left:128px; bottom:432px;">
+            <div class="sbbl hl">🪨</div>
+            <div class="sbd"></div>
+            <div class="spost" style="height:28px;"></div>
+          </div>
+          <div class="abt" style="right:28px; bottom:96px; background:rgba(255,246,218,0.97); border:2px solid rgba(192,163,78,0.45);">🪨</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile portrait away -->
+    <div class="grp">
+      <div class="lbl">세로 · 연못 근처 (일반)</div>
+      <div class="frame f-port">
+        <div class="inn">
+          <img class="bd" src="../dev/active/space-link-v2/p2-stage3-big-mobile.png" alt="">
+          <div class="sign" style="left:128px; bottom:432px; opacity:.6;">
+            <div class="sbbl">🪨</div>
+            <div class="sbd"></div>
+            <div class="spost" style="height:28px;"></div>
+          </div>
+          <div class="abt door" style="right:28px; bottom:96px;">🐟</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile landscape at sign -->
+    <div class="grp">
+      <div class="lbl">가로 · 팻말 근처</div>
+      <div class="frame f-land">
+        <div class="inn">
+          <img class="bd" src="../dev/active/space-link-v2/p2-stage3-big-land.png" alt="">
+          <div class="sign" style="left:300px; bottom:148px;">
+            <div class="sbbl hl">🪨</div>
+            <div class="sbd"></div>
+            <div class="spost" style="height:22px;"></div>
+          </div>
+          <div class="abt" style="right:20px; bottom:14px; background:rgba(255,246,218,0.97); border:2px solid rgba(192,163,78,0.45);">🪨</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="disc">
+    <div class="disc-frame" style="background:#5a6a4a;">
+      <div style="display:flex; flex-direction:column; align-items:center; position:relative;">
+        <div class="ring" style="position:absolute; top:-4px; left:-4px; width:54px; height:54px;"></div>
+        <div style="width:46px; height:46px; border-radius:50%; background:rgba(255,250,236,0.97); box-shadow:0 3px 10px rgba(60,50,30,0.3), 0 0 0 3px var(--gold); display:flex; align-items:center; justify-content:center; font-size:22px; margin-bottom:2px;">🪨</div>
+        <div style="width:36px; height:20px; background:#d4a85a; border:2px solid #8c6424; border-radius:4px; box-shadow:2px 3px 0 rgba(0,0,0,.22); position:relative;">
+          <div style="position:absolute; top:50%; left:4px; transform:translateY(-50%); width:5px; height:5px; border-radius:50%; background:#6a4010;"></div>
+          <div style="position:absolute; top:50%; right:4px; transform:translateY(-50%); width:5px; height:5px; border-radius:50%; background:#6a4010;"></div>
+        </div>
+        <div style="width:7px; height:34px; background:linear-gradient(to bottom, #c49040, #8c5820); border-radius:2px;"></div>
+      </div>
+    </div>
+    <div class="disc-txt">
+      <strong>첫 발견 — 팻말 말풍선</strong>
+      연못 첫 접근 시 팻말 위 🪨 말풍선이 금빛으로 한 번 반짝입니다.
+      팻말은 항상 보여 재방문에도 위치를 기억할 수 있습니다.
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════
+     다. 연못 위 말풍선
+     ═══════════ -->
+<section class="v-sec">
+  <div class="v-hd">
+    <h2>다. 연못 위 말풍선</h2>
+    <p>연못 위에 네 개의 둥근 이모지 말풍선이 떠 있습니다: 📒 🍞 🌊 🪨.
+    탭하면 해당 기능이 열리고, 선택된 말풍선이 강조됩니다.
+    🪨가 선택된 상태를 보여 줍니다.</p>
+  </div>
+
+  <div class="row">
+    <!-- PC -->
+    <div class="grp">
+      <div class="lbl">PC 1280×800</div>
+      <div class="frame f-pc">
+        <div class="inn">
+          <img class="bd" src="../dev/active/space-link-v2/p2-stage2-big-pc.png" alt="">
+          <div class="bubs" style="left:364px; top:280px;">
+            <div class="bub">📒</div>
+            <div class="bub">🍞</div>
+            <div class="bub">🌊</div>
+            <div class="bub hl">🪨</div>
+          </div>
+          <div class="pill" style="bottom:150px;">🪨 물가 꾸미기</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile portrait -->
+    <div class="grp">
+      <div class="lbl">모바일 세로 390×844</div>
+      <div class="frame f-port">
+        <div class="inn">
+          <img class="bd" src="../dev/active/space-link-v2/p2-stage3-big-mobile.png" alt="">
+          <div class="bubs" style="left:7px; top:252px;">
+            <div class="bub">📒</div>
+            <div class="bub">🍞</div>
+            <div class="bub">🌊</div>
+            <div class="bub hl">🪨</div>
+          </div>
+          <div class="abt" style="right:28px; bottom:96px; background:rgba(255,246,218,0.97); border:2px solid rgba(192,163,78,0.45);">🪨</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile landscape -->
+    <div class="grp">
+      <div class="lbl">모바일 가로 844×390</div>
+      <div class="frame f-land">
+        <div class="inn">
+          <img class="bd" src="../dev/active/space-link-v2/p2-stage3-big-land.png" alt="">
+          <div class="bubs" style="left:177px; top:118px;">
+            <div class="bub">📒</div>
+            <div class="bub">🍞</div>
+            <div class="bub">🌊</div>
+            <div class="bub hl">🪨</div>
+          </div>
+          <div class="abt" style="right:20px; bottom:14px; background:rgba(255,246,218,0.97); border:2px solid rgba(192,163,78,0.45);">🪨</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="disc">
+    <div class="disc-frame" style="background:#3e6878;">
+      <div style="display:flex; gap:10px; align-items:flex-end;">
+        <div class="bub" style="width:44px; height:44px; font-size:20px;">📒</div>
+        <div class="bub" style="width:44px; height:44px; font-size:20px;">🍞</div>
+        <div class="bub" style="width:44px; height:44px; font-size:20px;">🌊</div>
+        <div style="position:relative; flex-shrink:0;">
+          <div class="ring" style="position:absolute; top:-4px; left:-4px; width:52px; height:52px;"></div>
+          <div class="bub hl" style="width:44px; height:44px; font-size:20px; position:relative; z-index:7;">🪨</div>
+        </div>
+      </div>
+    </div>
+    <div class="disc-txt">
+      <strong>첫 발견 — 🪨 말풍선</strong>
+      연못 첫 접근 시 🪨 말풍선이 금빛으로 반짝이며 주목을 끕니다.
+      평소에는 나머지 말풍선과 같은 크기로 조용히 떠 있습니다.
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

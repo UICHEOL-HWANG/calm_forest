@@ -38,6 +38,10 @@ export function goStep(spot, text) {
   return { id: 'go', text, target: () => spot, done: c => Math.hypot(c.me.x - spot.x, c.me.z - spot.z) <= GO_REACH };
 }
 
+export function movedStep(text) {
+  return { id: 'go', text, target: c => c.pond, done: c => !!c.nearPond };
+}
+
 export function d1Ready({ on, yardDone, d1Done, pondDay, today, fedToday, idleSec }) {
   return !!on && !!yardDone && !d1Done && !!pondDay && pondDay !== today && !fedToday && idleSec >= YARD_IDLE_SEC;
 }
