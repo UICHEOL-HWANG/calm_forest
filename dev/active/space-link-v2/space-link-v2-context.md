@@ -17,6 +17,17 @@ Last Updated: 2026-11-17 KST
 - 지도: 연못이 커지는 2초 동안은 위에서 찍기를 미루고 끝나면 바로 찍는다(`pondSettling`)
 - 추가 검증(11/17 오후, 헤드리스 크롬): 앞마당 작은 자리 두 곳(-5,1)·(-2,1)에서 2단계로 넓힌 뒤 금색 화살표를 따라 걸어 도착(집 중심과 5.6 이상, 가게 2.8, 광산 4.5, 물길 7 떨어짐, 도착하면 안내 끝). 캡처 `p2-route-front-pc.png`, `p2-stage3-big-{land,mobile}.png`, `p2-stage2-big-pc.png`, `p2-stage3-house7-pc.png`
 
+## 물가 꾸미기 결과 (11/17)
+- 물가 4종: 기본 돌(무료)·흰 조약돌·붉은 벽돌·조개와 산호(각 150코인, 한 번 사면 자유 전환). 광고 없음
+- 저장은 `hintsSeen.pondRim`(문자열)·`hintsSeen.pondRims`(배열) 뿐
+- 새 모듈 `js/pond/rim.js`(규칙)·`rim-ui.js`(창·구매). 조각 배치는 `shape.js` `rimPieces`, 조형은 `build.js` 가 물가 메시에 합친다(메시 2개 유지)
+- 바꿀 때는 `setPondRim()` 이 물가 조형만 갈아 끼운다(자리·충돌체·마당 그대로, 커지는 연출 없음)
+- 흰색 계열은 블룸 문턱 0.85 아래로 낮췄다(시안보다 조금 어둡다)
+- 가로 폰에서 수첩 아래 두 줄(넓히기·물가 꾸미기)은 나란히 놓는다. 한 줄씩 쌓으면 닫기 버튼이 화면 밖으로 밀린다
+- 이웃 화면: `_nb_pond` 가 `rim` 을 보낸다. SQL 은 운영에 적용 안 함
+- 검증(헤드리스 크롬, 오프라인 게스트): 150코인 한 번만 차감(두 번 눌러도), 가진 물가 전환 무료, 3단계 드로우콜 네 종류 모두 104. 캡처 `p2-rim-*.png`
+- 못 한 것: 오프라인 게스트는 저장이 안 돼 실제 새로고침 확인은 못 했다(저장된 값으로 다시 짓는 것만 확인). `trackEvent`·`logEcon` 실제 전송, 이웃 화면 렌더, SQL 실행
+
 ## P1 구현 결과 (11/12)
 - 브랜치 `feat/space-link-p1`, 커밋 12개(6d10b36c..08ccc270), worktree `.claude/worktrees/space-link-p1`, 미리보기 설정 `space-link-p1`(포트 8891)
 - 새 파일: js/pond/actions.js · yard-steps.js · feed.js · yard-guide.js, js/hud/collection-book.js, sql/migrations/migrate_push_pond.sql
