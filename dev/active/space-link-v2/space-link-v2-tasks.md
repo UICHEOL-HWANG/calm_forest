@@ -79,7 +79,7 @@
 - [x] 연결: `js/game.js` 6줄, `js/spaces/doors.js` 프롬프트, 지도 서명 `table`, 영어 사전 3줄, 분류표 `table_created`
 - [x] `openTableWindow()` 는 빈 자리 표시(Task 3이 채운다)
 - [x] `npm test` 6205 통과, `node scripts/build-web.mjs` 통과
-- [ ] 헤드리스 크롬 확인: 캡처 `table-*.png`, 걷기(문→식탁, 주방→식탁, 한 바퀴, 문→가게, 문→연못 팻말), 올빼미 순찰, 드로우콜
+- [x] 헤드리스 크롬 확인: 캡처 `table-*.png` 13장, 걷기(문→식탁, 주방→식탁, 한 바퀴, 문→가게, 문→연못 팻말) 막힘 없음, 올빼미 순찰 6번 식탁 끝과 최소 1.22, 드로우콜 +4 (커밋 d557a107, 결과는 context 맨 위 절)
 - [ ] 스타일 B 조형(`TABLE_STYLES` 에 추가하고 `index.js` 의 `STYLE` 만 바꾼다)
 - [ ] 두 자리가 다 막혔을 때 안내 문구(Task 3)
 - [ ] 문구 검수: `🍽️ 마당 식탁`, 생김·긴 식탁 알림
