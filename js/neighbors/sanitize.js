@@ -13,6 +13,7 @@ import { normalizeHouseStyle } from '../house-stage7.js';
 import { normalizeFloor } from '../house-floors.js';
 import { POND_MAX_RIVER } from '../pond/rules.js';
 import { MAX_POND_STAGE } from '../pond/stage.js';
+import { pondRimOf } from '../pond/rim.js';
 
 export const YARD_R = 14;
 export const DECOR_MAX = 40;
@@ -77,7 +78,7 @@ export function sanitizeShowcase(raw, ctx) {
   }
   const ps = num(rp.stage);
   const pond = { fish: pondFish, sea: pondSea, seas: pondSeas, has: pondFish.length > 0 || !!pondSea || pondSeas.length > 0,
-                 stage: ps != null && Number.isInteger(ps) && ps >= 1 && ps <= MAX_POND_STAGE ? ps : 1 };
+                 stage: ps != null && Number.isInteger(ps) && ps >= 1 && ps <= MAX_POND_STAGE ? ps : 1, rim: pondRimOf({ pondRim: rp.rim }) };
 
   return {
     nickname: nick ? [...nick].slice(0, 16).join('') : NICK_FALLBACK,   // 코드 포인트 기준 — 이모지를 반으로 자르지 않게

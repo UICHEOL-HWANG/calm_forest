@@ -139,7 +139,7 @@ export function buildNeighborScene(view) {
     }
 
     if (ps) {
-      const p = buildPond({ fishMesh, mergeGeos, paintGeo, emojiSprite, r: ps.r, stage: ps.stage });
+      const p = buildPond({ fishMesh, mergeGeos, paintGeo, emojiSprite, r: ps.r, stage: ps.stage, rim: ps.rim });
       p.group.position.set(NEIGHBOR.x + ps.dx, 0, NEIGHBOR.z + ps.dz);
       p.setContents(neighborPondView(view.pond), (sp) => SEA_SPECIES.find(s => s.id === sp)?.color ?? 0x6f8fa8, pondFishLimits(ps.stage));
       group.add(p.group);

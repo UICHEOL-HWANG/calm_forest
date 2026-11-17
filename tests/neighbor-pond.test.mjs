@@ -15,7 +15,7 @@ const base = { houseStage: 3, nickname: 'a', character: 'bear', outdoor: [] };
 const SCENE = readFileSync(new URL('../js/neighbors/scene.js', import.meta.url), 'utf8');
 
 test('pond 없으면 has=false', () => {
-  assert.deepEqual(sanitizeShowcase(base, ctx).pond, { fish: [], sea: null, seas: [], has: false, stage: 1 });
+  assert.deepEqual(sanitizeShowcase(base, ctx).pond, { fish: [], sea: null, seas: [], has: false, stage: 1, rim: 'rock' });
 });
 
 test('모르는 id·중복·8개 이상은 버린다', () => {
@@ -74,12 +74,12 @@ test('연못 자리 · 1단계는 빈 작은 자리, 2~3단계는 늘 큰 자리
   const pond = (stage) => ({ fish: ['common'], sea: null, has: true, stage });
   assert.equal(neighborPond({ fish: [], sea: null, has: false, stage: 3 }, []), null);
   assert.equal(neighborPond(undefined, []), null);
-  assert.deepEqual(neighborPond(pond(1), []), { ...POND_SPOTS[0], r: 2, stage: 1 });
-  assert.deepEqual(neighborPond(pond(1), [{ dx: POND_SPOTS[0].dx, dz: POND_SPOTS[0].dz }]), { ...POND_SPOTS[1], r: 2, stage: 1 });
+  assert.deepEqual(neighborPond(pond(1), []), { ...POND_SPOTS[0], r: 2, stage: 1, rim: 'rock' });
+  assert.deepEqual(neighborPond(pond(1), [{ dx: POND_SPOTS[0].dx, dz: POND_SPOTS[0].dz }]), { ...POND_SPOTS[1], r: 2, stage: 1, rim: 'rock' });
   assert.equal(neighborPond(pond(1), POND_SPOTS.map(s => ({ dx: s.dx, dz: s.dz }))), null);
   const inWay = [...POND_SPOTS, POND_BIG_SPOT].map(s => ({ dx: s.dx, dz: s.dz }));
-  assert.deepEqual(neighborPond(pond(2), inWay), { ...POND_BIG_SPOT, r: 2.9, stage: 2 });
-  assert.deepEqual(neighborPond(pond(3), inWay), { ...POND_BIG_SPOT, r: 3.9, stage: 3 });
+  assert.deepEqual(neighborPond(pond(2), inWay), { ...POND_BIG_SPOT, r: 2.9, stage: 2, rim: 'rock' });
+  assert.deepEqual(neighborPond(pond(3), inWay), { ...POND_BIG_SPOT, r: 3.9, stage: 3, rim: 'rock' });
 });
 
 test('큰 연못에 걸리는 울타리 기둥과 나무만 뺀다', () => {
@@ -100,10 +100,21 @@ test('큰 연못에 걸리는 울타리 기둥과 나무만 뺀다', () => {
   }
 });
 
+test('rim 은 네 가지 id 만 받고 나머지와 옛 서버 응답은 기본 돌', () => {
+  const rimOf = (pond) => sanitizeShowcase({ ...base, pond }, ctx).pond.rim;
+  for (const id of ['rock', 'pebble', 'brick', 'shell']) assert.equal(rimOf({ fish: ['common'], rim: id }), id);
+  for (const v of [undefined, null, 'gold', 2, ['shell'], { id: 'shell' }, 'toString', '']) {
+    assert.equal(rimOf({ fish: ['common'], rim: v }), 'rock', JSON.stringify(v));
+  }
+  const pond = (rim) => ({ fish: ['common'], sea: null, has: true, stage: 3, rim });
+  assert.equal(neighborPond(pond('shell'), []).rim, 'shell');
+  assert.equal(neighborPond(pond(undefined), []).rim, 'rock');
+});
+
 test('scene.js 는 단계에 맞는 연못을 짓고 고정 세트가 그 자리를 비킨다', () => {
   assert.match(SCENE, /const ps = neighborPond\(view\.pond, view\.outdoor\);/);
   assert.match(SCENE, /group\.add\(fixedSet\(ps\)\);/);
-  assert.match(SCENE, /buildPond\(\{ fishMesh, mergeGeos, paintGeo, emojiSprite, r: ps\.r, stage: ps\.stage \}\)/);
+  assert.match(SCENE, /buildPond\(\{ fishMesh, mergeGeos, paintGeo, emojiSprite, r: ps\.r, stage: ps\.stage, rim: ps\.rim \}\)/);
   assert.match(SCENE, /p\.setContents\(neighborPondView\(view\.pond\), [^\n]+, pondFishLimits\(ps\.stage\)\);/);
   assert.match(SCENE, /if \(pondCovers\(pond, Math\.cos\(a\) \* R, Math\.sin\(a\) \* R\)\) continue;/);
   assert.match(SCENE, /if \(pondCovers\(pond, x, z, CANOPY_R\)\) continue;/);

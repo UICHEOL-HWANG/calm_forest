@@ -147,6 +147,7 @@ returns jsonb language sql immutable set search_path = public as $$
     'fish', coalesce((select jsonb_agg(id order by t, array_position(array['sakura_trout','puffer','maple_carp','ice_smelt','rare','uncommon','common'], id)) from fish), '[]'::jsonb),
     'sea', (select jsonb_build_object('sp', sp, 'w', w) from sea order by w desc, array_position(array['aji','buri','mola','tuna'], sp) limit 1),
     'seas', coalesce((select jsonb_agg(jsonb_build_object('sp', sp, 'w', w) order by w desc, array_position(array['aji','buri','mola','tuna'], sp)) from sea), '[]'::jsonb),
+    'rim', case when p_state->'hintsSeen'->>'pondRim' in ('pebble','brick','shell') then p_state->'hintsSeen'->>'pondRim' else 'rock' end,
     'stage', case when p_state #>> '{hintsSeen,pondStage}' ~ '^[0-9]{1,9}$' then least(3, greatest(1, (p_state #>> '{hintsSeen,pondStage}')::int)) else 1 end);
 $$;
 

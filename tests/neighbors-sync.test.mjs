@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { REWARD_CAP, NOTICE_MAX, EMOJI_IDS, houseSolidR } from '../js/neighbors/rules.js';
 import { YARD_R, DECOR_MAX, ROOM_MAX, ROOM_MAX_XY } from '../js/neighbors/sanitize.js';
 import { MAX_POND_STAGE } from '../js/pond/stage.js';
+import { RIM_IDS } from '../js/pond/rim.js';
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 const SQL = read('sql/migrations/migrate_neighbors.sql');
@@ -65,10 +66,11 @@ test('🐟 연못 — _nb_pond·neighbor_showcase 가 최종본과 같고 id 목
   const seaOrder = "order by w desc, array_position(array['aji','buri','mola','tuna'], sp)";
   assert.ok(pond(SQL).includes(`'sea', (select jsonb_build_object('sp', sp, 'w', w) from sea ${seaOrder} limit 1),`));
   assert.ok(pond(SQL).includes(`'seas', coalesce((select jsonb_agg(jsonb_build_object('sp', sp, 'w', w) ${seaOrder}) from sea), '[]'::jsonb),`));
-  assert.equal(pond(POND_SQL), pond(SQL).replace(` ${seaOrder} limit 1),`, '),').replace(/\n    'seas', [^\n]*/, '').replace(/,\n    'stage', [^\n]*(?=\);\n)/, '').replace('    limit 4\n', '    limit 1\n'));
+  assert.equal(pond(POND_SQL), pond(SQL).replace(` ${seaOrder} limit 1),`, '),').replace(/\n    'seas', [^\n]*/, '').replace(/\n    'rim', [^\n]*/, '').replace(/,\n    'stage', [^\n]*(?=\);\n)/, '').replace('    limit 4\n', '    limit 1\n'));
   assert.equal((pond(SQL).match(/::numeric/g) || []).length, 3);
   assert.equal((pond(SQL).match(/::int/g) || []).length, 1);
   assert.ok(pond(SQL).includes(`'stage', case when p_state #>> '{hintsSeen,pondStage}' ~ '^[0-9]{1,9}$' then least(${MAX_POND_STAGE}, greatest(1, (p_state #>> '{hintsSeen,pondStage}')::int)) else 1 end);`));
+  assert.ok(pond(SQL).includes(`'rim', case when p_state->'hintsSeen'->>'pondRim' in (${RIM_IDS.slice(1).map(i => `'${i}'`).join(',')}) then p_state->'hintsSeen'->>'pondRim' else '${RIM_IDS[0]}' end,\n`));
   assert.doesNotMatch(STAGE_SQL, /neighbor_showcase/);
   assert.equal(show(POND_SQL), show(SQL));
   assert.match(show(SQL), /'coop',[^\n]*,\n\s+'pond',\s+_nb_pond\(s\)\n/);

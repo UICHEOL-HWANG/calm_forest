@@ -52,7 +52,7 @@ export function houseSolidR(stage) {
 export function neighborPond(pond, outdoor) {
   if (!pond?.has) return null;
   const spot = pondSpotFor(pond.stage, pickPondSpot(POND_SPOTS, outdoor, POND_R));
-  return spot ? { dx: spot.dx, dz: spot.dz, r: pondRadius(pond.stage), stage: pond.stage } : null;
+  return spot ? { dx: spot.dx, dz: spot.dz, r: pondRadius(pond.stage), stage: pond.stage, rim: pond.rim || 'rock' } : null;
 }
 
 export function neighborPondView(pond) {
