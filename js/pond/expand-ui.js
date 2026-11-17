@@ -48,6 +48,7 @@ export function openPondExpand() {
   openBook({
     title: POND_COPY.growTitle[info.next.stage],
     count: fill(POND_COPY.growCount, info.cur.stage, info.next.stage),
+    coins: `🪙 ${gameState.inventory.coins || 0}`,
     closeLabel: POND_COPY.bookClose,
     hint: view.hint ? POND_COPY.growHint[view.hint] : '',
     go: { label: POND_COPY.growBuy, disabled: !view.canBuy, onClick: expandPond },

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { parseCsv } from '../tools/amplitude/csv.mjs';
-import { POND_RIMS, RIM_IDS, pondRimOf, pondRimsOwned, rimView, applyRim } from '../js/pond/rim.js';
+import { POND_RIMS, RIM_IDS, pondRimOf, pondRimsOwned, rimView, rimCards, applyRim } from '../js/pond/rim.js';
 import { rimPieces, pondLayout } from '../js/pond/shape.js';
 import { POND_STAGE_R } from '../js/data/pond.js';
 
@@ -105,6 +105,30 @@ test('조각은 물가에 놓이고 뜨거나 가라앉지 않으며 블룸 문�
   assert.ok(sand[0].outer <= 2 + 0.6);
 });
 
+test('카드 모델: 쓰는 중·바꾸기·값, 못 누르는 카드, 고른 카드', () => {
+  const { cards, short } = rimCards({ pondRim: 'rock', pondRims: ['pebble'] }, 160);
+  assert.deepEqual(cards.map(c => [c.id, c.name, c.state, c.label, c.off, c.using]), [
+    ['rock', '기본 돌', 'using', '쓰는 중', true, true],
+    ['pebble', '흰 조약돌', 'owned', '바꾸기', false, false],
+    ['brick', '붉은 벽돌', 'buy', '🪙 150', false, false],
+    ['shell', '조개와 산호', 'buy', '🪙 150', false, false],
+  ]);
+  assert.equal(short, false);
+  const poor = rimCards({ pondRim: 'pebble', pondRims: ['pebble'] }, 149);
+  assert.deepEqual(poor.cards.map(c => [c.state, c.label, c.off]), [
+    ['owned', '바꾸기', false], ['using', '쓰는 중', true], ['short', '🪙 150', true], ['short', '🪙 150', true],
+  ]);
+  assert.equal(poor.short, true);
+});
+
+test('카드 모델: 코인 안내는 살 것이 남았고 하나도 못 살 때만', () => {
+  assert.equal(rimCards({}, 0).short, true);
+  assert.equal(rimCards({}, undefined).short, true);
+  assert.equal(rimCards({}, 150).short, false);
+  assert.equal(rimCards({ pondRims: ['pebble', 'brick', 'shell'] }, 0).short, false);
+  assert.equal(rimCards({ pondRim: 'shell', pondRims: ['pebble', 'brick', 'shell'] }, 0).cards.filter(c => c.using).length, 1);
+});
+
 const src = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 
 test('연결: 저장된 물가로 짓고, 바꿀 때는 물가 조형만 갈아 끼운다', () => {
@@ -130,8 +154,23 @@ test('창: 저장과 기록이 조형 교체보다 먼저, 교체 실패는 구�
   assert.match(fn, /if \(!out\) return false;/);
   assert.doesNotMatch(f, /rewarded|guideShortAd|closeBook/);
   assert.match(f, /b\.disabled = r\.using \|\| \(!r\.owned && !r\.canBuy\);/);
-  assert.match(f, /hint: rows\.some\(r => !r\.owned\) && !rows\.some\(r => r\.canBuy\) \? POND_COPY\.rimShort : '',/);
-  for (const p of ['js/pond/rim.js', 'js/pond/rim-ui.js', 'js/pond/shape.js', 'js/pond/build.js']) assert.doesNotMatch(src(p), /^\s*\/\//m, p);
+  assert.match(f, /hint: short \? POND_COPY\.rimShort : '',/);
+  assert.match(f, /const drawn = !rimPicsFailed\(\);/);
+  assert.match(f, /head\.append\(\.\.\.cards\.map\(c => \(drawn \? cardEl\(c, rimPic\(c\.id\)\) : rowEl\(c\)\)\)\);/);
+  assert.match(f, /drawRimPics\(\(\) => \{ if \(isBookOpen\(\) && document\.querySelector\('#cb-head \.cb-picks'\)\) openPondRim\(\); \}\);/);
+  assert.match(f, /b\.onclick = \(\) => pickRim\(c\.id\);/);
+  assert.match(f, /coins: `🪙 \$\{coins\}`,\n\s*wide: drawn,/);
+  const t = src('js/pond/rim-thumbs.js');
+  assert.match(t, /const thumbs = makeThumbs\(THREE, /);
+  assert.match(t, /buildPond\(\{ mergeGeos, paintGeo, rim \}\)/);
+  assert.doesNotMatch(t, /WebGLRenderer/);
+  assert.match(t, /const id = RIM_IDS\.find\(x => !pics\.has\(x\)\);\n\s*if \(!id \|\| busy \|\| rimPicsFailed\(\)\) return;/);
+  assert.match(t, /requestAnimationFrame\(\(\) => \{\n\s*busy = false;\n\s*pics\.set\(id, thumbs\(\[id\]\)\[id\]\);\n\s*onDraw\(\);/);
+  assert.match(src('js/pond/expand-ui.js'), /coins: `🪙 \$\{gameState\.inventory\.coins \|\| 0\}`,/);
+  const c = src('js/hud/collection-book.js');
+  assert.match(c, /\$\('cb-coins'\)\.textContent = next\.coins \?\? '';/);
+  assert.match(c, /#cb-coins:empty,#cb-count:empty\{display:none\}/);
+  for (const p of ['js/pond/rim.js', 'js/pond/rim-ui.js', 'js/pond/rim-thumbs.js', 'js/pond/shape.js', 'js/pond/build.js']) assert.doesNotMatch(src(p), /^\s*\/\//m, p);
   assert.doesNotMatch(src('js/game.js'), /pondRim|rim-ui/);
 });
 

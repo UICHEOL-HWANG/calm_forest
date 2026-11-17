@@ -2,13 +2,29 @@ const CSS = `
 #collection-book-modal{position:fixed;inset:0;z-index:40;display:none;place-items:center;background:rgba(30,40,50,.5)}
 #collection-book-modal.show{display:grid}
 .cb-card{width:min(400px,92vw);max-height:calc(100dvh - 24px);overflow:auto;background:#fffaf2;border-radius:18px;padding:16px 14px 12px;box-shadow:0 10px 30px rgba(0,0,0,.25);color:#2b2118}
-.cb-title{display:flex;justify-content:space-between;align-items:baseline;margin:0 0 8px;font-size:17px}
+.cb-card{--cb-r:12px;--cb-gap:5px}
+.cb-title{display:flex;gap:8px;align-items:baseline;margin:0 0 8px;font-size:17px}
 .cb-title small{font-size:12px;color:#6b5b4a;font-weight:500}
+#cb-title{margin-right:auto}
+#cb-coins{padding:3px 9px;border-radius:20px;background:#f3ead8;font-weight:700}
+#cb-coins:empty,#cb-count:empty{display:none}
 #cb-head:empty{display:none}
 #cb-head{margin-bottom:10px}
-.cb-head{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:#e6eff2;border-radius:12px;padding:8px 10px;font-size:13px}
+.cb-head{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:#e6eff2;border-radius:var(--cb-r);padding:8px 10px;font-size:13px}
 .cb-head.no{background:#fbeee6}
-.cb-rows{display:grid;gap:5px}
+.cb-rows{display:grid;gap:var(--cb-gap)}
+.cb-picks{display:grid;grid-template-columns:1fr 1fr;gap:var(--cb-gap)}
+.cb-pick{display:flex;flex-wrap:wrap;align-items:center;align-content:flex-start;justify-content:space-between;min-height:44px;padding:0;border:2.5px solid transparent;border-radius:var(--cb-r);background:#edeae3;color:inherit;font:inherit;cursor:pointer;overflow:hidden}
+.cb-pick i{flex:0 0 100%;aspect-ratio:1;background:#8fb860 center/150% no-repeat}
+.cb-pick b{margin:4px 0 2px 8px;font-size:12px}
+.cb-pill{margin:6px 8px 7px;padding:2px 8px;border-radius:20px;background:#4a8a60;color:#fff;font-size:11px;font-weight:700;white-space:nowrap}
+.cb-pick.using{border-color:#4e7f9a;background:#e2edf5;cursor:default}
+.cb-pick.using .cb-pill{background:#4e7f9a}
+.cb-pick.buy .cb-pill{background:#fff;color:#35627a;box-shadow:inset 0 0 0 1.5px #4e7f9a}
+.cb-pick.short{cursor:default}
+.cb-pick.short i{opacity:.6}
+.cb-pick.short .cb-pill{background:#ddd6ca;color:#857a6c}
+.cb-pick:focus-visible{outline:3px solid #2b2118;outline-offset:1px}
 .cb-num b{margin-left:6px;color:#3f8f52}
 #cb-foot:empty{display:none}
 #cb-foot{margin-top:10px}
@@ -26,7 +42,7 @@ const CSS = `
 .cb-hint span:empty{display:none}
 .cb-hint span:empty+.cb-btn{flex:1}
 .cb-close{display:block;width:100%;margin-top:10px}
-@media (max-height:520px){.cb-card{padding:10px 12px 8px}.cb-grid{grid-template-columns:repeat(7,1fr)}.cb-slot{font-size:18px}.cb-title{margin-bottom:4px}.cb-head,.cb-hint{padding:3px 10px}.cb-sec{margin:4px 0 3px}#cb-head{margin-bottom:6px}#cb-foot,.cb-hint,.cb-close{margin-top:6px}#cb-foot .cb-hint{min-height:0;padding:5px 10px}#cb-foot .cb-rows{grid-template-columns:1fr 1fr}}
+@media (max-height:520px){.cb-card{padding:10px 12px 8px}.cb-grid{grid-template-columns:repeat(7,1fr)}.cb-slot{font-size:18px}.cb-title{margin-bottom:4px}.cb-head,.cb-hint{padding:3px 10px}.cb-sec{margin:4px 0 3px}#cb-head{margin-bottom:6px}#cb-foot,.cb-hint,.cb-close{margin-top:6px}#cb-foot .cb-hint{min-height:0;padding:5px 10px}#cb-foot .cb-rows{grid-template-columns:1fr 1fr}.cb-card.wide{width:min(560px,92vw)}.cb-picks{grid-template-columns:repeat(4,1fr)}.cb-pick{justify-content:center}.cb-pick i{aspect-ratio:4/3}.cb-pick b{flex:0 0 100%;margin:4px 0 0}.cb-pill{margin:3px 4px 5px}}
 `;
 
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -46,7 +62,7 @@ function mount() {
   document.head.append(st);
   const m = document.createElement('div');
   m.id = 'collection-book-modal';
-  m.innerHTML = '<div class="cb-card"><h2 class="cb-title"><span id="cb-title"></span><small id="cb-count"></small></h2><div id="cb-head"></div><div id="cb-body"></div><div id="cb-foot"></div><div class="cb-hint" id="cb-hint"></div><button class="cb-btn ghost cb-close" id="cb-close"></button></div>';
+  m.innerHTML = '<div class="cb-card"><h2 class="cb-title"><span id="cb-title"></span><small id="cb-count"></small><small id="cb-coins"></small></h2><div id="cb-head"></div><div id="cb-body"></div><div id="cb-foot"></div><div class="cb-hint" id="cb-hint"></div><button class="cb-btn ghost cb-close" id="cb-close"></button></div>';
   m.addEventListener('click', e => { if (e.target === m) closeBook(); });
   document.body.append(m);
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && isBookOpen()) closeBook(); });
@@ -83,6 +99,8 @@ export function openBook(next) {
   model = next;
   $('cb-title').textContent = next.title;
   $('cb-count').textContent = next.count;
+  $('cb-coins').textContent = next.coins ?? '';
+  $('cb-title').closest('.cb-card').classList.toggle('wide', !!next.wide);
   $('cb-close').textContent = next.closeLabel;
   $('cb-close').onclick = closeBook;
   const head = $('cb-head');

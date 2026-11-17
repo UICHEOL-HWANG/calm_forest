@@ -29,6 +29,15 @@ export function rimView(hintsSeen, coins) {
   });
 }
 
+export function rimCards(hintsSeen, coins) {
+  const cards = rimView(hintsSeen, coins).map(r => {
+    const state = r.using ? 'using' : r.owned ? 'owned' : r.canBuy ? 'buy' : 'short';
+    const label = r.using ? POND_COPY.rimUsing : r.owned ? POND_COPY.rimSwitch : `🪙 ${r.cost}`;
+    return { ...r, state, label, off: r.using || state === 'short' };
+  });
+  return { cards, short: cards.some(c => !c.owned) && !cards.some(c => c.canBuy) };
+}
+
 export function applyRim(inventory, hintsSeen, id) {
   const row = rimView(hintsSeen, inventory?.coins).find(r => r.id === id);
   if (!row || row.using || (!row.owned && !row.canBuy)) return null;
