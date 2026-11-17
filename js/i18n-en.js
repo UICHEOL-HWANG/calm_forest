@@ -1001,6 +1001,8 @@ export const EN = {
   '닉네임 (2~16자)': 'Nickname (2–16 characters)',
   '랜덤 이름 뽑기': 'Roll a random name',
   '리더보드에 표시될 이름이에요': 'This name shows on the leaderboard',
+  '이름은 메뉴에서 언제든 바꿀 수 있어요': 'You can change your name anytime from the menu',
+  '다른 이름': 'Another name',
   '이 친구로 시작하기': 'Start with this friend',
   '📷 사진 찍기': '📷 Take a photo',
   '☁️ 사진첩': '☁️ Photo Album',
