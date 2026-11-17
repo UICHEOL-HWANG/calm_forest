@@ -6,7 +6,7 @@ import { emojiSprite } from '../spaces/kitchen-stage.js';
 import { trackEvent } from '../analytics.js';
 import { FISH_KINDS } from '../data/catalog.js';
 import { SEA_SPECIES, HOUSE_POS } from '../data/places.js';
-import { POND_R, POND_SPOTS, POND_VIEW_SEC } from '../data/pond.js';
+import { POND_R, POND_SPOTS, POND_VIEW_SEC, POND_TREE_CLEAR, POND_SOUTH_CLEAR } from '../data/pond.js';
 import { pondView, pondChanges, pickPondSpot, pondBlocks, pondToastDue, shouldTrackCreated } from './rules.js';
 import { pondStageOf, pondRadius, pondSpotFor, pondActR, pondViewR, pondFishLimits, pondBigSpotBlocks, pondGrowTipDue } from './stage.js';
 import { pondRimOf } from './rim.js';
@@ -52,7 +52,7 @@ function ensureBuilt() {
   if (!spot) return false;
   teardown();
   const r = pondRadius(stage), x = HOUSE_POS.x + spot.dx, z = HOUSE_POS.z + spot.dz;
-  if (stage >= 2) clearYard({ scene, trees, obstacles, swayables, grassClumps, removeSolid }, x, z, r + YARD_PAD);
+  if (stage >= 2) clearYard({ scene, trees, obstacles, swayables, grassClumps, removeSolid }, x, z, r + YARD_PAD, r + POND_TREE_CLEAR, POND_SOUTH_CLEAR);
   rim = pondRimOf(gameState.hintsSeen);
   pond = buildPond({ fishMesh, mergeGeos, paintGeo, emojiSprite, r, stage, rim });
   pond.group.position.set(x, 0, z);

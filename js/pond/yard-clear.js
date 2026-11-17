@@ -1,10 +1,12 @@
 const within = (o, x, z, r) => Math.hypot(o.x - x, o.z - z) < r;
 
-function clearTrees({ scene, trees, obstacles, swayables, removeSolid }, x, z, r) {
+const southOf = (o, x, z, r, south) => o.z > z && o.z - z < r + south && Math.abs(o.x - x) < r;
+
+function clearTrees({ scene, trees, obstacles, swayables, removeSolid }, x, z, r, south) {
   let n = 0;
   for (let i = trees.length - 1; i >= 0; i--) {
     const t = trees[i];
-    if (!within(t.position, x, z, r)) continue;
+    if (!within(t.position, x, z, r + (t.userData?.collider?.r ?? 0)) && !southOf(t.position, x, z, r, south)) continue;
     scene.remove(t);
     trees.splice(i, 1);
     const oi = obstacles.findIndex(o => Math.abs(o.x - t.position.x) < 0.01 && Math.abs(o.z - t.position.z) < 0.01);
@@ -41,6 +43,6 @@ function clearGrass({ grassClumps }, x, z, r) {
   return n;
 }
 
-export function clearYard(deps, x, z, r) {
-  return { trees: clearTrees(deps, x, z, r), flowers: clearFlowers(deps, x, z, r), grass: clearGrass(deps, x, z, r) };
+export function clearYard(deps, x, z, r, treeR = r, south = 0) {
+  return { trees: clearTrees(deps, x, z, treeR, south), flowers: clearFlowers(deps, x, z, r), grass: clearGrass(deps, x, z, r) };
 }
