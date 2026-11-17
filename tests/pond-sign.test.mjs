@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { POND_SPOTS, POND_STAGE_R, POND_BIG_SPOT } from '../js/data/pond.js';
-import { pondSignPos, pondSignSide, signNear, signPulseDue, signParts, signRingEase, signRingLook, SIGN_RING, SIGN_OUT, SIGN_REACH, SIGN_SOLID_R, SIGN_SIDES, SIGN_PLANK_W, SIGN_TOP } from '../js/pond/sign.js';
+import { rimPieces } from '../js/pond/shape.js';
+import { pondSignPos, pondSignSide, signNear, signPulseDue, signParts, signRingEase, signRingLook, signRingKind, SIGN_RINGS, SIGN_RING_DEFAULT, SIGN_OUT, SIGN_REACH, SIGN_SOLID_R, SIGN_SIDES, SIGN_PLANK_W, SIGN_TOP } from '../js/pond/sign.js';
 
 const src = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 const places = src('js/data/places.js');
@@ -38,8 +39,8 @@ test('팻말은 돌 고리 밖, 연못 남쪽 화면 띠 밖에 선다', () => {
     assert.ok(!(dz > 0 && Math.abs(dx) < r + 0.6), `${name} 남쪽 띠 ${dx.toFixed(2)},${dz.toFixed(2)}`);
     assert.ok(Math.abs(dx) - SIGN_PLANK_W / 2 >= r + 0.5, `${name} 판 가장자리`);
   }
-  assert.equal(SIGN_OUT, 2.2);
-  assert.ok(SIGN_TOP <= 0.95);
+  assert.equal(SIGN_OUT, 1.9);
+  assert.ok(SIGN_TOP >= 1.1 && SIGN_TOP <= 1.2);
   assert.ok(SIGN_PLANK_W <= 0.9);
 });
 
@@ -71,34 +72,53 @@ test('연못이 옮기거나 커지면 팻말이 따라간다', () => {
   const a = pondSignPos({ x: 30, z: 30 }, 2, HOUSE), b = pondSignPos({ x: 33, z: 28 }, 2, HOUSE);
   assert.ok(Math.abs((b.x - a.x) - 3) < 1e-9 && Math.abs((b.z - a.z) + 2) < 1e-9);
   const small = pondSignPos({ x: 30, z: 30 }, 2, HOUSE), big = pondSignPos({ x: 30, z: 30 }, 3.9, HOUSE);
-  assert.ok(Math.abs(d(small, { x: 30, z: 30 }) - 4.2) < 1e-9);
-  assert.ok(Math.abs(d(big, { x: 30, z: 30 }) - 6.1) < 1e-9);
+  assert.ok(Math.abs(d(small, { x: 30, z: 30 }) - 3.9) < 1e-9);
+  assert.ok(Math.abs(d(big, { x: 30, z: 30 }) - 5.8) < 1e-9);
   assert.ok(big.x - small.x > 1.8);
 });
 
 test('바닥 고리는 판정 반지름 그대로, 물가 돌·모래 밖에 놓인다', () => {
-  const ROCK_OUT = 0.1 + 0.36, SAND_OUT = 0.55;
-  assert.ok(SIGN_REACH >= 1.4);
+  const reach = (p) => Math.hypot(p.x, p.z) + (p.outer ?? (p.len ? p.len / 2 : p.size ?? 0.07));
   for (const { name, c, r } of CASES) {
     const edge = d(pondSignPos(c, r, HOUSE), c) - SIGN_REACH;
-    assert.ok(edge >= r + Math.max(ROCK_OUT, SAND_OUT), `${name} 고리 안쪽 끝 ${edge.toFixed(2)}`);
+    assert.ok(Math.abs(edge - (r + 0.7)) < 1e-9, name);
+    for (const rim of ['rock', 'pebble', 'brick', 'shell']) {
+      const out = Math.max(...rimPieces(r, rim).map(reach));
+      assert.ok(edge >= out + 0.05, `${name} ${rim} 물가 끝 ${out.toFixed(2)} 고리 ${edge.toFixed(2)}`);
+    }
+    assert.ok(edge >= Math.max(...rimPieces(r, 'rock').map(reach)) + 0.2, `${name} 돌`);
   }
   const b = src('js/pond/sign-build.js');
-  assert.match(b, /new THREE\.RingGeometry\(SIGN_REACH - RING_W, SIGN_REACH, \d+\)/);
+  assert.equal((b.match(/SIGN_REACH/g) || []).length >= 4, true);
+  assert.doesNotMatch(b, /\b1\.2\b/);
   assert.match(b, /depthWrite: false/);
-  assert.doesNotMatch(b, /ring\.castShadow/);
+  assert.doesNotMatch(b, /castShadow = true/);
   assert.match(src('js/pond/index.js'), /sign\.update\(dt, pondSignNear\(\), pulse\);/);
   assert.match(src('js/pond/index.js'), /signNear\(sign\.group\.position, player\.position\)/);
   assert.match(src('js/neighbors/scene.js'), /reach: false/);
-  for (const look of [SIGN_RING.idle, SIGN_RING.active]) {
+  assert.deepEqual(Object.keys(SIGN_RINGS), ['dash', 'disc', 'pebble']);
+  for (const look of Object.values(SIGN_RINGS).flatMap(k => [k.idle, k.active])) {
     for (const ch of [look.color >> 16, (look.color >> 8) & 255, look.color & 255]) assert.ok(ch / 255 < 0.85);
   }
-  assert.equal(SIGN_RING.idle.opacity, 0.18);
-  assert.equal(SIGN_RING.active.opacity, 0.6);
-  assert.equal(signRingLook(0, 0).opacity, 0.18);
-  assert.ok(Math.abs(signRingLook(1, 0).opacity - 0.6) < 1e-9);
-  assert.equal(signRingLook(1, 3).scale, 1);
-  assert.ok(signRingLook(0, Math.PI / 8).opacity > 0.5);
+  for (const kind of Object.keys(SIGN_RINGS)) {
+    const idle = signRingLook(kind, 0, 0), on = signRingLook(kind, 1, 0);
+    assert.equal(idle.mix, 0);
+    assert.equal(on.mix, 1);
+    assert.equal(idle.opacity, SIGN_RINGS[kind].idle.opacity);
+    assert.ok(Math.abs(on.opacity - SIGN_RINGS[kind].active.opacity) < 1e-9);
+    assert.ok(on.opacity >= idle.opacity);
+    assert.ok(signRingLook(kind, 0, Math.PI / 8).mix > 0.9);
+  }
+  assert.equal(SIGN_RINGS.pebble.idle.opacity, 1);
+  assert.ok(signRingLook('disc', 1, 0).scale > 1);
+  assert.equal(signRingLook('dash', 1, 0).scale, 1);
+  assert.ok(Object.keys(SIGN_RINGS).includes(SIGN_RING_DEFAULT));
+  assert.equal(signRingKind('?pondring=2', 'localhost'), 'disc');
+  assert.equal(signRingKind('?pondring=3', '127.0.0.1'), 'pebble');
+  assert.equal(signRingKind('?pondring=1', 'localhost'), 'dash');
+  assert.equal(signRingKind('?pondring=2', 'calmforest.example'), SIGN_RING_DEFAULT);
+  assert.equal(signRingKind('?pondring=9', 'localhost'), SIGN_RING_DEFAULT);
+  assert.equal(signRingKind('', 'localhost'), SIGN_RING_DEFAULT);
   assert.equal(signRingEase(0, true, 0.1), 0.5);
   assert.equal(signRingEase(0.5, true, 1), 1);
   assert.equal(signRingEase(0.5, false, 0.05), 0.25);
@@ -107,9 +127,9 @@ test('바닥 고리는 판정 반지름 그대로, 물가 돌·모래 밖에 놓
 
 test('팻말 앞 판정과 한 번뿐인 금빛 고리', () => {
   const sign = { x: 5, z: 5 };
-  assert.equal(SIGN_REACH, 1.6);
-  assert.equal(signNear(sign, { x: 5, z: 6.5 }), true);
-  assert.equal(signNear(sign, { x: 5, z: 6.7 }), false);
+  assert.equal(SIGN_REACH, 1.2);
+  assert.equal(signNear(sign, { x: 5, z: 6.1 }), true);
+  assert.equal(signNear(sign, { x: 5, z: 6.3 }), false);
   assert.equal(signNear(null, { x: 5, z: 5 }), false);
   const ok = { seen: false, inView: true, busy: false, coach: false, modal: false };
   assert.equal(signPulseDue(ok), true);
@@ -126,6 +146,12 @@ test('조형은 기둥·판·돌 고리 그림, 글자 없이 판 안에 든다'
   assert.equal(new Set(stones.map(s => s.color)).size, 2);
   const plank = parts.find(p => p.kind === 'plank');
   assert.equal(plank.w, SIGN_PLANK_W);
+  assert.ok(parts.length <= 25);
+  assert.equal(parts.filter(p => p.kind === 'frame').length, 4);
+  assert.equal(new Set(parts.filter(p => p.kind === 'accent').map(p => p.color)).size, 3);
+  assert.ok(parts.some(p => p.kind === 'tuft') && parts.some(p => p.kind === 'rock'));
+  assert.ok(Math.max(...parts.map(p => p.y + p.h / 2)) >= 1.1);
+  for (const p of parts) assert.ok(['box', 'post', 'disc', 'ball', 'cone'].includes(p.shape), p.kind);
   for (const s of [...stones, ...parts.filter(p => p.kind === 'water')]) {
     assert.ok(Math.abs(s.x) + s.w / 2 <= plank.w / 2 && Math.abs(s.y - plank.y) + s.h / 2 <= plank.h / 2, JSON.stringify(s));
   }
