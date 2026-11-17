@@ -83,10 +83,10 @@ function ensureBuilt(view) {
 }
 
 export function refreshTable(trigger) {
-  if (!spaceLinkOn(e3Decision())) return;
   pondKey = pondMapKey();
+  if (!spaceLinkOn(e3Decision())) return;
   const view = tableView(gameState.kitchen?.best, RECIPES, COOK_TIERS);
-  if (!view.has) return;
+  if (!view.has) { teardown(); last = null; return; }
   const state = ensureBuilt(view);
   if (!state) return;
   if (state === 'kept') table.setDishes(view.dishes);

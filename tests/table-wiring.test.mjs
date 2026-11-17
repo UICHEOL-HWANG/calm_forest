@@ -26,7 +26,7 @@ test('문 프롬프트는 연못보다 먼저 식탁을 본다', () => {
 });
 
 test('스위치 뒤에서만 돌고 저장은 hintsSeen 안에만 쓴다', () => {
-  assert.match(index, /export function refreshTable\(trigger\) \{\n  if \(!spaceLinkOn\(e3Decision\(\)\)\) return;/);
+  assert.match(index, /export function refreshTable\(trigger\) \{\n  pondKey = pondMapKey\(\);\n  if \(!spaceLinkOn\(e3Decision\(\)\)\) return;/);
   const writes = [...index.matchAll(/gameState\.(\w+)(?:\.(\w+)|\[)[^=\n]*= /g)].map(m => m[1]);
   assert.ok(writes.length >= 2);
   for (const w of writes) assert.equal(w, 'hintsSeen');
@@ -110,4 +110,10 @@ test('첫 로딩에 들어가지 않고 주석이 없다', () => {
   assert.doesNotMatch(src('index.html'), /js\/table\//);
   for (const f of ['js/table/index.js', 'js/table/copy.js', 'js/table/book-ui.js', 'js/table/guide-steps.js']) assert.doesNotMatch(src(f), /^\s*\/\//m);
   assert.doesNotMatch(index, /openTableWindow/);
+});
+
+test('a save with no dishes takes the old table down, and the pond key is kept even when the feature is off', () => {
+  const body = index.slice(index.indexOf('export function refreshTable'), index.indexOf('export function updateTable'));
+  assert.match(body, /pondKey = pondMapKey\(\);\n  if \(!spaceLinkOn\(e3Decision\(\)\)\) return;/);
+  assert.match(body, /if \(!view\.has\) \{ teardown\(\); last = null; return; \}/);
 });
