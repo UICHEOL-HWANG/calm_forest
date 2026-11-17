@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync, rmSync, existsSync, readdirSync } from 'node:fs';
+import { DECOR_SETS } from '../js/data/decor-sets.js';
 
 async function detectWith(win, search = '') {
   globalThis.window = win;
@@ -42,6 +43,7 @@ test('build-cap: 플래그 주입 · vendor 치환 · API_BASE 절대 URL · SW 
     assert.match(readFileSync('dist-cap/js/supabase-client.js', 'utf8'), /import\('\.\.\/vendor\/supabase\.js'\)/);
     assert.match(readFileSync('dist-cap/js/config.js', 'utf8'), /const API_BASE = 'https:\/\/calmforest\.cloud';/);
     assert.ok(existsSync('dist-cap/vendor/three/three.module.js'));
+    for (const s of DECOR_SETS) assert.ok(existsSync(`dist-cap/${s.thumb}`), `dist-cap/${s.thumb}`);
   } finally {
     rmSync('dist-cap', { recursive: true, force: true });
   }
