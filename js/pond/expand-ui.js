@@ -1,8 +1,9 @@
-import { gameState, ui, requestSave, refreshInventoryUI, guideShortAd } from '../game.js';
+import { gameState, plots, ui, requestSave, refreshInventoryUI, guideShortAd } from '../game.js';
+import { HOUSE_POS } from '../data/places.js';
 import { trackEvent } from '../analytics.js';
 import { logEcon } from '../metrics.js';
 import { pondStageShort } from '../guide/prepass-rules.js';
-import { pondStageInfo, pondExpandView, pondDecorInWay, applyExpand } from './stage.js';
+import { pondStageInfo, pondExpandView, pondDecorInWay, pondPlotsInWay, applyExpand } from './stage.js';
 import { pondStage, pondExists, rebuildPond, outdoorRel } from './index.js';
 import { pondBook } from './feed.js';
 import { openBook, closeBook, isBookOpen } from '../hud/collection-book.js';
@@ -23,7 +24,7 @@ function el(tag, cls, text) {
 
 function current() {
   const info = pondStageInfo(pondStage(), gameState.inventory, pondBook().got);
-  return { info, view: info.maxed ? null : pondExpandView(info, pondDecorInWay(outdoorRel(), info.next.stage)) };
+  return { info, view: info.maxed ? null : pondExpandView(info, pondDecorInWay(outdoorRel(), info.next.stage), pondPlotsInWay(plots, HOUSE_POS, info.next.stage)) };
 }
 
 function rowEl(r) {

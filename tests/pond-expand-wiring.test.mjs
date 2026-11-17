@@ -42,6 +42,18 @@ test('버튼: 다 채우면 켜지고, 새 자리에 꾸미기가 있으면 꺼�
   assert.equal(pondExpandView(pondStageInfo(3, { stone: 999, wood: 999, coins: 999 }, 11)), null);
 });
 
+test('새 자리에 밭이 있으면 꺼지고 밭 안내가 뜬다, 꾸미기 안내가 먼저', () => {
+  const full = pondStageInfo(1, { stone: 20, wood: 20, coins: 200 }, 4);
+  const plots = pondExpandView(full, 0, 1);
+  assert.equal(plots.canBuy, false);
+  assert.equal(plots.hint, 'plots');
+  assert.equal(pondExpandView(full, 1, 3).hint, 'decor');
+  assert.equal(pondExpandView(pondStageInfo(1, {}, 0), 0, 2).hint, 'plots');
+  assert.equal(pondExpandView(full, 0, 0).canBuy, true);
+  const f = src('js/pond/expand-ui.js');
+  assert.match(f, /pondExpandView\(info, pondDecorInWay\(outdoorRel\(\), info\.next\.stage\), pondPlotsInWay\(plots, HOUSE_POS, info\.next\.stage\)\)/);
+});
+
 test('넓힐 수 있다는 귀띔은 단계마다 한 번', () => {
   assert.equal(pondGrowTipDue({}, 3), 0);
   assert.equal(pondGrowTipDue({}, 4), 2);

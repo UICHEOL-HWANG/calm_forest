@@ -45,11 +45,11 @@ export function pondStageInfo(stage, inventory, bookGot) {
   return { maxed: false, cur, next, book, items, affordable: book.ok && items.every(i => i.have >= i.need) };
 }
 
-export function pondExpandView(info, decorInWay = 0) {
+export function pondExpandView(info, decorInWay = 0, plotsInWay = 0) {
   if (info.maxed) return null;
   const rows = [{ k: 'book', need: info.book.need, have: info.book.have }, ...info.items].map(r => ({ ...r, ok: r.have >= r.need }));
-  const blocked = decorInWay > 0;
-  return { rows, hint: blocked ? 'decor' : rows.find(r => !r.ok)?.k ?? null, canBuy: info.affordable && !blocked };
+  const blocked = decorInWay > 0 ? 'decor' : plotsInWay > 0 ? 'plots' : null;
+  return { rows, hint: blocked ?? rows.find(r => !r.ok)?.k ?? null, canBuy: info.affordable && !blocked };
 }
 
 export function applyExpand(inventory, hintsSeen, info, canBuy) {
@@ -75,6 +75,12 @@ export function pondDecorInWay(outdoorRel, stage) {
   const reach = pondRadius(stage) + DECOR_PAD;
   return (Array.isArray(outdoorRel) ? outdoorRel : [])
     .filter(o => Math.hypot(o.dx - POND_BIG_SPOT.dx, o.dz - POND_BIG_SPOT.dz) < reach).length;
+}
+
+export function pondPlotsInWay(plots, house, stage) {
+  return pondDecorInWay((Array.isArray(plots) ? plots : [])
+    .filter(p => Number.isFinite(p?.x) && Number.isFinite(p?.z))
+    .map(p => ({ dx: p.x - house.x, dz: p.z - house.z })), stage);
 }
 
 export function pondBigSpotBlocks(house, x, z, pad = 0) {

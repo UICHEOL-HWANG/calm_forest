@@ -51,6 +51,7 @@ export const POND_COPY = Object.freeze({
     wood: '🪵 목재는 숲에서 나무를 베면 나와요',
     coins: '🪙 상인에게 팔면 코인이 모여요',
     decor: '🪑 새 연못 자리에 꾸미기가 있어요. 옮긴 뒤 넓혀 주세요',
+    plots: '🌱 새 연못 자리에 밭이 있어요. 비운 뒤 넓혀 주세요',
   }),
   growWhere: '🧭 넓은 연못은 꾸미기 가게 옆 빈터에 새로 자리 잡아요',
   growBuy: '넓히기',

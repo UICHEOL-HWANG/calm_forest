@@ -77,3 +77,11 @@ test('P2: 단계별 반지름·자리·충돌체·마당 치우기·지도', () 
   assert.ok(g.includes('pond: pondMapKey()'));
   assert.ok(g.includes('pondPatchBlocks('));
 });
+
+test('넓힌 연못 둘레에는 괭이질이 막힌다: 밭 금지 거리가 넓히기 검사 거리보다 넓다', () => {
+  const hoePad = Number(src('js/game.js').match(/function isBlocked\(x, z\) \{ return obstacles\.some\(o => Math\.hypot\(x - o\.x, z - o\.z\) < o\.r \+ ([\d.]+)\); \}/)[1]);
+  const blockPad = Number(src('js/pond/index.js').match(/block = \{ x, z, r: r \+ ([\d.]+) \};/)[1]);
+  const reachPad = Number(src('js/pond/stage.js').match(/const DECOR_PAD = ([\d.]+);/)[1]);
+  assert.ok(blockPad + hoePad >= reachPad, `${blockPad} + ${hoePad} < ${reachPad}`);
+  assert.match(src('js/spaces/orchard-actions.js'), /if \(isBlocked\(gx, gz\)\) \{ ui\.toast/);
+});

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   POND_STAGES, MAX_POND_STAGE, pondStageOf, pondRadius, pondSpotFor, pondStageInfo,
-  pondDecorInWay, pondFishLimits, pondActR, pondViewR, pondBigSpotBlocks, applyExpand,
+  pondDecorInWay, pondPlotsInWay, pondFishLimits, pondActR, pondViewR, pondBigSpotBlocks, applyExpand,
 } from '../js/pond/stage.js';
 import { POND_R, POND_STAGE_R, POND_BIG_SPOT, POND_SPOTS } from '../js/data/pond.js';
 import { pondView } from '../js/pond/rules.js';
@@ -73,6 +73,19 @@ test('pondDecorInWay — 넓은 자리에 놓인 꾸미기 수, 1단계에는 �
   assert.equal(pondDecorInWay([at(3.6, 0)], 2), 0);
   assert.equal(pondDecorInWay([at(3.6, 0)], 3), 1);
   assert.equal(pondDecorInWay(undefined, 3), 0);
+});
+
+test('pondPlotsInWay — 넓은 자리에 갈아 둔 밭 수, 꾸미기와 같은 거리', () => {
+  const house = { x: -8, z: -8 };
+  const at = (dx, dz) => ({ x: house.x + POND_BIG_SPOT.dx + dx, z: house.z + POND_BIG_SPOT.dz + dz, state: 'growing' });
+  assert.equal(pondPlotsInWay([at(0, 0)], house, 1), 0);
+  assert.equal(pondPlotsInWay([at(0, 0), at(2, 0), at(20, 0)], house, 2), 2);
+  assert.equal(pondPlotsInWay([at(3.4, 0)], house, 2), 1);
+  assert.equal(pondPlotsInWay([at(3.6, 0)], house, 2), 0);
+  assert.equal(pondPlotsInWay([at(3.6, 0)], house, 3), 1);
+  assert.equal(pondPlotsInWay([at(4.5, 0)], house, 3), 0);
+  assert.equal(pondPlotsInWay([{ x: 0, z: 84 }, { x: NaN, z: 0 }, null], house, 3), 0);
+  assert.equal(pondPlotsInWay(undefined, house, 3), 0);
 });
 
 test('pondFishLimits — 2단계부터 바다 대어 4마리, 3단계는 강 물고기 종당 2마리', () => {

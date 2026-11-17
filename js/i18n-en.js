@@ -3350,6 +3350,7 @@ export const EN = {
   '🪵 목재는 숲에서 나무를 베면 나와요': '🪵 Chop trees in the forest for wood',
   '🪙 상인에게 팔면 코인이 모여요': '🪙 Sell to the merchant to earn coins',
   '🪑 새 연못 자리에 꾸미기가 있어요. 옮긴 뒤 넓혀 주세요': '🪑 Decor stands where the new pond goes. Move it, then expand',
+  '🌱 새 연못 자리에 밭이 있어요. 비운 뒤 넓혀 주세요': '🌱 A farm plot sits where the new pond goes. Clear it, then expand',
   '넓히기': 'Expand',
   '🧭 넓은 연못은 꾸미기 가게 옆 빈터에 새로 자리 잡아요': '🧭 The wide pond gets a new home in the open lot beside the Dress-Up Shop',
   '🌊 넓은 연못이 꾸미기 가게 옆에 생겼어요. 가 보세요': '🌊 Your wide pond is now beside the Dress-Up Shop. Go take a look',

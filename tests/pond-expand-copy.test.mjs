@@ -26,6 +26,7 @@ test('확정 문구 그대로', () => {
     wood: '🪵 목재는 숲에서 나무를 베면 나와요',
     coins: '🪙 상인에게 팔면 코인이 모여요',
     decor: '🪑 새 연못 자리에 꾸미기가 있어요. 옮긴 뒤 넓혀 주세요',
+    plots: '🌱 새 연못 자리에 밭이 있어요. 비운 뒤 넓혀 주세요',
   });
   assert.equal(POND_COPY.growBuy, '넓히기');
   assert.equal(POND_COPY.growWhere, '🧭 넓은 연못은 꾸미기 가게 옆 빈터에 새로 자리 잡아요');
@@ -35,7 +36,7 @@ test('확정 문구 그대로', () => {
     3: '🏝️ 큰 연못이 됐어요. 작은 섬과 징검다리가 생겼어요',
   });
   assert.equal(POND_COPY.growTip, '📒 수첩이 {0}종이에요. 연못을 넓힐 수 있어요');
-  assert.equal(GROW.length, 21);
+  assert.equal(GROW.length, 22);
 });
 
 test('문구 규칙: 엠대시·놀다·화살표 이모지 없음', () => {
