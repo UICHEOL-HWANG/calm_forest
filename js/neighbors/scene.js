@@ -14,7 +14,7 @@ import { prepHouseMeshes, unregisterWindows } from '../spaces/house.js';
 import { spawnPet } from '../pet/render.js';
 import { DOOR_COLORS, NEIGHBOR, NEIGHBOR_R, ROOF_COLORS, SEA_SPECIES, WALL_COLORS } from '../data/places.js';
 import { stage7Boxes } from '../house-stage7.js';
-import { hostSpot, houseSolidR, neighborPond, pondCovers } from './rules.js';
+import { hostSpot, houseSolidR, neighborPond, neighborPondView, pondCovers } from './rules.js';
 import { buildPond } from '../pond/build.js';
 import { pondFishLimits } from '../pond/stage.js';
 import { emojiSprite } from '../spaces/kitchen-stage.js';
@@ -141,7 +141,7 @@ export function buildNeighborScene(view) {
     if (ps) {
       const p = buildPond({ fishMesh, mergeGeos, paintGeo, emojiSprite, r: ps.r, stage: ps.stage });
       p.group.position.set(NEIGHBOR.x + ps.dx, 0, NEIGHBOR.z + ps.dz);
-      p.setContents(view.pond, (sp) => SEA_SPECIES.find(s => s.id === sp)?.color ?? 0x6f8fa8, pondFishLimits(ps.stage));
+      p.setContents(neighborPondView(view.pond), (sp) => SEA_SPECIES.find(s => s.id === sp)?.color ?? 0x6f8fa8, pondFishLimits(ps.stage));
       group.add(p.group);
       pondUpdate = (dt) => p.update(dt);
       pondDispose = () => p.dispose();

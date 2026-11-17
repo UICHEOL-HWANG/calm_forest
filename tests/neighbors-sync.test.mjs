@@ -62,7 +62,12 @@ test('🐟 연못 — _nb_pond·neighbor_showcase 가 최종본과 같고 id 목
   const POND_SQL = read('sql/migrations/migrate_neighbor_pond.sql');
   const STAGE_SQL = read('sql/migrations/migrate_neighbor_pond_stage.sql');
   assert.equal(pond(STAGE_SQL), pond(SQL));
-  assert.equal(pond(POND_SQL), pond(SQL).replace(/,\n    'stage', [^\n]*(?=\);\n)/, ''));
+  const seaOrder = "order by w desc, array_position(array['aji','buri','mola','tuna'], sp)";
+  assert.ok(pond(SQL).includes(`'sea', (select jsonb_build_object('sp', sp, 'w', w) from sea ${seaOrder} limit 1),`));
+  assert.ok(pond(SQL).includes(`'seas', coalesce((select jsonb_agg(jsonb_build_object('sp', sp, 'w', w) ${seaOrder}) from sea), '[]'::jsonb),`));
+  assert.equal(pond(POND_SQL), pond(SQL).replace(` ${seaOrder} limit 1),`, '),').replace(/\n    'seas', [^\n]*/, '').replace(/,\n    'stage', [^\n]*(?=\);\n)/, '').replace('    limit 4\n', '    limit 1\n'));
+  assert.equal((pond(SQL).match(/::numeric/g) || []).length, 3);
+  assert.equal((pond(SQL).match(/::int/g) || []).length, 1);
   assert.ok(pond(SQL).includes(`'stage', case when p_state #>> '{hintsSeen,pondStage}' ~ '^[0-9]{1,9}$' then least(${MAX_POND_STAGE}, greatest(1, (p_state #>> '{hintsSeen,pondStage}')::int)) else 1 end);`));
   assert.doesNotMatch(STAGE_SQL, /neighbor_showcase/);
   assert.equal(show(POND_SQL), show(SQL));

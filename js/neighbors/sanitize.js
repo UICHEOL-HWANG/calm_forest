@@ -21,6 +21,7 @@ export const ROOM_MAX_XY = 7.5;   // 🏠 방 반폭(7)+여유 — sql _nb_room 
 export const COSMETIC_SLOTS = Object.freeze(['head', 'neck', 'back', 'trail', 'skin']);
 const MAX_STAGE = 7;
 const PALETTE_N = 5;                      // ROOF/WALL/DOOR_COLORS 길이(js/data/places.js)
+const POND_MAX_SEAS = 4;
 const NICK_FALLBACK = '이름 없는 여행자';   // SQL 의 coalesce 와 같은 문구
 
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
@@ -67,9 +68,15 @@ export function sanitizeShowcase(raw, ctx) {
   const riverIds = ctx.pondRiverIds || [];
   const pondFish = [...new Set((Array.isArray(rp.fish) ? rp.fish : []).filter(id => typeof id === 'string' && riverIds.includes(id)))].slice(0, POND_MAX_RIVER);
   const sw = rp.sea && typeof rp.sea === 'object' ? rp.sea : null;
-  const pondSea = sw && (ctx.seaIds || []).includes(sw.sp) && num(sw.w) != null && sw.w > 0 ? { sp: sw.sp, w: sw.w } : null;
+  const seaOf = (v) => (v && typeof v === 'object' && (ctx.seaIds || []).includes(v.sp) && num(v.w) != null && v.w > 0 ? { sp: v.sp, w: v.w } : null);
+  const pondSea = seaOf(sw);
+  const pondSeas = [];
+  for (const v of Array.isArray(rp.seas) ? rp.seas : [pondSea]) {
+    const one = seaOf(v);
+    if (one && pondSeas.length < POND_MAX_SEAS && !pondSeas.some(x => x.sp === one.sp)) pondSeas.push(one);
+  }
   const ps = num(rp.stage);
-  const pond = { fish: pondFish, sea: pondSea, has: pondFish.length > 0 || !!pondSea,
+  const pond = { fish: pondFish, sea: pondSea, seas: pondSeas, has: pondFish.length > 0 || !!pondSea || pondSeas.length > 0,
                  stage: ps != null && Number.isInteger(ps) && ps >= 1 && ps <= MAX_POND_STAGE ? ps : 1 };
 
   return {

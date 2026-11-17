@@ -13,11 +13,12 @@ returns jsonb language sql immutable set search_path = public as $$
     where k.key in ('aji','buri','mola','tuna')
       and case when jsonb_typeof(k.value) = 'number' then (k.value #>> '{}')::numeric > 0 else false end
     order by 2 desc, array_position(array['aji','buri','mola','tuna'], k.key)
-    limit 1
+    limit 4
   )
   select jsonb_build_object(
     'fish', coalesce((select jsonb_agg(id order by t, array_position(array['sakura_trout','puffer','maple_carp','ice_smelt','rare','uncommon','common'], id)) from fish), '[]'::jsonb),
-    'sea', (select jsonb_build_object('sp', sp, 'w', w) from sea),
+    'sea', (select jsonb_build_object('sp', sp, 'w', w) from sea order by w desc, array_position(array['aji','buri','mola','tuna'], sp) limit 1),
+    'seas', coalesce((select jsonb_agg(jsonb_build_object('sp', sp, 'w', w) order by w desc, array_position(array['aji','buri','mola','tuna'], sp)) from sea), '[]'::jsonb),
     'stage', case when p_state #>> '{hintsSeen,pondStage}' ~ '^[0-9]{1,9}$' then least(3, greatest(1, (p_state #>> '{hintsSeen,pondStage}')::int)) else 1 end);
 $$;
 

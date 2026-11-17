@@ -7,7 +7,7 @@ import { kstDate } from '../kst-date.js';
 import { EXPANSIONS, STAGE_NAMES } from '../house-cost.js';
 import { stage7ExitPoint } from '../house-stage7.js';
 import { pickPondSpot } from '../pond/rules.js';
-import { pondRadius, pondSpotFor } from '../pond/stage.js';
+import { pondRadius, pondSpotFor, pondFishLimits } from '../pond/stage.js';
 import { POND_SPOTS, POND_R } from '../data/pond.js';
 
 const POND_CLEAR = 0.6;
@@ -53,6 +53,10 @@ export function neighborPond(pond, outdoor) {
   if (!pond?.has) return null;
   const spot = pondSpotFor(pond.stage, pickPondSpot(POND_SPOTS, outdoor, POND_R));
   return spot ? { dx: spot.dx, dz: spot.dz, r: pondRadius(pond.stage), stage: pond.stage } : null;
+}
+
+export function neighborPondView(pond) {
+  return { fish: pond.fish, seas: (pond.seas || []).slice(0, pondFishLimits(pond.stage).seaMax) };
 }
 
 export function pondCovers(pond, dx, dz, pad = 0) {
