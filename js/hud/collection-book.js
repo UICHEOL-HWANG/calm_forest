@@ -26,7 +26,7 @@ const CSS = `
 .cb-hint span:empty{display:none}
 .cb-hint span:empty+.cb-btn{flex:1}
 .cb-close{display:block;width:100%;margin-top:10px}
-@media (max-height:520px){.cb-card{padding:10px 12px 8px}.cb-grid{grid-template-columns:repeat(7,1fr)}.cb-slot{font-size:18px}.cb-title{margin-bottom:4px}.cb-head,.cb-hint{padding:3px 10px}.cb-sec{margin:4px 0 3px}#cb-head{margin-bottom:6px}#cb-foot,.cb-hint,.cb-close{margin-top:6px}#cb-foot .cb-hint{min-height:0;padding:5px 10px}}
+@media (max-height:520px){.cb-card{padding:10px 12px 8px}.cb-grid{grid-template-columns:repeat(7,1fr)}.cb-slot{font-size:18px}.cb-title{margin-bottom:4px}.cb-head,.cb-hint{padding:3px 10px}.cb-sec{margin:4px 0 3px}#cb-head{margin-bottom:6px}#cb-foot,.cb-hint,.cb-close{margin-top:6px}#cb-foot .cb-hint{min-height:0;padding:5px 10px}#cb-foot .cb-rows{grid-template-columns:1fr 1fr}}
 `;
 
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
