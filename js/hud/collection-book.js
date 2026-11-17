@@ -59,6 +59,7 @@ function setHint(info) {
   line.textContent = info?.line ?? model.hint;
   box.append(line);
   const go = info ? info.go : model.go;
+  box.style.display = line.textContent || go ? '' : 'none';
   if (!go) return;
   const b = document.createElement('button');
   b.className = 'cb-btn';

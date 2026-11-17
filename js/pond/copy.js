@@ -61,4 +61,11 @@ export const POND_COPY = Object.freeze({
   }),
   growTip: '📒 수첩이 {0}종이에요. 연못을 넓힐 수 있어요',
   growMoved: '🌊 넓은 연못이 꾸미기 가게 옆에 생겼어요. 가 보세요',
+  rimBtn: '🪨 물가 꾸미기',
+  rimTitle: '🪨 물가 꾸미기',
+  rimName: Object.freeze({ rock: '기본 돌', pebble: '흰 조약돌', brick: '붉은 벽돌', shell: '조개와 산호' }),
+  rimUsing: '쓰는 중',
+  rimSwitch: '바꾸기',
+  rimShort: '🪙 코인이 모자라요. 상인에게 팔면 모여요',
+  rimDone: '🪨 물가를 새로 꾸몄어요',
 });

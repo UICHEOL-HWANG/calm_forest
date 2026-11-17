@@ -9,6 +9,7 @@ import { SEA_SPECIES, HOUSE_POS } from '../data/places.js';
 import { POND_R, POND_SPOTS, POND_VIEW_SEC } from '../data/pond.js';
 import { pondView, pondChanges, pickPondSpot, pondBlocks, pondToastDue, shouldTrackCreated } from './rules.js';
 import { pondStageOf, pondRadius, pondSpotFor, pondActR, pondViewR, pondFishLimits, pondBigSpotBlocks, pondGrowTipDue } from './stage.js';
+import { pondRimOf } from './rim.js';
 import { pondBook } from './feed.js';
 import { clearYard } from './yard-clear.js';
 import { buildPond } from './build.js';
@@ -23,7 +24,7 @@ const seaColorOf = (sp) => SEA_SPECIES.find(s => s.id === sp)?.color ?? 0x6f8fa8
 
 const YARD_PAD = 0.6, PATCH_PAD = 0.3, GROW_SEC = 2;
 
-let pond = null, solid = null, block = null, built = 0, last = null, nearSec = 0, viewedDay = null, toastPending = false, toastWait = 0, tip = 0;
+let pond = null, solid = null, block = null, built = 0, rim = '', last = null, nearSec = 0, viewedDay = null, toastPending = false, toastWait = 0, tip = 0;
 
 const kstDay = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
 export const outdoorRel = () => (Array.isArray(gameState.outdoor) ? gameState.outdoor : [])
@@ -41,7 +42,7 @@ function teardown() {
   removeSolid(solid);
   const i = obstacles.indexOf(block);
   if (i >= 0) obstacles.splice(i, 1);
-  pond = null; solid = null; block = null; built = 0;
+  pond = null; solid = null; block = null; built = 0; rim = '';
 }
 
 function ensureBuilt() {
@@ -52,7 +53,8 @@ function ensureBuilt() {
   teardown();
   const r = pondRadius(stage), x = HOUSE_POS.x + spot.dx, z = HOUSE_POS.z + spot.dz;
   if (stage >= 2) clearYard({ scene, trees, obstacles, swayables, grassClumps, removeSolid }, x, z, r + YARD_PAD);
-  pond = buildPond({ fishMesh, mergeGeos, paintGeo, emojiSprite, r, stage });
+  rim = pondRimOf(gameState.hintsSeen);
+  pond = buildPond({ fishMesh, mergeGeos, paintGeo, emojiSprite, r, stage, rim });
   pond.group.position.set(x, 0, z);
   scene.add(pond.group);
   solid = solidCircle(x, z, r + 0.1);
@@ -91,6 +93,14 @@ export function rebuildPond() {
   teardown();
   refreshPond('expand');
   pond?.grow(GROW_SEC);
+}
+
+export function setPondRim() {
+  if (!spaceLinkOn(e3Decision()) || !pond) return;
+  const next = pondRimOf(gameState.hintsSeen);
+  if (next === rim) return;
+  pond.setRim(next);
+  rim = next;
 }
 
 export function updatePond(dt, inVillage) {
@@ -132,7 +142,7 @@ export function pondPatchBlocks(x, z, patchR) {
 }
 
 export function pondMapKey() {
-  return pondExists() ? `${built}@${pond.group.position.x.toFixed(1)},${pond.group.position.z.toFixed(1)}` : '';
+  return pondExists() ? `${built}${rim}@${pond.group.position.x.toFixed(1)},${pond.group.position.z.toFixed(1)}` : '';
 }
 
 export function pondSettling() {

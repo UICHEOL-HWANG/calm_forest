@@ -70,7 +70,7 @@ test('P2: 단계별 반지름·자리·충돌체·마당 치우기·지도', () 
   for (const call of ['pondSpotFor(', 'pondRadius(', 'pondActR(', 'pondViewR(', 'pondFishLimits(', 'removeSolid(', 'obstacles.push(', 'clearYard(']) assert.ok(p.includes(call), call);
   assert.doesNotMatch(p, /POND_ACT_R|POND_VIEW_R/);
   const b = src('js/pond/build.js');
-  assert.ok(b.includes('export function buildPond({ fishMesh, mergeGeos, paintGeo, emojiSprite, r = POND_R, stage = 1 })'));
+  assert.ok(b.includes('export function buildPond({ fishMesh, mergeGeos, paintGeo, emojiSprite, r = POND_R, stage = 1, rim = \'rock\' })'));
   assert.ok(b.includes('setContents(view, seaColorOf, limits'));
   assert.match(b, /grow\(/);
   const g = src('js/game.js');

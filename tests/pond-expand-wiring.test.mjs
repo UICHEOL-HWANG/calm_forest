@@ -116,7 +116,9 @@ test('옮겨 간 연못 안내: 2단계로 넓힐 때만, 연못 행동 거리�
 test('수첩 창 입구와 공용 창의 아래 줄·버튼', () => {
   const f = src('js/pond/feed.js');
   assert.match(f, /export function pondBook\(\)/);
-  assert.match(f, /foot: growRow\(\),/);
+  assert.match(f, /foot: footRows\(\),/);
+  assert.match(f, /rows\.append\(growRow\(\), rimRow\(\)\);/);
+  assert.match(f, /b\.onclick = openPondRim;/);
   assert.match(f, /pondStage\(\) >= MAX_POND_STAGE/);
   assert.match(f, /b\.onclick = openPondExpand;/);
   const c = src('js/hud/collection-book.js');

@@ -10,6 +10,7 @@ import { feedStatus, afterFeed, afterFeedAd, fishBook, FEED_BUFF_SEC } from './a
 import { pondExists, pondCount, pondGather, pondStage } from './index.js';
 import { MAX_POND_STAGE } from './stage.js';
 import { openPondExpand } from './expand-ui.js';
+import { openPondRim } from './rim-ui.js';
 import { openBook, closeBook } from '../hud/collection-book.js';
 import { yardGuidePointTo } from './yard-guide.js';
 import { POND_COPY } from './copy.js';
@@ -79,6 +80,24 @@ function growRow() {
   return row;
 }
 
+function rimRow() {
+  const row = document.createElement('div');
+  row.className = 'cb-head';
+  const b = document.createElement('button');
+  b.className = 'cb-btn';
+  b.textContent = POND_COPY.rimBtn;
+  b.onclick = openPondRim;
+  row.append(b);
+  return row;
+}
+
+function footRows() {
+  const rows = document.createElement('div');
+  rows.className = 'cb-rows';
+  rows.append(growRow(), rimRow());
+  return rows;
+}
+
 function go(kind) {
   closeBook();
   yardGuidePointTo(kind);
@@ -108,7 +127,7 @@ export function openPondBook() {
     closeLabel: POND_COPY.bookClose,
     hint: POND_COPY.bookHint,
     head: feedRow(),
-    foot: growRow(),
+    foot: footRows(),
     sections: [{ title: POND_COPY.secRiver, slots: book.river.map(label) }, { title: POND_COPY.secSea, slots: book.sea.map(label) }],
     onSlot: slotInfo,
   });

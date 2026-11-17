@@ -1,16 +1,27 @@
 import * as THREE from 'three';
 import { POND_R } from '../data/pond.js';
 import { POND_SEA_SCALE } from './rules.js';
-import { pondLayout, swimLane, keepOff } from './shape.js';
+import { pondLayout, rimPieces, swimLane, keepOff } from './shape.js';
 
 const FISH_SCALE = 0.62;
 const BED = 0x3f7f96, ROCK_A = 0xb8b0a4, ROCK_B = 0xa39a8e, PAD = 0x5fbf7a, REED = 0x6aa84f, LOTUS = 0xf5a9c4;
 const ISLE_TOP = 0x8fbf5a, ISLE_TREE = 0x4f9a5a, STEP = 0xd9cfc0;
 const GROW_FROM = 0.6;
 
-function shoreGeometry({ mergeGeos, paintGeo }, r, layout) {
+const RIM_GEO = {
+  pebble: p => new THREE.IcosahedronGeometry(p.size, 1).scale(1, 0.6, 1),
+  brick: p => new THREE.BoxGeometry(p.len, 0.2, 0.3),
+  sand: p => new THREE.RingGeometry(p.inner, p.outer, 28).rotateX(-Math.PI / 2),
+  chip: p => new THREE.IcosahedronGeometry(p.size, 0).scale(1, 0.6, 1),
+  clam: p => new THREE.SphereGeometry(p.size, 6, 3, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.55, 0.8),
+  coral: p => new THREE.CylinderGeometry(0.045, 0.07, p.h, 5).rotateZ(p.lean),
+  conch: () => new THREE.ConeGeometry(0.13, 0.34, 6).rotateZ(Math.PI / 2),
+};
+
+function shoreGeometry({ mergeGeos, paintGeo }, r, layout, rim) {
   const parts = [paintGeo(new THREE.CylinderGeometry(r - 0.1, r - 0.1, 0.06, 20).translate(0, -0.18, 0), BED)];
-  for (const s of layout.rocks) {
+  for (const s of rimPieces(r, rim)) {
+    if (s.shape) { parts.push(paintGeo(RIM_GEO[s.shape](s).rotateY(s.ry).translate(s.x, s.y, s.z), s.color)); continue; }
     const g = new THREE.DodecahedronGeometry(s.size, 0).scale(1, 0.6, 1).translate(s.x, 0.08, s.z);
     parts.push(paintGeo(g, s.alt ? ROCK_A : ROCK_B));
   }
@@ -32,11 +43,11 @@ function shoreGeometry({ mergeGeos, paintGeo }, r, layout) {
   return mergeGeos(parts);
 }
 
-export function buildPond({ fishMesh, mergeGeos, paintGeo, emojiSprite, r = POND_R, stage = 1 }) {
+export function buildPond({ fishMesh, mergeGeos, paintGeo, emojiSprite, r = POND_R, stage = 1, rim = 'rock' }) {
   const layout = pondLayout(r, stage);
   const k = layout.k;
   const group = new THREE.Group(); group.name = 'pond';
-  const shore = new THREE.Mesh(shoreGeometry({ mergeGeos, paintGeo }, r, layout),
+  const shore = new THREE.Mesh(shoreGeometry({ mergeGeos, paintGeo }, r, layout, rim),
     new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0, flatShading: true }));
   shore.receiveShadow = true;
   const water = new THREE.Mesh(new THREE.CylinderGeometry(r - 0.05, r - 0.05, 0.04, 24),
@@ -70,6 +81,10 @@ export function buildPond({ fishMesh, mergeGeos, paintGeo, emojiSprite, r = POND
       const seas = view.seas ?? (view.sea ? [view.sea] : []);
       river.forEach((id, i) => addFish(fishMesh(id), i, FISH_SCALE));
       seas.forEach((s, j) => addFish(fishMesh('common', seaColorOf(s.sp)), river.length + j, FISH_SCALE * POND_SEA_SCALE));
+    },
+    setRim(next) {
+      shore.geometry.dispose();
+      shore.geometry = shoreGeometry({ mergeGeos, paintGeo }, r, layout, next);
     },
     pop(emoji) {
       const sp = emojiSprite(emoji, 0.7);
