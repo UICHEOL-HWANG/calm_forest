@@ -41,7 +41,7 @@ test('섬 배치: 박물관 기단·계단·큐레이터 자리는 개울 안쪽
     for (let i = 0; i < 32; i++) { const a = i / 32 * Math.PI * 2; if (onStream(x + Math.cos(a) * r, z + Math.sin(a) * r)) return false; }
     return !onStream(x, z);
   };
-  assert.ok(clear(-17.5, -4, 2.6), '🏪 꾸미기 가게');
+  assert.ok(clear(-27.5, -9.5, 2.6), '🏪 꾸미기 가게');
   assert.ok(clear(-18, 23, 9.8), '🍄 채집 숲');
   assert.ok(clear(-14, 3, 2), '⛏️ 광산 입구');
   const f = bridgeFoot();

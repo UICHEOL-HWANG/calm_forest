@@ -7,7 +7,9 @@ import { SEA_SPECIES } from '../data/places.js';
 import { DEX } from '../data/dex.js';
 import { SEASON_IDS, seasonInfo } from '../season.js';
 import { feedStatus, afterFeed, afterFeedAd, fishBook, FEED_BUFF_SEC } from './actions.js';
-import { pondExists, pondCount, pondGather } from './index.js';
+import { pondExists, pondCount, pondGather, pondStage } from './index.js';
+import { MAX_POND_STAGE } from './stage.js';
+import { openPondExpand } from './expand-ui.js';
 import { openBook, closeBook } from '../hud/collection-book.js';
 import { yardGuidePointTo } from './yard-guide.js';
 import { POND_COPY } from './copy.js';
@@ -60,6 +62,23 @@ function feedRow() {
   return row;
 }
 
+function growRow() {
+  const row = document.createElement('div');
+  row.className = 'cb-head';
+  if (pondStage() >= MAX_POND_STAGE) {
+    const line = document.createElement('span');
+    line.textContent = POND_COPY.growMaxed;
+    row.append(line);
+    return row;
+  }
+  const b = document.createElement('button');
+  b.className = 'cb-btn';
+  b.textContent = POND_COPY.growBtn;
+  b.onclick = openPondExpand;
+  row.append(b);
+  return row;
+}
+
 function go(kind) {
   closeBook();
   yardGuidePointTo(kind);
@@ -74,10 +93,14 @@ function slotInfo(slot) {
   return { line: h.now ? POND_COPY.hintLakeNow : POND_COPY.hintLake, go: { label: POND_COPY.goLake, onClick: () => go('lake') } };
 }
 
+export function pondBook() {
+  const info = seasonInfo(todayStr());
+  return fishBook({ dexFish: gameState.dex?.fish, seaBest: gameState.sea?.best }, { river: riverList(), sea: seaList() }, { season: info.season.id, left: info.left }, SEASON_IDS);
+}
+
 export function openPondBook() {
   if (!pondExists()) return;
-  const info = seasonInfo(todayStr());
-  const book = fishBook({ dexFish: gameState.dex?.fish, seaBest: gameState.sea?.best }, { river: riverList(), sea: seaList() }, { season: info.season.id, left: info.left }, SEASON_IDS);
+  const book = pondBook();
   const label = s => ({ ...s, label: s.w != null ? `${s.w}kg` : s.name });
   openBook({
     title: POND_COPY.bookTitle,
@@ -85,6 +108,7 @@ export function openPondBook() {
     closeLabel: POND_COPY.bookClose,
     hint: POND_COPY.bookHint,
     head: feedRow(),
+    foot: growRow(),
     sections: [{ title: POND_COPY.secRiver, slots: book.river.map(label) }, { title: POND_COPY.secSea, slots: book.sea.map(label) }],
     onSlot: slotInfo,
   });

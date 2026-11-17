@@ -141,11 +141,14 @@ returns jsonb language sql immutable set search_path = public as $$
     where k.key in ('aji','buri','mola','tuna')
       and case when jsonb_typeof(k.value) = 'number' then (k.value #>> '{}')::numeric > 0 else false end
     order by 2 desc, array_position(array['aji','buri','mola','tuna'], k.key)
-    limit 1
+    limit 4
   )
   select jsonb_build_object(
     'fish', coalesce((select jsonb_agg(id order by t, array_position(array['sakura_trout','puffer','maple_carp','ice_smelt','rare','uncommon','common'], id)) from fish), '[]'::jsonb),
-    'sea', (select jsonb_build_object('sp', sp, 'w', w) from sea));
+    'sea', (select jsonb_build_object('sp', sp, 'w', w) from sea order by w desc, array_position(array['aji','buri','mola','tuna'], sp) limit 1),
+    'seas', coalesce((select jsonb_agg(jsonb_build_object('sp', sp, 'w', w) order by w desc, array_position(array['aji','buri','mola','tuna'], sp)) from sea), '[]'::jsonb),
+    'rim', case when p_state->'hintsSeen'->>'pondRim' in ('pebble','brick','shell') then p_state->'hintsSeen'->>'pondRim' else 'rock' end,
+    'stage', case when p_state #>> '{hintsSeen,pondStage}' ~ '^[0-9]{1,9}$' then least(3, greatest(1, (p_state #>> '{hintsSeen,pondStage}')::int)) else 1 end);
 $$;
 
 -- 후보 = 공개(행 없으면 공개) + 관리자 숨김 아님 + 비익명 + 7일 안에 저장 + 집 1단계 이상 + 본인 제외. 하루 고정 정렬(리롤 불가)
@@ -243,7 +246,8 @@ begin
     'outdoor',    _nb_yard(s),
     'room',       _nb_room(s),
     'coop',       jsonb_build_object('built', coalesce(s #> '{coop,built}' = 'true'::jsonb, false)),
-    'pond',       _nb_pond(s)
+    'pond',       _nb_pond(s),
+    'table',      _nb_table(s)
   );
 end $$;
 
@@ -378,6 +382,21 @@ revoke all on function public._nb_num(jsonb) from public, anon, authenticated;
 revoke all on function public._nb_yard(jsonb) from public, anon, authenticated;
 revoke all on function public._nb_room(jsonb) from public, anon, authenticated;
 revoke all on function public._nb_pond(jsonb) from public, anon, authenticated;
+
+create or replace function public._nb_table(p_state jsonb)
+returns jsonb language sql immutable set search_path = public as $$
+  with d as (
+    select k.key as id, (k.value #>> '{}')::numeric as s
+    from jsonb_each(case when jsonb_typeof(p_state #> '{kitchen,best}') = 'object' then p_state #> '{kitchen,best}' else '{}'::jsonb end) k
+    where k.key in ('veg_stew','mushroom_soup','rice_ball','baked_yam','herb_salad','grilled_fish','omelette','bread','grape_juice','lunchbox','forest_feast')
+      and case when jsonb_typeof(k.value) = 'number' then (k.value #>> '{}')::numeric > 0 else false end
+  )
+  select jsonb_build_object('dishes', coalesce((select jsonb_agg(jsonb_build_object('id', id, 'tier',
+    case when s >= 88 then 'perfect' when s >= 65 then 'great' when s >= 35 then 'good' else 'plain' end)
+    order by array_position(array['veg_stew','mushroom_soup','rice_ball','baked_yam','herb_salad','grilled_fish','omelette','bread','grape_juice','lunchbox','forest_feast'], id)) from d), '[]'::jsonb));
+$$;
+
+revoke all on function public._nb_table(jsonb) from public, anon, authenticated;
 revoke all on function public._nb_candidates(uuid, date, int) from public, anon, authenticated;
 revoke all on function public._nb_public_id(uuid) from public, anon, authenticated;
 revoke all on function public._nb_nick_blocked(text) from public, anon, authenticated;

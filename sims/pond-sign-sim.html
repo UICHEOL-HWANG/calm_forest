@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>연못 꾸미기 표지판 · 시안 3종</title>
+<style>
+  :root { --bg: #f4efe6; --ink: #2b2118; --muted: #6b5b4a; --card: #fffaf2; --line: #e2d6c4; --btn: #4e7f9a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Pretendard", "Apple SD Gothic Neo", sans-serif; }
+  body.night { --bg: #1d2333; --ink: #eef0f6; --muted: #aab2c8; --card: #272e42; --line: #3a4360; }
+  header { padding: 14px 20px 2px; display: flex; gap: 16px; align-items: center; justify-content: space-between; }
+  h1 { margin: 0 0 3px; font-size: 20px; }
+  header p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.45; max-width: 580px; }
+  button { flex: none; border: 0; background: var(--btn); color: #fff; font: inherit; font-weight: 700; font-size: 14px; padding: 10px 14px; border-radius: 10px; cursor: pointer; white-space: nowrap; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 12px 20px 20px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .card h2 { margin: 0; padding: 9px 10px 1px; font-size: 16px; }
+  .card .how { margin: 0; padding: 0 10px 7px; color: var(--muted); font-size: 12px; line-height: 1.4; }
+  .view { position: relative; border-top: 2px solid var(--line); }
+  .view canvas { display: block; width: 100%; aspect-ratio: 1; }
+  .tag { position: absolute; left: 6px; top: 6px; background: rgba(43,33,24,.72); color: #fff; font-size: 11px; padding: 3px 7px; border-radius: 6px; pointer-events: none; }
+  @media (max-width: 768px) {
+    header { padding: 10px 16px 0; }
+    h1 { font-size: 17px; }
+    header p { display: none; }
+    .grid { grid-template-columns: repeat(2, 1fr); padding: 8px 16px 12px; gap: 8px; }
+    .card h2 { font-size: 13px; padding: 6px 8px 4px; }
+    .card .how { display: none; }
+    .v1 { display: none; }
+    .vc { display: block !important; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>연못 꾸미기 표지판 · 시안 3종</h1>
+    <p>연못 남동쪽(집에서 오는 방향) 물가에 세우는 꾸미기 표지판. 위=1단계(r 2.0), 중=3단계(r 3.9+섬), 아래=가까이. 🐻는 스케일 기준. 🪨 말풍선은 꾸미기 접점 표시.</p>
+  </div>
+  <button id="toggle" type="button">밤으로 보기</button>
+</header>
+<div class="grid" id="grid"></div>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+const POND_R=2.0;
+const BED=0x3f7f96,ROCK_A=0xb8b0a4,ROCK_B=0xa39a8e,PAD=0x5fbf7a,REED=0x6aa84f,LOTUS=0xf5a9c4;
+const ISLE_TOP=0x8fbf5a,ISLE_TREE=0x4f9a5a,STEP=0xd9cfc0,GROUND=0x9cc96b;
+const PADS=[[-0.8,-0.6],[0.9,0.7],[0.2,-1.1]];
+const REEDS=[[-1.8,0.7],[-1.6,1.0],[1.5,-1.4]];
+const ISLE={x:1.6,z:-1.2,r:1.0};
+const STONES=[0,1,2,3].map(i=>[-0.2+0.5*i,0.2-0.38*i]);
+const RIVER=[0x9fb4c8,0xe06a5a,0x7ae0ff,0xe8743c,0xf5a9c4,0xf2d16b,0xbfe4f2];
+const SEA=[0x4a6f8f,0x6f8fa8,0x7a8896,0x33628f];
+
+const mats=new Map();
+const clay=c=>mats.get(c)??mats.set(c,new THREE.MeshStandardMaterial({color:c,roughness:0.95,metalness:0,flatShading:true})).get(c);
+const rnd=(i,s=0)=>{const x=Math.sin(i*127.1+s*311.7)*43758.5453;return x-Math.floor(x);};
+
+const around=(n,R,fn)=>{for(let i=0;i<n;i++){const a=(i/n)*Math.PI*2;fn(i,a,Math.cos(a)*R,Math.sin(a)*R);}};
+const rockGeo=size=>new THREE.DodecahedronGeometry(size,0).scale(1,0.6,1);
+const rockSize=i=>0.26+(i%3)*0.05;
+
+function fishMesh(col,s){
+  const g=new THREE.Group();
+  const mat=new THREE.MeshStandardMaterial({color:col,roughness:0.95});
+  g.add(new THREE.Mesh(new THREE.SphereGeometry(0.26,8,6).scale(1.6,0.9,0.7),mat));
+  g.add(new THREE.Mesh(new THREE.ConeGeometry(0.16,0.3,6).rotateZ(Math.PI/2).translate(-0.52,0,0),mat));
+  g.scale.setScalar(s);return g;
+}
+function swimLane(i,k){
+  const lap=Math.floor(i/8)*0.15;
+  return{rx:(1.15-(i%4)*0.12+lap)*k,rz:(0.9-(i%4)*0.1+lap)*k,cx:((i%4)-1.5)*0.15*k,cz:(i%2?0.2:-0.2)*k,speed:(i%2?-1:1)*(0.35+(i%5)*0.05),phase:i*1.5};
+}
+function keepOff(x,z,isle){
+  if(!isle)return[x,z];
+  const dx=x-isle.x,dz=z-isle.z,d=Math.hypot(dx,dz),min=isle.r+0.4;
+  return d>=min?[x,z]:[isle.x+(dx/d)*min,isle.z+(dz/d)*min];
+}
+
+function buildPond(r,stage){
+  const g=new THREE.Group(),k=r/POND_R,isle=stage>=3?ISLE:null;
+  const add=(geo,color,x=0,y=0,z=0)=>{
+    const m=new THREE.Mesh(geo,clay(color));
+    m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;g.add(m);return m;
+  };
+  add(new THREE.CylinderGeometry(r-0.1,r-0.1,0.06,20),BED,0,-0.18,0).castShadow=false;
+  PADS.forEach(([x,z])=>add(new THREE.CylinderGeometry(0.28,0.28,0.02,10,1,false,0.4,Math.PI*1.75),PAD,x*k,0.07,z*k));
+  add(new THREE.SphereGeometry(0.09,6,5),LOTUS,PADS[1][0]*k,0.12,PADS[1][1]*k);
+  REEDS.forEach(([x,z])=>add(new THREE.CylinderGeometry(0.03,0.04,0.9,4),REED,x*k,0.45,z*k));
+  if(isle){
+    add(new THREE.CylinderGeometry(0.8,1.0,0.3,12),ISLE_TOP,isle.x,0.05,isle.z);
+    add(new THREE.ConeGeometry(0.45,1.2,7),ISLE_TREE,isle.x,0.85,isle.z);
+    STONES.forEach(([x,z])=>add(new THREE.CylinderGeometry(0.26,0.28,0.12,8),STEP,x,0.08,z));
+  }
+  const water=new THREE.Mesh(new THREE.CylinderGeometry(r-0.05,r-0.05,0.04,24),
+    new THREE.MeshStandardMaterial({color:0x4aa6d0,transparent:true,opacity:0.3,roughness:0.25,emissive:0x184a63,emissiveIntensity:0.35,depthWrite:false}));
+  water.position.y=0.04;water.renderOrder=2;g.add(water);
+  const river=stage>=3?[...RIVER,...RIVER]:RIVER,seas=stage>=3?SEA:SEA.slice(0,1);
+  [...river,...seas].forEach((col,i)=>{
+    const f=swimLane(i,k),a=2*f.speed+f.phase,m=fishMesh(col,i<river.length?0.62:0.95);
+    const[x,z]=keepOff(f.cx+Math.cos(a)*f.rx,f.cz+Math.sin(a)*f.rz,isle);
+    m.position.set(x,-0.05+Math.sin(a*2)*0.03,z);m.rotation.y=-a-(Math.PI/2)*Math.sign(f.speed);g.add(m);
+  });
+  around(Math.round(r*7),r+0.1,(i,a,x,z)=>{
+    const m=new THREE.Mesh(rockGeo(rockSize(i)),clay(i%2?ROCK_A:ROCK_B));
+    m.position.set(x,0.08,z);m.castShadow=true;m.receiveShadow=true;g.add(m);
+  });
+  return g;
+}
+
+// Circular bubble — small world-bubble style with tail
+function makeBubble(){
+  const S=72,R=28,cx=36,cy=31;
+  const cv=document.createElement('canvas');cv.width=S;cv.height=S;
+  const c=cv.getContext('2d');
+  // shadow ring
+  c.fillStyle='rgba(0,0,0,0.10)';c.beginPath();c.arc(cx,cy+1,R,0,Math.PI*2);c.fill();
+  // white circle
+  c.fillStyle='rgba(255,252,245,0.97)';c.beginPath();c.arc(cx,cy,R,0,Math.PI*2);c.fill();
+  c.strokeStyle='rgba(80,55,30,0.18)';c.lineWidth=1.5;c.stroke();
+  // small downward tail
+  const tailY=cy+R-5;
+  c.fillStyle='rgba(255,252,245,0.97)';
+  c.beginPath();c.moveTo(cx-5,tailY);c.lineTo(cx+5,tailY);c.lineTo(cx,S-4);c.closePath();c.fill();
+  // emoji ~60% of circle diameter
+  c.font='30px serif';c.textAlign='center';c.textBaseline='middle';
+  c.fillText('\u{1FAA8}',cx,cy+1);
+  const tex=new THREE.CanvasTexture(cv);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
+  sp.scale.set(0.55,0.55,1);sp.renderOrder=10;return sp;
+}
+
+// ── 표지판 1: 나무 팻말 ─────────────────────────────────────────
+function makeSign1(){
+  const g=new THREE.Group();
+  const post=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.09,1.0,6),clay(0xc9a06a));
+  post.position.y=0.5;post.castShadow=true;g.add(post);
+  // enlarged board 0.90 wide with high-contrast rock-ring icon
+  const cv=document.createElement('canvas');cv.width=192;cv.height=96;
+  const c=cv.getContext('2d');
+  c.fillStyle='#e8d3a8';c.fillRect(0,0,192,96);
+  c.fillStyle='#7a5a28';c.fillRect(0,0,192,9);c.fillRect(0,87,192,9);
+  // water circle centre — deeper blue
+  c.fillStyle='rgba(30,100,180,0.55)';c.beginPath();c.arc(96,50,18,0,Math.PI*2);c.fill();
+  // pebble ring — high contrast alternating dark/light
+  for(let i=0;i<11;i++){
+    const a=(i/11)*Math.PI*2;
+    c.fillStyle=i%2?'#5a5048':'#d6cec4';
+    c.beginPath();c.ellipse(96+Math.cos(a)*26,50+Math.sin(a)*14*0.75,7,5.5,a+1.57,0,Math.PI*2);c.fill();
+  }
+  c.fillStyle='#f0c020';c.font='10px serif';c.textAlign='center';c.fillText('✦',125,38);
+  const tex=new THREE.CanvasTexture(cv);
+  const face=new THREE.MeshStandardMaterial({map:tex,roughness:0.8});
+  const side=clay(0xb8955a);
+  const board=new THREE.Mesh(new THREE.BoxGeometry(0.90,0.30,0.08),[side,side,side,side,face,face]);
+  board.position.set(0,0.87,0.02);board.castShadow=true;g.add(board);
+  const bubble=makeBubble();bubble.position.set(0,1.52,0);g.add(bubble);
+  return g;
+}
+
+// ── 표지판 2: 이젤 그림판 ───────────────────────────────────────
+function makeSign2(){
+  const g=new THREE.Group();
+  const lm=clay(0xb88040);
+  const lh=0.9;
+  const leg=(rz,rx,px,pz)=>{
+    const l=new THREE.Mesh(new THREE.CylinderGeometry(0.025,0.03,lh,5),lm);
+    l.rotation.z=rz;l.rotation.x=rx;
+    l.position.set(px,lh*0.44,pz);l.castShadow=true;g.add(l);
+  };
+  leg( 0.14, 0.17,-0.19,0.09);
+  leg(-0.14, 0.17, 0.19,0.09);
+  leg( 0,  -0.22,    0,-0.14);
+  const bar=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,0.42,5),lm);
+  bar.rotation.z=Math.PI/2;bar.position.set(0,0.32,0.08);bar.castShadow=true;g.add(bar);
+  const cv=document.createElement('canvas');cv.width=96;cv.height=80;
+  const c=cv.getContext('2d');
+  c.fillStyle='#f8f4ee';c.fillRect(0,0,96,80);
+  c.strokeStyle='#d4b880';c.lineWidth=4;c.strokeRect(2,2,92,76);
+  c.fillStyle='#3f8fa0';c.beginPath();c.arc(48,42,20,0,Math.PI*2);c.fill();
+  const cols=['#c8402a','#4a9fb8','#e8743c','#f2d16b','#c89050','#88a870','#9fb4c8','#f5a9c4','#a39a8e'];
+  for(let i=0;i<9;i++){const a=(i/9)*Math.PI*2;c.fillStyle=cols[i];c.beginPath();c.arc(48+Math.cos(a)*29,42+Math.sin(a)*29,5,0,Math.PI*2);c.fill();}
+  c.fillStyle='#8fbf5a';c.beginPath();c.arc(59,33,6,0,Math.PI*2);c.fill();
+  c.fillStyle='#4f9a5a';c.beginPath();c.moveTo(59,21);c.lineTo(55,33);c.lineTo(63,33);c.closePath();c.fill();
+  const tex=new THREE.CanvasTexture(cv);
+  const face=new THREE.MeshStandardMaterial({map:tex,roughness:0.7});
+  const canvas=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.36,0.05),[clay(0xd4a060),clay(0xd4a060),clay(0xd4a060),clay(0xd4a060),face,clay(0xd4a060)]);
+  canvas.position.set(0,0.78,-0.01);canvas.rotation.x=-0.08;canvas.castShadow=true;g.add(canvas);
+  const pot=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.065,0.1,6),clay(0xe8c090));
+  pot.position.set(0.14,0.05,0.14);pot.castShadow=true;g.add(pot);
+  const lid=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.015,6),clay(0xe06a5a));
+  lid.position.set(0.14,0.108,0.14);g.add(lid);
+  const bubble=makeBubble();bubble.position.set(0,1.44,0);g.add(bubble);
+  return g;
+}
+
+// ── 표지판 3: 조약돌 탑 (케언) ──────────────────────────────────
+function makeSign3(){
+  const g=new THREE.Group();
+  const base=new THREE.Mesh(new THREE.CylinderGeometry(0.32,0.37,0.1,8),clay(0xc8c0b8));
+  base.position.y=0.05;base.castShadow=true;base.receiveShadow=true;g.add(base);
+  let topY=0.1;
+  [{r:0.21,sx:1.1,sy:0.75,ry:0.5,c:0xb2aaa2},{r:0.16,sx:1.0,sy:0.70,ry:1.1,c:0xa4998e},{r:0.12,sx:0.95,sy:0.65,ry:0.3,c:0x9e9590}].forEach(({r:sr,sx,sy,ry,c})=>{
+    const m=new THREE.Mesh(new THREE.DodecahedronGeometry(sr,0).scale(sx,sy,1.0),clay(c));
+    m.position.y=topY+sr*sy*0.75;m.rotation.y=ry;m.castShadow=true;m.receiveShadow=true;g.add(m);
+    topY+=sr*sy*1.25;
+  });
+  const ph=0.44;
+  const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.015,0.016,ph,5),clay(0xd4a060));
+  pole.position.set(0,topY+ph/2,0);pole.castShadow=true;g.add(pole);
+  // warm red flag — clearly visible against grass
+  const flag=new THREE.Mesh(new THREE.BoxGeometry(0.26,0.15,0.03),new THREE.MeshStandardMaterial({color:0xe05030,roughness:0.8,flatShading:true}));
+  flag.position.set(0.13,topY+ph-0.075,0);flag.castShadow=true;g.add(flag);
+  const bubble=makeBubble();bubble.position.set(0,topY+ph+0.52,0);g.add(bubble);
+  return g;
+}
+
+const SIGNS=[
+  {name:'나무 팻말',  how:'기존 채굴장·텃밭 팻말 문법. 판에 돌 고리 아이콘.',      prims:2,make:makeSign1},
+  {name:'이젤 그림판',how:'이젤에 연못 스케치가 걸린다. 발치에 물감통.',           prims:7,make:makeSign2},
+  {name:'조약돌 탑',  how:'쌓인 케언. 연못 돌과 같은 재질, 가장 자연스러움.',      prims:6,make:makeSign3},
+];
+
+// Bear-coloured capsule scale reference (#8a5a3c, ~1.6 tall, ~0.9 wide)
+function makeBear(){
+  const g=new THREE.Group();
+  const bc=clay(0x8a5a3c);
+  const body=new THREE.Mesh(new THREE.CylinderGeometry(0.38,0.40,1.0,8),bc);
+  body.position.y=0.6;body.castShadow=true;g.add(body);
+  // top cap sphere for capsule shape
+  const head=new THREE.Mesh(new THREE.SphereGeometry(0.38,8,7),bc);
+  head.position.y=1.1;head.castShadow=true;g.add(head);
+  // small ear nubs
+  for(const ex of[-0.22,0.22]){
+    const ear=new THREE.Mesh(new THREE.SphereGeometry(0.11,6,5),bc);
+    ear.position.set(ex,1.42,-0.05);ear.castShadow=true;g.add(ear);
+  }
+  return g;
+}
+
+const scene=new THREE.Scene();
+const hemi=new THREE.HemisphereLight();scene.add(hemi);
+const sun=new THREE.DirectionalLight();sun.position.set(6,12,8);sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048);sun.shadow.bias=-0.0005;sun.shadow.normalBias=0.02;
+Object.assign(sun.shadow.camera,{left:-14,right:14,top:14,bottom:-14,near:1,far:60});
+scene.add(sun);
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(80,80),clay(GROUND));
+ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+
+const SIZE=480;
+const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
+renderer.setSize(SIZE,SIZE,false);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+const cam=new THREE.PerspectiveCamera(34,1,0.1,200);
+
+// Sign placement: south shore slightly east (ang=0.20 rad ≈ 11° from south/+Z)
+const ANG=0.20;
+
+// 3 view definitions — look/dist computed per-sign below
+const VIEW_DEFS=[
+  {stage:1,tag:'1단계 · r 2.0',cls:'v1'},
+  {stage:3,tag:'3단계 · r 3.9',cls:'v3'},
+  {stage:1,tag:'가까이 본 모습',cls:'vc',close:true},
+];
+
+const gridEl=document.getElementById('grid');
+const tiles=[];
+
+SIGNS.forEach((sign,si)=>{
+  const card=document.createElement('div');card.className='card';
+  card.innerHTML=`<h2>${si+1}. ${sign.name}</h2><p class="how">${sign.how} · 조각 ${sign.prims}개</p>`;
+
+  VIEW_DEFS.forEach(v=>{
+    const r=v.stage===3?3.9:2.0;
+    const signDist=r+0.65;
+    const sx=signDist*Math.sin(ANG);  // ~0.53 for r=2.0
+    const sz=signDist*Math.cos(ANG);  // ~2.59 for r=2.0
+
+    const pondGrp=buildPond(r,v.stage);
+    const signGrp=sign.make();
+    signGrp.position.set(sx,0,sz);
+    signGrp.rotation.y=0;
+    pondGrp.add(signGrp);
+
+    // Bear in every stage-1 and every close-up tile, to the left of the sign
+    if(v.stage===1||v.close){
+      const bear=makeBear();
+      bear.position.set(sx-0.68,0,sz);
+      pondGrp.add(bear);
+    }
+
+    // Per-view camera parameters
+    let look, dist, elevFactor;
+    if(v.close){
+      // Frame sign+bear: lower camera, look straight at sign
+      look=[sx-0.28, 0.72, sz];
+      dist=5.5;
+      elevFactor=0.40;
+    } else if(v.stage===1){
+      look=[sx*0.22, 0, 0.1];
+      dist=9.5;
+      elevFactor=0.70;
+    } else {
+      look=[sx*0.18, 0, 0.1];
+      dist=16.0;
+      elevFactor=0.70;
+    }
+
+    const view=document.createElement('div');view.className='view '+v.cls;
+    const cv=document.createElement('canvas');cv.width=cv.height=SIZE;
+    view.innerHTML=`<span class="tag">${v.tag}</span>`;
+    view.prepend(cv);card.appendChild(view);
+    tiles.push({ctx:cv.getContext('2d'),group:pondGrp,dist,look,elevFactor});
+  });
+  gridEl.appendChild(card);
+});
+
+function draw(night){
+  document.body.classList.toggle('night',night);
+  document.getElementById('toggle').textContent=night?'낮으로 보기':'밤으로 보기';
+  hemi.color.set(night?0x6f86c8:0xfff6e6);
+  hemi.groundColor.set(night?0x1c2440:0x8a7a66);
+  hemi.intensity=night?0.75:1.25;
+  sun.color.set(night?0x9db4ee:0xfff1d6);
+  sun.intensity=night?0.5:1.35;
+  for(const t of tiles){
+    scene.add(t.group);
+    const[lx,ly,lz]=t.look;
+    cam.position.set(lx,t.dist*t.elevFactor,lz+t.dist*0.72);
+    cam.lookAt(lx,ly,lz);
+    renderer.render(scene,cam);
+    t.ctx.drawImage(renderer.domElement,0,0);
+    scene.remove(t.group);
+  }
+}
+let night=new URLSearchParams(location.search).has('night');
+document.getElementById('toggle').onclick=()=>draw(night=!night);
+draw(night);
+window.__ready=true;
+</script>
+</body>
+</html>

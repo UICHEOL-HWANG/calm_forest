@@ -185,10 +185,10 @@ export const RIVER_DOCK_HALF = 6;                        // 상류 나루터(걸
 
 export { RIVER_W, RIVER_LEN, BOAT_RUNS_PER_DAY, BOAT_BASE_SPEED, BOAT_BOOST_CD, RIVER_OBS, RIVER_PICKS } from '../boat/consts.js';
 
-// 🏪 꾸미기 가게 — 마을 서쪽, 집터(-8,-8)와 ⛏️동굴 입구(-14,3) 사이 빈터.
-//    중심에서 18.0 이라 나무 링(r8~30) 한복판이다 — 나무·꽃 산포 제외 목록에 **반드시** 들어가야 한다.
+// 🏪 꾸미기 가게 — 마을 서쪽, 🏛️박물관 물길 북쪽 빈터.
+//    중심에서 29.1 이라 나무 링(r8~30) 안이다 — 나무·꽃 산포 제외 목록에 **반드시** 들어가야 한다.
 //    정면은 +Z 라 회전하지 않는다(카메라 시선이 늘 −Z).
-export const SHOP_POS = new THREE.Vector3(-17.5, 0, -4);
+export const SHOP_POS = new THREE.Vector3(-27.5, 0, -9.5);
 
 //  🎀 가게 앞(정면 +Z) 판정점 — 콜라이더가 2.4 라 중심 기준으론 가까이 갈 수가 없다.
 //     문 쪽으로 2.0 내밀어 **앞에 섰을 때만** 잡히게 한다(옆·뒤는 2.8 밖).

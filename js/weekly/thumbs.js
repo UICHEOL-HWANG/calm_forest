@@ -28,7 +28,7 @@ function dispose(mesh) {
   });
 }
 
-export function makeThumbs(THREE, build) {
+export function makeThumbs(THREE, build, size = SIZE) {
   const cache = new Map();
   return (ids) => {
     const todo = ids.filter((id) => !cache.has(id));
@@ -37,7 +37,7 @@ export function makeThumbs(THREE, build) {
       try {
         r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
         r.setPixelRatio(RATIO);
-        r.setSize(SIZE, SIZE);
+        r.setSize(size, size);
         r.outputColorSpace = THREE.SRGBColorSpace;
         for (const id of todo) {
           const mesh = build(THREE, id);

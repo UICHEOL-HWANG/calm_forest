@@ -72,6 +72,8 @@ test('the map signature changes with unlocks, outdoor decor, house stage and sea
     { outdoor: [{ id: 'lamp', x: 1, z: 2, rot: 0 }] },
     { houseStage: 4 },
     { season: 'winter' },
+    { pond: '2@-16.5,-11.0' },
+    { table: 'front/long' },
   ]) assert.notEqual(S.mapSignature({ ...base, ...changed }), sig, JSON.stringify(Object.keys(changed)));
   assert.equal(typeof S.mapSignature({ season: 'spring', houseStage: 0, unlocks: null, outdoor: [] }), 'string');
 });
@@ -102,6 +104,9 @@ test('game.js wires the snapshot module in a few lines', () => {
   assert.ok(lines.length >= 3 && lines.length <= 5, lines.join('\n'));
   assert.match(game, /initMapSnapshot\(\{/);
   assert.match(game, /tickMapSnapshot\(place === 'village'/);
+  assert.match(game, /signature: \(\) => mapSignature\([^\n]+pond: pondMapKey\(\), table: tableMapKey\(\) \}\), settling: \(\) => pondSettling\(\) \|\| tableSettling\(\),/);
+  assert.match(read('js/pond/index.js'), /export function pondSettling\(\) \{\n  return !!pond\?\.growing\(\);\n\}/);
+  assert.match(read('js/pond/build.js'), /growing: \(\) => growLeft > 0,/);
   assert.match(game, /ui\.setMapSnapshot\?\.\(/);
   assert.match(game, /try \{ timeOfDay = 0\.5; dayPaused = true; updateDayNight\(0\); fn\(\); \} finally \{ timeOfDay = t0; dayPaused = p0; updateDayNight\(0\); \}/);
   assert.doesNotMatch(read('js/world/map-snapshot.js'), /WebGLRenderer\(/);
@@ -143,7 +148,7 @@ test('the snapshot waits for play, precompiles, retakes only after a settled cha
   globalThis.ImageData ??= class { constructor(data, w, h) { Object.assign(this, { data, width: w, height: h }); } };
   globalThis.document ??= { createElement: () => ({ width: 0, height: 0, getContext: () => ({ putImageData() {} }) }) };
   const calls = { compile: 0, shots: 0, onShot: 0, renders: 0 };
-  let sig = 'a', fail = true, target = null;
+  let sig = 'a', fail = true, target = null, settling = false;
   const renderer = {
     autoClear: false, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1, outputColorSpace: THREE.SRGBColorSpace, shadowMap: { autoUpdate: true, needsUpdate: false },
     getRenderTarget: () => target, setRenderTarget: t => { target = t; }, getViewport: v => v.set(0, 0, 800, 600), setViewport: () => {},
@@ -161,7 +166,7 @@ test('the snapshot waits for play, precompiles, retakes only after a settled cha
   let seen = null;
   S.initMapSnapshot({
     renderer, scene, mobile: true, sunLight: sun, hemiLight: hemi, onShot: c => { calls.onShot++; seen = c; },
-    transients: () => [player], signature: () => sig,
+    transients: () => [player], signature: () => sig, settling: () => settling,
     daylight: fn => { calls.shots++; if (fail) throw new Error('readback'); fn(); },
   });
   const flush = () => new Promise(r => setTimeout(r, 0));
@@ -224,6 +229,16 @@ test('the snapshot waits for play, precompiles, retakes only after a settled cha
   await flush();
   S.tickMapSnapshot(true, 14300);
   assert.equal(calls.shots, 4);
+  assert.equal(S.mapSnapshotInfo().error, null);
+  sig = 'e'; settling = true;
+  S.requestMapSnapshot();
+  await flush();
+  S.tickMapSnapshot(true, 14400);
+  S.tickMapSnapshot(true, 14400 + S.DIRTY_SETTLE + S.SIGNATURE_EVERY);
+  assert.equal(calls.shots, 4, 'no shot while something on the map is still settling');
+  settling = false;
+  S.tickMapSnapshot(true, 14500 + S.DIRTY_SETTLE + S.SIGNATURE_EVERY);
+  assert.equal(calls.shots, 5, 'the held shot happens as soon as it settles');
   assert.equal(S.mapSnapshotInfo().error, null);
 });
 

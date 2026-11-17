@@ -25,10 +25,21 @@ export function pondSea(seaBest, seaIds) {
   return out;
 }
 
-export function pondView({ dexFish, seaBest } = {}, { riverIds, seaIds }) {
+export function pondSeas(seaBest, seaIds, max = 1) {
+  const best = obj(seaBest);
+  return seaIds
+    .map((sp, i) => ({ sp, w: best[sp], i }))
+    .filter(e => isNum(e.w) && e.w > 0)
+    .sort((a, b) => (b.w - a.w) || (a.i - b.i))
+    .slice(0, Math.max(1, max))
+    .map(({ sp, w }) => ({ sp, w }));
+}
+
+export function pondView({ dexFish, seaBest } = {}, { riverIds, seaIds }, limits) {
   const fish = pondFish(dexFish, riverIds);
-  const sea = pondSea(seaBest, seaIds);
-  return { fish, sea, has: fish.length > 0 || !!sea };
+  const seas = pondSeas(seaBest, seaIds, limits?.seaMax);
+  const sea = seas[0] ?? null;
+  return { fish, sea, seas, has: fish.length > 0 || !!sea };
 }
 
 export function pondChanges(prev, next) {
