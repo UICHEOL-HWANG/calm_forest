@@ -1,7 +1,7 @@
 export const TABLE_COPY = Object.freeze({
   prompt: '🍽️ 마당 식탁',
   created: '🍽️ 마당에 식탁이 생겼어요. 만든 요리가 올라가요',
-  long: '🍽️ 요리가 7가지가 됐어요. 긴 식탁으로 바뀌었어요',
+  long: '🍽️ 요리 7가지를 모았어요. 식탁이 길어졌어요',
   bookTitle: '📖 나의 요리책',
   bookHint: '빈 칸을 누르면 필요한 재료가 보여요',
   bookClose: '닫기',
@@ -17,7 +17,7 @@ export const TABLE_COPY = Object.freeze({
   biteHint: '먹을 요리를 하나 골라 주세요',
   biteEat: '먹기',
   biteLine: '{0}초 동안 힘이 나요',
-  biteDone: '🥄 한 입 먹었어요. 잠깐 힘이 나요',
+  biteDone: '🥄 한 입 먹었어요. 힘이 조금 더 가요',
   bitToday: '오늘은 한 입 먹었어요. 내일 또 먹을 수 있어요',
   adMore: '한 입 더',
   stepTable: '🍽️ 마당에 식탁이 생겼어요. 가 보세요',

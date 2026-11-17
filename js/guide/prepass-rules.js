@@ -113,13 +113,14 @@ export function pondStageShort(stage, inv) {
 }
 
 export function shortAdParts(give, lang) {
-  const parts = ['광고 보고', ' '];
+  const en = lang === 'en';
+  const parts = ['광고 보고', en ? ' for ' : ' '];
   shortParts(Object.entries(give).map(([k, more]) => ({ k, more }))).forEach((p, i) => {
     if (i) parts.push(' · ');
     parts.push(`${p.ico} ${p.more}`);
-    if (lang !== 'en') parts.push('개');
+    if (!en) parts.push('개');
   });
-  parts.push(' ', '받기');
+  if (!en) parts.push(' ', '받기');
   return parts;
 }
 

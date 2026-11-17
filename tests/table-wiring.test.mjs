@@ -95,7 +95,7 @@ test('문구: 초안 그대로, 금지 표현 없음, 영어 사전에 통문장
   assert.deepEqual(world, {
     prompt: '🍽️ 마당 식탁',
     created: '🍽️ 마당에 식탁이 생겼어요. 만든 요리가 올라가요',
-    long: '🍽️ 요리가 7가지가 됐어요. 긴 식탁으로 바뀌었어요',
+    long: '🍽️ 요리 7가지를 모았어요. 식탁이 길어졌어요',
   });
   const en = src('js/i18n-en.js');
   for (const s of Object.values(world)) {
