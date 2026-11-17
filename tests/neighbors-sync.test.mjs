@@ -49,7 +49,7 @@ test('🏠 실내 상한 — SQL _nb_room 과 sanitize 가 같다 · 운영 파�
   const show = (s) => s.match(/create or replace function public\.neighbor_showcase[\s\S]*?\nend \$\$;/)[0];
   const ROOM_SQL = read('sql/migrations/migrate_neighbors_room.sql');
   assert.equal(room(ROOM_SQL), room(SQL));
-  assert.equal(show(ROOM_SQL), show(SQL).replace(",\n    'pond',       _nb_pond(s)", ''));
+  assert.equal(show(ROOM_SQL), show(SQL).replace(",\n    'pond',       _nb_pond(s),\n    'table',      _nb_table(s)", ''));
   assert.match(room(SQL), new RegExp(`abs\\(\\(e\\.o->>'x'\\)::numeric\\) <= ${ROOM_MAX_XY}`));
   assert.match(room(SQL), new RegExp(`abs\\(\\(e\\.o->>'z'\\)::numeric\\) <= ${ROOM_MAX_XY}`));
   assert.match(room(SQL), new RegExp(`limit ${ROOM_MAX}\\n`));
@@ -72,8 +72,8 @@ test('🐟 연못 — _nb_pond·neighbor_showcase 가 최종본과 같고 id 목
   assert.ok(pond(SQL).includes(`'stage', case when p_state #>> '{hintsSeen,pondStage}' ~ '^[0-9]{1,9}$' then least(${MAX_POND_STAGE}, greatest(1, (p_state #>> '{hintsSeen,pondStage}')::int)) else 1 end);`));
   assert.ok(pond(SQL).includes(`'rim', case when p_state->'hintsSeen'->>'pondRim' in (${RIM_IDS.slice(1).map(i => `'${i}'`).join(',')}) then p_state->'hintsSeen'->>'pondRim' else '${RIM_IDS[0]}' end,\n`));
   assert.doesNotMatch(STAGE_SQL, /neighbor_showcase/);
-  assert.equal(show(POND_SQL), show(SQL));
-  assert.match(show(SQL), /'coop',[^\n]*,\n\s+'pond',\s+_nb_pond\(s\)\n/);
+  assert.equal(show(POND_SQL), show(SQL).replace(",\n    'table',      _nb_table(s)", ''));
+  assert.match(show(SQL), /'coop',[^\n]*,\n\s+'pond',\s+_nb_pond\(s\),\n\s+'table',\s+_nb_table\(s\)\n/);
   const river = ['sakura_trout', 'puffer', 'maple_carp', 'ice_smelt', 'rare', 'uncommon', 'common'];
   const sea = ['aji', 'buri', 'mola', 'tuna'];
   const list = (ids) => `array[${ids.map(i => `'${i}'`).join(',')}]`;
@@ -85,4 +85,28 @@ test('🐟 연못 — _nb_pond·neighbor_showcase 가 최종본과 같고 id 목
   const rev = 'revoke all on function public._nb_pond(jsonb) from public, anon, authenticated;';
   assert.ok(SQL.includes(rev) && POND_SQL.includes(rev) && STAGE_SQL.includes(rev));
   assert.ok(pond(SQL).includes('set search_path = public'));
+});
+
+test('🍽️ 식탁 — _nb_table·neighbor_showcase 가 최종본과 같고 레시피·등급이 게임과 같다', () => {
+  const table = (s) => s.match(/create or replace function public\._nb_table[\s\S]*?\n\$\$;/)[0];
+  const show = (s) => s.match(/create or replace function public\.neighbor_showcase[\s\S]*?\nend \$\$;/)[0];
+  const keys = (s) => [...show(s).matchAll(/^    '([a-zA-Z]+)',\s/gm)].map(m => m[1]);
+  const TABLE_SQL = read('sql/migrations/migrate_neighbor_table.sql');
+  assert.equal(table(TABLE_SQL), table(SQL));
+  assert.equal(show(TABLE_SQL), show(SQL));
+  const before = keys(read('sql/migrations/migrate_neighbor_pond.sql'));
+  assert.deepEqual(keys(SQL), [...before, 'table']);
+  const cat = read('js/data/catalog.js'), at = cat.indexOf('export const RECIPES');
+  const ids = [...cat.slice(at, cat.indexOf('];', at)).matchAll(/id: '([a-z_]+)'/g)].map(m => m[1]);
+  const quoted = ids.map(i => `'${i}'`).join(',');
+  assert.ok(table(SQL).includes(`k.key in (${quoted})`));
+  assert.ok(table(SQL).includes(`array_position(array[${quoted}], id)`));
+  const tiers = [...read('js/spaces/cooking.js').matchAll(/\{ id: '([a-z]+)',\s+min: (\d+),/g)].map(m => [m[1], +m[2]]);
+  const cuts = tiers.filter(([, min]) => min > 0).map(([id, min]) => `when s >= ${min} then '${id}'`).join(' ');
+  assert.ok(table(SQL).includes(`case ${cuts} else '${tiers.at(-1)[0]}' end`));
+  assert.ok(table(SQL).includes("p_state #> '{kitchen,best}') = 'object'"));
+  assert.ok(table(SQL).includes('immutable set search_path = public'));
+  const rev = 'revoke all on function public._nb_table(jsonb) from public, anon, authenticated;';
+  assert.ok(SQL.includes(rev) && TABLE_SQL.includes(rev));
+  assert.match(TABLE_SQL, /migrate_neighbor_pond\.sql/);
 });

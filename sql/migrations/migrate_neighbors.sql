@@ -246,7 +246,8 @@ begin
     'outdoor',    _nb_yard(s),
     'room',       _nb_room(s),
     'coop',       jsonb_build_object('built', coalesce(s #> '{coop,built}' = 'true'::jsonb, false)),
-    'pond',       _nb_pond(s)
+    'pond',       _nb_pond(s),
+    'table',      _nb_table(s)
   );
 end $$;
 
@@ -381,6 +382,21 @@ revoke all on function public._nb_num(jsonb) from public, anon, authenticated;
 revoke all on function public._nb_yard(jsonb) from public, anon, authenticated;
 revoke all on function public._nb_room(jsonb) from public, anon, authenticated;
 revoke all on function public._nb_pond(jsonb) from public, anon, authenticated;
+
+create or replace function public._nb_table(p_state jsonb)
+returns jsonb language sql immutable set search_path = public as $$
+  with d as (
+    select k.key as id, (k.value #>> '{}')::numeric as s
+    from jsonb_each(case when jsonb_typeof(p_state #> '{kitchen,best}') = 'object' then p_state #> '{kitchen,best}' else '{}'::jsonb end) k
+    where k.key in ('veg_stew','mushroom_soup','rice_ball','baked_yam','herb_salad','grilled_fish','omelette','bread','grape_juice','lunchbox','forest_feast')
+      and case when jsonb_typeof(k.value) = 'number' then (k.value #>> '{}')::numeric > 0 else false end
+  )
+  select jsonb_build_object('dishes', coalesce((select jsonb_agg(jsonb_build_object('id', id, 'tier',
+    case when s >= 88 then 'perfect' when s >= 65 then 'great' when s >= 35 then 'good' else 'plain' end)
+    order by array_position(array['veg_stew','mushroom_soup','rice_ball','baked_yam','herb_salad','grilled_fish','omelette','bread','grape_juice','lunchbox','forest_feast'], id)) from d), '[]'::jsonb));
+$$;
+
+revoke all on function public._nb_table(jsonb) from public, anon, authenticated;
 revoke all on function public._nb_candidates(uuid, date, int) from public, anon, authenticated;
 revoke all on function public._nb_public_id(uuid) from public, anon, authenticated;
 revoke all on function public._nb_nick_blocked(text) from public, anon, authenticated;

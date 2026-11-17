@@ -14,7 +14,9 @@ import { prepHouseMeshes, unregisterWindows } from '../spaces/house.js';
 import { spawnPet } from '../pet/render.js';
 import { DOOR_COLORS, NEIGHBOR, NEIGHBOR_R, ROOF_COLORS, SEA_SPECIES, WALL_COLORS } from '../data/places.js';
 import { stage7Boxes } from '../house-stage7.js';
-import { hostSpot, houseSolidR, neighborPond, neighborPondView, pondCovers } from './rules.js';
+import { hostSpot, houseSolidR, neighborPond, neighborPondView, neighborTable, pondCovers } from './rules.js';
+import { buildTable } from '../table/build.js';
+import { tableCovers } from '../table/site.js';
 import { buildPond } from '../pond/build.js';
 import { pondFishLimits } from '../pond/stage.js';
 import { pondSignPos } from '../pond/sign.js';
@@ -70,7 +72,7 @@ function disposeGeos(root) {
 }
 
 // 고정 세트 — 바닥 · 울타리(남쪽 출구만 비움) · 나무 8그루
-function fixedSet(pond) {
+function fixedSet(pond, table) {
   const g = new THREE.Group();
   const ground = new THREE.Mesh(new THREE.CircleGeometry(GROUND_R, 48).rotateX(-Math.PI / 2),
     new THREE.MeshStandardMaterial({ color: 0xa9d68f, roughness: 1 }));
@@ -81,14 +83,14 @@ function fixedSet(pond) {
   for (let i = 0; i < 48; i++) {
     const a = (i / 48) * Math.PI * 2;
     if (Math.abs(a - Math.PI / 2) < 0.22) continue;   // +z(남쪽, 카메라 쪽) = 나가는 길
-    if (pondCovers(pond, Math.cos(a) * R, Math.sin(a) * R)) continue;
+    if (pondCovers(pond, Math.cos(a) * R, Math.sin(a) * R) || tableCovers(table, Math.cos(a) * R, Math.sin(a) * R, 0.3)) continue;
     const post = new THREE.Mesh(postGeo, wood);
     post.position.set(NEIGHBOR.x + Math.cos(a) * R, 0.35, NEIGHBOR.z + Math.sin(a) * R); g.add(post);
   }
   const trunk = new THREE.MeshStandardMaterial({ color: 0x8a6440, roughness: 0.95, flatShading: true });
   const leaf = new THREE.MeshStandardMaterial({ color: 0x6fb46a, roughness: 0.9, flatShading: true });
   for (const [x, z] of TREE_SPOTS) {
-    if (pondCovers(pond, x, z, CANOPY_R)) continue;
+    if (pondCovers(pond, x, z, CANOPY_R) || tableCovers(table, x, z, CANOPY_R)) continue;
     const t = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.24, 1.2, 6), trunk);
     t.position.set(NEIGHBOR.x + x, 0.6, NEIGHBOR.z + z); t.castShadow = true; g.add(t);
     const c = new THREE.Mesh(new THREE.ConeGeometry(CANOPY_R, 2.4, 7), leaf);
@@ -101,7 +103,7 @@ function fixedSet(pond) {
 export function buildNeighborScene(view) {
   const group = new THREE.Group(); group.name = 'neighbor';
   const solids = [];
-  let host = null, pet = null, sign = null, t = 0, pondUpdate = null, pondDispose = null;
+  let host = null, pet = null, sign = null, t = 0, pondUpdate = null, pondDispose = null, tableDispose = null;
   const built = {
     group,
     hostSpot: null,
@@ -110,6 +112,7 @@ export function buildNeighborScene(view) {
     update(dt) { t += dt; host.position.y = Math.abs(Math.sin(t * 2.2)) * 0.04; pondUpdate?.(dt); },   // 반가워서 통통
     dispose() {
       pondDispose?.();
+      tableDispose?.();
       for (const c of solids) removeSolid(c);
       if (sign) sign.userData.dead = true;                           // makeSignpost 의 rAF 등록이 철거 뒤에 돌지 않게
       unregisterWindows(group);                                      // 집 창문·정원등·화로 — 밤 점등 목록에서 뺀다
@@ -126,7 +129,8 @@ export function buildNeighborScene(view) {
 
   try {
     const ps = neighborPond(view.pond, view.outdoor);
-    group.add(fixedSet(ps));
+    const ts = neighborTable(view.table, ps, view.outdoor);
+    group.add(fixedSet(ps, ts));
 
     const house = view.houseStage >= 3 ? buildHouseModel(THREE, view.houseStage, view.style || undefined) : earlyHouse(view.houseStage);
     if (view.houseStage >= 3) house.add(mountHouseAddons(THREE, view.houseStage, view.addons, view.style || undefined));
@@ -152,6 +156,13 @@ export function buildNeighborScene(view) {
       group.add(s.group);
       pondUpdate = (dt) => p.update(dt);
       pondDispose = () => { p.dispose(); s.dispose(); };
+    }
+
+    if (ts) {
+      const tb = buildTable({ style: 'picnic', shape: ts.shape, dishes: view.table.dishes, mergeGeos, paintGeo });
+      tableDispose = () => tb.dispose();
+      tb.group.position.set(NEIGHBOR.x + ts.dx, 0, NEIGHBOR.z + ts.dz);
+      group.add(tb.group);
     }
 
     //  전역 등록(창문 점등·충돌체)은 장식까지 다 지은 뒤에 — 그래도 아래서 터지면 catch 가 dispose 로 되돌린다

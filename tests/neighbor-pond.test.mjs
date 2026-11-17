@@ -114,11 +114,11 @@ test('rim 은 네 가지 id 만 받고 나머지와 옛 서버 응답은 기본 
 
 test('scene.js 는 단계에 맞는 연못을 짓고 고정 세트가 그 자리를 비킨다', () => {
   assert.match(SCENE, /const ps = neighborPond\(view\.pond, view\.outdoor\);/);
-  assert.match(SCENE, /group\.add\(fixedSet\(ps\)\);/);
+  assert.match(SCENE, /group\.add\(fixedSet\(ps, ts\)\);/);
   assert.match(SCENE, /buildPond\(\{ fishMesh, mergeGeos, paintGeo, emojiSprite, r: ps\.r, stage: ps\.stage, rim: ps\.rim \}\)/);
   assert.match(SCENE, /p\.setContents\(neighborPondView\(view\.pond\), [^\n]+, pondFishLimits\(ps\.stage\)\);/);
-  assert.match(SCENE, /if \(pondCovers\(pond, Math\.cos\(a\) \* R, Math\.sin\(a\) \* R\)\) continue;/);
-  assert.match(SCENE, /if \(pondCovers\(pond, x, z, CANOPY_R\)\) continue;/);
+  assert.match(SCENE, /if \(pondCovers\(pond, Math\.cos\(a\) \* R, Math\.sin\(a\) \* R\) \|\| tableCovers\(table, Math\.cos\(a\) \* R, Math\.sin\(a\) \* R, 0\.3\)\) continue;/);
+  assert.match(SCENE, /if \(pondCovers\(pond, x, z, CANOPY_R\) \|\| tableCovers\(table, x, z, CANOPY_R\)\) continue;/);
   assert.match(SCENE, /new THREE\.ConeGeometry\(CANOPY_R, 2\.4, 7\)/);
   assert.doesNotMatch(SCENE, /pickPondSpot|POND_SPOTS|POND_R\b/);
   assert.ok(readFileSync(new URL('../js/pond/build.js', import.meta.url), 'utf8').includes('const seas = view.seas ?? (view.sea ? [view.sea] : []);'));

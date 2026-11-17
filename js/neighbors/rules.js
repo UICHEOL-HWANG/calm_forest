@@ -9,6 +9,8 @@ import { stage7ExitPoint } from '../house-stage7.js';
 import { pickPondSpot } from '../pond/rules.js';
 import { pondRadius, pondSpotFor, pondFishLimits } from '../pond/stage.js';
 import { POND_SPOTS, POND_R } from '../data/pond.js';
+import { tableSiteFor } from '../table/site.js';
+import { tableShape } from '../table/rules.js';
 
 const POND_CLEAR = 0.6;
 
@@ -53,6 +55,12 @@ export function neighborPond(pond, outdoor) {
   if (!pond?.has) return null;
   const spot = pondSpotFor(pond.stage, pickPondSpot(POND_SPOTS, outdoor, POND_R));
   return spot ? { dx: spot.dx, dz: spot.dz, r: pondRadius(pond.stage), stage: pond.stage, rim: pond.rim || 'rock' } : null;
+}
+
+export function neighborTable(table, pond, outdoor) {
+  if (!table?.has) return null;
+  const site = tableSiteFor({ pond, outdoorRel: outdoor, plotsRel: [] });
+  return site ? { dx: site.dx, dz: site.dz, shape: tableShape(table.dishes.length), site: site.id } : null;
 }
 
 export function neighborPondView(pond) {
