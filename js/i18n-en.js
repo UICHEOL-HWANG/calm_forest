@@ -753,6 +753,7 @@ export const EN = {
   '웃음': 'Laugh',
   '노래': 'Sing',
   '가격 안내': 'Pricing',
+  '소개': 'About',
   '계정 삭제': 'Delete account',
   '나가기': 'Log out',
   '문의하기': 'Feedback',

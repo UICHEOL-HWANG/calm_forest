@@ -59,6 +59,7 @@ test('sitemap: 고정 페이지와 상품 페이지를 모두 담고, noindex �
   assert.match(xml, /<loc>https:\/\/calmforest\.cloud\/shop\/firefly<\/loc>/);
   assert.doesNotMatch(xml, /<lastmod>/);
   assert.ok(!SEO_PAGES.some(p => p.path === '/delete-account'));
+  assert.ok(SEO_PAGES.some(p => p.path === '/about' && p.file === 'about.html'));
 });
 
 test('robots: 관리·베타·API 를 막고 sitemap·rss 를 알린다', () => {

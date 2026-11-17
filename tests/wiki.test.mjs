@@ -55,6 +55,7 @@ test('renderDoc: 제목·canonical·정보 표·목차·BreadcrumbList·게임 �
   assert.ok(ld['@graph'].some(n => n['@type'] === 'BreadcrumbList'));
   assert.match(html, /href="\/wiki\/fish\/sea_aji"/);
   assert.match(html, /게임에서 만나러 가기/);
+  assert.match(html, /<meta name="robots" content="noindex" \/>/);
   assert.doesNotMatch(html, /—/);
 });
 
