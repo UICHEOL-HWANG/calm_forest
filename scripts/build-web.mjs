@@ -69,6 +69,7 @@ const INCLUDE = [
   // ⚖️ 구글 플레이 필수 — 스토어 등록정보의 "개인정보처리방침 URL"·"계정 삭제 URL" 이 이 둘을 가리킨다.
   //    빼면 링크가 404 가 되어 심사에서 반려된다.
   ['pages/privacy.html', 'privacy.html'],               // → /privacy
+  ['pages/about.html', 'about.html'],                   // → /about
   // 💳 /terms /refund (/shop 은 아래에서 생성) — CONFIG.PADDLE.storeOpen 일 때만 넣는다(STORE_PAGES)
   ['pages/delete-account.html', 'delete-account.html'], // → /delete-account
   '_headers',        // 캐시 헤더
