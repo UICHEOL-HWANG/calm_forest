@@ -97,12 +97,13 @@ function segBoxEntry(a, b, s, m) {
   return t0;
 }
 
-function aroundBox(from, to, s, pad) {
+function aroundBox(from, to, s, pad, solids) {
   const xs = [Math.min(s.x1, s.x2) - pad, Math.max(s.x1, s.x2) + pad], zs = [Math.min(s.z1, s.z2) - pad, Math.max(s.z1, s.z2) + pad];
   let best = null;
   for (const x of xs) for (const z of zs) {
     const c = { x, z };
     if (Math.hypot(c.x - from.x, c.z - from.z) < 0.5 || segBoxEntry(from, c, s, 0.05) !== null) continue;
+    if (solids.some(o => o !== s && !o.off && !('r' in o) && inBox(o, c, 0))) continue;
     const blocked = segBoxEntry(c, to, s, 0.05) !== null ? 1000 : 0;
     const cost = Math.hypot(c.x - from.x, c.z - from.z) + Math.hypot(to.x - c.x, to.z - c.z) + blocked;
     if (!best || cost < best.cost) best = { c, cost };
@@ -132,7 +133,7 @@ export function detourPoint(from, to, solids, pad = 0.8) {
     if (!hit || t < hit.t) hit = { t, c, side };
   }
   if (!hit) return to;
-  if (hit.box) return aroundBox(from, to, hit.box, Math.min(pad, 0.6));
+  if (hit.box) return aroundBox(from, to, hit.box, Math.min(pad, 0.6), solids);
   const sign = hit.side >= 0 ? -1 : 1, off = hit.c.r + pad;
   return { x: hit.c.x + nx * off * sign, z: hit.c.z + nz * off * sign };
 }

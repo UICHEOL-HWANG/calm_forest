@@ -200,3 +200,24 @@ test('경유점을 따라 걸으면 건물을 뚫지 않고 몇 걸음 안에 �
   }
   assert.ok(hops <= 3, `hops ${hops}`);
 });
+
+test('7단계 집 마당 안에서 꾸미기 가게·넓은 연못으로 갈 때 경유점이 막힌 안쪽으로 이끌지 않는다', async () => {
+  const { stage7Boxes, stage7ExitPoint } = await import('../js/house-stage7.js');
+  const house = { x: -8, z: -8 };
+  const targets = [{ x: -27.5, z: -7.5, near: 2 }, { x: -16.5, z: -11, near: 5.3 }];
+  for (const style of ['modern', 'hanok']) {
+    const boxes = stage7Boxes(style, house).map(b => ({ x1: b.x0, z1: b.z0, x2: b.x1, z2: b.z1 }));
+    const inside = (p) => boxes.some(b => p.x > b.x1 && p.x < b.x2 && p.z > b.z1 && p.z < b.z2);
+    for (const to of targets) {
+      let at = stage7ExitPoint(style, house), steps = 0;
+      while (Math.hypot(at.x - to.x, at.z - to.z) > to.near && steps < 400) {
+        const wp = detourPoint(at, to, boxes);
+        const l = Math.hypot(wp.x - at.x, wp.z - at.z) || 1;
+        const next = { x: at.x + (wp.x - at.x) / l * 0.25, z: at.z + (wp.z - at.z) / l * 0.25 };
+        assert.ok(!inside(next), `${style} ${JSON.stringify(to)} 벽 ${JSON.stringify(next)}`);
+        at = next; steps++;
+      }
+      assert.ok(steps < 400, `${style} ${JSON.stringify(to)} 못 닿음 ${JSON.stringify(at)}`);
+    }
+  }
+});
