@@ -3,7 +3,7 @@ import { drawRootMural } from './root-mural.js';
 
 const ROOT = { dry: 0x786a5c, dryVein: 0x4a3f36, lit: 0x8d6a46, litEmissive: 0x2a1804, gold: 0xffcf6a };
 const PANEL_W = 1.2, PANEL_H = 0.94, MURAL_Y = 1.45, MURAL_Z = 0.05, MURAL_TILT = -0.14;
-const PAD_Z = 2.3, PAD_R = 1.9;
+const PAD_Z = 2.3, PAD_R = 1.9, LAMP_X = 2.75;
 const ROOT_PTS = [[-2.7, 0.4, -0.9], [-2.3, 0.3, 0.5], [-1.2, 0.28, 1.7], [0.2, 0.3, 2.1], [1.5, 0.25, 1.6], [2.5, 0.1, 1.1], [3.1, -0.4, 0.9]];
 
 const mat = (c, extra = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.9, metalness: 0, flatShading: true, ...extra });
@@ -121,10 +121,10 @@ export function makeRootShrine(theme, side = 1) {
   const g = new THREE.Group();
   const mural = makeMural(theme.rock);
   const root = makeRoot(ROOT_PTS.map(([x, y, z]) => [x * side, y, z]));
-  g.add(mural.g, makePad(), root.g, makeLamp(2.15 * side));
+  g.add(mural.g, makePad(), root.g, makeLamp(LAMP_X * side));
   const panels = [-1, 0, 1].map(k => new THREE.Vector3(k * PANEL_W, MURAL_Y, MURAL_Z));
-  const lampAt = { x: 2.15 * side - side * 0.38, y: 1.9, z: 0.9 };
-  const solids = [...[-1, 0, 1].map(k => ({ x: k * PANEL_W, z: MURAL_Z, r: 0.7 })), { x: 2.15 * side, z: 0.35, r: 0.3 }];
+  const lampAt = { x: LAMP_X * side - side * 0.38, y: 1.9, z: 0.9 };
+  const solids = [...[-1, 0, 1].map(k => ({ x: k * PANEL_W, z: MURAL_Z, r: 0.7 })), { x: LAMP_X * side, z: 0.35, r: 0.3 }];
   const setLit = (on) => { mural.setLit(on); root.setLit(on); };
   return { g, setLit, panels, solids, lampAt, textures: mural.textures };
 }

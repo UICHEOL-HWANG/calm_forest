@@ -4,8 +4,10 @@ export const ROOT_CINE_SKIP = 0.4;
 const ease = (t) => { const x = Math.min(1, Math.max(0, t)); return x * x * x * (x * (x * 6 - 15) + 10); };
 const mix = (a, b, k) => ({ x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k, z: a.z + (b.z - a.z) * k });
 
-export function cineShots(panels, aspect) {
-  const d = aspect < 0.8 ? 3.6 : 3.2;
+const CINE_MIN_D = 3.2, CINE_HALF_W = 0.78;
+
+export function cineShots(panels, aspect, fov = 42) {
+  const d = Math.max(CINE_MIN_D, CINE_HALF_W / (Math.tan((fov * Math.PI) / 360) * aspect));
   return panels.map(p => ({ pos: { x: p.x, y: p.y + 0.35, z: p.z + d }, look: { x: p.x, y: p.y, z: p.z } }));
 }
 

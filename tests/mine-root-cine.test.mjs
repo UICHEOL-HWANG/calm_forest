@@ -16,6 +16,14 @@ test('세로 화면은 한 칸이 화면을 채우도록 더 멀리 선다', () 
   wide.forEach((s, i) => { assert.equal(s.pos.x, PANELS[i].x); assert.deepEqual(s.look, PANELS[i]); });
 });
 
+test('세로 폰에서도 한 칸 전체가 가로 폭 안에 들어온다', () => {
+  for (const fov of [38, 42, 50]) {
+    const [s] = cineShots(PANELS, 0.46, fov);
+    const halfW = (s.pos.z - PANELS[0].z) * Math.tan((fov * Math.PI) / 360) * 0.46;
+    assert.ok(halfW >= 0.72, `fov ${fov}: ${halfW}`);
+  }
+});
+
 test('2칸에 닿을 때 한 번 켜지고 끝나면 기본 시점으로 돌아온다', () => {
   let lights = 0;
   const rig = createRootCine({ from: FROM, shots: cineShots(PANELS, 1.6), home, onLight: () => lights++ });

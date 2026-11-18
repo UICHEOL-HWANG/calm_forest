@@ -39,7 +39,7 @@ function playRootCine(shrine) {
   defaultCamPose(from.pos, from.look);
   const panels = shrine.panels.map(p => shrine.g.localToWorld(p.clone()));
   const rig = createRootCine({
-    from, shots: cineShots(panels, camera.aspect), home: defaultCamPose,
+    from, shots: cineShots(panels, camera.aspect, camera.fov), home: defaultCamPose,
     onLight: () => { shrine.setLit(true); Sound.complete?.(); },
   });
   cine = { rig, shrine, skipped: false, t0: performance.now() };
@@ -83,7 +83,7 @@ function showOverlay() {
       + 'background:linear-gradient(to bottom,rgba(0,0,0,0.22),transparent 16%,transparent 84%,rgba(0,0,0,0.22));';
     const hint = document.createElement('div');
     hint.textContent = '탭하면 넘어가요';
-    hint.style.cssText = 'position:absolute;left:50%;bottom:calc(104px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);'
+    hint.style.cssText = 'position:absolute;left:50%;bottom:calc(min(104px, 12vh) + env(safe-area-inset-bottom,0px));transform:translateX(-50%);'
       + 'padding:4px 12px;border-radius:999px;background:rgba(30,40,30,0.38);color:#fff;font-size:12px;opacity:0.85;pointer-events:none;white-space:nowrap;';
     overlay.appendChild(hint);
     overlay.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); skipRootCine(); });
