@@ -213,7 +213,7 @@ import {
   buildSea, enterSea, exitSea, seaAction, seaCamera, seaPrompt, spawnSeaCove, spawnSeaGate, updateSea, updateSeaVisuals,
 } from './spaces/sea.js';   // 📦 🌊 바다터 — 대형 낚시 (docs/design/SEA_FISHING_PLAN.md · 프로토타입 sims/sea-sim.html)
 import { spawnPortPier } from './port/pier.js';
-import { port, enterPort, portAction, clampPort, portOwnsMovement, bindPortEnv, updatePortGuide, maybeStartPortGuide, guideActive as portGuideActive } from './port/index.js';
+import { port, enterPort, boardPier, portAction, clampPort, portOwnsMovement, bindPortEnv, updatePortGuide, maybeStartPortGuide, guideActive as portGuideActive } from './port/index.js';
 import { openSeaPick } from './spaces/sea-pick.js';
 import { mudflat, mudflatAction, mudflatSpeedMult, clampMudflat, enterMudflat, mudflatDebug, setMudflatCam } from './spaces/mudflat.js';
 import { dive, diveAction, diveSpeedMult, clampDive, enterDive, diveAtmosphere, diveDebug } from './spaces/dive.js';
@@ -7721,7 +7721,7 @@ function handleAction() {
   if (nearDoor === 'riverexit') return exitRiver();
   if (nearDoor === 'mist') return enterMist();
   if (nearDoor === 'mistexit') return exitMist();
-  if (nearDoor === 'port_board' && !atSea) return enterPort();
+  if (nearDoor === 'port_board' && !atSea) return boardPier();
   if (nearDoor === 'sea') return openSeaPick();
   if (nearDoor === 'seaexit') return exitSea();
   if (atSea) { (mudflat.active ? mudflatAction : dive.active ? diveAction : port.active ? portAction : seaAction)(); return; }   // 🌊 바다터: 액션 = 던지기/버티기/감기

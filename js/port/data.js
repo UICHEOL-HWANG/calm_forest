@@ -73,7 +73,7 @@ export const SOLIDS = [
 
 export const PORT_COPY = {
   board: '🛶 부두 끝에서 배 타기',
-  home: '부두 끝에서 마을로 돌아가기',
+  home: '🛶 부두 끝에서 마을로 돌아가기',
   fastHome: '🗺️ 마을로 바로 가기',
   fastGo: '🗺️ 섬으로 바로 가기',
   nag: '조금만 더 부탁해.',

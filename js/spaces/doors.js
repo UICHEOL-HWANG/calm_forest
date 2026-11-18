@@ -53,7 +53,7 @@ import { nearestOutdoor, outdoorZone } from '../spaces/outdoor-decor.js';
 import { chestHintNow, updateRiverInteract } from '../spaces/river.js';
 import { seaPrompt } from '../spaces/sea.js';
 import { gateWalkEnd } from './gate-cue.js';
-import { nearPortPier } from '../port/pier.js';
+import { nearPortPier, pierPick } from '../port/pier.js';
 import { PORT_COPY } from '../port/data.js';
 import { TELESCOPE_SPOT } from '../spaces/observatory.js';
 import { MOUNTAIN_EXIT_LOCAL, mountainOpen, sledStartReady, hutDoorReady, keeperReady, KEEPER_PROMPT, inCafe, atCafeSpot } from '../spaces/mountain.js';
@@ -347,7 +347,7 @@ export function updateDoorInteract() {
     firstHintBanner('dockGate', '🛶', '나루터', '나룻배 타고 하루 3번 강을 내려가요');
   } else if (isOpen('port') && nearPortPier(player.position)) {
     nd = 'port_board'; prompt = PORT_COPY.board;
-    if (gameState.port?.fastUnlocked && !guideHides()) floorChoiceOpts = [{ f: 'port_board', label: PORT_COPY.board, onSelect: () => enterPort() }, { f: 'port_fast', label: PORT_COPY.fastGo, onSelect: () => enterPort({ fast: true }) }];
+    if (pierPick.open && gameState.port?.fastUnlocked && !guideHides()) floorChoiceOpts = [{ f: 'port_board', label: PORT_COPY.board, onSelect: () => enterPort() }, { f: 'port_fast', label: PORT_COPY.fastGo, onSelect: () => enterPort({ fast: true }) }];
   } else if (isOpen('sea') && nearGateEnd('sea')) {
     nd = 'sea';
     const locked = mapLocked('sea');
@@ -479,6 +479,7 @@ export function updateDoorInteract() {
   //      안 비키면 handleAction 맨 위의 문 분기가 commandPet 으로 채가서 손님을 못 살펴봤다(2026-10-12).
   if (!prompt && !farmActionFirst() && !visitorTarget() && petChoresNear()) { $w.nearDoor = 'pet'; prompt = '🐾 맡기기'; }
   if (placingOutdoor) prompt = null;
+  document.body.classList.toggle('at-pier', $w.nearDoor === 'port_board');
   if (prompt !== lastDoorPrompt) { $w.lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt); }
   // 🪜 양방향 선택 UI(6단계 2층 전용) — door-prompt 와 같은 중복 갱신 방지 패턴.
   //   opts 가 바뀔 때만 버튼을 다시 그린다(매 프레임 onclick 재바인딩 낭비 방지).
