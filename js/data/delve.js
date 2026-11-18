@@ -1,6 +1,7 @@
 export const DELVE_FLOORS = 20;
 export const DELVE_STOPS = [5, 10, 15, 20];
 export const DELVE_CHEST_FLOORS = [10, 20];
+export const ROOT_SHRINE_FLOOR = 20;
 export const DELVE_HALF = 8;
 export const VEINS_PER_FLOOR = 2;
 export const PLAIN_ROCKS = [4, 6];
