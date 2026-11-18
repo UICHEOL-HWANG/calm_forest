@@ -39,7 +39,7 @@ function makeRoot(pts) {
     const u = 0.08 + 0.84 * (i / 9);
     const s = new THREE.Mesh(sGeo, sMat);
     s.position.copy(curve.getPointAt(u).addScaledVector(side, r * taper(u) + 0.18 + (i % 3) * 0.12));
-    s.rotation.set(i, i * 0.7, 0); s.scale.setScalar(0.7 + (i % 3) * 0.3); s.visible = false;
+    s.rotation.set(i, i * 0.7, 0); s.userData.size = 0.7 + (i % 3) * 0.3; s.scale.setScalar(0);
     g.add(s);
     return s;
   });
@@ -49,7 +49,7 @@ function makeRoot(pts) {
     vein.material.color.setHex(on ? ROOT.gold : ROOT.dryVein);
     vein.material.emissive.setHex(on ? ROOT.gold : 0);
     vein.material.emissiveIntensity = on ? 0.9 : 0;
-    spark.forEach(s => { s.visible = on; });
+    spark.forEach(s => s.scale.setScalar(on ? s.userData.size : 0));
   };
   return { g, setLit };
 }
@@ -61,14 +61,16 @@ function canvasTex(canvas) {
 }
 
 function makeMural(stoneHex) {
-  const g = new THREE.Group(), faces = [];
+  const g = new THREE.Group(), faces = [], textures = [];
   const wood = mat(0x7a5232), stone = mat(stoneHex);
   const box = (w, h, d, m, x, y, z) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; g.add(o); };
   let art = null;
   try { art = drawRootMural(); } catch { art = null; }
   if (art) {
     art.forEach((p, i) => {
-      const face = new THREE.MeshStandardMaterial({ map: canvasTex(p.color), emissiveMap: canvasTex(p.glow), emissive: 0x000000, roughness: 0.95 });
+      const map = canvasTex(p.color), emissiveMap = canvasTex(p.glow);
+      textures.push(map, emissiveMap);
+      const face = new THREE.MeshStandardMaterial({ map, emissiveMap, emissive: 0x000000, roughness: 0.95 });
       faces.push(face);
       const o = new THREE.Mesh(new THREE.BoxGeometry(PANEL_W, PANEL_H, 0.12), [stone, stone, stone, stone, face, stone]);
       o.position.set((i - 1) * PANEL_W, 0, 0); o.receiveShadow = true; g.add(o);
@@ -79,7 +81,7 @@ function makeMural(stoneHex) {
   }
   g.position.set(0, MURAL_Y, MURAL_Z); g.rotation.x = MURAL_TILT;
   const setLit = (on) => faces.forEach(m => { m.emissive.setHex(on ? 0xffffff : 0); m.emissiveIntensity = on ? 0.8 : 0; });
-  return { g, setLit };
+  return { g, setLit, textures };
 }
 
 function makePad() {
@@ -124,5 +126,5 @@ export function makeRootShrine(theme, side = 1) {
   const lampAt = { x: 2.15 * side - side * 0.38, y: 1.9, z: 0.9 };
   const solids = [...[-1, 0, 1].map(k => ({ x: k * PANEL_W, z: MURAL_Z, r: 0.7 })), { x: 2.15 * side, z: 0.35, r: 0.3 }];
   const setLit = (on) => { mural.setLit(on); root.setLit(on); };
-  return { g, setLit, panels, solids, lampAt };
+  return { g, setLit, panels, solids, lampAt, textures: mural.textures };
 }
