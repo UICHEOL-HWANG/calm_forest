@@ -39,7 +39,7 @@ export const PEST_COPY = {
 
 export const MINER_STEPS = [
   { id: 'reopen', title: '승강기 고치기', desc: '⚫ 석탄 3개 가져다주기', check: { kind: 'inv', key: 'coal', n: 3, take: true }, reward: { unlock: 1 },
-    ask: ['어이쿠, 손님이군. 여긴 오래된 갱도라네', '승강기가 멈춰서 아래로 못 내려가고 있지', '⚫ 석탄 3개만 캐 오게. 불을 때면 다시 돌아갈 거야'] },
+    ask: ['어이쿠, 손님이군. 여긴 오래된 갱도라네', '옛날엔 등불이 꺼지지 않던 곳이지', '승강기가 멈춰서 아래로 못 내려가고 있지', '⚫ 석탄 3개만 캐 오게. 불을 때면 다시 돌아갈 거야'] },
   { id: 'tap', title: '웅덩이 속 도둑', desc: '🦎 웅덩이 아가미 톡 치기', check: { kind: 'count', key: 'tap', n: 1 }, reward: { gem: 1 },
     ask: ['승강기가 다시 도네! 이제 내려갈 수 있어', '아래 웅덩이에 🦎 도롱뇽이 숨어 광석을 노린다네', '아가미가 보이면 톡 쳐서 쫓아 주게'] },
   { id: 'stop5', title: '첫 정류장', desc: '🪜 지하 5층까지 내려가기', check: { kind: 'floor', n: 5 }, reward: {},
@@ -49,11 +49,12 @@ export const MINER_STEPS = [
   { id: 'chest10', title: '10층 보물상자', desc: '🧰 지하 10층 상자 열기', check: { kind: 'chest', n: 10 }, reward: { cosmetic: 'miner_lamp' },
     ask: ['집게가 배불러서 길을 비켜 줬겠군', '🧰 지하 10층에 옛 광부들 상자가 있다네. 찾아 열어 보게'] },
   { id: 'grab', title: '반짝이 사수', desc: '🦇 박쥐 앞에서 조각 바로 줍기 3번', check: { kind: 'count', key: 'grab', n: 3 }, reward: { crystal: 2 },
-    ask: ['상자에 내 옛 헬멧이 있었군! 자네가 쓰게', '🦇 박쥐는 떨어진 조각을 채 간다네', '노란 고리가 끝나기 전에 3번 주워 보게'] },
+    ask: ['상자에 내 옛 헬멧이 있었군! 자네가 쓰게', '우린 그걸 쓰고 뿌리 곁을 지켰다네', '🦇 박쥐는 떨어진 조각을 채 간다네', '노란 고리가 끝나기 전에 3번 주워 보게'] },
   { id: 'reclaim', title: '빛을 따라', desc: '🐛 굴에서 조각 되찾기', check: { kind: 'count', key: 'reclaim', n: 1 }, reward: {},
     ask: ['손이 빠르구먼!', '🐛 등불벌레가 조각을 굴로 끌고 가면', '빛 자국을 따라가 되찾아 오게'] },
   { id: 'bottom', title: '바닥까지', desc: '🪜 지하 20층까지 내려가기', check: { kind: 'floor', n: 20 }, reward: { decor: 'mine_cart' },
-    ask: ['빛 자국을 잘 따라갔군', '🪜 이제 맨 아래, 지하 20층까지 내려가 보게'] },
+    ask: ['빛 자국을 잘 따라갔군', '🪜 이제 맨 아래, 지하 20층까지 내려가 보게', '맨 아래엔 우리가 지키던 게 있다네'] },
 ];
-export const MINER_DONE_LINES = ['바닥까지 갔다니! 자네가 진짜 광부일세', '🛒 이 광산 수레는 자네 거라네', '이제 매일 일감을 하나씩 맡기겠네'];
+export const MINER_DONE_LINES = ['뿌리에 빛이 돌았다고? 자네가 해냈군', '우리 광부들은 원래 뿌리지기였다네', '저 위 세계수까지 이어진 뿌리지', '뿌리가 마르자 갱도가 어두워져 다들 떠났다네', '🛒 이 광산 수레는 자네 거라네', '이제 매일 일감을 하나씩 맡기겠네'];
+export const ROOT_CINE_TOAST = '🌱 마른 뿌리에 다시 빛이 돌아요';
 export const MINER_NAG = '아직이네. 이걸 부탁하네';
