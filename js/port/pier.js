@@ -16,7 +16,7 @@ export function spawnPortPier() {
   const deck = new THREE.Group(); deck.position.set(ax, 0, az); deck.rotation.y = ang; g.add(deck);
   for (let d = 0.3; d < len; d += 0.62) {
     const plank = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.1, 0.54), clayMat(d > len - 1.2 ? 0xc46a4a : 0xb98a5a));
-    plank.position.set(0, 0.32, d); plank.receiveShadow = true; deck.add(plank);
+    plank.position.set(0, 0.29, d); plank.receiveShadow = true; deck.add(plank);
   }
   for (let d = 0.6; d < len; d += 2) for (const s of [-1, 1]) {
     const post = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.8, 6), clayMat(0x6e4a2c));
@@ -29,10 +29,12 @@ export function spawnPortPier() {
 }
 
 let pierArmed = true;
+export const pierPick = { open: false };
 export function disarmPortPier() { pierArmed = false; }
 
 export function nearPortPier(p) {
   const g = boardGate(pierArmed, Math.hypot(p.x - PORT_PIER.end.x, p.z - PORT_PIER.end.z), 1.6);
   pierArmed = g.armed;
+  if (!g.can) pierPick.open = false;
   return g.can;
 }

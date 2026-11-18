@@ -160,7 +160,7 @@ test('연결: 지어지고 치워지는 곳, 문 프롬프트, 수첩 줄 삭제
   assert.ok(doors.indexOf("$w.nearDoor = 'pondsign'") < doors.indexOf("$w.nearDoor = 'pond';"));
   assert.match(src('js/game.js'), /if \(nearDoor === 'pondsign'\) return openPondRim\(\);/);
   const html = src('index.html');
-  assert.equal((html.match(/🗑️\|🐟\|🪨\)/g) || []).length, 2);
+  assert.equal((html.match(/🗑️\|🐟\|🪨\|🛶\)/g) || []).length, 2);
   const feed = src('js/pond/feed.js');
   assert.doesNotMatch(feed, /rimRow|footRows|openPondRim/);
   assert.match(feed, /foot: growRow\(\),/);
