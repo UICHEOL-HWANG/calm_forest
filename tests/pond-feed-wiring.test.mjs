@@ -27,7 +27,7 @@ test('🐟 행동 버튼: 프롬프트·아이콘·분기·광고', () => {
   const d = src('js/spaces/doors.js');
   assert.match(d, /if \(!prompt && pondNear\(\)\) \{ \$w\.nearDoor = 'pond'; prompt = POND_COPY\.prompt; \}/);
   const h = src('index.html');
-  assert.equal((h.match(/\|🗑️\|🐟\|🪨\)\/u/g) || []).length, 2);
+  assert.equal((h.match(/\|🗑️\|🐟\|🪨\|🛶\)\/u/g) || []).length, 2);
   const g = src('js/game.js');
   assert.match(g, /if \(nearDoor === 'pond'\) return openPondBook\(\);/);
   assert.match(g, /rewarded\.button\('pond_feed_more', \['광고 보고', ' ', POND_COPY\.adMore\]/);
