@@ -3517,13 +3517,13 @@ export function getGameState() {
 //    딸꾹질이면 조용히 낫는다. 낫지 않으면(세션 만료·RLS 사고) 화면을 덮어 알린다:
 //    저장이 죽은 채로 계속 놀게 두면 그 시간이 통째로 날아가기 때문이다(입장 때 지키는 빗장의 뒷면).
 let saveRetrying = false;
-export async function requestSave() {
+export async function requestSave(opts) {
   //  🔌 세션이 죽었다 — 빗장은 새로고침 전엔 안 풀린다. 더 두드려 봐야 서버도 GA4 도 때릴 뿐이다.
   if (authState.lost) { ui.setSaveStuck?.(true); return { ok: false, locked: true }; }
   //  재시도가 도는 동안엔 새 쓰기를 내보내지 않는다. 불안정한 네트워크에서 두 요청이 역순으로
   //  도착하면 **오래된 스냅샷이 새 스냅샷을 덮는다** — 이 저장소가 두 번 겪은 사고의 모양이다.
   if (saveRetrying) return { ok: false, retrying: true };
-  const r = await saveGame(getGameState());
+  const r = await saveGame(getGameState(), { keepalive: opts?.keepalive === true });
   if (r.ok) { ui.setSaveStuck?.(false); return r; }
   retrySaveUntilOk().catch(() => {});   // 기다리지 않는다 — 호출부는 저장을 기다리며 멈출 이유가 없다
   return r;
