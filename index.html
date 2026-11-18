@@ -6267,7 +6267,7 @@
     }
     function spotBlocked() {
       const b = document.body.classList;
-      return !b.contains('playing') || b.contains('intro-open') || ui.anyModalOpen() || !!document.querySelector('.show > .tut-card');
+      return !b.contains('playing') || b.contains('intro-open') || b.contains('cine-open') || ui.anyModalOpen() || !!document.querySelector('.show > .tut-card');
     }
     async function startOnboarding(src) {
       const steps = spotSteps('full', TOUCH);
