@@ -439,16 +439,18 @@ def run_banner(persona_ids: list[str]) -> dict:
 
 E5_SQL = f"""
 with {GA4_EV},
+asg as (
+  select d, array_agg(distinct prop ignore nulls) as arms from ev where prop is not null group by d
+),
 scr as (
-  select d, min(day) as day0, array_agg(distinct prop ignore nulls) as arms
-  from ev where event_name = 'login_screen' and prop is not null group by d
+  select d, min(day) as day0 from ev where event_name = 'login_screen' group by d
 )
-select scr.d, scr.arms, scr.day0 as day, dev.local, dev.persona, dev.country, any_value(lim.data_max) as data_max,
+select scr.d, asg.arms, scr.day0 as day, dev.local, dev.persona, dev.country, any_value(lim.data_max) as data_max,
        coalesce(logical_or(ev.event_name in ('login', 'nickname_step', 'tutorial_start') and ev.day = scr.day0), false) as y,
        coalesce(logical_or(ev.event_name = 'login_store_click' and ev.day = scr.day0), false) as store,
        coalesce(logical_or(ev.event_name = 'email_login' and ev.stage = 'open' and ev.day = scr.day0), false) as email_open,
        coalesce(logical_or(ev.day = date_add(scr.day0, interval 1 day)), false) as d1
-from scr join dev using (d) cross join lim left join ev on ev.d = scr.d
+from scr join asg using (d) join dev using (d) cross join lim left join ev on ev.d = scr.d
 group by 1, 2, 3, 4, 5, 6
 """
 
@@ -493,7 +495,7 @@ def _mature(df: pd.DataFrame, data_max, days: int = 1) -> pd.DataFrame:
 
 
 def run_e5(persona_ids: list[str]) -> dict:
-    df = bq.read_sql(E5_SQL, prop="exp_login", since="20261031", until="20261127", persona_ids=persona_ids)
+    df = bq.read_sql(E5_SQL, prop="exp_login", since="20261031", until="99999999", persona_ids=persona_ids)
     n_all = len(df)
     df, mixed = _one_arm(df)
     df = df[~df.local & ~df.persona & df.country.eq("South Korea")].copy()
@@ -510,10 +512,12 @@ def run_e5(persona_ids: list[str]) -> dict:
         ],
         "daily": daily_cumulative(df, "day", "arm", "y", "guest_first", "control"),
         "official": _ci_official(df, "y", "guest_first"),
-        "window": {"from": "2026-10-31", "to": "2026-11-27"},
+        "window": {"from": "2026-10-31", "to": None, "data_max": str(data_max.date()) if data_max is not None else None},
         "notes": [f"로그인 화면을 본 배정 기기 {n_all}대 · 무리가 섞인 기기 {mixed}대 제외 · localhost·한국 밖·페르소나 제외",
                   "주 지표 = 로그인 화면을 본 날(KST) 게임 진입(login·nickname_step·tutorial_start)",
-                  "광고 재개 뒤 무리당 115대가 차면 전체 데이터로 한 번 판정 · 11/27 까지 못 차면 그 시점 표본으로 판정(개정 2, 2주차 중간 결과를 본 뒤에 정한 연장) · 2주차 단독 값(11/6 까지 대조 11/45 · 처치 13/38)도 같이 보고",
+                  "주 지표는 2026-11-18 판정으로 확정(개정 3: 대조 71/271 · 처치 110/278 · 차이 +13.4%p, 95% 구간 +5.7 ~ +20.8). 이 화면의 숫자는 이후 유입을 더해 계속 갱신된다",
+                  "가드레일은 다음 광고 기간이 끝난 날 전체 데이터로 한 번 재확인(개정 4, 결과를 본 뒤 정한 연장)",
+                  "2026-11-18 집계 정정: 이전 값(11/6 까지 대조 11/45 · 처치 13/38)은 배정 기기의 15%만 센 값이었다",
                   "버튼 위치와 문구를 같이 바꿔서 어느 쪽 덕인지는 가를 수 없다"],
     }
 

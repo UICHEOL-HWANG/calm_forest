@@ -841,6 +841,12 @@
   #char-modal:not([data-tab="char"]) #nick-rules { display: none; }
   #char-confirm:disabled { opacity: .45; cursor: not-allowed; }
   #nick-hint { font-size: 11px; opacity: .6; margin-top: 4px; }
+  #nick-dice { flex: none; width: 42px; border: none; border-radius: 12px; background: #fff; box-shadow: var(--shadow); font-size: 18px; cursor: pointer; }
+  #nick-dice:active { transform: scale(0.94); }
+  #char-modal.prefill #nick-rules:not(.edited) { display: none; }
+  @media (max-width: 640px) and (orientation: portrait) {
+    #char-modal.prefill #char-layout { flex-direction: column; }
+  }
   @media (max-width: 640px) {
     #char-modal .tut-card { padding: 18px 14px 16px; border-radius: 20px; }
     #char-modal h2 { font-size: 18px; margin: 2px 0 8px; }
@@ -4133,6 +4139,7 @@
           <div id="char-preview-hint">🖐️ 드래그해서 돌려보기</div>
           <div id="nick-row">
             <input id="nick-input" maxlength="10" placeholder="이름을 직접 지어 주세요" autocomplete="off" />
+            <button id="nick-dice" type="button" aria-label="다른 이름" hidden>🎲</button>
           </div>
           <ul id="nick-rules">
             <li data-k="len">2~10자</li>
@@ -4281,6 +4288,9 @@
     import { createMenuSheet } from './js/hud/menu-sheet.js';
     import { nicknameChecks } from './js/nickname-filter.js';
     import { createNickStep } from './js/nickname-step.js';
+    import { e7Decision } from './js/exp-e7-boot.js';
+    import { namePrefillOn } from './js/exp-e7.js';
+    import { createPrefill } from './js/char-prefill.js';
     import { createSpotlight } from './js/hud/spotlight.js';
     import { modalQueue } from './js/guide/modal-queue.js';
     import { BANNER_STATS0, enqueueBanner, pickBanner, noteBannerShown, yieldedBanner } from './js/guide/banner-queue.js';
@@ -5052,15 +5062,28 @@
         const nick = $('nick-input');
         const prevNick = change ? (Input.getNickname() || '') : '';
         nick.value = prevNick;
+        const prefill = !change && namePrefillOn(e7Decision());
+        const pf = prefill ? createPrefill({ make: (id) => Input.defaultNickname(id) }) : null;
+        $('char-modal').classList.toggle('prefill', prefill);
+        $('nick-dice').hidden = !prefill;
+        $('nick-hint').textContent = prefill ? '이름은 메뉴에서 언제든 바꿀 수 있어요' : '리더보드에 표시될 이름이에요';
+        if (pf) nick.value = pf.seed(selected);
         const refreshNick = () => {
           const v = nick.value.trim();
           const c = nicknameChecks(v);
           $('nick-rules').classList.toggle('typed', v.length > 0);
+          $('nick-rules').classList.toggle('edited', !pf || pf.touched());
           $('nick-rules').querySelectorAll('li').forEach(li => li.classList.toggle('ok', !!c[li.dataset.k]));
           const ready = (change && v === prevNick && v.length > 0) || Object.values(c).every(Boolean);
           $('char-confirm').disabled = !ready;
         };
-        nick.oninput = () => { refreshNick(); if (!change) nickStep.input(nick.value); };
+        nick.oninput = () => { pf?.edited(nick.value.trim()); refreshNick(); if (!change) nickStep.input(nick.value); };
+        $('nick-dice').onclick = () => {
+          if (!pf) return;
+          nick.value = pf.reroll(selected);
+          refreshNick();
+          trackEvent('nickname_step', { step: 'reroll' });
+        };
         refreshNick();
         if (!change) nickStep.view();
         // 🧥 캐릭터 | 옷장 | 펫 — 옷장·펫은 **지금 내 캐릭터**에 입혀 보여 준다(캐릭터 탭에서 고르기만 하고
@@ -5089,7 +5112,10 @@
           if (ui._charPreview) ui._charPreview.setAnimal(a.id);
           $('char-preview-fallback').textContent = a.emoji;   // WebGL 실패 시 대체 이모지
           $('char-preview-name').textContent = `${a.emoji} ${t(a.name)}`;   // [i18n] 이모지+이름 조합 노드라 직접 번역
-          grid.querySelectorAll('.char-card').forEach(el => el.classList.toggle('sel', el.dataset.id === a.id));        };
+          grid.querySelectorAll('.char-card').forEach(el => el.classList.toggle('sel', el.dataset.id === a.id));
+          const seeded = pf?.seed(a.id);
+          if (seeded) { nick.value = seeded; refreshNick(); }
+        };
         animals.forEach(a => {
           const c = document.createElement('div'); c.className = 'char-card'; c.dataset.id = a.id;
           c.innerHTML = `<div class="char-emoji">${a.emoji}</div><div class="char-name">${a.name}</div>`;
@@ -5129,7 +5155,8 @@
         $('char-confirm').onclick = () => {
           const a = animals.find(x => x.id === selected) || animals[0];
           const keep = change && nick.value.trim() === prevNick && prevNick.length > 0;
-          const nr = Input.setNickname(keep ? prevNick : nick.value, keep ? 'keep' : change ? 'change' : 'new');   // 🏷️ 닉네임 저장(검증 포함)
+          const source = keep ? 'keep' : change ? 'change' : pf?.isDefault(nick.value.trim()) ? 'default' : 'new';
+          const nr = Input.setNickname(keep ? prevNick : nick.value, source);   // 🏷️ 닉네임 저장(검증 포함)
           if (!nr.ok) { ui.toast(nr.msg); nick.focus(); return; }
           Input.setCharacter(selected, change);
           if (!change) nickStep.done();
@@ -6240,7 +6267,7 @@
     }
     function spotBlocked() {
       const b = document.body.classList;
-      return !b.contains('playing') || b.contains('intro-open') || ui.anyModalOpen() || !!document.querySelector('.show > .tut-card');
+      return !b.contains('playing') || b.contains('intro-open') || b.contains('cine-open') || ui.anyModalOpen() || !!document.querySelector('.show > .tut-card');
     }
     async function startOnboarding(src) {
       const steps = spotSteps('full', TOUCH);
@@ -6502,8 +6529,15 @@
 
       // 진행상황 자동 저장 — 30초 주기 + 탭 숨김/종료 시 (창 닫았다 열어도 이어짐)
       setInterval(() => requestSave(), 30000);
-      document.addEventListener('visibilitychange', () => { if (document.hidden) requestSave(); });
-      window.addEventListener('beforeunload', () => { try { requestSave(); } catch (e) {} });
+      let lastExitSave = 0;
+      const exitSave = () => {
+        const now = Date.now();
+        if (now - lastExitSave < 1000) return;
+        lastExitSave = now;
+        requestSave({ keepalive: true });
+      };
+      document.addEventListener('visibilitychange', () => { if (document.hidden) exitSave(); });
+      window.addEventListener('beforeunload', exitSave);
     }
 
     // 🧪 E2 처치(skip_login) — 로그인 화면 없이 오프라인 게스트 상태로 바로 입장하고,

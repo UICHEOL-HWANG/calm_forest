@@ -1,4 +1,4 @@
-import { THEMES, ORE_ODDS, DELVE_HALF, VEINS_PER_FLOOR, PLAIN_ROCKS, LADDER_PITY, LADDER_MIN_FRAC, BURROW_MIN_FROM_ARRIVAL, DELVE_FLOORS, DELVE_STOPS, MINER_STEPS } from '../data/delve.js';
+import { THEMES, ORE_ODDS, DELVE_HALF, VEINS_PER_FLOOR, PLAIN_ROCKS, LADDER_PITY, LADDER_MIN_FRAC, BURROW_MIN_FROM_ARRIVAL, DELVE_FLOORS, DELVE_STOPS, MINER_STEPS, ROOT_SHRINE_FLOOR } from '../data/delve.js';
 
 export function hashSeed(str) {
   let h = 2166136261 >>> 0;
@@ -50,6 +50,14 @@ export function chestSpot(ladderAt, half = DELVE_HALF) {
   return { x: Math.max(-lim, Math.min(lim, ladderAt.x + dx)), z: Math.max(-lim, Math.min(lim, ladderAt.z)) };
 }
 
+export function rootShrineSpot(arrival, half = DELVE_HALF) {
+  return { x: arrival.x <= 0 ? 4.2 : -4.2, z: -half + 0.7 };
+}
+
+export function inRootShrine(p, spot) {
+  return Math.abs(p.x - spot.x) < 3.4 && p.z < spot.z + 4.5;
+}
+
 const pick = (rng, lo, hi) => lo + rng() * (hi - lo);
 
 function placeFree(rng, taken, ok, half, gap = 1.4, tries = 400) {
@@ -67,8 +75,10 @@ export function layoutFloor({ seed, floor, half = DELVE_HALF }) {
   const arrival = { x: +pick(rng, -half / 2, half / 2).toFixed(2), z: -half + 1.5 };
   const minLadder = half * 2 * Math.SQRT2 * LADDER_MIN_FRAC;
   const ladderAt = placeFree(rng, [arrival], p => p.z > 0 && dist(p, arrival) >= minLadder, half) || { x: arrival.x <= 0 ? lim : -lim, z: lim };
+  const shrine = floor === ROOT_SHRINE_FLOOR ? rootShrineSpot(arrival, half) : null;
+  const clear = p => !shrine || !inRootShrine(p, shrine);
   const rocks = [{ ...ladderAt, vein: false }];
-  const away = p => dist(p, arrival) >= 2.5;
+  const away = p => dist(p, arrival) >= 2.5 && clear(p);
   for (let v = 0; v < VEINS_PER_FLOOR; v++) {
     const p = placeFree(rng, [arrival, ...rocks], away, half);
     if (p) rocks.push({ ...p, vein: true });
@@ -85,11 +95,11 @@ export function layoutFloor({ seed, floor, half = DELVE_HALF }) {
   const burrows = [], puddles = [];
   for (const p of pests) {
     const taken = [arrival, ...shuffled, ...burrows, ...puddles];
-    if (p === 'axolotl') { const q = placeFree(rng, taken, () => true, half, 2.0); if (q) puddles.push(q); }
-    const b = placeFree(rng, [...taken, ...puddles], q => dist(q, arrival) >= BURROW_MIN_FROM_ARRIVAL, half, 1.6) || { x: -ladderAt.x * 0.5, z: lim };
+    if (p === 'axolotl') { const q = placeFree(rng, taken, clear, half, 2.0); if (q) puddles.push(q); }
+    const b = placeFree(rng, [...taken, ...puddles], q => dist(q, arrival) >= BURROW_MIN_FROM_ARRIVAL && clear(q), half, 1.6) || { x: -ladderAt.x * 0.5, z: lim };
     burrows.push(b);
   }
-  return { arrival, rocks: shuffled, ladderAt, ladderRock, burrows, puddles, pests };
+  return { arrival, rocks: shuffled, ladderAt, ladderRock, burrows, puddles, pests, ...(shrine ? { shrine } : {}) };
 }
 
 export function ladderRevealed({ broken, hitLadderRock }) {
