@@ -17,6 +17,7 @@ import { playMinerLines, advanceMinerTalk, minerTalkOpen, closeMinerTalk } from 
 import { createPest, stepPest, tapPest, baitPest, canPick, RING_SEC, TAP_R, BAIT_R } from '../delve/pests.js';
 import { makePest, makeOreChunk, makePuddle, makeBurrow, makeRing, makeBait, makeShaft, makeLadderUp, makeRock, makeLift, emojiBubble, makeTrail } from '../delve/pest-art.js';
 import { makeMiner } from '../delve/miner.js';
+import { placeRootShrine, clearRootShrine } from '../delve/root-scene.js';
 import { Sound } from '../sound.js';
 import * as THREE from 'three';
 
@@ -85,11 +86,12 @@ export function settleMinerRewards() {
 function disposeObj(root) {
   root.traverse(o => {
     o.geometry?.dispose();
-    for (const m of [o.material].flat().filter(Boolean)) { m.map?.dispose(); m.dispose(); }
+    for (const m of [o.material].flat().filter(Boolean)) { m.map?.dispose(); m.emissiveMap?.dispose(); m.dispose(); }
   });
 }
 
 function clearRoom() {
+  clearRootShrine();
   if (group) { disposeObj(group); scene.remove(group); }
   group = null;
 }
@@ -151,6 +153,7 @@ export function enterFloor(floor, via) {
   player.position.copy(W(layout.arrival.x, layout.arrival.z));
   player.rotation.y = 0;
   $w.nearDoor = null; ui.setDoorPrompt?.(null); snapCamera(); setSpaceVisible();
+  if (layout.shrine) { const at = W(layout.shrine.x, layout.shrine.z); at.y = FLOOR_Y; placeRootShrine(group, at, themeOf(floor), layout.shrine.x > 0 ? 1 : -1); }
   trackEvent('delve_floor', { floor, via, stops: stopsOpen(gameState.delve).length, sec: prevSec, rocks: prevRocks });
   if (via === 'ladder') weeklyNote('delve');
   if (floor === 1) $w.firstHintBanner?.('delve_common', PEST_COPY.common.ico, PEST_COPY.common.title, PEST_COPY.common.line);
