@@ -60,12 +60,14 @@ function canvasTex(canvas) {
   return t;
 }
 
+let muralArt = null;
+
 function makeMural(stoneHex) {
   const g = new THREE.Group(), faces = [], textures = [];
   const wood = mat(0x7a5232), stone = mat(stoneHex);
   const box = (w, h, d, m, x, y, z) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; g.add(o); };
   let art = null;
-  try { art = drawRootMural(); } catch { art = null; }
+  try { art = muralArt ??= drawRootMural(); } catch { art = null; }
   if (art) {
     art.forEach((p, i) => {
       const map = canvasTex(p.color), emissiveMap = canvasTex(p.glow);

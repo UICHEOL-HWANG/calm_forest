@@ -1,5 +1,4 @@
-import { camera, defaultCamPose, gameState, Input, removeSolid, renderer, requestSave, scene, setCameraRig, solidCircle, ui } from '../game.js';
-import { warmShaders } from '../render/shader-warm.js';
+import { camera, defaultCamPose, gameState, Input, removeSolid, renderer, requestSave, setCameraRig, solidCircle, ui } from '../game.js';
 import { trackEvent } from '../analytics.js';
 import { Sound } from '../sound.js';
 import { ROOT_CINE_TOAST } from '../data/delve.js';
@@ -23,7 +22,6 @@ export function placeRootShrine(parent, at, theme, side, lamp) {
   const seen = !!gameState.hintsSeen?.[SEEN];
   shrine.setLit(seen);
   shrine.textures.forEach(t => renderer?.initTexture?.(t));
-  warmShaders(renderer, scene, camera);
   if (!seen) playRootCine(shrine);
   return shrine;
 }
