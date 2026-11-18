@@ -17,7 +17,7 @@ import { getPgsAuthCode } from './pgs-native.js';         // 📱 앱: Play Game
 import { getGcIdentity } from './gc-native.js';           // 🍎 iOS 앱: 게임센터 자동 로그인 → 신원 서명 → gc-auth Worker
 import { capPlugin } from './cap-bridge.js';               // 📱 앱: Capacitor.Plugins 는 비어 있다(@capacitor/core 미사용) → nativePromise 로 직접
 import { pickSave, progressScore } from './save-migrate.js';   // 🔵 게스트 → 정식 계정 진행도 이관 규칙
-import { loadOutcome, sessionLoss, retryDelayJittered } from './save-guard.js';    // 🛡️ 세이브 보호·세션 판정·백오프 재시도
+import { loadOutcome, sessionLoss, retryDelayJittered, exitSaveRequest, sendExitSave } from './save-guard.js';    // 🛡️ 세이브 보호·세션 판정·백오프 재시도
 import { t, clientId, assignVariant } from './i18n.js';   // i18n + 기기 식별/실험 배정(언어 결정과 공유)
 import { setAbVariant, trackEvent } from './analytics.js';
 import { kstDate } from './kst-date.js';   // 🕛 run_date 는 KST 날짜
@@ -514,18 +514,20 @@ let saveLocked = false;
 let freshGuest = false;   // 이 세션에서 익명 계정을 방금 만들었나(= 잃을 세이브가 없다)
 
 //  game_saves 로 나가는 유일한 쓰기 통로. allowLocked 는 "잠금을 알고도 써야 하는" 경우(게스트 이관)에만.
-async function writeSave(row, { allowLocked = false } = {}) {
+async function writeSave(row, { allowLocked = false, keepalive = false } = {}) {
   if (saveLocked && !allowLocked) { console.warn('[Supabase] 저장 잠금 — 세이브를 못 읽은 세션이라 덮어쓰지 않습니다'); return { ok: false, locked: true }; }
+  const exit = keepalive ? exitSaveRequest({ url: CONFIG.SUPABASE_URL, table: CONFIG.SAVE_TABLE, anonKey: CONFIG.SUPABASE_ANON_KEY, auth: logAuth, row, now: Date.now() }) : null;
+  if (exit) return sendExitSave(exit);
   const { error } = await supabase.from(CONFIG.SAVE_TABLE).upsert(row);
   if (error) throw error;
   return { ok: true };
 }
 
-export async function saveGame(gameState) {
+export async function saveGame(gameState, opts) {
   const row = { user_id: state.userId, state: gameState, updated_at: new Date().toISOString() };
   if (!state.online || !supabase) { devLog('[Supabase 폴백] 저장(오프라인):', row); return { ok: true, offline: true }; }
   try {
-    const r = await writeSave(row);
+    const r = await writeSave(row, { keepalive: opts?.keepalive === true });
     if (!r.ok) return { ok: false, locked: true };
     devLog('[Supabase] 저장 완료'); return { ok: true, offline: false };
   } catch (err) { console.warn('[Supabase 폴백] 저장 실패:', err?.message || err); return { ok: false, offline: false, error: err }; }

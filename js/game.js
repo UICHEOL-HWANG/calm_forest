@@ -66,6 +66,7 @@ import { buildMuseumExtras } from './museum/extras.js';   // 🏛️ 1층 ✨조
 import { logEcon, startMetrics } from './metrics.js';            // [계측] 경제 원장 + 세션 요약
 import { Sound, initSound, startRainSound, stopRainSound, setBGMTheme, audioBus, isBGMOn, startBGM, stopBGM } from './sound.js'; // 🔊 절차적 사운드 + 🌧️ 빗소리 + 🎵 BGM 테마
 import { t, LANG, aiBucket, clientId } from './i18n.js';   // 🌐 i18n — DOM 은 옵저버가 처리, 캔버스(간판·말풍선)만 직접 번역
+import { defaultNickname } from './nickname-default.js';
 import { createHouseGuide } from './spaces/house-guide.js';   // 🏠 목재 15개 → 집터 조망 + 방향 안내 50:50
 import { rearmMerchant, detourPoint, farmPlotTarget } from './guide/guide-rules.js';
 import { createGoalGuide } from './guide/goal-guide.js';
@@ -2393,6 +2394,10 @@ export const Input = {
   // 🏷️ 닉네임(리더보드 표시명) — 생성/조회/변경
   getNickname() { return gameState.nickname; },
   genNickname(animal) { return genNickname(animal); },
+  defaultNickname(animal) {
+    const a = ANIMALS.find(x => x.id === animal);
+    return defaultNickname({ adjs: NICK_ADJS, animal: t(a ? a.name : '친구'), lang: LANG });
+  },
   setNickname(name, source) { return setNickname(name, source); },
   createCharacterPreview(canvas) { return makeCharacterPreview(canvas); }, // 선택화면 3D 프리뷰
   // 🧥 캐릭터·꾸미기 › 옷장·펫 탭 — 목록은 게임 쪽이 그린다(프리뷰는 선택화면 것을 같이 쓴다)
@@ -3512,13 +3517,13 @@ export function getGameState() {
 //    딸꾹질이면 조용히 낫는다. 낫지 않으면(세션 만료·RLS 사고) 화면을 덮어 알린다:
 //    저장이 죽은 채로 계속 놀게 두면 그 시간이 통째로 날아가기 때문이다(입장 때 지키는 빗장의 뒷면).
 let saveRetrying = false;
-export async function requestSave() {
+export async function requestSave(opts) {
   //  🔌 세션이 죽었다 — 빗장은 새로고침 전엔 안 풀린다. 더 두드려 봐야 서버도 GA4 도 때릴 뿐이다.
   if (authState.lost) { ui.setSaveStuck?.(true); return { ok: false, locked: true }; }
   //  재시도가 도는 동안엔 새 쓰기를 내보내지 않는다. 불안정한 네트워크에서 두 요청이 역순으로
   //  도착하면 **오래된 스냅샷이 새 스냅샷을 덮는다** — 이 저장소가 두 번 겪은 사고의 모양이다.
   if (saveRetrying) return { ok: false, retrying: true };
-  const r = await saveGame(getGameState());
+  const r = await saveGame(getGameState(), { keepalive: opts?.keepalive === true });
   if (r.ok) { ui.setSaveStuck?.(false); return r; }
   retrySaveUntilOk().catch(() => {});   // 기다리지 않는다 — 호출부는 저장을 기다리며 멈출 이유가 없다
   return r;
