@@ -52,7 +52,7 @@ body.tool-fan-open #tool-btn .tb-tip { display: none; }
 #near-pill.show { display: grid; }
 @keyframes pillbob { 0%, 100% { margin-top: -25px; } 50% { margin-top: -30px; } }
 body:not(.playing) #near-pill, body.menu-open #near-pill, body.mg-open #near-pill, body.duel-open #near-pill, body.intro-open #near-pill,
-body.dream-cut #near-pill, body.guide-open #near-pill, body.boat-run #near-pill, body.tool-fan-open #near-pill, body:has(#mist-choice.show) #near-pill { display: none !important; }
+body.dream-cut #near-pill, body.guide-open #near-pill, body.boat-run #near-pill, body.tool-fan-open #near-pill, body:has(#mist-choice.show) #near-pill, body:has(#floor-choice.show) #near-pill { display: none !important; }
 body.is-touch.near-pill-on #door-prompt { opacity: 0 !important; }
 
 `;

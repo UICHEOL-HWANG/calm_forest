@@ -52,7 +52,7 @@ test('섬은 바다 공간의 하위 모드로 붙는다', () => {
   assert.match(sea, /if \(port\.active\) return updatePort\(dt, t\);/);
   assert.match(sea, /if \(port\.active\) return portCamera\(camera, look, dt\);/);
   assert.match(sea, /leaveMudflat\(\);\n  leaveDive\(\);\n  leavePort\(\);/);
-  assert.match(game, /if \(nearDoor === 'port_board' && !atSea\) return enterPort\(\);/);
+  assert.match(game, /if \(nearDoor === 'port_board' && !atSea\) return boardPier\(\);/);
   assert.match(game, /port\.active \? portAction :/);
   assert.match(game, /else if \(port\.active\) clampPort\(player\.position\);/);
   assert.match(game, /if \(portOwnsMovement\(\)\) return;/);

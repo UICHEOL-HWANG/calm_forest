@@ -5,7 +5,7 @@ import { ISLAND, ISLAND_R, ISLAND_DOCK, VILLAGE_DOCK, PIER_END, WALK_R, LAND_Y, 
   QUESTS, SOLIDS, ISLAND_TREES, ISLAND_ROCKS, FENCE, SIGNS, MARKET_PRICE, MARKET_GIVE } from './data.js';
 import { tubBoat, buildPortShops, setPortNight, mat, glow } from './models.js';
 import { rollCatch, addToPantry, acceptQuest, pickItem, claimQuest, boardGate, sellCatch, hasCatch, sellPreview } from './rules.js';
-import { disarmPortPier, nearPortPier, portPierBoat } from './pier.js';
+import { disarmPortPier, nearPortPier, portPierBoat, pierPick } from './pier.js';
 import { createGuide } from '../guide/runner.js';
 import { guideStalled } from '../pond/yard-steps.js';
 import { createGuideView } from '../guide/view.js';
@@ -17,6 +17,7 @@ import { showTalk, hideTalk, onTalkTap, talkShown } from '../mirror/talk-box.js'
 import { splitLines } from './card.js';
 import { steer, pushOutOfIsland, pushOutOfCircles, fastStep } from './sail.js';
 import { seaHoldRod } from '../spaces/sea.js';
+import { makeGuideSpot } from '../spaces/gate-cue.js';
 import { setIslandHud, updateBasket } from './basket.js';
 import { pickQuestGuide, questSteps, askSteps, portFocus } from './quest-guide.js';
 import { guideArbiter } from '../guide/arbiter.js';
@@ -25,6 +26,7 @@ import { initFishing, castSpot, castLine, twitchRod, hookFish, reelIn, clearFish
 
 export const port = { active: false };
 const env = {};
+let homeCue = null, islandPick = false;
 let group = null, boat = null, shops = null, justLeft = false, night = null, btnKey = '', chipKey = null, talk = null, boardArmed = false;
 const npcs = {}, glyphs = {}, items = [], solids = [];
 const P = { phase: 'sail', dir: 1, fast: false, wp: 1, heading: -Math.PI / 2, speed: 0, moved: 0, fishing: null, trip: null, spots: [], t: 0 };
@@ -44,7 +46,7 @@ export const guideFocus = () => (!port.active || P.phase !== 'island' ? null : g
 const ROD_READY_R = 5;
 const MARKET_R = 3.2, HUT_R = 2.8, LIGHT_R = 3, SELL_CONFIRM_MS = 4000;
 const sellArm = { until: 0, text: '' };
-const TALK_R = 2.6, PICK_R = 1.5, TALK_CLOSE_R = 3, PIER_END_R = 1.2;
+const TALK_R = 2.6, PICK_R = 1.5, TALK_CLOSE_R = 3, PIER_END_R = 1.2, HOME_R = 1.6, HOME_ARM_R = 4;
 const portState = () => env.gameState().port;
 
 export function bindPortEnv(e) { Object.assign(env, e); }
@@ -109,6 +111,7 @@ function buildPort() {
   market.position.copy(W(MARKET_POS.x, MARKET_POS.z, LAND_Y)); market.rotation.y = 0.55; shops.add(market);
   hut.position.copy(W(HUT_POS.x, HUT_POS.z, LAND_Y)); hut.rotation.y = 0.5; shops.add(hut);
   boat = tubBoat(); group.add(boat);
+  homeCue = makeGuideSpot(0xffc94a, HOME_R); homeCue.group.visible = false; group.add(homeCue.group);
   buildResidents();
   const signs = new THREE.Group(); signs.position.copy(W(0, 0, LAND_Y)); group.add(signs);
   for (const sg of SIGNS) {
@@ -219,13 +222,14 @@ function seatPlayer() {
 
 export function enterPort(o = {}) {
   if (port.active) return;
+  pierPick.open = false;
   if (!group) buildPort();
   justLeft = false;
   for (const c of solids) c.off = false;
   env.$w.atSea = true;
   port.active = true;
   group.visible = true;
-  Object.assign(P, { phase: 'sail', dir: 1, fast: !!o.fast, wp: 1, heading: -Math.PI / 2, speed: 0, moved: 0, fishing: null,
+  Object.assign(P, { phase: 'sail', dir: 1, fast: !!o.fast, wp: 1, heading: -Math.PI / 2, speed: 0, moved: 0, fishing: null, homeArmed: false,
     trip: { t0: performance.now(), caught: 0, quests: 0, via: o.fast ? 'fast' : 'sail' } });
   resetSpots();
   night = null; btnKey = ''; chipKey = null;
@@ -315,8 +319,25 @@ function sailTick(dt) {
   boat.position.set(PORT.x + next.x, 0, PORT.z + next.z);
   boat.rotation.y = P.heading;
   seatPlayer();
-  const dock = P.dir > 0 ? ISLAND_DOCK : VILLAGE_DOCK;
-  if (!P.fast && !P.fishing && Math.hypot(next.x - dock.x, next.z - dock.z) < 1.2) arrive();
+  const dock = P.dir > 0 ? ISLAND_DOCK : VILLAGE_DOCK, home = P.dir > 0 ? VILLAGE_DOCK : ISLAND_DOCK;
+  const hd = Math.hypot(next.x - home.x, next.z - home.z);
+  P.homeArmed = P.homeArmed || (!P.fast && hd >= HOME_ARM_R);
+  homeCue.group.visible = P.homeArmed;
+  if (P.homeArmed) { homeCue.group.position.copy(W(home.x, home.z, 0.08)); homeCue.tick(P.t); }
+  if (!P.fast && !P.fishing && Math.hypot(next.x - dock.x, next.z - dock.z) < 1.2) return arrive();
+  if (P.homeArmed && !P.fishing && hd < HOME_R) turnBack();
+}
+
+function turnBack() {
+  homeCue.group.visible = false;
+  if (P.dir < 0) return arriveIsland();
+  P.speed = 0;
+  env.trackEvent('port_trip', { via: 'back', caught: P.trip.caught, quests: P.trip.quests, sec: Math.round((performance.now() - P.trip.t0) / 1000) });
+  env.requestSave();
+  const restartGuide = !!guide;
+  if (guide) { view?.hide(); setPoint(null); guide = null; }
+  env.exitSea();
+  if (restartGuide) startPortGuide();
 }
 
 function nearSpot(r) {
@@ -420,7 +441,12 @@ export function portAction() {
   if (c.nd === 'port_talk') return talkTo(c.id, c.kind);
   if (c.nd === 'port_buy') return buy();
   if (c.nd === 'port_sell') return sell();
-  if (c.nd === 'port_board') return leaveIsland(false);
+  if (c.nd === 'port_board') { if (portState().fastUnlocked) islandPick = true; else leaveIsland(false); }
+}
+
+export function boardPier() {
+  if (env.gameState().port?.fastUnlocked && !guideHides()) pierPick.open = true;
+  else enterPort();
 }
 
 export function portPrompt() {
@@ -428,7 +454,8 @@ export function portPrompt() {
   if (P.phase === 'sail' && !P.fast && nearSpot(3.4)) return { nd: 'port_cast', prompt: '' };
   if (P.phase !== 'island') return { nd: null, prompt: '' };
   const c = islandContext();
-  setChips(c?.nd === 'port_board' && portState().fastUnlocked ? 'island' : null);
+  if (c?.nd !== 'port_board') islandPick = false;
+  setChips(c?.nd === 'port_board' && islandPick ? 'island' : null);
   return c ? { nd: c.nd, prompt: c.prompt ?? '' } : { nd: null, prompt: '' };
 }
 
@@ -565,10 +592,10 @@ function sell() {
 
 function leaveIsland(fast) {
   if (!port.active || P.phase !== 'island') return;
-  closeTalk(); setChips(null);
+  closeTalk(); setChips(null); islandPick = false;
   setIslandHud(env.hudRoot, false);
   boat.position.copy(W(ISLAND_DOCK.x, ISLAND_DOCK.z));
-  Object.assign(P, { phase: 'sail', dir: -1, fast, wp: 1, speed: 0, heading: Math.PI / 2 });
+  Object.assign(P, { phase: 'sail', dir: -1, fast, wp: 1, speed: 0, heading: Math.PI / 2, homeArmed: false });
   boat.rotation.y = P.heading;
   seatPlayer();
 }
@@ -587,6 +614,7 @@ function arrive() {
 
 function arriveIsland() {
   P.phase = 'island';
+  homeCue.group.visible = false;
   buildIslandNav();
   setIslandHud(env.hudRoot, true);
   boardArmed = false;
