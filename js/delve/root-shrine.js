@@ -112,7 +112,6 @@ function makeLamp(x) {
   const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.26, 0.2), new THREE.MeshStandardMaterial({ color: 0xffd27a, emissive: 0xffb84a, emissiveIntensity: 0.8 }));
   lamp.position.set(lx, 1.98, 0.35); g.add(lamp);
   const cap = new THREE.Mesh(new THREE.ConeGeometry(0.17, 0.12, 4), mat(0x3a3648)); cap.position.set(lx, 2.17, 0.35); cap.rotation.y = Math.PI / 4; g.add(cap);
-  const light = new THREE.PointLight(0xffb866, 1.6, 6, 1.3); light.position.set(lx, 1.9, 0.9); g.add(light);
   return g;
 }
 
@@ -122,7 +121,8 @@ export function makeRootShrine(theme, side = 1) {
   const root = makeRoot(ROOT_PTS.map(([x, y, z]) => [x * side, y, z]));
   g.add(mural.g, makePad(), root.g, makeLamp(2.15 * side));
   const panels = [-1, 0, 1].map(k => new THREE.Vector3(k * PANEL_W, MURAL_Y, MURAL_Z));
+  const lampAt = { x: 2.15 * side - side * 0.38, y: 1.9, z: 0.9 };
   const solids = [...[-1, 0, 1].map(k => ({ x: k * PANEL_W, z: MURAL_Z, r: 0.7 })), { x: 2.15 * side, z: 0.35, r: 0.3 }];
   const setLit = (on) => { mural.setLit(on); root.setLit(on); };
-  return { g, setLit, panels, solids };
+  return { g, setLit, panels, solids, lampAt };
 }

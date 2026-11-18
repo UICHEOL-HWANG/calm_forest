@@ -11,12 +11,13 @@ let cine = null;
 let overlay = null;
 let onKey = null;
 
-export function placeRootShrine(parent, at, theme, side) {
+export function placeRootShrine(parent, at, theme, side, lamp) {
   clearRootShrine();
   const shrine = makeRootShrine(theme, side);
   shrine.g.position.copy(at);
   parent.add(shrine.g);
   shrine.g.updateMatrixWorld(true);
+  if (lamp) { lamp.position.set(at.x + shrine.lampAt.x, at.y + shrine.lampAt.y, at.z + shrine.lampAt.z); lamp.intensity = 1.6; lamp.distance = 6; lamp.decay = 1.3; }
   solids = shrine.solids.map(s => solidCircle(at.x + s.x, at.z + s.z, s.r));
   const seen = !!gameState.hintsSeen?.[SEEN];
   shrine.setLit(seen);
@@ -63,9 +64,11 @@ function endRootCine(aborted) {
   setCameraRig(null);
   hideOverlay();
   if (!aborted) shrine.setLit(true);
-  gameState.hintsSeen = { ...gameState.hintsSeen, [SEEN]: true };
-  requestSave();
-  if (!aborted) ui.toast?.(ROOT_CINE_TOAST, 3200);
+  if (!aborted) {
+    gameState.hintsSeen = { ...gameState.hintsSeen, [SEEN]: true };
+    requestSave();
+    ui.toast?.(ROOT_CINE_TOAST, 3200);
+  }
   trackEvent('delve_root_cine', { skipped: skipped || aborted ? 1 : 0, sec: Math.round((performance.now() - t0) / 1000) });
 }
 
@@ -85,7 +88,11 @@ function showOverlay() {
   }
   overlay.style.display = 'block';
   document.body.classList.add('cine-open');
-  onKey = (e) => { e.preventDefault(); e.stopImmediatePropagation(); if (!e.repeat) skipRootCine(); };
+  onKey = (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey || /^F\d+$/.test(e.key)) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    if (!e.repeat) skipRootCine();
+  };
   window.addEventListener('keydown', onKey, true);
 }
 

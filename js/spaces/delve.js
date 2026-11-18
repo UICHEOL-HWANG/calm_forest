@@ -27,6 +27,7 @@ let visitN = 0;
 let liftMesh = null;
 let minerMesh = null;
 let minerSolid = null;
+let spareLamp = null;
 const bumpTodayJob = () => { gameState.delve = bumpJob(gameState.delve, todayStr()); };
 export function delveJobProgress() { return jobProgress(gameState.delve, todayStr()); }
 const lineSec = () => (gameState.delve.startedAt ? Math.max(0, Math.round((Date.now() - gameState.delve.startedAt) / 1000)) : 0);
@@ -85,6 +86,7 @@ export function settleMinerRewards() {
 
 function disposeObj(root) {
   root.traverse(o => {
+    if (o.isInstancedMesh) o.dispose();
     o.geometry?.dispose();
     for (const m of [o.material].flat().filter(Boolean)) { m.map?.dispose(); m.emissiveMap?.dispose(); m.dispose(); }
   });
@@ -117,6 +119,7 @@ function buildRoom(floor, layout) {
   group.add(walls);
   const up = makeLadderUp(); up.position.copy(W(layout.arrival.x, layout.arrival.z - 1)); up.position.y = FLOOR_Y; group.add(up);
   const light = new THREE.PointLight(0xffb866, 2.0, 18, 1.2); light.position.copy(W(0, 0)); light.position.y = 4; group.add(light);
+  spareLamp = new THREE.PointLight(0xffb866, 0, 6, 1.3); group.add(spareLamp);
   run.rockMeshes = layout.rocks.map(r => { const m = makeRock(r.vein, theme); m.position.copy(W(r.x, r.z)); m.position.y = FLOOR_Y; m.userData.hp = 3; group.add(m); return m; });
   for (const p of layout.puddles) { const m = makePuddle(0.85); m.position.copy(W(p.x, p.z)); m.position.y = FLOOR_Y; group.add(m); }
   for (const b of layout.burrows) { const m = makeBurrow(); m.position.copy(W(b.x, b.z)); m.position.y = FLOOR_Y; group.add(m); }
@@ -153,7 +156,7 @@ export function enterFloor(floor, via) {
   player.position.copy(W(layout.arrival.x, layout.arrival.z));
   player.rotation.y = 0;
   $w.nearDoor = null; ui.setDoorPrompt?.(null); snapCamera(); setSpaceVisible();
-  if (layout.shrine) { const at = W(layout.shrine.x, layout.shrine.z); at.y = FLOOR_Y; placeRootShrine(group, at, themeOf(floor), layout.shrine.x > 0 ? 1 : -1); }
+  if (layout.shrine) { const at = W(layout.shrine.x, layout.shrine.z); at.y = FLOOR_Y; placeRootShrine(group, at, themeOf(floor), layout.shrine.x > 0 ? 1 : -1, spareLamp); }
   trackEvent('delve_floor', { floor, via, stops: stopsOpen(gameState.delve).length, sec: prevSec, rocks: prevRocks });
   if (via === 'ladder') weeklyNote('delve');
   if (floor === 1) $w.firstHintBanner?.('delve_common', PEST_COPY.common.ico, PEST_COPY.common.title, PEST_COPY.common.line);

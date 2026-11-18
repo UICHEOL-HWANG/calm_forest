@@ -94,7 +94,7 @@ delve_chest,content,cave_delve,2,N,not_fired,0,0,,,,js/spaces/delve.js:294,"광�
 delve_enter,content,cave_delve,2,N,not_fired,0,0,,,,js/spaces/delve.js:330,"광산 승강기로 던전 층에 들어갈 때 (floor=층, stops=개방된 정거장 수)",
 delve_exit,content,cave_delve,2,N,not_fired,0,0,,,,js/spaces/delve.js:155,"광산 던전에서 나와 지상으로 돌아왔을 때 (reason=사유, ore=캐낸 광석 수)",
 delve_floor,content,cave_delve,2,N,not_fired,0,0,,,,js/spaces/delve.js:149,"광산 던전의 층에 도착했을 때 (via=이동 경로, sec=이전 층 체류 초, rocks=캔 바위 수)",
-delve_root_cine,content,cave_delve,2,N,not_fired,0,0,,,skipped|sec,js/delve/root-scene.js:69,"지하 20층 뿌리 터 첫 도착 연출이 끝났을 때 (skipped=건너뛰거나 중간에 떠남, sec=본 초)",
+delve_root_cine,content,cave_delve,2,N,not_fired,0,0,,,skipped|sec,js/delve/root-scene.js:72,"지하 20층 뿌리 터 첫 도착 연출이 끝났을 때 (skipped=건너뛰거나 중간에 떠남, sec=본 초)",
 delve_step,content,cave_delve,2,N,not_fired,0,0,,,,js/spaces/delve.js:281,"광부 안내 라인의 단계가 진행됐을 때 (step=단계, sec=소요 초)",
 dex_complete,progression,progression,2,N,not_fired,0,0,,,,js/game.js:1123,도감을 전부 채워 완성 보상을 받았을 때,
 dex_discover,progression,progression,2,N,active,3589,298,2026-08-08,2026-10-24,entry|category|total,js/game.js:1117,수집 퍼널,

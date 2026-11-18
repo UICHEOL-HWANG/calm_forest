@@ -15,5 +15,6 @@ test('20층에 들어오면 뿌리 터를 놓고, 방을 비울 때 함께 치�
 test('연출은 한 번 보면 기록하고 이벤트를 남긴다', () => {
   assert.match(SCENE, /const SEEN = 'mineRootLit'/);
   assert.match(SCENE, /trackEvent\('delve_root_cine', \{ skipped: [^,]+, sec: /);
-  assert.match(SCENE, /requestSave\(\)/);
+  assert.match(SCENE, /if \(!aborted\) \{\n    gameState\.hintsSeen = \{ \.\.\.gameState\.hintsSeen, \[SEEN\]: true \};\n    requestSave\(\);/);
+  assert.match(DELVE, /spareLamp = new THREE\.PointLight\(0xffb866, 0,/);
 });
