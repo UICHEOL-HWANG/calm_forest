@@ -35,12 +35,12 @@ export function finaleFogPush() {
 
 export function replayFinale() { start(true); }
 
-function show(bloom, reveal, dt) {
+function show(bloom, reveal, dt, animate = true) {
   if (bloom !== shownBloom) { art.setBloom(bloom); shownBloom = bloom; }
   art.setReveal(reveal);
   const night = isNight();
   if (night !== shownNight) { art.setNight(night); shownNight = night; }
-  art.update(dt);
+  if (animate) art.update(dt);
 }
 
 export function updateFinale(dt, ready) {
@@ -53,7 +53,7 @@ export function updateFinale(dt, ready) {
   }
   const keeper = hasKeeperTitle(gameState);
   art.group.visible = keeper;
-  if (keeper) show(1, 1, dt);
+  if (keeper) show(1, 1, dt, inVillage2());
   if (ready && finaleDue(gameState)) start(false);
 }
 

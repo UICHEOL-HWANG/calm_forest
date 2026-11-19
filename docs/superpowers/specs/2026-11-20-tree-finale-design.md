@@ -43,7 +43,7 @@ Related: `2026-10-16-world-tree-board-design.md`, `2026-10-16-world-tree-reworld
 
 ## 5. 계속 남는 변화
 
-- 꽃: 세계수 우듬지에 분홍 꽃 무리와 빛 스프라이트, 천천히 떨어지는 꽃잎. 꽃 무리는 메시 하나로 합친다.
+- 꽃: 세계수 우듬지에 분홍 꽃 무리와 천천히 떨어지는 꽃잎. 꽃 무리는 메시 하나로 합친다. 꽃은 toneMapped:false 와 기존 블룸으로 빛나고, 드로우콜 4개 예산을 지킨다.
 - 뿌리 길: 세계수에서 이웃 마을 입구까지 이어지는 금빛 뿌리(튜브 + 은은한 겉빛).
   - 밤에는 더 밝고 낮에는 은은하다.
   - 걸을 수 있고, 충돌체는 없다.
@@ -53,7 +53,7 @@ Related: `2026-10-16-world-tree-board-design.md`, `2026-10-16-world-tree-reworld
 ## 6. 칭호 「세계수지기」 (A안: 내 화면 + 이웃 목록)
 
 - 판정: `story.ch >= 9`.
-- PC 이야기 칩: 9장 이후에는 「🌸 세계수지기 · 모든 이야기를 마쳤어요」로 바뀐다. 폰은 지금처럼 칩이 없다.
+- PC 이야기 칩: 9장 이후에는 「🌸 세계수지기 · 모든 이야기를 마쳤어요」로 바뀐다. 폰에서도 칩은 이야기 칩과 똑같은 노출 규칙을 따른다(세로 폰은 다른 안내가 가리지 않는 한 보이고, 높이 560px 미만 가로 폰은 숨긴다).
 - 세계수 판: 탭 위에 칭호 띠를 두고, 같은 띠에 "🎬 엔딩 다시 보기" 버튼을 둔다.
 - 오늘의 이웃 목록: 칭호가 있는 이웃의 이름 옆에 `.nb-badge` "🌸 세계수지기" 를 붙인다.
 - 서버: `neighbors_today` 의 각 행에 `'title'` 값을 추가한다. `gs.state->'story'->>'ch'` 가 9 이상이면 `'keeper'`, 아니면 `null` 이다.
@@ -86,13 +86,15 @@ Related: `2026-10-16-world-tree-board-design.md`, `2026-10-16-world-tree-reworld
 | `js/world/finale-art.js` (새) | 꽃 무리, 꽃잎, 뿌리 곡선과 메시. `setReveal(k)` 와 `setBloom(k)` 로 진행도를 받는다 |
 | `js/spaces/world-tree.js` | 조망샷 줄에 `finale` 종류 추가, 꽃과 뿌리 길 상시 표시 |
 | `js/spaces/tree-finale.js` (새) | 연출 실행: 오버레이, 카메라, 주민 세우기, 저장, GA4, 상시 꽃·뿌리 길 |
-| `js/game.js` | 변경 없음. `afterModals` 가 이미 `treeShotBusy()` 를 기다리고, 엔딩은 모달이 다 닫힌 뒤 마을에서 시작한다 |
-| `index.html`, `js/story/rules.js` | 이야기 칩 칭호 |
+| `js/game.js` | `isStoryBooted` getter export 만 추가. `afterModals` 가 이미 `treeShotBusy()` 를 기다리고, 엔딩은 모달이 다 닫힌 뒤 마을에서 시작한다 |
+| `js/spaces/npc.js` | 엔딩 중 `hudHidden` 이면 이름표를 숨긴다(마당 안내에도 적용) |
+| `index.html`, `js/story/rules.js` | 이야기 칩 칭호, `body.cine-open` 숨김 목록에 `#near-pill` 추가 |
 | `js/world/tree-board-ui.js` | 칭호 띠, 다시 보기 버튼, 예고 |
 | `js/neighbors/ui.js` | 🌸 배지 |
 | `js/i18n-en.js` | 영어 |
 | `sql/migrations/migrate_tree_finale_title.sql` | `neighbors_today` 에 title 추가 |
 | `sql/tests/neighbors_selftest.sql` | title 검사 추가 |
+| `docs/analysis/event-taxonomy.csv` | `tree_finale` 행 |
 
 ## 9. 측정
 
