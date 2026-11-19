@@ -72,7 +72,7 @@ begin
   select count(*) into v_cnt from village_dishes where giver = v_uid and day = v_day;
   if v_cnt >= 3 then return jsonb_build_object('ok', false, 'reason', 'limit'); end if;
   perform pg_advisory_xact_lock(hashtext('nbdh:' || v_host::text));
-  select count(*) into v_cnt from village_dishes where host = v_host and eaten_at is null and created_at > now() - interval '7 days';
+  select count(*) into v_cnt from village_dishes where host = v_host and eaten_at is null and created_at > now() - interval '7 days' and not _nb_blocked(v_host, giver);
   if v_cnt >= 6 then return jsonb_build_object('ok', false, 'reason', 'full'); end if;
   insert into village_dishes (giver, host, day, recipe, score, stars) values (v_uid, v_host, v_day, p_recipe, v_score, _nb_dish_stars(v_score))
   on conflict (giver, host, day) do nothing
