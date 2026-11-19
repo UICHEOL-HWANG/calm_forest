@@ -271,6 +271,7 @@ neighbor_indoor_exit,social,neighbor,2,N,active,11,1,2026-10-15,2026-10-24,tags_
 neighbor_load_fail,system,ops,3,N,dormant,13,1,2026-10-08,2026-10-08,code|stage,js/neighbors/track.js:21,"이웃 마을 불러오기에 실패했을 때 (stage=단계, code=오류 코드)",
 neighbor_react,social,neighbor,2,N,active,30,3,2026-10-08,2026-10-24,emoji|reason|host|rewarded,js/neighbors/track.js:11,"이웃 마을에서 이모지 반응을 보냈을 때 (emoji, rewarded=보상 여부)",
 neighbor_report,social,neighbor,2,N,not_fired,0,0,,,,js/neighbors/track.js:17,"이웃을 신고했을 때 (reason=사유, from=목록 또는 구경 중, ok=서버 반영)",
+neighbor_seat,social,neighbor,2,N,not_fired,0,0,,,host|shape,js/neighbors/track.js:30,"이웃 마당 식탁에 앉았을 때 (shape=round|long)",
 neighbor_visit_end,social,neighbor,2,N,active,49,4,2026-10-08,2026-10-24,host|sec|reacted,js/neighbors/track.js:13,"이웃 마을 구경을 끝냈을 때 (sec=머문 초, reacted=반응 여부)",
 neighbor_visit_start,social,neighbor,2,N,active,49,4,2026-10-08,2026-10-24,host|revisit|load_ms|slot,js/neighbors/track.js:9,"이웃 마을 구경을 시작했을 때 (slot=목록 순서, revisit=재방문, load_ms=로딩 시간)",
 neighbor_visitors_notice,social,neighbor,2,N,active,6,3,2026-10-08,2026-10-24,n|total,js/neighbors/track.js:14,"내 마을에 이웃이 다녀갔다는 알림이 떴을 때 (n=이번 알림 수, total=누적)",
