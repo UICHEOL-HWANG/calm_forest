@@ -52,3 +52,8 @@ test('칭호 칩은 챕터 칩과 같은 요소·같은 show 클래스를 쓴다
   assert.doesNotMatch(keeper, /style\.display|createElement/);
   assert.match(html, /@media \(max-height: 560px\) \{\s*#story-chip \{ display: none !important; \}/);
 });
+
+test('엔딩 중엔 주민 이름표가 꺼지고, 근접 말풍선 버튼은 cine-open 에서 숨는다', () => {
+  assert.match(read('js/spaces/npc.js'), /fadeNameTag\(o\.tag, hudHidden \? Infinity :/);
+  assert.match(read('index.html'), /body\.cine-open :is\([^)]*#near-pill/);
+});
