@@ -10,8 +10,12 @@ import { EMOJI, EMOJI_IDS, rewardLine } from './rules.js';
 import { DISH_COPY as D, fill } from './dish-copy.js';
 
 const CSS = `
-#nb-pick-modal, #nb-visitors-modal { position: fixed; inset: 0; z-index: 33; display: none; place-items: center; background: rgba(20,40,30,0.55); }
-#nb-pick-modal.show, #nb-visitors-modal.show { display: grid; }
+#nb-pick-modal, #nb-visitors-modal, #nb-dish-modal, #nb-inbox-modal, #nb-rate-modal { position: fixed; inset: 0; z-index: 33; display: none; place-items: center; background: rgba(20,40,30,0.55); }
+#nb-pick-modal.show, #nb-visitors-modal.show, #nb-dish-modal.show, #nb-inbox-modal.show, #nb-rate-modal.show { display: grid; }
+.nb-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0 12px; }
+.nb-it { border: none; background: #f4faf5; border-radius: 12px; padding: 8px 2px; font-size: 24px; cursor: pointer; font-family: inherit; color: var(--ink); }
+.nb-it b { display: block; font-size: 11px; font-weight: 700; margin-top: 2px; word-break: keep-all; }
+.nb-it.on { background: #ffe9b8; outline: 2px solid #f2c23c; }
 .nb-card { width: min(440px, calc(100vw - 28px)); box-sizing: border-box; background: #fff; border-radius: 22px;
   box-shadow: 0 20px 60px rgba(30,50,40,.4); padding: 18px 14px 14px; text-align: center;
   max-height: calc(100dvh - 24px - var(--top-inset, 0px)); overflow-y: auto; }
@@ -284,6 +288,29 @@ export function openVisitorsModal(view, onDone) {
   ok.onclick = () => closeModal('nb-visitors-modal');
   onClose['nb-visitors-modal'] = onDone;
   card.append(list, ok);
+  Input.setAnalog(0, 0);
+  root.classList.add('show');
+}
+
+export function openDishPicker(items, onServe) {
+  const { root, card } = modal('nb-dish-modal');
+  let pick = items[0];
+  card.append(el('h2', null, D.pickTitle), el('p', 'nb-sub', D.pickSub));
+  const grid = el('div', 'nb-grid');
+  const cells = items.map((it) => {
+    const c = el('button', 'nb-it' + (it === pick ? ' on' : ''), it.ico);
+    c.appendChild(el('b', null, it.name));
+    c.onclick = () => { pick = it; cells.forEach(x => x.classList.toggle('on', x === c)); };
+    grid.appendChild(c);
+    return c;
+  });
+  const later = el('button', 'nb-btn nb-close', D.later);
+  later.onclick = () => closeModal('nb-dish-modal');
+  const serve = el('button', 'nb-btn', D.serve);
+  serve.onclick = () => { closeModal('nb-dish-modal'); onServe(pick); };
+  const acts = el('div', 'nb-acts');
+  acts.append(later, serve);
+  card.append(grid, acts);
   Input.setAnalog(0, 0);
   root.classList.add('show');
 }

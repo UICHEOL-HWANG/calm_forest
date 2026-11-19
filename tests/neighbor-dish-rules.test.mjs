@@ -92,3 +92,23 @@ test('나를 찾아온 이웃: 다녀간 이웃·평가 회신을 합쳐 한 사
   assert.deepEqual(returnRows({ ok: false }, face, 3), []);
   assert.equal(returnRows({ ok: true, list: [], replies: [{ nick: 'a', emoji: 'heart', public_id: UUID }, { nick: 'b', emoji: 'heart', public_id: UUID2 }] }, face, 1).length, 1);
 });
+
+test('요리 창 판: 간→A(hold), 끓이기·굽기→B(tap), 썰기→C(beat), 모르면 B', async () => {
+  const { gameOf } = await import('../js/neighbors/dish-rules.js');
+  assert.deepEqual(['season', 'pot', 'grill', 'chop', 'x'].map(gameOf), ['hold', 'tap', 'tap', 'beat', 'tap']);
+});
+
+test('판 별: 진한 초록 3 · 연한 초록 2 · 밖 1 · 박자는 맞힌 수(최소 1)', async () => {
+  const { GAME_ZONES, zoneStars, beatStars } = await import('../js/neighbors/dish-rules.js');
+  const z = GAME_ZONES.hold;
+  assert.equal(zoneStars(z.best[0], z), 3);
+  assert.equal(zoneStars(z.ok[0], z), 2);
+  assert.equal(zoneStars(z.ok[1] + 1, z), 1);
+  assert.equal(zoneStars(NaN, z), 1);
+  assert.deepEqual([0, 1, 2, 3, 5].map(beatStars), [1, 1, 2, 3, 3]);
+});
+
+test('별 → 서버 점수는 서버 별 컷과 같은 별로 돌아온다', async () => {
+  const { scoreOfStars, dishStars } = await import('../js/neighbors/dish-rules.js');
+  assert.deepEqual([1, 2, 3].map(scoreOfStars).map(dishStars), [1, 2, 3]);
+});

@@ -130,6 +130,15 @@ export function pantryEat(i) {
   return eatDish(r, f, false);
 }
 
+export function pantryGive(i, id) {
+  const list = gameState.pantry || [];
+  const at = list[i]?.id === id ? i : list.findIndex(f => f.id === id);
+  if (at < 0) return null;
+  const f = list[at];
+  gameState.pantry = list.filter((_, k) => k !== at);
+  return f;
+}
+
 // 도구 업그레이드 제작(영구) — 이미 보유면 거절
 export function craftUpgrade(id) {
   const u = UPGRADES.find(x => x.id === id); if (!u) return { ok: false };

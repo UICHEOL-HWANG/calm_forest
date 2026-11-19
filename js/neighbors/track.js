@@ -27,3 +27,4 @@ export const evIndoorExit = (publicId, sec, floorsSeen, tagsSeen) =>
   ['neighbor_indoor_exit', { host: publicId, sec: Math.max(0, Math.round(sec)), floors_seen: floorsSeen, tags_seen: tagsSeen }];
 
 export const evSeat = (publicId, shape) => ['neighbor_seat', { host: publicId, shape }];
+export const evDishLeave = (publicId, recipe, stars, reason) => ['neighbor_dish_leave', { host: publicId, recipe, stars, reason }];

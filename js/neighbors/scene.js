@@ -31,7 +31,7 @@ import { starLine } from './dish-rules.js';
 export const GROUND_R = NEIGHBOR_R + 18;   // 34 — 언덕 끝 허공이 안 보이게(과수원 ORCHARD_HALF+16 과 같은 교훈). shadow-scope: 700−34−18 = 648m
 const TREE_SPOTS = [[-15, -8], [-17, 3], [-13, 11], [15, -8], [17, 3], [13, 11], [-7, -16], [7, -16]];
 const CANOPY_R = 1.1;
-const GUEST_PLATE_Z = 0.42, PLATE_TOP = 0.802, STAR_Y = 1.18, STAR_SIZE = 0.24;
+const GUEST_PLATE_X = 0.5, GUEST_PLATE_Z = 0.3, PLATE_TOP = 0.802, STAR_Y = 1.3, STAR_SIZE = 0.3;
 const plateMat = (color) => new THREE.MeshStandardMaterial({ color, roughness: 0.8, flatShading: true });
 
 function guestPlate(tier, stars) {
@@ -44,6 +44,8 @@ function guestPlate(tier, stars) {
   const n = [...starLine(stars)].length;
   for (let i = 0; i < n; i++) {
     const star = emojiSprite('⭐', STAR_SIZE);
+    star.material.toneMapped = false;
+    star.material.fog = false;
     star.position.set((i - (n - 1) / 2) * STAR_SIZE * 0.9, STAR_Y, 0);
     g.add(star);
   }
@@ -146,7 +148,7 @@ export function buildNeighborScene(view) {
       clearGuestDish();
       if (!built.table) return;
       guestDish = guestPlate(tier, stars);
-      guestDish.position.set(built.table.x, 0, built.table.z + GUEST_PLATE_Z);
+      guestDish.position.set(built.table.x + GUEST_PLATE_X, 0, built.table.z + GUEST_PLATE_Z);
       group.add(guestDish);
     },
     dispose() {

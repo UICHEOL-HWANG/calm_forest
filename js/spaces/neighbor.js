@@ -24,6 +24,7 @@ import { DISH_COPY } from '../neighbors/dish-copy.js';
 import { bodyROf, nearSeat, seatPose } from '../neighbors/seat-rules.js';
 import { holdSeat, seated, sitAt, snapSeatCamera, standUp } from '../neighbors/seat.js';
 import { evSeat } from '../neighbors/track.js';
+import { offerDish } from '../neighbors/dish-flow.js';
 import { buildNeighborScene } from '../neighbors/scene.js';
 import { buildNeighborBalloon } from '../neighbors/gate-art.js';
 import { canEnterIndoor, DOOR_R } from '../neighbors/indoor-rules.js';
@@ -238,6 +239,7 @@ function sitAtTable() {
   $w.nearDoor = null; ui.setDoorPrompt?.(null); $w.lastDoorPrompt = null;
   Sound.blip();
   trackEvent(...evSeat(v.publicId, table.shape));
+  offerDish({ publicId: v.publicId, nick: v.view.nickname, onPlate: (stars, tier) => { if (visit === v) v.built.showGuestDish(stars, tier); }, onEnd: snapSeatCamera });
 }
 
 function standFromTable() {

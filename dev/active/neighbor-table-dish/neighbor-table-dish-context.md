@@ -1,6 +1,7 @@
 # neighbor-table-dish context
 
-Last Updated: 2026-11-19 (구현 세션, 3단계 앉기까지)
+Last Updated: 2026-11-19 (구현 세션, 4단계 올리기까지)
+- 사용자 결정(4단계 중): 주방 무대 전환 대신 전용 요리 창. 판 = 요리 첫 판 종류로 간→꾹 누르기, 끓이기·굽기→바늘 탭, 썰기→박자 3번. 별 → 점수 40·75·95 로 서버에 보낸다.
 - dev docs 는 이 워크트리 dev/active/neighbor-table-dish/ 로 옮겼다(루트 쓰기는 훅이 막는다). 루트 사본은 옛것.
 - 캡처: PORT=<serve 포트> OUT=<폴더> node dev/active/neighbor-table-dish/verify/seat-shots.mjs <phone|land|pc> <bear|rabbit>. zsh 루프는 ${=a} 로 쪼갤 것.
 

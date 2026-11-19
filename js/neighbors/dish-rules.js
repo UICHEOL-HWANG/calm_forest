@@ -75,3 +75,22 @@ export function returnRows(res, faceOf, max) {
   }
   return [...rows.values()].slice(0, max);
 }
+
+export const GAME_ZONES = Object.freeze({
+  hold: Object.freeze({ ok: Object.freeze([55, 85]), best: Object.freeze([66, 76]) }),
+  tap: Object.freeze({ ok: Object.freeze([40, 66]), best: Object.freeze([49, 57]) }),
+});
+const STAR_SCORE = Object.freeze([40, 75, 95]);
+const GAMES = Object.freeze({ season: 'hold', pot: 'tap', grill: 'tap', chop: 'beat' });
+
+export const gameOf = (stage) => GAMES[stage] || 'tap';
+
+export function zoneStars(p, zone) {
+  const v = Number(p);
+  if (!Number.isFinite(v)) return 1;
+  if (v >= zone.best[0] && v <= zone.best[1]) return 3;
+  return v >= zone.ok[0] && v <= zone.ok[1] ? 2 : 1;
+}
+
+export const beatStars = (hits) => Math.min(3, Math.max(1, hits | 0));
+export const scoreOfStars = (stars) => STAR_SCORE[starsIn(stars) - 1];
