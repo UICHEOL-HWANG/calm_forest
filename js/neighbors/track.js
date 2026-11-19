@@ -25,3 +25,5 @@ export const evIndoorEnter = (publicId, stage, decorN) =>
   ['neighbor_indoor_enter', { host: publicId, house_stage: stage, decor_n: decorN }];
 export const evIndoorExit = (publicId, sec, floorsSeen, tagsSeen) =>
   ['neighbor_indoor_exit', { host: publicId, sec: Math.max(0, Math.round(sec)), floors_seen: floorsSeen, tags_seen: tagsSeen }];
+
+export const evSeat = (publicId, shape) => ['neighbor_seat', { host: publicId, shape }];

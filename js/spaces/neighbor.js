@@ -6,7 +6,7 @@
 //  🔒 게임 상태는 gameState.neighbors · gameState.hintsSeen.neighborPublic 만 쓴다(tests/neighbor-space 가 잠근다).
 //     이웃 데이터는 visit 객체에만 둔다. 3D 는 js/neighbors/scene.js, 화면은 js/neighbors/ui.js.
 // =============================================================
-import { $w, ANIMALS, gameState, giveReward, nightLevel, obstacles, player, requestSave, scene, setFogExempt, setSpaceVisible, snapCamera, solidCircle, syncStory, ui } from '../game.js';
+import { $w, ANIMALS, camera, gameState, giveReward, nightLevel, obstacles, player, requestSave, scene, setFogExempt, setSpaceVisible, snapCamera, solidCircle, syncStory, ui } from '../game.js';
 import * as THREE from 'three';
 import { t } from '../i18n.js';
 import { trackEvent } from '../analytics.js';
@@ -20,6 +20,10 @@ import { BANNER_KEY, FAIL_TOAST, HOST_TALK_R, bannerDue, kstDay, REWARD_COINS, m
 import { evBlock, evBanner, evFail, evIndoorEnter, evIndoorExit, evNotice, evOpen, evReact, evReport, evToggle, evVisitEnd, evVisitStart } from '../neighbors/track.js';
 import { neighborApi } from '../neighbors/net.js';
 import { returnRows } from '../neighbors/dish-rules.js';
+import { DISH_COPY } from '../neighbors/dish-copy.js';
+import { bodyROf, nearSeat, seatPose } from '../neighbors/seat-rules.js';
+import { holdSeat, seated, sitAt, snapSeatCamera, standUp } from '../neighbors/seat.js';
+import { evSeat } from '../neighbors/track.js';
 import { buildNeighborScene } from '../neighbors/scene.js';
 import { buildNeighborBalloon } from '../neighbors/gate-art.js';
 import { canEnterIndoor, DOOR_R } from '../neighbors/indoor-rules.js';
@@ -99,6 +103,7 @@ export function enterNeighbor(entry) {
 
 export function exitNeighbor() {
   if (!visit) return;
+  standFromTable();
   leaveIndoor(false);   // 🏠 실내에서 바로 나가도(🚪 내 마을로·차단·비공개) 퇴장 트래킹·안개 예외·층 선택 UI를 정리한다
   const v = visit; visit = null;
   hideNeighborHud();
@@ -222,6 +227,31 @@ function endView(v, sec, reacted) {
   }));
 }
 
+function sitAtTable() {
+  const v = visit, table = v?.built.table;
+  if (!table || seated()) return;
+  sitAt(table, gameState.character, camera);
+  document.body.classList.add('nb-seated');
+  v.built.setTableSolid(false);
+  v.built.seatHost(seatPose(table, table.shape, bodyROf(v.view.character, ANIMALS), 'host'));
+  setHostBubble(null); v.near = false;
+  $w.nearDoor = null; ui.setDoorPrompt?.(null); $w.lastDoorPrompt = null;
+  Sound.blip();
+  trackEvent(...evSeat(v.publicId, table.shape));
+}
+
+function standFromTable() {
+  if (!seated()) return;
+  standUp();
+  document.body.classList.remove('nb-seated');
+  visit?.built.seatHost(null);
+  visit?.built.setTableSolid(true);
+  $w.nearDoor = null; ui.setDoorPrompt?.(null); $w.lastDoorPrompt = null;
+}
+
+export const neighborSeated = seated;
+export const neighborSeatSnap = snapSeatCamera;
+
 // ── 집주인 말풍선 · 반응 ──
 const bubbleNow = () => ({ face: faceOf(visit.view.character), state: visit.bubble, onReact });
 
@@ -246,6 +276,7 @@ export function updateNeighbor(dt) {
   if (!visit) return;
   visit.built.update(dt);
   if (visit.indoor) { visit.indoorBuilt.setLamp(nightLevel, visit.indoor.f); return; }   // 실내엔 집주인 말풍선 없음
+  if (seated()) { holdSeat(); return; }
   const h = visit.built.hostSpot;
   const near = Math.hypot(player.position.x - h.x, player.position.z - h.z) < HOST_TALK_R;
   if (near === visit.near) return;
@@ -280,7 +311,9 @@ export function neighborPrompt(p) {
     if (tag) { v.indoor.tags.add(tag.id); return { nd: null, prompt: `${tag.def.ico} ${t(tag.def.name)}` }; }
     return { nd: null, prompt: null };
   }
+  if (seated()) return { nd: 'nbstand', prompt: DISH_COPY.stand };
   if (Math.hypot(p.x - NEIGHBOR.x, p.z - (NEIGHBOR.z + NEIGHBOR_R)) < 2.2) return { nd: 'neighborexit', prompt: '🚪 내 마을로' };
+  if (nearSeat(v?.built.table, p)) return { nd: 'nbsit', prompt: DISH_COPY.sit };
   const d = v?.built.doorSpot;
   if (d && canEnterIndoor(v.view) && Math.hypot(p.x - d.x, p.z - d.z) < DOOR_R) return { nd: 'nbenter', prompt: '🚪 들어가 보기' };
   return { nd: null, prompt: null };
@@ -293,6 +326,8 @@ export function neighborAction(nearDoor) {
   if (nearDoor === 'nbenter') return enterIndoor();
   if (nearDoor === 'nbexitin') return leaveIndoor(true);
   if (nearDoor === 'nbfloor') return goIndoorFloor($w.nearDoorFloor);
+  if (nearDoor === 'nbsit') return sitAtTable();
+  if (nearDoor === 'nbstand') return standFromTable();
 }
 
 /** 📷 이웃 실내 루프탑이면 true(루프탑 카메라) — game.js updateCamera */
