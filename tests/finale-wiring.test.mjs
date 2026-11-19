@@ -43,3 +43,12 @@ test('칭호가 칩·세계수 판·이웃 목록에 붙는다', () => {
   assert.match(board, /모든 이야기를 마치면 세계수에 꽃이 피어요/);
   assert.match(read('js/neighbors/ui.js'), /r\.keeper/);
 });
+
+test('칭호 칩은 챕터 칩과 같은 요소·같은 show 클래스를 쓴다', () => {
+  const html = read('index.html');
+  const fn = html.slice(html.indexOf('setStory(v) {'), html.indexOf('flashStoryChip()'));
+  const keeper = fn.slice(fn.indexOf('v.keeper'), fn.indexOf('if (!v || v.allDone)'));
+  assert.match(keeper, /chip\.classList\.add\('show'\)/);
+  assert.doesNotMatch(keeper, /style\.display|createElement/);
+  assert.match(html, /@media \(max-height: 560px\) \{\s*#story-chip \{ display: none !important; \}/);
+});
