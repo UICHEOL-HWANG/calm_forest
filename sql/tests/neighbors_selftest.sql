@@ -439,6 +439,7 @@ begin
   if r->>'reason' <> 'dup' then raise exception 'FAIL dish dup: %', r; end if;
   r := public.neighbor_dish_leave(public._nb_public_id(g), 'bread', 70);
   if (r->>'stars')::int <> 2 then raise exception 'FAIL dish stars 2: %', r; end if;
+  if (r->>'rewarded')::boolean then raise exception 'FAIL dish second not rewarded: %', r; end if;
   r := public.neighbor_dish_leave(public._nb_public_id(h), 'rice_ball', 300);
   if (r->>'stars')::int <> 3 then raise exception 'FAIL dish clamp: %', r; end if;
   select score into n from public.village_dishes where giver = a and host = h;
@@ -475,6 +476,10 @@ begin
      or public.neighbor_dish_rate(1, 'heart')->>'reason' <> 'login' then raise exception 'FAIL dish anon login'; end if;
 
   insert into public.village_blocks (blocker, blocked) values (f, g);
+  perform set_config('request.jwt.claims', json_build_object('sub', nh, 'role', 'authenticated')::text, true);
+  r := public.neighbor_dish_leave(public._nb_public_id(f), 'bread', 50);
+  if not (r->>'ok')::boolean then raise exception 'FAIL dish full ignores blocked giver: %', r; end if;
+  delete from public.village_dishes where giver = nh and host = f;
   perform set_config('request.jwt.claims', json_build_object('sub', f, 'role', 'authenticated')::text, true);
   t := public.my_table_dishes();
   if not (t->>'ok')::boolean or (t->>'ate_today')::boolean or jsonb_array_length(t->'list') <> 5 then raise exception 'FAIL my_table_dishes: %', t; end if;
