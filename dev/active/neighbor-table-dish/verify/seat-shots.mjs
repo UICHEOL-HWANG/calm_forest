@@ -17,6 +17,7 @@ for (const shape of ['round', 'long']) {
     const p = t.getWorldPosition(t.position.clone()); window.__tp(p.x, p.z + 2.0); return [p.x, p.z]; })()`);
   await b.sleep(1500);
   log[shape].prompt = await ev(`(async () => ({ nd: (await import('/js/game.js')).nearDoor, text: document.getElementById('door-prompt')?.textContent?.trim() }))()`);
+  await b.shot(path.join(OUT, `walk-${dev}-${me}-${shape}.png`));
   await ev(`(async () => { const s = await import('/js/spaces/neighbor.js'); s.neighborAction('nbsit'); return true; })()`);
   await b.sleep(2600);
   log[shape].seated = await ev(`(async () => { const g = await import('/js/game.js'); const s = await import('/js/spaces/neighbor.js'); const p = g.player.position;

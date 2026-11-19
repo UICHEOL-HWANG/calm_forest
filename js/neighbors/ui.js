@@ -32,7 +32,8 @@ const CSS = `
 .nb-go { margin-left: auto; padding: 8px 10px; font-size: 12px; }
 .nb-foot { margin-top: 12px; font-size: 11.5px; opacity: .7; }
 .nb-empty { padding: 18px 8px; font-size: 13px; opacity: .8; }
-body.nb-seated #near-pill { display: none !important; }
+body.nb-seated #near-pill, body.nb-seated #minimap { display: none !important; }
+body.neighbor-visit #minimap { top: calc(58px + var(--top-inset, 0px)) !important; }
 .nb-sec { font-size: 11.5px; font-weight: 800; text-align: left; margin: 10px 2px 6px; opacity: .8; }
 .nb-close { margin-top: 10px; background: #eef2ee; box-shadow: none; }
 @media (min-width: 720px) {
