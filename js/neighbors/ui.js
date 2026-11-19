@@ -16,6 +16,10 @@ const CSS = `
 .nb-it { border: none; background: #f4faf5; border-radius: 12px; padding: 8px 2px; font-size: 24px; cursor: pointer; font-family: inherit; color: var(--ink); }
 .nb-it b { display: block; font-size: 11px; font-weight: 700; margin-top: 2px; word-break: keep-all; }
 .nb-it.on { background: #ffe9b8; outline: 2px solid #f2c23c; }
+.nb-dishrow { display: flex; gap: 8px; align-items: center; background: #f4faf5; border-radius: 14px; padding: 8px 10px; text-align: left; font-size: 12.5px; margin-bottom: 6px; }
+.nb-dishrow .d { font-size: 26px; } .nb-dishrow .n { flex: 1; min-width: 0; font-weight: 800; overflow-wrap: anywhere; } .nb-dishrow small { display: block; font-weight: 400; opacity: .75; }
+.nb-letter { background: #fffaf0; border: 1px dashed #e3cfa0; border-radius: 14px; padding: 10px; font-size: 12.5px; line-height: 1.5; margin: 6px 0 10px; }
+.nb-letter .d { font-size: 34px; }
 .nb-card { width: min(440px, calc(100vw - 28px)); box-sizing: border-box; background: #fff; border-radius: 22px;
   box-shadow: 0 20px 60px rgba(30,50,40,.4); padding: 18px 14px 14px; text-align: center;
   max-height: calc(100dvh - 24px - var(--top-inset, 0px)); overflow-y: auto; }
@@ -288,6 +292,56 @@ export function openVisitorsModal(view, onDone) {
   ok.onclick = () => closeModal('nb-visitors-modal');
   onClose['nb-visitors-modal'] = onDone;
   card.append(list, ok);
+  Input.setAnalog(0, 0);
+  root.classList.add('show');
+}
+
+export function openInboxModal(view, onBite) {
+  const { root, card } = modal('nb-inbox-modal');
+  card.append(el('h2', null, D.inboxTitle), el('p', 'nb-sub', view.ateToday ? D.ateToday : D.inboxSub));
+  for (const r of view.rows) {
+    const row = el('div', 'nb-dishrow');
+    const n = el('span', 'n', `${r.name} ${'⭐'.repeat(r.stars)}`);
+    n.appendChild(el('small', null, `${r.face} ${r.nick}`));
+    const bite = el('button', 'nb-btn nb-go', D.bite);
+    bite.disabled = view.ateToday;
+    bite.onclick = () => { closeModal('nb-inbox-modal'); onBite(r); };
+    row.append(el('span', 'd', r.ico), n, bite);
+    card.appendChild(row);
+  }
+  const close = el('button', 'nb-btn nb-close', D.close);
+  close.onclick = () => closeModal('nb-inbox-modal');
+  card.appendChild(close);
+  Input.setAnalog(0, 0);
+  root.classList.add('show');
+}
+
+export function openRateModal(r, buffParts, onRate, onReturn) {
+  const { root, card } = modal('nb-rate-modal');
+  card.append(el('h2', null, D.rateTitle), el('p', 'nb-sub', fill(D.rateSub, `${r.face} ${r.nick}`)));
+  const letter = el('div', 'nb-letter');
+  const buff = el('div');
+  buffParts.forEach((p, i) => { if (i) buff.append(' · '); buff.appendChild(el('span', null, p)); });
+  letter.append(el('div', 'd', r.ico), el('div', null, `${r.name} ${'⭐'.repeat(r.stars)}`), buff);
+  const react = el('div', 'nb-react');
+  const btns = EMOJI_IDS.map((id) => {
+    const b = el('button', null, EMOJI[id]);
+    b.setAttribute('aria-label', REACT_LABEL[id]);
+    b.onclick = async () => { btns.forEach(x => { x.disabled = true; }); const ok = await onRate(id); if (!ok) btns.forEach(x => { x.disabled = false; }); else b.style.outline = '2px solid #f2c23c'; };
+    react.appendChild(b);
+    return b;
+  });
+  card.append(letter, react);
+  const acts = el('div', 'nb-acts');
+  const close = el('button', 'nb-btn nb-close', D.close);
+  close.onclick = () => closeModal('nb-rate-modal');
+  acts.appendChild(close);
+  if (r.publicId) {
+    const back = el('button', 'nb-btn', D.goReturn);
+    back.onclick = () => { closeModal('nb-rate-modal'); onReturn(r); };
+    acts.appendChild(back);
+  }
+  card.appendChild(acts);
   Input.setAnalog(0, 0);
   root.classList.add('show');
 }

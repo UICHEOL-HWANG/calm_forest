@@ -9,6 +9,8 @@ import { yardGuidePointTo } from '../pond/yard-guide.js';
 import { biteStatus, afterBite, afterBiteAd, biteSeconds, biteBuffEnd, cookbook, tableDishes } from './rules.js';
 import { tableExists, markTableRingSeen } from './index.js';
 import { TABLE_COPY as C } from './copy.js';
+import { loadInbox, showInbox } from './dish-inbox.js';
+import { DISH_COPY, fill } from '../neighbors/dish-copy.js';
 
 let opensSinceBite = 0;
 
@@ -73,6 +75,10 @@ export function openBitePick(mode = 'free') {
 function biteRow() {
   const st = biteStatus(gameState.hintsSeen, kstDate());
   const row = el('div', 'cb-head');
+  loadInbox().then((v) => {
+    if (!v.rows.length || !row.isConnected) return;
+    row.append(btn(fill(DISH_COPY.bookBtn, v.rows.length), () => { closeBook(); showInbox(v); }));
+  });
   if (!st.bit) {
     row.append(btn(C.biteBtn, () => openBitePick('free')));
     return row;

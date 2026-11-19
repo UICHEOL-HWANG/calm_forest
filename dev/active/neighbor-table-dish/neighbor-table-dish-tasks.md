@@ -11,7 +11,7 @@
 - [x] 3. 실화면 캡처 12조합(verify/seat-shots.mjs), 앉기 값 확정. 앉은 동안 머리 위 🪑·미니맵 숨김, 걸을 때 미니맵은 상단 줄 아래
 - [x] 4. 요리 고르기 창 → 기존 요리 판 한 판(cook-course neighbor 분기) + 이웃 전용 그루터기 무대(시안 A·B·C 중 C 확정), pantryGive, 서버 호출, 접시·별 표시
 - [x] 4. 가짜 API 하네스(verify/flow-verify.mjs): 4판(끓이기·간·굽기·썰기) 진입·복귀, 실패 6경로·게스트·빈 찬장에서 찬장·코인 그대로
-- [ ] 5. 집주인: dish-inbox, 한 입 버프, 평가, 답방, 접속 알림 연결
+- [x] 5. 집주인: js/table/dish-inbox.js, 한 입 버프(30·38·45초), 평가 4종, 답방(visitBack), 접속 알림(8초 뒤 modalQueue)·요리책 머리 단추. verify/host-verify.mjs 로 폰·PC 확인. 내 식탁에 앉아서 먹는 연출은 미구현
 - [ ] 6. 개인정보 처리방침·가이드, 트래킹 스키마 테스트
 - [ ] 6. code-reviewer, security-reviewer, 지적 반영
 - [ ] 7. (분리) 접속 중 표시 가능 여부 확인

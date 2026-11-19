@@ -25,6 +25,7 @@ import { bodyROf, nearSeat, seatPose } from '../neighbors/seat-rules.js';
 import { holdSeat, seated, sitAt, snapSeatCamera, standUp } from '../neighbors/seat.js';
 import { evSeat } from '../neighbors/track.js';
 import { offerDish } from '../neighbors/dish-flow.js';
+import { loadInbox, showInbox } from '../table/dish-inbox.js';
 import { buildNeighborScene } from '../neighbors/scene.js';
 import { buildNeighborBalloon } from '../neighbors/gate-art.js';
 import { canEnterIndoor, DOOR_R } from '../neighbors/indoor-rules.js';
@@ -39,6 +40,7 @@ import { bindVillagePublicToggle, closePickerModal, hideNeighborHud, isPickerOpe
 let visit = null;          // { publicId, slot, revisit, view, built, t0, reacted, bubble:'ask'|'thanks', near, busy, viewReq, viewId, indoor:null|{f,t0,floors:Set,tags:Set}, indoorBuilt }
 let pickerBusy = false;
 const RETURN_MAX = 3;
+const DISH_NOTICE_MS = 8000;
 
 const faceOf = (id) => (ANIMALS.find(a => a.id === id) || ANIMALS[0]).emoji;
 const showcaseCtx = () => ({
@@ -83,6 +85,21 @@ async function goVisit(row) {
     ui.toast?.(FAIL_TOAST, 2600);
     setPickerBusy(false);
   }
+}
+
+export async function visitBack(publicId) {
+  if (visit || pickerBusy || !publicId) return;
+  pickerBusy = true;
+  try {
+    const r = await neighborApi.showcase(publicId);
+    const view = r.ok ? sanitizeShowcase(r.data, showcaseCtx()) : null;
+    if (!view) { trackEvent(...evFail('showcase', r.ok ? 'invalid' : (r.code || r.reason))); ui.toast?.(FAIL_TOAST, 2600); return; }
+    enterNeighbor({ publicId, slot: null, revisit: false, view, loadMs: r.loadMs, via: 'return' });
+  } catch (e) {
+    console.error('[neighbor] visit back failed', e);
+    trackEvent(...evFail('showcase', 'build'));
+    ui.toast?.(FAIL_TOAST, 2600);
+  } finally { pickerBusy = false; }
 }
 
 // ── 입장 · 퇴장 ──
@@ -389,6 +406,7 @@ export function initNeighbors() {
   setTimeout(dailyBanner, 14000);   // 게스트도 구경은 할 수 있다 — 다녀간 이웃 알림(6초)보다 뒤
   if (!member) return;
   setTimeout(bootVisitors, 6000);   // 출석·📮 소식 모달이 먼저 — 그 뒤 빈 화면을 기다려 띄운다
+  setTimeout(bootDishes, DISH_NOTICE_MS);
 }
 
 // 🏡 하루 한 번 "오늘의 이웃" 배너 — 누르면 목록이 열린다(기기당 KST 하루 1회)
@@ -420,6 +438,11 @@ async function bootVisitors() {
     trackEvent(...evNotice(view.rows.length, view.total));   // [GA4] 보여 준 줄 수·전체 방문자 수
     openVisitorsModal(view, () => { gameState.neighbors = markSeen(gameState.neighbors, asked); requestSave(); firstPublicNotice(); });
   } });
+}
+
+async function bootDishes() {
+  const v = await loadInbox();
+  if (v.rows.length && !v.ateToday) modalQueue.request({ kind: 'neighbor', key: 'neighbor-dishes', show: () => showInbox(v) });
 }
 
 function firstPublicNotice() {

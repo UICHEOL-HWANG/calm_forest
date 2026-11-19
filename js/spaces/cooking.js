@@ -130,6 +130,14 @@ export function pantryEat(i) {
   return eatDish(r, f, false);
 }
 
+export function neighborBite(recipeId, sec) {
+  const r = recipeOf(recipeId);
+  if (!r || !BUFF_META[r.buff]) return null;
+  buffs[r.buff] = Math.max(buffs[r.buff] || 0, clock.elapsedTime) + sec;
+  emitBuffs();
+  return { ...BUFF_META[r.buff], sec };
+}
+
 export function pantryGive(i, id) {
   const list = gameState.pantry || [];
   const at = list[i]?.id === id ? i : list.findIndex(f => f.id === id);
