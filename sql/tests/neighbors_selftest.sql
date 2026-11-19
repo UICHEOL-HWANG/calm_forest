@@ -93,7 +93,7 @@ begin
   sc := public.neighbor_showcase(pid);
   if sc is null then raise exception 'FAIL: 공개 이웃 showcase 가 null'; end if;
   select array_agg(k2.key order by k2.key collate "C") into keys from jsonb_object_keys(sc) as k2(key);
-  if keys <> array['addons','character','coop','equipped','houseStage','houseStyle','nickname','outdoor','pet','room','style'] then
+  if keys <> array['addons','character','coop','equipped','houseStage','houseStyle','nickname','outdoor','pet','pond','room','style','table'] then
     raise exception 'FAIL keys: %', keys; end if;
   if strpos(sc::text, f::text) > 0 then raise exception 'FAIL: showcase 에 user_id 가 있다'; end if;
   if strpos(sc::text, 'inventory') > 0 or strpos(sc::text, 'cashOwned') > 0 or strpos(sc::text, 'owned') > 0
