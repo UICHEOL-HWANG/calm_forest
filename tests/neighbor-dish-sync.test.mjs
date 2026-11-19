@@ -68,3 +68,17 @@ test('셀프테스트: DO 블록 하나 안에 접시 검사', () => {
   for (const r of ["'dup'", "'limit'", "'full'", "'private'", "'self'", "'recipe'", "'gone'", "'emoji'"]) assert.ok(self.includes(`<> ${r}`), r);
   assert.ok(self.includes("->>'reason' <> 'login'"));
 });
+
+test('식탁 6칸 집계에서 집주인이 차단한 사람 접시는 빠진다 · 운영 반영 파일과 본 파일이 같다', () => {
+  const leave = fn('neighbor_dish_leave');
+  assert.ok(leave.includes("where host = v_host and eaten_at is null and created_at > now() - interval '7 days' and not _nb_blocked(v_host, giver);"));
+  const patch = read('sql/migrations/migrate_neighbor_dishes_hardening.sql');
+  assert.equal(patch.match(/create or replace function public\.neighbor_dish_leave\([\s\S]*?\nend \$\$;/)[0], leave);
+});
+
+test('코인은 하루 첫 접시에만', () => {
+  const leave = fn('neighbor_dish_leave');
+  assert.ok(leave.includes('v_first := v_cnt = 0;'));
+  assert.ok(leave.includes("'rewarded', v_first)"));
+  assert.ok(read('sql/tests/neighbors_selftest.sql').includes("'FAIL dish second not rewarded"));
+});
