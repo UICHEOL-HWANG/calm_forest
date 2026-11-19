@@ -5,8 +5,8 @@
 // =============================================================
 export const evOpen = (today, via) =>
   ['neighbors_open', { shown: (today.list || []).length, rewarded_today: today.rewardedToday | 0, via }];
-export const evVisitStart = ({ publicId, slot, revisit, loadMs }) =>
-  ['neighbor_visit_start', { host: publicId, slot, revisit: revisit ? 1 : 0, load_ms: Math.round(loadMs || 0) }];
+export const evVisitStart = ({ publicId, slot, revisit, loadMs, via }) =>
+  ['neighbor_visit_start', { host: publicId, slot, revisit: revisit ? 1 : 0, load_ms: Math.round(loadMs || 0), ...(via ? { via } : {}) }];
 export const evReact = (publicId, emoji, outcome) =>
   ['neighbor_react', { host: publicId, emoji, rewarded: outcome.reward ? 1 : 0, reason: outcome.reason }];
 export const evVisitEnd = (publicId, sec, reacted) =>
@@ -25,3 +25,8 @@ export const evIndoorEnter = (publicId, stage, decorN) =>
   ['neighbor_indoor_enter', { host: publicId, house_stage: stage, decor_n: decorN }];
 export const evIndoorExit = (publicId, sec, floorsSeen, tagsSeen) =>
   ['neighbor_indoor_exit', { host: publicId, sec: Math.max(0, Math.round(sec)), floors_seen: floorsSeen, tags_seen: tagsSeen }];
+
+export const evSeat = (publicId, shape) => ['neighbor_seat', { host: publicId, shape }];
+export const evDishLeave = (publicId, recipe, stars, reason) => ['neighbor_dish_leave', { host: publicId, recipe, stars, reason }];
+export const evDishEat = (publicId, recipe, stars, reason) => ['neighbor_dish_eat', { giver: publicId || '', recipe, stars, reason }];
+export const evDishRate = (publicId, emoji, reason) => ['neighbor_dish_rate', { giver: publicId || '', emoji, reason }];

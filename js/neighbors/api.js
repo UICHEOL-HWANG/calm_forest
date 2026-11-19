@@ -4,6 +4,7 @@
 // =============================================================
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const REPORT_REASONS = ['nick', 'decor', 'other'];   // SQL check 와 같게
+const DISH_EMOJI = ['wave', 'heart', 'flower', 'star'];
 
 export function createNeighborApi({ rpc, fetchFn, base = '', now = () => performance.now() }) {
   async function call(fn, args) {
@@ -22,7 +23,21 @@ export function createNeighborApi({ rpc, fetchFn, base = '', now = () => perform
     async visitors(sinceMs) {
       const r = await call('my_visitors', { p_since: new Date(sinceMs).toISOString() });
       if (!r.ok) return { ok: false, reason: r.reason || 'upstream' };
-      return { ok: true, total: Math.max(0, r.total | 0), list: Array.isArray(r.list) ? r.list : [], isPublic: r.is_public !== false };
+      return { ok: true, total: Math.max(0, r.total | 0), list: Array.isArray(r.list) ? r.list : [], replies: Array.isArray(r.replies) ? r.replies : [], isPublic: r.is_public !== false };
+    },
+    async dishLeave(publicId, recipe, score) {
+      if (!UUID_RE.test(publicId || '')) return { ok: false, reason: 'bad_id' };
+      return call('neighbor_dish_leave', { p_public_id: publicId, p_recipe: String(recipe), p_score: Math.max(0, Math.min(100, Math.round(Number(score) || 0))) });
+    },
+    tableDishes: () => call('my_table_dishes', {}),
+    async dishEat(id) {
+      if (!Number.isSafeInteger(id)) return { ok: false, reason: 'bad_id' };
+      return call('neighbor_dish_eat', { p_id: id });
+    },
+    async dishRate(id, emoji) {
+      if (!Number.isSafeInteger(id)) return { ok: false, reason: 'bad_id' };
+      if (!DISH_EMOJI.includes(emoji)) return { ok: false, reason: 'emoji' };
+      return call('neighbor_dish_rate', { p_id: id, p_emoji: emoji });
     },
     async setPublic(on) {
       const r = await call('set_village_public', { p_on: !!on });

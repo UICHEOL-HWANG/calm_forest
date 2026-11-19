@@ -29,7 +29,7 @@ test('react · setPublic · visitors 인자와 정규화', async () => {
   assert.deepEqual(await api.setPublic(1), { ok: true, is_public: true });
   assert.deepEqual(calls[1], ['set_village_public', { p_on: true }]);
   const since = Date.parse('2026-10-06T00:00:00+09:00');
-  assert.deepEqual(await api.visitors(since), { ok: true, total: 2, list: [{ nick: 'a' }], isPublic: false });
+  assert.deepEqual(await api.visitors(since), { ok: true, total: 2, list: [{ nick: 'a' }], replies: [], isPublic: false });
   assert.deepEqual(calls[2], ['my_visitors', { p_since: '2026-10-05T15:00:00.000Z' }]);
 });
 
@@ -46,11 +46,36 @@ test('showcase: 잘못된 id 는 fetch 하지 않는다 · 404/502/예외/정상
   assert.deepEqual(await mk({ fetchFn: async () => { throw new Error('x'); } }).api.showcase(ID), { ok: false, reason: 'offline', code: 0 });
 });
 
-test('supabase-client 에 neighborRpc 가 있고 허용 RPC 8개만 부른다(원장 2종·신고/차단 포함)', () => {
+test('supabase-client 에 neighborRpc 가 있고 허용 RPC 12개만 부른다(원장 2종·신고/차단·접시 4종 포함)', () => {
   const s = readFileSync(new URL('../js/supabase-client.js', import.meta.url), 'utf8');
-  assert.match(s, /const NEIGHBOR_RPCS = new Set\(\['neighbors_today', 'neighbor_react', 'my_visitors', 'set_village_public', 'neighbor_view_start', 'neighbor_view_end', 'neighbor_report', 'neighbor_block'\]\);/);
+  assert.match(s, /const NEIGHBOR_RPCS = new Set\(\['neighbors_today', 'neighbor_react', 'my_visitors', 'set_village_public', 'neighbor_view_start', 'neighbor_view_end', 'neighbor_report', 'neighbor_block', 'neighbor_dish_leave', 'my_table_dishes', 'neighbor_dish_eat', 'neighbor_dish_rate'\]\);/);
   assert.match(s, /export async function neighborRpc\(fn, args = \{\}\)/);
   const net = readFileSync(new URL('../js/neighbors/net.js', import.meta.url), 'utf8');
   assert.match(net, /createNeighborApi\(\{ rpc: neighborRpc, fetchFn: \(u\) => fetch\(u\), base: CONFIG\.API_BASE \}\)/);
   assert.ok(readFileSync(new URL('../js/neighbors/api.js', import.meta.url), 'utf8').includes('/api/neighbor?id='));
+});
+
+test('🍽️ 접시 RPC 4종: 인자 정규화 · 잘못된 입력은 호출 전에 막는다', async () => {
+  const { api, calls } = mk({ rpc: async (fn) => fn === 'my_table_dishes' ? { ok: true, list: [{ id: 1 }], ate_today: true } : { ok: true, stars: 3, rewarded: true } });
+  assert.deepEqual(await api.dishLeave(ID, 'veg_stew', 87.6), { ok: true, stars: 3, rewarded: true });
+  assert.deepEqual(calls[0], ['neighbor_dish_leave', { p_public_id: ID, p_recipe: 'veg_stew', p_score: 88 }]);
+  await api.dishLeave(ID, 'bread', 999);
+  assert.equal(calls[1][1].p_score, 100);
+  assert.deepEqual(await api.dishLeave('nope', 'bread', 50), { ok: false, reason: 'bad_id' });
+  assert.equal(calls.length, 2);
+  assert.deepEqual(await api.tableDishes(), { ok: true, list: [{ id: 1 }], ate_today: true });
+  assert.deepEqual(calls[2], ['my_table_dishes', {}]);
+  await api.dishEat(7);
+  assert.deepEqual(calls[3], ['neighbor_dish_eat', { p_id: 7 }]);
+  await api.dishRate(7, 'heart');
+  assert.deepEqual(calls[4], ['neighbor_dish_rate', { p_id: 7, p_emoji: 'heart' }]);
+  assert.deepEqual(await api.dishEat('x'), { ok: false, reason: 'bad_id' });
+  assert.deepEqual(await api.dishRate(7, 'poop'), { ok: false, reason: 'emoji' });
+  assert.equal(calls.length, 5);
+});
+
+test('visitors: replies 를 그대로 싣고, 없으면 빈 배열', async () => {
+  const { api } = mk({ rpc: async () => ({ ok: true, total: 1, list: [], replies: [{ emoji: 'heart' }] }) });
+  assert.deepEqual((await api.visitors(0)).replies, [{ emoji: 'heart' }]);
+  assert.deepEqual((await mk({ rpc: async () => ({ ok: true, total: 0, list: [] }) }).api.visitors(0)).replies, []);
 });

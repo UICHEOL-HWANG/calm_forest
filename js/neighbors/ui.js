@@ -7,10 +7,19 @@
 // =============================================================
 import { Input } from '../game.js';
 import { EMOJI, EMOJI_IDS, rewardLine } from './rules.js';
+import { DISH_COPY as D, fill } from './dish-copy.js';
 
 const CSS = `
-#nb-pick-modal, #nb-visitors-modal { position: fixed; inset: 0; z-index: 33; display: none; place-items: center; background: rgba(20,40,30,0.55); }
-#nb-pick-modal.show, #nb-visitors-modal.show { display: grid; }
+#nb-pick-modal, #nb-visitors-modal, #nb-dish-modal, #nb-inbox-modal, #nb-rate-modal { position: fixed; inset: 0; z-index: 33; display: none; place-items: center; background: rgba(20,40,30,0.55); }
+#nb-pick-modal.show, #nb-visitors-modal.show, #nb-dish-modal.show, #nb-inbox-modal.show, #nb-rate-modal.show { display: grid; }
+.nb-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0 12px; }
+.nb-it { border: none; background: #f4faf5; border-radius: 12px; padding: 8px 2px; font-size: 24px; cursor: pointer; font-family: inherit; color: var(--ink); }
+.nb-it b { display: block; font-size: 11px; font-weight: 700; margin-top: 2px; word-break: keep-all; }
+.nb-it.on { background: #ffe9b8; outline: 2px solid #f2c23c; }
+.nb-dishrow { display: flex; gap: 8px; align-items: center; background: #f4faf5; border-radius: 14px; padding: 8px 10px; text-align: left; font-size: 12.5px; margin-bottom: 6px; }
+.nb-dishrow .d { font-size: 26px; } .nb-dishrow .n { flex: 1; min-width: 0; font-weight: 800; overflow-wrap: anywhere; } .nb-dishrow small { display: block; font-weight: 400; opacity: .75; }
+.nb-letter { background: #fffaf0; border: 1px dashed #e3cfa0; border-radius: 14px; padding: 10px; font-size: 12.5px; line-height: 1.5; margin: 6px 0 10px; }
+.nb-letter .d { font-size: 34px; }
 .nb-card { width: min(440px, calc(100vw - 28px)); box-sizing: border-box; background: #fff; border-radius: 22px;
   box-shadow: 0 20px 60px rgba(30,50,40,.4); padding: 18px 14px 14px; text-align: center;
   max-height: calc(100dvh - 24px - var(--top-inset, 0px)); overflow-y: auto; }
@@ -31,6 +40,9 @@ const CSS = `
 .nb-go { margin-left: auto; padding: 8px 10px; font-size: 12px; }
 .nb-foot { margin-top: 12px; font-size: 11.5px; opacity: .7; }
 .nb-empty { padding: 18px 8px; font-size: 13px; opacity: .8; }
+body.nb-seated #near-pill, body.nb-seated #minimap { display: none !important; }
+body.neighbor-visit #minimap { top: calc(58px + var(--top-inset, 0px)) !important; }
+.nb-sec { font-size: 11.5px; font-weight: 800; text-align: left; margin: 10px 2px 6px; opacity: .8; }
 .nb-close { margin-top: 10px; background: #eef2ee; box-shadow: none; }
 @media (min-width: 720px) {
   #nb-pick-modal .nb-card { width: 560px; }
@@ -113,26 +125,41 @@ function closeModal(id) {
 }
 
 // ── 오늘의 이웃(A 엽서 카드) ──
-export function openPickerModal(rows, rewardedToday, onGo, onMore) {
+function pickerRow(r, meta, goLabel, onGo, onMore) {
+  const row = el('div', 'nb-row' + (r.done ? ' done' : ''));
+  const name = el('div', 'nb-name', r.nick);
+  if (r.done) name.appendChild(el('span', 'nb-badge', '❤️ 다녀옴'));
+  const info = el('div');
+  info.append(name, meta);
+  const go = el('button', 'nb-btn nb-go', goLabel);
+  go.onclick = () => { setPickerBusy(true); onGo(r); };
+  const more = el('button', 'nb-more', '⋯');
+  more.setAttribute('aria-label', '더보기');
+  more.onclick = (e) => { e.stopPropagation(); onMore?.(r, more); };   // 🚩🚫 신고·차단
+  row.append(el('div', 'nb-ava', r.face), info, go, more);
+  return row;
+}
+
+function backMeta(r) {
+  const m = el('div', 'nb-meta');
+  if (r.reply) m.textContent = fill(D.metaReply, r.reply);
+  else if (r.dish) m.textContent = D.metaDish;
+  else m.append(`${r.react || ''} `, el('span', null, D.metaReact));
+  return m;
+}
+
+export function openPickerModal(rows, rewardedToday, onGo, onMore, backRows = []) {
   pickerBusy = false;
   const { root, card } = modal('nb-pick-modal');
   card.append(el('div', 'nb-ico', '🏡'), el('h2', null, '오늘의 이웃'), el('p', 'nb-sub', '다른 숲에서도 누군가 세계수를 지키고 있대요 · 내일 또 바뀌어요'));
+  if (backRows.length) {
+    const back = el('div', 'nb-list');
+    for (const r of backRows) back.appendChild(pickerRow(r, backMeta(r), D.goBack, onGo, onMore));
+    card.append(el('div', 'nb-sec', D.secBack), back, el('div', 'nb-sec', D.secNew));
+  }
   const list = el('div', 'nb-list');
   if (!rows.length) list.appendChild(el('div', 'nb-empty', '아직 놀러 갈 이웃이 없어요 · 내일 다시 와 보세요'));
-  for (const r of rows) {
-    const row = el('div', 'nb-row' + (r.done ? ' done' : ''));
-    const name = el('div', 'nb-name', r.nick);
-    if (r.done) name.appendChild(el('span', 'nb-badge', '❤️ 다녀옴'));
-    const info = el('div');
-    info.append(name, el('div', 'nb-meta', r.meta));
-    const go = el('button', 'nb-btn nb-go', r.go);
-    go.onclick = () => { setPickerBusy(true); onGo(r); };
-    const more = el('button', 'nb-more', '⋯');
-    more.setAttribute('aria-label', '더보기');
-    more.onclick = (e) => { e.stopPropagation(); onMore?.(r, more); };   // 🚩🚫 신고·차단
-    row.append(el('div', 'nb-ava', r.face), info, go, more);
-    list.appendChild(row);
-  }
+  for (const r of rows) list.appendChild(pickerRow(r, el('div', 'nb-meta', r.meta), r.go, onGo, onMore));
   const close = el('button', 'nb-btn nb-close', '닫기');
   close.onclick = () => closeModal('nb-pick-modal');
   card.append(list, el('div', 'nb-foot', rewardLine(rewardedToday)), close);
@@ -265,6 +292,79 @@ export function openVisitorsModal(view, onDone) {
   ok.onclick = () => closeModal('nb-visitors-modal');
   onClose['nb-visitors-modal'] = onDone;
   card.append(list, ok);
+  Input.setAnalog(0, 0);
+  root.classList.add('show');
+}
+
+export function openInboxModal(view, onBite) {
+  const { root, card } = modal('nb-inbox-modal');
+  card.append(el('h2', null, D.inboxTitle), el('p', 'nb-sub', view.ateToday ? D.ateToday : D.inboxSub));
+  for (const r of view.rows) {
+    const row = el('div', 'nb-dishrow');
+    const n = el('span', 'n', `${r.name} ${'⭐'.repeat(r.stars)}`);
+    n.appendChild(el('small', null, `${r.face} ${r.nick}`));
+    const bite = el('button', 'nb-btn nb-go', D.bite);
+    bite.disabled = view.ateToday;
+    bite.onclick = () => { closeModal('nb-inbox-modal'); onBite(r); };
+    row.append(el('span', 'd', r.ico), n, bite);
+    card.appendChild(row);
+  }
+  const close = el('button', 'nb-btn nb-close', D.close);
+  close.onclick = () => closeModal('nb-inbox-modal');
+  card.appendChild(close);
+  Input.setAnalog(0, 0);
+  root.classList.add('show');
+}
+
+export function openRateModal(r, buffParts, onRate, onReturn) {
+  const { root, card } = modal('nb-rate-modal');
+  card.append(el('h2', null, D.rateTitle), el('p', 'nb-sub', fill(D.rateSub, `${r.face} ${r.nick}`)));
+  const letter = el('div', 'nb-letter');
+  const buff = el('div');
+  buffParts.forEach((p, i) => { if (i) buff.append(' · '); buff.appendChild(el('span', null, p)); });
+  letter.append(el('div', 'd', r.ico), el('div', null, `${r.name} ${'⭐'.repeat(r.stars)}`), buff);
+  const react = el('div', 'nb-react');
+  const btns = EMOJI_IDS.map((id) => {
+    const b = el('button', null, EMOJI[id]);
+    b.setAttribute('aria-label', REACT_LABEL[id]);
+    b.onclick = async () => { btns.forEach(x => { x.disabled = true; }); const ok = await onRate(id); if (!ok) btns.forEach(x => { x.disabled = false; }); else b.style.outline = '2px solid #f2c23c'; };
+    react.appendChild(b);
+    return b;
+  });
+  card.append(letter, react);
+  const acts = el('div', 'nb-acts');
+  const close = el('button', 'nb-btn nb-close', D.close);
+  close.onclick = () => closeModal('nb-rate-modal');
+  acts.appendChild(close);
+  if (r.publicId) {
+    const back = el('button', 'nb-btn', D.goReturn);
+    back.onclick = () => { closeModal('nb-rate-modal'); onReturn(r); };
+    acts.appendChild(back);
+  }
+  card.appendChild(acts);
+  Input.setAnalog(0, 0);
+  root.classList.add('show');
+}
+
+export function openDishPicker(items, onServe) {
+  const { root, card } = modal('nb-dish-modal');
+  let pick = items[0];
+  card.append(el('h2', null, D.pickTitle), el('p', 'nb-sub', D.pickSub));
+  const grid = el('div', 'nb-grid');
+  const cells = items.map((it) => {
+    const c = el('button', 'nb-it' + (it === pick ? ' on' : ''), it.ico);
+    c.appendChild(el('b', null, it.name));
+    c.onclick = () => { pick = it; cells.forEach(x => x.classList.toggle('on', x === c)); };
+    grid.appendChild(c);
+    return c;
+  });
+  const later = el('button', 'nb-btn nb-close', D.later);
+  later.onclick = () => closeModal('nb-dish-modal');
+  const serve = el('button', 'nb-btn', D.serve);
+  serve.onclick = () => { closeModal('nb-dish-modal'); onServe(pick); };
+  const acts = el('div', 'nb-acts');
+  acts.append(later, serve);
+  card.append(grid, acts);
   Input.setAnalog(0, 0);
   root.classList.add('show');
 }

@@ -34,6 +34,13 @@ export function createRewarded(deps) {
   const slotOk = (slot) => !deps.today || slotLeft(readDay(), slot, at()) > 0;
   const ready = (slot) => live() && arm() === 'ad' && usedToday() < PREPASS_DAILY_CAP && slotOk(slot);
   const open = (slot) => !quiet() && ready(slot);
+  let diagnosed = false;
+
+  function diagnose(info = {}) {
+    if (diagnosed) return;
+    diagnosed = true;
+    deps.track('ad_provider_state', { enabled: !!deps.enabled(), available: !!deps.provider().available(), arm: arm(), ...info });
+  }
 
   function offer(slot) {
     if (quiet()) return false;
@@ -87,5 +94,5 @@ export function createRewarded(deps) {
     return button(slot, parts, grant, (ok, btn) => { if (ok) btn.remove(); done?.(ok, btn); });
   }
 
-  return { offer, open, watch, button, label, arm, pill };
+  return { offer, open, watch, button, label, arm, pill, diagnose };
 }
