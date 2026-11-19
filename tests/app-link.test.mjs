@@ -4,6 +4,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { appLinkTarget, onRequestGet } from '../functions/app-link.js';
 import { DEFAULT_APP_BANNER } from '../js/app-banner.js';
 import { guidePage } from '../scripts/lib/guide-page.mjs';
+import { TUNING } from '../js/tuning.js';
 
 const ROOT = new URL('../', import.meta.url);
 const read = (p) => readFileSync(new URL(p, ROOT), 'utf8');
@@ -159,4 +160,40 @@ test('인앱 브라우저의 실제 사용자는 봇으로 보지 않는다', ()
   const xApp = 'Mozilla/5.0 (Linux; Android 14; SM-S921N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Mobile Safari/537.36 TwitterAndroid';
   const kakao = 'Mozilla/5.0 (Linux; Android 14; SM-S921N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Mobile Safari/537.36 KAKAOTALK 10.8.0';
   for (const ua of [xApp, kakao]) assert.equal(target({ ua }).kind, 'redirect', ua);
+});
+
+const META = '?utm_source=meta&utm_medium=paid_social&utm_campaign=webapp_202610&utm_term=path_direct&utm_content=w3_direct_general&campaign_id=120249360971890217&fbclid=click-9';
+
+test('메타 W3 이상 광고로 온 휴대폰은 Tenjin 클릭 URL 을 함께 만든다', () => {
+  const t = target({ ua: UA.android, search: META, cfg: { ...LIVE, ...TUNING.appBanner } });
+  assert.equal(t.kind, 'redirect');
+  assert.match(t.url, /^https:\/\/play\.google\.com\//);
+  const tj = new URL(t.track);
+  assert.equal(tj.hostname, 'track.tenjin.com');
+  assert.equal(tj.searchParams.get('platform'), 'android');
+  assert.equal(tj.searchParams.get('campaign_name'), 'w3_direct_general');
+  assert.equal(tj.searchParams.get('creative_name'), 'w3_direct_general');
+  assert.equal(tj.searchParams.get('campaign_id'), '120249360971890217');
+  assert.equal(tj.searchParams.get('tenjin_parameter_1'), 'click-9');
+});
+
+test('메타가 아니거나 W1 광고면 Tenjin 클릭이 없다', () => {
+  const cfg = { ...LIVE, ...TUNING.appBanner };
+  assert.equal(target({ ua: UA.android, search: '?utm_source=instagram&utm_content=w3_x', cfg }).track, undefined);
+  assert.equal(target({ ua: UA.android, search: '?utm_source=meta&utm_content=w1_general_v1', cfg }).track, undefined);
+});
+
+test('onRequestGet — Tenjin 클릭이 있으면 클릭을 보내고 바로 스토어로 넘기는 페이지', async () => {
+  const req = new Request(`https://calmforest.cloud/app${META}`, { headers: { 'user-agent': UA.android } });
+  const res = await onRequestGet({ request: req, env: {} });
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get('content-type'), /text\/html/);
+  assert.match(res.headers.get('cache-control'), /no-store/);
+  assert.match(res.headers.get('vary'), /User-Agent/i);
+  const html = await res.text();
+  assert.match(html, /track\.tenjin\.com/);
+  assert.match(html, /keepalive/);
+  assert.match(html, /location\.replace/);
+  assert.match(html, /play\.google\.com/);
+  assert.ok(!/<\/script>[\s\S]*<\/script>[\s\S]*<\/script>/.test(html));
 });
