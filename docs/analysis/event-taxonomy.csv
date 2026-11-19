@@ -5,6 +5,7 @@ app_banner_dismiss,ui,ui,2,N,active,5,5,2026-10-13,2026-10-24,dismiss_n|reason|o
 app_banner_holdout,experiment,experiment,1,N,active,4,3,2026-10-13,2026-10-23,trigger|os,js/app-banner.js:129,앱 설치 배너 노출 대조군으로 배정돼 배너를 보여주지 않았을 때 (trigger=노출 시점),
 app_banner_shown,ui,ui,2,N,active,6,6,2026-10-13,2026-10-24,trigger|is_guest|os,js/app-banner.js:110,"앱 설치 유도 배너가 화면에 보였을 때 (trigger=노출 시점, is_guest=게스트 여부)",
 apple_connect,onboarding,login,2,N,active,9,9,2026-10-22,2026-10-24,mode|result|reason,index.html:5302,iOS 로그인 화면에서 Apple 로그인 버튼을 눌러 결과가 나왔을 때 (result=ok 또는 fail),
+att_result,system,ops,3,N,not_fired,0,0,,,status|asked,js/tracking-consent.js:12,"iOS 앱 추적 허용(ATT) 결과를 확인했을 때, 기기당 상태가 바뀔 때만 (status=authorized·denied·restricted·notDetermined·error, asked=이번에 창을 띄웠으면 1)",
 aura_cards_swap,crafting,light_workshop,2,N,active,64,3,2026-10-09,2026-10-24,to|card|from,js/aura/workshop-ui.js:118,"빛 공방 주문 카드(모양·색·움직임·띠)를 다른 값으로 바꿨을 때 (card=카드 종류, from/to=바뀐 값)",
 aura_claim,crafting,light_workshop,2,N,active,3,3,2026-10-09,2026-10-16,order_id|hours_since_order|status,js/aura/workshop-ui.js:169,빛 공방에서 완성된 빛 주문을 수령했을 때 (hours_since_order=주문 후 경과 시간),
 aura_equip,crafting,light_workshop,2,N,active,6,3,2026-10-09,2026-10-17,via|order_id,js/aura/wardrobe-aura.js:25,완성한 빛 오라를 착용했을 때 (via=공방 또는 옷장),
