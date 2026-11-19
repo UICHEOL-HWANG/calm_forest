@@ -1,11 +1,12 @@
 import {
-  Input, camera, defaultCamPose, gameState, isNight, npcObjs, requestSave, scene, setCameraRig, syncStory, todayStr,
+  Input, camera, defaultCamPose, gameState, isNight, npcObjs, requestSave, scene, setCameraRig, syncStory, todayStr, isStoryBooted,
 } from '../game.js';
 import { trackEvent } from '../analytics.js';
 import { Sound } from '../sound.js';
 import { t as tr } from '../i18n.js';
 import { NEIGHBOR_GATE } from '../data/places.js';
 import { setNpcGlyphsHidden } from './npc.js';
+import { inVillage2 } from './doors.js';
 import { finaleDue, finaleVia, hasKeeperTitle, markFinaleSeen } from '../world/finale-rules.js';
 import { createFinaleRig, rootPoints } from '../world/finale-rig.js';
 import { buildFinaleArt } from '../world/finale-art.js';
@@ -44,8 +45,12 @@ function show(bloom, reveal, dt) {
 
 export function updateFinale(dt, ready) {
   if (!art) return;
+  if (!isStoryBooted()) return;
   if (chAtBoot == null) chAtBoot = Number(gameState.story?.ch) || 0;
-  if (run) { step(dt); return; }
+  if (run) {
+    if (!inVillage2() && run.rig.phase !== 'card') end(); else step(dt);
+    return;
+  }
   const keeper = hasKeeperTitle(gameState);
   art.group.visible = keeper;
   if (keeper) show(1, 1, dt);
@@ -63,6 +68,7 @@ function staging() {
 }
 
 function start(replay) {
+  if (run) return;
   const via = finaleVia(chAtBoot, gameState, replay);
   if (!replay) { gameState.hintsSeen = markFinaleSeen(gameState.hintsSeen, todayStr()); requestSave(); }
   const fwd = new T.Vector3();
@@ -70,7 +76,10 @@ function start(replay) {
   const p0 = camera.position;
   const from = { pos: { x: p0.x, y: p0.y, z: p0.z }, look: { x: p0.x + fwd.x * 20, y: p0.y + fwd.y * 20, z: p0.z + fwd.z * 20 } };
   const rig = createFinaleRig({ from, pts, tree, aspect: camera.aspect, home: defaultCamPose });
-  run = { rig, via, skipped: false, t0: performance.now(), cast: staging() };
+  const cast = staging();
+  const sprites = [];
+  for (const c of cast) c.o.group.traverse(ch => { if (ch.isSprite && ch.visible) { ch.visible = false; sprites.push(ch); } });
+  run = { rig, via, skipped: false, t0: performance.now(), cast, sprites };
   art.group.visible = true;
   shownBloom = -1;
   show(0, 0, 0);
@@ -80,7 +89,6 @@ function start(replay) {
     if (!run) return;
     for (const c of run.cast) {
       c.o.group.position.set(c.x, 0, c.z); c.o.group.rotation.y = c.face;
-      c.o.group.traverse(ch => { if (ch.isSprite) ch.visible = false; });
     }
     const p = run.rig.cur;
     cam.position.set(p.pos.x, p.pos.y, p.pos.z);
@@ -108,9 +116,10 @@ function skip() {
 }
 
 function end() {
-  const { via, skipped, t0, cast } = run;
+  const { via, skipped, t0, cast, sprites } = run;
   run = null;
   for (const c of cast) { c.o.group.position.copy(c.save.p); c.o.group.rotation.y = c.save.r; }
+  for (const s of sprites) s.visible = true;
   setCameraRig(null);
   setNpcGlyphsHidden(false);
   hideOverlay();

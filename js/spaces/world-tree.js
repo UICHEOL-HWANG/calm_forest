@@ -18,6 +18,7 @@ import { freshBranchTab } from '../guide/guide-rules.js';
 import { e6Decision } from '../exp-e6-boot.js';
 import { guideRevampOn } from '../exp-e6.js';
 import { Sound } from '../sound.js';
+import { modalQueue } from '../guide/modal-queue.js';
 import { finaleBusy, finaleFogPush, initFinale, updateFinale } from './tree-finale.js';
 import { TAG_LABEL } from '../habitat.js';
 import {
@@ -84,7 +85,7 @@ function computeTargets() {
 export function updateWorldTree(dt, t) {
   if (!wt) return;
   updateTreeShot(t);
-  updateFinale(dt, !shot && !shotQueue.length && shotReady());
+  updateFinale(dt, !shot && !shotQueue.length && shotReady() && !modalQueue.pending('story'));
   regionFx?.update(Math.min(dt, 0.05));
   if (!targets || t - targetAt > 0.5) { targets = computeTargets(); targetAt = t; }
   const k = Math.min(1, dt * (shot ? 2.4 : 1.6));   // 조망샷 머무는 동안(1.7초) 다 돋게 조금 빠르게

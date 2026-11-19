@@ -26,3 +26,9 @@ test('본 기록은 hintsSeen 에만 남긴다', () => {
   assert.match(f, /markFinaleSeen\(/);
   assert.doesNotMatch(f, /gameState\.(treeFinale|finale)\s*=/);
 });
+
+test('chAtBoot 은 이야기 부팅 뒤에만 잡고, 이야기 모달 뒤에 시작한다', () => {
+  const f = read('js/spaces/tree-finale.js');
+  assert.match(f, /if \(!isStoryBooted\(\)\) return;\n\s*if \(chAtBoot == null\)/);
+  assert.match(read('js/spaces/world-tree.js'), /modalQueue\.pending\('story'\)/);
+});
