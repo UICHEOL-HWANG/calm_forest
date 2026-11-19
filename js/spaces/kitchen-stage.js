@@ -6,7 +6,7 @@
 //     game.js 에 남은 let 에 쓸 때는 `$w.x = …` (읽기는 그냥 x). 도구·증명: tools/refactor/
 // =============================================================
 import {
-  $w, camera, clayMat, makeSignpost, mergeGeos, mgView, nearStation, obstacles, outdoorMeshes, player, refreshStations,
+  $w, buildCharacterMesh, camera, clayMat, makeSignpost, mergeGeos, mgView, nearStation, obstacles, outdoorMeshes, player, refreshStations,
   roundRect, scene, snapCamera, solidCircle, spawnSparkle, trees, updateCarveScene, woodMat,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { BENCH, KITCHEN, RANK } from '../data/places.js';
@@ -17,6 +17,7 @@ import { greyFood, ingredientModel, releaseFood, setFoodOpacity, setFoodTint } f
 import { BOARD_TOP, CUT_X, CUT_Z, KNIFE_UP, chopNote, clearChops, startChop, updateChops } from './kitchen-chop.js';   // 🔪 M2 통통통
 import { updateAuctionScene } from '../auction/index.js';
 import { buildCraftCart } from './exterior-art.js';
+import { buildDishBackdrop, hostSeat } from '../neighbors/dish-stage-art.js';
 
 export function spawnWorkbench() {
   const g = new THREE.Group(); g.position.copy(BENCH);
@@ -240,7 +241,7 @@ export function buildKitchenSet() {
 
   g.visible = false;
   scene.add(g);
-  kset = { group: g, boardGroup, knife, potGroup, soup, flames, bubbles, steam, ladle, foods, light,
+  kset = { group: g, base: g.children.slice(0, 8), boardGroup, knife, potGroup, soup, flames, bubbles, steam, ladle, foods, light,
     grillGroup, grillFlames, grillFood, seasonGroup, shaker, saltBits,
     notes: [], fx: [], chops: [], ladleT: -1, flareT: -1, drop: null, dropT: -1,
     flipT: -1, burn: 0, pouring: false, saltT: 0 };
@@ -279,8 +280,33 @@ export function mgSceneStart(type, keys = [], noteN = 0, grillKey = '') {
       kset.group.add(m); kset.notes.push(m);
     }
   }
+  applyStageTheme();
   $w.mgView = { type };
   applyMgCamera();
+}
+
+let stageTheme = null, themed = null;
+export function setStageTheme(theme) { stageTheme = theme || null; }
+
+function applyStageTheme() {
+  if (themed && themed.theme !== stageTheme) clearStageTheme();
+  if (!stageTheme || themed) return;
+  const seat = hostSeat(stageTheme.bodyR);
+  const backdrop = buildDishBackdrop(THREE, seat);
+  const host = buildCharacterMesh(stageTheme.character, { owned: [], equipped: stageTheme.equipped || {} });
+  host.position.set(seat.x, seat.y, seat.z); host.rotation.y = seat.ry;
+  kset.group.add(backdrop, host);
+  kset.base.forEach(o => { o.visible = false; });
+  themed = { theme: stageTheme, backdrop, host };
+}
+
+function clearStageTheme() {
+  if (!themed) return;
+  kset.group.remove(themed.backdrop, themed.host);
+  themed.backdrop.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
+  themed.host.traverse(o => { if (o.isMesh) o.geometry?.dispose(); });
+  kset.base.forEach(o => { o.visible = true; });
+  themed = null;
 }
 
 // 🔥 굽기 — 뒤집기 연출(재료가 반 바퀴 돌아 다시 앉음). over=true 면 탄 정도가 한 단계 짙어진다
@@ -405,7 +431,7 @@ export function craftFocus(on) {
 }
 
 export function mgSceneEnd() {
-  if (kset) kset.group.visible = false;
+  if (kset) { kset.group.visible = false; clearStageTheme(); }
   $w.mgView = null;
   snapCamera();                                             // 마을 카메라 복귀
 }

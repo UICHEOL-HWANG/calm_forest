@@ -55,7 +55,7 @@ test('SQL: 차단은 양방향 제외 · 게스트 허용 · 관리자 가드', 
 
 test('UI: ⋯ 입구 두 곳(목록 각 줄·구경 중 상단 줄) · 모달 id 는 -modal · innerHTML 금지', () => {
   const ui = src('js/neighbors/ui.js');
-  assert.match(ui, /openPickerModal\(rows, rewardedToday, onGo, onMore\)/);
+  assert.match(ui, /openPickerModal\(rows, rewardedToday, onGo, onMore(, backRows = \[\])?\)/);
   assert.match(ui, /showNeighborHud\(nickname, onExit, onMore\)/);
   assert.match(ui, /'nb-report-modal'/);
   assert.match(ui, /'nb-block-modal'/);
