@@ -1,7 +1,7 @@
 # neighbor-table-dish context
 
 Last Updated: 2026-11-19 (구현 세션, 4단계 올리기까지)
-- 사용자 결정(4단계 중): 주방 무대 전환 대신 전용 요리 창. 판 = 요리 첫 판 종류로 간→꾹 누르기, 끓이기·굽기→바늘 탭, 썰기→박자 3번. 별 → 점수 40·75·95 로 서버에 보낸다.
+- 사용자 결정(4단계 중): 주방 같은 별도 공간 + 이웃 전용 무대. 시안 3개(식탁·담요·그루터기) 중 C 그루터기 상. 기존 요리 판(stages[0] 한 판)을 그대로 쓰고 kitchen-stage 의 setStageTheme 이 벽·선반·조리대(kset.base)를 숨기고 그루터기 배경과 집주인을 얹는다. 바닥 창(dish-game.js) 시안은 폐기·삭제. 집주인은 그루터기 반지름+몸 반지름 바깥 의자에 앉힌다(통과 지적 반영).
 - dev docs 는 이 워크트리 dev/active/neighbor-table-dish/ 로 옮겼다(루트 쓰기는 훅이 막는다). 루트 사본은 옛것.
 - 캡처: PORT=<serve 포트> OUT=<폴더> node dev/active/neighbor-table-dish/verify/seat-shots.mjs <phone|land|pc> <bear|rabbit>. zsh 루프는 ${=a} 로 쪼갤 것.
 

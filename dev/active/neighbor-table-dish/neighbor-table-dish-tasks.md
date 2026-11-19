@@ -9,8 +9,8 @@
 - [x] 2. 답방 목록: api·rules·ui, 허용 목록, i18n (c023a0b2)
 - [x] 3. seat-rules + 테스트, seat.js, scene.js 식탁 충돌·seatHost
 - [x] 3. 실화면 캡처 12조합(verify/seat-shots.mjs), 앉기 값 확정. 앉은 동안 머리 위 🪑·미니맵 숨김, 걸을 때 미니맵은 상단 줄 아래
-- [x] 4. 요리 고르기 창, 전용 요리 창(시안 ②·③줄, 사용자 결정으로 주방 무대·cook-course 안 씀), pantryGive, 서버 호출, 접시·별 표시
-- [x] 4. 가짜 API 하네스(verify/flow-verify.mjs): 3판 성공·별 1~3, 실패 6경로·게스트·빈 찬장에서 찬장·코인 그대로
+- [x] 4. 요리 고르기 창 → 기존 요리 판 한 판(cook-course neighbor 분기) + 이웃 전용 그루터기 무대(시안 A·B·C 중 C 확정), pantryGive, 서버 호출, 접시·별 표시
+- [x] 4. 가짜 API 하네스(verify/flow-verify.mjs): 4판(끓이기·간·굽기·썰기) 진입·복귀, 실패 6경로·게스트·빈 찬장에서 찬장·코인 그대로
 - [ ] 5. 집주인: dish-inbox, 한 입 버프, 평가, 답방, 접속 알림 연결
 - [ ] 6. 개인정보 처리방침·가이드, 트래킹 스키마 테스트
 - [ ] 6. code-reviewer, security-reviewer, 지적 반영

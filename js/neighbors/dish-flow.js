@@ -1,14 +1,17 @@
-import { gameState, giveReward, requestSave, ui } from '../game.js';
+import { ANIMALS, gameState, giveReward, requestSave, ui } from '../game.js';
 import { trackEvent } from '../analytics.js';
 import { state as authState } from '../supabase-client.js';
 import { RECIPES } from '../data/catalog.js';
-import { COOK_TIERS, pantryGive } from '../spaces/cooking.js';
+import { SELL_ICO_G } from '../data/places.js';
+import { COOK_TIERS, courseOf, pantryGive } from '../spaces/cooking.js';
+import { grillKeyOf, stageKeys } from '../cook-ingredients.js';
+import { setStageTheme } from '../spaces/kitchen-stage.js';
+import { bodyROf } from './seat-rules.js';
 import { neighborApi } from './net.js';
-import { DISH_COINS, gameOf, giftable, leaveOutcome, scoreOfStars } from './dish-rules.js';
+import { DISH_COINS, dishStars, giftable, leaveOutcome, starLine } from './dish-rules.js';
 import { DISH_COPY as D, fill } from './dish-copy.js';
 import { FAIL_TOAST } from './rules.js';
 import { openDishPicker } from './ui.js';
-import { openDishGame } from './dish-game.js';
 import { evDishLeave, evFail } from './track.js';
 
 const tierOf = (score) => (COOK_TIERS.find(t => score >= t.min) || COOK_TIERS[COOK_TIERS.length - 1]).id;
@@ -23,13 +26,19 @@ export function offerDish(host) {
 
 function cookFor(it, host) {
   const r = RECIPES.find(x => x.id === it.id);
-  openDishGame({ game: gameOf(r.stages[0]), ico: r.ico, onFinish: (stars) => deliver(it, r, stars, host), onClose: host.onEnd });
+  setStageTheme({ character: host.character, equipped: host.equipped, bodyR: bodyROf(host.character, ANIMALS) });
+  ui.startCookCourse?.({
+    id: r.id, where: 'neighbor', name: r.name, ico: r.ico, course: [{ ...courseOf(r)[0], weight: 1 }],
+    keys: stageKeys(r), grillKey: grillKeyOf(r), icos: Object.keys(r.cost).map(k => SELL_ICO_G[k] || '📦'),
+    onDone: (payload) => deliver(it, r, payload, host),
+    onClose: () => { setStageTheme(null); host.onEnd?.(); },
+  });
 }
 
-async function deliver(it, r, stars, host) {
-  const score = scoreOfStars(stars);
+async function deliver(it, r, payload, host) {
+  const score = Math.max(0, Math.min(100, Math.round(Number(payload?.score) || 0)));
   const out = leaveOutcome(await neighborApi.dishLeave(host.publicId, r.id, score).catch(() => null));
-  trackEvent(...evDishLeave(host.publicId, r.id, out.give ? out.stars : stars, out.reason));
+  trackEvent(...evDishLeave(host.publicId, r.id, out.give ? out.stars : dishStars(score), out.reason));
   if (!out.give) {
     if (!D.fail[out.reason]) trackEvent(...evFail('dish_leave', out.reason));
     ui.toast?.(D.fail[out.reason] || FAIL_TOAST, 2800);
@@ -40,8 +49,8 @@ async function deliver(it, r, stars, host) {
   requestSave();
   host.onPlate(out.stars, tierOf(score));
   return {
-    stars: out.stars,
+    ok: true, ico: starLine(out.stars), title: D.doneTitle,
     line: out.stars === 3 ? fill(D.doneLine[2], host.nick) : D.doneLine[out.stars - 1],
-    coin: out.reward ? D.coinTail : '',
+    coin: out.reward ? D.coinTail : '', okLabel: D.doneOk,
   };
 }

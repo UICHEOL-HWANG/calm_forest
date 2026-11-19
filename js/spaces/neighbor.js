@@ -239,7 +239,7 @@ function sitAtTable() {
   $w.nearDoor = null; ui.setDoorPrompt?.(null); $w.lastDoorPrompt = null;
   Sound.blip();
   trackEvent(...evSeat(v.publicId, table.shape));
-  offerDish({ publicId: v.publicId, nick: v.view.nickname, onPlate: (stars, tier) => { if (visit === v) v.built.showGuestDish(stars, tier); }, onEnd: snapSeatCamera });
+  offerDish({ publicId: v.publicId, nick: v.view.nickname, character: v.view.character, equipped: v.view.equipped, onPlate: (stars, tier) => { if (visit === v) v.built.showGuestDish(stars, tier); }, onEnd: snapSeatCamera });
 }
 
 function standFromTable() {

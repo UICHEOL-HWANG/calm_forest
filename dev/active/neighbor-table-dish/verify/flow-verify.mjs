@@ -40,39 +40,26 @@ async function pick(id) {
 }
 const toastText = () => ev(`document.getElementById('toast')?.textContent?.trim() || null`);
 
-const GO = `document.querySelector('#nb-cook-modal .nbc-go')`;
-const down = () => ev(`${GO}.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 1 }))`);
-const up = () => ev(`${GO}.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 1 }))`);
-async function play(id, aim) {
-  if (id === 'rice_ball') { await down(); await b.sleep(aim === 3 ? 1330 : aim === 2 ? 1120 : 300); await up(); return; }
-  if (id === 'herb_salad') { for (let i = 0; i < 3; i++) { await b.sleep(i < aim ? 760 : 300); await down(); } return; }
-  const lo = aim === 3 ? 50 : aim === 2 ? 60 : 85, hi = aim === 3 ? 56 : aim === 2 ? 65 : 98;
-  for (let k = 0; k < 400; k++) {
-    const p = await ev(`parseFloat(document.querySelector('#nb-cook-modal .nbc-needle')?.style.left)`);
-    if (p >= lo && p <= hi) { await down(); return; }
-    await b.sleep(8);
-  }
-  await down();
-}
-const AIM = { veg_stew: 3, rice_ball: 3, baked_yam: 2, herb_salad: 3 };
+const TAP = `(() => { const e = document.getElementById('mg-tap'); e?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 1 })); setTimeout(() => window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 1 })), 450); return 1; })()`;
 for (const id of ['veg_stew', 'rice_ball', 'baked_yam', 'herb_salad']) {
   const r = { id, before: await pantryIds(), coinsBefore: await coins() };
   await sit();
   r.sheet = await ev(`[...document.querySelectorAll('#nb-dish-modal .nb-it b')].map(x => x.textContent)`);
   if (id === 'veg_stew') await shot('sheet');
   r.pick = await pick(id);
-  r.open = await until(`document.getElementById('nb-cook-modal')?.classList.contains('show') === true`, 5000);
-  await b.sleep(700);
-  r.title = await ev(`document.querySelector('#nb-cook-modal h3')?.textContent`);
+  r.open = await until(`document.getElementById('mg-layer')?.classList.contains('show') === true`, 6000);
+  await b.sleep(1500);
+  r.title = await ev(`document.getElementById('mg-title')?.textContent`);
+  r.stump = await ev(`(async () => { const K = await import('/js/spaces/kitchen-stage.js'); return !!K.kset && K.kset.base.every(o => !o.visible); })()`);
   await shot(`game-${id}`);
-  await play(id, AIM[id]);
-  await until(`document.querySelector('#nb-cook-modal .nbc-go')?.textContent === '좋아요'`, 6000);
-  await b.sleep(400);
-  r.result = await ev(`({ title: document.querySelector('#nb-cook-modal h3')?.textContent, stars: document.querySelectorAll('#nb-cook-modal .nbc-stars i.on').length, line: document.querySelector('#nb-cook-modal .nbc-res')?.textContent })`);
+  const t0 = Date.now();
+  while (Date.now() - t0 < 30000 && !(await ev(`document.getElementById('mg-result')?.classList.contains('show') === true`))) { await ev(TAP); await b.sleep(600); }
+  await b.sleep(500);
+  r.result = await ev(`({ ico: document.getElementById('mgr-ico')?.textContent, title: document.getElementById('mgr-title')?.textContent, sub: document.getElementById('mgr-sub')?.textContent, btn: document.getElementById('mgr-close')?.textContent })`);
   await shot(`result-${id}`);
-  await ev(`${GO}.click()`);
-  await b.sleep(1200);
-  r.back = await ev(`(async () => ({ seated: (await import('/js/spaces/neighbor.js')).neighborSeated(), open: document.getElementById('nb-cook-modal')?.classList.contains('show') }))()`);
+  await ev(`document.getElementById('mgr-close').click()`);
+  await b.sleep(1500);
+  r.back = await ev(`(async () => { const K = await import('/js/spaces/kitchen-stage.js'); return { seated: (await import('/js/spaces/neighbor.js')).neighborSeated(), mg: document.getElementById('mg-layer')?.classList.contains('show'), kitchenBack: K.kset.base.every(o => o.visible) }; })()`);
   await shot(`plate-${id}`);
   r.after = await pantryIds(); r.coinsAfter = await coins();
   await stand();
@@ -86,12 +73,12 @@ for (const mode of ['upstream', 'dup', 'full', 'login', 'limit', 'throw']) {
   const r = { mode, before: await pantryIds(), coinsBefore: await coins() };
   await sit();
   r.pick = await pick('veg_stew');
-  await until(`document.getElementById('nb-cook-modal')?.classList.contains('show') === true`, 5000);
-  await b.sleep(400);
-  await down();
+  await until(`document.getElementById('mg-layer')?.classList.contains('show') === true`, 6000);
+  await b.sleep(600);
+  await ev(`document.getElementById('mg-quit').click()`);
   await b.sleep(1500);
   r.toast = await toastText();
-  r.open = await ev(`document.getElementById('nb-cook-modal')?.classList.contains('show')`);
+  r.open = await ev(`document.getElementById('mg-layer')?.classList.contains('show')`);
   if (mode === 'dup') await shot('fail-dup');
   r.after = await pantryIds(); r.coinsAfter = await coins();
   await stand();
