@@ -8,7 +8,7 @@ function rnd(seed) {
 
 export function buildFinaleArt(three, { box, pts, seed = 7 }) {
   const T = three, r = rnd(seed), group = new T.Group();
-  const top = box.cy + box.hy, m4 = new T.Matrix4(), q = new T.Quaternion(), v = new T.Vector3(), s = new T.Vector3();
+  const top = box.cy + box.hy, m4 = new T.Matrix4(), q = new T.Quaternion(), v = new T.Vector3(), s = new T.Vector3(), eu = new T.Euler();
 
   const blooms = new T.InstancedMesh(new T.IcosahedronGeometry(1, 1), new T.MeshBasicMaterial({ toneMapped: false }), N_BLOOM);
   const spots = [];
@@ -39,7 +39,7 @@ export function buildFinaleArt(three, { box, pts, seed = 7 }) {
   group.add(blooms, petals, tube, halo);
 
   const placePetals = () => {
-    fall.forEach((f, i) => { q.setFromEuler(new T.Euler(f.a, f.a * 0.7, f.a * 1.3)); m4.compose(v.set(f.x, f.y, f.z), q, s.set(1, 1, 1)); petals.setMatrixAt(i, m4); });
+    fall.forEach((f, i) => { q.setFromEuler(eu.set(f.a, f.a * 0.7, f.a * 1.3)); m4.compose(v.set(f.x, f.y, f.z), q, s.set(1, 1, 1)); petals.setMatrixAt(i, m4); });
     petals.instanceMatrix.needsUpdate = true;
   };
 

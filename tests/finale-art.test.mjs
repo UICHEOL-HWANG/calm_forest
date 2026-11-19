@@ -55,5 +55,9 @@ test('꽃잎은 꽃이 반 넘게 핀 뒤에만 떨어진다', () => {
   const petals = drawables(a.group).find(o => o.isInstancedMesh && o.count < 200);
   a.setBloom(0.3); assert.equal(petals.visible, false);
   a.setBloom(1); assert.equal(petals.visible, true);
+  const at = () => { const m = new THREE.Matrix4(), p = new THREE.Vector3(); return Array.from({ length: petals.count }, (_, i) => { petals.getMatrixAt(i, m); return p.setFromMatrixPosition(m).toArray().join(); }); };
+  const before = at();
   a.update(0.5);
+  const after = at();
+  assert.ok(after.some((p, i) => p !== before[i]));
 });
