@@ -73,10 +73,11 @@ test('veil: 다른 경로(세이브 복구 등)로 이미 숨겨졌으면 null �
   assert.equal(activeBootVeil(), null);
 });
 
-test('앱 빌드는 첫 페인트 전에 html.boot-b(로컬은 ?bootb=1), B 요소는 웹 알약 뒤에 둔다', () => {
+test('웹·앱 모두 첫 페인트 전에 html.boot-b, B 요소는 알약 뒤에 둔다', () => {
   const html = read('index.html');
   const head = html.slice(0, html.indexOf('</head>'));
-  assert.match(head, /<script>if \(\/\^\(localhost[^<]*bootb=1[^<]*classList\.add\('boot-b'\);<\/script>/);
+  assert.match(head, /<script>document\.documentElement\.classList\.add\('boot-b'\);<\/script>/);
+  assert.match(read('scripts/build-itch.mjs'), /cpSync\('assets\/boot'/);
   assert.match(read('scripts/build-cap.mjs'), /<script>window\.\$\{FLAGS\[TARGET\]\} = true;\$\{adsFlag\} document\.documentElement\.classList\.add\('boot-b'\);<\/script>/);
   assert.match(html, /<div id="loading" class="boot-bg"><span class="load-pill">[\s\S]*?<\/span><\/span><i class="boot-mark" aria-hidden="true"><\/i><span class="boot-bar" aria-hidden="true"><i><\/i><\/span><span class="boot-step" role="status" aria-live="polite">숲길을 여는 중<\/span><\/div>/);
   assert.match(html, /html\.boot-b #loading\.boot-bg \.boot-mark \{[^}]*assets\/boot\/mark\.png/);
