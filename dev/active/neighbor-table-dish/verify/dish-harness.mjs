@@ -68,5 +68,5 @@ export async function open(devName, cdpPort) {
     await b.sleep(1500);
     return { ok, arrived };
   }
-  return { b, ev, until, dismiss, enterGame, visit, async close() { clearInterval(front); await b.close(); } };
+  return { b, ev, until, dismiss, enterGame, visit, async close() { clearInterval(front); console.log('CONSOLE_ERRORS ' + JSON.stringify(b.logs.filter(l => l && !/supabase|ERR_BLOCKED|googletag|analytics|Failed to fetch|net::/i.test(l)))); await b.close(); } };
 }
