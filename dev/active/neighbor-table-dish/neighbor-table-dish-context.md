@@ -1,6 +1,7 @@
 # neighbor-table-dish context
 
-Last Updated: 2026-11-19 (구현 세션, 7단계 조사까지)
+Last Updated: 2026-11-19 (운영 SQL 적용 완료, 앱 미배포)
+- 운영 DB: migrate_neighbor_dishes.sql 적용(적용 직전 my_visitors 운영 본문이 읽어 둔 것과 같음 확인), neighbors_selftest ALL PASS, 셀프테스트 계정·접시 잔여 0, village_dishes RLS on·직접 권한 0, 새 RPC 는 authenticated 만 실행.
 - 보안 리뷰에서 남긴 것(미반영, 사용자 판단): 다계정 코인 농사(반응 보상과 같은 하루 3회 수준), 6접시 채우기 괴롭힘(집주인 접시 버리기 없음), 점수는 클라 신고값(별은 꾸밈용)
 - 사용자 결정(4단계 중): 주방 같은 별도 공간 + 이웃 전용 무대. 시안 3개(식탁·담요·그루터기) 중 C 그루터기 상. 기존 요리 판(stages[0] 한 판)을 그대로 쓰고 kitchen-stage 의 setStageTheme 이 벽·선반·조리대(kset.base)를 숨기고 그루터기 배경과 집주인을 얹는다. 바닥 창(dish-game.js) 시안은 폐기·삭제. 집주인은 그루터기 반지름+몸 반지름 바깥 의자에 앉힌다(통과 지적 반영).
 - dev docs 는 이 워크트리 dev/active/neighbor-table-dish/ 로 옮겼다(루트 쓰기는 훅이 막는다). 루트 사본은 옛것.
