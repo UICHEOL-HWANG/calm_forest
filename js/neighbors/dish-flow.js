@@ -35,17 +35,21 @@ function cookFor(it, host) {
   });
 }
 
+const LEAVE_TIMEOUT_MS = 10000;
+const withTimeout = (p) => Promise.race([p.catch(() => null), new Promise(res => setTimeout(() => res(null), LEAVE_TIMEOUT_MS))]);
+
 async function deliver(it, r, payload, host) {
+  if (payload?.abandoned) return null;
   const score = Math.max(0, Math.min(100, Math.round(Number(payload?.score) || 0)));
-  const out = leaveOutcome(await neighborApi.dishLeave(host.publicId, r.id, score).catch(() => null));
+  const out = leaveOutcome(await withTimeout(neighborApi.dishLeave(host.publicId, r.id, score)));
   trackEvent(...evDishLeave(host.publicId, r.id, out.give ? out.stars : dishStars(score), out.reason));
   if (!out.give) {
     if (!D.fail[out.reason]) trackEvent(...evFail('dish_leave', out.reason));
     ui.toast?.(D.fail[out.reason] || FAIL_TOAST, 2800);
     return null;
   }
-  pantryGive(it.i, r.id);
-  if (out.reward) giveReward({ coins: DISH_COINS }, 'neighbor_dish', host.publicId);
+  const given = pantryGive(it.i, r.id);
+  if (out.reward && given) giveReward({ coins: DISH_COINS }, 'neighbor_dish', host.publicId);
   requestSave();
   host.onPlate(out.stars, tierOf(score));
   return {

@@ -88,7 +88,7 @@ async function goVisit(row) {
 }
 
 export async function visitBack(publicId) {
-  if (visit || pickerBusy || !publicId) return;
+  if (visit || pickerBusy || !publicId || !inVillage2()) return;
   pickerBusy = true;
   try {
     const r = await neighborApi.showcase(publicId);

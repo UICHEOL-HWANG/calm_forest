@@ -59,8 +59,13 @@ begin
   if v_host = v_uid then return jsonb_build_object('ok', false, 'reason', 'self'); end if;
   if exists (select 1 from auth.users u where u.id = v_host and coalesce(u.is_anonymous, false)) then
     return jsonb_build_object('ok', false, 'reason', 'not_found'); end if;
+  if (select lower(coalesce(u.email, '')) like '%@sim.calmforest.local' from auth.users u where u.id = v_host)
+     is distinct from (select lower(coalesce(u.email, '')) like '%@sim.calmforest.local' from auth.users u where u.id = v_uid) then
+    return jsonb_build_object('ok', false, 'reason', 'not_found'); end if;
   if not v_pub or v_hid then return jsonb_build_object('ok', false, 'reason', 'private'); end if;
   if _nb_blocked(v_uid, v_host) then return jsonb_build_object('ok', false, 'reason', 'private'); end if;
+  if exists (select 1 from village_profiles where user_id = v_uid and hidden_by_admin) then
+    return jsonb_build_object('ok', false, 'reason', 'hidden'); end if;
   perform pg_advisory_xact_lock(hashtext('nbd:' || v_uid::text));
   if exists (select 1 from village_dishes where giver = v_uid and host = v_host and day = v_day) then
     return jsonb_build_object('ok', false, 'reason', 'dup'); end if;

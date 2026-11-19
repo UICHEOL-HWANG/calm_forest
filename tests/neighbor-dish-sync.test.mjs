@@ -46,6 +46,13 @@ test('테이블 잠금 · RPC 는 authenticated 만 · 남의 식별자는 publi
   assert.doesNotMatch(SQL, /'(giver|host|user_id|visitor)',\s/);
 });
 
+test('올리기: 페르소나 분리 · 관리자 숨김 이용자 거절', () => {
+  const dom = read('tools/persona-sim/supabase-admin.mjs').match(/PERSONA_DOMAIN = '([^']+)'/)[1];
+  const leave = fn('neighbor_dish_leave');
+  assert.equal(leave.split(`like '%@${dom}'`).length - 1, 2);
+  assert.ok(leave.includes("where user_id = v_uid and hidden_by_admin"));
+});
+
 test('my_visitors 는 운영 본문의 차단·공개 규칙을 유지한다', () => {
   const mv = fn('my_visitors');
   assert.ok(mv.includes('not _nb_blocked(v_uid, u.visitor)'));

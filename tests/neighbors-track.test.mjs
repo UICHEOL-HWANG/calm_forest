@@ -34,3 +34,11 @@ test('답방 입장은 via=return 을 싣는다(키 5개)', () => {
   assert.deepEqual(ev, ['neighbor_visit_start', { host: ID, slot: null, revisit: 0, load_ms: 10, via: 'return' }]);
   assert.ok(Object.keys(ev[1]).length <= 5);
 });
+
+test('🍽️ 식탁 이벤트 4종: 키 5개 이하 · 식별자는 public_id 만', async () => {
+  const T = await import('../js/neighbors/track.js');
+  const evs = [T.evSeat(ID, 'round'), T.evDishLeave(ID, 'veg_stew', 3, 'ok'), T.evDishEat(ID, 'bread', 2, 'ok'), T.evDishRate(null, 'heart', 'dup')];
+  assert.deepEqual(evs.map(e => e[0]), ['neighbor_seat', 'neighbor_dish_leave', 'neighbor_dish_eat', 'neighbor_dish_rate']);
+  for (const [, p] of evs) assert.ok(Object.keys(p).length <= 5);
+  assert.equal(evs[3][1].giver, '');
+});

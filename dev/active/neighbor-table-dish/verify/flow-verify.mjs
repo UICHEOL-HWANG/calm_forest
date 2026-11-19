@@ -74,9 +74,9 @@ for (const mode of ['upstream', 'dup', 'full', 'login', 'limit', 'throw']) {
   await sit();
   r.pick = await pick('veg_stew');
   await until(`document.getElementById('mg-layer')?.classList.contains('show') === true`, 6000);
-  await b.sleep(600);
-  await ev(`document.getElementById('mg-quit').click()`);
-  await b.sleep(1500);
+  const t1 = Date.now();
+  while (Date.now() - t1 < 30000 && (await ev(`document.getElementById('mg-layer')?.classList.contains('show') === true`))) { await ev(TAP); await b.sleep(600); }
+  await b.sleep(400);
   r.toast = await toastText();
   r.open = await ev(`document.getElementById('mg-layer')?.classList.contains('show')`);
   if (mode === 'dup') await shot('fail-dup');
@@ -85,6 +85,20 @@ for (const mode of ['upstream', 'dup', 'full', 'login', 'limit', 'throw']) {
   log.fails.push(r);
 }
 
+await ev(`window.__leave.mode = 'ok'`);
+{
+  const r = { before: await pantryIds(), calls: (await ev(`window.__calls.length`)) };
+  await sit();
+  await pick('veg_stew');
+  await until(`document.getElementById('mg-layer')?.classList.contains('show') === true`, 6000);
+  await b.sleep(800);
+  await ev(`document.getElementById('mg-quit').click()`);
+  await b.sleep(1500);
+  r.open = await ev(`document.getElementById('mg-layer')?.classList.contains('show')`);
+  r.after = await pantryIds(); r.callsAfter = await ev(`window.__calls.length`); r.seated = await ev(`(async () => (await import('/js/spaces/neighbor.js')).neighborSeated())()`);
+  await stand();
+  log.abandon = r;
+}
 await ev(`(async () => { (await import('/js/supabase-client.js')).state.isGuest = true; return true; })()`);
 await sit();
 log.guest = { toast: await toastText(), modal: await ev(`document.getElementById('nb-dish-modal')?.classList.contains('show') || false`) };

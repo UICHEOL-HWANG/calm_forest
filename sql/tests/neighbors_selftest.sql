@@ -460,6 +460,12 @@ begin
   select u, f, v_day, 'bread', 40, 1 from unnest(array[g, h, e, i, c]) u;
   perform set_config('request.jwt.claims', json_build_object('sub', j, 'role', 'authenticated')::text, true);
   r := public.neighbor_dish_leave(public._nb_public_id(f), 'bread', 50);
+  if r->>'reason' <> 'not_found' then raise exception 'FAIL dish persona split: %', r; end if;
+  perform set_config('request.jwt.claims', json_build_object('sub', hid, 'role', 'authenticated')::text, true);
+  r := public.neighbor_dish_leave(public._nb_public_id(f), 'bread', 50);
+  if r->>'reason' <> 'hidden' then raise exception 'FAIL dish hidden giver: %', r; end if;
+  perform set_config('request.jwt.claims', json_build_object('sub', nh, 'role', 'authenticated')::text, true);
+  r := public.neighbor_dish_leave(public._nb_public_id(f), 'bread', 50);
   if r->>'reason' <> 'full' then raise exception 'FAIL dish full: %', r; end if;
 
   perform set_config('request.jwt.claims', json_build_object('sub', d, 'role', 'authenticated', 'is_anonymous', true)::text, true);
