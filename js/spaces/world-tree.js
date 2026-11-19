@@ -18,6 +18,7 @@ import { freshBranchTab } from '../guide/guide-rules.js';
 import { e6Decision } from '../exp-e6-boot.js';
 import { guideRevampOn } from '../exp-e6.js';
 import { Sound } from '../sound.js';
+import { finaleBusy, finaleFogPush, initFinale, updateFinale } from './tree-finale.js';
 import { TAG_LABEL } from '../habitat.js';
 import {
   BRANCHES, BRANCH_IDS, TREE_DECOR, branchOf, branchStatus, branchUsable, bundleDone, bundlesDone,
@@ -61,6 +62,7 @@ export function buildWorldTree() {
   for (const id of BRANCH_IDS) cur[id] = { leaves: 0, bloom: 0 };
   wt = { art, cur, life: 0, box: { cx: c.x, cy: c.y, cz: c.z, hx: h.x, hy: h.y, hz: h.z } };
   regionFx = createRegionFx(THREE, scene);
+  initFinale(THREE, wt.box, WORLD_TREE);
 }
 
 /** 나무를 다 살려 보여 줄까 — 해금 꺼짐·레거시 세이브는 이웃이 이미 다 있다 */
@@ -82,6 +84,7 @@ function computeTargets() {
 export function updateWorldTree(dt, t) {
   if (!wt) return;
   updateTreeShot(t);
+  updateFinale(dt, !shot && !shotQueue.length && shotReady());
   regionFx?.update(Math.min(dt, 0.05));
   if (!targets || t - targetAt > 0.5) { targets = computeTargets(); targetAt = t; }
   const k = Math.min(1, dt * (shot ? 2.4 : 1.6));   // 조망샷 머무는 동안(1.7초) 다 돋게 조금 빠르게
@@ -96,7 +99,7 @@ export function updateWorldTree(dt, t) {
 }
 
 /** 밑동 근처인가(doors.js 프롬프트) */
-export function worldTreeNear(p) { return !!wt && !shot && dist2D(WORLD_TREE, p) < PROMPT_R; }   // 🎬 조망샷 중엔 안내를 끈다('탭하면 넘어가요'와 겹쳤다)
+export function worldTreeNear(p) { return !!wt && !shot && !finaleBusy() && dist2D(WORLD_TREE, p) < PROMPT_R; }   // 🎬 조망샷 중엔 안내를 끈다('탭하면 넘어가요'와 겹쳤다)
 
 export function worldTreePrompt() {
   return worldTreeBoardOpen() ? '🌳 세계수 · Space 로 살펴보기' : '🌳 시든 세계수 · 할아버지를 찾아가요';
@@ -447,19 +450,20 @@ export function debugTreeShot(kind, branch) {
 
 /** 조망샷이 줄 서 있거나 도는 중 — game.js 의 이야기 모달이 이 뒤로 선다. 오래(8초+) 못 돌고 있는 줄은 막지 않는다(교착 방지) */
 export function treeShotBusy() {
-  if (shot) return true;
+  if (shot || finaleBusy()) return true;
   return shotQueue.some(q => q.kind !== 'intro' && performance.now() - q.at < 8000);
 }
 
 /** 조망샷 카메라가 기본 거리(≈21)보다 물러난 만큼 — game.js 가 안개를 그만큼 민다 */
 export function treeShotFogPush() {
+  if (finaleBusy()) return finaleFogPush();
   if (!shot) return 0;
   const c = shot.rig.cur;
   return Math.max(0, Math.hypot(c.pos.x - c.look.x, c.pos.y - c.look.y, c.pos.z - c.look.z) - 21);
 }
 
 function shotReady() {
-  return cameraFree() && inVillage2() && !ui.anyModalOpen?.() && !ui.coachActive?.() && !treeBoardOpen();
+  return cameraFree() && !finaleBusy() && inVillage2() && !ui.anyModalOpen?.() && !ui.coachActive?.() && !treeBoardOpen();
 }
 
 function updateTreeShot(t) {

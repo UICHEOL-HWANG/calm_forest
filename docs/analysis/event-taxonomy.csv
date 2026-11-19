@@ -443,6 +443,7 @@ tree_deco_place,progression,world_tree,2,N,active,140,5,2026-10-24,2026-10-24,ti
 tree_guest,progression,world_tree,2,N,active,13,3,2026-10-24,2026-10-24,fresh|night|guest|branch,js/spaces/world-tree.js:336,"세계수 가지에 손님 동물이 찾아왔을 때 (guest=손님, fresh=첫 기록 여부)",
 tree_mature,farming,orchard,2,N,active,15,3,2026-09-17,2026-10-11,grew_days|kind,js/game.js:7376,kind·grew_days (원장 없음. 생애주기 이벤트 아님),
 tree_shot,progression,world_tree,2,N,active,18,7,2026-10-23,2026-10-24,kind|skipped|branch,js/spaces/world-tree.js:497,"세계수 연출 컷이 끝났을 때 (kind=연출 종류, skipped=건너뜀 여부)",
+tree_finale,progression,world_tree,2,N,not_fired,0,0,,,via|skipped|sec,js/spaces/tree-finale.js:117,"세계수 엔딩(뿌리 길 연출)이 끝났을 때 (via=live·boot·replay, skipped=건너뜀 여부, sec=재생 초)",
 tree_stage_offer,progression,world_tree,2,N,active,12,2,2026-10-24,2026-10-24,branch|complete|stage,js/spaces/world-tree.js:309,"세계수 꽃 꾸러미 단계에 재료를 바쳤을 때 (stage=단계, complete=완성 여부)",
 tree_tab,progression,world_tree,2,N,not_fired,0,0,,,branch|from,js/spaces/world-tree.js:196,"세계수 판에서 가지 탭을 바꿨을 때 (branch=새 탭, from=이전 탭)",
 tree_water,farming,orchard,2,N,active,58,7,2026-09-17,2026-10-24,kind|method,js/spaces/orchard-actions.js:73,"과수원 나무에 물을 줬을 때 (kind=과일, method=manual)",
