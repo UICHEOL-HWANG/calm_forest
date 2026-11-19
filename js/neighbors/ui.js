@@ -7,6 +7,7 @@
 // =============================================================
 import { Input } from '../game.js';
 import { EMOJI, EMOJI_IDS, rewardLine } from './rules.js';
+import { DISH_COPY as D, fill } from './dish-copy.js';
 
 const CSS = `
 #nb-pick-modal, #nb-visitors-modal { position: fixed; inset: 0; z-index: 33; display: none; place-items: center; background: rgba(20,40,30,0.55); }
@@ -31,6 +32,7 @@ const CSS = `
 .nb-go { margin-left: auto; padding: 8px 10px; font-size: 12px; }
 .nb-foot { margin-top: 12px; font-size: 11.5px; opacity: .7; }
 .nb-empty { padding: 18px 8px; font-size: 13px; opacity: .8; }
+.nb-sec { font-size: 11.5px; font-weight: 800; text-align: left; margin: 10px 2px 6px; opacity: .8; }
 .nb-close { margin-top: 10px; background: #eef2ee; box-shadow: none; }
 @media (min-width: 720px) {
   #nb-pick-modal .nb-card { width: 560px; }
@@ -113,26 +115,41 @@ function closeModal(id) {
 }
 
 // ── 오늘의 이웃(A 엽서 카드) ──
-export function openPickerModal(rows, rewardedToday, onGo, onMore) {
+function pickerRow(r, meta, goLabel, onGo, onMore) {
+  const row = el('div', 'nb-row' + (r.done ? ' done' : ''));
+  const name = el('div', 'nb-name', r.nick);
+  if (r.done) name.appendChild(el('span', 'nb-badge', '❤️ 다녀옴'));
+  const info = el('div');
+  info.append(name, meta);
+  const go = el('button', 'nb-btn nb-go', goLabel);
+  go.onclick = () => { setPickerBusy(true); onGo(r); };
+  const more = el('button', 'nb-more', '⋯');
+  more.setAttribute('aria-label', '더보기');
+  more.onclick = (e) => { e.stopPropagation(); onMore?.(r, more); };   // 🚩🚫 신고·차단
+  row.append(el('div', 'nb-ava', r.face), info, go, more);
+  return row;
+}
+
+function backMeta(r) {
+  const m = el('div', 'nb-meta');
+  if (r.reply) m.textContent = fill(D.metaReply, r.reply);
+  else if (r.dish) m.textContent = D.metaDish;
+  else m.append(`${r.react || ''} `, el('span', null, D.metaReact));
+  return m;
+}
+
+export function openPickerModal(rows, rewardedToday, onGo, onMore, backRows = []) {
   pickerBusy = false;
   const { root, card } = modal('nb-pick-modal');
   card.append(el('div', 'nb-ico', '🏡'), el('h2', null, '오늘의 이웃'), el('p', 'nb-sub', '다른 숲에서도 누군가 세계수를 지키고 있대요 · 내일 또 바뀌어요'));
+  if (backRows.length) {
+    const back = el('div', 'nb-list');
+    for (const r of backRows) back.appendChild(pickerRow(r, backMeta(r), D.goBack, onGo, onMore));
+    card.append(el('div', 'nb-sec', D.secBack), back, el('div', 'nb-sec', D.secNew));
+  }
   const list = el('div', 'nb-list');
   if (!rows.length) list.appendChild(el('div', 'nb-empty', '아직 놀러 갈 이웃이 없어요 · 내일 다시 와 보세요'));
-  for (const r of rows) {
-    const row = el('div', 'nb-row' + (r.done ? ' done' : ''));
-    const name = el('div', 'nb-name', r.nick);
-    if (r.done) name.appendChild(el('span', 'nb-badge', '❤️ 다녀옴'));
-    const info = el('div');
-    info.append(name, el('div', 'nb-meta', r.meta));
-    const go = el('button', 'nb-btn nb-go', r.go);
-    go.onclick = () => { setPickerBusy(true); onGo(r); };
-    const more = el('button', 'nb-more', '⋯');
-    more.setAttribute('aria-label', '더보기');
-    more.onclick = (e) => { e.stopPropagation(); onMore?.(r, more); };   // 🚩🚫 신고·차단
-    row.append(el('div', 'nb-ava', r.face), info, go, more);
-    list.appendChild(row);
-  }
+  for (const r of rows) list.appendChild(pickerRow(r, el('div', 'nb-meta', r.meta), r.go, onGo, onMore));
   const close = el('button', 'nb-btn nb-close', '닫기');
   close.onclick = () => closeModal('nb-pick-modal');
   card.append(list, el('div', 'nb-foot', rewardLine(rewardedToday)), close);

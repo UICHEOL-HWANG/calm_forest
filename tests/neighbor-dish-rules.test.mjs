@@ -88,7 +88,7 @@ test('나를 찾아온 이웃: 다녀간 이웃·평가 회신을 합쳐 한 사
     { nick: '달빛', character: 'rabbit', emoji: 'flower', public_id: UUID2 },
     { nick: '이상', character: 'rabbit', emoji: 'poop', public_id: UUID2 },
   ] }, face, 3);
-  assert.deepEqual(rows.map(r => [r.publicId, r.face, r.dish, r.reply]), [[UUID, '🐻', 3, '⭐'], [UUID2, '🐰', null, '🌸']]);
+  assert.deepEqual(rows.map(r => [r.publicId, r.face, r.react, r.dish, r.reply]), [[UUID, '🐻', '❤️', 3, '⭐'], [UUID2, '🐰', null, null, '🌸']]);
   assert.deepEqual(returnRows({ ok: false }, face, 3), []);
   assert.equal(returnRows({ ok: true, list: [], replies: [{ nick: 'a', emoji: 'heart', public_id: UUID }, { nick: 'b', emoji: 'heart', public_id: UUID2 }] }, face, 1).length, 1);
 });

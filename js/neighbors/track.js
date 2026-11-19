@@ -5,8 +5,8 @@
 // =============================================================
 export const evOpen = (today, via) =>
   ['neighbors_open', { shown: (today.list || []).length, rewarded_today: today.rewardedToday | 0, via }];
-export const evVisitStart = ({ publicId, slot, revisit, loadMs }) =>
-  ['neighbor_visit_start', { host: publicId, slot, revisit: revisit ? 1 : 0, load_ms: Math.round(loadMs || 0) }];
+export const evVisitStart = ({ publicId, slot, revisit, loadMs, via }) =>
+  ['neighbor_visit_start', { host: publicId, slot, revisit: revisit ? 1 : 0, load_ms: Math.round(loadMs || 0), ...(via ? { via } : {}) }];
 export const evReact = (publicId, emoji, outcome) =>
   ['neighbor_react', { host: publicId, emoji, rewarded: outcome.reward ? 1 : 0, reason: outcome.reason }];
 export const evVisitEnd = (publicId, sec, reacted) =>

@@ -28,3 +28,9 @@ test('🏠 실내 입장·퇴장 이벤트', () => {
   assert.deepEqual(evIndoorEnter('h1', 5, 12), ['neighbor_indoor_enter', { host: 'h1', house_stage: 5, decor_n: 12 }]);
   assert.deepEqual(evIndoorExit('h1', 31.6, 2, 4), ['neighbor_indoor_exit', { host: 'h1', sec: 32, floors_seen: 2, tags_seen: 4 }]);
 });
+
+test('답방 입장은 via=return 을 싣는다(키 5개)', () => {
+  const ev = evVisitStart({ publicId: ID, slot: null, revisit: false, loadMs: 10, via: 'return' });
+  assert.deepEqual(ev, ['neighbor_visit_start', { host: ID, slot: null, revisit: 0, load_ms: 10, via: 'return' }]);
+  assert.ok(Object.keys(ev[1]).length <= 5);
+});

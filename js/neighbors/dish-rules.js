@@ -65,12 +65,12 @@ export function returnRows(res, faceOf, max) {
   const rows = new Map();
   for (const v of Array.isArray(res.list) ? res.list : []) {
     const id = uuidOr(v?.public_id);
-    if (id && !rows.has(id)) rows.set(id, { publicId: id, nick: String(v.nick || ''), face: faceOf(v.character), dish: v.dish ? starsIn(v.dish) : null, reply: null });
+    if (id && !rows.has(id)) rows.set(id, { publicId: id, nick: String(v.nick || ''), face: faceOf(v.character), react: EMOJI[v.emoji] || null, dish: v.dish ? starsIn(v.dish) : null, reply: null });
   }
   for (const v of Array.isArray(res.replies) ? res.replies : []) {
     const id = uuidOr(v?.public_id), emoji = EMOJI[v?.emoji];
     if (!id || !emoji) continue;
-    const row = rows.get(id) || { publicId: id, nick: String(v.nick || ''), face: faceOf(v.character), dish: null, reply: null };
+    const row = rows.get(id) || { publicId: id, nick: String(v.nick || ''), face: faceOf(v.character), react: null, dish: null, reply: null };
     rows.set(id, { ...row, reply: row.reply || emoji });
   }
   return [...rows.values()].slice(0, max);

@@ -19,6 +19,7 @@ import { sanitizeShowcase } from '../neighbors/sanitize.js';
 import { BANNER_KEY, FAIL_TOAST, HOST_TALK_R, bannerDue, kstDay, REWARD_COINS, markSeen, noticeView, pickerRows, reactOutcome, recordVisit, visitorsSince } from '../neighbors/rules.js';
 import { evBlock, evBanner, evFail, evIndoorEnter, evIndoorExit, evNotice, evOpen, evReact, evReport, evToggle, evVisitEnd, evVisitStart } from '../neighbors/track.js';
 import { neighborApi } from '../neighbors/net.js';
+import { returnRows } from '../neighbors/dish-rules.js';
 import { buildNeighborScene } from '../neighbors/scene.js';
 import { buildNeighborBalloon } from '../neighbors/gate-art.js';
 import { canEnterIndoor, DOOR_R } from '../neighbors/indoor-rules.js';
@@ -32,6 +33,7 @@ import { bindVillagePublicToggle, closePickerModal, hideNeighborHud, isPickerOpe
 
 let visit = null;          // { publicId, slot, revisit, view, built, t0, reacted, bubble:'ask'|'thanks', near, busy, viewReq, viewId, indoor:null|{f,t0,floors:Set,tags:Set}, indoorBuilt }
 let pickerBusy = false;
+const RETURN_MAX = 3;
 
 const faceOf = (id) => (ANIMALS.find(a => a.id === id) || ANIMALS[0]).emoji;
 const showcaseCtx = () => ({
@@ -46,10 +48,14 @@ export async function openNeighborPicker(via) {
   if (pickerBusy || visit) return;
   pickerBusy = true;
   try {
-    const today = await neighborApi.today();
+    const member = !!authState.online && !authState.isGuest;
+    const [today, mine] = await Promise.all([neighborApi.today(), member ? neighborApi.visitors(visitorsSince(0, Date.now())) : null]);
     if (!today.ok) { trackEvent(...evFail('today', today.reason)); ui.toast?.(FAIL_TOAST, 2600); return; }
     trackEvent(...evOpen(today, via));                       // [GA4] 후보 수·오늘 받은 보상·진입 경로
-    openPickerModal(pickerRows(today.list, faceOf), today.rewardedToday, goVisit, (row, anchor) => openMore(row.publicId, 'list', anchor));
+    const back = returnRows(mine, faceOf, RETURN_MAX).map(r => ({ ...r, slot: null, done: false, via: 'return' }));
+    const backIds = new Set(back.map(r => r.publicId));
+    const rows = pickerRows(today.list, faceOf).filter(r => !backIds.has(r.publicId));
+    openPickerModal(rows, today.rewardedToday, goVisit, (row, anchor) => openMore(row.publicId, 'list', anchor), back);
   } finally { pickerBusy = false; }
 }
 
@@ -65,7 +71,7 @@ async function goVisit(row) {
       return;
     }
     closePickerModal();
-    enterNeighbor({ publicId: row.publicId, slot: row.slot, revisit: row.done, view, loadMs: r.loadMs });
+    enterNeighbor({ publicId: row.publicId, slot: row.slot, revisit: row.done, view, loadMs: r.loadMs, via: row.via });
   } catch (e) {   // 검증·짓기·입장 실패 — 조용히 삼키지 않는다
     console.error('[neighbor] visit failed', e);
     trackEvent(...evFail('showcase', 'build'));
