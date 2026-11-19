@@ -2,6 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { FINALE_CH, FINALE_KEY, finaleDue, finaleVia, hasKeeperTitle, isKeeperRow, markFinaleSeen, showTeaser } from '../js/world/finale-rules.js';
+import { buildStoryView } from '../js/story/rules.js';
+import { STORY } from '../js/story/chapters.js';
+import { pickerRows } from '../js/neighbors/rules.js';
 
 const S = (ch, hintsSeen = {}) => ({ story: { ch }, hintsSeen });
 
@@ -51,4 +54,14 @@ test('이웃 행 칭호는 서버 title 값만 믿는다', () => {
 
 test('순수 모듈: import 없음', () => {
   assert.doesNotMatch(readFileSync(new URL('../js/world/finale-rules.js', import.meta.url), 'utf8'), /^import /m);
+});
+
+test('이야기 뷰: 9장을 끝내면 keeper', () => {
+  assert.equal(buildStoryView(STORY, { story: { ch: 9 } }).keeper, true);
+  assert.equal(buildStoryView(STORY, { story: { ch: 4 } }).keeper, false);
+});
+
+test('이웃 행: 서버 title 이 keeper 면 배지', () => {
+  const rows = pickerRows([{ public_id: 'a', nick: 'x', title: 'keeper' }, { public_id: 'b', nick: 'y', title: null }], () => '🐻');
+  assert.deepEqual(rows.map(r => r.keeper), [true, false]);
 });

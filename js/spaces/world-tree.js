@@ -19,7 +19,8 @@ import { e6Decision } from '../exp-e6-boot.js';
 import { guideRevampOn } from '../exp-e6.js';
 import { Sound } from '../sound.js';
 import { modalQueue } from '../guide/modal-queue.js';
-import { finaleBusy, finaleFogPush, initFinale, updateFinale } from './tree-finale.js';
+import { finaleBusy, finaleFogPush, initFinale, replayFinale, updateFinale } from './tree-finale.js';
+import { hasKeeperTitle, showTeaser } from '../world/finale-rules.js';
 import { TAG_LABEL } from '../habitat.js';
 import {
   BRANCHES, BRANCH_IDS, TREE_DECOR, branchOf, branchStatus, branchUsable, bundleDone, bundlesDone,
@@ -124,6 +125,7 @@ function boardView() {
     guide: guideBoardHint(def.id),
     fresh: freshTile,
     life: lifeOf(gameState.treeBloom, tree),
+    finale: { keeper: hasKeeperTitle(gameState), teaser: showTeaser(gameState) },
     branches: BRANCHES.map(x => ({ id: x.id, ico: x.ico, name: x.name, short: x.short, status: tabStatus(tree, x.id) })),
     cur: {
       id: def.id, ico: def.ico, name: def.name, npcIco: def.npcIco, npcName: def.npcName,
@@ -208,6 +210,7 @@ const ACTIONS = {
   stage() { stageAction(); },
   observe(guestId) { observeAction(guestId); },
   adButton: (g) => (g.shortList?.length ? guideShortAd(`branch_${g.branch}`, g.shortList, (ok) => { if (ok) rerender(); }) : null),
+  replay: () => { closeTreeBoard(); replayFinale(); },
   onClose() {},
 };
 function rerender() { if (treeBoardOpen()) renderTreeBoard(boardView()); freshTile = -1; }

@@ -34,6 +34,7 @@ const CSS = `
 .nb-name { font-weight: 800; font-size: 13px; word-break: keep-all; overflow-wrap: anywhere; }
 .nb-meta { font-size: 11.5px; opacity: .75; margin-top: 2px; }
 .nb-badge { display: inline-block; font-size: 10.5px; background: #ffe9b8; border-radius: 8px; padding: 1px 6px; margin-left: 4px; }
+.nb-keeper { background: #ffe0ec; }
 .nb-btn { white-space: nowrap; border: none; border-radius: 12px; padding: 9px 14px; font-weight: 700; font-size: 13px;
   background: var(--mint); color: var(--ink); box-shadow: var(--shadow); cursor: pointer; font-family: inherit; }
 .nb-btn[disabled] { opacity: .5; cursor: default; }
@@ -129,6 +130,7 @@ function pickerRow(r, meta, goLabel, onGo, onMore) {
   const row = el('div', 'nb-row' + (r.done ? ' done' : ''));
   const name = el('div', 'nb-name', r.nick);
   if (r.done) name.appendChild(el('span', 'nb-badge', '❤️ 다녀옴'));
+  if (r.keeper) name.appendChild(el('span', 'nb-badge nb-keeper', '🌸 세계수지기'));
   const info = el('div');
   info.append(name, meta);
   const go = el('button', 'nb-btn nb-go', goLabel);

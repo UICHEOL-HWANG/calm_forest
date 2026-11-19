@@ -34,7 +34,7 @@ test('pickerRows: 3명까지 · 다녀온 이웃은 또 보기', () => {
     { public_id: 'p4', nick: 'd', character: 'rabbit', house_stage: 3, decor_n: 0, visited_today: false },
   ], face);
   assert.equal(rows.length, 3);
-  assert.deepEqual(rows[0], { publicId: 'p1', slot: 0, face: '🐻', nick: '반짝이는 곰 #4821', meta: '🏝️ 루프탑 빌라 · 🪴 장식 23', done: false, go: '놀러 가기' });
+  assert.deepEqual(rows[0], { publicId: 'p1', slot: 0, face: '🐻', nick: '반짝이는 곰 #4821', keeper: false, meta: '🏝️ 루프탑 빌라 · 🪴 장식 23', done: false, go: '놀러 가기' });
   assert.equal(rows[1].done, true); assert.equal(rows[1].go, '또 보기'); assert.equal(rows[1].face, '🦊');
   assert.deepEqual(pickerRows(null, face), []);
 });

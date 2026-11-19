@@ -32,3 +32,14 @@ test('chAtBoot 은 이야기 부팅 뒤에만 잡고, 이야기 모달 뒤에 �
   assert.match(f, /if \(!isStoryBooted\(\)\) return;\n\s*if \(chAtBoot == null\)/);
   assert.match(read('js/spaces/world-tree.js'), /modalQueue\.pending\('story'\)/);
 });
+
+test('칭호가 칩·세계수 판·이웃 목록에 붙는다', () => {
+  const html = read('index.html');
+  assert.match(html, /v\.keeper/);
+  assert.match(html, /세계수지기/);
+  const board = read('js/world/tree-board-ui.js');
+  assert.match(board, /tb-title-row/);
+  assert.match(board, /엔딩 다시 보기/);
+  assert.match(board, /모든 이야기를 마치면 세계수에 꽃이 피어요/);
+  assert.match(read('js/neighbors/ui.js'), /r\.keeper/);
+});

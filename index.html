@@ -2498,6 +2498,8 @@
   .tb-life b { font-size: 20px; font-variant-numeric: tabular-nums; color: #3e8f50; grid-row: span 2; }
   .tb-bar { height: 10px; border-radius: 999px; background: #fff; border: 1.5px solid #dcd2bb; overflow: hidden; }
   .tb-bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #8fd6a0, #58b468); border-radius: 999px; transition: width .5s cubic-bezier(.3,1.3,.5,1); }
+  .tb-title-row { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:8px 0 2px; padding:8px 10px; border-radius:10px; background:#ffeef5; font-size:13px; font-weight:700; color:#8a3d5c; }
+  .tb-title-btn { font:inherit; font-size:12px; border:0; border-radius:8px; padding:5px 9px; background:#fff; color:#8a3d5c; flex:0 0 auto; }
   #tb-tabs { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
   .tb-tab { border: 2px solid #e2d8c2; background: #fff; border-radius: 12px; padding: 5px 10px 5px 8px; font-weight: 700; font-size: 13px; color: var(--ink);
     display: flex; align-items: center; justify-content: center; gap: 5px; box-shadow: 0 3px 0 #e2d8c2; cursor: pointer; touch-action: manipulation; min-width: 0; white-space: nowrap; }
@@ -5304,6 +5306,15 @@
       setStory(v) {
         lastStoryView = v;
         const chip = $('story-chip');
+        if (v?.allDone && v.keeper) {
+          document.body.classList.add('story-on');
+          requestAnimationFrame(layoutQuestPanel);
+          $('sc-ico').textContent = '🌸';
+          $('sc-title').textContent = t('세계수지기');
+          $('sc-goal').textContent = t('모든 이야기를 마쳤어요');
+          chip.classList.add('show');
+          return;
+        }
         if (!v || v.allDone) { chip.classList.remove('show'); document.body.classList.remove('story-on'); $('quest-panel').style.top = ''; return; }   // 완결 후엔 조용히 물러남
         document.body.classList.add('story-on');
         requestAnimationFrame(layoutQuestPanel);   // 칩 높이는 목표 문구 길이에 따라 변함 — 실측으로 겹침 방지

@@ -7,6 +7,7 @@
 // =============================================================
 
 import { fillStepCard } from '../guide/step-card.js';
+import { t as tr } from '../i18n.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -56,6 +57,20 @@ export function renderTreeBoard(view) {
   if (!$('tree-modal')) return;
   $('tb-life-num').textContent = `${view.life}%`;
   $('tb-life-bar').style.width = `${view.life}%`;
+
+  $('tb-title-row')?.remove();
+  if (view.finale?.keeper || view.finale?.teaser) {
+    const row = el('div', 'tb-title-row');
+    row.id = 'tb-title-row';
+    if (view.finale.keeper) {
+      row.append(el('span', 'tb-title-txt', `🌸 ${tr('세계수지기')} · ${tr('모든 이야기를 마쳤어요')}`));
+      const b = el('button', 'tb-title-btn', tr('🎬 엔딩 다시 보기'));
+      b.type = 'button';
+      b.addEventListener('click', () => actions?.replay?.());
+      row.append(b);
+    } else row.append(el('span', 'tb-title-txt', tr('모든 이야기를 마치면 세계수에 꽃이 피어요')));
+    $('tb-tabs').before(row);
+  }
 
   const tabs = $('tb-tabs'); tabs.innerHTML = '';
   for (const b of view.branches) {
