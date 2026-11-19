@@ -35,7 +35,7 @@ Related: `2026-10-16-world-tree-board-design.md`, `2026-10-16-world-tree-reworld
 
 - 건너뛰기: 화면을 누르거나 아무 키 → 끝 카드로 바로 간다 (기존 조망샷 skip 과 같은 방식).
 - 주민: 연출 동안 주민 그룹을 뿌리 곡선 위 미리 정한 자리에 세운다. 끝나면 원래 자리로 돌려놓는다.
-  카메라에서 건물이나 무대에 가리는 자리는 뺀다. 상인은 제외한다.
+  상인은 제외한다. 건물이나 무대에 가리는 자리는 브라우저 캡처로 확인해 자리 간격을 조정한다.
 - 연출 중에는 주민 이름표와 "!" 표시를 숨기고(`setNpcGlyphsHidden`), 끝나면 되돌린다.
   HUD 는 기존과 같이 `body.cine-open` 으로 숨긴다.
 - 안개: 기존 `treeShotFogPush` 경로로 카메라가 물러난 만큼 민다.
@@ -85,7 +85,9 @@ Related: `2026-10-16-world-tree-board-design.md`, `2026-10-16-world-tree-reworld
 | `js/world/finale-rig.js` (새) | 13초 카메라 경로, 꽃 진행도, 뿌리 번짐 진행도, skip. 순수 계산이고 THREE 를 쓰지 않는다 (`tree-shot.js` 와 같은 결) |
 | `js/world/finale-art.js` (새) | 꽃 무리, 꽃잎, 뿌리 곡선과 메시. `setReveal(k)` 와 `setBloom(k)` 로 진행도를 받는다 |
 | `js/spaces/world-tree.js` | 조망샷 줄에 `finale` 종류 추가, 꽃과 뿌리 길 상시 표시 |
-| `js/game.js` | 9장 완료 모달이 닫힐 때 엔딩 줄 세우기, 이야기 칩 칭호 |
+| `js/spaces/tree-finale.js` (새) | 연출 실행: 오버레이, 카메라, 주민 세우기, 저장, GA4, 상시 꽃·뿌리 길 |
+| `js/game.js` | 변경 없음. `afterModals` 가 이미 `treeShotBusy()` 를 기다리고, 엔딩은 모달이 다 닫힌 뒤 마을에서 시작한다 |
+| `index.html`, `js/story/rules.js` | 이야기 칩 칭호 |
 | `js/world/tree-board-ui.js` | 칭호 띠, 다시 보기 버튼, 예고 |
 | `js/neighbors/ui.js` | 🌸 배지 |
 | `js/i18n-en.js` | 영어 |
