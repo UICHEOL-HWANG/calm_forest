@@ -439,6 +439,7 @@ begin
   if r->>'reason' <> 'dup' then raise exception 'FAIL dish dup: %', r; end if;
   r := public.neighbor_dish_leave(public._nb_public_id(g), 'bread', 70);
   if (r->>'stars')::int <> 2 then raise exception 'FAIL dish stars 2: %', r; end if;
+  if (r->>'rewarded')::boolean then raise exception 'FAIL dish second not rewarded: %', r; end if;
   r := public.neighbor_dish_leave(public._nb_public_id(h), 'rice_ball', 300);
   if (r->>'stars')::int <> 3 then raise exception 'FAIL dish clamp: %', r; end if;
   select score into n from public.village_dishes where giver = a and host = h;

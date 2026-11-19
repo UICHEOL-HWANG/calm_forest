@@ -11,6 +11,7 @@ declare
   v_hid   boolean;
   v_cnt   int;
   v_id    bigint;
+  v_first boolean;
 begin
   if v_uid is null then return jsonb_build_object('ok', false, 'reason', 'auth'); end if;
   if coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) then return jsonb_build_object('ok', false, 'reason', 'login'); end if;
@@ -33,6 +34,7 @@ begin
     return jsonb_build_object('ok', false, 'reason', 'dup'); end if;
   select count(*) into v_cnt from village_dishes where giver = v_uid and day = v_day;
   if v_cnt >= 3 then return jsonb_build_object('ok', false, 'reason', 'limit'); end if;
+  v_first := v_cnt = 0;
   perform pg_advisory_xact_lock(hashtext('nbdh:' || v_host::text));
   select count(*) into v_cnt from village_dishes where host = v_host and eaten_at is null and created_at > now() - interval '7 days' and not _nb_blocked(v_host, giver);
   if v_cnt >= 6 then return jsonb_build_object('ok', false, 'reason', 'full'); end if;
@@ -40,7 +42,7 @@ begin
   on conflict (giver, host, day) do nothing
   returning id into v_id;
   if v_id is null then return jsonb_build_object('ok', false, 'reason', 'dup'); end if;
-  return jsonb_build_object('ok', true, 'reason', 'ok', 'stars', _nb_dish_stars(v_score), 'rewarded', true);
+  return jsonb_build_object('ok', true, 'reason', 'ok', 'stars', _nb_dish_stars(v_score), 'rewarded', v_first);
 end $$;
 
 commit;
