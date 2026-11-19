@@ -2,7 +2,7 @@ import { Input } from '../game-lazy.js';
 import { LANG, t } from '../i18n.js';
 import { Sound } from '../sound.js';
 
-let $, ui, layoutBuffs;
+let $, ui, layoutBuffs, closeLabel = '';
 
 // ═══════════════ 🍳 요리 미니게임 — 스테이지 4종 + 코스 러너 ═══════════════
 //  한 레시피는 여러 판(스테이지)을 **순서대로** 치르는 코스다. ★1 = 1판, ★3 = 3판.
@@ -269,6 +269,7 @@ function startCookCourse(st) {
   MG.active = true; MG.id = st.id; MG.where = st.where || 'kitchen';
   MG.name = `${st.ico} ${st.name}`; MG.costIcos = st.icos || []; MG.dishIco = st.ico; MG.costKeys = st.keys || []; MG.grillKey = st.grillKey || '';   // 🍲 무대 재료 모형(키)
   MG.course = st.course; MG.si = -1; MG.stageScores = [];
+  MG.onDone = st.onDone || null; MG.onClose = st.onClose || null; MG.waiting = false;
   MG.offsets = []; MG.judges = { perfect: 0, good: 0, miss: 0 }; MG.pts = [];
   MG.combo = 0; MG.maxCombo = 0; MG.holding = false; MG.holdPid = null; MG.timers = [];
   MG.startAt = performance.now();
@@ -352,6 +353,7 @@ function endCourse(abandoned) {
   };
   MG.active = false; MG.holding = false;
   Input.mgSeasonPour(false);
+  if (MG.where === 'neighbor') { showNeighborResult(payload); return; }
   if (MG.where === 'cafe') { showCafeResult(Input.cafeCookDone(payload)); return; }
   showCookResult(Input.kitchenFinish(MG.id, payload));
 }
@@ -361,6 +363,7 @@ function mgResultChrome(res) {
   $('mg-tap').style.display = 'none'; $('mg-judge').textContent = ''; $('mg-tip').textContent = '';
   $('mgr-ico').textContent = res.tier.ico;
   $('mgr-title').textContent = `${t(res.tier.name)}!`;
+  $('mgr-stats').style.display = ''; $('mgr-close').textContent = closeLabel;
   $('mgr-stats').innerHTML = `<span>점수 <b>${res.score}</b>점${res.isBest ? ' ⭐신기록!' : ''}</span><span>최대 콤보 <b>${MG.maxCombo}</b></span><span>누적 요리 <b>${res.cooked}</b>회</span>`;
   $('mg-result').classList.add('show');
   $('mg-card').classList.add('done');
@@ -400,6 +403,25 @@ function showCafeResult(res) {
   $('mgr-cafe').style.display = '';
   $('mgr-cafe').innerHTML = `🪙 <b>+${c.pay || 0}</b>${c.complete ? ` · 🎉 오늘 영업 완주 보너스 🪙+${c.bonus}` : ''}`;
 }
+function showNeighborResult(payload) {
+  STAGE_HUDS.forEach(id => $(id).classList.remove('show'));
+  $('mg-tap').style.display = 'none'; $('mg-judge').textContent = ''; $('mg-tip').textContent = '';
+  MG.waiting = true;
+  Promise.resolve(MG.onDone?.(payload)).catch(() => null).then((res) => {
+    MG.waiting = false;
+    if (!res?.ok) { closeMg(); MG.onClose?.(); return; }
+    const sub = document.createElement('span'); sub.textContent = res.line;
+    const coin = document.createElement('span'); coin.textContent = res.coin || '';
+    $('mgr-ico').textContent = res.ico;
+    $('mgr-title').textContent = res.title;
+    $('mgr-sub').replaceChildren(sub, coin);
+    $('mgr-stats').style.display = 'none';
+    for (const id of ['mgr-taste', 'mgr-choice', 'mgr-again', 'mgr-cafe']) $(id).style.display = 'none';
+    $('mgr-close').textContent = res.okLabel;
+    $('mg-result').classList.add('show');
+    $('mg-card').classList.add('done');
+  });
+}
 function closeMg() {
   $('mg-layer').classList.remove('show');
   document.body.classList.remove('menu-open'); document.body.classList.remove('mg-open');
@@ -414,10 +436,15 @@ function closeCookResult(how) {                           // 결과 카드 닫�
   closeMg();
 }
 // 결과 화면을 닫는 모든 길은 여기로 — 주방이면 먹기로 마무리, 카페면 이미 손님에게 나갔다
-function closeResult() { MG.where === 'cafe' ? closeMg() : closeCookResult('eat'); }
+function closeResult() {
+  if (MG.waiting) return;
+  if (MG.where === 'neighbor') { $('mgr-close').textContent = closeLabel; closeMg(); MG.onClose?.(); return; }
+  MG.where === 'cafe' ? closeMg() : closeCookResult('eat');
+}
 
 export function installCookCourse(ctx) {
   ({ $, ui, layoutBuffs } = ctx);
+  closeLabel = $('mgr-close').textContent;
   $('mg-tap').addEventListener('pointerdown', e => { e.preventDefault(); mgTap(e); });
   $('mg-layer').addEventListener('pointerdown', e => {      // 모바일: 화면 어디를 탭해도 입력(엄지 존 자유)
     if (e.target.closest('#mg-quit') || e.target.closest('#mg-result') || e.target.closest('#mg-tap')) return;

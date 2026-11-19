@@ -6,7 +6,7 @@
 //  🔒 게임 상태는 gameState.neighbors · gameState.hintsSeen.neighborPublic 만 쓴다(tests/neighbor-space 가 잠근다).
 //     이웃 데이터는 visit 객체에만 둔다. 3D 는 js/neighbors/scene.js, 화면은 js/neighbors/ui.js.
 // =============================================================
-import { $w, ANIMALS, gameState, giveReward, nightLevel, obstacles, player, requestSave, scene, setFogExempt, setSpaceVisible, snapCamera, solidCircle, syncStory, ui } from '../game.js';
+import { $w, ANIMALS, camera, gameState, giveReward, nightLevel, obstacles, player, requestSave, scene, setFogExempt, setSpaceVisible, snapCamera, solidCircle, syncStory, ui } from '../game.js';
 import * as THREE from 'three';
 import { t } from '../i18n.js';
 import { trackEvent } from '../analytics.js';
@@ -19,6 +19,13 @@ import { sanitizeShowcase } from '../neighbors/sanitize.js';
 import { BANNER_KEY, FAIL_TOAST, HOST_TALK_R, bannerDue, kstDay, REWARD_COINS, markSeen, noticeView, pickerRows, reactOutcome, recordVisit, visitorsSince } from '../neighbors/rules.js';
 import { evBlock, evBanner, evFail, evIndoorEnter, evIndoorExit, evNotice, evOpen, evReact, evReport, evToggle, evVisitEnd, evVisitStart } from '../neighbors/track.js';
 import { neighborApi } from '../neighbors/net.js';
+import { returnRows } from '../neighbors/dish-rules.js';
+import { DISH_COPY } from '../neighbors/dish-copy.js';
+import { bodyROf, nearSeat, seatPose } from '../neighbors/seat-rules.js';
+import { holdSeat, seated, sitAt, snapSeatCamera, standUp } from '../neighbors/seat.js';
+import { evSeat } from '../neighbors/track.js';
+import { offerDish } from '../neighbors/dish-flow.js';
+import { loadInbox, showInbox } from '../table/dish-inbox.js';
 import { buildNeighborScene } from '../neighbors/scene.js';
 import { buildNeighborBalloon } from '../neighbors/gate-art.js';
 import { canEnterIndoor, DOOR_R } from '../neighbors/indoor-rules.js';
@@ -32,6 +39,8 @@ import { bindVillagePublicToggle, closePickerModal, hideNeighborHud, isPickerOpe
 
 let visit = null;          // { publicId, slot, revisit, view, built, t0, reacted, bubble:'ask'|'thanks', near, busy, viewReq, viewId, indoor:null|{f,t0,floors:Set,tags:Set}, indoorBuilt }
 let pickerBusy = false;
+const RETURN_MAX = 3;
+const DISH_NOTICE_MS = 8000;
 
 const faceOf = (id) => (ANIMALS.find(a => a.id === id) || ANIMALS[0]).emoji;
 const showcaseCtx = () => ({
@@ -46,10 +55,14 @@ export async function openNeighborPicker(via) {
   if (pickerBusy || visit) return;
   pickerBusy = true;
   try {
-    const today = await neighborApi.today();
+    const member = !!authState.online && !authState.isGuest;
+    const [today, mine] = await Promise.all([neighborApi.today(), member ? neighborApi.visitors(visitorsSince(0, Date.now())) : null]);
     if (!today.ok) { trackEvent(...evFail('today', today.reason)); ui.toast?.(FAIL_TOAST, 2600); return; }
     trackEvent(...evOpen(today, via));                       // [GA4] 후보 수·오늘 받은 보상·진입 경로
-    openPickerModal(pickerRows(today.list, faceOf), today.rewardedToday, goVisit, (row, anchor) => openMore(row.publicId, 'list', anchor));
+    const back = returnRows(mine, faceOf, RETURN_MAX).map(r => ({ ...r, slot: null, done: false, via: 'return' }));
+    const backIds = new Set(back.map(r => r.publicId));
+    const rows = pickerRows(today.list, faceOf).filter(r => !backIds.has(r.publicId));
+    openPickerModal(rows, today.rewardedToday, goVisit, (row, anchor) => openMore(row.publicId, 'list', anchor), back);
   } finally { pickerBusy = false; }
 }
 
@@ -65,13 +78,28 @@ async function goVisit(row) {
       return;
     }
     closePickerModal();
-    enterNeighbor({ publicId: row.publicId, slot: row.slot, revisit: row.done, view, loadMs: r.loadMs });
+    enterNeighbor({ publicId: row.publicId, slot: row.slot, revisit: row.done, view, loadMs: r.loadMs, via: row.via });
   } catch (e) {   // 검증·짓기·입장 실패 — 조용히 삼키지 않는다
     console.error('[neighbor] visit failed', e);
     trackEvent(...evFail('showcase', 'build'));
     ui.toast?.(FAIL_TOAST, 2600);
     setPickerBusy(false);
   }
+}
+
+export async function visitBack(publicId) {
+  if (visit || pickerBusy || !publicId || !inVillage2()) return;
+  pickerBusy = true;
+  try {
+    const r = await neighborApi.showcase(publicId);
+    const view = r.ok ? sanitizeShowcase(r.data, showcaseCtx()) : null;
+    if (!view) { trackEvent(...evFail('showcase', r.ok ? 'invalid' : (r.code || r.reason))); ui.toast?.(FAIL_TOAST, 2600); return; }
+    enterNeighbor({ publicId, slot: null, revisit: false, view, loadMs: r.loadMs, via: 'return' });
+  } catch (e) {
+    console.error('[neighbor] visit back failed', e);
+    trackEvent(...evFail('showcase', 'build'));
+    ui.toast?.(FAIL_TOAST, 2600);
+  } finally { pickerBusy = false; }
 }
 
 // ── 입장 · 퇴장 ──
@@ -93,6 +121,7 @@ export function enterNeighbor(entry) {
 
 export function exitNeighbor() {
   if (!visit) return;
+  standFromTable();
   leaveIndoor(false);   // 🏠 실내에서 바로 나가도(🚪 내 마을로·차단·비공개) 퇴장 트래킹·안개 예외·층 선택 UI를 정리한다
   const v = visit; visit = null;
   hideNeighborHud();
@@ -216,6 +245,32 @@ function endView(v, sec, reacted) {
   }));
 }
 
+function sitAtTable() {
+  const v = visit, table = v?.built.table;
+  if (!table || seated()) return;
+  sitAt(table, gameState.character, camera);
+  document.body.classList.add('nb-seated');
+  v.built.setTableSolid(false);
+  v.built.seatHost(seatPose(table, table.shape, bodyROf(v.view.character, ANIMALS), 'host'));
+  setHostBubble(null); v.near = false;
+  $w.nearDoor = null; ui.setDoorPrompt?.(null); $w.lastDoorPrompt = null;
+  Sound.blip();
+  trackEvent(...evSeat(v.publicId, table.shape));
+  offerDish({ publicId: v.publicId, nick: v.view.nickname, character: v.view.character, equipped: v.view.equipped, onPlate: (stars, tier) => { if (visit === v) v.built.showGuestDish(stars, tier); }, onEnd: snapSeatCamera });
+}
+
+function standFromTable() {
+  if (!seated()) return;
+  standUp();
+  document.body.classList.remove('nb-seated');
+  visit?.built.seatHost(null);
+  visit?.built.setTableSolid(true);
+  $w.nearDoor = null; ui.setDoorPrompt?.(null); $w.lastDoorPrompt = null;
+}
+
+export const neighborSeated = seated;
+export const neighborSeatSnap = snapSeatCamera;
+
 // ── 집주인 말풍선 · 반응 ──
 const bubbleNow = () => ({ face: faceOf(visit.view.character), state: visit.bubble, onReact });
 
@@ -240,6 +295,7 @@ export function updateNeighbor(dt) {
   if (!visit) return;
   visit.built.update(dt);
   if (visit.indoor) { visit.indoorBuilt.setLamp(nightLevel, visit.indoor.f); return; }   // 실내엔 집주인 말풍선 없음
+  if (seated()) { holdSeat(); return; }
   const h = visit.built.hostSpot;
   const near = Math.hypot(player.position.x - h.x, player.position.z - h.z) < HOST_TALK_R;
   if (near === visit.near) return;
@@ -274,7 +330,9 @@ export function neighborPrompt(p) {
     if (tag) { v.indoor.tags.add(tag.id); return { nd: null, prompt: `${tag.def.ico} ${t(tag.def.name)}` }; }
     return { nd: null, prompt: null };
   }
+  if (seated()) return { nd: 'nbstand', prompt: DISH_COPY.stand };
   if (Math.hypot(p.x - NEIGHBOR.x, p.z - (NEIGHBOR.z + NEIGHBOR_R)) < 2.2) return { nd: 'neighborexit', prompt: '🚪 내 마을로' };
+  if (nearSeat(v?.built.table, p)) return { nd: 'nbsit', prompt: DISH_COPY.sit };
   const d = v?.built.doorSpot;
   if (d && canEnterIndoor(v.view) && Math.hypot(p.x - d.x, p.z - d.z) < DOOR_R) return { nd: 'nbenter', prompt: '🚪 들어가 보기' };
   return { nd: null, prompt: null };
@@ -287,6 +345,8 @@ export function neighborAction(nearDoor) {
   if (nearDoor === 'nbenter') return enterIndoor();
   if (nearDoor === 'nbexitin') return leaveIndoor(true);
   if (nearDoor === 'nbfloor') return goIndoorFloor($w.nearDoorFloor);
+  if (nearDoor === 'nbsit') return sitAtTable();
+  if (nearDoor === 'nbstand') return standFromTable();
 }
 
 /** 📷 이웃 실내 루프탑이면 true(루프탑 카메라) — game.js updateCamera */
@@ -346,6 +406,7 @@ export function initNeighbors() {
   setTimeout(dailyBanner, 14000);   // 게스트도 구경은 할 수 있다 — 다녀간 이웃 알림(6초)보다 뒤
   if (!member) return;
   setTimeout(bootVisitors, 6000);   // 출석·📮 소식 모달이 먼저 — 그 뒤 빈 화면을 기다려 띄운다
+  setTimeout(bootDishes, DISH_NOTICE_MS);
 }
 
 // 🏡 하루 한 번 "오늘의 이웃" 배너 — 누르면 목록이 열린다(기기당 KST 하루 1회)
@@ -377,6 +438,11 @@ async function bootVisitors() {
     trackEvent(...evNotice(view.rows.length, view.total));   // [GA4] 보여 준 줄 수·전체 방문자 수
     openVisitorsModal(view, () => { gameState.neighbors = markSeen(gameState.neighbors, asked); requestSave(); firstPublicNotice(); });
   } });
+}
+
+async function bootDishes() {
+  const v = await loadInbox();
+  if (v.rows.length && !v.ateToday) modalQueue.request({ kind: 'neighbor', key: 'neighbor-dishes', show: () => showInbox(v) });
 }
 
 function firstPublicNotice() {

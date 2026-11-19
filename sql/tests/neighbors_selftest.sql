@@ -93,7 +93,7 @@ begin
   sc := public.neighbor_showcase(pid);
   if sc is null then raise exception 'FAIL: 공개 이웃 showcase 가 null'; end if;
   select array_agg(k2.key order by k2.key collate "C") into keys from jsonb_object_keys(sc) as k2(key);
-  if keys <> array['addons','character','coop','equipped','houseStage','houseStyle','nickname','outdoor','pet','room','style'] then
+  if keys <> array['addons','character','coop','equipped','houseStage','houseStyle','nickname','outdoor','pet','pond','room','style','table'] then
     raise exception 'FAIL keys: %', keys; end if;
   if strpos(sc::text, f::text) > 0 then raise exception 'FAIL: showcase 에 user_id 가 있다'; end if;
   if strpos(sc::text, 'inventory') > 0 or strpos(sc::text, 'cashOwned') > 0 or strpos(sc::text, 'owned') > 0
@@ -431,6 +431,111 @@ begin
   end;
   execute 'reset role';
   raise notice 'ledger checks pass';
+
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  r := public.neighbor_dish_leave(public._nb_public_id(f), 'veg_stew', 95);
+  if not (r->>'ok')::boolean or (r->>'stars')::int <> 3 or not (r->>'rewarded')::boolean then raise exception 'FAIL dish leave: %', r; end if;
+  r := public.neighbor_dish_leave(public._nb_public_id(f), 'bread', 10);
+  if r->>'reason' <> 'dup' then raise exception 'FAIL dish dup: %', r; end if;
+  r := public.neighbor_dish_leave(public._nb_public_id(g), 'bread', 70);
+  if (r->>'stars')::int <> 2 then raise exception 'FAIL dish stars 2: %', r; end if;
+  r := public.neighbor_dish_leave(public._nb_public_id(h), 'rice_ball', 300);
+  if (r->>'stars')::int <> 3 then raise exception 'FAIL dish clamp: %', r; end if;
+  select score into n from public.village_dishes where giver = a and host = h;
+  if n <> 100 then raise exception 'FAIL dish score clamp: %', n; end if;
+  r := public.neighbor_dish_leave(public._nb_public_id(e), 'bread', 50);
+  if r->>'reason' <> 'limit' then raise exception 'FAIL dish limit: %', r; end if;
+  r := public.neighbor_dish_leave(public._nb_public_id(b), 'bread', 50);
+  if r->>'reason' <> 'private' then raise exception 'FAIL dish private: %', r; end if;
+  r := public.neighbor_dish_leave(public._nb_public_id(a), 'bread', 50);
+  if r->>'reason' <> 'self' then raise exception 'FAIL dish self: %', r; end if;
+  r := public.neighbor_dish_leave(gen_random_uuid(), 'bread', 50);
+  if r->>'reason' <> 'not_found' then raise exception 'FAIL dish not_found: %', r; end if;
+  r := public.neighbor_dish_leave(public._nb_public_id(f), 'free:crop+fish', 50);
+  if r->>'reason' <> 'recipe' then raise exception 'FAIL dish recipe: %', r; end if;
+  select count(*) into n from public.village_dishes where giver = a;
+  if n <> 3 then raise exception 'FAIL dish rows after rejects: %', n; end if;
+
+  insert into public.village_dishes (giver, host, day, recipe, score, stars)
+  select u, f, v_day, 'bread', 40, 1 from unnest(array[g, h, e, i, c]) u;
+  perform set_config('request.jwt.claims', json_build_object('sub', j, 'role', 'authenticated')::text, true);
+  r := public.neighbor_dish_leave(public._nb_public_id(f), 'bread', 50);
+  if r->>'reason' <> 'not_found' then raise exception 'FAIL dish persona split: %', r; end if;
+  perform set_config('request.jwt.claims', json_build_object('sub', hid, 'role', 'authenticated')::text, true);
+  r := public.neighbor_dish_leave(public._nb_public_id(f), 'bread', 50);
+  if r->>'reason' <> 'hidden' then raise exception 'FAIL dish hidden giver: %', r; end if;
+  perform set_config('request.jwt.claims', json_build_object('sub', nh, 'role', 'authenticated')::text, true);
+  r := public.neighbor_dish_leave(public._nb_public_id(f), 'bread', 50);
+  if r->>'reason' <> 'full' then raise exception 'FAIL dish full: %', r; end if;
+
+  perform set_config('request.jwt.claims', json_build_object('sub', d, 'role', 'authenticated', 'is_anonymous', true)::text, true);
+  if public.neighbor_dish_leave(public._nb_public_id(f), 'bread', 50)->>'reason' <> 'login'
+     or public.my_table_dishes()->>'reason' <> 'login'
+     or public.neighbor_dish_eat(1)->>'reason' <> 'login'
+     or public.neighbor_dish_rate(1, 'heart')->>'reason' <> 'login' then raise exception 'FAIL dish anon login'; end if;
+
+  insert into public.village_blocks (blocker, blocked) values (f, g);
+  perform set_config('request.jwt.claims', json_build_object('sub', f, 'role', 'authenticated')::text, true);
+  t := public.my_table_dishes();
+  if not (t->>'ok')::boolean or (t->>'ate_today')::boolean or jsonb_array_length(t->'list') <> 5 then raise exception 'FAIL my_table_dishes: %', t; end if;
+  foreach x in array ids loop
+    if strpos(t::text, x::text) > 0 then raise exception 'FAIL: my_table_dishes 에 user_id(%)가 있다', x; end if;
+  end loop;
+  if not exists (select 1 from jsonb_array_elements(t->'list') z where z->>'nick' = 'selftest-a' and z->>'public_id' = public._nb_public_id(a)::text and (z->>'stars')::int = 3)
+     or not exists (select 1 from jsonb_array_elements(t->'list') z where z->>'nick' = 'selftest-c' and z->'public_id' = 'null'::jsonb) then
+    raise exception 'FAIL my_table_dishes rows: %', t; end if;
+
+  select id into vid from public.village_dishes where giver = g and host = f;
+  r := public.neighbor_dish_eat(vid);
+  if r->>'reason' <> 'gone' then raise exception 'FAIL dish eat blocked: %', r; end if;
+  select id into vid from public.village_dishes where giver = a and host = f;
+  select id into vid2 from public.village_dishes where giver = h and host = f;
+  r := public.neighbor_dish_eat(vid);
+  if not (r->>'ok')::boolean or r->>'recipe' <> 'veg_stew' or (r->>'stars')::int <> 3 then raise exception 'FAIL dish eat: %', r; end if;
+  r := public.neighbor_dish_eat(vid2);
+  if r->>'reason' <> 'limit' then raise exception 'FAIL dish eat limit: %', r; end if;
+  if not (public.my_table_dishes()->>'ate_today')::boolean then raise exception 'FAIL dish ate_today'; end if;
+  r := public.neighbor_dish_rate(vid2, 'heart');
+  if r->>'reason' <> 'gone' then raise exception 'FAIL dish rate uneaten: %', r; end if;
+  r := public.neighbor_dish_rate(vid, 'poop');
+  if r->>'reason' <> 'emoji' then raise exception 'FAIL dish rate emoji: %', r; end if;
+  r := public.neighbor_dish_rate(vid, 'heart');
+  if not (r->>'ok')::boolean then raise exception 'FAIL dish rate: %', r; end if;
+  r := public.neighbor_dish_rate(vid, 'star');
+  if r->>'reason' <> 'dup' then raise exception 'FAIL dish rate dup: %', r; end if;
+
+  r := public.my_visitors(now() - interval '1 hour');
+  if (r->>'total')::int <> 7 then raise exception 'FAIL visitors with dishes total: %', r; end if;
+  if not exists (select 1 from jsonb_array_elements(r->'list') z where z->>'nick' = 'selftest-a' and z->>'emoji' = 'wave'
+                  and (z->>'dish')::int = 3 and z->>'public_id' = public._nb_public_id(a)::text)
+     or not exists (select 1 from jsonb_array_elements(r->'list') z where z->>'nick' = 'selftest-c' and z->'emoji' = 'null'::jsonb and z->'public_id' = 'null'::jsonb) then
+    raise exception 'FAIL visitors dish rows: %', r; end if;
+
+  perform set_config('request.jwt.claims', json_build_object('sub', g, 'role', 'authenticated')::text, true);
+  r := public.neighbor_dish_eat(vid2);
+  if r->>'reason' <> 'gone' then raise exception 'FAIL dish eat other host: %', r; end if;
+
+  perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+  r := public.my_visitors(now() - interval '1 hour');
+  if jsonb_array_length(r->'replies') <> 1 or r->'replies'->0->>'emoji' <> 'heart' or r->'replies'->0->>'nick' <> 'selftest-f'
+     or r->'replies'->0->>'public_id' <> public._nb_public_id(f)::text then raise exception 'FAIL visitors replies: %', r; end if;
+
+  execute 'set local role anon';
+  begin
+    r := public.neighbor_dish_leave(gen_random_uuid(), 'bread', 50);
+    raise exception 'FAIL: anon 이 neighbor_dish_leave 를 실행했다';
+  exception when insufficient_privilege then null;
+  end;
+  execute 'reset role';
+  blocked := false;
+  execute 'set local role authenticated';
+  begin
+    perform 1 from public.village_dishes limit 1;
+  exception when insufficient_privilege then blocked := true;
+  end;
+  execute 'reset role';
+  if not blocked then raise exception 'FAIL: authenticated 가 village_dishes 를 직접 읽었다'; end if;
+  raise notice 'dish checks pass';
 
   -- ── 정리: 가짜 계정(→ game_saves·village_* cascade) + 이 테스트가 만든 프로필 행(기능 출시 전이라 실사용자 행은 없다) ──
   perform set_config('request.jwt.claims', '', true);

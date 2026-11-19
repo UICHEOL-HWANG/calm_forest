@@ -23,10 +23,34 @@ import { pondSignPos } from '../pond/sign.js';
 import { buildPondSign } from '../pond/sign-build.js';
 import { emojiSprite } from '../spaces/kitchen-stage.js';
 import { hostStand } from './indoor-rules.js';
+import { TABLE_SHAPES } from '../data/table.js';
+import { PLATE_R, PLATE_RIM } from '../table/plates.js';
+import { SEAT } from './seat-rules.js';
+import { starLine } from './dish-rules.js';
 
 export const GROUND_R = NEIGHBOR_R + 18;   // 34 — 언덕 끝 허공이 안 보이게(과수원 ORCHARD_HALF+16 과 같은 교훈). shadow-scope: 700−34−18 = 648m
 const TREE_SPOTS = [[-15, -8], [-17, 3], [-13, 11], [15, -8], [17, 3], [13, 11], [-7, -16], [7, -16]];
 const CANOPY_R = 1.1;
+const GUEST_PLATE_X = 0.5, GUEST_PLATE_Z = 0.3, PLATE_TOP = 0.802, STAR_Y = 1.3, STAR_SIZE = 0.3;
+const plateMat = (color) => new THREE.MeshStandardMaterial({ color, roughness: 0.8, flatShading: true });
+
+function guestPlate(tier, stars) {
+  const g = new THREE.Group();
+  const rim = new THREE.Mesh(new THREE.CylinderGeometry(PLATE_R, PLATE_R, 0.02, 14), plateMat(PLATE_RIM[tier] ?? PLATE_RIM.plain));
+  rim.position.y = PLATE_TOP + 0.01;
+  const food = new THREE.Mesh(new THREE.IcosahedronGeometry(0.5, 0).scale(PLATE_R * 2 - 0.18, 0.1, PLATE_R * 2 - 0.18), plateMat(0xc98a4b));
+  food.position.y = PLATE_TOP + 0.07;
+  g.add(rim, food);
+  const n = [...starLine(stars)].length;
+  for (let i = 0; i < n; i++) {
+    const star = emojiSprite('⭐', STAR_SIZE);
+    star.material.toneMapped = false;
+    star.material.fog = false;
+    star.position.set((i - (n - 1) / 2) * STAR_SIZE * 0.9, STAR_Y, 0);
+    g.add(star);
+  }
+  return g;
+}
 const PAL = { roof: ROOF_COLORS, wall: WALL_COLORS, door: DOOR_COLORS };
 
 /** 🎨 game.js applyHouseStyle 와 같은 규칙 — 0번 = 그 모델 기본색(prepHouseMeshes 가 baseColor 로 기억), 1~4 = 공용 팔레트.
@@ -104,13 +128,31 @@ export function buildNeighborScene(view) {
   const group = new THREE.Group(); group.name = 'neighbor';
   const solids = [];
   let host = null, pet = null, sign = null, t = 0, pondUpdate = null, pondDispose = null, tableDispose = null;
+  let hostSeat = null, guestDish = null;
   const built = {
     group,
     hostSpot: null,
     doorSpot: null,
     setVisible(on) { group.visible = on; for (const c of solids) c.off = !on; },   // 🏠 실내에 있는 동안 마당을 끈다
-    update(dt) { t += dt; host.position.y = Math.abs(Math.sin(t * 2.2)) * 0.04; pondUpdate?.(dt); },   // 반가워서 통통
+    table: null,
+    update(dt) { t += dt; host.position.y = hostSeat ? SEAT.y : Math.abs(Math.sin(t * 2.2)) * 0.04; pondUpdate?.(dt); },   // 반가워서 통통
+    seatHost(pose) {
+      hostSeat = pose;
+      const at = pose || built.hostSpot;
+      host.position.set(at.x, pose ? SEAT.y : 0, at.z);
+      host.rotation.set(0, pose ? pose.ry : 0, 0);
+      if (pet) pet.visible = !pose;
+    },
+    setTableSolid(on) { if (built.table) built.table.solid.off = !on; },
+    showGuestDish(stars, tier) {
+      clearGuestDish();
+      if (!built.table) return;
+      guestDish = guestPlate(tier, stars);
+      guestDish.position.set(built.table.x + GUEST_PLATE_X, 0, built.table.z + GUEST_PLATE_Z);
+      group.add(guestDish);
+    },
     dispose() {
+      clearGuestDish();
       pondDispose?.();
       tableDispose?.();
       for (const c of solids) removeSolid(c);
@@ -126,6 +168,12 @@ export function buildNeighborScene(view) {
       disposeTree(group);
     },
   };
+  function clearGuestDish() {
+    if (!guestDish) return;
+    group.remove(guestDish);
+    guestDish.traverse(o => { if (o.isMesh) o.geometry.dispose(); if (o.isSprite) o.material.dispose(); });
+    guestDish = null;
+  }
 
   try {
     const ps = neighborPond(view.pond, view.outdoor);
@@ -163,6 +211,10 @@ export function buildNeighborScene(view) {
       tableDispose = () => tb.dispose();
       tb.group.position.set(NEIGHBOR.x + ts.dx, 0, NEIGHBOR.z + ts.dz);
       group.add(tb.group);
+      const x = tb.group.position.x, z = tb.group.position.z, f = TABLE_SHAPES[ts.shape];
+      const solid = ts.shape === 'long' ? solidBox(x - f.hx, z - f.hz, x + f.hx, z + f.hz) : solidCircle(x, z, f.hx);
+      solids.push(solid);
+      built.table = { x, z, shape: ts.shape, solid };
     }
 
     //  전역 등록(창문 점등·충돌체)은 장식까지 다 지은 뒤에 — 그래도 아래서 터지면 catch 가 dispose 로 되돌린다
