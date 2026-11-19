@@ -77,6 +77,8 @@ import { guideRevampOn } from './exp-e6.js';
 import { createHouseShort } from './guide/house-short.js';
 import { createRewarded } from './ads/rewarded.js';
 import { rewardedAvailable, showRewarded } from './ads/admob.js';
+import { adBuildInfo } from './ads/diag.js';
+import { capPlugin } from './cap-bridge.js';
 import { createTossRewarded } from './ads/toss-rewarded.js';
 import { warmShaders } from './render/shader-warm.js';
 import { warmBeforeReveal } from './render/reveal-warm.js';
@@ -3089,6 +3091,7 @@ export async function enterGame() {
     today: todayStr,
     dayRecord: { get: () => JSON.parse(localStorage.getItem('cf_prepass_day') || 'null'), set: (v) => localStorage.setItem('cf_prepass_day', JSON.stringify(v)) },
   });
+  setTimeout(() => { adBuildInfo({ platform: PLATFORM, capPlugin, loadSdk: loadTossSDK }).then((info) => { if (info) rewarded.diagnose(info); }).catch(() => {}); }, 8000);
   houseShort = guideRevamp ? createHouseShort({
     state: () => gameState, player, house: HOUSE_POS, translate: t, track: trackEvent, save: requestSave, rewarded,
     inVillage: inVillage2,
