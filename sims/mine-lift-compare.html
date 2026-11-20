@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>승강기 시안</title>
+<style>
+:root{--bg:#16141d;--card:#221f2c;--ink:#efe8da;--muted:#a59fb4;--gold:#f2c25a;--cream:#fffaf0;--green:#a8d8a0;--greenInk:#2f5a2a;--chip:#f1ece2;--lock:#cfc9bf}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
+main{max-width:1500px;margin:0 auto;padding:24px 16px 60px}
+h1{font-size:22px;margin:0 0 4px}.lead{color:var(--muted);margin:0 0 28px;font-size:14px}
+section{background:var(--card);border-radius:14px;padding:18px;margin-bottom:28px}
+h2{font-size:18px;margin:0 0 4px;color:var(--gold)}.cap{margin:0 0 14px;color:var(--muted);font-size:14px}
+.row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,.42fr);gap:10px;align-items:start}
+figure{margin:0}figure img{width:100%;display:block;border-radius:8px}figcaption{font-size:12px;color:var(--muted);margin-top:4px}
+.pick{display:grid;grid-template-columns:minmax(0,1fr) 375px;gap:16px;align-items:start}
+.stage{background:#0d0c12;border-radius:10px;padding:20px;display:flex;justify-content:center;align-items:flex-end;min-height:260px}
+.phone{width:375px;max-width:100%;box-sizing:border-box}
+.m{background:var(--cream);color:#3a3328;border-radius:18px;padding:16px;box-shadow:0 10px 30px #0008;width:100%;max-width:440px;box-sizing:border-box}
+.m h3{margin:0 0 4px;font-size:17px}.m p{margin:0 0 12px;font-size:13px;color:#7a7060}
+.list{display:flex;flex-direction:column;gap:6px}
+.list button,.chips button,.grid button{font:inherit;border:0;border-radius:12px;cursor:pointer}
+.list button{background:var(--chip);padding:11px 14px;text-align:left;font-size:15px;display:flex;justify-content:space-between}
+.list button.deep{background:var(--green);color:var(--greenInk);font-weight:700}
+.list button.off,.chips button.off{background:#ece8e0;color:var(--lock)}
+.list small{color:#8a8070;font-weight:400}
+.panel{background:linear-gradient(#5a4632,#3e2f22);border-radius:18px;padding:14px;color:#f5e6c8;max-width:300px;width:100%;box-sizing:border-box;margin:0 auto;box-shadow:0 10px 30px #0008}
+.panel h3{margin:0 0 10px;font-size:15px;text-align:center}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;justify-items:center}
+.grid button{width:64px;height:64px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#f6dc9a,#c89a48);color:#3a2a14;font-weight:800;font-size:15px;box-shadow:inset 0 -3px 0 #0003}
+.grid button.deep{box-shadow:0 0 0 3px #ffe48a,0 0 14px #ffd36a}
+.grid button.off{background:#5b5048;color:#8c8076}
+.grid .lbl{font-size:11px;display:block;font-weight:500}
+.sheet{background:var(--cream);color:#3a3328;border-radius:18px 18px 0 0;padding:14px 14px 18px;width:100%;box-sizing:border-box}
+.sheet h3{margin:0 0 10px;font-size:15px}
+.chips{display:flex;gap:6px;overflow-x:auto}
+.chips button{flex:0 0 auto;background:var(--chip);padding:12px 12px;font-size:14px;font-weight:600}
+.chips button.deep{background:var(--green);color:var(--greenInk)}
+.note{font-size:12px;color:#8a8070;margin-top:8px}
+@media (max-width:900px){.row{grid-template-columns:1fr 1fr}.pick{grid-template-columns:1fr}}
+</style></head><body><main>
+<h1>광산 승강기, 모양·모션 3종 + 층 선택창 3종</h1>
+<p class="lead">실제 게임 0층 승강기 자리에 후보 모델을 넣어 캡처했어요. 각 시안은 PC 기준 ① 대기(문 열림) ② 탑승(문 닫힘) ③ 내려가는 중 순서이고, 마지막은 모바일 탑승 컷이에요. 공통으로 충돌체를 넣어 몸이 기둥을 통과하지 않게 하고, 바닥 구멍으로 내려간 뒤 화면이 어두워지며 층에 도착해요.</p>
+
+<section><h2>A. 나무 도르래 승강틀</h2><p class="cap">네 기둥 나무 틀 위 도르래 바퀴, 난간 세 면과 앞쪽 여닫이 문. 지금 있는 사다리·갱도 입구와 같은 나무 결이라 가장 자연스럽게 섞여요. 내려갈 때 도르래가 돌고 밧줄이 길어져요.</p>
+<div class="row">
+<figure><img src="mine-lift/shots/A-0-pc.jpg"><figcaption>① 대기</figcaption></figure>
+<figure><img src="mine-lift/shots/A-1-pc.jpg"><figcaption>② 탑승</figcaption></figure>
+<figure><img src="mine-lift/shots/A-2-pc.jpg"><figcaption>③ 내려가는 중</figcaption></figure>
+<figure><img src="mine-lift/shots/A-mobile.jpg"><figcaption>모바일 · 탑승</figcaption></figure>
+</div></section>
+
+<section><h2>B. 철제 케이지</h2><p class="cap">검은 철 기둥, 쇠창살 케이지와 옆으로 미끄러지는 황동 문, 노랑·검정 발판 띠, 케이지 안 등불. 위에서 황동 톱니가 돌아요. 가장 "승강기" 같지만 숲 마을 톤보다 산업적이고, 창살이 캐릭터를 가려요.</p>
+<div class="row">
+<figure><img src="mine-lift/shots/B-0-pc.jpg"><figcaption>① 대기</figcaption></figure>
+<figure><img src="mine-lift/shots/B-1-pc.jpg"><figcaption>② 탑승</figcaption></figure>
+<figure><img src="mine-lift/shots/B-2-pc.jpg"><figcaption>③ 내려가는 중</figcaption></figure>
+<figure><img src="mine-lift/shots/B-mobile.jpg"><figcaption>모바일 · 탑승</figcaption></figure>
+</div></section>
+
+<section><h2>C. 두레박 바구니</h2><p class="cap">나무 가로대에 밧줄 세 가닥으로 매단 큰 나무 통, 옆에 손잡이 감는 틀. 캐릭터가 통에 쏙 들어가 귀엽고 숲 톤에 맞아요. 내려갈 때 손잡이가 돌아가요. 대신 승강기보다는 우물 두레박 느낌이에요.</p>
+<div class="row">
+<figure><img src="mine-lift/shots/C-0-pc.jpg"><figcaption>① 대기</figcaption></figure>
+<figure><img src="mine-lift/shots/C-1-pc.jpg"><figcaption>② 탑승</figcaption></figure>
+<figure><img src="mine-lift/shots/C-2-pc.jpg"><figcaption>③ 내려가는 중</figcaption></figure>
+<figure><img src="mine-lift/shots/C-mobile.jpg"><figcaption>모바일 · 탑승</figcaption></figure>
+</div></section>
+
+<h1 style="margin-top:36px">층 선택창 3종</h1>
+<p class="lead">예시: 지하 15층까지 가 본 상태(1·5·10·15층 열림, 20층 잠김). 왼쪽은 PC 화면 폭, 오른쪽은 375px 폰 폭이에요.</p>
+
+<section><h2>가. 세로 목록 (지금 안내 창 모양)</h2><p class="cap">기존 안내 카드에 층 버튼을 세로로 쌓아요. 가장 깊은 층만 초록으로 강조. 익숙하고 글자가 커서 읽기 쉽지만 세로로 길어져요.</p>
+<div class="pick"><div class="stage" data-v="list"></div><div class="stage phone" data-v="list"></div></div></section>
+
+<section><h2>나. 승강기 버튼판</h2><p class="cap">나무·황동 버튼판에 동그란 층 버튼. 가장 깊은 층에 금색 테두리. 승강기다운 맛이 있고 정사각형이라 모바일에서도 짧아요.</p>
+<div class="pick"><div class="stage" data-v="panel"></div><div class="stage phone" data-v="panel"></div></div></section>
+
+<section><h2>다. 아래 시트 칩</h2><p class="cap">화면 아래에서 올라오는 얇은 시트에 층 칩을 가로로. 가장 덜 가리지만 칩이 작아 손가락으로 누르기 덜 편해요.</p>
+<div class="pick"><div class="stage" data-v="chips"></div><div class="stage phone" data-v="chips"></div></div></section>
+</main>
+<script>
+const floors=[{f:1,on:1},{f:5,on:1},{f:10,on:1},{f:15,on:1,deep:1},{f:20,on:0}];
+const sub=(x)=>x.deep?'가장 깊은 곳':x.f===1?'처음부터':x.on?'정류장':'아직 못 가요';
+const R={
+ list:()=>`<div class="m"><h3>🛗 승강기</h3><p>어디로 갈까요?</p><div class="list">${floors.map(x=>`<button class="${x.deep?'deep':''} ${x.on?'':'off'}">${x.on?'🛗':'🔒'} 지하 ${x.f}층 <small>${sub(x)}</small></button>`).join('')}</div></div>`,
+ panel:()=>`<div class="panel"><h3>🛗 어디로 갈까요?</h3><div class="grid">${floors.map(x=>`<button class="${x.deep?'deep':''} ${x.on?'':'off'}">${x.on?'B'+x.f:'🔒'}<span class="lbl">${x.f}층</span></button>`).join('')}<button class="off">✕<span class="lbl">닫기</span></button></div></div>`,
+ chips:()=>`<div class="sheet"><h3>🛗 어디로 갈까요?</h3><div class="chips">${floors.map(x=>`<button class="${x.deep?'deep':''} ${x.on?'':'off'}">${x.on?'':'🔒 '}지하 ${x.f}층</button>`).join('')}</div><div class="note">잠긴 층은 사다리로 먼저 내려가야 열려요</div></div>`,
+};
+document.querySelectorAll('.stage').forEach(s=>s.innerHTML=R[s.dataset.v]());
+</script>
+</body></html>

@@ -8,7 +8,7 @@ import { DELVE, MINE, MINE_HALF } from '../data/places.js';
 import { DELVE_HALF, DELVE_CHEST_FLOORS, PEST_COPY } from '../data/delve.js';
 import {
   floorSeed, layoutFloor, ladderRevealed, themeOf, oreOdds, rollOre, makeRng, noteReach, oreAllowed, markOreFloor,
-  bumpCount, canDescendFrom0, stopsOpen, liftTargets, bumpJob, jobProgress, reclaimGive, stepView, claimStep, noteChest, jobFor, hashSeed, chestSpot,
+  bumpCount, canDescendFrom0, stopsOpen, liftPanelRows, bumpJob, jobProgress, reclaimGive, stepView, claimStep, noteChest, jobFor, hashSeed, chestSpot,
 } from '../delve/rules.js';
 import { rollChest, chestGive } from '../boat-chest.js';
 import { makeChestMesh } from '../boat-chest-art.js';
@@ -18,6 +18,7 @@ import { createPest, stepPest, tapPest, baitPest, canPick, RING_SEC, TAP_R, BAIT
 import { makePest, makeOreChunk, makePuddle, makeBurrow, makeRing, makeBait, makeShaft, makeLadderUp, makeRock, makeLift, emojiBubble, makeTrail } from '../delve/pest-art.js';
 import { makeMiner } from '../delve/miner.js';
 import { placeRootShrine, clearRootShrine } from '../delve/root-scene.js';
+import { openLiftPanel } from '../delve/lift-panel.js';
 import { Sound } from '../sound.js';
 import * as THREE from 'three';
 
@@ -28,6 +29,10 @@ let liftMesh = null;
 let minerMesh = null;
 let minerSolid = null;
 let spareLamp = null;
+let liftSolids = [];
+let ride = null;
+const LIFT_SOLIDS = [[-1.1, 0, 0.22], [1.1, 0, 0.22], [1.55, 0, 0.4], [0, 0, 0.9]];
+const RIDE = { sink: 1.5, fade: 1.05, hold: 0.7 };
 const bumpTodayJob = () => { gameState.delve = bumpJob(gameState.delve, todayStr()); };
 export function delveJobProgress() { return jobProgress(gameState.delve, todayStr()); }
 const lineSec = () => (gameState.delve.startedAt ? Math.max(0, Math.round((Date.now() - gameState.delve.startedAt) / 1000)) : 0);
@@ -56,6 +61,7 @@ export function placeLift() {
   liftMesh = makeLift();
   liftMesh.position.set(MINE.x + 5, FLOOR_Y, MINE.z - MINE_HALF + 4);
   scene.add(liftMesh);
+  liftSolids = LIFT_SOLIDS.map(([x, z, r]) => solidCircle(liftMesh.position.x + x, liftMesh.position.z + z, r));
   placeMiner();
 }
 
@@ -120,7 +126,7 @@ function buildRoom(floor, layout) {
   const up = makeLadderUp(); up.position.copy(W(layout.arrival.x, layout.arrival.z - 1)); up.position.y = FLOOR_Y; group.add(up);
   const light = new THREE.PointLight(0xffb866, 2.0, 18, 1.2); light.position.copy(W(0, 0)); light.position.y = 4; group.add(light);
   spareLamp = new THREE.PointLight(0xffb866, 0, 6, 1.3); group.add(spareLamp);
-  run.rockMeshes = layout.rocks.map(r => { const m = makeRock(r.vein, theme); m.position.copy(W(r.x, r.z)); m.position.y = FLOOR_Y; m.userData.hp = 3; group.add(m); return m; });
+  run.rockMeshes = layout.rocks.map(r => { const m = makeRock(r.vein && run.oreOk, theme); m.position.copy(W(r.x, r.z)); m.position.y = FLOOR_Y; m.userData.hp = 3; group.add(m); return m; });
   for (const p of layout.puddles) { const m = makePuddle(0.85); m.position.copy(W(p.x, p.z)); m.position.y = FLOOR_Y; group.add(m); }
   for (const b of layout.burrows) { const m = makeBurrow(); m.position.copy(W(b.x, b.z)); m.position.y = FLOOR_Y; group.add(m); }
   scene.add(group);
@@ -159,8 +165,43 @@ export function enterFloor(floor, via) {
   if (layout.shrine) { const at = W(layout.shrine.x, layout.shrine.z); at.y = FLOOR_Y; placeRootShrine(group, at, themeOf(floor), layout.shrine.x > 0 ? 1 : -1, spareLamp); }
   trackEvent('delve_floor', { floor, via, stops: stopsOpen(gameState.delve).length, sec: prevSec, rocks: prevRocks });
   if (via === 'ladder') weeklyNote('delve');
+  if (!oreOk) ui.toast?.('⛏️ 이 층 광맥은 오늘 다 캤어요. 내일 다시 차올라요', 3200);
   if (floor === 1) $w.firstHintBanner?.('delve_common', PEST_COPY.common.ico, PEST_COPY.common.title, PEST_COPY.common.line);
   $w.refreshQuestPanel?.();
+}
+
+function rideLift(floor) {
+  if (ride || !liftMesh || !atMine || run) return;
+  trackEvent('delve_enter', { floor, stops: stopsOpen(gameState.delve).length });
+  $w.sleeping = true;
+  $w.nearDoor = null; ui.setDoorPrompt?.(null);
+  for (const s of liftSolids) s.off = true;
+  player.position.set(liftMesh.position.x, FLOOR_Y, liftMesh.position.z);
+  player.rotation.y = 0;
+  Sound.blip?.();
+  ride = { floor, t: 0, faded: false };
+}
+
+function endRide() {
+  ride = null;
+  $w.sleeping = false;
+  liftMesh.userData.setRide(0);
+  for (const s of liftSolids) s.off = false;
+  player.position.y = 0;
+}
+
+function tickLift(dt) {
+  if (!ride) return;
+  if (!atMine) { endRide(); ui.sleepFade?.(0); return; }
+  ride.t += dt;
+  const { cage, setRide } = liftMesh.userData;
+  setRide(Math.min(1, ride.t / RIDE.sink));
+  player.position.y = FLOOR_Y + cage.position.y;
+  if (!ride.faded && ride.t >= RIDE.fade) { ride.faded = true; ui.sleepFade?.(1); }
+  if (ride.t < RIDE.sink + RIDE.hold) return;
+  const floor = ride.floor;
+  endRide();
+  try { enterFloor(floor, 'lift'); } finally { ui.sleepFade?.(0); }
 }
 
 export function leaveToFloor0(reason) {
@@ -276,7 +317,7 @@ export function delvePrompt() {
   if (run.chest && near(run.chest.at, 1.6)) return { nd: 'delve_chest', prompt: '🧰 상자 열기' };
   for (const p of run.pests) {
     if (p.sim.kind === 'axolotl' && !['gone', 'flee'].includes(p.sim.state) && near(p.sim, TAP_R)) return { nd: 'delve_tap', prompt: PEST_COPY.axolotl.prompt };
-    if (p.sim.kind === 'crab' && ['idle', 'approach'].includes(p.sim.state) && near(p.sim, BAIT_R) && (gameState.inventory.forage || 0) > 0) return { nd: 'delve_bait', prompt: PEST_COPY.crab.prompt };
+    if (p.sim.kind === 'crab' && ['idle', 'approach'].includes(p.sim.state) && near(p.sim, BAIT_R)) return { nd: 'delve_bait', prompt: PEST_COPY.crab.prompt };
   }
   if (run.stash.length && run.layout.burrows.some(b => near(b, 1.4))) return { nd: 'delve_dig', prompt: PEST_COPY.grub.prompt };
   return null;
@@ -338,15 +379,9 @@ export function handleDelveDoor(nd) {
   }
   if (nd === 'delve_lift_locked') { ui.toast?.(isOpen('miner') ? '🛗 승강기가 고장 났어요. 광부 아저씨에게 가 봐요' : '🛗 승강기가 고장 났어요. 세계수 ⛏️ 광산의 가지를 채우면 광부 아저씨가 돌아와요', 3600); return true; }
   if (nd === 'delve_lift') {
-    const targets = liftTargets(gameState.delve);
-    const go = (floor) => { trackEvent('delve_enter', { floor, stops: targets.length - 1 }); enterFloor(floor, 'lift'); };
-    const deepest = targets.at(-1);
-    if (deepest === 1) { go(1); return true; }
-    ui.showHintModal?.({
-      ico: '🛗', title: '승강기', body: '어디로 갈까요?',
-      ok: { label: `🛗 지하 ${deepest}층`, onClick: () => go(deepest) },
-      alt: { label: '🪜 1층부터', onClick: () => go(1) },
-    });
+    const rows = liftPanelRows(gameState.delve);
+    if (rows.filter(r => r.open).length === 1) { rideLift(1); return true; }
+    openLiftPanel(rows, rideLift);
     return true;
   }
   if (nd === 'delve_up') { leaveToFloor0('ladder'); return true; }
@@ -372,6 +407,7 @@ export function handleDelveDoor(nd) {
     return true;
   }
   if (nd === 'delve_bait') {
+    if ((gameState.inventory.forage || 0) <= 0) { ui.toast?.('🍄 미끼로 줄 버섯이 없어요. 채집 숲에서 주워 와요', 3200); return true; }
     const at = L(player.position);
     for (const p of run.pests) {
       const next = baitPest(p.sim, at);
@@ -410,6 +446,7 @@ function meetBanner(kind) {
 }
 
 export function updateDelve(dt, t) {
+  tickLift(dt);
   if (!run || !atMine) return;
   const lp = L(player.position);
   const ringOn = batAlive();
