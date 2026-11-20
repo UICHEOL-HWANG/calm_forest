@@ -1,0 +1,24 @@
+import { open } from './harness.mjs';
+
+const dev = process.argv[2] || 'pc';
+const h = await open(dev, 9700 + Math.floor(Math.random() * 90));
+await h.enterGame('bear');
+await h.ev(`(() => { window.__errs = []; addEventListener('error', e => __errs.push(String(e.message))); return 1; })()`);
+const G = `(await import('/js/game.js'))`;
+const D = `(await import('/js/spaces/doors.js'))`;
+await h.ev(`(async () => { const g = ${G}; g.gameState.story.ch = 9; g.gameState.hintsSeen.treeFinale = '2000-01-01'; window.__tp(4, -27); return 1; })()`);
+await h.b.sleep(2000);
+const probe = () => h.ev(`(async () => { const g = ${G}; let m = null; g.scene.traverse(o => { if (o.isInstancedMesh && o.count === 160) m = o; });
+  if (!m) return null; const e = m.instanceMatrix.array; return { vis: m.visible, grp: m.parent.visible, y0: +e[13].toFixed(4), y5: +e[16 * 5 + 13].toFixed(4), inV: ${D}.inVillage2() }; })()`);
+const pair = async (label) => { const a = await probe(); await h.b.sleep(800); const b = await probe(); return { label, a, b, moved: !!(a && b && (a.y0 !== b.y0 || a.y5 !== b.y5)) }; };
+const r = [];
+r.push(await pair('village'));
+await h.ev(`(async () => { ${D}.enterHouse(); return 1; })()`);
+await h.b.sleep(2500);
+r.push(await pair('house'));
+await h.ev(`(async () => { ${D}.exitHouse(); return 1; })()`);
+await h.b.sleep(2500);
+r.push(await pair('back'));
+console.log(JSON.stringify({ dev, r, errs: await h.ev('window.__errs') }, null, 1));
+await h.close();
+process.exit(0);
