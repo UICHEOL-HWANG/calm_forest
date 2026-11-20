@@ -894,7 +894,12 @@ function drawDaily(box) {
       if (view.kind === 'cos') { applyCosmetics(gameState.cosmetics); cosTryOn = null; cosPreview?.refresh(null); }
       drawCosMenu();
     },
-    onTry: view.kind === 'cos' && view.state !== 'owned' ? () => { const it = findItem(view.id); if (it) tryOnCos(it); } : null,
+    onTry: view.kind === 'cos' && view.state !== 'owned' ? () => {
+      const it = findItem(view.id);
+      if (!it) return;
+      if (it.slot === 'tools' || it.slot === 'trail') cosTab = it.slot;
+      tryOnCos(it);
+    } : null,
     adButton: () => Input.dailyPickAdButton({ d: view.d, id: view.id }, () => drawCosMenu()),
   });
 }

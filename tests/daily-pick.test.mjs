@@ -110,3 +110,16 @@ test('광고 반값은 버튼을 만들 때 보인 카드에만 준다', async (
   assert.deepEqual(adGrant({ d: day, id: pick.id }, day), { d: day, id: pick.id, half: true });
   assert.equal(adGrant({ d: '2026-11-30', id: pickOf('2026-11-30').id }, day), null);
 });
+
+test('풀의 캐릭터 꾸미기는 모두 카탈로그 코인 가격과 같고 가게 탭에는 없다', async () => {
+  const { findItem, SLOTS } = await import('../js/cosmetics/catalog.js');
+  const { shopRows } = await import('../js/cosmetics/sprout.js');
+  for (const p of DAILY_PICK_POOL.filter(x => x.kind === 'cos')) {
+    const it = findItem(p.id);
+    assert.ok(it, p.id);
+    assert.equal(it.group, 'daily', p.id);
+    assert.equal(it.price.coins, p.price, p.id);
+    assert.ok(!it.price.cash, p.id);
+    assert.ok(!SLOTS.some(s => shopRows(s).some(r => r.id === p.id)), p.id);
+  }
+});
