@@ -287,7 +287,7 @@ export function analyzeExperiment(e, today) {
     return { verdict: ['obs', '설명용'], n: Object.values(first).reduce((s, v) => s + v, 0) };
   }
   if (!r || !r.arms?.length || !r.arms.some((a) => a.n > 0)) {
-    const v = e.status === 'plan' ? ['st', '시작 전'] : e.kind === 'ext' ? ['st', '결과 입력 전'] : ['st', '결과 없음'];
+    const v = r?.running ? ['obs', '진행 중 · 판정 전'] : e.status === 'plan' ? ['st', '시작 전'] : e.kind === 'ext' ? ['st', '결과 입력 전'] : ['st', '결과 없음'];
     return { verdict: v, n: 0 };
   }
   const [tk, ck] = r.compare || [r.arms[0].key, r.arms[1].key];
@@ -312,6 +312,7 @@ export function analyzeExperiment(e, today) {
 
   let verdict;
   if (e.kind === 'policy') verdict = ['obs', '인과 판정 안 함'];
+  else if (r.running) verdict = s != null && s < 0.01 ? ['lose', '배정 어긋남 · 판정 보류'] : ['obs', '진행 중 · 판정 전'];
   else if (e.confound) verdict = ['conf', '교란 주의'];
   else if (s != null && s < 0.01) verdict = ['lose', '배정 어긋남 · 판정 보류'];
   else if (e.decide_after && String(today) < String(e.decide_after)) verdict = ['obs', `관측 대기 · ${mmdd(e.decide_after)}`];
