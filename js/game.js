@@ -1300,6 +1300,7 @@ function syncBadges() {
 
 const STORY_IDS = STORY.map(c => c.id);
 let storyBooted = false;   // 첫 syncStory(세이브 소급)는 조용히, 이후엔 축하 연출
+export const isStoryBooted = () => storyBooted;
 
 // 장 판정·뷰는 js/story/rules.js(순수) — 여기는 gameState 를 넘기는 얇은 층
 //   🌉 해금 켜짐 + 새 세이브면 1장이 「세계수를 지키는 법」(집 → 다리 → 할아버지)으로 바뀐다. 꺼짐·옛 세이브는 예전 그대로(STORY)

@@ -3,6 +3,7 @@
 //  서버 판정은 sql/migrations/migrate_neighbors.sql. 여기 숫자는 그 파일과 같아야 한다(tests/neighbors-sync).
 //  문구는 스펙 §8 검수본 그대로 — 바꾸지 말 것(미검수 문구는 계획서 Global Constraints 참조).
 // =============================================================
+import { isKeeperRow } from '../world/finale-rules.js';
 import { kstDate } from '../kst-date.js';
 import { EXPANSIONS, STAGE_NAMES } from '../house-cost.js';
 import { stage7ExitPoint } from '../house-stage7.js';
@@ -37,7 +38,7 @@ export const rewardLine = (n) => `🪙 오늘 받은 방문 보상 ${Math.min(RE
 export function pickerRows(list, faceOf) {
   return (Array.isArray(list) ? list : []).slice(0, 3).map((r, slot) => ({
     publicId: r.public_id, slot, face: faceOf(r.character), nick: String(r.nick || ''),
-    meta: pickerMeta(r), done: !!r.visited_today, go: r.visited_today ? '또 보기' : '놀러 가기',
+    keeper: isKeeperRow(r), meta: pickerMeta(r), done: !!r.visited_today, go: r.visited_today ? '또 보기' : '놀러 가기',
   }));
 }
 

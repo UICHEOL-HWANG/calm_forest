@@ -9,7 +9,7 @@ const src = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 test('이름표 페이드는 한 곳(fadeNameTag) — 마을 주민·거울 주민·반디 요정이 같이 쓴다', () => {
   const npc = src('js/spaces/npc.js');
   assert.match(npc, /export function fadeNameTag\(tag, d\)/);
-  assert.match(npc, /fadeNameTag\(o\.tag, dist2D\(o\.group\.position, player\.position\)\)/);
+  assert.match(npc, /fadeNameTag\(o\.tag, hudHidden \? Infinity : dist2D\(o\.group\.position, player\.position\)\)/);
 });
 
 test('거울 주민 — 이름표를 들고 있다가 매 프레임 거리로 켠다', () => {

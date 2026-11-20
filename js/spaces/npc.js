@@ -583,7 +583,7 @@ export function updateNPC(dt, t) {
     o.body.position.y = bodyY;
     if (o.bobParts) for (const m of o.bobParts) m.position.y = m.userData.y0 + (bodyY - 0.55);   // 가슴털·허리띠는 몸통과 같이 움직여야 안 깜빡인다
     if (o.sprite) o.sprite.position.y = o.spriteY0 + Math.sin(t * 2.5 + o.phase) * 0.08;
-    if (o.tag) fadeNameTag(o.tag, dist2D(o.group.position, player.position));   // 🏷️ 이름표 — 가까워질수록 서서히 나타남(멀리선 감춰 화면을 비워 둔다)
+    if (o.tag) fadeNameTag(o.tag, hudHidden ? Infinity : dist2D(o.group.position, player.position));   // 🏷️ 이름표 — 가까워질수록 서서히 나타남(멀리선 감춰 화면을 비워 둔다)
     if (o.fly && updateOwlFly(o, dt, t)) {
       // 🦉 하늘에 있는 동안엔 updateOwlFly 가 이동·고도·날개를 담당
     } else if (merchantVisit && o.def.id === 'merchant') {

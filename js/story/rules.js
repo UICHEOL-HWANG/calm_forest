@@ -1,5 +1,7 @@
 // 📖 메인 이야기 판정 — 순수 함수(상태 s = gameState 모양을 인자로 받는다). 장 표는 ./chapters.js
 //   진행은 전부 기존 상태에서 파생한다(새 카운터는 의뢰 수 story.q 하나뿐).
+import { hasKeeperTitle } from '../world/finale-rules.js';
+
 const num = (v) => Number(v) || 0;
 const count = (o) => Object.keys(o || {}).length;
 const frac = (have, need) => `${Math.min(have, need)}/${need}`;
@@ -86,6 +88,7 @@ export function buildStoryView(story, s) {
   return {
     ch,
     allDone: ch >= story.length || isSoon(story, ch),
+    keeper: hasKeeperTitle(s),
     chapters: story.map((c, i) => ({
       n: i + 1, ico: c.ico, title: c.title, goal: c.goal,
       line: i < ch ? c.done : c.start,
