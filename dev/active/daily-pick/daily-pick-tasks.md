@@ -2,7 +2,7 @@
 
 - [x] 가게 카드 시안 3개 → B안 확정
 - [x] 설계 문서 커밋
-- [ ] 캐릭터 4종 조형 시안(각 3안) → 선택
+- [ ] 캐릭터 4종 조형 시안(각 3안) → 선택 (장작 바구니 D 확정, 나머지 3종 대기)
 - [ ] 가구 4종 조형 시안(각 3안) → 선택
 - [ ] `js/data/daily-pick.js` + `tests/daily-pick.test.mjs` (TDD)
 - [ ] 카탈로그 등록(`group: 'daily'`, DECOR/OUTDOOR hidden) + shopRows 제외
