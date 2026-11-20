@@ -155,7 +155,7 @@ const rows = (n) => ROWS.slice(0, n).map(([i, nm, p]) => `<div class="sh-row"><s
 const ad = () => `<button class="rw-ad"><span class="rw-tag">AD</span>광고 보고 <span class="rw-amt">반값</span></button>`;
 const buyFull = () => `<button class="btn">🪙 ${PICK.price.toLocaleString()}</button>`;
 const buyHalf = () => `<button class="btn"><s>${PICK.price.toLocaleString()}</s>🪙 ${PICK.half}</button>`;
-const owned = () => `<button class="btn off">가졌어요</button>`;
+const owned = () => `<button class="btn off">이미 있어요</button>`;
 
 function buys(s) {
   if (s === 'ad') return buyFull() + ad();
@@ -180,7 +180,7 @@ function B(s) {
 }
 
 function C(s) {
-  const desc = s === 'owned' ? '이미 가졌어요. 내일은 다른 꾸미기가 와요.' : '8일에 한 번만 들어오는 겨울 꾸미기예요. 오늘이 지나면 다시 8일 뒤에 와요.';
+  const desc = s === 'owned' ? '이미 이미 있어요. 내일은 다른 꾸미기가 와요.' : '8일에 한 번만 들어오는 겨울 꾸미기예요. 오늘이 지나면 다시 8일 뒤에 와요.';
   return head() + tabs(true) + `<div class="body"><div class="prev">🐻${PICK.ico}<small>입혀 보는 중</small></div><div class="items">
     <div class="c-hero"><div class="c-top"><b>${PICK.ico} ${PICK.name}${s === 'half' ? '<b class="half-badge">반값</b>' : ''}</b><small>⏳ 13:42</small></div>
     <div class="c-desc">${desc}</div><div class="c-buys">${buys(s)}</div></div>
