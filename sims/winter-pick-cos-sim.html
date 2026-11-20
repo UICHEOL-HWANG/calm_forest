@@ -31,7 +31,7 @@
 <script type="module">
 import * as THREE from 'three';
 import { buildAnimalHead, plushMat } from '../js/animal-faces.js';
-import { PALETTE, put } from '../js/cosmetics/art.js';
+import { PALETTE, put, buildCosmetic } from '../js/cosmetics/art.js';
 import { TRAIL_SIDE, TRAIL_S } from '../js/cosmetics/trail.js';
 import { backAnchor, headAnchor, neckAnchor, neckR as neckRadius, sideAnchor } from '../js/cosmetics/anchors.js';
 import { VARIANTS, WP } from './winter-pick/cos-art.mjs';
@@ -85,6 +85,10 @@ function anchorsOf(a) {
   };
 }
 
+function probeTube(g, curve, rad, base) {
+  g.userData.tailProbe = Array.from({ length: 61 }, (_, i) => ({ p: curve.getPointAt(i / 60).add(base), r: rad(i / 60) }));
+}
+
 function buildAnimal(a) {
   const g = new THREE.Group();
   const { R, bs, bodyY } = anchorsOf(a);
@@ -111,27 +115,32 @@ function buildAnimal(a) {
     const c0 = new THREE.Color(a.body), c1 = new THREE.Color(a.belly);
     const t = tube(pts, rad, u => u < 0.60 ? c0 : u < 0.68 ? c0.clone().lerp(c1, (u - 0.60) / 0.08) : c1);
     put(tail, new THREE.Mesh(new THREE.SphereGeometry(rad(1) * 0.98, 12, 9), plushMat(a.belly)), t.end.x, t.end.y, t.end.z);
-    g.userData.tailProbe = { curve: t.curve, rad, offset: base.clone() };
+    probeTube(g, t.curve, rad, base);
   } else if (a.tail === 'long') {
     const pts = [V(0, -0.05, 0.10), V(0, 0.08, -0.36), V(0, 0.45, -0.60), V(0, 0.90, -0.58), V(0, 1.22, -0.36)];
     const rad = u => R * (0.17 * (1 - u * 0.62) + 0.02) * (1 - 0.30 * Math.max(0, u - 0.85) / 0.15);
     const t = tube(pts, rad);
     put(tail, new THREE.Mesh(new THREE.SphereGeometry(rad(1) * 0.98, 10, 8), tm), t.end.x, t.end.y, t.end.z);
-    g.userData.tailProbe = { curve: t.curve, rad, offset: base.clone() };
+    probeTube(g, t.curve, rad, base);
   } else if (a.tail === 'curl') {
     const pts = [V(0, -0.05, 0.10), V(0, 0.05, -0.22), V(0, 0.30, -0.40), V(0, 0.58, -0.36), V(0, 0.72, -0.14)];
     const rad = u => R * (0.15 * (1 - u) + 0.05);
     const t = tube(pts, rad);
     put(tail, new THREE.Mesh(new THREE.SphereGeometry(rad(1) * 0.98, 10, 8), tm), t.end.x, t.end.y, t.end.z);
+    probeTube(g, t.curve, rad, base);
   } else if (a.tail === 'puff') {
     put(g, new THREE.Mesh(new THREE.SphereGeometry(R * 0.30, 12, 10), plushMat(a.belly)), 0, base.y + R * 0.04, base.z - R * 0.06);
+    g.userData.tailProbe = [{ p: new THREE.Vector3(0, base.y + R * 0.04, base.z - R * 0.06), r: R * 0.30 }];
   } else if (a.tail === 'feather') {
     [-1, 0, 1].forEach(s => {
       const f = put(g, new THREE.Mesh(new THREE.ConeGeometry(R * 0.10, R * 0.44, 3), tm), s * R * 0.09, base.y + R * 0.34, base.z - R * 0.12);
       f.rotation.set(Math.PI / 2 - 0.85, 0, s * 0.24);
+      f.updateMatrix();
+      [-0.18, 0, 0.18].forEach(t => (g.userData.tailProbe = g.userData.tailProbe || []).push({ p: new THREE.Vector3(0, t * R, 0).applyMatrix4(f.matrix), r: R * 0.10 }));
     });
   } else {
     put(g, new THREE.Mesh(new THREE.SphereGeometry(R * 0.16, 10, 8), tm), 0, base.y, base.z);
+    g.userData.tailProbe = [{ p: base.clone(), r: R * 0.16 }];
   }
   return g;
 }
@@ -142,13 +151,8 @@ const film = (c, o) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.5
 const HT = { film, put };
 
 function tailClips(animal, cos) {
-  const probe = animal.userData.tailProbe;
-  if (!probe) return 0;
-  const samples = [];
-  for (let i = 0; i <= 60; i++) {
-    const u = i / 60;
-    samples.push({ p: probe.curve.getPointAt(u).add(probe.offset), r: probe.rad(u) * 0.97 });
-  }
+  const samples = animal.userData.tailProbe;
+  if (!samples) return 0;
   animal.updateMatrixWorld(true);
   cos.updateMatrixWorld(true);
   const inv = new THREE.Matrix4().copy(animal.matrixWorld).invert();
@@ -172,8 +176,9 @@ function dressed(a, variant, slot) {
   const k = anchorsOf(a);
   const holder = new THREE.Group();
   holder.position.copy(k[slot]);
-  const cos = new THREE.Group();
-  variant.build(THREE, cos, k, H);
+  holder.position.copy(k[variant.anchor || slot]);
+  const cos = variant.ref ? buildCosmetic(THREE, variant.ref, k) : new THREE.Group();
+  if (!variant.ref) variant.build(THREE, cos, k, H);
   holder.add(cos);
   g.add(holder);
   return { g, clips: tailClips(animal, holder) };
@@ -224,6 +229,11 @@ const COLS = {
     { a: 'fox', ang: 265, label: '여우 옆(왼쪽)' }, { a: 'chick', ang: 200, label: '병아리 뒤' }, { a: 'bear', ang: 30, label: '곰 앞 3/4' },
     { a: 'fox', ang: 160, label: '게임 거리', far: true },
   ],
+  back2: [
+    { a: 'fox', ang: 165, label: '여우 뒤' }, { a: 'dog', ang: 195, label: '강아지 뒤' }, { a: 'cat', ang: 165, label: '고양이 뒤' },
+    { a: 'rabbit', ang: 195, label: '토끼 뒤' }, { a: 'chick', ang: 165, label: '병아리 뒤' }, { a: 'fox', ang: 265, label: '여우 옆(왼쪽)' },
+    { a: 'bear', ang: 30, label: '곰 앞 3/4' }, { a: 'fox', ang: 160, label: '게임 거리', far: true },
+  ],
   trail: [
     { a: null, ang: 180, label: '자국 근접', close: true }, { a: 'bear', ang: 125, label: '곰' }, { a: 'rabbit', ang: 125, label: '토끼' },
     { a: 'fox', ang: 125, label: '여우' }, { a: 'chick', ang: 125, label: '병아리' }, { a: 'bear', ang: 125, label: '게임 거리', far: true },
@@ -252,8 +262,8 @@ renderer.setScissorTest(true);
 document.body.appendChild(renderer.domElement);
 
 const TOP = 64, COLH = 30, LEFTW = 200;
-const cols = COLS[slot];
-const rows = ['A', 'B', 'C'];
+const cols = COLS[ITEM.cols || slot];
+const rows = ITEM.rows || ['A', 'B', 'C'];
 const cw = (innerWidth - LEFTW) / cols.length, ch = (innerHeight - TOP - COLH) / rows.length;
 const ov = document.getElementById('ov');
 const cells = [];
@@ -269,7 +279,7 @@ rows.forEach((r, ri) => {
   const v = ITEM[r];
   const re = document.createElement('div');
   re.className = 'row';
-  re.innerHTML = `<div class="L">${r}</div><div class="n">${v.name}</div><div class="d">${v.note}</div>`;
+  re.innerHTML = `<div class="L">${r === 'REF' ? '기준' : r}</div><div class="n">${v.name}</div><div class="d">${v.note}</div>`;
   Object.assign(re.style, { left: 0, width: LEFTW + 'px', top: TOP + COLH + ri * ch + 'px', height: ch + 'px' });
   ov.appendChild(re);
 
@@ -295,7 +305,7 @@ rows.forEach((r, ri) => {
     } else {
       const d = dressed(a, v, slot);
       scene.add(d.g);
-      clips = a.tail === 'bushy' || a.tail === 'long' ? d.clips : null;
+      clips = c.noClip ? null : d.clips;
       const k = anchorsOf(a);
       if (c.far) { target = new THREE.Vector3(0, 0.75, 0); dist = 8.5; elev = 36; }
       else if (slot === 'head') { target = new THREE.Vector3(0, k.HY + k.HR * 0.45, 0); dist = 2.3 + k.HR * 1.6; }

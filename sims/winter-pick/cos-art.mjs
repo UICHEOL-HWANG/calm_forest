@@ -373,6 +373,134 @@ export function buildBootTrailC(THREE, g, s, o, id, h) {
   });
 }
 
+function backFront(k, yR, pad = 0.03) {
+  const R = k.R, bs = k.bs;
+  const bodyZ = yR < bs[1] ? -bs[2] * Math.sqrt(1 - (yR / bs[1]) ** 2) : 0;
+  const HYr = (k.HY - k.bodyY) / R, HRr = k.HR / R, dy = yR - HYr;
+  const headZ = Math.abs(dy) < HRr ? -Math.sqrt(HRr * HRr - dy * dy) : 0;
+  return { y: k.bodyY + yR * R - k.back.y, z: (Math.min(bodyZ, headZ) - pad) * R - k.back.z };
+}
+
+function sideFront(k, xR, yR, pad = 0.02) {
+  const bs = k.bs, f = 1 - (xR / bs[0]) ** 2 - (yR / bs[1]) ** 2;
+  return { x: xR * k.R, y: k.bodyY + yR * k.R - k.back.y, z: (-bs[2] * Math.sqrt(Math.max(0, f)) - pad) * k.R - k.back.z };
+}
+
+function wickerCone(THREE, h, rt, rb, H, dk, bands = 3) {
+  const { clay } = h;
+  const g = new THREE.Group();
+  const shell = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, H, 18, 1, true), clay(WP.wicker));
+  shell.material.side = THREE.DoubleSide; shell.castShadow = true; g.add(shell);
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2, ra = (rt + rb) / 2;
+    const st = new THREE.Mesh(new THREE.BoxGeometry(H * 0.035, H * 1.0, H * 0.035), clay(WP.wickerDark));
+    st.position.set(Math.cos(a) * ra * 1.02, 0, Math.sin(a) * ra * 1.02);
+    st.rotation.set(Math.sin(a) * Math.atan2(rt - rb, H), 0, -Math.cos(a) * Math.atan2(rt - rb, H));
+    g.add(st);
+  }
+  for (let i = 0; i < bands; i++) {
+    const f = (i + 0.5) / bands, rr = rb + (rt - rb) * f;
+    const b = new THREE.Mesh(new THREE.TorusGeometry(rr * 1.03, H * 0.035, 4, 22), clay(WP.wickerDark));
+    b.position.y = -H / 2 + H * f; b.rotation.x = Math.PI / 2; g.add(b);
+  }
+  const lip = new THREE.Mesh(new THREE.TorusGeometry(rt, H * 0.06, 5, 22), clay(WP.wickerDark));
+  lip.position.y = H / 2; lip.rotation.x = Math.PI / 2; g.add(lip);
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(rb, rb * 0.95, H * 0.06, 18), clay(WP.wickerDark));
+  base.position.y = -H / 2; g.add(base);
+  g.scale.set(1, 1, dk);
+  return g;
+}
+
+function logsIn(THREE, g, h, rt, H, dk, R, spec) {
+  spec.forEach(([x, z, up, tilt]) => {
+    const len = H * 0.75 + up;
+    log(THREE, g, h, len, R * 0.075, new THREE.Vector3(x * rt, H / 2 - H * 0.75 + len / 2, z * rt * dk), new THREE.Euler(0, 0, tilt));
+  });
+}
+
+function strapsFrom(THREE, g, k, h, starts, color) {
+  starts.forEach((p0, i) => {
+    const s = i ? 1 : -1;
+    const pts = [p0, ...[[s * 0.42, 1.0, -0.15], [s * 0.42, 0.62, 0.78], [s * 0.55, 0.15, 0.85]].map(d => surfLocal(THREE, k, k.back, d, 1.06))];
+    g.add(tubeAlong(THREE, pts, k.R * 0.045, h.clay(color), 28, 6));
+  });
+}
+
+export function buildFirewoodD(THREE, g, k, h) {
+  const R = k.R, rt = R * 0.50, rb = R * 0.30, dk = 0.30;
+  const fb = backFront(k, 0.76), ft = backFront(k, 1.24);
+  const zb = fb.z - rb * dk, zt = ft.z - rt * dk;
+  const H = Math.hypot(ft.y - fb.y, zt - zb);
+  const bk = wickerCone(THREE, h, rt, rb, H, 1, 4);
+  const holder = new THREE.Group();
+  holder.position.set(0, (fb.y + ft.y) / 2, (zb + zt) / 2);
+  holder.rotation.x = Math.atan2(zt - zb, ft.y - fb.y);
+  holder.scale.set(1, 1, dk);
+  holder.add(bk);
+  g.add(holder);
+  const logs = new THREE.Group();
+  logs.position.copy(holder.position); logs.rotation.copy(holder.rotation);
+  g.add(logs);
+  logsIn(THREE, logs, h, rt, H, dk, R, [[-0.55, 0, R * 0.30, 0.22], [-0.18, 0.1, R * 0.42, 0.06], [0.2, -0.1, R * 0.36, -0.08], [0.55, 0, R * 0.26, -0.24]]);
+  const sprig = new THREE.Mesh(new THREE.ConeGeometry(R * 0.09, R * 0.28, 5), h.clay(WP.pine));
+  sprig.position.set(rt * 0.85, H / 2 + R * 0.12, 0); sprig.rotation.z = -0.6; logs.add(sprig);
+  holder.updateMatrix();
+  const rim = s => new THREE.Vector3(s * rt * 0.8, H * 0.42, rt * 0.6).applyMatrix4(holder.matrix);
+  strapsFrom(THREE, g, k, h, [rim(-1), rim(1)], WP.leather);
+}
+
+export function buildFirewoodE(THREE, g, k, h) {
+  const { clay } = h;
+  const R = k.R, W = R * 1.20, Hc = R * 0.34, D = R * 0.30;
+  const yc = 1.10, f = backFront(k, yc - 0.17);
+  const c = new THREE.Vector3(0, backFront(k, yc).y, f.z - D / 2);
+  const crate = new THREE.Group();
+  crate.position.copy(c); g.add(crate);
+  const wall = (w, hh, d, x, y, z, col = WP.wicker) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, hh, d), clay(col)); m.position.set(x, y, z); m.castShadow = true; crate.add(m); return m;
+  };
+  wall(W, R * 0.04, D, 0, -Hc / 2, 0, WP.wickerDark);
+  [-1, 1].forEach(s => wall(W, Hc, R * 0.035, 0, 0, s * D / 2));
+  [-1, 1].forEach(s => wall(R * 0.035, Hc, D, s * W / 2, 0, 0));
+  [-0.25, 0.1].forEach(y => [-1, 1].forEach(s => wall(W * 1.01, R * 0.03, R * 0.045, 0, y * Hc, s * D / 2, WP.wickerDark)));
+  for (let i = -4; i <= 4; i++) wall(R * 0.03, Hc * 1.02, R * 0.05, (i / 4.5) * W / 2, 0, -D / 2, WP.wickerDark);
+  [-1, 1].forEach(s => wall(W * 1.03, R * 0.05, R * 0.06, 0, Hc / 2, s * D / 2, WP.wickerDark));
+  [[-0.22, 0.05], [0.22, 0.05], [0, 0.32]].forEach(([z, y], i) => {
+    log(THREE, crate, h, W * (1.30 - i * 0.08), R * 0.085, new THREE.Vector3(i === 2 ? R * 0.05 : 0, Hc / 2 - R * 0.06 + y * R, z * D), new THREE.Euler(0, 0, Math.PI / 2));
+  });
+  const sprig = new THREE.Mesh(new THREE.ConeGeometry(R * 0.08, R * 0.26, 5), clay(WP.pine));
+  sprig.position.set(-W * 0.32, Hc / 2 + R * 0.22, 0); sprig.rotation.z = 0.5; crate.add(sprig);
+  [-1, 1].forEach(s => {
+    const top = sideFront(k, s * 0.48, yc - 0.20, 0.06), bot = sideFront(k, s * 0.50, 0.25, 0.06);
+    const pole = tubeAlong(THREE, [new THREE.Vector3(top.x, c.y - Hc / 2, Math.min(top.z, c.z)), new THREE.Vector3(bot.x, bot.y, bot.z)], R * 0.04, clay(WP.woodDark), 4, 5);
+    g.add(pole);
+  });
+  strapsFrom(THREE, g, k, h, [new THREE.Vector3(-W * 0.3, c.y, c.z + D / 2), new THREE.Vector3(W * 0.3, c.y, c.z + D / 2)], WP.berryDark);
+}
+
+export function buildFirewoodF(THREE, g, k, h) {
+  const R = k.R, rt = R * 0.27, rb = R * 0.19, Hb = R * 0.56, dk = 0.82, xR = 0.60, yR = 0.62;
+  const rims = [];
+  [-1, 1].forEach(s => {
+    const f = sideFront(k, s * xR, yR);
+    const pos = new THREE.Vector3(f.x, f.y, f.z - rt * dk);
+    const bk = wickerCone(THREE, h, rt, rb, Hb, dk, 3);
+    bk.position.copy(pos); bk.rotation.z = -s * 0.10; g.add(bk);
+    const logs = new THREE.Group(); logs.position.copy(pos); logs.rotation.z = -s * 0.10; g.add(logs);
+    logsIn(THREE, logs, h, rt, Hb, dk, R, [[-0.35, 0.1, R * 0.30, 0.12], [0.3, -0.15, R * 0.22, -0.1], [0, 0.3, R * 0.38, 0.02 * s]]);
+    rims.push(new THREE.Vector3(pos.x, pos.y + Hb / 2, pos.z));
+  });
+  const mid = backFront(k, yR + 0.42, 0.06);
+  g.add(tubeAlong(THREE, [rims[0], new THREE.Vector3(-R * 0.25, mid.y - R * 0.02, mid.z), new THREE.Vector3(0, mid.y, mid.z), new THREE.Vector3(R * 0.25, mid.y - R * 0.02, mid.z), rims[1]], R * 0.05, h.clay(WP.woodDark), 24, 6));
+  const sprig = new THREE.Mesh(new THREE.ConeGeometry(R * 0.08, R * 0.24, 5), h.clay(WP.pine));
+  sprig.position.set(0, mid.y + R * 0.08, mid.z); g.add(sprig);
+  [[0.06, 0], [-0.06, 0.02]].forEach(([x, z]) => {
+    const b = new THREE.Mesh(new THREE.IcosahedronGeometry(R * 0.045, 0), h.clay(WP.berry));
+    b.position.set(x * R, mid.y - R * 0.02, mid.z - R * 0.03 + z * R); g.add(b);
+  });
+  strapsFrom(THREE, g, k, h, rims, WP.leather);
+}
+
 export const VARIANTS = {
   wp_pompom_hat: {
     slot: 'head', name: '방울 뜨개 모자',
@@ -391,6 +519,13 @@ export const VARIANTS = {
     A: { name: '비스듬 등바구니', note: '왼쪽 어깨 고리바구니 + 세운 장작·솔가지', build: buildFirewoodA },
     B: { name: '지게 장작', note: '나무 지게 두 다리 + 장작 두 묶음(가운데 트임)', build: buildFirewoodB },
     C: { name: '장작 멜빵 자루', note: '가로로 누운 장작 + 겨자색 천 자루 + 솔가지', build: buildFirewoodC },
+  },
+  wp_firewood_v2: {
+    slot: 'back', cols: 'back2', name: '등에 멘 장작 바구니 v2', rows: ['REF', 'D', 'E', 'F'],
+    REF: { name: '기존 바구니(basket)', note: '카탈로그 기존 아이템 · 옆구리 앵커 · 비교용', ref: 'basket', anchor: 'side' },
+    D: { name: '다래끼 등바구니', note: '위가 넓은 납작 고리바구니를 등 위쪽에 높이 · 장작 4개 꽂음', build: buildFirewoodD },
+    E: { name: '지게 고리상자', note: '어깨 위 가로 고리상자 + 가로 장작 · 양옆 지게 다리로 받침', build: buildFirewoodE },
+    F: { name: '쌍바구니 멜대', note: '척추 양옆 작은 바구니 두 개 + 가운데 멜대 · 꼬리 자리 비움', build: buildFirewoodF },
   },
   wp_boot_trail: {
     slot: 'trail', name: '털장화 발자국',
