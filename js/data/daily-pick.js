@@ -58,3 +58,19 @@ export function decorOwned(state, id) {
     || (state.house?.decor || []).some(p => p.id === id)
     || (state.outdoor || []).some(p => p.id === id);
 }
+
+const STALE = Object.freeze({ ok: false, msg: '오늘의 꾸미기가 바뀌었어요', stale: true });
+
+export function planBuy({ day, shown, dp, coins, owned }) {
+  const pick = pickOf(day);
+  if (shown?.d !== day || shown?.id !== pick.id) return { ...STALE };
+  if (owned) return { ok: false, msg: '이미 있어요' };
+  const price = priceOf(pick, dp, day);
+  if (coins < price) return { ok: false, msg: '코인이 모자라요' };
+  return { ok: true, pick, price, half: price < pick.price };
+}
+
+export function adGrant(shown, day) {
+  if (shown?.d !== day || shown?.id !== pickOf(day).id) return null;
+  return { d: day, id: shown.id, half: true };
+}

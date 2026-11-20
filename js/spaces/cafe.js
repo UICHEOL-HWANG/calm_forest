@@ -889,13 +889,13 @@ function drawDaily(box) {
   if (!view) return;
   drawDailyPickCard(box, view, {
     onBuy: () => {
-      const r = Input.buyDailyPick();
-      if (!r.ok) { ui.toast?.(r.msg, 2000); return; }
+      const r = Input.buyDailyPick({ d: view.d, id: view.id });
+      if (!r.ok) { ui.toast?.(r.msg, 2000); if (r.stale) drawCosMenu(); return; }
       if (view.kind === 'cos') { applyCosmetics(gameState.cosmetics); cosTryOn = null; cosPreview?.refresh(null); }
       drawCosMenu();
     },
     onTry: view.kind === 'cos' && view.state !== 'owned' ? () => { const it = findItem(view.id); if (it) tryOnCos(it); } : null,
-    adButton: () => Input.dailyPickAdButton(() => drawCosMenu()),
+    adButton: () => Input.dailyPickAdButton({ d: view.d, id: view.id }, () => drawCosMenu()),
   });
 }
 

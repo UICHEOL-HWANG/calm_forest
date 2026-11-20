@@ -92,7 +92,7 @@ import { forgeView, forgeBegin, forgeAbort, forgeFinish, settleForge, forgeRushR
 import { initAuction, updateAuction, auctionMapSpot, auctionSpotNow, openAuction, auctionScatterBlocks, auctionOutdoorMesh, auctionDefault, restoreAuction, auctionGuideActive } from './auction/index.js';
 import { initWeekly, updateWeekly, weeklyNote, weeklySpotNow, openWeekly, weeklyDefault, restoreWeekly, weeklyScatterBlocks, weeklyDecorMesh, weeklyDev, weeklyGuideActive, weeklyPriority, weekIndex, BOARD_POS, MARKET_POS } from './weekly/index.js';
 import { makeWeeklyBridge } from './weekly/bridge.js';
-import { DAILY_PICK_POOL, cardState, cleanDailyPick, decorOwned, leftLabel, msLeft, pickIndex, pickOf, priceOf as dailyPriceOf } from './data/daily-pick.js';
+import { DAILY_PICK_POOL, cardState, adGrant, cleanDailyPick, decorOwned, leftLabel, msLeft, pickIndex, pickOf, planBuy, priceOf as dailyPriceOf } from './data/daily-pick.js';
 import { initConcert, updateConcert, concertSpotNow, openConcert, concertDefault, restoreConcert, concertScatterBlocks, concertDecorMesh, concertDev, STAGE_POS, concertGuideActive } from './concert/index.js';
 import { makeConcertBridge } from './concert/bridge.js';
 import { refreshPond, updatePond, pondScatterBlocks } from './pond/index.js';
@@ -1216,7 +1216,7 @@ const gameState = {
   weekly: weeklyDefault(),
   concert: concertDefault(),
   dailyPick: null,
-  neighbors: neighborsDefault(),      // 🏡 이웃 마을 { visited: 다녀온 횟수(📖 9장), seenAt: 다녀간 이웃 알림을 마지막으로 확인한 시각(ms) }
+  neighbors: neighborsDefault(),       // 🏡 이웃 마을 { visited: 다녀온 횟수(📖 9장), seenAt: 다녀간 이웃 알림을 마지막으로 확인한 시각(ms) }
   unlocks: defaultUnlocks(),           // 🔓 마을 해금 { v, legacy, flags } — 새 세이브만 legacy:false. 판정은 js/world/unlocks.js(저장 안 하고 계산)
   tree: defaultTree(),                 // 🌳 세계수 판 { v, branches: { water|farm|kitchen|forest|snow: { tiles, given, habitat, bundles } } } — js/world/tree-board.js
   treeBloom: defaultBloom(),
@@ -2117,7 +2117,15 @@ function shortAdButton(slot, list, onDone, caps) {
 }
 export function guideShortAd(slot, list, onDone, caps) { return shortAdButton(slot, list, onDone, caps); }
 
-let dailyViewDay = null;
+const DAILY_SEEN_KEY = 'cf_daily_pick_seen';
+
+function noteDailyView(day, id, state) {
+  try {
+    if (localStorage.getItem(DAILY_SEEN_KEY) === day) return;
+    localStorage.setItem(DAILY_SEEN_KEY, day);
+  } catch { return; }
+  trackEvent('daily_pick_view', { item_id: id, state });
+}
 
 function dailyPickInfo() {
   const day = todayStr();
@@ -2135,37 +2143,36 @@ function dailyPickView() {
   const dp = gameState.dailyPick;
   const half = dp?.half === true && dp.d === day && dp.id === pick.id;
   const state = cardState({ owned, half, adOpen: !owned && !half && !!rewarded?.offer('daily_pick') });
-  if (dailyViewDay !== day) { dailyViewDay = day; trackEvent('daily_pick_view', { item_id: pick.id, state }); }
-  return { id: pick.id, kind: pick.kind, ico: item.ico, name: item.name, state, price: dailyPriceOf(pick, dp, day), full: pick.price,
+  noteDailyView(day, pick.id, state);
+  return { d: day, id: pick.id, kind: pick.kind, ico: item.ico, name: item.name, state, price: dailyPriceOf(pick, dp, day), full: pick.price,
     left: leftLabel(msLeft(Date.now())), count: DAILY_PICK_POOL.length, index: pickIndex(day) };
 }
 
-function buyDailyPick() {
+function buyDailyPick(shown) {
   const info = dailyPickInfo();
   if (!info) return { ok: false, msg: '지금은 살 수 없어요' };
-  if (info.owned) return { ok: false, msg: '이미 있어요' };
-  const { day, pick } = info;
-  const price = dailyPriceOf(pick, gameState.dailyPick, day);
-  if (gameState.inventory.coins < price) return { ok: false, msg: '코인이 모자라요' };
+  const plan = planBuy({ day: info.day, shown, dp: gameState.dailyPick, coins: gameState.inventory.coins, owned: info.owned });
+  if (!plan.ok) return plan;
+  const { pick, price, half } = plan;
   if (pick.kind === 'cos') {
     if (!grantCosmetic(pick.id)) return { ok: false, msg: '지금은 살 수 없어요' };
     gameState.cosmetics = equipCos(gameState.cosmetics, pick.id);
   } else if (!grantDecor(pick.id)) return { ok: false, msg: '지금은 살 수 없어요' };
   gameState.inventory.coins -= price;
   logEcon('daily_pick', 'coins', -price, gameState.inventory.coins);
-  trackEvent('daily_pick_buy', { item_id: pick.id, half: price < pick.price ? 1 : 0, price_coins: price, coins_after: gameState.inventory.coins });
+  trackEvent('daily_pick_buy', { item_id: pick.id, half: half ? 1 : 0, price_coins: price, coins_after: gameState.inventory.coins });
   if (pick.kind === 'decor') ui.toast?.('보관함에 넣었어요 — 작업대 장식 탭에서 꺼내 놓아요 🧺', 2600);
   refreshInventoryUI();
   requestSave();
   return { ok: true };
 }
 
-function dailyPickAdButton(onDone) {
+function dailyPickAdButton(shown, onDone) {
   if (!rewarded) return null;
   return rewarded.button('daily_pick', ['광고 보고', ' ', '반값'], () => {
-    const info = dailyPickInfo();
-    if (!info) return;
-    gameState.dailyPick = { d: info.day, id: info.pick.id, half: true };
+    const grant = adGrant(shown, todayStr());
+    if (!grant) return;
+    gameState.dailyPick = grant;
     requestSave();
   }, (ok) => { if (ok) onDone?.(); });
 }
@@ -2396,8 +2403,8 @@ export const Input = {
   getShopBuy() { return SHOP_BUY; },                    // 구매 목록
   sellAdButton(k, gain, onDone) { return sellAdButton(k, gain, onDone); },
   dailyPickView() { return dailyPickView(); },
-  buyDailyPick() { return buyDailyPick(); },
-  dailyPickAdButton(onDone) { return dailyPickAdButton(onDone); },
+  buyDailyPick(shown) { return buyDailyPick(shown); },
+  dailyPickAdButton(shown, onDone) { return dailyPickAdButton(shown, onDone); },
   craftAdButton(station, onDone) { return craftAdButton(station, onDone); },
   baitAdButton(done) { return adPill('bait_box', () => { giveReward({ bait: 2 }, 'bait_box'); requestSave(); }, done); },
   sellItem(k, req) { return sellItem(k, req); },        // 자원 판매

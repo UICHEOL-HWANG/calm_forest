@@ -2986,6 +2986,7 @@ export const EN = {
   '반값': 'Half off',
   '내일 바뀌어요': 'Changes tomorrow',
   '이미 있어요': 'Already have',
+  '오늘의 꾸미기가 바뀌었어요': "Today's pick has changed",
   //   👣 발자국 → ✨ 이펙트 (2026-09-23) — 상품은 그대로고 **분류 이름만** 바뀌었다
   '🎩 머리': '🎩 Head', '🧣 목': '🧣 Neck', '✨ 이펙트': '✨ Effects',
   //   🧥 전신 스킨(2026-10-01 2단계) — 상품명·설명·연출 카드는 통문장
