@@ -1,3 +1,6 @@
-- [x] 기획서 작성·커밋
-- [ ] 사용자 기획서 검토
-- [ ] 구현 계획(writing-plans)
+- [x] 기획서 작성·커밋 (107c16e8), 사용자 승인
+- [x] 1단계 구현 계획: docs/superpowers/plans/2026-11-20-restaurant-regulars-p1.md
+- [ ] Task 1 규칙 모듈 · Task 2 저장 · Task 3 세션 · Task 4 마을 연결
+- [ ] Task 5 주문표 얼굴 시안 3개 → 선택 → 구현
+- [ ] Task 6 수첩 문구 후보 → 선택 → 구현
+- [ ] Task 7 미리보기·리뷰
