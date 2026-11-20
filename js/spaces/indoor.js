@@ -42,6 +42,8 @@ import { buildAffinityFrame } from '../affinity/art.js';
 import { IDS as NIGHT_SET_IDS, build as buildNightSet } from '../decor-drops/art-night.js';
 import { IDS as WINTER_PICK_IDS, build as buildWinterPick } from '../decor-drops/art-winter-pick.js';
 import { IDS as FOREST_PICK_IDS, build as buildForestPick } from '../decor-drops/art-forest-pick.js';
+import { IDS as XMAS_PICK_IDS, build as buildXmasPick } from '../decor-drops/art-xmas-pick.js';
+import { IDS as SEA_PICK_IDS, build as buildSeaPick } from '../decor-drops/art-sea-pick.js';
 import { SOUVENIR_INDOOR_IDS, buildSouvenir } from '../mountain/souvenir-art.js';
 import { hasItemArt, weeklyDecorMesh } from '../weekly/items.js';
 import { hasConcertArt, concertDecorMesh } from '../concert/items.js';
@@ -461,6 +463,10 @@ export function decorMesh(id) {
     g.add(buildWinterPick(id));
   } else if (FOREST_PICK_IDS.includes(id)) {
     g.add(buildForestPick(id));
+  } else if (XMAS_PICK_IDS.includes(id)) {
+    g.add(buildXmasPick(id));
+  } else if (SEA_PICK_IDS.includes(id)) {
+    g.add(buildSeaPick(id));
   } else if (CANDY_DECOR_IDS.includes(id)) {
     g.add(buildCandyDecor(id));
   } else if (MIRROR_DECOR_IDS.includes(id)) {   // 🪞 거울 장식 — 🪞 거울 조각으로 산다(js/mirror/decor-art.js)
