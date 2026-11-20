@@ -3836,4 +3836,13 @@ export const EN = {
   '🎁 작업대에서 꽃다발 만들기': '🎁 Make a bouquet at the workbench',
   '🥕 꽃다발 재료(작물 2개)를 챙겨 드렸어요': '🥕 Here are 2 crops for the bouquet',
   '지금은 다른 안내가 먼저예요. 조금 뒤에 다시 눌러 주세요': 'Another guide comes first right now. Try again in a moment',
+  '이웃들이 오간 길마다 뿌리가 이어졌어요': 'Roots grew along every path your neighbors walked',
+  '세계수가 다시 숨을 쉬어요': 'The World Tree breathes again',
+  '칭호 「세계수지기」를 받았어요': 'You earned the title "Tree Keeper"',
+  '빛나는 뿌리 길이 이웃 마을까지 이어져요': 'A glowing root path now leads to the neighbor village',
+  '세계수지기': 'Tree Keeper',
+  '모든 이야기를 마쳤어요': 'You finished every chapter',
+  '🎬 엔딩 다시 보기': '🎬 Watch the ending again',
+  '모든 이야기를 마치면 세계수에 꽃이 피어요': 'Finish every chapter and the World Tree will bloom',
+  '🌸 세계수지기': '🌸 Tree Keeper',
 };
