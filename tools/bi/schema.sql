@@ -37,6 +37,8 @@ create table if not exists event_dict (
 
 create table if not exists devices (device text primary key);
 
+create or replace view events_real as select * from events where not is_test;
+
 create or replace function refresh_devices() returns void language plpgsql as $$
 begin
   drop table if exists devices_next;
@@ -91,7 +93,8 @@ begin
          r.d1, r.d7, r.w1, a.last_day, a.active_days, a.events, a.is_test
   from first_ev f join agg a using (device) left join d0 using (device) left join ret r using (device);
   alter table devices_next add primary key (device);
-  drop table devices;
+  drop table devices cascade;
   alter table devices_next rename to devices;
+  create view devices_real as select * from devices where not is_test;
 end
 $$;
