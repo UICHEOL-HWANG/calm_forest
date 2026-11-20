@@ -118,7 +118,7 @@ export const DECOR = [
   { id: 'metronome', name: '메트로놈', ico: '⏱️', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.25, 0.22], sm: true, h: 0.4 },
   { id: 'musicbox', name: '오르골', ico: '🎹', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.36, 0.46], sm: true, h: 0.47 },
   { id: 'wp_hearth', name: '작은 벽난로', ico: '🔥', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [1.2, 0.6], desc: '양말 두 짝이 걸린 크림색 벽난로예요' },
-  { id: 'wp_fur_rug', name: '양털 러그', ico: '🧶', cost: 0, pay: 'coins', hidden: true, keep: true, desc: '털 방울이 빙 둘린 동그란 러그예요' },
+  { id: 'wp_fur_rug', name: '양털 러그', ico: '🐑', cost: 0, pay: 'coins', hidden: true, keep: true, desc: '털 방울이 빙 둘린 동그란 러그예요' },
   { id: 'wp_cocoa_table', name: '핫초코 탁자', ico: '☕', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.8, 0.8], desc: '큰 머그에 핫초코를 담은 원탁이에요' },
   ...AFF_FRAMES,
 ];
