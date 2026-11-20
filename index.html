@@ -4392,6 +4392,11 @@
         slot.addEventListener('pointerdown', (e) => { Input.selectTool(i); e.stopPropagation(); });
         bar.appendChild(slot);
       });
+      const hand = document.createElement('div');
+      hand.className = 'slot'; hand.id = 'tool-bare'; hand.hidden = true;
+      hand.innerHTML = `<span class="s-ico">${iconHtml('✋')}</span><span class="s-key"><b class="s-n"></b>${t('맨손')}</span>`;
+      hand.addEventListener('pointerdown', (e) => { Input.setPage('none'); e.stopPropagation(); });
+      bar.appendChild(hand);
     }
 
     // 하단 프롬프트 겹침 방지 — 문/낚시 프롬프트가 떠 있으면 대사(zone-prompt)를 그 위로 올린다.
@@ -4864,14 +4869,21 @@
       setTool(idx, tools, page) {
         if (!$('hotbar').children.length) buildHotbar(tools);
         const bare = page === 'none';                      // ✋맨손 — 도구 칸을 접고 칩만 남긴다
-        $('hotbar').classList.toggle('bare', bare);
-        let n = 2;   // 도구 번호는 2번부터 — 1번은 세트 전환 칩이 쓴다
+        const kit = Input.toolKit?.() || null;
+        $('hotbar').classList.toggle('bare', bare && !kit);
+        $('tool-page').hidden = !!kit;
+        let n = kit ? 1 : 2;   // 도구 번호는 2번부터 — 1번은 세트 전환 칩이 쓴다
         [...$('hotbar').querySelectorAll('.slot[data-i]')].forEach((slot) => {
           const i = +slot.dataset.i;
           slot.classList.toggle('active', i === idx && !bare);
-          slot.hidden = bare || slot.dataset.grp !== page;  // 지금 페이지 도구만 노출
+          slot.hidden = kit ? !kit.includes(tools[i].id) : (bare || slot.dataset.grp !== page);  // 지금 페이지 도구만 노출
           if (!slot.hidden) slot.querySelector('.s-n').textContent = n++;
         });
+        const hand = $('tool-bare');
+        hand.hidden = !kit;
+        hand.classList.toggle('active', !!kit && bare);
+        if (kit) hand.querySelector('.s-n').textContent = n;
+        $('hint').textContent = kit ? '이동 WASD/방향키 · 1 괭이 · 2 맨손 · 상호작용 Space/클릭' : '이동 WASD/방향키 · 1 도구 세트 바꾸기 · 2~6 도구 고르기 · 상호작용 Space/클릭';
         const info = (Input.getToolPages?.() || []).find(p => p.id === page);
         const chip = $('tool-page');
         if (chip && info) {

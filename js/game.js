@@ -169,7 +169,7 @@ import { spawnPet, snapIfFar, followPlayer, walkTo } from './pet/render.js';   /
 import { updatePetAnim, PET_KIND } from './pet/art.js';             // 🐾 펫 조형 애니메이션 규약 + 확정 종
 // 📦 데이터 표 — 원문 그대로 옮겼다(분리 1단계, 2026-09-24). 값만 있고 상태는 없다
 import {
-  CROP_TYPES, BASIC_CROPS, TOOLS, TOOL_PAGES, CHOP_WOOD, TREE_RESPAWN_SEC, WET_TIME, WILT_TIME, ZONE_PAGE, ZONE_TOOL,
+  CROP_TYPES, BASIC_CROPS, TOOLS, TOOL_PAGES, CHOP_WOOD, TREE_RESPAWN_SEC, WET_TIME, WILT_TIME, ZONE_PAGE, ZONE_TOOL, ZONE_KIT,
 } from './data/tools.js';
 import {
   FORECAST_MSG, SEVERE_INFO, WEATHER_MSG, DAY_SPEED, PAL,
@@ -2019,6 +2019,7 @@ function updateToolPageAuto() {
   } else if (toolPage === 'none' && pageBeforeAuto) {
     setToolPage(pageBeforeAuto, true); pageBeforeAuto = null;               // 구역을 벗어나면 도로 꺼내 든다
   }
+  ui.setTool?.(currentTool, TOOLS, toolPage);
 }
 
 // =============================================================
@@ -2193,7 +2194,20 @@ export const Input = {
     ui.act?.('toolpage');   // 🎓 튜토리얼: "세트 바꿔 보기" 단계 통과
     return toolPage;
   },
-  setPage(id) { pageBeforeAuto = null; setToolPage(id); return toolPage; },
+  setPage(id) {
+    const keep = id === 'none' && Input.toolKit();
+    pageBeforeAuto = keep ? (toolPage !== 'none' ? toolPage : pageBeforeAuto) : null;
+    setToolPage(id);
+    return toolPage;
+  },
+  toolKit() { return ZONE_KIT[toolZoneKey()] || null; },
+  pickKitSlot(n) {
+    const kit = Input.toolKit();
+    if (!kit) return false;
+    if (n < kit.length) Input.selectTool(TOOLS.findIndex(x => x.id === kit[n]));
+    else if (n === kit.length) Input.setPage('none');
+    return true;
+  },
   // 🎓 튜토리얼이 "🪓도끼(1)" 처럼 특정 도구를 지시할 때, 그 도구가 있는 페이지를 펴 준다.
   //   고르지는 않는다 — 고르는 건 플레이어가 배워야 할 동작이라 칸만 보이게 한다.
   revealTool(id) {
@@ -6435,7 +6449,8 @@ function initInput() {
     if (e.code === 'KeyF' && boat.active) { wantSkill = true; return; }
     if (e.code === 'KeyC') Input.toggleSit();   // C: 앉기
     // 1 = 도구 세트 전환, 2~6 = 지금 세트의 도구 (하단바에 적힌 번호와 1:1 · 🌾농사는 5칸, 🏕️야외도구는 4칸)
-    if (e.code === 'Digit1') Input.cycleToolPage();
+    if (/^Digit[1-6]$/.test(e.code) && Input.pickKitSlot(parseInt(e.code.slice(5)) - 1)) ui.act?.('toolpick');
+    else if (e.code === 'Digit1') Input.cycleToolPage();
     else if (/^Digit[2-6]$/.test(e.code)) { Input.selectPageSlot(parseInt(e.code.slice(5)) - 2); ui.act?.('toolpick'); }
     // 방향키/스페이스는 브라우저 페이지 스크롤 방지(플레이 중 화면 밀림 방지)
     if (MOVE_KEYS.includes(e.code)) e.preventDefault();
@@ -7961,15 +7976,10 @@ function handleAction() {
     ui.toast?.('🛶 정박한 배로 가면 강을 내려갈 수 있어요');
     return;
   }
-  if (atMine) {                   // 동굴: 괭이로만 채굴 가능
-    // 🌾농사 세트의 다른 도구(씨앗·물조리개·낫·삽)를 들었으면 ⛏️괭이로 바꿔 그대로 캔다 —
-    // 입장 시 자동 선택(ZONE_TOOL)을 덮어쓰고 도구를 바꾼 경우의 안전망(밭 자동 전환과 같은 문법).
-    if (toolPage !== 'none') {
-      if (TOOLS[currentTool].grp === 'farm' && TOOLS[currentTool].id !== 'hoe') selectToolAuto('hoe');
-      if (TOOLS[currentTool].id === 'hoe') return delveFloorNow() > 0 ? tryDelveMine() : tryMine();
-    }
-    ui.toast?.('⛏️ 🌾농사 세트의 괭이(2)로 캐야 해요');
-    return;
+  if (atMine) {
+    if (toolPage !== 'farm') setToolPage('farm', true);
+    selectToolAuto('hoe');
+    return delveFloorNow() > 0 ? tryDelveMine() : tryMine();
   }
   if (atRestaurant) {
     restaurantAction();

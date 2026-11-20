@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { MINER_STEPS } from '../js/data/delve.js';
+import * as PESTS_MOD from '../js/delve/pests.js';
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 const delve = read('js/spaces/delve.js');
@@ -61,4 +62,24 @@ test('lift panel module renders round floor buttons and a close button, copy tra
   assert.match(p, /`지하 \$\{r\.f\}층`/);
   assert.match(p, /'닫기'/);
   for (const k of ["'🛗 어디로 갈까요?'", "'지하 {0#}층'", "'닫기'"]) assert.ok(en.includes(k), k);
+});
+
+test('delve floors: rocks and chest block the player, pests get pushed off', () => {
+  assert.match(delve, /const s = solidCircle\(m\.position\.x, m\.position\.z, ROCK_R\); roomSolids\.push\(s\); m\.userData\.solid = s;/);
+  assert.match(delve, /m\.visible = false;\n  removeSolid\(m\.userData\.solid\);/);
+  assert.match(delve, /if \(lr\) \{ lr\.visible = false; removeSolid\(lr\.userData\.solid\); \}/);
+  assert.match(delve, /run\.chest = \{ at, mesh, solid: solidCircle\(/);
+  assert.match(delve, /removeSolid\(run\.chest\.solid\)/);
+  assert.match(delve, /function clearRoom\(\) \{\n  clearRootShrine\(\);\n  roomSolids\.forEach\(removeSolid\);\n  roomSolids = \[\];/);
+  assert.match(delve, /p\.sim = pushOffPlayer\(p\.sim, lp\);/);
+  const { pushOffPlayer } = PESTS_MOD;
+  assert.deepEqual(pushOffPlayer({ kind: 'grub', state: 'idle', x: 0.3, z: 0 }, { x: 0, z: 0 }), { kind: 'grub', state: 'idle', x: 0.75, z: 0 });
+  assert.deepEqual(pushOffPlayer({ kind: 'grub', state: 'idle', x: 2, z: 0 }, { x: 0, z: 0 }), { kind: 'grub', state: 'idle', x: 2, z: 0 });
+  assert.deepEqual(pushOffPlayer({ kind: 'axolotl', state: 'hide', x: 0.1, z: 0 }, { x: 0, z: 0 }), { kind: 'axolotl', state: 'hide', x: 0.1, z: 0 });
+  assert.deepEqual(pushOffPlayer({ kind: 'bat', state: 'idle', x: 0, z: 0 }, { x: 0, z: 0 }), { kind: 'bat', state: 'idle', x: 0.75, z: 0 });
+  const nearHome = { kind: 'grub', state: 'carry', x: 3.3, z: 0, home: { x: 3, z: 0 } };
+  assert.deepEqual(pushOffPlayer(nearHome, { x: 3.5, z: 0 }), nearHome);
+  assert.equal(pushOffPlayer({ kind: 'grub', state: 'idle', x: 7.6, z: 0 }, { x: 7.3, z: 0 }).x, 7.7);
+  assert.match(delve, /p\.art\.g\.position\.copy\(W\(p\.sim\.x, p\.sim\.z\)\)/);
+  assert.match(delve, /const ROCK_R = 0\.35;/);
 });

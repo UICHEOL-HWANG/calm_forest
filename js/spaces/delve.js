@@ -1,6 +1,6 @@
 import {
   $w, atMine, dexDiscover, dist2D, isOpen, doPlayerAction, gameState, player, questEvent, refreshInventoryUI, requestSave, scene,
-  setSpaceVisible, situation, snapCamera, solidCircle, spawnDust, spawnFloatText, spawnSparkle, ui, todayStr,
+  removeSolid, setSpaceVisible, situation, snapCamera, solidCircle, spawnDust, spawnFloatText, spawnSparkle, ui, todayStr,
 } from '../game.js';
 import { trackEvent } from '../analytics.js';
 import { weeklyNote } from '../weekly/index.js';
@@ -14,7 +14,7 @@ import { rollChest, chestGive } from '../boat-chest.js';
 import { makeChestMesh } from '../boat-chest-art.js';
 import { jobCard, owedMinerRewards, minerTalk } from '../delve/miner-card.js';
 import { playMinerLines, advanceMinerTalk, minerTalkOpen, closeMinerTalk } from '../delve/miner-talk.js';
-import { createPest, stepPest, tapPest, baitPest, canPick, RING_SEC, TAP_R, BAIT_R } from '../delve/pests.js';
+import { createPest, stepPest, tapPest, baitPest, canPick, pushOffPlayer, RING_SEC, TAP_R, BAIT_R } from '../delve/pests.js';
 import { makePest, makeOreChunk, makePuddle, makeBurrow, makeRing, makeBait, makeShaft, makeLadderUp, makeRock, makeLift, emojiBubble, makeTrail } from '../delve/pest-art.js';
 import { makeMiner } from '../delve/miner.js';
 import { placeRootShrine, clearRootShrine } from '../delve/root-scene.js';
@@ -30,6 +30,9 @@ let minerMesh = null;
 let minerSolid = null;
 let spareLamp = null;
 let liftSolids = [];
+let roomSolids = [];
+const ROCK_R = 0.35;
+const CHEST_R = 0.55;
 let ride = null;
 const LIFT_SOLIDS = [[-1.1, 0, 0.22], [1.1, 0, 0.22], [1.55, 0, 0.4], [0, 0, 0.9]];
 const RIDE = { sink: 1.5, fade: 1.05, hold: 0.7 };
@@ -100,6 +103,8 @@ function disposeObj(root) {
 
 function clearRoom() {
   clearRootShrine();
+  roomSolids.forEach(removeSolid);
+  roomSolids = [];
   if (group) { disposeObj(group); scene.remove(group); }
   group = null;
 }
@@ -126,7 +131,7 @@ function buildRoom(floor, layout) {
   const up = makeLadderUp(); up.position.copy(W(layout.arrival.x, layout.arrival.z - 1)); up.position.y = FLOOR_Y; group.add(up);
   const light = new THREE.PointLight(0xffb866, 2.0, 18, 1.2); light.position.copy(W(0, 0)); light.position.y = 4; group.add(light);
   spareLamp = new THREE.PointLight(0xffb866, 0, 6, 1.3); group.add(spareLamp);
-  run.rockMeshes = layout.rocks.map(r => { const m = makeRock(r.vein && run.oreOk, theme); m.position.copy(W(r.x, r.z)); m.position.y = FLOOR_Y; m.userData.hp = 3; group.add(m); return m; });
+  run.rockMeshes = layout.rocks.map(r => { const m = makeRock(r.vein && run.oreOk, theme); m.position.copy(W(r.x, r.z)); m.position.y = FLOOR_Y; m.userData.hp = 3; group.add(m); const s = solidCircle(m.position.x, m.position.z, ROCK_R); roomSolids.push(s); m.userData.solid = s; return m; });
   for (const p of layout.puddles) { const m = makePuddle(0.85); m.position.copy(W(p.x, p.z)); m.position.y = FLOOR_Y; group.add(m); }
   for (const b of layout.burrows) { const m = makeBurrow(); m.position.copy(W(b.x, b.z)); m.position.y = FLOOR_Y; group.add(m); }
   scene.add(group);
@@ -155,7 +160,8 @@ export function enterFloor(floor, via) {
     const mesh = makeChestMesh({ buoy: false });
     const at = chestSpot(layout.ladderAt, DELVE_HALF);
     mesh.position.copy(W(at.x, at.z)); mesh.position.y = FLOOR_Y; group.add(mesh);
-    run.chest = { at, mesh };
+    run.chest = { at, mesh, solid: solidCircle(mesh.position.x, mesh.position.z, CHEST_R) };
+    roomSolids.push(run.chest.solid);
   }
   gameState.delve = noteReach(gameState.delve, floor);
   if (oreOk) gameState.delve = markOreFloor(gameState.delve, date, floor);
@@ -236,7 +242,7 @@ function dropChunk(lx, lz, ore) {
 function showLadder() {
   run.ladderShown = true;
   const s = makeShaft(); s.position.copy(W(run.layout.ladderAt.x, run.layout.ladderAt.z)); s.position.y = FLOOR_Y; group.add(s);
-  const lr = run.rockMeshes[run.layout.ladderRock]; if (lr) lr.visible = false;
+  const lr = run.rockMeshes[run.layout.ladderRock]; if (lr) { lr.visible = false; removeSolid(lr.userData.solid); }
   spawnSparkle(s.position.x, 0.6, s.position.z, 18);
   ui.toast?.('🪜 아래로 가는 길이 보여요');
 }
@@ -250,6 +256,7 @@ export function tryDelveMine() {
   m.userData.hp -= 1;
   if (m.userData.hp > 0) return;
   m.visible = false;
+  removeSolid(m.userData.solid);
   run.broken++;
   if (r.vein && run.oreOk) dropChunk(r.x, r.z, rollOre(makeRng((Date.now() ^ (i * 2654435761)) >>> 0), oreOdds(run.floor, situation().weather)));
   if (!run.ladderShown && ladderRevealed({ broken: run.broken, hitLadderRock: i === run.layout.ladderRock })) showLadder();
@@ -340,7 +347,7 @@ export function handleDelveDoor(nd) {
     if (!run?.chest) return true;
     const loot = chestGive(rollChest(hashSeed(`delvechest:${todayStr()}:${run.floor}`)), { unlocked: false });
     for (const [k, v] of Object.entries(loot.give)) gameState.inventory[k] = (gameState.inventory[k] || 0) + v;
-    group.remove(run.chest.mesh); disposeObj(run.chest.mesh); run.chest = null;
+    removeSolid(run.chest.solid); group.remove(run.chest.mesh); disposeObj(run.chest.mesh); run.chest = null;
     gameState.delve = noteChest(gameState.delve, run.floor);
     refreshInventoryUI(); requestSave();
     ui.toast?.(`🧰 ${loot.name}`);
@@ -460,6 +467,7 @@ export function updateDelve(dt, t) {
     const world = { chunks: run.chunks.map(c => ({ id: c.id, x: c.x, z: c.z, age: c.age })), burrowAt: p.sim.home };
     const { pest, events } = stepPest(p.sim, dt, world);
     p.sim = pest;
+    p.sim = pushOffPlayer(p.sim, lp);
     for (const e of events) {
       if (e.type === 'grab') {
         const c = run.chunks.find(x => x.id === e.chunkId);
@@ -482,7 +490,7 @@ export function updateDelve(dt, t) {
         }
       }
     }
-    p.art.g.position.copy(W(pest.x, pest.z)); p.art.g.position.y = FLOOR_Y + (p.art.hover || 0);
+    p.art.g.position.copy(W(p.sim.x, p.sim.z)); p.art.g.position.y = FLOOR_Y + (p.art.hover || 0);
     p.art.g.visible = pest.state !== 'gone';
     const want = pest.state === 'carry' ? '💎' : pest.state === 'flee' ? '❗' : pest.state === 'eat' ? '😋' : null;
     if (p.bubbleTxt !== want) {
