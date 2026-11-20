@@ -1,5 +1,4 @@
-import { onSurf } from '../../js/cosmetics/anchors.js';
-import { tubeAlong, withAnchors, flatten } from '../../js/cosmetics/art-winter-pick.js';
+import { tubeAlong, withAnchors, flatten, backFront, surfLocal } from '../../js/cosmetics/art-winter-pick.js';
 import { stickOn } from '../../js/cosmetics/art-xmas-pick.js';
 import { arcPt } from '../../js/cosmetics/art-forest-pick.js';
 
@@ -182,56 +181,99 @@ export function buildMacaronBroochC(THREE, g, k0, h) {
   flatten(THREE, g);
 }
 
-function sideBag(THREE, g, k, h, strap) {
-  const K = kit(THREE, h), R = k.R, tube = R * 0.04;
-  const L = (x, y, z, out) => { const p = onSurf(k.bs, k.R, k.bodyY, x, y, z, out); return new THREE.Vector3(p.x - k.side.x, p.y - k.side.y, p.z - k.side.z); };
-  const hook = L(-0.8, 0.0, 0.48), shoulder = L(0.55, 0.8, 0.2);
-  const n = new THREE.Vector3(hook.x + k.side.x, (hook.y + k.side.y - k.bodyY) / (k.bs[1] * k.bs[1]), hook.z + k.side.z).normalize();
-  [[L(-0.5, 0.12, 0.85), L(0.04, 0.5, 0.86)], [L(-0.66, 0.18, -0.75), L(-0.12, 0.64, -0.78)]].forEach(mid =>
-    g.add(tubeAlong(THREE, [hook, ...mid, shoulder], tube, h.clay(strap), 28, 6)));
-  h.put(g, new THREE.Mesh(new THREE.SphereGeometry(tube * 1.4, 8, 6), h.clay(strap)), shoulder.x, shoulder.y, shoulder.z, false);
-  K.add(g, K.tor(R * 0.045, R * 0.016, 6, 12), strap, hook.x, hook.y, hook.z);
-  const bag = K.grp(g, hook.x + n.x * R * 0.1, hook.y + R * 0.04, hook.z + n.z * R * 0.1);
-  bag.rotation.y = Math.atan2(n.x, n.z); bag.scale.setScalar(1.4);
-  return { K, R, bag };
+function roundRect(THREE, w, hh, r, topR = r) {
+  const sh = new THREE.Shape(), x0 = -w / 2, y0 = -hh / 2;
+  sh.moveTo(x0 + r, y0); sh.lineTo(x0 + w - r, y0); sh.quadraticCurveTo(x0 + w, y0, x0 + w, y0 + r);
+  sh.lineTo(x0 + w, y0 + hh - topR); sh.quadraticCurveTo(x0 + w, y0 + hh, x0 + w - topR, y0 + hh);
+  sh.lineTo(x0 + topR, y0 + hh); sh.quadraticCurveTo(x0, y0 + hh, x0, y0 + hh - topR);
+  sh.lineTo(x0, y0 + r); sh.quadraticCurveTo(x0, y0, x0 + r, y0);
+  return sh;
 }
 
-export function buildCupcakePackA(THREE, g, k, h) {
-  const { K, R, bag } = sideBag(THREE, g, k, h, DS.pinkDk);
-  const body = K.grp(bag); body.scale.z = 0.62;
-  const rb = R * 0.12, rt = R * 0.165, H = R * 0.17, y0 = -R * 0.36, yc = y0 + H + rt * 0.66;
-  K.add(body, new THREE.LatheGeometry([[0, 0], [rb, 0], [rt, H], [0, H]].map(([a, b]) => new THREE.Vector2(a, b)), 20), DS.pink, 0, y0, 0, true);
-  for (let i = 0; i < 10; i++) {
-    const a = i / 10 * TAU, ra = (rt + rb) / 2 + R * 0.006, tilt = Math.atan2(rt - rb, H);
-    K.add(body, K.cyl(R * 0.012, R * 0.012, H * 0.92, 4), DS.pinkDk, Math.cos(a) * ra, y0 + H * 0.5, Math.sin(a) * ra).rotation.set(Math.sin(a) * tilt, 0, -Math.cos(a) * tilt);
-  }
-  K.add(body, K.sph(rt * 1.06, 20, 12), DS.cream, 0, y0 + H, 0).scale.set(1, 0.62, 1);
-  K.add(body, K.tor(rt * 0.98, R * 0.022, 6, 24), DS.cream, 0, y0 + H, 0).rotation.x = Math.PI / 2;
-  K.add(bag, K.sph(R * 0.042, 12, 10), DS.berry, 0, yc + R * 0.03, 0);
-  bag.add(tubeAlong(THREE, [K.V(0, yc + R * 0.06, 0), K.V(R * 0.015, yc + R * 0.11, 0), K.V(R * 0.05, yc + R * 0.13, 0)], R * 0.008, h.clay(DS.leafDk), 6, 4));
-  [-1, 1].forEach(s => bag.add(tubeAlong(THREE, [K.V(0, R * 0.02, 0), K.V(s * rt * 0.55, y0 + H + R * 0.07, 0), K.V(s * rt * 0.95, y0 + H, 0)], R * 0.016, h.clay(DS.pinkDk), 8, 5)));
-  flatten(THREE, g);
+function slab(K, p, sh, d, c, z, bev) {
+  const geo = new K.THREE.ExtrudeGeometry(sh, { depth: d, bevelEnabled: true, bevelSize: bev, bevelThickness: bev, bevelSegments: 3, curveSegments: 16 });
+  geo.translate(0, 0, -d);
+  return K.add(p, geo, c, 0, 0, z);
 }
 
-export function buildCupcakePackB(THREE, g, k, h) {
-  const { K, R, bag } = sideBag(THREE, g, k, h, DS.pinkDk);
-  const s = R * 0.36, top = -R * 0.08;
-  const sb = strawberry(K, bag, s, DS.berrySoft); sb.rotation.z = Math.PI; sb.position.y = top; sb.scale.z = 0.6;
-  [-1, 1].forEach(x => bag.add(tubeAlong(THREE, [K.V(0, R * 0.02, 0), K.V(x * s * 0.14, top - s * 0.02, 0), K.V(x * s * 0.28, top - s * 0.1, 0)], R * 0.016, h.clay(DS.pinkDk), 8, 5)));
-  const prof = t => { for (let i = 0; i < SB.length - 1; i++) if (t <= SB[i + 1][1]) return SB[i][0] + (SB[i + 1][0] - SB[i][0]) * (t - SB[i][1]) / (SB[i + 1][1] - SB[i][1]); return 0; };
-  [[-0.12, 0.3], [0.12, 0.3], [0, 0.48], [-0.16, 0.56], [0.16, 0.56], [-0.07, 0.72], [0.07, 0.72]].forEach(([x, y]) => {
-    const rr = prof(1 - y) * s, zz = Math.sqrt(Math.max(0, rr * rr - (x * s) ** 2)) * 0.6;
-    K.add(bag, K.sph(R * 0.014, 6, 4), DS.cream, x * s, top - y * s, zz + R * 0.003).scale.set(0.8, 1.3, 0.6);
+function packFrame(K, g, k, yc, H) {
+  const c = backFront(k, yc);
+  const f = K.grp(g, 0, c.y, c.z);
+  f.rotation.x = 0.08;
+  return { f, H: H * k.R };
+}
+
+function packStraps(THREE, g, k, h, f, pts, color) {
+  f.updateMatrix();
+  pts.forEach((p, i) => {
+    const s = i ? 1 : -1, p0 = p.clone().applyMatrix4(f.matrix);
+    const path = [p0, ...[[s * 0.42, 1.0, -0.15], [s * 0.42, 0.62, 0.78], [s * 0.55, 0.15, 0.85]].map(d => surfLocal(THREE, k, k.back, d, 1.06))];
+    g.add(tubeAlong(THREE, path, k.R * 0.042, h.clay(color), 28, 6));
   });
+}
+
+export function buildCupcakePackA(THREE, g, k0, h) {
+  const K = kit(THREE, h), k = withAnchors(k0), R = k.R;
+  const { f, H } = packFrame(K, g, k, 1.14, 0.56);
+  const rb = R * 0.26, rt = R * 0.36, ch = H * 0.62, D = 0.4, y0 = -H * 0.5;
+  const cup = K.grp(f, 0, 0, -rt * D - R * 0.01); cup.scale.z = D;
+  K.add(cup, new THREE.LatheGeometry([[0, 0], [rb, 0], [rt, ch], [0, ch]].map(([a, b]) => new THREE.Vector2(a, b)), 28), DS.pink, 0, y0, 0, true);
+  for (let i = 0; i < 14; i++) {
+    const a = i / 14 * TAU, ra = (rt + rb) / 2 + R * 0.008, tilt = Math.atan2(rt - rb, ch);
+    K.add(cup, K.cyl(R * 0.018, R * 0.018, ch * 0.94, 5), DS.pinkDk, Math.cos(a) * ra, y0 + ch * 0.5, Math.sin(a) * ra).rotation.set(Math.sin(a) * tilt, 0, -Math.cos(a) * tilt);
+  }
+  const yt = y0 + ch;
+  K.add(cup, K.sph(rt * 1.08, 28, 14, 0, TAU, 0, Math.PI / 2), DS.cream, 0, yt, 0).scale.y = 0.62;
+  K.add(cup, K.tor(rt * 1.0, R * 0.05, 8, 32), DS.cream, 0, yt, 0).rotation.x = Math.PI / 2;
+  for (let i = 0; i < 10; i++) {
+    const a = Math.PI + (i + 0.5) / 10 * Math.PI;
+    K.add(cup, K.sph(R * 0.062, 12, 8), DS.cream, Math.cos(a) * rt * 1.0, yt - R * 0.04, Math.sin(a) * rt * 1.0).scale.set(1, 1.3, 1);
+  }
+  const top = yt + rt * 0.62;
+  K.add(f, K.sph(R * 0.07, 14, 10), DS.berry, 0, top + R * 0.05, -rt * D - R * 0.01);
+  f.add(tubeAlong(THREE, [K.V(0, top + R * 0.1, -rt * D), K.V(R * 0.02, top + R * 0.17, -rt * D), K.V(R * 0.07, top + R * 0.2, -rt * D)], R * 0.012, h.clay(DS.leafDk), 6, 4));
+  packStraps(THREE, g, k, h, f, [K.V(-rt * 0.6, yt - R * 0.02, -R * 0.02), K.V(rt * 0.6, yt - R * 0.02, -R * 0.02)], DS.pinkDk);
   flatten(THREE, g);
 }
 
-export function buildCupcakePackC(THREE, g, k, h) {
-  const { K, R, bag } = sideBag(THREE, g, k, h, DS.pinkDk);
-  const r = R * 0.2, yc = -R * 0.2;
-  const m = macaron(K, bag, r, DS.mint, DS.cream); m.position.y = yc; m.scale.z = 0.8;
-  const b = flatBow(K, bag, R * 0.24, DS.pink, DS.pinkDk); b.position.set(0, yc + r * 0.05, r * 0.86);
-  [-1, 1].forEach(s => bag.add(tubeAlong(THREE, [K.V(0, R * 0.02, 0), K.V(s * r * 0.5, -R * 0.02, 0), K.V(s * r * 0.85, yc + r * 0.25, 0)], R * 0.016, h.clay(DS.mintDk), 8, 5)));
+export function buildCupcakePackB(THREE, g, k0, h) {
+  const K = kit(THREE, h), k = withAnchors(k0), R = k.R;
+  const { f, H } = packFrame(K, g, k, 1.06, 0.56);
+  const w = R * 0.74, hh = H, d = R * 0.16;
+  slab(K, f, roundRect(THREE, w, hh, R * 0.14, R * 0.3), d, DS.pink, -R * 0.03, R * 0.04);
+  const pw = w * 0.66, ph = hh * 0.42, py = -hh * 0.18;
+  const pk = slab(K, f, roundRect(THREE, pw, ph, R * 0.08, R * 0.08), R * 0.03, DS.cream, -R * 0.03 - d - R * 0.04, R * 0.02);
+  pk.position.y = py;
+  K.add(f, new THREE.BoxGeometry(pw * 0.9, R * 0.022, R * 0.02), DS.pinkDk, 0, py + ph * 0.5 - R * 0.035, -R * 0.03 - d - R * 0.1, true);
+  const sb = strawberry(K, f, R * 0.13); sb.position.set(0, py - ph * 0.26, -R * 0.03 - d - R * 0.1); sb.rotation.x = -0.2;
+  const hd = K.add(f, K.tor(R * 0.08, R * 0.022, 6, 16, Math.PI), DS.pinkDk, 0, hh * 0.5 + R * 0.02, -R * 0.03 - d * 0.5);
+  hd.rotation.y = 0;
+  packStraps(THREE, g, k, h, f, [K.V(-w * 0.3, hh * 0.38, -R * 0.03), K.V(w * 0.3, hh * 0.38, -R * 0.03)], DS.pinkDk);
+  flatten(THREE, g);
+}
+
+function scallopFlap(THREE, w, hh, n) {
+  const sh = new THREE.Shape(), r = w / (2 * n), top = hh / 2, bot = -hh / 2 + r;
+  sh.moveTo(-w / 2, bot);
+  for (let i = 0; i < n; i++) { const cx = -w / 2 + r * (2 * i + 1); sh.absarc(cx, bot, r, Math.PI, TAU, false); }
+  sh.lineTo(w / 2, top - w * 0.36);
+  sh.quadraticCurveTo(w / 2, top, 0, top);
+  sh.quadraticCurveTo(-w / 2, top, -w / 2, top - w * 0.36);
+  sh.lineTo(-w / 2, bot);
+  return sh;
+}
+
+export function buildCupcakePackC(THREE, g, k0, h) {
+  const K = kit(THREE, h), k = withAnchors(k0), R = k.R;
+  const { f, H } = packFrame(K, g, k, 1.06, 0.56);
+  const w = R * 0.72, hh = H, d = R * 0.16, zf = -R * 0.03 - d - R * 0.04;
+  slab(K, f, roundRect(THREE, w, hh, R * 0.14, w * 0.5), d, DS.pink, -R * 0.03, R * 0.04);
+  const fh = hh * 0.56, fl = slab(K, f, scallopFlap(THREE, w * 1.02, fh, 5), R * 0.025, DS.cream, zf, R * 0.015);
+  fl.position.y = hh / 2 - fh / 2 + R * 0.025;
+  const by = hh / 2 - fh + R * 0.06;
+  const b = flatBow(K, f, R * 0.36, DS.pink, DS.pinkDk, false); b.position.set(0, by, zf - R * 0.04);
+  strawberry(K, f, R * 0.1).position.set(0, by - R * 0.05, zf - R * 0.07);
+  packStraps(THREE, g, k, h, f, [K.V(-w * 0.3, hh * 0.36, -R * 0.03), K.V(w * 0.3, hh * 0.36, -R * 0.03)], DS.pinkDk);
   flatten(THREE, g);
 }
 
@@ -286,7 +328,7 @@ export function buildCreamTrailC(THREE, g, s, o, id, h) {
 
 export const VARIANTS = {
   ds_cake_hat: {
-    slot: 'head', name: '딸기 케이크 머리띠', rec: 'A',
+    slot: 'head', name: '딸기 케이크 머리띠', rec: 'C',
     A: { name: '딸기 머리띠', note: '가는 분홍 머리띠 · 귀 옆에 작은 딸기 하나와 크림 한 점', build: buildCakeHatA },
     B: { name: '쇼트케이크 머리핀', note: '귀 옆 분홍 핀 · 딸기 올린 작은 케이크 조각 하나', build: buildCakeHatB },
     C: { name: '리본 머리띠', note: '가는 분홍 머리띠 · 납작한 리본 두 고리 · 가운데 작은 딸기', build: buildCakeHatC },
@@ -300,11 +342,12 @@ export const VARIANTS = {
     REF: { name: '호랑가시 리본 타이', note: '출시된 크리스마스 목장식 (비교용)', ref: 'xm_holly_tie' },
   },
   ds_cupcake_pack: {
-    slot: 'back', anchor: 'side', cols: 'pochette', name: '컵케이크 크로스백', rec: 'A',
-    A: { name: '컵케이크 크로스백', note: '가슴을 가로지르는 끈 · 옆구리에 작은 분홍 컵 · 크림 뚜껑 · 체리', build: buildCupcakePackA },
-    B: { name: '딸기 크로스백', note: '옆구리에 작은 딸기 모양 가방 · 크림 씨앗 · 초록 꼭지', build: buildCupcakePackB },
-    C: { name: '마카롱 동전지갑', note: '옆구리에 작은 민트 마카롱 · 앞에 분홍 리본 하나', build: buildCupcakePackC },
+    slot: 'back', cols: 'pack', name: '컵케이크 배낭', rec: 'C',
+    A: { name: '컵케이크 배낭', note: '주름 잡힌 분홍 컵 · 크림 뚜껑 · 작은 체리', build: buildCupcakePackA },
+    B: { name: '딸기우유 배낭', note: '둥근 분홍 배낭 · 크림 앞주머니 · 작은 딸기', build: buildCupcakePackB },
+    C: { name: '리본 배낭', note: '둥근 분홍 배낭 · 물결 크림 덮개 · 머리띠와 같은 리본과 딸기', build: buildCupcakePackC },
     REF: { name: '선물 꾸러미 배낭', note: '출시된 크리스마스 배낭 (비교용)', ref: 'xm_gift_pack', anchor: 'back' },
+    REF2: { name: '고슴도치 배낭', note: '출시된 숲 배낭 (비교용)', ref: 'fp_hedgehog_pack', anchor: 'back' },
   },
   ds_cream_trail: {
     slot: 'trail', name: '크림 발자국', rec: 'A',

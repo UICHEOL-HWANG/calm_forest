@@ -240,9 +240,15 @@ const COLS = {
     { a: 'dog', ang: 165, label: '강아지 뒤' }, { a: 'rabbit', ang: 285, label: '토끼 옆(왼쪽)' }, { a: 'chick', ang: 320, label: '병아리 3/4' },
     { a: 'panda', ang: 240, label: '판다 뒤 3/4' }, { a: 'fox', ang: 200, label: '여우 뒤' }, { a: 'bear', ang: 320, label: '게임 거리', far: true },
   ],
+  pack: [
+    { a: 'bear', ang: 180, label: '곰 뒤' }, { a: 'panda', ang: 330, label: '판다 앞 3/4' }, { a: 'fox', ang: 165, label: '여우 뒤' },
+    { a: 'fox', ang: 270, label: '여우 옆(왼쪽)' }, { a: 'cat', ang: 90, label: '고양이 옆(오른쪽)' }, { a: 'dog', ang: 210, label: '강아지 뒤 3/4' },
+    { a: 'rabbit', ang: 30, label: '토끼 앞 3/4' }, { a: 'chick', ang: 270, label: '병아리 옆(왼쪽)' }, { a: 'cat', ang: 180, label: '고양이 뒤' },
+    { a: 'fox', ang: 160, label: '게임 거리', far: true },
+  ],
   cmp_head: [{ a: 'bear', ang: 32, label: '곰 3/4' }, { a: 'rabbit', ang: 32, label: '토끼 3/4' }, { a: 'chick', ang: 32, label: '병아리 3/4' }, { a: 'bear', ang: 32, label: '게임 거리', far: true }],
   cmp_neck: [{ a: 'bear', ang: 28, label: '곰 3/4' }, { a: 'rabbit', ang: 28, label: '토끼 3/4' }, { a: 'chick', ang: 28, label: '병아리 3/4' }, { a: 'bear', ang: 28, label: '게임 거리', far: true }],
-  cmp_back: [{ a: 'bear', ang: 235, label: '곰 뒤 3/4' }, { a: 'rabbit', ang: 235, label: '토끼 뒤 3/4' }, { a: 'chick', ang: 235, label: '병아리 뒤 3/4' }, { a: 'bear', ang: 235, label: '게임 거리', far: true }],
+  cmp_back: [{ a: 'bear', ang: 210, label: '곰 뒤 3/4' }, { a: 'rabbit', ang: 30, label: '토끼 앞 3/4' }, { a: 'chick', ang: 270, label: '병아리 옆' }, { a: 'fox', ang: 160, label: '게임 거리', far: true }],
   cmp_trail: [{ a: 'bear', ang: 125, label: '곰' }, { a: 'rabbit', ang: 125, label: '토끼' }, { a: 'chick', ang: 125, label: '병아리' }, { a: 'bear', ang: 125, label: '게임 거리', far: true }],
   trail: [
     { a: null, ang: 180, label: '자국 근접', close: true }, { a: 'bear', ang: 125, label: '곰' }, { a: 'rabbit', ang: 125, label: '토끼' },
@@ -290,7 +296,7 @@ rows.forEach((r, ri) => {
   const v = rowOf(r);
   const re = document.createElement('div');
   re.className = 'row';
-  re.innerHTML = `<div class="L">${r === 'REF' ? '기준' : r}</div>${r === ITEM.rec ? '<div class="n" style="color:#b0566e">v3 추천</div>' : ''}<div class="n">${v.name}</div><div class="d">${v.note}</div>`;
+  re.innerHTML = `<div class="L">${r.startsWith('REF') ? '기준' : r}</div>${r === ITEM.rec ? '<div class="n" style="color:#b0566e">v3 추천</div>' : ''}<div class="n">${v.name}</div><div class="d">${v.note}</div>`;
   Object.assign(re.style, { left: 0, width: LEFTW + 'px', top: TOP + COLH + ri * ch + 'px', height: ch + 'px' });
   ov.appendChild(re);
 
