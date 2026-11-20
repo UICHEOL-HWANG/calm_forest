@@ -3,7 +3,7 @@
 //  데이터: RPC cf_admin_dashboard(days, token) — sql/analytics/admin_dashboard.sql
 //  계산: ./admin-metrics.js(순수 함수, 테스트 있음) · 공통: ./admin-common.js
 // =============================================================
-import { $, V, nf, esc, CHAR, shareKey, bootAdmin, explainRpcError, showRpcError, showMsg, createLoader } from './admin-common.js';
+import { $, V, nf, esc, CHAR, shareKey, bootAdmin, explainRpcError, showRpcError, showMsg, createLoader, chartDefaults } from './admin-common.js';
 import { MAPS, delta, worstLeak, rate, heatGrid, userStatus, funnelSteps, mapHourGrid, heatCellsFor, HEAT_SLOTS, zoneFlow, zoneLabel, ZONE_CIRCLES, VILLAGE_R, trackSegments, houseStageLabel } from './admin-metrics.js';
 
 const page = $('page');
@@ -17,15 +17,6 @@ const pct = (v) => (v == null ? '—' : `${v}%`);
 const dl = (cur, prev, opt) => { const d = delta(cur, prev, opt); return d ? `<span class="dlt ${d.cls}">${d.text}</span>` : ''; };
 
 // ── 차트 공통(색은 _dash.css 토큰) ──
-function chartDefaults() {
-  Chart.defaults.color = V('--ink-3');
-  Chart.defaults.borderColor = V('--line-soft');
-  Chart.defaults.font.family = V('--font');
-  Chart.defaults.font.size = 10.5;
-  Chart.defaults.plugins.tooltip.backgroundColor = V('--ink');
-  Chart.defaults.plugins.tooltip.titleColor = V('--surface-1');
-  Chart.defaults.plugins.tooltip.bodyColor = V('--surface-1');
-}
 const axes = (extra = {}) => ({
   x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkipPadding: 12 } },
   y: { beginAtZero: true, grid: { color: V('--line-soft') }, border: { display: false } },

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>고요한 숲 · 활성 유저</title>
+<meta name="description" content="고요한 숲 활성 유저. DAU · WAU · MAU 추이와 고착도, 플랫폼별 · 일별 표" />
+<meta name="robots" content="noindex, nofollow" />
+<link rel="icon" href="/favicon.ico" sizes="any" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+<link rel="stylesheet" href="_dash.css" />
+<link rel="stylesheet" href="_admin.css" />
+<style>
+  #msg .msg-char { display: block; width: 72px; height: 72px; object-fit: contain; margin: 0 auto 8px; }
+  #dash { display: grid; gap: 20px; margin-top: 20px; }
+  .trend { display: grid; gap: 20px; }
+  .trend h3 small { font-weight: 500; color: var(--ink-3); margin-left: 6px; font-size: 12px; }
+  .trend .chartbox { height: 160px; }
+  .trend .chartbox.tall { height: 200px; }
+</style>
+</head>
+<body data-nav="active">
+  <div id="page" class="is-loading is-first">
+    <div class="ah">
+      <h1>활성 유저</h1>
+      <div class="seg range" id="range" role="group" aria-label="기간">
+        <button data-d="30" disabled>30일</button>
+        <button data-d="60" class="on" disabled>60일</button>
+        <button data-d="90" disabled>90일</button>
+      </div>
+      <div class="meta skel" id="meta">기기 기준 · KST · 페르소나 제외</div>
+    </div>
+    <div class="loader" id="loader" role="status" aria-live="polite">
+      <img src="img/chars/dog.png" alt="" /><span class="t">분석 중</span><span class="dots"><i></i><i></i><i></i></span><span class="step"></span><span class="bar"><i></i></span>
+    </div>
+    <div id="msg"></div>
+
+    <main class="dash" id="dash">
+      <div class="sum" id="kpis">
+        <div class="k"><span class="lb">하루 활성 유저 DAU</span><span class="n num">0</span></div>
+        <div class="k"><span class="lb">주간 활성 유저 WAU</span><span class="n num">0</span></div>
+        <div class="k"><span class="lb">월간 활성 유저 MAU</span><span class="n num">0</span></div>
+        <div class="k"><span class="lb">고착도 DAU÷MAU</span><span class="n num">0%</span></div>
+      </div>
+
+      <section class="card trend" aria-labelledby="trendTitle">
+        <div>
+          <h2 id="trendTitle">추이</h2>
+          <p class="def">DAU 는 그날 접속한 기기 수, WAU·MAU 는 그날까지 7일·30일 동안 한 번이라도 접속한 기기 수입니다. 세 지표를 같은 날짜 축에 위아래로 놓았고 눈금은 지표마다 따로입니다.</p>
+        </div>
+        <div class="panel">
+          <h3>DAU<small>그날 접속한 기기</small></h3>
+          <div class="lgd"><span><i style="background:var(--s1)"></i>기존 유저</span><span><i style="background:var(--s2)"></i>신규 유저(그날 처음 접속)</span></div>
+          <div class="chartbox tall"><canvas id="cDau"></canvas></div>
+        </div>
+        <div class="panel">
+          <h3>WAU<small>그날까지 7일</small></h3>
+          <div class="chartbox"><canvas id="cWau"></canvas></div>
+        </div>
+        <div class="panel">
+          <h3>MAU<small>그날까지 30일</small></h3>
+          <div class="chartbox"><canvas id="cMau"></canvas></div>
+        </div>
+      </section>
+
+      <div class="split">
+        <section class="card" aria-labelledby="platTitle">
+          <h2 id="platTitle">플랫폼별</h2>
+          <p class="def">어제 기준. 세션이 기록된 플랫폼으로 나눕니다.</p>
+          <div class="scroll-x" id="plat"></div>
+        </section>
+        <section class="card" aria-labelledby="dailyTitle">
+          <h2 id="dailyTitle">일별 표</h2>
+          <p class="def">최근 14일. 기존 = DAU 에서 신규를 뺀 수, 고착도 = 그날 DAU ÷ 그날 MAU.</p>
+          <div class="scroll-x" id="daily"></div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <script type="module" src="js/admin-nav.js"></script>
+  <script type="module" src="js/admin-active.js"></script>
+</body>
+</html>
