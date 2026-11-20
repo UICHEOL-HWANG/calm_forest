@@ -246,7 +246,7 @@ const qs = new URLSearchParams(location.search);
 const itemId = VARIANTS[qs.get('item')] ? qs.get('item') : 'sp_pirate_scarf';
 const ITEM = VARIANTS[itemId];
 const slot = ITEM.slot;
-const PORT = null;
+const PORT = { sp_pirate_scarf: ['A', 'sp_pirate_scarf'], sp_anchor_necklace: ['A', 'sp_anchor_necklace'], sp_lighthouse_pack: ['A', 'sp_lighthouse_pack'], sp_wave_trail: ['B', 'sp_wave_trail'] }[itemId];
 const portOn = qs.has('port') && PORT;
 const rowOf = r => r === 'PORT'
   ? { name: '게임 코드', note: `${PORT[1]} · buildCosmetic/buildTrailMark`, ref: PORT[1], anchor: findItem(PORT[1]).anchor }

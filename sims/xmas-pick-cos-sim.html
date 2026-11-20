@@ -34,6 +34,7 @@ import { buildAnimalHead, plushMat } from '../js/animal-faces.js';
 import { PALETTE, put, buildCosmetic } from '../js/cosmetics/art.js';
 import { TRAIL_SIDE, TRAIL_S, buildTrailMark } from '../js/cosmetics/trail.js';
 import { backAnchor, headAnchor, neckAnchor, neckR as neckRadius, sideAnchor } from '../js/cosmetics/anchors.js';
+import { findItem } from '../js/cosmetics/catalog.js';
 import { VARIANTS, XM } from './xmas-pick/cos-art.mjs';
 
 const BLOOM_LUMA = 0.85;
@@ -245,7 +246,11 @@ const qs = new URLSearchParams(location.search);
 const itemId = VARIANTS[qs.get('item')] ? qs.get('item') : 'xm_antler_band';
 const ITEM = VARIANTS[itemId];
 const slot = ITEM.slot;
-const rowOf = r => ITEM[r];
+const PORT = { xm_antler_band: ['B', 'xm_antler_band'], xm_holly_tie: ['A', 'xm_holly_tie'], xm_gift_pack: ['A', 'xm_gift_pack'], xm_stardust_trail: ['C', 'xm_stardust_trail'] }[itemId];
+const portOn = qs.has('port') && PORT;
+const rowOf = r => r === 'PORT'
+  ? { name: '게임 코드', note: `${PORT[1]} · buildCosmetic/buildTrailMark`, ref: PORT[1], anchor: findItem(PORT[1]).anchor }
+  : ITEM[r];
 
 const used = Object.entries(XM);
 const over = used.filter(([, c]) => luma(c) > BLOOM_LUMA);
@@ -265,7 +270,7 @@ document.body.appendChild(renderer.domElement);
 
 const TOP = 64, COLH = 30, LEFTW = 200;
 const cols = COLS[ITEM.cols || slot];
-const rows = ITEM.rows || ['A', 'B', 'C'];
+const rows = portOn ? [PORT[0], 'PORT'] : (ITEM.rows || ['A', 'B', 'C']);
 const cw = (innerWidth - LEFTW) / cols.length, ch = (innerHeight - TOP - COLH) / rows.length;
 const ov = document.getElementById('ov');
 const cells = [];
