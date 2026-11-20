@@ -8,11 +8,12 @@ const addDays = (key, n) => {
   return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, '0')}-${String(t.getUTCDate()).padStart(2, '0')}`;
 };
 
-test('풀은 겨울 8종, 캐릭터 4 + 가구 4, id 중복 없음', () => {
-  assert.equal(DAILY_PICK_POOL.length, 8);
-  assert.equal(DAILY_PICK_POOL.filter(p => p.kind === 'cos').length, 4);
-  assert.equal(DAILY_PICK_POOL.filter(p => p.kind === 'decor').length, 4);
-  assert.equal(new Set(DAILY_PICK_POOL.map(p => p.id)).size, 8);
+test('풀은 겨울 8종 + 숲 동물 8종 + 도구 세트 2종, id 중복 없음', () => {
+  assert.equal(DAILY_PICK_POOL.length, 18);
+  assert.equal(DAILY_PICK_POOL.filter(p => p.kind === 'cos').length, 10);
+  assert.equal(DAILY_PICK_POOL.filter(p => p.kind === 'decor').length, 8);
+  assert.equal(new Set(DAILY_PICK_POOL.map(p => p.id)).size, 18);
+  for (const id of ['tools_snowman', 'tools_squirrel']) assert.equal(DAILY_PICK_POOL.find(p => p.id === id)?.price, 3600);
   for (const p of DAILY_PICK_POOL) assert.ok(Number.isInteger(p.price) && p.price > 0);
 });
 
@@ -21,16 +22,17 @@ test('같은 날짜는 언제나 같은 아이템', () => {
   assert.equal(pickIndex('2026-12-01'), pickIndex('2026-12-01'));
 });
 
-test('연속 8일이면 8종이 한 번씩, 9일째는 첫날과 같다', () => {
-  const start = '2026-11-28';
-  const ids = Array.from({ length: 8 }, (_, i) => pickOf(addDays(start, i)).id);
-  assert.equal(new Set(ids).size, 8);
-  assert.equal(pickOf(addDays(start, 8)).id, ids[0]);
+test('풀 크기만큼 연속된 날이면 전부 한 번씩, 그다음 날은 첫날과 같다', () => {
+  const start = '2026-11-28', n = DAILY_PICK_POOL.length;
+  const ids = Array.from({ length: n }, (_, i) => pickOf(addDays(start, i)).id);
+  assert.equal(new Set(ids).size, n);
+  assert.equal(pickOf(addDays(start, n)).id, ids[0]);
 });
 
 test('월·해가 바뀌어도 하루씩 이어진다', () => {
-  assert.equal((pickIndex('2026-12-31') + 1) % 8, pickIndex('2027-01-01'));
-  assert.equal((pickIndex('2027-02-28') + 1) % 8, pickIndex('2027-03-01'));
+  const n = DAILY_PICK_POOL.length;
+  assert.equal((pickIndex('2026-12-31') + 1) % n, pickIndex('2027-01-01'));
+  assert.equal((pickIndex('2027-02-28') + 1) % n, pickIndex('2027-03-01'));
 });
 
 test('반값은 올림', () => {

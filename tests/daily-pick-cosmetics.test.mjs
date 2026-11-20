@@ -16,7 +16,7 @@ const K = { R, HR: 0.37, HY: 1.26, bs, bodyY, side: sideAnchor(bs, R, bodyY), ne
 const luma = h => (0.2126 * ((h >> 16) & 255) + 0.7152 * ((h >> 8) & 255) + 0.0722 * (h & 255)) / 255;
 
 test('daily cosmetics are in the catalog with group daily and pool prices', () => {
-  const cos = DAILY_PICK_POOL.filter(p => p.kind === 'cos');
+  const cos = DAILY_PICK_POOL.filter(p => p.kind === 'cos' && p.id.startsWith('wp_'));
   assert.deepEqual(cos.map(p => p.id), IDS);
   for (const p of cos) {
     const it = findItem(p.id);

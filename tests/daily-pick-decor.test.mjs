@@ -15,7 +15,7 @@ const INDOOR = ['wp_hearth', 'wp_fur_rug', 'wp_cocoa_table'];
 test('art ids match the decor picks', () => {
   assert.deepEqual(listOf('IDS'), INDOOR);
   assert.deepEqual(listOf('YARD_IDS'), ['wp_snowman']);
-  assert.deepEqual([...INDOOR, 'wp_snowman'].sort(), DAILY_PICK_POOL.filter(p => p.kind === 'decor').map(p => p.id).sort());
+  assert.deepEqual([...INDOOR, 'wp_snowman'].sort(), DAILY_PICK_POOL.filter(p => p.kind === 'decor' && p.id.startsWith('wp_')).map(p => p.id).sort());
 });
 
 test('indoor picks are hidden keep decor, snowman is a hidden quest outdoor', () => {
