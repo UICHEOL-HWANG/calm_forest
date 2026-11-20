@@ -11,7 +11,7 @@ export const FP = Object.freeze({
 
 const TAU = Math.PI * 2;
 
-function coneChain(THREE, g, h, pts, radAt, colorAt) {
+export function coneChain(THREE, g, h, pts, radAt, colorAt) {
   const up = new THREE.Vector3(0, 1, 0);
   for (let i = 0; i < pts.length - 1; i++) {
     const a = pts[i], b = pts[i + 1], r0 = radAt(i), r1 = radAt(i + 1), mat = h.clay(colorAt(i), false);
@@ -24,7 +24,7 @@ function coneChain(THREE, g, h, pts, radAt, colorAt) {
   }
 }
 
-function arcPt(THREE, k, ang, rk = 1.08) {
+export function arcPt(THREE, k, ang, rk = 1.08) {
   return new THREE.Vector3(-Math.sin(ang) * k.HR * rk, Math.cos(ang) * k.HR * rk, 0);
 }
 
@@ -61,7 +61,7 @@ export function buildSquirrelBand(THREE, g, k, h) {
   flatten(THREE, g);
 }
 
-function pushOut(THREE, k, P, out = 1.07) {
+export function pushOut(THREE, k, P, out = 1.07) {
   const W = P.clone().add(k.neck);
   const Q = new THREE.Vector3(W.x, W.y - k.bodyY, W.z);
   const n = Math.hypot(Q.x / (k.bs[0] * k.R), Q.y / (k.bs[1] * k.R), Q.z / (k.bs[2] * k.R));
@@ -71,7 +71,7 @@ function pushOut(THREE, k, P, out = 1.07) {
   return new THREE.Vector3(D.x, D.y + k.HY, D.z).sub(k.neck);
 }
 
-function bodyNormal(THREE, k, P) {
+export function bodyNormal(THREE, k, P) {
   const W = P.clone().add(k.neck);
   const a = k.bs[0] * k.R, b = k.bs[1] * k.R, c = k.bs[2] * k.R;
   return new THREE.Vector3(W.x / (a * a), (W.y - k.bodyY) / (b * b), W.z / (c * c)).normalize();

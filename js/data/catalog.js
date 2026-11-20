@@ -123,6 +123,12 @@ export const DECOR = [
   { id: 'fp_owl_clock', name: '부엉이 시계', ico: '🦉', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.65, 0.45], desc: '부엉이가 머리에 앉은 괘종시계예요' },
   { id: 'fp_acorn_cupboard', name: '다람쥐 도토리 찬장', ico: '🌰', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [1.4, 1.1], desc: '다람쥐가 지키는 커다란 도토리 찬장이에요' },
   { id: 'fp_hedgehog_cushion', name: '고슴도치 쿠션', ico: '🧸', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.55, 0.6], sm: true, h: 0.58, desc: '산딸기를 꼭 안은 고슴도치 인형이에요' },
+  { id: 'xm_mini_tree', name: '작은 트리', ico: '🌲', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [1.0, 1.0], desc: '등나무 바구니에 심은 꼬마전구 트리예요' },
+  { id: 'xm_gift_pile', name: '선물 더미', ico: '🎀', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.9, 0.55], sm: true, h: 0.61, desc: '리본 묶은 선물 상자를 차곡차곡 쌓았어요' },
+  { id: 'xm_ginger_house', name: '진저브레드 집', ico: '🍪', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.9, 0.65], desc: '체크 보 덮은 탁자에 눈 덮인 과자 집을 올렸어요' },
+  { id: 'sp_shell_lamp', name: '조개 램프', ico: '🦪', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.7, 0.6], desc: '벌어진 조개 속 진주가 은은하게 빛나요' },
+  { id: 'sp_lighthouse_model', name: '등대 모형', ico: '🏝️', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.75, 0.75], desc: '바위섬 위에 줄무늬 등대를 세운 모형이에요' },
+  { id: 'sp_boat_planter', name: '보트 화분', ico: '⛵', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [1.0, 0.55], desc: '노 두 자루를 얹은 쪽배에 들꽃을 심었어요' },
   ...AFF_FRAMES,
 ];
 
@@ -282,6 +288,8 @@ export const OUTDOOR = [
   { id: 'reedorgan', name: '작은 풍금', ico: '🎹', cost: { coins: 9999 }, desc: '마당에서 한 곡 쳐 보고 싶어져요', hidden: true, box: [1.1, 0.62] },
   { id: 'wp_snowman', name: '목도리 두른 눈사람', ico: '⛄', cost: { coins: 9999 }, desc: '방울모자에 긴 목도리를 두른 눈사람이에요', hidden: true, quest: true, box: [0.9, 0.9], posts: [[0, 0, 0.4]] },
   { id: 'fp_deer_mailbox', name: '사슴 우체통', ico: '🦌', cost: { coins: 9999 }, desc: '자작나무 기둥 위에 사슴 얼굴 편지함을 얹었어요', hidden: true, quest: true, box: [0.6, 0.6], posts: [[0, 0, 0.3]] },
+  { id: 'xm_wreath_arch', name: '리스 아치', ico: '💝', cost: { coins: 9999 }, desc: '지팡이 사탕 둘이 하트로 맞닿은 리스 아치예요', hidden: true, quest: true, box: [2.0, 0.4], posts: [[-0.84, 0, 0.14], [0.84, 0, 0.14]] },
+  { id: 'sp_net_hammock', name: '그물 해먹', ico: '🪢', cost: { coins: 9999 }, desc: '유목 받침대에 남색 그물 해먹을 걸었어요', hidden: true, quest: true, box: [2.5, 0.8] },
   ...AFF_OUTDOOR,
   ...REWARD_DECOR,   // 🤝 친구 초대 보상 장식(js/data/reward-decor.js) — 원장이 보관함에 넣어 준다 · 서버 가드 대상
   { id: 'mine_cart', name: '광산 수레', ico: '🛒', cost: { coins: 9999 }, desc: '광부 아저씨가 준 수레 · 지하 20층 도달 보상', hidden: true, quest: 'delve' },

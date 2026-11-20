@@ -19,6 +19,8 @@ import { buildKinderHat, buildTulipTag, buildKinderBag } from './art-sprout.js';
 import { buildMinerHelmet } from './art-miner.js';
 import { buildPompomHat, buildKnitScarf, buildFirewood } from './art-winter-pick.js';
 import { buildSquirrelBand, buildOwlKerchief, buildHedgehogPack } from './art-forest-pick.js';
+import { buildAntlerBand, buildHollyTie, buildGiftPack } from './art-xmas-pick.js';
+import { buildPirateScarf, buildAnchorNecklace, buildLighthousePack } from './art-sea-pick.js';
 
 export const PALETTE = Object.freeze({
   straw: 0xd9bd7e, strawDark: 0xb99a5c,
@@ -354,6 +356,8 @@ function makeTables(THREE) {
     kinder_hat: (g, k) => buildKinderHat(THREE, g, k, h),
     wp_pompom_hat: (g, k) => buildPompomHat(THREE, g, k, h),
     fp_squirrel_band: (g, k) => buildSquirrelBand(THREE, g, k, h),
+    xm_antler_band: (g, k) => buildAntlerBand(THREE, g, k, h),
+    sp_pirate_scarf: (g, k) => buildPirateScarf(THREE, g, k, h),
     star_pin: (g, k) => {       // 별 머리핀 — 옆머리에 하나. 가장 작고 가장 싸다
       // ⚠️ 1차엔 옆머리 **뒤**에 박혀 정면에서 안 보였다. 앞쪽으로 당기고 키운다.
       const H = k.HR * 0.46, rad = ringR(k.HR, 0.46);
@@ -418,6 +422,8 @@ function makeTables(THREE) {
     tulip_tag: (g, k) => buildTulipTag(THREE, g, k, h),
     wp_knit_scarf: (g, k) => buildKnitScarf(THREE, g, k, h),
     fp_owl_kerchief: (g, k) => buildOwlKerchief(THREE, g, k, h),
+    xm_holly_tie: (g, k) => buildHollyTie(THREE, g, k, h),
+    sp_anchor_necklace: (g, k) => buildAnchorNecklace(THREE, g, k, h),
     bowtie: (g, k) => {         // 나비 넥타이 — 목띠 + 날개 두 장 + 가운데 매듭
       //  ▶ 날개는 **꼭짓점이 가운데를 향하는 사각뿔**이다. 저폴리에서 나비 날개를 그리는 제일 싼 방법 —
       //    옆에서 봐도 삼각으로 읽히고, 정면에선 두 삼각이 매듭에서 만나 나비가 된다.
@@ -490,6 +496,8 @@ function makeTables(THREE) {
     kinder_bag: (g, k) => buildKinderBag(THREE, g, k, h),
     wp_firewood: (g, k) => buildFirewood(THREE, g, k, h),
     fp_hedgehog_pack: (g, k) => buildHedgehogPack(THREE, g, k, h),
+    xm_gift_pack: (g, k) => buildGiftPack(THREE, g, k, h),
+    sp_lighthouse_pack: (g, k) => buildLighthousePack(THREE, g, k, h),
     pack: (g, k) => {           // 메신저 가방 — 왼쪽 옆구리에 걸치고 끈이 오른쪽 어깨를 넘어간다
       const R = k.R, w = R * 0.76;
       const out = 0;

@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sea Pick Decor</title>
+<style>
+  :root { --bg: #1f1a16; --card: #2c251f; --ink: #f3e9dc; --mute: #b7a893; --ok: #7fce8b; --bad: #ff8a7a; --acc: #e7b75a; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.4 system-ui, -apple-system, "Apple SD Gothic Neo", sans-serif; }
+  .item { padding: 14px 16px 18px; }
+  .item h1 { font-size: 20px; margin: 0 0 4px; }
+  .item p.sub { margin: 0 0 10px; color: var(--mute); font-size: 13px; }
+  .row { display: grid; grid-template-columns: 34px repeat(3, 1fr); gap: 10px; margin-bottom: 10px; align-items: stretch; }
+  .tag { writing-mode: vertical-rl; text-orientation: mixed; color: var(--mute); font-weight: 600; text-align: center; letter-spacing: 2px; }
+  .cell { background: var(--card); border-radius: 12px; overflow: hidden; }
+  .cell canvas { display: block; width: 100%; aspect-ratio: 560 / 420; }
+  .lab { padding: 8px 10px 10px; }
+  .lab b { font-size: 16px; }
+  .lab b i { font-style: normal; color: var(--acc); margin-right: 6px; }
+  .lab span { display: block; color: var(--mute); font-size: 12px; }
+  .ok { color: var(--ok) !important; }
+  .bad { color: var(--bad) !important; }
+</style>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
+</head>
+<body>
+<div id="root"></div>
+<pre id="out" hidden></pre>
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { buildAnimalHead, plushMat } from '../js/animal-faces.js';
+import { DECOR_SCALE } from '../js/data/catalog.js';
+import { WALL_H, FLOOR_LIFT } from '../js/house/surface.js';
+import { IDS, VARIANTS, META, build } from './sea-pick/decor-art.mjs';
+
+const TITLES = {
+  sp_shell_lamp: ['조개 램프 · sp_shell_lamp', '실내 · 왼쪽 의자(기존 가구)·오른쪽 여우 기준 · 뒤 벽 높이 3 · 실제 조명 없음, 발광 재질만'],
+  sp_lighthouse_model: ['등대 모형 · sp_lighthouse_model', '실내 · 배율 1.5 후 천장 3 아래 · 왼쪽 의자·오른쪽 여우 기준'],
+  sp_boat_planter: ['보트 화분 · sp_boat_planter', '실내 · 소라 화분·등불 켠 나룻배와 달라야 함 · C 는 벽에 기댐'],
+  sp_net_hammock: ['그물 해먹 · sp_net_hammock', '마당 · 배율 1 · 왼쪽 울타리·오른쪽 여우 기준 · 조개 풍경 그늘막과 달라야 함'],
+};
+const NIGHT = { sp_shell_lamp: true, sp_lighthouse_model: true };
+const OUTDOOR = { sp_net_hammock: true };
+const AGAINST_WALL = { 'sp_boat_planter/C': true };
+const REF_X = { sp_net_hammock: [-2.9, 2.75] };
+
+const qs = new URLSearchParams(location.search);
+const only = qs.get('item');
+const W = 560, H = 420, DPR = Math.min(2, window.devicePixelRatio || 1);
+const R = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+R.setPixelRatio(DPR); R.setSize(W, H, false);
+R.toneMapping = THREE.ACESFilmicToneMapping; R.toneMappingExposure = 1.05;
+R.shadowMap.enabled = true; R.shadowMap.type = THREE.PCFSoftShadowMap;
+const composer = new EffectComposer(R);
+composer.setPixelRatio(DPR); composer.setSize(W, H);
+const renderPass = new RenderPass(new THREE.Scene(), new THREE.PerspectiveCamera());
+const bloom = new UnrealBloomPass(new THREE.Vector2(W, H), 0.5, 0.9, 0.85);
+composer.addPass(renderPass); composer.addPass(bloom); composer.addPass(new OutputPass());
+
+const std = (color, rough = 0.95) => new THREE.MeshStandardMaterial({ color, roughness: rough, flatShading: true });
+
+function fox() {
+  const g = new THREE.Group(), R0 = 0.52, bs = [0.9, 1.08, 0.9], bodyY = R0 * bs[1] + 0.02;
+  const b = new THREE.Mesh(new THREE.SphereGeometry(R0, 28, 20), plushMat(0xf0883a)); b.scale.set(...bs); b.position.y = bodyY; b.castShadow = true; g.add(b);
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(R0 * 0.62, 20, 14), plushMat(0xf9ecd8)); belly.scale.set(1, 1.1, 0.6); belly.position.set(0, bodyY - R0 * 0.16, R0 * 0.55); g.add(belly);
+  g.add(buildAnimalHead('fox', { HR: 0.37, HY: 1.26, body: 0xf0883a, belly: 0xf9ecd8 }));
+  return g;
+}
+
+function chair() {
+  const g = new THREE.Group(), w = std(0xb07c4a), d = std(0x6b4a34);
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.1, 0.5), w); seat.position.y = 0.45; g.add(seat);
+  const bk = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.1), w); bk.position.set(0, 0.7, -0.2); g.add(bk);
+  [[-.2, -.2], [.2, -.2], [-.2, .2], [.2, .2]].forEach(([x, z]) => { const l = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.45, 0.07), d); l.position.set(x, 0.22, z); g.add(l); });
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  g.scale.setScalar(DECOR_SCALE);
+  return g;
+}
+
+function fence() {
+  const g = new THREE.Group(), w = std(0xa0703f);
+  for (const x of [-0.5, 0.5]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.6, 0.12), w); p.position.set(x, 0.3, 0); g.add(p); }
+  [0.42, 0.22].forEach(y => { const r = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.1, 0.08), w); r.position.y = y; g.add(r); });
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  return g;
+}
+
+function room(scene, night) {
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(9, 0.2, 6), std(0xc9ac86)); floor.position.set(0, -0.1, 0.4); floor.receiveShadow = true; scene.add(floor);
+  for (let i = 0; i < 12; i++) { const s = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.004, 6), std(0xb39470)); s.position.set(-4.4 + i * 0.8, 0.002, 0.4); scene.add(s); }
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(9, WALL_H, 0.24), std(night ? 0xd8c8b0 : 0xeadfcd)); wall.position.set(0, WALL_H / 2, -1.72); wall.receiveShadow = true; scene.add(wall);
+  const base = new THREE.Mesh(new THREE.BoxGeometry(9, 0.16, 0.05), std(0x9c7a58)); base.position.set(0, 0.08, -1.58); scene.add(base);
+  const top = new THREE.Mesh(new THREE.BoxGeometry(9, 0.06, 0.05), std(0xd65a4e)); top.position.set(0, WALL_H - 0.03, -1.58); scene.add(top);
+  return -1.6;
+}
+
+function yard(scene) {
+  const g = new THREE.Mesh(new THREE.CylinderGeometry(6, 6, 0.2, 40), std(0x86ae6c)); g.position.y = -0.1; g.receiveShadow = true; scene.add(g);
+  [[-1.6, 2.2, 0.8], [1.4, -1.3, 0.7], [-2.4, -0.4, 0.6], [3.0, 1.6, 0.6]].forEach(([x, z, r]) => { const p = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 1.05, 0.03, 18), std(0xdfe6ec)); p.position.set(x, 0.015, z); p.receiveShadow = true; scene.add(p); });
+}
+
+function lights(scene, night, outdoor) {
+  scene.background = new THREE.Color(night ? 0x141a2e : outdoor ? 0xbcd6ea : 0x3a3029);
+  scene.add(new THREE.HemisphereLight(night ? 0x6a78b0 : 0xfff6e6, night ? 0x20202a : 0x8a7a66, night ? 0.55 : 1.1));
+  const sun = new THREE.DirectionalLight(night ? 0x9fb4ff : 0xfff1d6, night ? 0.3 : 0.95);
+  sun.position.set(4, 9, 6); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
+  Object.assign(sun.shadow.camera, { left: -5, right: 5, top: 5, bottom: -5, near: 1, far: 30 }); sun.shadow.bias = -0.0008;
+  scene.add(sun);
+}
+
+function footLine(foot, s) {
+  const [fw, fd] = foot.map(v => v * s);
+  const pts = [[-fw / 2, -fd / 2], [fw / 2, -fd / 2], [fw / 2, fd / 2], [-fw / 2, fd / 2], [-fw / 2, -fd / 2]].map(([x, z]) => new THREE.Vector3(x, 0.012, z));
+  return new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0x5fe07a }));
+}
+
+function measure(obj) {
+  obj.updateMatrixWorld(true);
+  const b = new THREE.Box3(); obj.traverse(o => { if (o.isMesh) b.expandByObject(o, true); });
+  return b;
+}
+
+function render(id, v, night) {
+  const outdoor = !!OUTDOOR[id], s = outdoor ? 1 : DECOR_SCALE;
+  const scene = new THREE.Scene();
+  lights(scene, night, outdoor);
+  const wallZ = outdoor ? null : room(scene, night);
+  if (outdoor) yard(scene);
+  const item = build(id, v), raw = measure(item);
+  const holder = new THREE.Group(); holder.scale.setScalar(s); holder.add(item);
+  holder.position.z = AGAINST_WALL[`${id}/${v}`] ? wallZ + 0.03 - raw.min.z * s : 0;
+  scene.add(holder);
+  const meta = META[id][v];
+  if (meta.foot) { const fl = footLine(meta.foot, s); fl.position.z = holder.position.z; scene.add(fl); }
+  const [rx, fx] = REF_X[id] || [-2.1, 2.35];
+  const ref = outdoor ? fence() : chair(); ref.position.set(rx, 0, outdoor ? -0.2 : -0.6); ref.rotation.y = 0.5; scene.add(ref);
+  const f = fox(); f.position.set(fx, 0, 0.4); f.rotation.y = -0.45; scene.add(f);
+  const cam = new THREE.PerspectiveCamera(36, W / H, 0.05, 100);
+  if (id === 'sp_boat_planter' || id === 'sp_shell_lamp') { cam.position.set(2.2, 3.0, 5.6); cam.lookAt(0, 0.8, -0.3); }
+  else if (id === 'sp_net_hammock') { cam.position.set(2.6, 3.0, 7.4); cam.lookAt(0, 0.8, -0.2); }
+  else { cam.position.set(2.5, 3.2, 6.6); cam.lookAt(0, 1.2, -0.4); }
+  renderPass.scene = scene; renderPass.camera = cam;
+  bloom.strength = night ? 1.0 : 0.5;
+  composer.render();
+  const cv = document.createElement('canvas'); cv.width = W * DPR; cv.height = H * DPR;
+  cv.getContext('2d').drawImage(R.domElement, 0, 0);
+  return { cv, raw };
+}
+
+const report = {};
+const root = document.getElementById('root');
+for (const id of IDS.filter(i => !only || i === only)) {
+  const sec = document.createElement('section'); sec.className = 'item';
+  sec.innerHTML = `<h1>${TITLES[id][0]}</h1><p class="sub">${TITLES[id][1]} · 초록 선 = 제안 발자국(foot × 배율)</p>`;
+  const rows = NIGHT[id] ? [false, true] : [false];
+  for (const night of rows) {
+    const row = document.createElement('div'); row.className = 'row';
+    row.innerHTML = `<div class="tag">${night ? '밤' : '낮'}</div>`;
+    for (const v of VARIANTS) {
+      const { cv, raw } = render(id, v, night);
+      const cell = document.createElement('div'); cell.className = 'cell'; cell.appendChild(cv);
+      if (!night) {
+        const w = raw.max.x - raw.min.x, d = raw.max.z - raw.min.z, h = raw.max.y - raw.min.y, m = META[id][v];
+        const outdoor = !!OUTDOOR[id], topY = outdoor ? h : h * DECOR_SCALE + FLOOR_LIFT, okCeil = outdoor || topY <= WALL_H;
+        report[`${id}/${v}`] = { w: +w.toFixed(2), d: +d.toFixed(2), h: +h.toFixed(2), minY: +raw.min.y.toFixed(3), topY: +topY.toFixed(2), okCeil };
+        const lab = document.createElement('div'); lab.className = 'lab';
+        lab.innerHTML = `<b><i>${v}</i>${m.name}</b><span>${m.note}</span><span>크기(배율 전) ${w.toFixed(2)} × ${d.toFixed(2)} · 높이 ${h.toFixed(2)}${m.foot ? ` · foot ${m.foot.join('×')}` : ' · foot 없음'}</span>` +
+          (outdoor ? `<span class="ok">마당 배율 1 · 높이 ${h.toFixed(2)}</span>` : `<span class="${okCeil ? 'ok' : 'bad'}">꼭대기 ${topY.toFixed(2)} / 천장 ${WALL_H} ${okCeil ? '통과' : '초과'}</span>`);
+        cell.appendChild(lab);
+      }
+      row.appendChild(cell);
+    }
+    sec.appendChild(row);
+  }
+  root.appendChild(sec);
+}
+document.getElementById('out').textContent = JSON.stringify(report);
+window.__ready = true;
+</script>
+</body>
+</html>

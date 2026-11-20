@@ -104,8 +104,18 @@ const RAW = [
   { id: 'fp_owl_kerchief',  slot: 'neck',  ico: '🪶', name: '부엉이 손수건',        coins: 1000, group: 'daily' },
   { id: 'fp_hedgehog_pack', slot: 'back',  ico: '🦔', name: '고슴도치 배낭',        coins: 1500, anchor: 'back', group: 'daily' },
   { id: 'fp_acorn_trail',   slot: 'trail', ico: '👣', name: '도토리 굴리는 발자국', coins: 1600, tier: '특별', group: 'daily' },
+  { id: 'xm_antler_band',     slot: 'head',  ico: '🎄', name: '루돌프 뿔 머리띠',  coins: 1200, earSafe: 'low', group: 'daily' },
+  { id: 'xm_holly_tie',       slot: 'neck',  ico: '🍒', name: '호랑가시 리본 타이', coins: 1000, group: 'daily' },
+  { id: 'xm_gift_pack',       slot: 'back',  ico: '🎁', name: '선물 꾸러미 배낭',   coins: 1500, anchor: 'back', group: 'daily' },
+  { id: 'xm_stardust_trail',  slot: 'trail', ico: '🌠', name: '별가루 발자국',      coins: 1600, tier: '특별', group: 'daily' },
+  { id: 'sp_pirate_scarf',    slot: 'head',  ico: '🧭', name: '해적 두건',          coins: 1200, earSafe: 'dome', group: 'daily' },
+  { id: 'sp_anchor_necklace', slot: 'neck',  ico: '⚓', name: '닻 목걸이',          coins: 1000, group: 'daily' },
+  { id: 'sp_lighthouse_pack', slot: 'back',  ico: '🗼', name: '등대 배낭',          coins: 1500, anchor: 'back', group: 'daily' },
+  { id: 'sp_wave_trail',      slot: 'trail', ico: '🌊', name: '파도 발자국',        coins: 1600, tier: '특별', group: 'daily' },
   { id: 'tools_snowman',  slot: 'tools', ico: '⛄', name: '눈사람 세트',       coins: 3600, tier: '특별', group: 'daily' },
   { id: 'tools_squirrel', slot: 'tools', ico: '🐿️', name: '다람쥐 도토리 세트', coins: 3600, tier: '특별', group: 'daily' },
+  { id: 'tools_candy',    slot: 'tools', ico: '🍬', name: '사탕 지팡이 세트',   coins: 3600, tier: '특별', group: 'daily' },
+  { id: 'tools_octopus',  slot: 'tools', ico: '🐙', name: '문어 세트',          coins: 3600, tier: '특별', group: 'daily' },
 ];
 
 export const ITEMS = Object.freeze(RAW.map(({ coins = null, won = null, ...it }) => Object.freeze(it.reward || it.quest || it.set
