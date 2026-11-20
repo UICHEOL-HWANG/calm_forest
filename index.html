@@ -7,7 +7,7 @@
 <meta name="application-name" content="고요한 숲" />
 <meta name="apple-mobile-web-app-title" content="고요한 숲" />
 <meta name="theme-color" content="#bfe8c9" />
-<script>if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && /[?&]bootb=1/.test(location.search)) document.documentElement.classList.add('boot-b');</script>
+<script>document.documentElement.classList.add('boot-b');</script>
 <meta name="description" content="농사·낚시·잠수·집 꾸미기를 즐기는 로우폴리 3D 힐링 게임. 설치 없이 웹과 앱에서 바로 플레이." />
 <!-- 구글 서치콘솔 소유확인 — 삭제하면 색인 데이터 접근이 끊깁니다 -->
 <meta name="google-site-verification" content="GiZimkuR7Ek0fqWjnEuQtwlpdnW0kbQjKDPgeiOiroo" />
@@ -2878,7 +2878,7 @@
   html.boot-b #loading.boot-bg .load-pill { display: none; }
   html.boot-b #loading.boot-bg .boot-mark { display: block; position: absolute; left: 50%; top: 42%; width: 92px; height: 92px; margin: -46px 0 0 -46px; border-radius: 25%;
     background: url("assets/boot/mark.png") center / cover; box-shadow: 0 12px 30px rgba(20,40,30,.25); transition: opacity .6s ease, transform .9s cubic-bezier(.16,1,.3,1); }
-  html.boot-b #loading.boot-bg .boot-bar { display: block; position: absolute; left: 23%; right: 23%; top: calc(42% + 74px); height: 4px; border-radius: 4px; overflow: hidden;
+  html.boot-b #loading.boot-bg .boot-bar { display: block; position: absolute; left: 23%; right: 23%; max-width: 280px; margin: 0 auto; top: calc(42% + 74px); height: 4px; border-radius: 4px; overflow: hidden;
     background: rgba(47,107,79,.18); transition: opacity .5s ease; }
   html.boot-b #loading.boot-bg .boot-bar i { position: absolute; inset: 0; border-radius: 4px; background: #2f6b4f; transform-origin: left center;
     transform: scaleX(var(--to, .12)); transition: transform 6s cubic-bezier(.16,1,.3,1); }
