@@ -79,6 +79,14 @@ test('CI 규칙이어도 목표 표본 전에는 판정하지 않는다', () => 
   assert.equal(analyzeExperiment(e, '2026-10-26').verdict[1], '표본 모으는 중');
 });
 
+test('판정 시점 전(running)인 실험은 표본·p 와 무관하게 진행 중으로만 보이고, SRM 만 경고한다', () => {
+  const v = (e) => analyzeExperiment(e, '2026-11-20').verdict[1];
+  assert.equal(v({ ...base, confound: '공통 변경', result: { ...twoArm([500, 300], [500, 200]), running: true } }), '진행 중 · 판정 전');
+  assert.equal(v({ ...base, result: { ...twoArm([0, 0], [0, 0]), running: true } }), '진행 중 · 판정 전');
+  assert.equal(v({ ...base, result: { ...twoArm([300, 150], [200, 60]), running: true } }), '배정 어긋남 · 판정 보류');
+  assert.equal(v({ ...base, result: { ...twoArm([102, 1], [22, 1]), ratio: [0.8, 0.2], running: true } }), '진행 중 · 판정 전');
+});
+
 test('설계 비율(ratio)이 있으면 SRM 을 그 비율로 잰다 — 90:10 홀드아웃', () => {
   const r = twoArm([900, 1], [100, 1], { ratio: [0.9, 0.1] });
   assert.ok(analyzeExperiment({ kind: 'ab', status: 'run', result: r }, '2026-10-26').srm > 0.5);
