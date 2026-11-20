@@ -132,7 +132,7 @@ import { defaultDelve, sanitizeDelve } from './delve/rules.js';
 import { defaultPort, sanitizePort } from './port/rules.js';
 import { defaultRestaurant, sanitizeRestaurant } from './restaurant/rules.js';
 import { RESTAURANT, RESTAURANT_GATE, HALL, REST_LIGHT, restaurantScatterBlocks } from './restaurant/data.js';
-import { enterRestaurant, exitRestaurant, restaurantExitSpot, spawnRestaurantGate, buildRestaurantHall, restaurantAction, tickRestaurant, updateRestaurantNight, updateRestaurantGuide, maybeStartRestaurantGuide, restaurantGuideActive } from './spaces/restaurant.js';
+import { enterRestaurant, exitRestaurant, restaurantExitSpot, spawnRestaurantGate, buildRestaurantHall, restaurantAction, tickRestaurant, updateRestaurantNight, updateRestaurantGuide, maybeStartRestaurantGuide, restaurantGuideActive, restaurantHidesNpc } from './spaces/restaurant.js';
 import { restoreStage as restoreCosStage } from './cos-onboard.js';
 import { cosQuestActive, maybeOfferCosQuest, noteCosQuestVisit, updateCosQuestBubble } from './spaces/cos-quest.js';
 import { ORCHARD_TREE, GATE_PATCH, buildOrchardDecor, fruitSpots, buildTreeSoil, disposeOwned } from './orchard-art.js';   // 🍎 과수원 외관(나무 모양·안쪽 소품·입구 잔디 판)
@@ -1419,7 +1419,7 @@ function releasePlaceReveal(id) {
 function applyUnlocks() {
   for (const o of npcObjs) {
     const hide = (!isOpen(o.def.id) && !(o.def.id === 'merchant' && merchantVisit))   // 🧙 방문이 취소돼 좌판으로 돌아가는 중엔 걷게 둔다
-      || returnPending.has(o.def.id);   // 🚶 귀환 걷기를 기다리는 중(조망샷·귀환 모달이 끝날 때까지 안 보인다)
+      || returnPending.has(o.def.id) || restaurantHidesNpc(o.def.id);   // 🚶 귀환 걷기를 기다리는 중(조망샷·귀환 모달이 끝날 때까지 안 보인다)
     if (hide !== !!o.hidden) setNpcHidden(o, hide);
   }
   for (const id in lockHolders) {

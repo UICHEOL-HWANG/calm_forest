@@ -7,7 +7,7 @@ import { defaultRestaurant, sanitizeRestaurant, cookState, panState, flipZone, f
 test('기본값과 정규화', () => {
   const d = defaultRestaurant();
   assert.deepEqual(d, { v: 1, star: 1, rating: 0, served: { grilled: 0, riceball: 0, soup: 0 }, combo: 0, bestCombo: 0,
-    dda: { iv: 1, pat: 1, win: 1 }, starterGiven: false, guideDone: false, services: 0 });
+    dda: { iv: 1, pat: 1, win: 1 }, starterGiven: false, guideDone: false, services: 0, regulars: {} });
   assert.deepEqual(sanitizeRestaurant(null), d);
   const s = sanitizeRestaurant({ star: 9, rating: -3, served: { grilled: 2.7, pizza: 4 }, dda: { iv: 5, pat: 0.1, win: 'x' }, starterGiven: 'yes', junk: 1 });
   assert.equal(s.star, 4);
@@ -146,4 +146,11 @@ test('영업 정산: 횟수 +1, DDA 조정, 조건이 되면 별이 오르고 �
   assert.equal(stay.starUp, false);
   assert.equal(stay.bonus, 0);
   assert.equal(stay.rest.dda.iv, 1.08);
+});
+
+test('식당 저장값에 단골 기록이 들어가고 정리된다', async () => {
+  const { defaultRestaurant, sanitizeRestaurant } = await import('../js/restaurant/rules.js');
+  assert.deepEqual(defaultRestaurant().regulars, {});
+  assert.deepEqual(sanitizeRestaurant({ star: 2, regulars: { angler: { fav: 2, done: false }, ghost: {} } }).regulars, { angler: { fav: 2, done: false } });
+  assert.deepEqual(sanitizeRestaurant({ star: 1 }).regulars, {});
 });

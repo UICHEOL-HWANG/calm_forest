@@ -4,6 +4,7 @@ import { recordServe, takeIngredient, settleService } from './rules.js';
 import { showForStar, itemMesh, itemHeight } from './hall.js';
 import { mountHud, contextLabel, goalRows, resultView, menuView, stockNeed } from './hud.js';
 import { nextStep } from './next-step.js';
+import { FAV } from './regulars.js';
 
 const BOARD_R = 1.6;
 const START_PROMPT = '🍽️ 저녁 영업 시작';
@@ -74,7 +75,7 @@ export function createRestaurantRuntime(env) {
     for (const g of S ? S.guests : []) {
       alive.add(g.id);
       let m = guests.get(g.id);
-      if (!m) { m = env.takeGuest(g.id); hall.group.add(m); guests.set(g.id, m); }
+      if (!m) { m = env.takeGuest(g); hall.group.add(m); guests.set(g.id, m); }
       placeGuest(g, m);
     }
     for (const [id, m] of guests) {
@@ -111,7 +112,7 @@ export function createRestaurantRuntime(env) {
   function drawHud() {
     hud.clock(S.time);
     const nx = drawNext();
-    hud.tickets(S.tickets, S.time, S.dda.pat, nx?.ticket ?? null);
+    hud.tickets(S.tickets.map(t => { const g = S.guests.find(x => x.id === t.id); return { ...t, face: env.faceOf?.(g) ?? '', fav: !!g?.npc && FAV[g.npc] === t.menu }; }), S.time, S.dda.pat, nx?.ticket ?? null);
     for (const s of HALL.stations) {
       const view = stationView(S, s.id);
       const p = view ? env.project(world(s.x, 1.55, s.z)) : null;
@@ -141,6 +142,7 @@ export function createRestaurantRuntime(env) {
         env.earnCoins(e.coins);
         const [tx, tz] = HALL.tables[e.table];
         env.popAt(world(tx, 1.6, tz).clone(), '⭐'.repeat(e.stars));
+        env.onGuestServed?.(e);
       } else if (e.type === 'flip') pop(e.id, e.ok ? '✨' : '💨');
       else if (e.type === 'cooked') pop(e.id, e.kind === 'burnt' ? '💨' : e.q === 1 ? '✨' : '');
       else if (e.type === 'chopDone') pop(e.id, '✔️');
@@ -169,7 +171,7 @@ export function createRestaurantRuntime(env) {
     const out = first ? { ...settled, rest: { ...settled.rest, dda: env.rest().dda } } : settled;
     env.setRest(out.rest);
     env.earnCoins(out.bonus);
-    env.trackEvent('restaurant_service', { star: star0, served: r.served, avg_score: Math.round(r.avg * 10) / 10, dda: out.rest.dda.iv });
+    env.trackEvent('restaurant_service', { star: star0, served: r.served, avg_score: Math.round(r.avg * 10) / 10, dda: out.rest.dda.iv, regular_n: r.regularN });
     if (out.starUp) env.trackEvent('restaurant_star_up', { star: out.rest.star });
     env.requestSave();
     const need = stockNeed(out.rest, env.port()?.pantry);
@@ -181,7 +183,7 @@ export function createRestaurantRuntime(env) {
     const r = env.rest();
     before = r;
     refresh();
-    S = createSession({ star: r.star, dda: r.dda, stock: k => Math.max(0, Math.floor(env.port()?.pantry?.[k] || 0)), ...(env.sessionOpts?.() || {}) });
+    S = createSession({ star: r.star, dda: r.dda, neighbors: env.neighbors, stock: k => Math.max(0, Math.floor(env.port()?.pantry?.[k] || 0)), ...(env.sessionOpts?.() || {}) });
     hud.show(true);
     env.onStart?.();
   }

@@ -86,3 +86,8 @@ export function trackerLines({ name, nameEn, value, next, nextIdx, reward, giftL
 }
 
 export const trackerStart = (lang = 'ko') => (lang === 'en' ? '🎁 Befriend villagers for gifts' : '🎁 주민과 친해지면 선물이 와요');
+
+export function favChip({ ico, regular, lang = 'ko' }) {
+  if (lang === 'en') return `${ico} ${regular ? 'Regular' : 'Favorite'}`;
+  return `${ico} ${regular ? '단골' : '좋아함'}`;
+}

@@ -10,7 +10,9 @@ import {
   lettersToIssue, markIssued, letterKey, giftGain, owlDailyGain, pickTracker, allMaxed, heartAdOpen, heartAdGain,
 } from './stages.js';
 import { refreshQuestPanel, updateNPCGlyph } from '../spaces/npc.js';
-import { chipText, giftCapToast, introBody, introTitle, letterRowText, letterTitle, nextRewardText, retroToast, stageLabel, stageUpToast, trackerLines, trackerStart } from './copy.js';
+import { chipText, favChip, giftCapToast, introBody, introTitle, letterRowText, letterTitle, nextRewardText, retroToast, stageLabel, stageUpToast, trackerLines, trackerStart } from './copy.js';
+import { FAV } from '../restaurant/regulars.js';
+import { MENU } from '../restaurant/data.js';
 
 const HOUSE_DONE = 3;
 const lang = () => getLang();
@@ -229,6 +231,7 @@ export function npcBook() {
       id, name: t(nameOf(id)), face: npcDef(id).emoji, value: n, idx: p.idx,
       stage: p.idx >= 0 ? stageLabel(p.idx, L) : '',
       chip: chipText(n, L),
+      favChip: FAV[id] ? favChip({ ico: MENU[FAV[id]].ico, regular: !!gameState.restaurant?.regulars?.[id]?.done, lang: L }) : null,
       next: nextRewardText(n, p.next ? nextIco(id, p.idx + 1) : '', L),
       giftToday: giftHeartsToday(id), giftCap: Math.max(GIFT_DAILY_CAP, giftHeartsToday(id)),
       rows: stageRows(id),

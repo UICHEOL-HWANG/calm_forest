@@ -303,3 +303,33 @@ test('플레이어가 계속 길을 막으면 손님은 잠시 뒤 지나간다'
   for (let i = 0; i < 60; i++) tickSession(S, 0.05, { pos: block });
   assert.ok(g.t > t0);
 });
+
+test('손님은 돌아온 이웃 중에서 오고, 같은 이웃은 동시에 두 번 앉지 않으며, 남는 자리는 나그네', () => {
+  const S = createSession({ star: 4, dda: one, rng: seq(0), neighbors: () => ['angler', 'farmer'] });
+  const seen = [];
+  for (let i = 0; i < 2000 && S.gid < 4; i++) {
+    for (const e of tickSession(S, 0.05)) if (e.type === 'spawn') seen.push(e.npc);
+  }
+  const live = S.guests.filter(g => g.npc).map(g => g.npc);
+  assert.equal(new Set(live).size, live.length);
+  assert.ok(seen.includes('angler'));
+  assert.ok(seen.includes('farmer'));
+  assert.ok(seen.includes(null));
+});
+
+test('이웃 목록이 없으면 모두 나그네', () => {
+  const S = createSession({ star: 1, dda: one, rng: seq(0) });
+  for (let i = 0; i < 200 && !S.guests.length; i++) tickSession(S, 0.05);
+  assert.equal(S.guests[0].npc, null);
+});
+
+test('서빙 이벤트에 손님 이웃이 실리고 결과에 이웃 손님 수가 남는다', () => {
+  const S = createSession({ star: 1, dda: one, rng: seq(0), neighbors: () => ['angler'] });
+  for (let i = 0; i < 400 && !S.tickets.length; i++) tickSession(S, 0.05);
+  const tk = S.tickets[0];
+  S.held = { kind: tk.menu, q: 1, plated: true };
+  const tb = HALL.tables[tk.table];
+  const ev = actAt(S, { x: tb[0], z: tb[1] + 1.0 }, { take: yes }).find(e => e.type === 'served');
+  assert.equal(ev.npc, 'angler');
+  assert.equal(finishSession(S).regularN, 1);
+});

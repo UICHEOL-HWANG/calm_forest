@@ -13,6 +13,8 @@ const CSS = `
 #rest-hud .tk u s{display:block;height:100%;background:#6bb35a}
 #rest-hud .tk.mid u s{background:#e9b949}
 #rest-hud .tk.late u s{background:#d9604c}
+#rest-hud .tk .face{position:absolute;left:-9px;top:-9px;width:26px;height:26px;border-radius:50%;background:#fff;border:2px solid #2f5e47;display:grid;place-items:center;font-size:15px;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+#rest-hud .tk.fav .face{border-color:#e46f8f;background:#ffe9ef}
 html body.rest-hud-on #guide-card{top:calc(env(safe-area-inset-top) + 80px)}
 #rest-hud .st{position:fixed;transform:translate(-50%,-100%);pointer-events:none}
 #rest-hud .dots{display:flex;gap:3px}
@@ -180,12 +182,20 @@ export function goalRows(rest) {
   return rows;
 }
 
+export function ticketHtml(t, now, pat, focus) {
+  const w = now - t.t0, a = PATIENCE[0] * pat, b = PATIENCE[1] * pat;
+  const cls = w < a ? '' : w < b ? ' mid' : ' late';
+  const left = Math.round(Math.max(0, 1 - w / b) * 20) * 5;
+  const face = t.face ? `<span class="face">${t.face}</span>` : '';
+  return `<div class="tk${cls}${t.id === focus ? ' now' : ''}${t.fav ? ' fav' : ''}">${face}<b>${t.table + 1}</b><i>${MENU[t.menu].ico}</i><u><s style="width:${left}%"></s></u></div>`;
+}
+
 export function mountHud(doc) {
   if (!doc.getElementById('rest-hud-css')) {
     const st = doc.createElement('style'); st.id = 'rest-hud-css'; st.textContent = CSS; doc.head.appendChild(st);
   }
   const root = doc.createElement('div'); root.id = 'rest-hud'; root.style.display = 'none';
-  root.innerHTML = '<div class="bar"><div class="clock"></div><div class="tks" style="display:flex;gap:8px"></div></div><div class="sts"></div><div class="arrow" style="display:none"></div><div class="next" hidden></div>';
+  root.innerHTML = '<div class="bar"><div class="clock"></div><div class="tks" style="display:flex;gap:14px;margin-left:8px"></div></div><div class="sts"></div><div class="arrow" style="display:none"></div><div class="next" hidden></div>';
   doc.body.appendChild(root);
   const card = doc.createElement('div'); card.id = 'rest-card';
   card.innerHTML = '<div class="box"></div>';
@@ -207,7 +217,7 @@ export function mountHud(doc) {
     else if (cardMode === 'menu' && !e.target.closest('.box')) closeCard(false);
   });
   const stEls = new Map();
-  let clockText = '', ticketHtml = '';
+  let clockText = '', ticketCache = '';
 
   const guideCard = doc.getElementById('guide-card');
   const bar = root.querySelector('.bar');
@@ -252,7 +262,7 @@ export function mountHud(doc) {
       root.style.display = on ? '' : 'none';
       doc.body.classList.toggle('rest-hud-on', on);
       dirty = true;
-      if (!on) { sts.innerHTML = ''; stEls.clear(); clockText = ''; ticketHtml = ''; tks.innerHTML = ''; nextEl.hidden = true; nextEl._html = ''; arrowEl.style.display = 'none'; }
+      if (!on) { sts.innerHTML = ''; stEls.clear(); clockText = ''; ticketCache = ''; tks.innerHTML = ''; nextEl.hidden = true; nextEl._html = ''; arrowEl.style.display = 'none'; }
     },
     cardOpen: () => card.classList.contains('show'),
     clock(sec) {
@@ -261,13 +271,8 @@ export function mountHud(doc) {
       if (t !== clockText) { clockText = t; clock.textContent = t; }
     },
     tickets(list, now, pat, focus = null) {
-      const html = list.map(t => {
-        const w = now - t.t0, a = PATIENCE[0] * pat, b = PATIENCE[1] * pat;
-        const cls = w < a ? '' : w < b ? ' mid' : ' late';
-        const left = Math.round(Math.max(0, 1 - w / b) * 20) * 5;
-        return `<div class="tk${cls}${t.id === focus ? ' now' : ''}"><b>${t.table + 1}</b><i>${MENU[t.menu].ico}</i><u><s style="width:${left}%"></s></u></div>`;
-      }).join('');
-      if (html !== ticketHtml) { ticketHtml = html; tks.innerHTML = html; }
+      const html = list.map(t => ticketHtml(t, now, pat, focus)).join('');
+      if (html !== ticketCache) { ticketCache = html; tks.innerHTML = html; }
     },
     station(id, view, x, y) {
       if (!view) { const el = stEls.get(id); if (el && el.style.display !== 'none') el.style.display = 'none'; return; }

@@ -1,10 +1,10 @@
 import * as THREE from 'three';
 import {
   $w, adPill, camera, cameraFree, colliders, gameState, giveReward, makeSignpost, obstacles, player, projectToScreen, refreshInventoryUI, requestSave, scene,
-  setFogExempt, setSpaceVisible, snapCamera, solidBox, solidCircle, spawnFloatText, ui,
+  setFogExempt, setSpaceVisible, snapCamera, solidBox, solidCircle, spawnFloatText, ui, npcObjs, todayStr,
 } from '../game.js';
 import { createAuctionGuide } from '../auction/guide.js';
-import { PORT_PIER } from '../data/places.js';
+import { PORT_PIER, CAFE_GUESTS } from '../data/places.js';
 import { walkLimit } from '../world/walk-bounds.js';
 import { inVillage2 } from './doors.js';
 import { t } from '../i18n.js';
@@ -12,7 +12,12 @@ import { STOCK_COPY } from '../restaurant/hud.js';
 import { trackEvent } from '../analytics.js';
 import { logEcon } from '../metrics.js';
 import { NPCS } from '../data/npcs.js';
-import { buildNPCFigure } from './npc.js';
+import { buildNPCFigure, setNpcHidden } from './npc.js';
+import { gainAffinity } from '../affinity/index.js';
+import { giftGain } from '../affinity/stages.js';
+import { isUnlocked } from '../world/unlocks.js';
+import { buildCafeGuestCast } from './cafe.js';
+import { GUEST_NPCS, serveLove, recordRegular } from '../restaurant/regulars.js';
 import { RESTAURANT, RESTAURANT_GATE, RESTAURANT_FACE, RESTAURANT_SIGN, HALL, STAR, restaurantLocal, restaurantBox } from '../restaurant/data.js';
 import { buildBistro, setBistroEvening } from '../restaurant/exterior.js';
 import { buildHall } from '../restaurant/hall.js';
@@ -42,7 +47,6 @@ export const RESTAURANT_COPY = {
 };
 
 const DBG = typeof location !== 'undefined' && new URLSearchParams(location.search).has('dbg');
-const GUEST_POOL = NPCS.filter(d => d.id !== 'courier' && d.id !== 'merchant');
 const EXIT_R = 1.2;
 const PLANT_R = 0.3;
 const free = new Map();
@@ -97,12 +101,26 @@ function syncSolids() {
   tableSolids.forEach((pair, i) => { for (const c of pair) c.off = i >= STAR[star].tables; });
 }
 
-const guestDef = id => GUEST_POOL[(id - 1) % GUEST_POOL.length];
+const npcObj = id => npcObjs.find(o => o.def.id === id);
+const hiddenByRest = new Set();
+export const restaurantHidesNpc = id => hiddenByRest.has(id);
+function hideNeighbor(id) {
+  const o = npcObj(id);
+  if (!o) return;
+  hiddenByRest.add(id);
+  if (!o.hidden) setNpcHidden(o, true);
+}
+function showNeighbor(id) {
+  hiddenByRest.delete(id);
+}
 
-function takeGuest(id) {
-  const def = guestDef(id);
-  const m = free.get(def.id)?.pop() || buildNPCFigure(def).group;
-  m.userData.restGuest = def.id;
+function takeGuest(g) {
+  const key = g.npc || CAFE_GUESTS[(g.id - 1) % CAFE_GUESTS.length].id;
+  const fresh = () => (g.npc ? buildNPCFigure(NPCS.find(d => d.id === g.npc)).group : buildCafeGuestCast(CAFE_GUESTS.find(c => c.id === key)).group);
+  const m = free.get(key)?.pop() || fresh();
+  m.userData.restGuest = key;
+  m.userData.restNpc = g.npc;
+  if (g.npc) hideNeighbor(g.npc);
   setFogExempt(m, true);
   return m;
 }
@@ -110,8 +128,27 @@ function takeGuest(id) {
 function releaseGuest(m) {
   const id = m.userData.restGuest;
   if (!id) return;
+  if (m.userData.restNpc) showNeighbor(m.userData.restNpc);
   if (!free.has(id)) free.set(id, []);
   free.get(id).push(m);
+}
+
+function onGuestServed({ npc, menu, stars, table }) {
+  if (!npc || runtime.session()?.first) return;
+  const love = serveLove(npc, menu, stars);
+  if (love > 0) {
+    const { gain, state } = giftGain(gameState.hintsSeen?.affGift, todayStr(), npc, love);
+    gameState.hintsSeen = { ...gameState.hintsSeen, affGift: state };
+    if (gain > 0) {
+      gainAffinity(npc, gain, 'restaurant');
+      const [tx, tz] = HALL.tables[table];
+      spawnFloatText(RESTAURANT.x + tx + 0.5, 2.0, RESTAURANT.z + tz, '❤️', '#ffffff', 1.1);
+    }
+  }
+  const r = gameState.restaurant;
+  const { regulars, became } = recordRegular(r.regulars || {}, npc, menu, stars);
+  if (regulars !== r.regulars) gameState.restaurant = { ...gameState.restaurant, regulars };
+  if (became) trackEvent('restaurant_regular', { npc });
 }
 
 function project(p) {
@@ -135,6 +172,9 @@ export function buildRestaurantHall() {
     port: () => gameState.port,
     setPort: p => { gameState.port = p; },
     takeGuest, releaseGuest, project,
+    faceOf: g => (g ? (g.npc ? NPCS.find(d => d.id === g.npc)?.emoji : CAFE_GUESTS[(g.id - 1) % CAFE_GUESTS.length].emoji) : '') ?? '',
+    neighbors: () => GUEST_NPCS.filter(id => isUnlocked(gameState, id)),
+    onGuestServed,
     popAt: (p, ico) => spawnFloatText(p.x, p.y, p.z, ico, '#ffffff', 1.1),
     toast: t => ui.toast?.(t),
     earnCoins: n => {
@@ -177,6 +217,7 @@ export function enterRestaurant() {
 
 export function exitRestaurant() {
   runtime?.abort();
+  for (const id of [...hiddenByRest]) showNeighbor(id);
   $w.atRestaurant = false;
   document.body.classList.remove('at-restaurant');
   setFogExempt(player, false);

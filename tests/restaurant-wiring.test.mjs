@@ -135,3 +135,27 @@ test('지도 이름표: 길목 이름(정류장·이웃 마을 가는 길)은 �
 test('식당 화분은 플레이어가 통과하지 못하게 충돌 원이 있다', () => {
   assert.match(STUB, /HALL\.plants\.forEach\(\(\[px, pz\]\) => solidCircle\(wx\(px\), wz\(pz\), PLANT_R\)\)/);
 });
+
+test('식당 손님은 이웃 호감도·숨김·단골과 연결된다', () => {
+  assert.match(STUB, /import \{ gainAffinity \} from '\.\.\/affinity\/index\.js'/);
+  assert.match(STUB, /giftGain\(/);
+  assert.match(STUB, /setNpcHidden\(o, true\)/);
+  assert.match(STUB, /export const restaurantHidesNpc = id => hiddenByRest\.has\(id\)/);
+  assert.match(SRC, /restaurantHidesNpc\(o\.def\.id\)/);
+  assert.match(STUB, /runtime\.session\(\)\?\.first/);
+  assert.match(STUB, /recordRegular\(/);
+  assert.match(STUB, /trackEvent\('restaurant_regular', \{ npc \}\)/);
+  assert.match(STUB, /neighbors: \(\) => GUEST_NPCS\.filter\(/);
+  assert.match(STUB, /for \(const id of \[\.\.\.hiddenByRest\]\) showNeighbor\(id\)/);
+  assert.match(STUB, /hiddenByRest\.add\(id\);\s*if \(!o\.hidden\) setNpcHidden\(o, true\)/);
+});
+
+test('식당 환경이 손님 얼굴을 돌려준다', () => {
+  assert.match(STUB, /faceOf: g =>/);
+});
+
+test('주민 수첩에 좋아하는 메뉴 칩이 붙는다', () => {
+  const BOOK = read('js/affinity/book-ui.js'), AFF = read('js/affinity/index.js');
+  assert.match(BOOK, /if \(n\.favChip\) who\.appendChild\(el\('span', 'nbk-chip', n\.favChip\)\)/);
+  assert.match(AFF, /favChip: FAV\[id\] \?/);
+});

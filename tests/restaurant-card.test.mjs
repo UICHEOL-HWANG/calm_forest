@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resultView, resultHtml, goalRows, stockNeed } from '../js/restaurant/hud.js';
+import { resultView, resultHtml, goalRows, stockNeed, ticketHtml } from '../js/restaurant/hud.js';
 
 const r = { served: 7, avg: 4.6, coins: 175, perfect: 5 };
 const copy = { done: '영업 끝!', starUp: n => `⭐${n} 식당이 됐어요` };
@@ -74,4 +74,13 @@ test('재료가 넉넉하면 안내 줄과 안내 버튼이 없다', () => {
   const h = resultHtml(resultView(r, { bonus: 0, starUp: false, rest: rest1 }, goalRows(rest1), soldCopy, null));
   assert.doesNotMatch(h, /gneed|data-act="guide"/);
   assert.match(h, /<button type="button">확인</);
+});
+
+test('주문표는 손님 얼굴 배지를 달고 좋아하는 메뉴면 분홍으로 표시한다', () => {
+  const t = { id: 1, table: 0, menu: 'grilled', t0: 0, face: '🎣', fav: true };
+  const h = ticketHtml(t, 1, 1, null);
+  assert.match(h, /<div class="tk fav"><span class="face">🎣<\/span><b>1<\/b><i>🐟<\/i>/);
+  const plain = ticketHtml({ ...t, face: '🦌', fav: false }, 1, 1, 1);
+  assert.match(plain, /^<div class="tk now"><span class="face">🦌<\/span><b>1<\/b>/);
+  assert.doesNotMatch(ticketHtml({ ...t, face: '', fav: false }, 1, 1, null), /class="face"/);
 });

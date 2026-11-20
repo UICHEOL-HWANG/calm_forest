@@ -1,3 +1,4 @@
+import { pickGuestNpc, pickMenu } from './regulars.js';
 import { HALL, SERVICE_SEC, LAST_SPAWN_SEC, STAR, EAT_SEC, COIN_PER_STAR, PATIENCE, COOK, MENU } from './data.js';
 import { cookState, panState, flipOk, flipZone, chopTap, chopDone, serveStars, spawnInterval, serviceAvg } from './rules.js';
 
@@ -47,13 +48,13 @@ function blocked(S, g, pos) {
 
 const FIRST_PAT = 1.2;
 
-export function createSession({ star, dda, rng = Math.random, first = false, stock = null }) {
+export function createSession({ star, dda, rng = Math.random, first = false, stock = null, neighbors = null }) {
   const stations = {};
   for (const s of HALL.stations) stations[s.id] = { item: null, t: 0, chop: FRESH_CHOP(), flipped: null };
   return {
-    star, cfg: STAR[star], dda: first ? { ...dda, pat: dda.pat * FIRST_PAT } : { ...dda }, first, rng, stock, time: 0, next: 1.5, guests: [], tickets: [], gid: 0,
+    star, cfg: STAR[star], dda: first ? { ...dda, pat: dda.pat * FIRST_PAT } : { ...dda }, first, rng, stock, neighbors, time: 0, next: 1.5, guests: [], tickets: [], gid: 0,
     held: null, stations, staff: null, ended: false,
-    stats: { served: 0, stars: [], late: 0, perfect: 0, takes: 0, burnt: 0, coins: 0 },
+    stats: { served: 0, stars: [], late: 0, perfect: 0, takes: 0, burnt: 0, coins: 0, npcServed: 0 },
   };
 }
 
@@ -73,11 +74,13 @@ function inStock(S, menu) {
 function spawn(S) {
   const menus = S.first ? ['grilled'] : S.cfg.menus.filter(m => inStock(S, m));
   if (!menus.length) return null;
-  const menu = menus[Math.floor(S.rng() * menus.length)];
   const free = freeTables(S);
   if (!free.length) return null;
+  const busy = new Set(S.guests.map(g => g.npc).filter(Boolean));
+  const npc = S.neighbors ? pickGuestNpc(S.neighbors(), busy, S.rng) : null;
+  const menu = pickMenu(npc, menus, S.rng);
   const table = free[Math.floor(S.rng() * free.length)];
-  const g = { id: ++S.gid, table, menu, state: 'walk', t: 0, walk: walkTime(table) };
+  const g = { id: ++S.gid, table, menu, npc, state: 'walk', t: 0, walk: walkTime(table) };
   S.guests.push(g);
   return g;
 }
@@ -93,7 +96,8 @@ function serve(S, tk, it) {
   S.stats.served++;
   S.stats.stars.push(stars);
   S.stats.coins += coins;
-  return { menu: tk.menu, stars, coins, table: tk.table, id: tk.id };
+  if (g?.npc) S.stats.npcServed++;
+  return { menu: tk.menu, stars, coins, table: tk.table, id: tk.id, npc: g?.npc ?? null };
 }
 
 function stepStaff(S, dt, ev) {
@@ -125,7 +129,7 @@ export function tickSession(S, dt, { pos = null } = {}) {
   if (S.next <= 0 && S.time < LAST_SPAWN_SEC && !(S.first && S.gid > 0)) {
     const g = spawn(S);
     S.next = g ? spawnInterval(S.star, S.time, S.dda.iv) : 1;
-    if (g) ev.push({ type: 'spawn', id: g.id, table: g.table, menu: g.menu });
+    if (g) ev.push({ type: 'spawn', id: g.id, table: g.table, menu: g.menu, npc: g.npc });
   }
   for (const s of HALL.stations) {
     const st = S.stations[s.id];
@@ -292,7 +296,7 @@ export function finishSession(S) {
   return {
     served: st.served, stars: [...st.stars], unserved, late: st.late, perfect: st.perfect,
     takes: st.takes, burnt: st.burnt, coins: st.coins, avg: serviceAvg(st.stars, unserved),
-    soldOut: !!S.soldOut,
+    soldOut: !!S.soldOut, regularN: st.npcServed,
   };
 }
 
