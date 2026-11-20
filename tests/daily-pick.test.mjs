@@ -8,12 +8,12 @@ const addDays = (key, n) => {
   return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, '0')}-${String(t.getUTCDate()).padStart(2, '0')}`;
 };
 
-test('풀은 겨울 8종 + 숲 동물 8종 + 도구 세트 2종, id 중복 없음', () => {
-  assert.equal(DAILY_PICK_POOL.length, 18);
-  assert.equal(DAILY_PICK_POOL.filter(p => p.kind === 'cos').length, 10);
-  assert.equal(DAILY_PICK_POOL.filter(p => p.kind === 'decor').length, 8);
-  assert.equal(new Set(DAILY_PICK_POOL.map(p => p.id)).size, 18);
-  for (const id of ['tools_snowman', 'tools_squirrel']) assert.equal(DAILY_PICK_POOL.find(p => p.id === id)?.price, 3600);
+test('풀은 겨울·숲·크리스마스·바닷가 32종 + 도구 세트 4종, id 중복 없음', () => {
+  assert.equal(DAILY_PICK_POOL.length, 36);
+  assert.equal(DAILY_PICK_POOL.filter(p => p.kind === 'cos').length, 20);
+  assert.equal(DAILY_PICK_POOL.filter(p => p.kind === 'decor').length, 16);
+  assert.equal(new Set(DAILY_PICK_POOL.map(p => p.id)).size, 36);
+  for (const id of ['tools_snowman', 'tools_squirrel', 'tools_candy', 'tools_octopus']) assert.equal(DAILY_PICK_POOL.find(p => p.id === id)?.price, 3600);
   for (const p of DAILY_PICK_POOL) assert.ok(Number.isInteger(p.price) && p.price > 0);
 });
 

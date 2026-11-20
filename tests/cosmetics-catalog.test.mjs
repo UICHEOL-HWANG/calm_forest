@@ -5,13 +5,13 @@ import { SLOTS, ITEMS, itemsOf, findItem } from '../js/cosmetics/catalog.js';
 
 test('슬롯 7개 · 품목 65종(🪏 호미 3 + 🦀 갯벌 세트 구성품 2 + 코인 18 + 프리미엄 자국 2 + 스킨 2 + 도구 세트 3 + 🎃 할로윈 10 + 🍁 2차 11 + 🤝 초대 보상 3 + 🌱 새싹반 3 + ⛏️ 광부 보상 1 + 🎁 오늘의 특가 4)', () => {
   assert.deepEqual([...SLOTS], ['head', 'neck', 'back', 'trail', 'skin', 'tools', 'homi']);
-  assert.equal(ITEMS.length, 79);
+  assert.equal(ITEMS.length, 81);
   assert.equal(itemsOf('head').length, 17);
   assert.equal(itemsOf('neck').length, 8);
   assert.equal(itemsOf('back').length, 15);
   assert.equal(itemsOf('trail').length, 16);
   assert.equal(itemsOf('skin').length, 6);
-  assert.equal(itemsOf('tools').length, 13);
+  assert.equal(itemsOf('tools').length, 15);
   assert.equal(itemsOf('homi').length, 4);
   assert.equal(ITEMS.filter(i => i.reward).length, 3);
 });
