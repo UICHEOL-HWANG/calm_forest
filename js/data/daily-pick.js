@@ -7,6 +7,16 @@ export const DAILY_PICK_POOL = Object.freeze([
   Object.freeze({ id: 'wp_fur_rug', kind: 'decor', price: 900 }),
   Object.freeze({ id: 'wp_cocoa_table', kind: 'decor', price: 1100 }),
   Object.freeze({ id: 'wp_snowman', kind: 'decor', price: 1200 }),
+  Object.freeze({ id: 'fp_squirrel_band', kind: 'cos', price: 1200 }),
+  Object.freeze({ id: 'fp_owl_clock', kind: 'decor', price: 1400 }),
+  Object.freeze({ id: 'fp_owl_kerchief', kind: 'cos', price: 1000 }),
+  Object.freeze({ id: 'fp_acorn_cupboard', kind: 'decor', price: 1300 }),
+  Object.freeze({ id: 'tools_snowman', kind: 'cos', price: 3600 }),
+  Object.freeze({ id: 'fp_hedgehog_pack', kind: 'cos', price: 1500 }),
+  Object.freeze({ id: 'fp_hedgehog_cushion', kind: 'decor', price: 800 }),
+  Object.freeze({ id: 'fp_acorn_trail', kind: 'cos', price: 1600 }),
+  Object.freeze({ id: 'fp_deer_mailbox', kind: 'decor', price: 1200 }),
+  Object.freeze({ id: 'tools_squirrel', kind: 'cos', price: 3600 }),
 ]);
 
 const DAY_MS = 86400000;

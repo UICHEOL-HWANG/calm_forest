@@ -367,6 +367,7 @@ import { SIGNUP_GIFT_IDS, buildSignupGift } from './spaces/signup-gift-art.js';
 import { buildPromoGift, PROMO_SUITCASE_BOX } from './spaces/promo-gift-art.js';
 import { PROMO_DECOR_IDS } from './promo-gift/rules.js';
 import { YARD_IDS as WINTER_PICK_YARD_IDS, build as buildWinterPick } from './decor-drops/art-winter-pick.js';
+import { YARD_IDS as FOREST_PICK_YARD_IDS, build as buildForestPick } from './decor-drops/art-forest-pick.js';
 import { requestSignupNudge } from './signup-gift/index.js';
 import { FRIEND_ARCH_ID, buildFriendArch } from './spaces/friend-arch-art.js';   // 🌈 무지개 우정 아치(🤝 초대 보상)
 import { MINE_CART_ID, MINE_CART_BOX, buildMineCart } from './delve/cart-art.js';
@@ -6174,6 +6175,8 @@ function outdoorMesh(id) {
     g.add(buildPromoGift(THREE, id));
   } else if (WINTER_PICK_YARD_IDS.includes(id)) {
     g.add(buildWinterPick(id));
+  } else if (FOREST_PICK_YARD_IDS.includes(id)) {
+    g.add(buildForestPick(id));
   } else if (id === 'kiln') {
     // 🔥 화덕 — sims/kiln-sim.html 에서 확정한 C안(낮은 아궁이). 상판이 표시 면이라
     //    완성물이 쌓이면 가까이 가지 않아도 "다 구워졌다" 가 읽힌다.

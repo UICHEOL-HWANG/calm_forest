@@ -10,9 +10,9 @@ export const WP = Object.freeze({
 
 const headR = (HR, y) => Math.sqrt(Math.max(0, HR * HR - y * y));
 
-const withAnchors = k => ({ ...k, neck: neckAnchor(k.HR, k.HY), back: backAnchor(k.bs, k.R, k.bodyY) });
+export const withAnchors = k => ({ ...k, neck: neckAnchor(k.HR, k.HY), back: backAnchor(k.bs, k.R, k.bodyY) });
 
-function flatten(THREE, g) {
+export function flatten(THREE, g) {
   g.updateMatrixWorld(true);
   const inv = g.matrixWorld.clone().invert();
   const nested = [];
@@ -44,13 +44,13 @@ function pompom(THREE, g, h, r, color, x, y, z, puffs = 7) {
   }
 }
 
-function tubeAlong(THREE, pts, radius, mat, seg = 24, radial = 7) {
+export function tubeAlong(THREE, pts, radius, mat, seg = 24, radial = 7) {
   const m = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), seg, radius, radial, false), mat);
   m.castShadow = true;
   return m;
 }
 
-function surfLocal(THREE, k, origin, d, out) {
+export function surfLocal(THREE, k, origin, d, out) {
   const p = onSurf(k.bs, k.R, k.bodyY, d[0], d[1], d[2], out);
   return new THREE.Vector3(p.x - origin.x, p.y - origin.y, p.z - origin.z);
 }
@@ -152,7 +152,7 @@ function log(THREE, g, h, len, rad, pos, rot) {
   g.add(grp);
 }
 
-function backFront(k, yR, pad = 0.03) {
+export function backFront(k, yR, pad = 0.03) {
   const R = k.R, bs = k.bs;
   const bodyZ = yR < bs[1] ? -bs[2] * Math.sqrt(1 - (yR / bs[1]) ** 2) : 0;
   const HYr = (k.HY - k.bodyY) / R, HRr = k.HR / R, dy = yR - HYr;

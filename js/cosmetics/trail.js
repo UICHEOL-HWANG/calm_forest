@@ -22,6 +22,7 @@
 import { PALETTE as P, petalOf, put } from './art.js';
 import { mapleLeafGeo } from './art-forest-set.js';
 import { WP } from './art-winter-pick.js';
+import { buildAcornTrail } from './art-forest-pick.js';
 
 export const TRAIL_S = 0.10;      // 자국 하나의 기준 반지름(월드) — 1차엔 0.34 로 캐릭터 몸통만 했다
 export const TRAIL_CAP = 12;      // 동시 표시 상한
@@ -200,6 +201,7 @@ function makeMarks(THREE) {
       put(g, new THREE.Mesh(new THREE.RingGeometry(s * 0.18, s * 0.28, 14), film(0xf6c8ea, o * 0.45)), s * 0.55, 0.005, s * 0.3, false)
         .rotation.x = -Math.PI / 2;
     },
+    fp_acorn_trail: (g, s, o) => buildAcornTrail(THREE, g, s, o, { film, put }),
     wp_boot_trail: (g, s, o) => {
       const sc = 1.15, sole = film(WP.berry, o), tread = film(WP.cream, o);
       put(g, new THREE.Mesh(new THREE.SphereGeometry(s * 0.50 * sc, 12, 7), sole), 0, 0.006, s * 0.42 * sc, false).scale.set(0.82, 0.08, 1.10);
