@@ -14,6 +14,16 @@ export const CHAR = (id) => `img/chars/${id}.png`;
 export const nf = (n) => (n ?? 0).toLocaleString('ko-KR');
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+export function chartDefaults() {
+  Chart.defaults.color = V('--ink-3');
+  Chart.defaults.borderColor = V('--line-soft');
+  Chart.defaults.font.family = V('--font');
+  Chart.defaults.font.size = 12;
+  Chart.defaults.plugins.tooltip.backgroundColor = V('--ink');
+  Chart.defaults.plugins.tooltip.titleColor = V('--surface-1');
+  Chart.defaults.plugins.tooltip.bodyColor = V('--surface-1');
+}
+
 export function showMsg(html) {
   const m = $('msg');
   if (!m) return;

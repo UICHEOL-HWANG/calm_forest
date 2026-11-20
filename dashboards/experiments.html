@@ -4,85 +4,95 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>고요한 숲 · 실험 (A/B)</title>
-<meta name="description" content="고요한 숲 실험 레지스트리 — 사전 기준 · 배정 비율 검사 · 효과 크기와 신뢰구간 · 판정" />
+<meta name="description" content="고요한 숲 실험 레지스트리. 사전 기준 · 배정 비율 검사 · 효과 크기와 신뢰구간 · 판정" />
 <meta name="robots" content="noindex, nofollow" />
 <link rel="icon" href="/favicon.ico" sizes="any" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
 <link rel="stylesheet" href="_dash.css" />
 <link rel="stylesheet" href="_admin.css" />
 <style>
-  /* 실험 페이지 전용 — 시안: dev/active/admin-dashboard-v2/experiments-mockup.html (A + C 효과 그림) */
-  :root {
-    --amber-bg: color-mix(in srgb, var(--s4) 16%, transparent);
-    --blue-bg: color-mix(in srgb, var(--s3) 13%, transparent);
-  }
   #msg .msg-char { display: block; width: 72px; height: 72px; object-fit: contain; margin: 0 auto 8px; }
-  code { font-family: var(--mono); font-size: 11.5px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
-  .chip.win { background: rgba(var(--tint-rgb), .15); color: var(--up); }
-  .chip.lose, .chip.conf { background: var(--warn-bg); color: var(--down); }
-  .chip.small { background: var(--amber-bg); color: color-mix(in srgb, var(--s4) 70%, var(--ink)); }
-  .chip.obs { background: var(--blue-bg); color: var(--s3); }
-  .chip.st { background: transparent; border: 1px solid var(--line); color: var(--ink-3); }
-  .bar { display: block; height: 6px; background: var(--line); border-radius: 4px; overflow: hidden; }
-  .bar i { display: block; height: 100%; background: var(--s1); border-radius: 4px; }
+  code { font-family: var(--mono); font-size: 12px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
   .ok { color: var(--up); font-weight: 800; } .bad { color: var(--down); font-weight: 800; }
-  .forest { width: 100%; height: auto; display: block; }
+  #view { display: grid; gap: 20px; margin-top: 20px; }
+  .ci, .forest, .gantt { display: block; width: 100%; height: auto; }
+  .gantt { min-width: 780px; }
+  .gantt a { cursor: pointer; }
 
-  .lead { display: grid; grid-template-columns: minmax(0, 1fr) 270px; gap: 22px; margin-top: 18px; align-items: start; }
-  .fp { background: var(--surface-1); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px 8px; min-width: 0; }
-  .fp h2 { margin: 0 0 2px; font-size: 14px; font-weight: 800; }
-  .rules { border: 1px solid var(--line); border-radius: 14px; padding: 14px; background: var(--surface-1); display: grid; gap: 8px; font-size: 12px; color: var(--ink-2); }
-  .rules h3 { margin: 0; font-size: 12.5px; display: flex; gap: 8px; align-items: center; }
-  .rules h3 img { width: 30px; height: 30px; object-fit: contain; }
-  .rules ol { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+  .lead { display: grid; gap: 12px; }
+  .lead-h { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: flex-end; }
+  .lead-h .seg { margin-left: auto; }
+  details.rules { border-top: 1px solid var(--line-soft); padding-top: 12px; font-size: 13px; color: var(--ink-2); }
+  details.rules summary { cursor: pointer; font-weight: 800; }
+  details.rules ol { margin: 10px 0 0; padding-left: 20px; display: grid; gap: 5px; }
 
-  .xwrap { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 24px; margin-top: 24px; align-items: start; }
-  .xlist { display: grid; gap: 6px; position: sticky; top: calc(12px + env(safe-area-inset-top, 0px)); }
-  .grp-t { margin: 10px 0 2px; }
-  .item { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; padding: 10px 12px; border-radius: 12px; cursor: pointer;
-          border: 1px solid transparent; text-align: left; background: transparent; width: 100%; color: inherit; font: inherit; }
-  .item:hover { background: var(--surface-2); }
-  .item.on { background: var(--surface-1); border-color: var(--line); box-shadow: var(--shadow); }
-  .item b { font-size: 13px; display: block; }
-  .item .row { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 4px; align-items: center; }
-  .av { width: 34px; height: 34px; flex: none; border-radius: 50%; overflow: hidden; display: grid; place-items: center;
-        background: radial-gradient(circle at 50% 60%, rgba(var(--tint-rgb), .18), rgba(var(--tint-rgb), .04) 70%); }
-  .av img { width: 122%; height: 122%; object-fit: contain; transform: translateY(9%); }
+  .bd-h { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+  .bd-h h2 { margin: 0; font-size: 19px; font-weight: 800; letter-spacing: -.3px; }
+  .bd-h .seg { margin-left: auto; }
+  .bd { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 16px; }
+  .xc { display: flex; flex-direction: column; gap: 12px; padding: 18px; border-radius: 18px; background: var(--surface-1); border: 1px solid var(--line); box-shadow: var(--shadow);
+        color: inherit; text-decoration: none; transition: transform .18s cubic-bezier(.16, 1, .3, 1), border-color .18s; }
+  .xc:hover { transform: translateY(-2px); border-color: color-mix(in srgb, var(--s1) 45%, var(--line)); }
+  .xc:active { transform: translateY(0) scale(.99); }
+  .xc .q { font-size: 12.5px; color: var(--ink-3); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .xc .big { display: flex; align-items: baseline; gap: 8px; }
+  .xc .big b { font-size: 26px; font-weight: 800; letter-spacing: -.8px; }
+  .xc .big span { font-size: 12px; color: var(--ink-3); }
+  .xc .ft { display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line-soft); margin-top: auto; }
 
-  .detail { display: grid; gap: 18px; min-width: 0; scroll-margin-top: 16px; }
-  .xh { display: grid; gap: 6px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
-  .xh h2 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -.4px; }
-  .hyp { font-size: 13.5px; line-height: 1.6; color: var(--ink-2); margin: 0; max-width: 80ch; }
-  .lock { font-size: 10.5px; color: var(--ink-3); font-weight: 700; }
-  .checks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 14px; background: var(--surface-1); overflow: hidden; }
-  .checks > div { padding: 13px 15px; border-left: 1px solid var(--line-soft); display: grid; gap: 4px; align-content: start; min-width: 0; }
-  .checks > div:first-child { border-left: 0; }
-  .checks .num { font-size: 22px; letter-spacing: -.5px; }
-  .xtwo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
-  .log { display: grid; gap: 8px; font-size: 12.5px; }
-  .log div { display: grid; grid-template-columns: 52px 1fr; gap: 10px; color: var(--ink-2); }
-  .log span { color: var(--ink-3); font-variant-numeric: tabular-nums; }
-  table.t { width: 100%; border-collapse: collapse; font-size: 12px; }
-  .t th { text-align: left; font-size: 10.5px; color: var(--ink-3); font-weight: 700; padding: 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
-  .t td { padding: 8px 6px; border-bottom: 1px solid var(--line-soft); }
-  .t .r { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .to-board { font-size: 13.5px; font-weight: 700; color: var(--ink-2); text-decoration: none; justify-self: start; padding: 7px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-1); }
+  .to-board:hover { color: var(--ink); border-color: var(--ink-3); }
+  .fc { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 26px; align-items: start; }
+  .fl { position: sticky; top: calc(var(--nav-h, 56px) + 16px); display: grid; gap: 2px; max-height: calc(100dvh - var(--nav-h, 56px) - 32px); overflow: auto; padding-right: 4px; }
+  .fl .eyebrow { padding: 12px 10px 4px; }
+  .fi { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 10px; padding: 9px 10px; border-radius: 12px; border: 1px solid transparent; color: inherit; text-decoration: none; align-items: center; }
+  .fi > span:last-child { min-width: 0; }
+  .fi:hover { background: var(--surface-2); }
+  .fi.on { background: var(--surface-1); border-color: var(--line); box-shadow: var(--shadow); }
+  .fi b { display: block; font-size: 13.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px; }
+
+  .dt { display: grid; gap: 20px; min-width: 0; }
+  .dt-h { display: grid; gap: 8px; }
+  .dt-h h2 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -.6px; }
+  .dt-h .q { margin: 0; font-size: 14.5px; color: var(--ink-2); line-height: 1.6; max-width: 72ch; text-wrap: pretty; }
+  .warn { margin: 0; font-size: 13px; color: var(--down); background: color-mix(in srgb, var(--down) 8%, transparent); border-radius: 10px; padding: 9px 12px; }
+  .hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 28px; padding: 22px 24px; border-radius: 18px; background: var(--surface-1); border: 1px solid var(--line); box-shadow: var(--shadow); }
+  .hero > div { display: grid; gap: 8px; align-content: start; min-width: 0; }
+  .hero .bn { font-size: 46px; font-weight: 800; letter-spacing: -1.8px; line-height: 1.05; font-variant-numeric: tabular-nums; }
+  .hero.win .bn { color: var(--up); }
+  .hero.lose .bn { color: var(--down); }
+  .hero .rg { font-size: 13px; color: var(--ink-3); }
+  .say { margin: 0; font-size: 13.5px; color: var(--ink-2); line-height: 1.65; text-wrap: pretty; }
+  .ck { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .ck > div { padding: 14px 16px; border-radius: 14px; background: var(--surface-1); border: 1px solid var(--line); display: grid; gap: 5px; align-content: start; min-width: 0; }
+  .ck .n { font-size: 20px; font-weight: 800; letter-spacing: -.5px; }
+  .xtwo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+  .sec { display: grid; gap: 8px; align-content: start; min-width: 0; }
+  .sec h3 { margin: 0; font-size: 14.5px; font-weight: 800; }
+  .sec ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+  .tb td.cic, .tb th.cic { width: 150px; }
 
   @media (max-width: 860px) {
-    .lead, .xwrap, .xtwo { grid-template-columns: 1fr; }
-    .xlist { position: static; }
-    .checks { grid-template-columns: 1fr; }
-    .checks > div { border-left: 0; border-top: 1px solid var(--line-soft); }
-    .checks > div:first-child { border-top: 0; }
+    .fc, .hero, .xtwo { grid-template-columns: 1fr; }
+    .fl { position: static; display: flex; overflow-x: auto; max-height: none; gap: 6px; }
+    .fl .eyebrow { display: none; }
+    .fi { min-width: 230px; background: var(--surface-1); border-color: var(--line); }
+    .fi.on { border-color: var(--s1); }
+    .hero { padding: 18px; gap: 18px; }
+    .hero .bn { font-size: 38px; }
+    .ck { grid-template-columns: 1fr; }
+    .tb td.cic, .tb th.cic { display: none; }
+    .gantt { min-width: 0; }
   }
+  @media (prefers-reduced-motion: reduce) { .xc { transition: none; } }
 </style>
 </head>
-<body>
+<body data-nav="exp">
   <div id="page" class="is-loading is-first">
-    <div class="ah"><a class="crumb" href="index.html">← 관리자 홈</a></div>
-    <div class="ah" style="margin-top:6px">
-      <img class="brand" src="img/chars/chick.png" alt="" />
-      <h1>고요한 숲 · 실험 (A/B)</h1>
+    <div class="ah">
+      <h1>실험 (A/B)</h1>
       <div class="meta skel" id="meta">실험 레지스트리를 불러오는 중</div>
     </div>
     <div class="loader" id="loader" role="status" aria-live="polite">
@@ -91,30 +101,10 @@
     <div id="msg"></div>
 
     <main class="dash" id="dash">
-      <div class="lead">
-        <section class="fp" aria-labelledby="fpTitle">
-          <h2 id="fpTitle">주 지표 효과 한눈에</h2>
-          <p class="def">비율 지표 실험을 같은 축(%p)에 놓았습니다. 점선 = 무작위가 아니거나 교란이 있어 효과로 읽으면 안 되는 것. 단위가 다른 실험(평균)은 글자로만 적습니다.</p>
-          <div id="forest" class="chartbox"></div>
-        </section>
-        <aside class="rules">
-          <h3><img src="img/chars/bear.png" alt="" />판정 규칙</h3>
-          <ol>
-            <li>결과 보기 전에 주 지표·검정·판정선을 고정(🔒)</li>
-            <li>배정 비율이 설계(50:50·90:10·80:20)와 어긋나면(SRM p&lt;0.01) 판정하지 않음</li>
-            <li>관측 창이 끝나기 전, 목표 표본 전에는 판정하지 않음 · 못 채우고 끝나면 "표본 미달" · 사전등록 판정 시점 전인 실험은 "진행 중 · 판정 전"</li>
-            <li>CI 가 0을 걸치면 "판정 불가" + 검출 가능 최소 효과 보고 · CI 규칙으로 고정한 실험(E1~E3·E5~E7·프리패스)은 p 를 참고로만</li>
-            <li>무작위 배정이 없으면 효과 판정 안 함</li>
-          </ol>
-        </aside>
-      </div>
-
-      <div class="xwrap">
-        <nav class="xlist" id="list" aria-label="실험 목록"></nav>
-        <article class="detail" id="detail"></article>
-      </div>
+      <div id="view"></div>
     </main>
   </div>
+  <script type="module" src="js/admin-nav.js"></script>
   <script type="module" src="js/admin-experiments.js"></script>
 </body>
 </html>
