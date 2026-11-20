@@ -10,9 +10,12 @@ import {
   lettersToIssue, markIssued, letterKey, giftGain, owlDailyGain, pickTracker, allMaxed, heartAdOpen, heartAdGain,
 } from './stages.js';
 import { refreshQuestPanel, updateNPCGlyph } from '../spaces/npc.js';
-import { chipText, favChip, giftCapToast, introBody, introTitle, letterRowText, letterTitle, nextRewardText, retroToast, stageLabel, stageUpToast, trackerLines, trackerStart } from './copy.js';
+import { chipText, favChip, giftCapToast, introBody, introTitle, letterRowText, letterTitle, pantryGiftText, regularRowText, nextRewardText, retroToast, stageLabel, stageUpToast, trackerLines, trackerStart } from './copy.js';
 import { FAV } from '../restaurant/regulars.js';
 import { MENU } from '../restaurant/data.js';
+import { regularLetterOf } from '../data/regular-letters.js';
+import { addToPantry } from '../port/rules.js';
+import { PANTRY_ICO, PANTRY_NAME } from '../port/data.js';
 
 const HOUSE_DONE = 3;
 const lang = () => getLang();
@@ -138,7 +141,37 @@ function decorGiftText(gift) {
   return d ? `${d.ico} ${t(d.name)}` : null;
 }
 
+export function issueRegularLetter(npc) {
+  const key = `${npc}:regular`;
+  const order = hints().affOrder || [];
+  if (order.includes(key) || !regularLetterOf(npc)) return;
+  setHints({ affOrder: [...order, key] });
+  requestSave();
+  notify();
+}
+
+function regularLetterView(key) {
+  const npc = key.split(':')[0];
+  const L = lang();
+  const letter = regularLetterOf(npc, L);
+  if (!letter) return null;
+  const items = Object.entries(letter.pantry);
+  return {
+    key, npc, idx: -1,
+    face: npcDef(npc)?.emoji || '✉️',
+    title: letterTitle({ name: nameOf(npc), nameEn: t(nameOf(npc)), lang: L }),
+    row: regularRowText({ name: nameOf(npc), nameEn: t(nameOf(npc)), ico: MENU[FAV[npc]]?.ico || '🍽️', lang: L }),
+    stage: favChip({ ico: MENU[FAV[npc]]?.ico || '🍽️', regular: true, lang: L }),
+    body: letter.body,
+    gift: { pantry: letter.pantry },
+    giftText: items.map(([k, n]) => pantryGiftText({ ico: PANTRY_ICO[k] || '', name: t(PANTRY_NAME[k] || k), n, lang: L })).join(' · '),
+    read: !!hints().affRead?.[key],
+    claimed: !!hints().affClaim?.[key],
+  };
+}
+
 function letterView(key) {
+  if (key.endsWith(':regular')) return regularLetterView(key);
   const [npc, min] = key.split(':');
   const idx = STAGES.findIndex(s => String(s.min) === min);
   const L = lang();
@@ -186,7 +219,8 @@ export function claimLetter(key) {
   if (!v || v.claimed || !v.gift) return null;
   if (v.gift?.decor && !$w.grantDecor(v.gift.decor)) return null;
   setHints({ affClaim: { ...(hints().affClaim || {}), [key]: 1 } });
-  if (v.gift && !v.gift.decor) giveReward({ ...v.gift }, 'affinity_letter', key);
+  if (v.gift.pantry) gameState.port = addToPantry(gameState.port, v.gift.pantry);
+  else if (v.gift && !v.gift.decor) giveReward({ ...v.gift }, 'affinity_letter', key);
   trackEvent('affinity_reward_claim', { npc: v.npc, stage: v.idx + 1 });
   requestSave();
   return v.gift;

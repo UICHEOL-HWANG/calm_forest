@@ -46,3 +46,27 @@ test('저장값 정리: 모르는 이웃·이상한 값은 버린다', () => {
   assert.deepEqual(sanitizeRegulars({ angler: { fav: 3, done: false }, ghost: { fav: 9 }, farmer: { fav: -2, done: 'y' } }), { farmer: { fav: 0, done: false }, angler: { fav: 3, done: false } });
   assert.deepEqual(sanitizeRegulars(null), {});
 });
+
+test('단골 편지는 8명 모두 있고 선물은 좋아하는 메뉴 재료 3개', async () => {
+  const { REGULAR_LETTERS, regularLetterOf } = await import('../js/data/regular-letters.js');
+  const { MENU } = await import('../js/restaurant/data.js');
+  assert.deepEqual(Object.keys(REGULAR_LETTERS).sort(), [...GUEST_NPCS].sort());
+  for (const id of GUEST_NPCS) {
+    assert.deepEqual(REGULAR_LETTERS[id].pantry, { [MENU[FAV[id]].from]: 3 });
+    assert.ok(REGULAR_LETTERS[id].body.length > 20 && REGULAR_LETTERS[id].bodyEn.length > 20);
+    assert.doesNotMatch(REGULAR_LETTERS[id].body + REGULAR_LETTERS[id].bodyEn, /—/);
+  }
+  assert.equal(regularLetterOf('farmer', 'en').body, REGULAR_LETTERS.farmer.bodyEn);
+  assert.equal(regularLetterOf('chef'), null);
+});
+
+test('명패는 한 줄에 4개씩 두 줄, 위에서부터 걸린다', async () => {
+  const { tagSlots } = await import('../js/restaurant/regular-board.js');
+  assert.equal(tagSlots(0).length, 0);
+  const s = tagSlots(8);
+  assert.equal(s.length, 8);
+  assert.equal(new Set(s.map(p => p.x)).size, 2);
+  assert.ok(s[0].y > s[3].y);
+  assert.equal(s[4].y, s[0].y);
+  assert.ok((Math.min(...s.map(p => p.y)) - 0.185) * 1.35 >= 1.9);
+});

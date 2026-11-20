@@ -3,6 +3,7 @@ import {
   $w, adPill, camera, cameraFree, colliders, gameState, giveReward, makeSignpost, obstacles, player, projectToScreen, refreshInventoryUI, requestSave, scene,
   setFogExempt, setSpaceVisible, snapCamera, solidBox, solidCircle, spawnFloatText, ui, npcObjs, todayStr,
 } from '../game.js';
+import { buildRegularBoard } from '../restaurant/regular-board.js';
 import { createAuctionGuide } from '../auction/guide.js';
 import { PORT_PIER, CAFE_GUESTS } from '../data/places.js';
 import { walkLimit } from '../world/walk-bounds.js';
@@ -13,12 +14,12 @@ import { trackEvent } from '../analytics.js';
 import { logEcon } from '../metrics.js';
 import { NPCS } from '../data/npcs.js';
 import { buildNPCFigure, setNpcHidden } from './npc.js';
-import { gainAffinity } from '../affinity/index.js';
+import { gainAffinity, issueRegularLetter } from '../affinity/index.js';
 import { giftGain } from '../affinity/stages.js';
 import { isUnlocked } from '../world/unlocks.js';
 import { buildCafeGuestCast } from './cafe.js';
-import { GUEST_NPCS, serveLove, recordRegular } from '../restaurant/regulars.js';
-import { RESTAURANT, RESTAURANT_GATE, RESTAURANT_FACE, RESTAURANT_SIGN, HALL, STAR, restaurantLocal, restaurantBox } from '../restaurant/data.js';
+import { GUEST_NPCS, FAV, serveLove, recordRegular } from '../restaurant/regulars.js';
+import { MENU, RESTAURANT, RESTAURANT_GATE, RESTAURANT_FACE, RESTAURANT_SIGN, HALL, STAR, restaurantLocal, restaurantBox } from '../restaurant/data.js';
 import { buildBistro, setBistroEvening } from '../restaurant/exterior.js';
 import { buildHall } from '../restaurant/hall.js';
 import { grantStarter, panState } from '../restaurant/rules.js';
@@ -51,6 +52,7 @@ const EXIT_R = 1.2;
 const PLANT_R = 0.3;
 const free = new Map();
 let exterior = null, hall = null, runtime = null, chopHinted = false;
+let regularBoard = null, regularBoardSolid = null, boardSeq = 0;
 const stationSolids = [], tableSolids = [];
 const projV = new THREE.Vector3();
 
@@ -133,6 +135,35 @@ function releaseGuest(m) {
   free.get(id).push(m);
 }
 
+function disposeBoard(g) {
+  g.traverse(o => {
+    o.geometry?.dispose();
+    for (const m of [].concat(o.material || [])) { m.map?.dispose(); m.dispose(); }
+  });
+}
+
+async function rebuildRegularBoard() {
+  if (!hall) return;
+  const seq = ++boardSeq;
+  const regs = GUEST_NPCS
+    .filter(id => gameState.restaurant?.regulars?.[id]?.done)
+    .map(id => {
+      const def = NPCS.find(n => n.id === id);
+      return { face: def?.emoji ?? '', name: def ? t(def.name) : id, menu: MENU[FAV[id]]?.ico ?? '' };
+    });
+  const next = regs.length ? await buildRegularBoard(THREE, regs, t('단골')).catch(() => null) : null;
+  if (seq !== boardSeq) { if (next) disposeBoard(next); return; }
+  if (regularBoard) { hall.group.remove(regularBoard); disposeBoard(regularBoard); regularBoard = null; }
+  if (regularBoardSolid) regularBoardSolid.off = !next;
+  if (!next) return;
+  next.position.set(-6.85, 0, 1.9);
+  next.scale.setScalar(1.35);
+  hall.group.add(next);
+  setFogExempt(next, true);
+  regularBoard = next;
+  if (!regularBoardSolid) regularBoardSolid = solidCircle(RESTAURANT.x - 6.85, RESTAURANT.z + 1.9, 0.15);
+}
+
 function onGuestServed({ npc, menu, stars, table }) {
   if (!npc || runtime.session()?.first) return;
   const love = serveLove(npc, menu, stars);
@@ -148,7 +179,11 @@ function onGuestServed({ npc, menu, stars, table }) {
   const r = gameState.restaurant;
   const { regulars, became } = recordRegular(r.regulars || {}, npc, menu, stars);
   if (regulars !== r.regulars) gameState.restaurant = { ...gameState.restaurant, regulars };
-  if (became) trackEvent('restaurant_regular', { npc });
+  if (became) {
+    trackEvent('restaurant_regular', { npc });
+    issueRegularLetter(npc);
+    rebuildRegularBoard();
+  }
 }
 
 function project(p) {
@@ -207,6 +242,7 @@ export function enterRestaurant() {
     requestSave();
   }
   runtime?.refresh();
+  rebuildRegularBoard();
   syncSolids();
   player.position.set(RESTAURANT.x + HALL.door.x + 1.2, 0, RESTAURANT.z + HALL.door.z - 0.9);
   player.rotation.y = Math.PI;

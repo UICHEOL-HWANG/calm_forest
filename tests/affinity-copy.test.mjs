@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { josa, chipText, stageUpToast, giftCapToast, retroToast, letterTitle, letterRowText, nextRewardText, favChip } from '../js/affinity/copy.js';
+import { josa, chipText, stageUpToast, giftCapToast, retroToast, letterTitle, letterRowText, nextRewardText, favChip, regularRowText, pantryGiftText, pantryClaimToast } from '../js/affinity/copy.js';
 
 test('조사는 받침을 본다', () => {
   assert.equal(josa('농부 삼촌', '과', '와'), '과');
@@ -77,4 +77,13 @@ test('수첩 좋아하는 메뉴 칩: 좋아함 → 단골, 영어', () => {
   assert.equal(favChip({ ico: '🍙', regular: true }), '🍙 단골');
   assert.equal(favChip({ ico: '🐟', regular: false, lang: 'en' }), '🐟 Favorite');
   assert.equal(favChip({ ico: '🐟', regular: true, lang: 'en' }), '🐟 Regular');
+});
+
+test('단골 편지: 행 문구 · 동봉 줄 · 받은 뒤 토스트', () => {
+  assert.equal(regularRowText({ name: '농부 삼촌', nameEn: 'Farmer', ico: '🍙', lang: 'ko' }), '농부 삼촌 · 🍙 단골');
+  assert.equal(regularRowText({ name: '농부 삼촌', nameEn: 'Farmer', ico: '🍙', lang: 'en' }), 'Farmer · 🍙 Regular');
+  assert.equal(pantryGiftText({ ico: '🍚', name: '쌀', n: 3, lang: 'ko' }), '🍚 쌀 3 · 식당 창고로');
+  assert.equal(pantryGiftText({ ico: '🐟', name: 'Fish', n: 3, lang: 'en' }), '🐟 Fish 3 · to the restaurant pantry');
+  assert.equal(pantryClaimToast('ko'), '🍽️ 식당 창고에 넣었어요');
+  assert.equal(pantryClaimToast('en'), '🍽️ Added to the restaurant pantry');
 });
