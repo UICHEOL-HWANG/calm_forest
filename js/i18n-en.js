@@ -3592,7 +3592,7 @@ export const EN = {
   '작은 벽난로': 'Little Hearth', '양털 러그': 'Fleece Rug', '핫초코 탁자': 'Hot Cocoa Table', '목도리 두른 눈사람': 'Scarf-Wrapped Snowman',
   '양말 두 짝이 걸린 크림색 벽난로예요': 'A cream hearth with two stockings hung up', '털 방울이 빙 둘린 동그란 러그예요': 'A round rug ringed with pompoms',
   '큰 머그에 핫초코를 담은 원탁이에요': 'A round table with a big mug of hot cocoa', '방울모자에 긴 목도리를 두른 눈사람이에요': 'A snowman in a pompom beanie and a long scarf',
-  '다람쥐 귀 머리띠': 'Squirrel Ear Headband', '부엉이 손수건': 'Owl Kerchief', '고슴도치 배낭': 'Hedgehog Backpack', '도토리 굴리는 발자국': 'Rolling Acorn Steps',
+  '다람쥐 귀 머리띠': 'Squirrel Ear Headband', '부엉이 손수건': 'Owl Kerchief', '고슴도치 배낭': 'Hedgehog Backpack', '도토리 굴리는 발자국': 'Rolling Acorn Steps', '눈사람 세트': 'Snowman Set', '다람쥐 도토리 세트': 'Squirrel Acorn Set',
   '부엉이 시계': 'Owl Clock', '다람쥐 도토리 찬장': 'Squirrel Acorn Cupboard', '고슴도치 쿠션': 'Hedgehog Cushion', '사슴 우체통': 'Deer Mailbox',
   '부엉이가 머리에 앉은 괘종시계예요': 'A grandfather clock with an owl perched on top', '다람쥐가 지키는 커다란 도토리 찬장이에요': 'A big acorn cupboard guarded by a squirrel',
   '산딸기를 꼭 안은 고슴도치 인형이에요': 'A hedgehog plush hugging a raspberry', '자작나무 기둥 위에 사슴 얼굴 편지함을 얹었어요': 'A deer-faced mailbox on a birch post',

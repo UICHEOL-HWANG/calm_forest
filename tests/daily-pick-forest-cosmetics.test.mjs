@@ -56,3 +56,20 @@ test('acorn trail bakes into one mesh', () => {
 test('forest pick colors stay under bloom threshold', () => {
   for (const [k, c] of Object.entries(FP)) assert.ok(luma(c) < 0.85, `${k} ${luma(c).toFixed(3)}`);
 });
+
+test('도구 세트 2종은 코인 오늘의 꾸미기 전용, 테마가 연결된다', async () => {
+  const { findItem } = await import('../js/cosmetics/catalog.js');
+  const { shopRows } = await import('../js/cosmetics/sprout.js');
+  const { themeOf } = await import('../js/cosmetics/tool-skin-rules.js');
+  const { DAILY_PICK_POOL } = await import('../js/data/daily-pick.js');
+  for (const id of ['tools_snowman', 'tools_squirrel']) {
+    const it = findItem(id);
+    assert.ok(it, id);
+    assert.equal(it.slot, 'tools');
+    assert.equal(it.group, 'daily');
+    assert.equal(it.premium, undefined);
+    assert.equal(it.price.coins, DAILY_PICK_POOL.find(p => p.id === id).price);
+    assert.equal(themeOf(id), id.slice(6));
+    assert.ok(!shopRows('tools').some(r => r.id === id));
+  }
+});
