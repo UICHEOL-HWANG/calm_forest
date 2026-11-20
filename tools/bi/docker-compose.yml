@@ -6,7 +6,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: bi
-      POSTGRES_PASSWORD: ${BI_DB_PASSWORD:?set BI_DB_PASSWORD in tools/bi/.env}
+      POSTGRES_PASSWORD: ${BI_DB_PASSWORD:?set BI_DB_PASSWORD in ~/calm_forest/.env}
       POSTGRES_DB: bi
     ports:
       - "127.0.0.1:5433:5432"

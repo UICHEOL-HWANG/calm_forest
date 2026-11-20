@@ -17,7 +17,6 @@ from calm_ml.bi_rows import PROMOTED, event_row  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
 SCHEMA = REPO / "tools/bi/schema.sql"
-BI_ENV = REPO / "tools/bi/.env"
 SECRETS_ENV = Path.home() / "calm_forest/.env"
 RESYNC_DAYS = 3
 COLUMNS = ("ga_day", "day", "ts", "device", "user_id", "event", "session_id", "host", "country", "os", "device_cat",
@@ -41,7 +40,7 @@ def env_value(path: Path, key: str) -> str:
 
 
 def local_db() -> pg8000.native.Connection:
-    return pg8000.native.Connection(user="bi", password=env_value(BI_ENV, "BI_DB_PASSWORD"),
+    return pg8000.native.Connection(user="bi", password=env_value(SECRETS_ENV, "BI_DB_PASSWORD"),
                                     host="127.0.0.1", port=5433, database="bi")
 
 
