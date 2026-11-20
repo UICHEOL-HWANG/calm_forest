@@ -1,5 +1,5 @@
 import { HALL, STAR, RESTAURANT, PATIENCE } from './data.js';
-import { createSession, tickSession, contextAt, actAt, finishSession, stationView, guestPath, pathLen, pointAlong } from './session.js';
+import { createSession, tickSession, contextAt, actAt, finishSession, stationView, guestAt } from './session.js';
 import { recordServe, takeIngredient, settleService } from './rules.js';
 import { showForStar, itemMesh, itemHeight } from './hall.js';
 import { mountHud, contextLabel, goalRows, resultView, menuView, stockNeed } from './hud.js';
@@ -57,22 +57,16 @@ export function createRestaurantRuntime(env) {
     held = null;
     if (!k) return;
     const m = itemMesh(THREE, S.held);
-    m.position.set(0, 0.95, 0.5);
+    m.position.set(0, 1.42, 0.5);
     env.player.add(m);
     held = { key: k, mesh: m };
   }
 
   function placeGuest(g, m) {
-    const path = guestPath(g.table), len = pathLen(path);
-    let k = 1;
-    if (g.state === 'walk') k = Math.min(1, g.t / g.walk);
-    else if (g.state === 'leave') k = Math.max(0, 1 - g.t / g.walk);
-    const p = pointAlong(path, len * k);
-    const y = g.state === 'eat' ? 0.16 + Math.abs(Math.sin(g.t * 8)) * 0.05 : k === 1 ? 0.16 : 0;
+    const p = guestAt(g);
+    const y = g.state === 'eat' ? 0.16 + Math.abs(Math.sin(g.t * 8)) * 0.05 : p.k === 1 ? 0.16 : 0;
     m.position.set(p.x, y, p.z);
-    if (g.state === 'walk') m.rotation.y = p.dir;
-    else if (g.state === 'leave') m.rotation.y = p.dir + Math.PI;
-    else m.rotation.y = 0;
+    m.rotation.y = g.state === 'walk' || g.state === 'leave' ? p.dir : 0;
   }
 
   function syncGuests() {
@@ -222,7 +216,7 @@ export function createRestaurantRuntime(env) {
     },
     frame(dt) {
       if (!S) return;
-      handle(tickSession(S, dt));
+      handle(tickSession(S, dt, { pos: local(env.player.position) }));
       syncItems(); syncHeld(); syncGuests(); drawHud();
       if (S.ended) finish();
     },

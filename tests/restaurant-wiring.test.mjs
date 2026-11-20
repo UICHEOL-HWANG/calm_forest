@@ -131,3 +131,7 @@ test('지도 이름표: 길목 이름(정류장·이웃 마을 가는 길)은 �
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(html, /const list = \(lastPlaces \|\| \[\]\)\.slice\(\)\.sort\(\(a, b\) => \(a\.late \? 1 : 0\) - \(b\.late \? 1 : 0\) \|\| a\.z - b\.z\);/);
 });
+
+test('식당 화분은 플레이어가 통과하지 못하게 충돌 원이 있다', () => {
+  assert.match(STUB, /HALL\.plants\.forEach\(\(\[px, pz\]\) => solidCircle\(wx\(px\), wz\(pz\), PLANT_R\)\)/);
+});

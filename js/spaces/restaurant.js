@@ -44,6 +44,7 @@ export const RESTAURANT_COPY = {
 const DBG = typeof location !== 'undefined' && new URLSearchParams(location.search).has('dbg');
 const GUEST_POOL = NPCS.filter(d => d.id !== 'courier' && d.id !== 'merchant');
 const EXIT_R = 1.2;
+const PLANT_R = 0.3;
 const free = new Map();
 let exterior = null, hall = null, runtime = null, chopHinted = false;
 const stationSolids = [], tableSolids = [];
@@ -84,6 +85,7 @@ function hallSolids() {
   solidBox(wx(0.55), wz(-1.7), wx(1.05), wz(-0.1));
   solidBox(wx(0.65), wz(-4.2), wx(0.95), wz(-1.7));
   solidBox(wx(0.65), wz(0.3), wx(0.95), wz(1.7));
+  HALL.plants.forEach(([px, pz]) => solidCircle(wx(px), wz(pz), PLANT_R));
   HALL.tables.forEach(([tx, tz]) => {
     tableSolids.push([solidCircle(wx(tx), wz(tz), 0.78), solidCircle(wx(tx), wz(tz - 1.0), 0.32)]);
   });

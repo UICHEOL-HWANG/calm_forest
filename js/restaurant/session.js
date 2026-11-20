@@ -30,6 +30,20 @@ export function pointAlong(path, dist) {
   return { x: end.x, z: end.z, dir: Math.atan2(end.x - prev.x, end.z - prev.z) };
 }
 const walkTime = table => pathLen(guestPath(table)) / HALL.guestWalk;
+export function guestAt(g) {
+  const path = guestPath(g.table), len = pathLen(path);
+  const k = g.state === 'walk' ? Math.min(1, g.t / g.walk) : g.state === 'leave' ? Math.max(0, 1 - g.t / g.walk) : 1;
+  const p = pointAlong(path, len * k);
+  return { ...p, k, dir: g.state === 'leave' ? p.dir + Math.PI : p.dir };
+}
+const BODY = 0.9, PLAYER_YIELD = 1.5;
+function blocked(S, g, pos) {
+  if (g.state !== 'walk' && g.state !== 'leave') return false;
+  const me = guestAt(g), fx = Math.sin(me.dir), fz = Math.cos(me.dir);
+  const ahead = o => { const dx = o.x - me.x, dz = o.z - me.z; return Math.hypot(dx, dz) < BODY + 0.15 && dx * fx + dz * fz > 0; };
+  if (pos && (g.yield || 0) < PLAYER_YIELD && ahead(pos)) return true;
+  return S.guests.some(h => h !== g && (h.state === 'walk' || h.state === 'leave') && ahead(guestAt(h)));
+}
 
 const FIRST_PAT = 1.2;
 
@@ -101,11 +115,13 @@ function stepStaff(S, dt, ev) {
   ev.push({ type: 'staffServed', ...serve(S, tk, it) });
 }
 
-export function tickSession(S, dt) {
+export function tickSession(S, dt, { pos = null } = {}) {
   const ev = [];
   if (S.ended) return ev;
   S.time += dt;
   S.next -= dt;
+  const leaving = S.guests.some(g => g.state === 'leave');
+  if (S.next <= 0 && leaving) S.next = 0.5;
   if (S.next <= 0 && S.time < LAST_SPAWN_SEC && !(S.first && S.gid > 0)) {
     const g = spawn(S);
     S.next = g ? spawnInterval(S.star, S.time, S.dda.iv) : 1;
@@ -116,7 +132,11 @@ export function tickSession(S, dt) {
     if ((s.kind === 'pan' || s.kind === 'pot') && st.item) st.t += dt;
   }
   stepStaff(S, dt, ev);
+  const walking = S.guests.some(g => g.state === 'walk');
   for (const g of S.guests.slice()) {
+    if (blocked(S, g, pos)) { g.yield = (g.yield || 0) + dt; continue; }
+    g.yield = 0;
+    if (g.state === 'eat' && g.t + dt >= EAT_SEC && walking) continue;
     g.t += dt;
     if (g.state === 'walk' && g.t >= g.walk) {
       g.state = 'wait'; g.t = 0;

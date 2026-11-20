@@ -32,3 +32,17 @@ test('음식 모형은 종류마다 만들어지고 접시를 담으면 하나 �
     assert.equal(meshes(itemMesh(THREE, { kind, plated: true })).length, 1, kind);
   }
 });
+
+test('화분은 손님 길에서 몸 반경과 잎 반경만큼 떨어져 있다', async () => {
+  const { guestPath } = await import('../js/restaurant/session.js');
+  const segDist = (p, a, b) => {
+    const dx = b.x - a.x, dz = b.z - a.z, L = dx * dx + dz * dz;
+    const k = L ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.z - a.z) * dz) / L)) : 0;
+    return Math.hypot(p.x - a.x - dx * k, p.z - a.z - dz * k);
+  };
+  assert.equal(HALL.plants.length, 2);
+  for (const [x, z] of HALL.plants) for (let t = 0; t < HALL.tables.length; t++) {
+    const path = guestPath(t);
+    for (let i = 1; i < path.length; i++) assert.ok(segDist({ x, z }, path[i - 1], path[i]) >= 0.45 + 0.38, `plant ${x},${z} table ${t}`);
+  }
+});

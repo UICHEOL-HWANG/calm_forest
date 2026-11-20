@@ -48,6 +48,7 @@ export const HALL = {
   door: { x: -6.3, z: 3.4 },
   aisles: { west: -6.3, mid: -3.2 },
   board: { x: -3.2, z: -3.7 },
+  plants: [[-6.7, -3.75], [-0.4, -3.6]],
   tables: [[-4.7, -2.0], [-1.7, -2.0], [-4.7, 1.5], [-1.7, 1.5]],
   stations: [
     { id: 'crate_fish', kind: 'crate', give: 'fish', x: 1.9, z: -3.5 },

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { HALL, SERVICE_SEC } from '../js/restaurant/data.js';
-import { createSession, tickSession, contextAt, actAt, finishSession, stationView } from '../js/restaurant/session.js';
+import { createSession, tickSession, contextAt, actAt, finishSession, stationView, guestAt } from '../js/restaurant/session.js';
 
 const at = id => {
   const s = HALL.stations.find(s => s.id === id);
@@ -240,4 +240,66 @@ test('재고 함수가 없는 첫 영업 연습판은 품절로 끝나지 않는
   const ev = [];
   for (let i = 0; i < 100; i++) ev.push(...tickSession(S, 0.05));
   assert.ok(!ev.some(e => e.type === 'end'));
+});
+
+const BODY = 0.9;
+const lcg = s => () => (s = (s * 16807) % 2147483647) / 2147483647;
+function serveAfter(S, sec) {
+  for (const tk of [...S.tickets]) {
+    const g = S.guests.find(x => x.id === tk.id);
+    if (g && g.t > sec) { S.tickets.splice(S.tickets.indexOf(tk), 1); g.state = 'eat'; g.t = 0; }
+  }
+}
+
+test('들어오는 손님과 나가는 손님은 같은 때에 걷지 않는다', () => {
+  for (let run = 1; run <= 20; run++) {
+    const S = createSession({ star: 4, dda: one, rng: lcg(run) });
+    for (let i = 0; i < 2400 && !S.ended; i++) {
+      tickSession(S, 0.05);
+      serveAfter(S, 3);
+      const st = new Set(S.guests.map(g => g.state));
+      assert.ok(!(st.has('walk') && st.has('leave')), `run ${run} t=${S.time.toFixed(1)}`);
+    }
+  }
+});
+
+test('걷는 손님끼리 몸이 겹치지 않는다', () => {
+  for (const star of [1, 2, 3, 4]) for (let run = 1; run <= 20; run++) {
+    const S = createSession({ star, dda: one, rng: lcg(run * 31 + star) });
+    for (let i = 0; i < 2400 && !S.ended; i++) {
+      tickSession(S, 0.05);
+      serveAfter(S, 3);
+      const mv = S.guests.filter(g => g.state === 'walk' || g.state === 'leave').map(guestAt);
+      for (let a = 0; a < mv.length; a++) for (let b = a + 1; b < mv.length; b++) {
+        assert.ok(Math.hypot(mv[a].x - mv[b].x, mv[a].z - mv[b].z) >= BODY, `star ${star} run ${run}`);
+      }
+    }
+  }
+});
+
+test('손님은 앞을 막은 플레이어 앞에서 멈췄다가 비키면 다시 걷는다', () => {
+  const S = createSession({ star: 1, dda: one, rng: seq(0) });
+  let g = null;
+  for (let i = 0; i < 200 && !g; i++) { tickSession(S, 0.05); g = S.guests[0]; }
+  for (let i = 0; i < 6; i++) tickSession(S, 0.05);
+  const p = guestAt(g);
+  const block = { x: p.x + Math.sin(p.dir) * 0.6, z: p.z + Math.cos(p.dir) * 0.6 };
+  const t0 = g.t;
+  for (let i = 0; i < 20; i++) tickSession(S, 0.05, { pos: block });
+  assert.equal(g.t, t0);
+  const behind = { x: p.x - Math.sin(p.dir) * 0.6, z: p.z - Math.cos(p.dir) * 0.6 };
+  for (let i = 0; i < 4; i++) tickSession(S, 0.05, { pos: behind });
+  assert.ok(g.t > t0);
+});
+
+test('플레이어가 계속 길을 막으면 손님은 잠시 뒤 지나간다', () => {
+  const S = createSession({ star: 1, dda: one, rng: seq(0), first: true });
+  let g = null;
+  for (let i = 0; i < 200 && !g; i++) { tickSession(S, 0.05); g = S.guests[0]; }
+  for (let i = 0; i < 6; i++) tickSession(S, 0.05);
+  const p = guestAt(g);
+  const block = { x: p.x + Math.sin(p.dir) * 0.6, z: p.z + Math.cos(p.dir) * 0.6 };
+  const t0 = g.t;
+  for (let i = 0; i < 60; i++) tickSession(S, 0.05, { pos: block });
+  assert.ok(g.t > t0);
 });

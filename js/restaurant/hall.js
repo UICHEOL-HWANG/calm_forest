@@ -60,7 +60,7 @@ function room(K, g, THREE) {
   put(g, box(0.5, 0.85, 1.6), tag(C.counter), [split, 0.43, -0.9]);
   put(g, box(0.56, 0.06, 1.66), tag(C.top), [split, 0.88, -0.9]);
   put(g, box(1.3, 0.02, 0.8), tag(C.mat), [HALL.door.x + 0.3, 0.03, HALL.door.z + 0.1]);
-  for (const [x, z] of [[-6.6, -3.6], [-0.4, -3.6]]) {
+  for (const [x, z] of HALL.plants) {
     put(g, K.cyl(0.26, 0.2, 0.42, 10), tag(C.pot), [x, 0.21, z]);
     put(g, ball(0.38, 0), tag(C.leaf), [x, 0.68, z]);
   }
@@ -92,7 +92,7 @@ function station(K, g, s) {
   } else if (s.kind === 'pan') {
     put(g, box(1.0, 0.04, 0.9), tag(C.stove), [0, 0.92, 0]);
     put(g, cyl(0.33, 0.28, 0.08, 12), tag(C.pan), [0, 0.99, 0]);
-    put(g, box(0.45, 0.04, 0.07), tag(C.tableLeg), [-0.5, 0.99, 0]);
+    put(g, box(0.3, 0.04, 0.07), tag(C.tableLeg), [0.34, 0.99, -0.34], [0, Math.PI / 4, 0]);
   } else if (s.kind === 'pot') {
     put(g, box(1.0, 0.04, 0.9), tag(C.stove), [0, 0.92, 0]);
     put(g, cyl(0.34, 0.3, 0.4, 12), tag(C.steel), [0, 1.15, 0]);
