@@ -1,6 +1,6 @@
 # 오늘의 꾸미기 컨텍스트
 
-Last Updated: 2026-11-20 22:00
+Last Updated: 2026-11-20 23:15
 
 ## 위치
 - 워크트리 `.claude/worktrees/daily-pick`, 브랜치 `feat/daily-pick` (main 2aadb098 기준), 미푸시
@@ -24,3 +24,10 @@ Last Updated: 2026-11-20 22:00
 - 새 꾸미기·가구 id → 구버전 앱이 세이브에서 지움 → 5곳 동시 배포
 - 새 코드 주석 금지, UI 문구 엠대시 금지
 - 실내 가구 높이: 벽 3, DECOR_SCALE 1.5, tests/decor-ceiling.test.mjs
+
+## 진행 (2026-11-20 밤)
+- 구현·이식 완료, 로컬 커밋 94b9d10b까지. 게임에서 구매·반값·부족·이미 있음·가구 지급·자정 넘김 보호 확인
+- 카드 파일은 js/shop/daily-pick-card.js (game-ui 는 패널 전용 규칙 테스트)
+- 남은 것: 화면 캡처(PC·가로 폰), 루트 launch.json 임시 항목 daily-pick 삭제, 5곳 동시 배포
+- 리뷰 2번: 구버전 앱은 새 가구 id 를 세이브에서 지운다 → 5곳 동시 배포 필수
+- 기존 basket 꾸미기가 시뮬에서 여우·토끼·병아리 꼬리와 겹침(게임 확인 전, 별도 작업)
