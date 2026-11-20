@@ -96,6 +96,10 @@ const RAW = [
   { id: 'kinder_hat', slot: 'head', ico: '🟡', name: '새싹반 모자', coins: 50,  earSafe: 'dome', group: 'sprout' },
   { id: 'tulip_tag',  slot: 'neck', ico: '🌷', name: '튤립 이름표', coins: 70,  group: 'sprout' },
   { id: 'kinder_bag', slot: 'back', ico: '🎒', name: '새싹반 가방', coins: 100, anchor: 'side', group: 'sprout' },
+  { id: 'wp_pompom_hat', slot: 'head',  ico: '🧶', name: '방울 뜨개 모자',     coins: 1400, earSafe: 'dome', group: 'daily' },
+  { id: 'wp_knit_scarf', slot: 'neck',  ico: '🧣', name: '손뜨개 겨울 목도리', coins: 1200, group: 'daily' },
+  { id: 'wp_firewood',   slot: 'back',  ico: '🪵', name: '등에 멘 장작 바구니', coins: 1400, anchor: 'back', group: 'daily' },
+  { id: 'wp_boot_trail', slot: 'trail', ico: '🥾', name: '털장화 발자국',      coins: 1600, tier: '특별', group: 'daily' },
 ];
 
 export const ITEMS = Object.freeze(RAW.map(({ coins = null, won = null, ...it }) => Object.freeze(it.reward || it.quest || it.set

@@ -92,6 +92,7 @@ import { forgeView, forgeBegin, forgeAbort, forgeFinish, settleForge, forgeRushR
 import { initAuction, updateAuction, auctionMapSpot, auctionSpotNow, openAuction, auctionScatterBlocks, auctionOutdoorMesh, auctionDefault, restoreAuction, auctionGuideActive } from './auction/index.js';
 import { initWeekly, updateWeekly, weeklyNote, weeklySpotNow, openWeekly, weeklyDefault, restoreWeekly, weeklyScatterBlocks, weeklyDecorMesh, weeklyDev, weeklyGuideActive, weeklyPriority, weekIndex, BOARD_POS, MARKET_POS } from './weekly/index.js';
 import { makeWeeklyBridge } from './weekly/bridge.js';
+import { DAILY_PICK_POOL, cardState, adGrant, cleanDailyPick, decorOwned, leftLabel, msLeft, pickIndex, pickOf, planBuy, priceOf as dailyPriceOf } from './data/daily-pick.js';
 import { initConcert, updateConcert, concertSpotNow, openConcert, concertDefault, restoreConcert, concertScatterBlocks, concertDecorMesh, concertDev, STAGE_POS, concertGuideActive } from './concert/index.js';
 import { makeConcertBridge } from './concert/bridge.js';
 import { refreshPond, updatePond, pondScatterBlocks } from './pond/index.js';
@@ -365,6 +366,7 @@ import { souvenirOutdoorMesh } from './mountain/souvenir-art.js';
 import { SIGNUP_GIFT_IDS, buildSignupGift } from './spaces/signup-gift-art.js';
 import { buildPromoGift, PROMO_SUITCASE_BOX } from './spaces/promo-gift-art.js';
 import { PROMO_DECOR_IDS } from './promo-gift/rules.js';
+import { YARD_IDS as WINTER_PICK_YARD_IDS, build as buildWinterPick } from './decor-drops/art-winter-pick.js';
 import { requestSignupNudge } from './signup-gift/index.js';
 import { FRIEND_ARCH_ID, buildFriendArch } from './spaces/friend-arch-art.js';   // 🌈 무지개 우정 아치(🤝 초대 보상)
 import { MINE_CART_ID, MINE_CART_BOX, buildMineCart } from './delve/cart-art.js';
@@ -1213,6 +1215,7 @@ const gameState = {
   auction: auctionDefault(),
   weekly: weeklyDefault(),
   concert: concertDefault(),
+  dailyPick: null,
   neighbors: neighborsDefault(),       // 🏡 이웃 마을 { visited: 다녀온 횟수(📖 9장), seenAt: 다녀간 이웃 알림을 마지막으로 확인한 시각(ms) }
   unlocks: defaultUnlocks(),           // 🔓 마을 해금 { v, legacy, flags } — 새 세이브만 legacy:false. 판정은 js/world/unlocks.js(저장 안 하고 계산)
   tree: defaultTree(),                 // 🌳 세계수 판 { v, branches: { water|farm|kitchen|forest|snow: { tiles, given, habitat, bundles } } } — js/world/tree-board.js
@@ -2114,6 +2117,66 @@ function shortAdButton(slot, list, onDone, caps) {
 }
 export function guideShortAd(slot, list, onDone, caps) { return shortAdButton(slot, list, onDone, caps); }
 
+const DAILY_SEEN_KEY = 'cf_daily_pick_seen';
+
+function noteDailyView(day, id, state) {
+  try {
+    if (localStorage.getItem(DAILY_SEEN_KEY) === day) return;
+    localStorage.setItem(DAILY_SEEN_KEY, day);
+  } catch { return; }
+  trackEvent('daily_pick_view', { item_id: id, state });
+}
+
+function dailyPickInfo() {
+  const day = todayStr();
+  const pick = pickOf(day);
+  const item = pick.kind === 'cos' ? findItem(pick.id) : [...DECOR, ...OUTDOOR].find(d => d.id === pick.id);
+  if (!item) return null;
+  const owned = pick.kind === 'cos' ? gameState.cosmetics.owned.includes(pick.id) : decorOwned(gameState, pick.id);
+  return { day, pick, item, owned };
+}
+
+function dailyPickView() {
+  const info = dailyPickInfo();
+  if (!info) return null;
+  const { day, pick, item, owned } = info;
+  const dp = gameState.dailyPick;
+  const half = dp?.half === true && dp.d === day && dp.id === pick.id;
+  const state = cardState({ owned, half, adOpen: !owned && !half && !!rewarded?.offer('daily_pick') });
+  noteDailyView(day, pick.id, state);
+  return { d: day, id: pick.id, kind: pick.kind, ico: item.ico, name: item.name, state, price: dailyPriceOf(pick, dp, day), full: pick.price,
+    left: leftLabel(msLeft(Date.now())), count: DAILY_PICK_POOL.length, index: pickIndex(day) };
+}
+
+function buyDailyPick(shown) {
+  const info = dailyPickInfo();
+  if (!info) return { ok: false, msg: '지금은 살 수 없어요' };
+  const plan = planBuy({ day: info.day, shown, dp: gameState.dailyPick, coins: gameState.inventory.coins, owned: info.owned });
+  if (!plan.ok) return plan;
+  const { pick, price, half } = plan;
+  if (pick.kind === 'cos') {
+    if (!grantCosmetic(pick.id)) return { ok: false, msg: '지금은 살 수 없어요' };
+    gameState.cosmetics = equipCos(gameState.cosmetics, pick.id);
+  } else if (!grantDecor(pick.id)) return { ok: false, msg: '지금은 살 수 없어요' };
+  gameState.inventory.coins -= price;
+  logEcon('daily_pick', 'coins', -price, gameState.inventory.coins);
+  trackEvent('daily_pick_buy', { item_id: pick.id, half: half ? 1 : 0, price_coins: price, coins_after: gameState.inventory.coins });
+  if (pick.kind === 'decor') ui.toast?.('보관함에 넣었어요 — 작업대 장식 탭에서 꺼내 놓아요 🧺', 2600);
+  refreshInventoryUI();
+  requestSave();
+  return { ok: true };
+}
+
+function dailyPickAdButton(shown, onDone) {
+  if (!rewarded) return null;
+  return rewarded.button('daily_pick', ['광고 보고', ' ', '반값'], () => {
+    const grant = adGrant(shown, todayStr());
+    if (!grant) return;
+    gameState.dailyPick = grant;
+    requestSave();
+  }, (ok) => { if (ok) onDone?.(); });
+}
+
 function dailyAdButton(coins, streak) {
   if (!coins || !repeatOpen(gameState.houseStage) || !rewarded?.offer('daily_double')) return null;
   return rewarded.button('daily_double', ['광고 보고', ' ', `🪙 ${coins}`, ' ', '더 받기'], () => { giveReward({ coins }, 'daily_double', 'day' + streak); requestSave(); }, (ok, btn) => { if (ok) btn.remove(); });
@@ -2339,6 +2402,9 @@ export const Input = {
   boatViewMode() { return boatView; },
   getShopBuy() { return SHOP_BUY; },                    // 구매 목록
   sellAdButton(k, gain, onDone) { return sellAdButton(k, gain, onDone); },
+  dailyPickView() { return dailyPickView(); },
+  buyDailyPick(shown) { return buyDailyPick(shown); },
+  dailyPickAdButton(shown, onDone) { return dailyPickAdButton(shown, onDone); },
   craftAdButton(station, onDone) { return craftAdButton(station, onDone); },
   baitAdButton(done) { return adPill('bait_box', () => { giveReward({ bait: 2 }, 'bait_box'); requestSave(); }, done); },
   sellItem(k, req) { return sellItem(k, req); },        // 자원 판매
@@ -3426,6 +3492,7 @@ function applySave(saved) {
   gameState.auction = restoreAuction(saved.auction);
   gameState.weekly = restoreWeekly(saved.weekly);
   gameState.concert = restoreConcert(saved.concert);
+  gameState.dailyPick = cleanDailyPick(saved.dailyPick);
   gameState.neighbors = restoreNeighbors(saved.neighbors);   // 🏡 이웃 마을(옛 세이브=기본값)
   if (saved.affinity) gameState.affinity = { ...saved.affinity };    // 친밀도 복원
   // 💬 대화 횟수 복원 — 날짜가 오늘이 아니면 버린다(어제 소진이 오늘까지 남지 않게).
@@ -6105,6 +6172,8 @@ function outdoorMesh(id) {
     g.add(buildSignupGift(THREE, id, (m) => houseWindows.push(m)));
   } else if (PROMO_DECOR_IDS.includes(id)) {
     g.add(buildPromoGift(THREE, id));
+  } else if (WINTER_PICK_YARD_IDS.includes(id)) {
+    g.add(buildWinterPick(id));
   } else if (id === 'kiln') {
     // 🔥 화덕 — sims/kiln-sim.html 에서 확정한 C안(낮은 아궁이). 상판이 표시 면이라
     //    완성물이 쌓이면 가까이 가지 않아도 "다 구워졌다" 가 읽힌다.
