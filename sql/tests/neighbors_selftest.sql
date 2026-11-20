@@ -21,6 +21,7 @@ declare
   x uuid; pid uuid; r jsonb; t jsonb; sc jsonb; t1 jsonb; t2 jsonb; n int; vday date; keys text[];
   v_day date := (now() at time zone 'Asia/Seoul')::date;
   full_list uuid[]; sorted uuid[]; top3 uuid[]; blocked boolean := false;
+  pid1 uuid; pid2 uuid; orig1 jsonb; orig2 jsonb; tt1 text; tt2 text;
   vid bigint; vid2 bigint; vk int; acts text[];   -- ⑦ 📒 원장
 begin
   ids := array[a, b, c, d, e, f, g, h, i];
@@ -74,6 +75,22 @@ begin
   foreach x in array full_list || a loop
     if strpos(t1::text, x::text) > 0 then raise exception 'FAIL: today 응답에 user_id(%)가 있다', x; end if;
   end loop;
+  select public_id into pid1 from village_profiles where user_id = top3[1];
+  select public_id into pid2 from village_profiles where user_id = top3[2];
+  select state into orig1 from game_saves where user_id = top3[1];
+  select state into orig2 from game_saves where user_id = top3[2];
+  update game_saves set state = jsonb_set(state, '{story}', '{"ch":9}'::jsonb) where user_id = top3[1];
+  update game_saves set state = jsonb_set(state, '{story}', '{"ch":"abc"}'::jsonb) where user_id = top3[2];
+  t1 := public.neighbors_today();
+  select el->>'title' into tt1 from jsonb_array_elements(t1->'list') el where el->>'public_id' = pid1::text;
+  select el->>'title' into tt2 from jsonb_array_elements(t1->'list') el where el->>'public_id' = pid2::text;
+  if tt1 is distinct from 'keeper' then raise exception 'FAIL title: 9장 이웃은 keeper 여야 한다 (%)', tt1; end if;
+  if tt2 is not null then raise exception 'FAIL title: 숫자가 아닌 ch 는 null 이어야 한다 (%)', tt2; end if;
+  update game_saves set state = orig1 where user_id = top3[1];
+  update game_saves set state = orig2 where user_id = top3[2];
+  t1 := public.neighbors_today();
+  if exists (select 1 from jsonb_array_elements(t1->'list') el where el->>'title' is not null) then
+    raise exception 'FAIL title: 9장 미만 이웃에 title 이 있다'; end if;
   raise notice 'candidate checks pass';
 
   -- ── ①-b 페르소나 분리: sim 계정은 실사용자(a) 후보에 없고, sim 의 후보엔 실사용자(b) 가 없다 ──
