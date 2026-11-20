@@ -7,7 +7,7 @@
 - [ ] `js/data/daily-pick.js` + `tests/daily-pick.test.mjs` (TDD)
 - [ ] 카탈로그 등록(`group: 'daily'`, DECOR/OUTDOOR hidden) + shopRows 제외
 - [ ] 조형 이식(`js/cosmetics/art-winter-pick.js`, 가구 조형 파일)
-- [ ] 카드 UI `js/game-ui/daily-pick-card.js` + drawCosMenu 연결
+- [ ] 카드 UI `js/shop/daily-pick-card.js` + drawCosMenu 연결
 - [ ] 광고 `daily_pick` 자리 + 세이브 `dailyPick` 복원 정리
 - [ ] 측정 `daily_pick_view`·`daily_pick_buy`
 - [ ] 영어 문구

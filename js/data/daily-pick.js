@@ -40,3 +40,21 @@ export function cleanDailyPick(raw) {
   if (typeof half !== 'boolean') return null;
   return { d, id, half };
 }
+
+export function cardState({ owned, half, adOpen }) {
+  if (owned) return 'owned';
+  if (half) return 'half';
+  return adOpen ? 'ad' : 'noad';
+}
+
+export function leftLabel(ms) {
+  const min = Math.max(0, Math.floor(ms / 60000));
+  return `${Math.floor(min / 60)}:${String(min % 60).padStart(2, '0')}`;
+}
+
+export function decorOwned(state, id) {
+  return (state.house?.stored?.[id] || 0) > 0
+    || (state.outdoorStored?.[id] || 0) > 0
+    || (state.house?.decor || []).some(p => p.id === id)
+    || (state.outdoor || []).some(p => p.id === id);
+}

@@ -63,3 +63,28 @@ test('세이브 복원은 올바른 모양만 받는다', () => {
   assert.equal(cleanDailyPick({ d: '2026-12-01', id: 'wp_knit_scarf', half: 'yes' }), null);
   assert.deepEqual(Object.keys(cleanDailyPick({ d: '2026-12-01', id: 'wp_knit_scarf', half: true, extra: 1 })), ['d', 'id', 'half']);
 });
+
+test('카드 상태: 이미 있음 > 반값 > 광고 > 광고 없음', async () => {
+  const { cardState } = await import('../js/data/daily-pick.js');
+  assert.equal(cardState({ owned: true, half: true, adOpen: true }), 'owned');
+  assert.equal(cardState({ owned: false, half: true, adOpen: true }), 'half');
+  assert.equal(cardState({ owned: false, half: false, adOpen: true }), 'ad');
+  assert.equal(cardState({ owned: false, half: false, adOpen: false }), 'noad');
+});
+
+test('남은 시간 표시는 시:분', async () => {
+  const { leftLabel } = await import('../js/data/daily-pick.js');
+  assert.equal(leftLabel((13 * 60 + 42) * 60000 + 30000), '13:42');
+  assert.equal(leftLabel(5 * 60000), '0:05');
+  assert.equal(leftLabel(0), '0:00');
+});
+
+test('가구 보유: 보관함·실내·마당 어디든 하나 있으면 가짐', async () => {
+  const { decorOwned } = await import('../js/data/daily-pick.js');
+  assert.equal(decorOwned({}, 'wp_hearth'), false);
+  assert.equal(decorOwned({ house: { stored: { wp_hearth: 1 } } }, 'wp_hearth'), true);
+  assert.equal(decorOwned({ house: { stored: { wp_hearth: 0 }, decor: [{ id: 'wp_hearth' }] } }, 'wp_hearth'), true);
+  assert.equal(decorOwned({ outdoorStored: { wp_snowman: 1 } }, 'wp_snowman'), true);
+  assert.equal(decorOwned({ outdoor: [{ id: 'wp_snowman' }] }, 'wp_snowman'), true);
+  assert.equal(decorOwned({ outdoor: [{ id: 'other' }] }, 'wp_snowman'), false);
+});

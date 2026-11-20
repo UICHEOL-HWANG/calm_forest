@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Winter Pick Port Check</title>
+<style>
+  body { margin: 0; background: #1f1a16; color: #f3e9dc; font: 13px/1.35 system-ui, sans-serif; }
+  #grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; padding: 12px; }
+  .cell { background: #2c251f; border-radius: 10px; overflow: hidden; }
+  .cell canvas { display: block; width: 100%; aspect-ratio: 1 / 1; }
+  .lab { padding: 6px 8px; }
+</style>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}</script>
+</head>
+<body>
+<div id="grid"></div>
+<script type="module">
+import * as THREE from 'three';
+import { IDS, YARD_IDS, build } from '../js/decor-drops/art-winter-pick.js';
+import { DECOR, OUTDOOR, DECOR_SCALE } from '../js/data/catalog.js';
+
+const R = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+R.setPixelRatio(1); R.setSize(300, 300, false);
+R.toneMapping = THREE.ACESFilmicToneMapping; R.toneMappingExposure = 1.05;
+const shots = [['wp_hearth', 'day'], ['wp_hearth', 'night'], ['wp_fur_rug', 'day'], ['wp_cocoa_table', 'day'], ['wp_snowman', 'day']];
+for (const [id, mode] of shots) {
+  const yard = YARD_IDS.includes(id), k = yard ? 1 : DECOR_SCALE;
+  const def = (yard ? OUTDOOR : DECOR).find(d => d.id === id);
+  const scene = new THREE.Scene(); scene.background = new THREE.Color(mode === 'night' ? 0x141a2a : (yard ? 0x9cc4d8 : 0x3a3029));
+  const night = mode === 'night';
+  scene.add(new THREE.HemisphereLight(night ? 0x6b7aa8 : 0xfff6e6, 0x3a3340, night ? 0.35 : 1.1));
+  const sun = new THREE.DirectionalLight(night ? 0x8a9ad0 : 0xfff1d6, night ? 0.3 : 0.95); sun.position.set(6, 12, 8); scene.add(sun);
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(8, 0.1, 8), new THREE.MeshStandardMaterial({ color: yard ? 0xe8eef2 : 0xc9ac86, roughness: 0.95 })); floor.position.y = -0.05; scene.add(floor);
+  const lines = [];
+  if (def?.foot) { const [fw, fd] = def.foot.map(v => v * k); lines.push([[-fw / 2, -fd / 2], [fw / 2, -fd / 2], [fw / 2, fd / 2], [-fw / 2, fd / 2], [-fw / 2, -fd / 2]]); }
+  if (def?.posts) for (const [px, pz, r] of def.posts) lines.push(Array.from({ length: 33 }, (_, i) => [px + Math.cos(i / 32 * Math.PI * 2) * r, pz + Math.sin(i / 32 * Math.PI * 2) * r]));
+  for (const l of lines) scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(l.map(([x, z]) => new THREE.Vector3(x, 0.01, z))), new THREE.LineBasicMaterial({ color: 0x2fa84a })));
+  const item = build(id), root = new THREE.Group(); root.scale.setScalar(k); root.add(item); scene.add(root);
+  const bb = new THREE.Box3().setFromObject(root), sz = bb.getSize(new THREE.Vector3());
+  const span = Math.max(sz.x, sz.y, sz.z), cy = sz.y * 0.45;
+  const cam = new THREE.PerspectiveCamera(36, 1, 0.05, 100);
+  cam.position.set(span * 0.7 + 0.4, cy + span * 0.7 + 0.4, span * 1.5 + 0.8); cam.lookAt(0, cy, 0);
+  R.render(scene, cam);
+  const cell = document.createElement('div'); cell.className = 'cell';
+  const cv = document.createElement('canvas'); cv.width = cv.height = 300; cv.getContext('2d').drawImage(R.domElement, 0, 0);
+  cell.append(cv);
+  const lab = document.createElement('div'); lab.className = 'lab'; lab.textContent = `${def?.name} · ${mode} · h ${(sz.y / k).toFixed(2)} w ${(sz.x / k).toFixed(2)} d ${(sz.z / k).toFixed(2)}`;
+  cell.append(lab); document.getElementById('grid').append(cell);
+}
+document.title = 'done';
+</script>
+</body>
+</html>

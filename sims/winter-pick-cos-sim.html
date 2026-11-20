@@ -32,7 +32,8 @@
 import * as THREE from 'three';
 import { buildAnimalHead, plushMat } from '../js/animal-faces.js';
 import { PALETTE, put, buildCosmetic } from '../js/cosmetics/art.js';
-import { TRAIL_SIDE, TRAIL_S } from '../js/cosmetics/trail.js';
+import { TRAIL_SIDE, TRAIL_S, buildTrailMark } from '../js/cosmetics/trail.js';
+import { findItem } from '../js/cosmetics/catalog.js';
 import { backAnchor, headAnchor, neckAnchor, neckR as neckRadius, sideAnchor } from '../js/cosmetics/anchors.js';
 import { VARIANTS, WP } from './winter-pick/cos-art.mjs';
 
@@ -192,7 +193,8 @@ function trailRow(variant, a, n = 7) {
     step.position.set((i % 2 ? 1 : -1) * TRAIL_SIDE, 0, -i * 0.30 - 0.35);
     step.rotation.y = (i % 2 ? 1 : -1) * 0.20;
     const mark = new THREE.Group();
-    variant.build(THREE, mark, TRAIL_S, o, a && a.id, HT);
+    if (variant.ref) mark.add(buildTrailMark(THREE, variant.ref, o, a && a.id));
+    else variant.build(THREE, mark, TRAIL_S, o, a && a.id, HT);
     step.add(mark);
     g.add(step);
   }
@@ -244,6 +246,11 @@ const qs = new URLSearchParams(location.search);
 const itemId = VARIANTS[qs.get('item')] ? qs.get('item') : 'wp_pompom_hat';
 const ITEM = VARIANTS[itemId];
 const slot = ITEM.slot;
+const PORT = { wp_pompom_hat: ['B', 'wp_pompom_hat'], wp_knit_scarf: ['B', 'wp_knit_scarf'], wp_firewood_v2: ['D', 'wp_firewood'], wp_boot_trail: ['C', 'wp_boot_trail'] }[itemId];
+const portOn = qs.has('port') && PORT;
+const rowOf = r => r === 'PORT'
+  ? { name: '게임 코드', note: `${PORT[1]} · buildCosmetic/buildTrailMark`, ref: PORT[1], anchor: findItem(PORT[1]).anchor }
+  : ITEM[r];
 
 const used = Object.entries(WP);
 const over = used.filter(([, c]) => luma(c) > BLOOM_LUMA);
@@ -263,7 +270,7 @@ document.body.appendChild(renderer.domElement);
 
 const TOP = 64, COLH = 30, LEFTW = 200;
 const cols = COLS[ITEM.cols || slot];
-const rows = ITEM.rows || ['A', 'B', 'C'];
+const rows = portOn ? [PORT[0], 'PORT'] : (ITEM.rows || ['A', 'B', 'C']);
 const cw = (innerWidth - LEFTW) / cols.length, ch = (innerHeight - TOP - COLH) / rows.length;
 const ov = document.getElementById('ov');
 const cells = [];
@@ -276,7 +283,7 @@ cols.forEach((c, ci) => {
 });
 
 rows.forEach((r, ri) => {
-  const v = ITEM[r];
+  const v = rowOf(r);
   const re = document.createElement('div');
   re.className = 'row';
   re.innerHTML = `<div class="L">${r === 'REF' ? '기준' : r}</div><div class="n">${v.name}</div><div class="d">${v.note}</div>`;
@@ -293,7 +300,8 @@ rows.forEach((r, ri) => {
           const m = new THREE.Group();
           m.position.set(s * 0.14, 0, s * 0.10);
           m.rotation.y = s * 0.15;
-          v.build(THREE, m, TRAIL_S, 1.0, 'bear', HT);
+          if (v.ref) m.add(buildTrailMark(THREE, v.ref, 1.0, 'bear'));
+          else v.build(THREE, m, TRAIL_S, 1.0, 'bear', HT);
           scene.add(m);
         });
         target = new THREE.Vector3(0, 0.02, 0); dist = 0.95; elev = 52;

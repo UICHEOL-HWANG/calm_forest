@@ -13,7 +13,7 @@ import {
   mergeGeos, museumGroup, nearCafeBoard, nearCafeGuest, nearDoor, obstacles, pantryHas, pantryTake, pendingDish,
   player, purchaseHooks, refreshCollectQuests, refreshInventoryUI, removeSolid, renderer, requestSave,
   roundRect, scene, setFogExempt, setSpaceVisible, snapCamera, solidBox, solidCircle, spawnConfetti, spawnFloatText,
-  spawnSparkle, syncBadges, syncStory, todayStr, triggerMoment, ui, woodMat,
+  spawnSparkle, syncBadges, syncStory, todayStr, triggerMoment, ui, woodMat, Input,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
 import { weeklyNote } from '../weekly/index.js';
@@ -51,6 +51,7 @@ import { awaitGrant, LATER_MSG } from '../shop/purchases.js';
 import { BUNDLES, bundleById, bundleCardMode, bundleCash, bundleCopy, bundleGrant } from '../shop/bundles.js';
 import { HOMI_SKIN_OF } from '../cosmetics/homi-skin-rules.js';
 import { drawBundleCard } from '../shop/bundle-card.js';
+import { drawDailyPickCard } from '../shop/daily-pick-card.js';
 import { refreshCafeModal } from '../mountain/cafe-ui.js';
 import { Sound } from '../sound.js';
 import { state as authState, fetchPurchases } from '../supabase-client.js';
@@ -883,6 +884,21 @@ export function tryOnCos(it) {
   drawCosMenu();
 }
 
+function drawDaily(box) {
+  const view = Input.dailyPickView?.();
+  if (!view) return;
+  drawDailyPickCard(box, view, {
+    onBuy: () => {
+      const r = Input.buyDailyPick();
+      if (!r.ok) { ui.toast?.(r.msg, 2000); return; }
+      if (view.kind === 'cos') { applyCosmetics(gameState.cosmetics); cosTryOn = null; cosPreview?.refresh(null); }
+      drawCosMenu();
+    },
+    onTry: view.kind === 'cos' && view.state !== 'owned' ? () => { const it = findItem(view.id); if (it) tryOnCos(it); } : null,
+    adButton: () => Input.dailyPickAdButton(() => drawCosMenu()),
+  });
+}
+
 export function openCosPreview(canvas) {
   cosTryOn = null;
   petView = gameState.pet ? gameState.pet.kind : PET_KINDS[0].id;   // 🐾 열 때마다 데리고 다니는 종부터 보여 준다
@@ -1170,6 +1186,7 @@ export function drawCosMenu() {
   }
   const box = document.getElementById('cos-items');
   box.innerHTML = '';
+  drawDaily(box);
   drawTabBundles(box, cosTab);
   if (cosTab !== 'homi') drawWelcomeBox(box);
   //  🪞 프리뷰도 탭을 따라간다 — 펫 탭이면 펫을, 나머지 탭이면 내 캐릭터를 본다.

@@ -117,6 +117,9 @@ export const DECOR = [
   { id: 'musicstand', name: '보면대', ico: '🎼', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.48, 0.32] },
   { id: 'metronome', name: '메트로놈', ico: '⏱️', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.25, 0.22], sm: true, h: 0.4 },
   { id: 'musicbox', name: '오르골', ico: '🎹', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.36, 0.46], sm: true, h: 0.47 },
+  { id: 'wp_hearth', name: '작은 벽난로', ico: '🔥', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [1.2, 0.6], desc: '양말 두 짝이 걸린 크림색 벽난로예요' },
+  { id: 'wp_fur_rug', name: '양털 러그', ico: '🧶', cost: 0, pay: 'coins', hidden: true, keep: true, desc: '털 방울이 빙 둘린 동그란 러그예요' },
+  { id: 'wp_cocoa_table', name: '핫초코 탁자', ico: '☕', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.8, 0.8], desc: '큰 머그에 핫초코를 담은 원탁이에요' },
   ...AFF_FRAMES,
 ];
 
@@ -274,6 +277,7 @@ export const OUTDOOR = [
   { id: 'noteflags', name: '음표 깃발 줄', ico: '🎶', cost: { coins: 9999 }, desc: '음표 모양 기둥에 깃발을 걸었어요', hidden: true, box: [2.5, 0.5], posts: [[-0.97, 0, 0.3], [0.85, 0, 0.2]] },
   { id: 'hornpost', name: '나팔 기둥', ico: '📢', cost: { coins: 9999 }, desc: '마을 소식을 알리는 나팔이에요', hidden: true, box: [1.04, 0.64], posts: [[0, 0, 0.22]] },
   { id: 'reedorgan', name: '작은 풍금', ico: '🎹', cost: { coins: 9999 }, desc: '마당에서 한 곡 쳐 보고 싶어져요', hidden: true, box: [1.1, 0.62] },
+  { id: 'wp_snowman', name: '목도리 두른 눈사람', ico: '⛄', cost: { coins: 9999 }, desc: '방울모자에 긴 목도리를 두른 눈사람이에요', hidden: true, quest: true, box: [0.9, 0.9], posts: [[0, 0, 0.4]] },
   ...AFF_OUTDOOR,
   ...REWARD_DECOR,   // 🤝 친구 초대 보상 장식(js/data/reward-decor.js) — 원장이 보관함에 넣어 준다 · 서버 가드 대상
   { id: 'mine_cart', name: '광산 수레', ico: '🛒', cost: { coins: 9999 }, desc: '광부 아저씨가 준 수레 · 지하 20층 도달 보상', hidden: true, quest: 'delve' },

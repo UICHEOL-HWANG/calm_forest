@@ -76,7 +76,7 @@
 
 ### 4.4 화면 (B안)
 
-`js/spaces/cafe.js` 의 `drawCosMenu()` 에서 `drawTabBundles` 앞에 `drawDailyPickCard(box)` 한 줄. 카드 그리기는 새 파일 `js/game-ui/daily-pick-card.js`.
+`js/spaces/cafe.js` 의 `drawCosMenu()` 에서 `drawTabBundles` 앞에 `drawDailyPickCard(box)` 한 줄. 카드 그리기는 새 파일 `js/shop/daily-pick-card.js`.
 
 - 모든 탭 맨 위(펫 탭 포함)에 같은 카드
 - 내용: 아이콘 상자 · "📅 오늘의 꾸미기" · ⏳ 남은 시간 · 이름 · [🪙 가격] · [AD 광고 보고 반값]

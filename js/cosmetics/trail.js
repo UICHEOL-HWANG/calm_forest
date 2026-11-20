@@ -21,6 +21,7 @@
 
 import { PALETTE as P, petalOf, put } from './art.js';
 import { mapleLeafGeo } from './art-forest-set.js';
+import { WP } from './art-winter-pick.js';
 
 export const TRAIL_S = 0.10;      // 자국 하나의 기준 반지름(월드) — 1차엔 0.34 로 캐릭터 몸통만 했다
 export const TRAIL_CAP = 12;      // 동시 표시 상한
@@ -198,6 +199,23 @@ function makeMarks(THREE) {
         .rotation.x = -Math.PI / 2;
       put(g, new THREE.Mesh(new THREE.RingGeometry(s * 0.18, s * 0.28, 14), film(0xf6c8ea, o * 0.45)), s * 0.55, 0.005, s * 0.3, false)
         .rotation.x = -Math.PI / 2;
+    },
+    wp_boot_trail: (g, s, o) => {
+      const sc = 1.15, sole = film(WP.berry, o), tread = film(WP.cream, o);
+      put(g, new THREE.Mesh(new THREE.SphereGeometry(s * 0.50 * sc, 12, 7), sole), 0, 0.006, s * 0.42 * sc, false).scale.set(0.82, 0.08, 1.10);
+      put(g, new THREE.Mesh(new THREE.BoxGeometry(s * 0.56 * sc, s * 0.02, s * 0.50 * sc), sole), 0, 0.005, -s * 0.12 * sc, false);
+      put(g, new THREE.Mesh(new THREE.SphereGeometry(s * 0.38 * sc, 12, 7), sole), 0, 0.006, -s * 0.52 * sc, false).scale.set(0.95, 0.08, 0.85);
+      [0.78, 0.52, 0.26].forEach(z => [-1, 1].forEach(sd => {
+        put(g, new THREE.Mesh(new THREE.BoxGeometry(s * 0.34, s * 0.02, s * 0.07), tread), sd * s * 0.14, 0.011, z * s * sc, false).rotation.y = sd * 0.55;
+      }));
+      const heart = new THREE.Shape();
+      heart.moveTo(0, -0.9); heart.bezierCurveTo(0.9, -0.1, 0.8, 0.8, 0, 0.35); heart.bezierCurveTo(-0.8, 0.8, -0.9, -0.1, 0, -0.9);
+      const hg = new THREE.ShapeGeometry(heart, 8);
+      hg.scale(s * 0.24, s * 0.24, 1);
+      put(g, new THREE.Mesh(hg, tread), 0, 0.012, -s * 0.55 * sc, false).rotation.x = -Math.PI / 2;
+      [[0.30, 0.9, -0.2, 0.16, 0.8], [-0.25, 1.9, -0.5, 0.11, 0.5], [0.10, 2.9, -0.8, 0.08, 0.3]].forEach(([x, y, z, r, a]) => {
+        put(g, new THREE.Mesh(new THREE.IcosahedronGeometry(s * r, 1), film(WP.cream, o * a)), x * s, y * s, z * s, false);
+      });
     },
   };
 

@@ -10,7 +10,7 @@ export function sproutOpen(cos) {
 
 export function shopRows(tab) {
   if (tab === 'sprout') return [...SPROUT_IDS.map(findItem), findItem(SPROUT_PREMIUM_PICK)].filter(Boolean);
-  return itemsOf(tab).filter(i => !i.shop && i.group !== 'sprout');
+  return itemsOf(tab).filter(i => !i.shop && i.group !== 'sprout' && i.group !== 'daily');
 }
 
 export function defaultCosTab(cos) {
