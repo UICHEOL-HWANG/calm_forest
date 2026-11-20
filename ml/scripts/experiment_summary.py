@@ -250,6 +250,9 @@ ev as (
          (select coalesce(value.string_value, cast(value.int_value as string)) from unnest(event_params) where key = 'stage') as stage,
          (select value.string_value from unnest(event_params) where key = 'result') as res,
          (select coalesce(value.string_value, cast(value.int_value as string)) from unnest(event_params) where key in ('house_guide_arm', 'arm') limit 1) as garm,
+         (select value.string_value from unnest(event_params) where key = 'step') as step,
+         (select value.string_value from unnest(event_params) where key = 'slot') as slot,
+         device.category as cat,
          (select up.value.string_value from unnest(user_properties) up where up.key = @prop) as prop
   from {GA4}
   where regexp_contains(_TABLE_SUFFIX, r'^[0-9]{{8}}$') and _TABLE_SUFFIX between @since and @until
@@ -259,7 +262,8 @@ dev as (
          coalesce(logical_or(host in ('localhost', '127.0.0.1')), false) as local,
          coalesce(logical_or(user_id in unnest(@persona_ids)), false) as persona,
          array_agg(country ignore nulls order by us limit 1)[safe_offset(0)] as country,
-         array_agg(platform ignore nulls order by us limit 1)[safe_offset(0)] as platform
+         array_agg(platform ignore nulls order by us limit 1)[safe_offset(0)] as platform,
+         array_agg(cat ignore nulls order by us limit 1)[safe_offset(0)] as cat
   from ev group by d
 ),
 lim as (select max(day) as data_max from ev)
@@ -488,6 +492,50 @@ GIFT_UNLINKED = [
 ]
 
 
+E6_SQL = f"""
+with {GA4_EV},
+asg as (
+  select d, min(day) as day0, array_agg(distinct prop ignore nulls) as arms from ev where prop is not null group by d
+)
+select asg.d, asg.arms, asg.day0 as day, dev.local, dev.persona, dev.platform, any_value(lim.data_max) as data_max,
+       coalesce(logical_or(ev.event_name = 'house_build' and safe_cast(ev.stage as int64) >= 3 and ev.day = asg.day0), false) as y,
+       coalesce(logical_or(ev.event_name = 'house_build' and safe_cast(ev.stage as int64) >= 1 and ev.day = asg.day0), false) as h1,
+       coalesce(logical_or(ev.day = date_add(asg.day0, interval 1 day)), false) as d1,
+       coalesce(logical_or(ev.day = date_add(asg.day0, interval 7 day)), false) as d7
+from asg join dev using (d) cross join lim left join ev on ev.d = asg.d
+group by 1, 2, 3, 4, 5, 6
+"""
+
+E7_SQL = f"""
+with {GA4_EV},
+asg as (
+  select d, array_agg(distinct prop ignore nulls) as arms from ev where prop is not null group by d
+),
+scr as (
+  select d, min(day) as day0 from ev where event_name = 'nickname_step' and step = 'view' group by d
+)
+select scr.d, asg.arms, scr.day0 as day, dev.local, dev.persona, dev.platform, dev.cat, any_value(lim.data_max) as data_max,
+       coalesce(logical_or(ev.event_name = 'character_select' and ev.day = scr.day0), false) as y,
+       coalesce(logical_or(ev.event_name in ('chop_tree', 'plant_seed', 'harvest_crop') and ev.day = scr.day0), false) as act,
+       coalesce(logical_or(ev.day = date_add(scr.day0, interval 1 day)), false) as d1
+from scr join asg using (d) join dev using (d) cross join lim left join ev on ev.d = scr.d
+group by 1, 2, 3, 4, 5, 6, 7
+"""
+
+PREPASS_SQL = f"""
+with {GA4_EV},
+el as (
+  select d, min(us) as t0, min(day) as day0, array_agg(distinct garm ignore nulls) as arms
+  from ev where event_name = 'prepass_eligible' and slot = 'house1' group by d
+)
+select el.d, el.arms, el.day0 as day, dev.local, dev.persona, dev.platform, any_value(lim.data_max) as data_max,
+       coalesce(logical_or(ev.event_name = 'house_build' and safe_cast(ev.stage as int64) >= 1 and ev.us between el.t0 and el.t0 + 86400000000), false) as y24,
+       coalesce(logical_or(ev.event_name = 'prepass_ad_result' and ev.slot = 'house1' and ev.res = 'complete' and ev.us >= el.t0), false) as watched,
+       coalesce(logical_or(ev.day = date_add(el.day0, interval 1 day)), false) as d1
+from el join dev using (d) cross join lim left join ev on ev.d = el.d
+group by 1, 2, 3, 4, 5, 6
+"""
+
 def _mature(df: pd.DataFrame, data_max, days: int = 1) -> pd.DataFrame:
     if data_max is None:
         return df.iloc[:0]
@@ -562,6 +610,86 @@ def run_gift_path(persona_ids: list[str]) -> dict:
     }
 
 
+def run_e6(persona_ids: list[str]) -> dict:
+    df = bq.read_sql(E6_SQL, prop="exp_guide", since="20261111", until="99999999", persona_ids=persona_ids)
+    n_all = len(df)
+    df, mixed = _one_arm(df)
+    df = df[~df.local & ~df.persona].copy()
+    df["day"] = df.day.astype(str)
+    data_max = pd.Timestamp(df.data_max.max()) if len(df) else None
+    mat = _mature(df, data_max)
+    order = [("new", "새 안내(처치 80%)"), ("old", "예전 안내(20%)")]
+    return {
+        "type": "prop", "compare": ["new", "old"], "ratio": [0.8, 0.2], "running": True,
+        "arms": prop_arms(mat, "arm", "y", order),
+        "secondary": [
+            {"label": "첫날 집 기초(1단계) 완공", "type": "prop", "arms": prop_arms(mat, "arm", "h1", order)},
+            {"label": "다음 날 재방문", "type": "prop", "arms": prop_arms(mat, "arm", "d1", order)},
+            {"label": "7일째 재방문(7일 지난 기기만)", "type": "prop", "arms": prop_arms(_mature(df, data_max, 7), "arm", "d7", order)},
+        ],
+        "daily": daily_cumulative(mat, "day", "arm", "y", "new", "old"),
+        "official": _ci_official(mat, "y", "new"),
+        "window": {"from": "2026-11-11", "to": None, "data_max": str(data_max.date()) if data_max is not None else None},
+        "notes": [f"배정 기기 {n_all}대 · 무리가 섞인 기기 {mixed}대 제외 · localhost·페르소나 제외",
+                  "주 지표 = 배정된 날(KST) 집 3단계(지붕) 완성 · 하루가 다 지난 기기만",
+                  "배정은 새 기기만 old 20 : new 80 · 판정 표본은 배포 뒤 일일 신규 수로 다시 계산(사전등록)",
+                  "2·3장 도달률·세션 길이 가드레일은 아직 집계하지 않는다"],
+    }
+
+
+def run_e7(persona_ids: list[str]) -> dict:
+    df = bq.read_sql(E7_SQL, prop="exp_name", since="20261118", until="99999999", persona_ids=persona_ids)
+    n_all = len(df)
+    df, mixed = _one_arm(df)
+    df = df[~df.local & ~df.persona].copy()
+    df["day"] = df.day.astype(str)
+    data_max = pd.Timestamp(df.data_max.max()) if len(df) else None
+    mw = df[df.platform.eq("web") & df.cat.eq("mobile")]
+    order = [("prefill", "이름 미리 채움(처치)"), ("control", "지금 화면")]
+    return {
+        "type": "prop", "compare": ["prefill", "control"], "running": True,
+        "arms": prop_arms(mw, "arm", "y", order),
+        "secondary": [
+            {"label": "전체 경로(앱·토스·itch 포함) 캐릭터 선택", "type": "prop", "arms": prop_arms(df, "arm", "y", order)},
+            {"label": "모바일 웹 · 첫날 첫 행동(나무·씨앗·수확)", "type": "prop", "arms": prop_arms(mw, "arm", "act", order)},
+            {"label": "모바일 웹 · 다음 날 재방문", "type": "prop", "arms": prop_arms(_mature(mw, data_max), "arm", "d1", order)},
+        ],
+        "daily": daily_cumulative(mw, "day", "arm", "y", "prefill", "control"),
+        "official": _ci_official(mw, "y", "prefill"),
+        "window": {"from": "2026-11-18", "to": None, "data_max": str(data_max.date()) if data_max is not None else None},
+        "notes": [f"이름 화면을 본 배정 기기 {n_all}대 · 무리가 섞인 기기 {mixed}대 제외 · localhost·페르소나 제외",
+                  "주 지표 = 모바일 웹에서 이름 화면(nickname_step view)을 본 날 character_select · 기준선 72%",
+                  "판정 = 모바일 웹 무리당 155대 또는 홍보 재개 뒤 4주 중 먼저 · 그 전 중간 결과로 끝내지 않는다",
+                  "기본 이름 그대로 시작한 비율·닉네임 차단 건수는 아직 집계하지 않는다"],
+    }
+
+
+def run_prepass(persona_ids: list[str]) -> dict:
+    df = bq.read_sql(PREPASS_SQL, prop="-", since="20261111", until="99999999", persona_ids=persona_ids)
+    n_all = len(df)
+    df, mixed = _one_arm(df)
+    df = df[~df.local & ~df.persona].copy()
+    df["day"] = df.day.astype(str)
+    data_max = pd.Timestamp(df.data_max.max()) if len(df) else None
+    mat = _mature(df, data_max)
+    order = [("ad", "광고 버튼(처치)"), ("control", "버튼 없음")]
+    return {
+        "type": "prop", "compare": ["ad", "control"], "running": True,
+        "arms": prop_arms(mat, "arm", "y24", order),
+        "secondary": [
+            {"label": "광고 시청 완료(house1)", "type": "prop", "arms": prop_arms(df, "arm", "watched", order)},
+            {"label": "다음 날 재방문(가드레일 · 3%p 넘게 낮으면 중단)", "type": "prop", "arms": prop_arms(mat, "arm", "d1", order)},
+        ],
+        "daily": daily_cumulative(mat, "day", "arm", "y24", "ad", "control"),
+        "official": _ci_official(mat, "y24", "ad"),
+        "window": {"from": "2026-11-11", "to": None, "data_max": str(data_max.date()) if data_max is not None else None},
+        "notes": [f"집 기초 자리(house1) 조건을 만난 기기 {n_all}대 · 무리가 섞인 기기 {mixed}대 제외 · localhost·페르소나 제외",
+                  "트리거 분석 · 주 지표 = 조건을 처음 만난 뒤 24시간 안 집 기초 완공(house_build stage ≥ 1) · 24시간 지난 기기만",
+                  "대상 = 앱(Android·iOS·토스) · 고정 6주 · 중간 확인은 가드레일만 · CI 가 0 을 포함하면 판정 불가",
+                  "다른 광고 자리(다리·밭·세계수·카페)는 처치 후 선택이라 판정에 쓰지 않는다 · 집 기초 안내 실험과 독립 배정"],
+    }
+
+
 # ── Supabase 쓰기 ────────────────────────────────────────────────
 def _headers() -> dict:
     key = os.environ["SUPABASE_SERVICE_ROLE"]
@@ -593,7 +721,8 @@ def main() -> None:
             "guide": lambda: run_guide(sessions, pids), "beta": lambda: run_beta(sessions),
             "e1": lambda: run_e1(pids), "e2": lambda: run_e2(pids), "e3": lambda: run_e3(pids),
             "banner": lambda: run_banner(pids), "e5": lambda: run_e5(pids), "hguide": lambda: run_hguide(pids),
-            "gift_path": lambda: run_gift_path(pids)}
+            "gift_path": lambda: run_gift_path(pids), "e6": lambda: run_e6(pids), "e7": lambda: run_e7(pids),
+            "prepass": lambda: run_prepass(pids)}
     if a.only:
         jobs = {k: v for k, v in jobs.items() if k in a.only}
     failed = []
