@@ -2,7 +2,7 @@ import { HALL, STAR, RESTAURANT, PATIENCE } from './data.js';
 import { createSession, tickSession, contextAt, actAt, finishSession, stationView, guestPath, pathLen, pointAlong } from './session.js';
 import { recordServe, takeIngredient, settleService } from './rules.js';
 import { showForStar, itemMesh, itemHeight } from './hall.js';
-import { mountHud, contextLabel, goalRows, resultView, menuView } from './hud.js';
+import { mountHud, contextLabel, goalRows, resultView, menuView, stockNeed } from './hud.js';
 import { nextStep } from './next-step.js';
 
 const BOARD_R = 1.6;
@@ -178,7 +178,8 @@ export function createRestaurantRuntime(env) {
     env.trackEvent('restaurant_service', { star: star0, served: r.served, avg_score: Math.round(r.avg * 10) / 10, dda: out.rest.dda.iv });
     if (out.starUp) env.trackEvent('restaurant_star_up', { star: out.rest.star });
     env.requestSave();
-    hud.result(resultView(r, out, goalRows(out.rest), env.copy), refresh, env.adButton?.(r.coins) || null);
+    const need = stockNeed(out.rest, env.port()?.pantry);
+    hud.result(resultView(r, out, goalRows(out.rest), env.copy, need), refresh, env.adButton?.(r.coins) || null, need ? env.onStockGuide : null);
     env.onFinish?.(r, out);
   }
 

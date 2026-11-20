@@ -131,9 +131,11 @@ export function tickSession(S, dt) {
     }
   }
   const firstDone = S.first && S.gid > 0 && !S.guests.length;
-  if (firstDone || (S.time >= SERVICE_SEC && !S.guests.some(g => g.state === 'eat'))) {
+  const soldOut = !S.first && !!S.stock && !S.guests.length && !S.cfg.menus.some(m => inStock(S, m));
+  if (firstDone || soldOut || (S.time >= SERVICE_SEC && !S.guests.some(g => g.state === 'eat'))) {
     S.ended = true;
-    ev.push({ type: 'end' });
+    S.soldOut = soldOut && S.time < SERVICE_SEC;
+    ev.push({ type: 'end', soldOut: S.soldOut });
   }
   return ev;
 }
@@ -270,6 +272,7 @@ export function finishSession(S) {
   return {
     served: st.served, stars: [...st.stars], unserved, late: st.late, perfect: st.perfect,
     takes: st.takes, burnt: st.burnt, coins: st.coins, avg: serviceAvg(st.stars, unserved),
+    soldOut: !!S.soldOut,
   };
 }
 

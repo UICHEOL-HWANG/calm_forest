@@ -205,3 +205,39 @@ test('손님은 식탁·다른 의자를 뚫지 않고 통로로 걸어 자리�
     assert.deepEqual(xz(pointAlong(path, pathLen(path))), { x: tx, z: tz - 1.0 });
   });
 });
+
+test('재료가 바닥나고 손님이 모두 나가면 영업이 일찍 끝난다', () => {
+  let fish = 1;
+  const S = createSession({ star: 1, dda: one, rng: seq(0), stock: k => (k === 'fish' ? fish : 0) });
+  const ev = [];
+  let served = false;
+  for (let i = 0; i < 4000 && !S.ended; i++) {
+    ev.push(...tickSession(S, 0.05));
+    if (!served && S.tickets.length) {
+      fish = 0;
+      const tk = S.tickets[0];
+      S.held = { kind: tk.menu, q: 1, plated: true };
+      const tb = HALL.tables[tk.table];
+      actAt(S, { x: tb[0], z: tb[1] + 1.0 }, { take: yes });
+      served = true;
+    }
+  }
+  const end = ev.find(e => e.type === 'end');
+  assert.ok(end);
+  assert.equal(end.soldOut, true);
+  assert.ok(S.time < SERVICE_SEC - 30);
+  assert.equal(finishSession(S).soldOut, true);
+});
+
+test('재료가 남아 있으면 일찍 끝나지 않는다', () => {
+  const S = createSession({ star: 1, dda: one, rng: seq(0), stock: () => 5 });
+  for (let i = 0; i < 600; i++) tickSession(S, 0.05);
+  assert.equal(S.ended, false);
+});
+
+test('재고 함수가 없는 첫 영업 연습판은 품절로 끝나지 않는다', () => {
+  const S = createSession({ star: 1, dda: one, rng: seq(0), first: true });
+  const ev = [];
+  for (let i = 0; i < 100; i++) ev.push(...tickSession(S, 0.05));
+  assert.ok(!ev.some(e => e.type === 'end'));
+});

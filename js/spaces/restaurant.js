@@ -36,6 +36,7 @@ export const RESTAURANT_COPY = {
   empty: '창고에 재료가 없어요. 포구 섬에서 구해 와요',
   starter: '첫 영업 재료를 받았어요 🐟4 🍚4',
   done: '영업 끝!',
+  soldOut: '재료가 다 떨어졌어요',
   starUp: n => `⭐${n} 식당이 됐어요`,
   chop: '박자에 맞춰 네 번 눌러요',
 };

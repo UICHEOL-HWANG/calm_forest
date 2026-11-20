@@ -49,7 +49,7 @@ body.is-touch #rest-hud .steps i{width:24px;height:24px;font-size:13px}
 #rest-card .box{width:min(340px,90vw);background:#fffaf0;border-radius:22px;overflow:hidden;box-shadow:0 18px 40px rgba(0,0,0,.3);animation:rc-pop .38s cubic-bezier(.2,1.4,.4,1) both}
 #rest-card .head{background:radial-gradient(circle at 30% 20%,#3d6b52,#24493a);color:#fff8e8;text-align:center;padding:16px 16px 18px;border-bottom:6px solid #a8794a}
 #rest-card .kick{font-size:12px;opacity:.75;letter-spacing:2px}
-#rest-card h3{margin:2px 0 6px;font-size:21px}
+#rest-card h3{margin:2px 0 6px;font-size:21px;word-break:keep-all}
 #rest-card .stars{font-size:26px;letter-spacing:2px;color:#ffd45e;filter:drop-shadow(0 2px 2px rgba(0,0,0,.3))}
 #rest-card .stars em{font-style:normal;opacity:.28;color:#fff8e8}
 #rest-card .avg{font-size:12.5px;opacity:.85;margin-top:2px}
@@ -78,7 +78,9 @@ body.is-touch #rest-hud .steps i{width:24px;height:24px;font-size:13px}
 #rest-card .stock b{display:block;font-size:13.5px;color:#8a5a10}
 #rest-card .stock .ask{margin-top:4px;font-weight:800;color:#4a3a20}
 #rest-card .foot:has(button+button){display:flex;gap:8px}
-#rest-card button[data-act="later"]{background:#efe6d6;color:#5a4a34;flex:0 0 34%}
+#rest-card .gneed{grid-column:1/-1;margin:-3px 0 7px;font-size:11.5px;line-height:1.5;word-break:keep-all;color:#8a5a10;background:#fff1d6;border-radius:8px;padding:4px 8px}
+#rest-card .gwrap>.gneed{margin:0 0 6px}
+#rest-card button[data-act="later"],#rest-card button[data-act="done"]{background:#efe6d6;color:#5a4a34;flex:0 0 34%}
 @keyframes rc-pop{from{transform:scale(.86) translateY(14px);opacity:0}}
 @keyframes rc-grow{from{width:0}}
 @media (max-height:480px){
@@ -95,10 +97,11 @@ const BUBBLE_H = 40;
 const LABEL = { take: '✋ 꺼내기', put: '🫳 내려놓기', chop: '🔪 썰기', flip: '🍳 뒤집기', pick: '✋ 들기', pickCook: '✋ 꺼내기', plate: '🍽️ 담기', trash: '🗑️ 버리기', serve: '🍽️ 내가기' };
 export const contextLabel = c => (c ? LABEL[c.do] : null);
 
-export function resultView(r, out, goals, copy) {
+export function resultView(r, out, goals, copy, need = null) {
   return {
     kicker: out.starUp ? '축하해요' : '오늘의 영업',
-    title: out.starUp ? copy.starUp(out.rest.star) : copy.done,
+    title: out.starUp ? copy.starUp(out.rest.star) : r.soldOut ? copy.soldOut : copy.done,
+    need,
     avg: r.avg,
     stats: [[`${r.served}명`, '손님'], [`${r.perfect}개`, '완벽한 요리'], [`🪙 ${r.coins}`, '번 코인']],
     bonus: out.bonus,
@@ -112,10 +115,12 @@ export function resultHtml(v) {
   const head = `<div class="head"><div class="kick">${v.kicker}</div><h3>${v.title}</h3><div class="stars">${stars}</div><div class="avg">평균 ★${v.avg.toFixed(1)}</div></div>`;
   const grid = `<div class="grid">${v.stats.map(([b, l]) => `<div><b>${b}</b>${l}</div>`).join('')}</div>`;
   const bonus = v.bonus ? `<div class="bonus">🎁 별 올리기 선물 🪙 ${v.bonus}</div>` : '';
+  const need = v.need ? v.need.items.map(needLine).join('') : '';
   const goals = v.goals.length
-    ? `<div class="gwrap"><div class="gl">다음 별까지</div><div class="goal">${v.goals.map(([k, a, n]) => `<span>${k}</span><b>${a} / ${n}</b><div class="bar${a >= n ? ' full' : ''}"><i style="width:${Math.round(Math.min(1, a / n) * 100)}%"></i></div>`).join('')}</div></div>`
-    : '';
-  return `${head}<div>${grid}${bonus}${goals}<div class="foot"><button type="button">확인</button></div></div>`;
+    ? `<div class="gwrap"><div class="gl">다음 별까지</div><div class="goal">${v.goals.map(([k, a, n], i) => `<span>${k}</span><b>${a} / ${n}</b><div class="bar${a >= n ? ' full' : ''}"><i style="width:${Math.round(Math.min(1, a / n) * 100)}%"></i></div>${i === v.need?.row ? need : ''}`).join('')}</div></div>`
+    : need ? `<div class="gwrap">${need}</div>` : '';
+  const foot = v.need ? `<button type="button" data-act="done">확인</button><button type="button" data-act="guide">${STOCK_COPY.guide}</button>` : '<button type="button">확인</button>';
+  return `${head}<div>${grid}${bonus}${goals}<div class="foot">${foot}</div></div>`;
 }
 
 export function nextHtml(v) {
@@ -153,11 +158,24 @@ export function menuHtml(v) {
   return `<div class="head"><div class="kick">${MENU_COPY.kicker}</div><h3>${MENU_COPY.title}</h3></div><div><div class="menu">${rows}</div><div class="tip">${MENU_COPY.tips.map(t => `<div>${t}</div>`).join('')}</div>${stockHtml(v.stock)}<div class="foot">${v.stock?.none ? `<button type="button" data-act="later">${STOCK_COPY.later}</button><button type="button" data-act="guide">${STOCK_COPY.guide}</button>` : `<button type="button">${MENU_COPY.start}</button>`}</div></div>`;
 }
 
+const needLine = ({ k, n }) => { const it = STOCK_COPY.items[k]; return `<div class="gneed">${it.ico} ${it.name} ${n} · ${it.where}</div>`; };
+
+export function stockNeed(rest, pantry) {
+  const st = stockStatus(STAR[rest.star].menus, pantry);
+  if (!st.short.length) return null;
+  const short = new Set(st.short.map(s => s.k));
+  const served = Object.entries(STAR_UP[rest.star + 1]?.served || {});
+  const hit = served.findIndex(([k, n]) => (rest.served[k] || 0) < n && short.has(MENU[k].from));
+  if (hit < 0) return { row: goalRows(rest).length - 1, items: st.short };
+  const kind = MENU[served[hit][0]].from;
+  return { row: hit + 1, items: st.short.filter(s => s.k === kind) };
+}
+
 export function goalRows(rest) {
   const c = STAR_UP[rest.star + 1];
   if (!c) return [];
   const rows = [['식당 평점', Math.min(rest.rating, c.rating), c.rating]];
-  for (const [k, n] of Object.entries(c.served || {})) rows.push([`${MENU[k].ico} 내기`, Math.min(rest.served[k] || 0, n), n]);
+  for (const [k, n] of Object.entries(c.served || {})) rows.push([`${DISH_NAME[k]} 대접하기`, Math.min(rest.served[k] || 0, n), n]);
   if (c.combo) rows.push(['별점 4 이상 연속', Math.min(rest.bestCombo, c.combo), c.combo]);
   return rows;
 }
@@ -183,7 +201,7 @@ export function mountHud(doc) {
   };
   card.addEventListener('click', e => {
     const b = e.target.closest('button');
-    if (b?.dataset.act === 'guide') { closeCard(false); onGuide?.(); return; }
+    if (b?.dataset.act === 'guide') { const g = onGuide; closeCard(cardMode === 'result'); g?.(); return; }
     if (b?.dataset.act === 'later') { closeCard(false); return; }
     if (b) closeCard(true);
     else if (cardMode === 'menu' && !e.target.closest('.box')) closeCard(false);
@@ -274,10 +292,10 @@ export function mountHud(doc) {
       el.remove();
       stEls.delete(id);
     },
-    result(view, onDone, ad = null) {
+    result(view, onDone, ad = null, guide = null) {
       card.querySelector('.box').innerHTML = resultHtml(view);
       if (ad) card.querySelector('.box .foot')?.before(ad);
-      onClose = onDone; cardMode = 'result';
+      onClose = onDone; onGuide = guide; cardMode = 'result';
       card.classList.add('show');
     },
     menu(view, onStart, guide) {
