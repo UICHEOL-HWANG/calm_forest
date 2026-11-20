@@ -122,7 +122,7 @@ export const DECOR = [
   { id: 'wp_cocoa_table', name: '핫초코 탁자', ico: '☕', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.8, 0.8], desc: '큰 머그에 핫초코를 담은 원탁이에요' },
   { id: 'fp_owl_clock', name: '부엉이 시계', ico: '🦉', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.65, 0.45], desc: '부엉이가 머리에 앉은 괘종시계예요' },
   { id: 'fp_acorn_cupboard', name: '다람쥐 도토리 찬장', ico: '🌰', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [1.4, 1.1], desc: '다람쥐가 지키는 커다란 도토리 찬장이에요' },
-  { id: 'fp_hedgehog_cushion', name: '고슴도치 쿠션', ico: '🦔', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.55, 0.6], sm: true, h: 0.58, desc: '산딸기를 꼭 안은 고슴도치 인형이에요' },
+  { id: 'fp_hedgehog_cushion', name: '고슴도치 쿠션', ico: '🧸', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.55, 0.6], sm: true, h: 0.58, desc: '산딸기를 꼭 안은 고슴도치 인형이에요' },
   ...AFF_FRAMES,
 ];
 
