@@ -29,6 +29,8 @@ import { starryThemes, STARRY_UMBRELLA, starryUmbrellaLook } from './tool-skins-
 import { strawberryThemes, STRAWBERRY_UMBRELLA, strawberryUmbrellaLook } from './tool-skins-strawberry.js';
 import { penguinThemes, PENGUIN_UMBRELLA, penguinUmbrellaLook } from './tool-skins-penguin.js';
 import { tangerineThemes, TANGERINE_UMBRELLA, tangerineUmbrellaLook } from './tool-skins-tangerine.js';
+import { watermelonThemes, WATERMELON_UMBRELLA, watermelonUmbrellaLook } from './tool-skins-watermelon.js';
+import { sunflowerThemes, SUNFLOWER_UMBRELLA, sunflowerUmbrellaLook } from './tool-skins-sunflower.js';
 
 // ── 팔레트 ─────────────────────────────────────────────────
 const SH = { stem: 0xeee2c8, stemD: 0xcdb894, cap: 0xd1473a, spot: 0xfff5e6, gill: 0xe6cfa6, birch: 0x5b4636, door: 0x8a5a3a };
@@ -454,7 +456,7 @@ function themeBuilders(THREE, K) {
   };
 }
 
-const EXTRA = [[mapleThemes, mapleUmbrellaLook, 'maple'], [frostThemes, frostUmbrellaLook, 'frost'], [honeyThemes, honeyUmbrellaLook, 'honey'], [kittyThemes, kittyUmbrellaLook, 'kitty'], [shellThemes, shellUmbrellaLook, 'shell'], [snowmanThemes, snowmanUmbrellaLook, 'snowman'], [squirrelThemes, squirrelUmbrellaLook, 'squirrel'], [candyThemes, candyUmbrellaLook, 'candy'], [octopusThemes, octopusUmbrellaLook, 'octopus'], [starryThemes, starryUmbrellaLook, 'starry'], [strawberryThemes, strawberryUmbrellaLook, 'strawberry'], [penguinThemes, penguinUmbrellaLook, 'penguin'], [tangerineThemes, tangerineUmbrellaLook, 'tangerine']];
+const EXTRA = [[mapleThemes, mapleUmbrellaLook, 'maple'], [frostThemes, frostUmbrellaLook, 'frost'], [honeyThemes, honeyUmbrellaLook, 'honey'], [kittyThemes, kittyUmbrellaLook, 'kitty'], [shellThemes, shellUmbrellaLook, 'shell'], [snowmanThemes, snowmanUmbrellaLook, 'snowman'], [squirrelThemes, squirrelUmbrellaLook, 'squirrel'], [candyThemes, candyUmbrellaLook, 'candy'], [octopusThemes, octopusUmbrellaLook, 'octopus'], [starryThemes, starryUmbrellaLook, 'starry'], [strawberryThemes, strawberryUmbrellaLook, 'strawberry'], [penguinThemes, penguinUmbrellaLook, 'penguin'], [tangerineThemes, tangerineUmbrellaLook, 'tangerine'], [watermelonThemes, watermelonUmbrellaLook, 'watermelon'], [sunflowerThemes, sunflowerUmbrellaLook, 'sunflower']];
 function extraThemes(THREE, K) {
   const X = extraKit(THREE, K);
   return Object.assign({}, ...EXTRA.map(([themes]) => themes(THREE, K, X)));
@@ -533,7 +535,7 @@ const UMBRELLAS = {
   harvest:  { N: 10, R: 1.35, th: 0.62, overlap: 1, shape: { w: () => 1, tip: 0 } },   // 짚 갓우산
   // ⭐ 별빛 — 무지개 6폭 육각 갓(폭마다 한 빛) · 꼭지는 수정. 시안 sims/referral-reward-sim.html 에서 확인
   star:     { N: 6, R: 1.0, th: 0.95, overlap: 1, shape: { w: () => 1, tip: 0 }, twist: Math.PI / 6 },
-  maple: MAPLE_UMBRELLA, frost: FROST_UMBRELLA, honey: HONEY_UMBRELLA, kitty: KITTY_UMBRELLA, shell: SHELL_UMBRELLA, snowman: SNOWMAN_UMBRELLA, squirrel: SQUIRREL_UMBRELLA, candy: CANDY_UMBRELLA, octopus: OCTOPUS_UMBRELLA, starry: STARRY_UMBRELLA, strawberry: STRAWBERRY_UMBRELLA, penguin: PENGUIN_UMBRELLA, tangerine: TANGERINE_UMBRELLA,
+  maple: MAPLE_UMBRELLA, frost: FROST_UMBRELLA, honey: HONEY_UMBRELLA, kitty: KITTY_UMBRELLA, shell: SHELL_UMBRELLA, snowman: SNOWMAN_UMBRELLA, squirrel: SQUIRREL_UMBRELLA, candy: CANDY_UMBRELLA, octopus: OCTOPUS_UMBRELLA, starry: STARRY_UMBRELLA, strawberry: STRAWBERRY_UMBRELLA, penguin: PENGUIN_UMBRELLA, tangerine: TANGERINE_UMBRELLA, watermelon: WATERMELON_UMBRELLA, sunflower: SUNFLOWER_UMBRELLA,
 };
 export const UMBRELLA_SHAFT = 1.55;   // 쥐는 곳 → 꼭지
 
