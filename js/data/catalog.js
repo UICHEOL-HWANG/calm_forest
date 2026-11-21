@@ -133,6 +133,11 @@ export const DECOR = [
   { id: 'ds_pudding_chair', name: '웃는 푸딩 스툴', ico: '🍮', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.6, 0.6], desc: '캐러멜이 흘러내린 푸딩에 크림과 체리를 얹었어요' },
   { id: 'ds_waffle_rug', name: '하트 꽃 와플 러그', ico: '🧇', cost: 0, pay: 'coins', hidden: true, keep: true, desc: '하트 다섯 장 와플 가운데 딸기잼을 올렸어요' },
   { id: 'ns_constellation_lamp', name: '별 구멍 돔 등', ico: '🌌', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.6, 0.6], desc: '남색 갓에 뚫린 별자리 구멍으로 불빛이 새어 나와요' },
+  { id: 'ny_folding_screen', name: '일월오봉 병풍', ico: '🏯', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [1.45, 0.4], desc: '여섯 폭 한지에 연두 산과 다홍 해, 노란 달을 그렸어요' },
+  { id: 'ny_tteokguk_table', name: '둥근 소반 떡국', ico: '🥣', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.85, 0.85], desc: '나무 소반에 지단 올린 떡국 한 그릇을 차렸어요' },
+  { id: 'ny_bokjori_wall', name: '복조리 횃대', ico: '🧧', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.8, 0.3], desc: '낮은 횃대에 복조리 둘과 다홍 복주머니를 걸었어요' },
+  { id: 'cp_camp_chair', name: '접이식 캔버스 의자', ico: '🪑', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.6, 0.6], desc: '나무 X자 다리에 올리브 천을 씌운 캠핑 의자예요' },
+  { id: 'cp_lantern_hook', name: '쇠 고리 랜턴', ico: '🏮', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.5, 0.5], desc: '남색 쇠기둥 고리 끝에 머스터드 랜턴이 은은하게 빛나요' },
   { id: 'ns_moon_sofa', name: '구름 위 달 소파', ico: '🌙', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [1.35, 0.75], desc: '연보라 구름 방석 뒤로 초승달 등받이를 세웠어요' },
   ...AFF_FRAMES,
 ];
@@ -297,6 +302,9 @@ export const OUTDOOR = [
   { id: 'sp_net_hammock', name: '그물 해먹', ico: '🪢', cost: { coins: 9999 }, desc: '유목 받침대에 남색 그물 해먹을 걸었어요', hidden: true, quest: true, box: [2.5, 0.8] },
   { id: 'ds_icecream_cart', name: '파라솔 수레', ico: '🍦', cost: { coins: 9999 }, desc: '분홍·노랑 파라솔 아래 아이스크림 세 통을 실었어요', hidden: true, quest: true, box: [1.6, 0.8] },
   { id: 'ns_telescope', name: '삼각대 망원경', ico: '🔭', cost: { coins: 9999 }, desc: '나무 삼각대 위 남색 망원경이 밤하늘을 향해요', hidden: true, quest: true, box: [0.8, 0.8] },
+  { id: 'ny_kite_stand', name: '연 세 줄', ico: '🪁', cost: { coins: 9999 }, desc: '두 기둥 사이 줄에 쪽빛·다홍·연두 가오리연 셋을 달았어요', hidden: true, quest: true, box: [2.0, 0.4], posts: [[-0.9, 0, 0.12], [0.9, 0, 0.12]] },
+  { id: 'cp_tent', name: '머스터드 삼각 텐트', ico: '⛺', cost: { coins: 9999 }, desc: '크림 문을 걷어 올리고 꼭대기에 벽돌색 깃발을 꽂았어요', hidden: true, quest: true, box: [1.7, 1.9] },
+  { id: 'cp_marshmallow_fire', name: '꼬치 받침 화로', ico: '🏕️', cost: { coins: 9999 }, desc: '돌 둘레 모닥불 위로 마시멜로 세 개를 꼬치에 걸었어요', hidden: true, quest: true, box: [1.8, 1.15] },
   { id: 'ns_starlight_arch', name: '별 전구 아치', ico: '🌠', cost: { coins: 9999 }, desc: '반원 철사에 별 전구를 달고 꼭대기에 큰 금별을 얹었어요', hidden: true, quest: true, box: [2.0, 0.4], posts: [[-0.9, 0, 0.15], [0.9, 0, 0.15]] },
   ...AFF_OUTDOOR,
   ...REWARD_DECOR,   // 🤝 친구 초대 보상 장식(js/data/reward-decor.js) — 원장이 보관함에 넣어 준다 · 서버 가드 대상
