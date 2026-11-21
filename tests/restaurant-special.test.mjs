@@ -121,3 +121,44 @@ test('세션: first 면 special 은 null', () => {
   assert.equal(createSession({ star: 1, dda: one, first: true, special: 'grilled' }).special, null);
   assert.equal(createSession({ star: 1, dda: one, special: 'grilled' }).special, 'grilled');
 });
+
+test('메뉴 카드는 특선 줄에 칩과 효과 한 줄을 붙인다', async () => {
+  const { menuView, menuHtml, SPECIAL_COPY } = await import('../js/restaurant/hud.js');
+  const pantry = { fish: 5, rice: 5 };
+  assert.equal(menuView(2, false, pantry, 'soup').special, 'soup');
+  assert.equal(menuView(2, true, pantry, 'soup').special, null);
+  assert.equal(menuView(1, false, pantry, 'soup').special, null);
+  assert.equal(menuView(2, false, pantry).special, null);
+  const h = menuHtml(menuView(2, false, pantry, 'soup'));
+  assert.equal(h.match(/class="mr sp"/g)?.length, 1);
+  assert.match(h, /class="mr sp"><span>🍲 생선국/);
+  assert.ok(h.includes(SPECIAL_COPY.chip) && h.includes(SPECIAL_COPY.note));
+  assert.deepEqual(SPECIAL_COPY, { chip: '✨ 오늘의 특선', note: '코인 두 배, 주문도 많이 들어와요' });
+  assert.doesNotMatch(menuHtml(menuView(2, false, pantry)), /spchip/);
+});
+
+test('칠판 줄 높이는 메뉴마다 하나씩, 특선 표시는 입장 때 다시 세운다', async () => {
+  const { BOARD_ROW_Y, MENU_KEYS } = await import('../js/restaurant/data.js');
+  const { readFileSync } = await import('node:fs');
+  const read = p => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
+  assert.deepEqual(Object.keys(BOARD_ROW_Y), MENU_KEYS);
+  assert.match(read('js/restaurant/hall.js'), /BOARD_ROW_Y/);
+  const sb = read('js/restaurant/special-board.js');
+  assert.match(sb, /export async function buildSpecialMark\(THREE, menu\)/);
+  const r = read('js/spaces/restaurant.js');
+  assert.match(r, /special = sp\.menu;[\s\S]*rebuildSpecialMark\(\);/);
+    assert.match(read('js/restaurant/runtime.js'), /menuView\(env\.rest\(\)\.star, first, env\.port\(\)\?\.pantry, env\.sessionOpts\?\.\(\)\?\.special\)/);
+  const en = read('js/i18n-en.js');
+  assert.match(en, /'오늘의 특선':/);
+  assert.match(en, /'코인 두 배, 주문도 많이 들어와요':/);
+});
+
+test('연습판 안내 중에는 칠판 특선 표시를 세우지 않고, 안내가 끝나면 다시 세운다', async () => {
+  const { readFileSync } = await import('node:fs');
+  const r = readFileSync(new URL('../js/spaces/restaurant.js', import.meta.url), 'utf8');
+  assert.match(r, /const shown = restaurantGuideActive\(\) \? null : special;/);
+  assert.match(r, /buildSpecialMark\(THREE, shown\)/);
+  assert.match(r, /guideDone: true \};\s*requestSave\(\); view\.hide\(\); setPoint\(null\); guide = null;\s*rebuildSpecialMark\(\);/);
+  assert.match(r, /guide = null; view\?\.hide\(\); setPoint\(null\);\s*rebuildSpecialMark\(\);/);
+  assert.match(r, /onDone: \(\) => \{[\s\S]*?\}\);\s*rebuildSpecialMark\(\);/);
+});

@@ -24,6 +24,7 @@ export const PATIENCE = [25, 45];
 export const COIN_PER_STAR = 5;
 export const EAT_SEC = 3.5;
 export const MENU_KEYS = ['grilled', 'riceball', 'soup'];
+export const BOARD_ROW_Y = { grilled: 1.22, riceball: 1.04, soup: 0.86 };
 export const MENU = {
   grilled: { ico: '🐟', from: 'fish' },
   riceball: { ico: '🍙', from: 'rice' },

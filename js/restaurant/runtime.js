@@ -204,7 +204,7 @@ export function createRestaurantRuntime(env) {
       if (!S) {
         if (!nearBoard(lp)) return false;
         const first = !!env.sessionOpts?.().first;
-        hud.menu(menuView(env.rest().star, first, env.port()?.pantry), start, env.onStockGuide);
+        hud.menu(menuView(env.rest().star, first, env.port()?.pantry, env.sessionOpts?.()?.special), start, env.onStockGuide);
         return true;
       }
       const take = kind => {

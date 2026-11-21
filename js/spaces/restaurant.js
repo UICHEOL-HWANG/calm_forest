@@ -24,6 +24,7 @@ import { buildBistro, setBistroEvening } from '../restaurant/exterior.js';
 import { buildHall } from '../restaurant/hall.js';
 import { grantStarter, panState } from '../restaurant/rules.js';
 import { todaySpecial } from '../restaurant/special.js';
+import { buildSpecialMark } from '../restaurant/special-board.js';
 import { createRestaurantRuntime } from '../restaurant/runtime.js';
 import { restaurantGuideSteps, guideStage, shownStep, villageVia, hallVia } from '../restaurant/guide-steps.js';
 import { createGuide } from '../guide/runner.js';
@@ -53,7 +54,7 @@ const EXIT_R = 1.2;
 const PLANT_R = 0.3;
 const free = new Map();
 let exterior = null, hall = null, runtime = null, chopHinted = false;
-let special = null;
+let special = null, specialMark = null, specialSeq = 0;
 let regularBoard = null, regularBoardSolid = null, boardSeq = 0;
 const stationSolids = [], tableSolids = [];
 const projV = new THREE.Vector3();
@@ -166,6 +167,20 @@ async function rebuildRegularBoard() {
   if (!regularBoardSolid) regularBoardSolid = solidCircle(RESTAURANT.x - 6.85, RESTAURANT.z + 1.9, 0.15);
 }
 
+async function rebuildSpecialMark() {
+  if (!hall) return;
+  const seq = ++specialSeq;
+  const shown = restaurantGuideActive() ? null : special;
+  const next = shown ? await buildSpecialMark(THREE, shown).catch(() => null) : null;
+  if (seq !== specialSeq) { if (next) disposeBoard(next); return; }
+  if (specialMark) { hall.group.remove(specialMark); disposeBoard(specialMark); specialMark = null; }
+  if (!next) return;
+  next.position.set(HALL.board.x, 0, HALL.board.z);
+  hall.group.add(next);
+  setFogExempt(next, true);
+  specialMark = next;
+}
+
 function onGuestServed({ npc, menu, stars, table }) {
   if (!npc || runtime.session()?.first) return;
   const love = serveLove(npc, menu, stars);
@@ -246,6 +261,7 @@ export function enterRestaurant() {
   const sp = todaySpecial(gameState.restaurant, STAR[gameState.restaurant.star].menus, gameState.port?.pantry, todayStr());
   special = sp.menu;
   if (sp.rest !== gameState.restaurant) { gameState.restaurant = sp.rest; requestSave(); }
+  rebuildSpecialMark();
   runtime?.refresh();
   rebuildRegularBoard();
   syncSolids();
@@ -316,6 +332,7 @@ function guideStall() {
   if (!guideStalled(stepAt, now)) return false;
   trackEvent('guide_step', { flow: 'restaurant', step: guide.index() + 1, act: 'stall' });
   guide = null; view?.hide(); setPoint(null);
+  rebuildSpecialMark();
   return true;
 }
 
@@ -330,9 +347,11 @@ export function maybeStartRestaurantGuide(ok) {
     onDone: () => {
       gameState.restaurant = { ...gameState.restaurant, guideDone: true };
       requestSave(); view.hide(); setPoint(null); guide = null;
+      rebuildSpecialMark();
       if (DBG) window.__restGuide = { step: null };
     },
   });
+  rebuildSpecialMark();
   return true;
 }
 

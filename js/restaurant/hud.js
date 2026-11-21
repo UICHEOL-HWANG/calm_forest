@@ -69,6 +69,10 @@ body.is-touch #rest-hud .steps i{width:24px;height:24px;font-size:13px}
 #rest-card .foot{padding:8px 16px 16px}
 #rest-card .menu{padding:10px 16px 2px}
 #rest-card .mr{display:grid;grid-template-columns:104px 1fr;align-items:center;gap:12px;padding:8px 0;letter-spacing:.03em;border-bottom:1px dashed #e3d8c2;font-size:14px;font-weight:700}
+#rest-card .mr.sp,#rest-card .mr.sp:last-child{background:linear-gradient(90deg,#fff1c8,#fff8e4);border:2px solid #e2b54a;border-radius:12px;padding:8px;margin:4px -10px}
+#rest-card .mr.sp > span{display:block}
+#rest-card .spchip{display:flex;align-items:center;gap:3px;width:max-content;margin-top:5px;background:#e2b54a;color:#fff;font-size:11.5px;font-weight:800;border-radius:999px;padding:2px 8px}
+#rest-card .spnote{display:block;grid-column:1/-1;margin-top:-4px;font-size:11.5px;font-weight:700;color:#8a6420;line-height:1.35;word-break:keep-all}
 #rest-card .mr:last-child{border:0}
 #rest-card .mr .steps{display:flex;gap:6px;align-items:center;letter-spacing:0}
 #rest-card .mr i{font-style:normal;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:#f3ece0;font-size:16px}
@@ -143,9 +147,15 @@ export const STOCK_COPY = {
   follow: '화살표를 따라 포구 부두로 가요',
 };
 
-export function menuView(star, first = false, pantry = undefined) {
+export const SPECIAL_COPY = { chip: '✨ 오늘의 특선', note: '코인 두 배, 주문도 많이 들어와요' };
+
+export function menuView(star, first = false, pantry = undefined, special = null) {
   const menus = first ? ['grilled'] : STAR[star].menus;
-  return { rows: menus.map(k => [DISH_NAME[k], RECIPE[k].slice(0, -1)]), stock: first ? null : stockStatus(menus, pantry) };
+  return {
+    rows: menus.map(k => [DISH_NAME[k], RECIPE[k].slice(0, -1), k]),
+    stock: first ? null : stockStatus(menus, pantry),
+    special: !first && menus.includes(special) ? special : null,
+  };
 }
 
 function stockHtml(st) {
@@ -156,7 +166,7 @@ function stockHtml(st) {
 }
 
 export function menuHtml(v) {
-  const rows = v.rows.map(([name, icos]) => `<div class="mr"><span>${name}</span><div class="steps">${icos.map((ico, k) => `${k ? '<em></em>' : ''}<i>${ico}</i>`).join('')}</div></div>`).join('');
+  const rows = v.rows.map(([name, icos, k]) => `<div class="mr${k && k === v.special ? ' sp' : ''}"><span>${name}${k && k === v.special ? `<b class="spchip">${SPECIAL_COPY.chip}</b>` : ''}</span><div class="steps">${icos.map((ico, j) => `${j ? '<em></em>' : ''}<i>${ico}</i>`).join('')}</div>${k && k === v.special ? `<small class="spnote">${SPECIAL_COPY.note}</small>` : ''}</div>`).join('');
   return `<div class="head"><div class="kick">${MENU_COPY.kicker}</div><h3>${MENU_COPY.title}</h3></div><div><div class="menu">${rows}</div><div class="tip">${MENU_COPY.tips.map(t => `<div>${t}</div>`).join('')}</div>${stockHtml(v.stock)}<div class="foot">${v.stock?.none ? `<button type="button" data-act="later">${STOCK_COPY.later}</button><button type="button" data-act="guide">${STOCK_COPY.guide}</button>` : `<button type="button">${MENU_COPY.start}</button>`}</div></div>`;
 }
 

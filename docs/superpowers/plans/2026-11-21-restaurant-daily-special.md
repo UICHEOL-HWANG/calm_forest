@@ -47,7 +47,8 @@
 ### Task 4: 칠판·영업 시작 안내 (시안 선택 후)
 
 - 칠판: 시안 D 확정(2026-11-21). 특선 메뉴 줄에 금색 타원 링 + 칠판 위 Sprite 말풍선(메뉴 아이콘 + ✨, 글자 없음). 원본 `sims/restaurant-special/models.js` `boardD`. 말풍선 SpriteMaterial color `0xd8d2c4`(블룸 번짐 방지), scale 0.95, y 2.3. 특선 없는 날은 만들지 않는다.
-- 영업 시작 안내: 시안·문구 검수 대기.
+- 영업 시작 안내: 시안 A 확정(2026-11-21). 영업 전 "오늘의 메뉴" 카드에서 특선 줄을 금색으로, 이름 아래 칩 `✨ 오늘의 특선`, 줄 아래 한 줄 `코인 두 배, 주문도 많이 들어와요`(문구 1). 연습판·특선 없는 날은 표시 없음.
+- 구현: `js/restaurant/special-board.js` `buildSpecialMark`, `data.js` `BOARD_ROW_Y`, `hud.js` `SPECIAL_COPY`·`menuView(..., special)`, `spaces/restaurant.js` `rebuildSpecialMark`.
 
 ### Task 5: 최종 확인
 

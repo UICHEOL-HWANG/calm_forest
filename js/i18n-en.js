@@ -2548,6 +2548,8 @@ export const EN = {
   '생선': 'Fish',
   '쌀': 'Rice',
   '단골': 'Regular',
+  '오늘의 특선': "Today's special",
+  '코인 두 배, 주문도 많이 들어와요': 'Double coins, and more guests order it',
   '화살표를 따라 포구 부두로 가요': 'Follow the arrow to the port pier',
   '밤에 포충망으로 반딧불이 잡는 곳': 'Catch fireflies with the Bug Net at night',
   '🍄 채집물 발견! 액션(Space)으로 줍기 — 도구 필요 없어요': '🍄 Forage spotted! Press Action (Space) to pick it up — no tool needed',

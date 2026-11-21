@@ -78,5 +78,5 @@ test('섬 안내는 경매 길 안내를 이름만 바꿔 쓰고, 영업 시작 
   const r = read('js/spaces/restaurant.js');
   assert.match(r, /createAuctionGuide\(\{\s*name: 'restaurant-stock'/);
   assert.match(r, /spot: \{ x: PORT_PIER\.ax, z: PORT_PIER\.az \}/);
-  assert.match(read('js/restaurant/runtime.js'), /hud\.menu\(menuView\(env\.rest\(\)\.star, first, env\.port\(\)\?\.pantry\), start, env\.onStockGuide\)/);
+  assert.match(read('js/restaurant/runtime.js'), /hud\.menu\(menuView\(env\.rest\(\)\.star, first, env\.port\(\)\?\.pantry, env\.sessionOpts\?\.\(\)\?\.special\), start, env\.onStockGuide\)/);
 });

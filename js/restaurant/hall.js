@@ -1,4 +1,4 @@
-import { HALL } from './data.js';
+import { HALL, BOARD_ROW_Y } from './data.js';
 import { paintKit, bake } from './paint-merge.js';
 
 const C = {
@@ -23,7 +23,7 @@ function easel(K, g, THREE) {
   put(e, box(1.04, 1.0, 0.05), tag(C.chalkFrame), [0, 1.12, 0], [lean, 0, 0]);
   put(e, box(0.92, 0.88, 0.04), tag(C.chalk), [0, 1.12, 0.03], [lean, 0, 0]);
   put(e, box(0.62, 0.05, 0.01), tag(C.rice), [0, 1.44, 0.1], [lean, 0, 0]);
-  const dish = [[C.fish, 1.22], [C.rice, 1.04], [0xe8a85a, 0.86]];
+  const dish = [[C.fish, BOARD_ROW_Y.grilled], [C.rice, BOARD_ROW_Y.riceball], [0xe8a85a, BOARD_ROW_Y.soup]];
   for (const [c, y] of dish) {
     const z = 0.08 - (y - 1.12) * 0.14;
     put(e, ball(0.06, 0), tag(c), [-0.28, y, z], [0, 0, 0], [1.3, 1, 0.5]);
