@@ -25,7 +25,7 @@ function easel(K, g, THREE) {
   put(e, box(0.62, 0.05, 0.01), tag(C.rice), [0, 1.44, 0.1], [lean, 0, 0]);
   const dish = [[C.fish, 1.22], [C.rice, 1.04], [0xe8a85a, 0.86]];
   for (const [c, y] of dish) {
-    const z = 0.08 + (y - 1.12) * 0.14;
+    const z = 0.08 - (y - 1.12) * 0.14;
     put(e, ball(0.06, 0), tag(c), [-0.28, y, z], [0, 0, 0], [1.3, 1, 0.5]);
     put(e, box(0.38, 0.035, 0.01), tag(C.rice), [0.08, y, z + 0.01], [lean, 0, 0]);
   }
