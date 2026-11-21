@@ -263,7 +263,9 @@ function scallopFlap(THREE, w, hh, n) {
   return sh;
 }
 
-export function buildCupcakePackC(THREE, g, k0, h, yc = 1.06) {
+const PACK_Y = { bushy: 0.74, curl: 0.86, puff: 0.66, feather: 0.62 };
+
+export function buildCupcakePackC(THREE, g, k0, h, yc = PACK_Y[k0.tail] ?? 0.56) {
   const K = kit(THREE, h), k = withAnchors(k0), R = k.R;
   const { f, H } = packFrame(K, g, k, yc, 0.56);
   const w = R * 0.72, hh = H, d = R * 0.16, zf = -R * 0.03 - d - R * 0.04;
@@ -346,9 +348,8 @@ export const VARIANTS = {
     A: { name: '컵케이크 배낭', note: '주름 잡힌 분홍 컵 · 크림 뚜껑 · 작은 체리', build: buildCupcakePackA },
     B: { name: '딸기우유 배낭', note: '둥근 분홍 배낭 · 크림 앞주머니 · 작은 딸기', build: buildCupcakePackB },
     C: { name: '리본 배낭', note: '둥근 분홍 배낭 · 물결 크림 덮개 · 머리띠와 같은 리본과 딸기', build: buildCupcakePackC },
-    C1: { name: '리본 배낭 · 조금 내림', note: '등 가운데 위 (0.86)', build: (T, g, k, h) => buildCupcakePackC(T, g, k, h, 0.86) },
-    C2: { name: '리본 배낭 · 더 내림', note: '등 가운데 (0.70)', build: (T, g, k, h) => buildCupcakePackC(T, g, k, h, 0.70) },
-    C3: { name: '리본 배낭 · 많이 내림', note: '등 가운데 아래 (0.56)', build: (T, g, k, h) => buildCupcakePackC(T, g, k, h, 0.56) },
+    C4: { name: '리본 배낭 · 동물별 높이', note: '꼬리 없는 동물은 등 아래(0.56) · 여우 0.74 · 강아지 0.86 · 토끼 0.66 · 병아리 0.62', build: (T, g, k, h) => buildCupcakePackC(T, g, k, h) },
+    C0: { name: '리본 배낭 · 지금', note: '모두 같은 높이 (1.06)', build: (T, g, k, h) => buildCupcakePackC(T, g, k, h, 1.06) },
     REF: { name: '선물 꾸러미 배낭', note: '출시된 크리스마스 배낭 (비교용)', ref: 'xm_gift_pack', anchor: 'back' },
     REF2: { name: '고슴도치 배낭', note: '출시된 숲 배낭 (비교용)', ref: 'fp_hedgehog_pack', anchor: 'back' },
   },
