@@ -1,0 +1,364 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>캠핑 꾸미기 시안</title>
+<style>
+  html,body{margin:0;height:100%;background:#e9efe9;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:#33402f;overflow:hidden}
+  canvas{position:fixed;inset:0;display:block}
+  #head{position:fixed;left:0;right:0;top:0;height:64px;display:flex;align-items:center;gap:18px;padding:0 18px;background:#fff;border-bottom:1px solid #d4ddd2;z-index:2}
+  #head h1{font-size:20px;margin:0}
+  #head .sub{font-size:13px;opacity:.7}
+  #head .ok{color:#3f7a4a;font-weight:600;font-size:13px}
+  #head .bad{color:#b4553a;font-weight:600;font-size:13px}
+  #head nav{margin-left:auto;display:flex;gap:6px}
+  #head nav a{font-size:12px;padding:4px 9px;border:1px solid #b8c8b8;border-radius:7px;color:#33402f;text-decoration:none}
+  #head nav a.on{background:#5b8f5b;color:#fff;border-color:#4a7a4a}
+  #ov{position:fixed;inset:0;pointer-events:none;z-index:1}
+  .col{position:absolute;text-align:center;font-size:14px;font-weight:600}
+  .row{position:absolute;padding:10px 12px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;gap:6px}
+  .row .L{font-size:44px;font-weight:800;color:#5b8f5b;line-height:1}
+  .row .n{font-size:16px;font-weight:700}
+  .row .d{font-size:12px;opacity:.72;line-height:1.4}
+  .cell{position:absolute;box-sizing:border-box;border:1px solid rgba(80,100,80,.18)}
+  .cell .t{position:absolute;left:6px;bottom:5px;font-size:11px;background:rgba(255,255,255,.82);padding:1px 6px;border-radius:5px}
+  .cell .t.warn{background:#ffe0d6;color:#a4462f;font-weight:700}
+  .cell .t.pass{background:#e2f0de;color:#2f6a3a;font-weight:700}
+</style>
+<div id="head"></div>
+<div id="ov"></div>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { buildAnimalHead, plushMat } from '../js/animal-faces.js';
+import { PALETTE, put, buildCosmetic } from '../js/cosmetics/art.js';
+import { TRAIL_SIDE, TRAIL_S, buildTrailMark } from '../js/cosmetics/trail.js';
+import { backAnchor, headAnchor, neckAnchor, neckR as neckRadius, sideAnchor } from '../js/cosmetics/anchors.js';
+import { VARIANTS, CP as FP } from './camp-pick/cos-art.mjs';
+
+const BLOOM_LUMA = 0.85;
+const luma = h => (0.2126 * ((h >> 16) & 255) + 0.7152 * ((h >> 8) & 255) + 0.0722 * (h & 255)) / 255;
+
+const ANIMALS = {
+  fox:    { id: 'fox',    name: '여우',   body: 0xf0883a, belly: 0xf9ecd8, bodyR: 0.52, bodyScale: [0.90, 1.08, 0.90], headR: 0.37, headY: 1.26, tail: 'bushy' },
+  dog:    { id: 'dog',    name: '강아지', body: 0xf0913a, belly: 0xfaf3e8, bodyR: 0.56, bodyScale: [1.03, 0.99, 1.00], headR: 0.40, headY: 1.24, tail: 'curl' },
+  rabbit: { id: 'rabbit', name: '토끼',   body: 0xf3eeea, belly: 0xffffff, bodyR: 0.46, bodyScale: [1.00, 0.96, 1.00], headR: 0.39, headY: 1.12, tail: 'puff' },
+  cat:    { id: 'cat',    name: '고양이', body: 0x9fa0c2, belly: 0xf2f2f8, bodyR: 0.50, bodyScale: [0.88, 1.10, 0.88], headR: 0.36, headY: 1.25, tail: 'long' },
+  bear:   { id: 'bear',   name: '곰',     body: 0x936a44, belly: 0xd2b38a, bodyR: 0.63, bodyScale: [1.08, 1.00, 1.06], headR: 0.44, headY: 1.34, tail: 'stub' },
+  panda:  { id: 'panda',  name: '판다',   body: 0xf6f6f6, belly: 0xffffff, bodyR: 0.63, bodyScale: [1.08, 1.00, 1.06], headR: 0.45, headY: 1.34, tail: 'stub' },
+  chick:  { id: 'chick',  name: '병아리', body: 0xffe05a, belly: 0xfff0a0, bodyR: 0.50, bodyScale: [1.02, 0.94, 1.02], headR: 0.35, headY: 1.06, tail: 'feather' },
+};
+
+function taperedTube(pts, radiusFn, colorFn = null, segs = 40, radial = 9) {
+  const curve = new THREE.CatmullRomCurve3(pts);
+  const frames = curve.computeFrenetFrames(segs, false);
+  const pos = [], col = [], idx = [];
+  for (let i = 0; i <= segs; i++) {
+    const u = i / segs;
+    const P = curve.getPointAt(u), N = frames.normals[i], B = frames.binormals[i];
+    const r = radiusFn(u), c = colorFn && colorFn(u);
+    for (let j = 0; j < radial; j++) {
+      const A = (j / radial) * Math.PI * 2, ca = Math.cos(A), sa = Math.sin(A);
+      pos.push(P.x + (N.x * ca + B.x * sa) * r, P.y + (N.y * ca + B.y * sa) * r, P.z + (N.z * ca + B.z * sa) * r);
+      if (c) col.push(c.r, c.g, c.b);
+    }
+  }
+  for (let i = 0; i < segs; i++) for (let j = 0; j < radial; j++) {
+    const a = i * radial + j, b = i * radial + (j + 1) % radial;
+    const c2 = (i + 1) * radial + j, d = (i + 1) * radial + (j + 1) % radial;
+    idx.push(a, c2, b, b, c2, d);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  if (col.length) geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  geo.setIndex(idx); geo.computeVertexNormals();
+  return { geo, end: curve.getPointAt(1), curve };
+}
+
+function anchorsOf(a) {
+  const R = a.bodyR, bs = a.bodyScale, HR = a.headR, HY = a.headY;
+  const bodyY = R * bs[1] + 0.02;
+  return {
+    R, HR, HY, bs, bodyY, tail: a.tail,
+    head: headAnchor(HY), neck: neckAnchor(HR, HY), neckR: neckRadius(HR),
+    back: backAnchor(bs, R, bodyY), side: sideAnchor(bs, R, bodyY),
+  };
+}
+
+function probeTube(g, curve, rad, base) {
+  g.userData.tailProbe = Array.from({ length: 61 }, (_, i) => ({ p: curve.getPointAt(i / 60).add(base), r: rad(i / 60) }));
+}
+
+function buildAnimal(a) {
+  const g = new THREE.Group();
+  const { R, bs, bodyY } = anchorsOf(a);
+  const body = put(g, new THREE.Mesh(new THREE.SphereGeometry(R, 28, 20), plushMat(a.body)), 0, bodyY, 0);
+  body.scale.set(bs[0], bs[1], bs[2]);
+  const belly = put(g, new THREE.Mesh(new THREE.SphereGeometry(R * 0.62, 20, 14), plushMat(a.belly)), 0, bodyY - R * 0.16, R * 0.55, false);
+  belly.scale.set(1, 1.1, 0.6);
+  g.add(buildAnimalHead(a.id, { HR: a.headR, HY: a.headY, body: a.body, belly: a.belly }));
+  const tm = plushMat(a.body);
+  const tail = new THREE.Group();
+  tail.position.set(0, bodyY + R * 0.10, -R * bs[2] * 0.86);
+  g.add(tail);
+  const base = tail.position;
+  const V = (x, y, z) => new THREE.Vector3(R * x, R * y, R * z);
+  const tube = (pts, radFn, colFn) => {
+    const t = taperedTube(pts, radFn, colFn);
+    const m = new THREE.Mesh(t.geo, colFn ? new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 }) : tm);
+    m.castShadow = true; tail.add(m);
+    return t;
+  };
+  if (a.tail === 'bushy') {
+    const pts = [V(0, -0.05, 0.10), V(0, 0.06, -0.30), V(0, 0.30, -0.50), V(0, 0.60, -0.58), V(0, 0.88, -0.54)];
+    const rad = u => R * (0.29 + 0.05 * Math.sin(Math.PI * u)) * (1 - 0.38 * Math.max(0, u - 0.70) / 0.30);
+    const c0 = new THREE.Color(a.body), c1 = new THREE.Color(a.belly);
+    const t = tube(pts, rad, u => u < 0.60 ? c0 : u < 0.68 ? c0.clone().lerp(c1, (u - 0.60) / 0.08) : c1);
+    put(tail, new THREE.Mesh(new THREE.SphereGeometry(rad(1) * 0.98, 12, 9), plushMat(a.belly)), t.end.x, t.end.y, t.end.z);
+    probeTube(g, t.curve, rad, base);
+  } else if (a.tail === 'long') {
+    const pts = [V(0, -0.05, 0.10), V(0, 0.08, -0.36), V(0, 0.45, -0.60), V(0, 0.90, -0.58), V(0, 1.22, -0.36)];
+    const rad = u => R * (0.17 * (1 - u * 0.62) + 0.02) * (1 - 0.30 * Math.max(0, u - 0.85) / 0.15);
+    const t = tube(pts, rad);
+    put(tail, new THREE.Mesh(new THREE.SphereGeometry(rad(1) * 0.98, 10, 8), tm), t.end.x, t.end.y, t.end.z);
+    probeTube(g, t.curve, rad, base);
+  } else if (a.tail === 'curl') {
+    const pts = [V(0, -0.05, 0.10), V(0, 0.05, -0.22), V(0, 0.30, -0.40), V(0, 0.58, -0.36), V(0, 0.72, -0.14)];
+    const rad = u => R * (0.15 * (1 - u) + 0.05);
+    const t = tube(pts, rad);
+    put(tail, new THREE.Mesh(new THREE.SphereGeometry(rad(1) * 0.98, 10, 8), tm), t.end.x, t.end.y, t.end.z);
+    probeTube(g, t.curve, rad, base);
+  } else if (a.tail === 'puff') {
+    put(g, new THREE.Mesh(new THREE.SphereGeometry(R * 0.30, 12, 10), plushMat(a.belly)), 0, base.y + R * 0.04, base.z - R * 0.06);
+    g.userData.tailProbe = [{ p: new THREE.Vector3(0, base.y + R * 0.04, base.z - R * 0.06), r: R * 0.30 }];
+  } else if (a.tail === 'feather') {
+    [-1, 0, 1].forEach(s => {
+      const f = put(g, new THREE.Mesh(new THREE.ConeGeometry(R * 0.10, R * 0.44, 3), tm), s * R * 0.09, base.y + R * 0.34, base.z - R * 0.12);
+      f.rotation.set(Math.PI / 2 - 0.85, 0, s * 0.24);
+      f.updateMatrix();
+      [-0.18, 0, 0.18].forEach(t => (g.userData.tailProbe = g.userData.tailProbe || []).push({ p: new THREE.Vector3(0, t * R, 0).applyMatrix4(f.matrix), r: R * 0.10 }));
+    });
+  } else {
+    put(g, new THREE.Mesh(new THREE.SphereGeometry(R * 0.16, 10, 8), tm), 0, base.y, base.z);
+    g.userData.tailProbe = [{ p: base.clone(), r: R * 0.16 }];
+  }
+  return g;
+}
+
+const clay = (c, flat = true) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.95, metalness: 0, flatShading: flat });
+const H = { clay, put, P: PALETTE };
+const film = (c, o) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.5, metalness: 0, transparent: true, opacity: o, depthWrite: false });
+const HT = { film, put };
+
+function tailClips(animal, cos) {
+  const samples = animal.userData.tailProbe;
+  if (!samples) return 0;
+  animal.updateMatrixWorld(true);
+  cos.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(animal.matrixWorld).invert();
+  const v = new THREE.Vector3();
+  let n = 0;
+  cos.traverse(o => {
+    if (!o.isMesh) return;
+    const pos = o.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld).applyMatrix4(inv);
+      if (samples.some(s => v.distanceTo(s.p) < s.r)) n++;
+    }
+  });
+  return n;
+}
+
+function dressed(a, variant, slot) {
+  const g = new THREE.Group();
+  const animal = buildAnimal(a);
+  g.add(animal);
+  const k = anchorsOf(a);
+  const holder = new THREE.Group();
+  holder.position.copy(k[slot]);
+  holder.position.copy(k[variant.anchor || slot]);
+  const cos = variant.ref ? buildCosmetic(THREE, variant.ref, k) : new THREE.Group();
+  if (!variant.ref) variant.build(THREE, cos, k, H);
+  holder.add(cos);
+  g.add(holder);
+  return { g, clips: tailClips(animal, holder) };
+}
+
+function trailRow(variant, a, n = 7) {
+  const g = new THREE.Group();
+  for (let i = 0; i < n; i++) {
+    const o = 1.0 - 0.82 * (i / n);
+    const step = new THREE.Group();
+    step.position.set((i % 2 ? 1 : -1) * TRAIL_SIDE, 0, -i * 0.30 - 0.35);
+    step.rotation.y = (i % 2 ? 1 : -1) * 0.20;
+    const mark = new THREE.Group();
+    if (variant.ref) mark.add(buildTrailMark(THREE, variant.ref, o, a && a.id));
+    else variant.build(THREE, mark, TRAIL_S, o, a && a.id, HT);
+    step.add(mark);
+    g.add(step);
+  }
+  return g;
+}
+
+function stage() {
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xdbe7ec);
+  scene.add(new THREE.HemisphereLight(0xdfefff, 0x6f7f68, 0.88));
+  const sun = new THREE.DirectionalLight(0xfff3df, 1.12);
+  sun.position.set(4, 8, 5); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
+  Object.assign(sun.shadow.camera, { left: -3, right: 3, top: 3, bottom: -3, near: 0.5, far: 20 });
+  scene.add(sun);
+  const rim = new THREE.DirectionalLight(0xbfd8e8, 0.34); rim.position.set(-5, 3, -4); scene.add(rim);
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(14, 48), new THREE.MeshStandardMaterial({ color: 0xdfe7ea, roughness: 1 }));
+  ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+  return scene;
+}
+
+const COLS = {
+  head: [
+    { a: 'bear', ang: 32, label: '곰 3/4' }, { a: 'rabbit', ang: 32, label: '토끼 3/4' }, { a: 'fox', ang: 32, label: '여우 3/4' },
+    { a: 'chick', ang: 32, label: '병아리 3/4' }, { a: 'cat', ang: 32, label: '고양이 3/4' }, { a: 'rabbit', ang: 150, label: '토끼 뒤' },
+    { a: 'bear', ang: 32, label: '게임 거리', far: true },
+  ],
+  neck: [
+    { a: 'bear', ang: 28, label: '곰 3/4' }, { a: 'rabbit', ang: 28, label: '토끼 3/4' }, { a: 'fox', ang: 28, label: '여우 3/4' },
+    { a: 'chick', ang: 28, label: '병아리 3/4' }, { a: 'cat', ang: 28, label: '고양이 3/4' }, { a: 'fox', ang: 215, label: '여우 뒤 (왼쪽)' },
+    { a: 'bear', ang: 28, label: '게임 거리', far: true },
+  ],
+  back: [
+    { a: 'bear', ang: 165, label: '곰 뒤' }, { a: 'rabbit', ang: 195, label: '토끼 뒤' }, { a: 'fox', ang: 165, label: '여우 뒤' },
+    { a: 'fox', ang: 265, label: '여우 옆(왼쪽)' }, { a: 'chick', ang: 200, label: '병아리 뒤' }, { a: 'bear', ang: 30, label: '곰 앞 3/4' },
+    { a: 'fox', ang: 160, label: '게임 거리', far: true },
+  ],
+  back2: [
+    { a: 'fox', ang: 165, label: '여우 뒤' }, { a: 'dog', ang: 195, label: '강아지 뒤' }, { a: 'cat', ang: 165, label: '고양이 뒤' },
+    { a: 'rabbit', ang: 195, label: '토끼 뒤' }, { a: 'chick', ang: 165, label: '병아리 뒤' }, { a: 'fox', ang: 265, label: '여우 옆(왼쪽)' },
+    { a: 'bear', ang: 30, label: '곰 앞 3/4' }, { a: 'fox', ang: 160, label: '게임 거리', far: true },
+  ],
+  pochette: [
+    { a: 'bear', ang: 330, label: '곰 앞 3/4' }, { a: 'fox', ang: 270, label: '여우 옆(왼쪽)' }, { a: 'cat', ang: 200, label: '고양이 뒤' },
+    { a: 'dog', ang: 165, label: '강아지 뒤' }, { a: 'rabbit', ang: 285, label: '토끼 옆(왼쪽)' }, { a: 'chick', ang: 320, label: '병아리 3/4' },
+    { a: 'panda', ang: 240, label: '판다 뒤 3/4' }, { a: 'fox', ang: 200, label: '여우 뒤' }, { a: 'bear', ang: 320, label: '게임 거리', far: true },
+  ],
+  pack: [
+    { a: 'bear', ang: 180, label: '곰 뒤' }, { a: 'panda', ang: 330, label: '판다 앞 3/4' }, { a: 'fox', ang: 165, label: '여우 뒤' },
+    { a: 'fox', ang: 270, label: '여우 옆(왼쪽)' }, { a: 'cat', ang: 90, label: '고양이 옆(오른쪽)' }, { a: 'dog', ang: 210, label: '강아지 뒤 3/4' },
+    { a: 'rabbit', ang: 30, label: '토끼 앞 3/4' }, { a: 'chick', ang: 270, label: '병아리 옆(왼쪽)' }, { a: 'cat', ang: 180, label: '고양이 뒤' },
+    { a: 'fox', ang: 160, label: '게임 거리', far: true },
+  ],
+  cmp_head: [{ a: 'bear', ang: 32, label: '곰 3/4' }, { a: 'rabbit', ang: 32, label: '토끼 3/4' }, { a: 'chick', ang: 32, label: '병아리 3/4' }, { a: 'bear', ang: 32, label: '게임 거리', far: true }],
+  cmp_neck: [{ a: 'bear', ang: 28, label: '곰 3/4' }, { a: 'rabbit', ang: 28, label: '토끼 3/4' }, { a: 'chick', ang: 28, label: '병아리 3/4' }, { a: 'bear', ang: 28, label: '게임 거리', far: true }],
+  cmp_back: [{ a: 'bear', ang: 210, label: '곰 뒤 3/4' }, { a: 'rabbit', ang: 30, label: '토끼 앞 3/4' }, { a: 'chick', ang: 270, label: '병아리 옆' }, { a: 'fox', ang: 160, label: '게임 거리', far: true }],
+  cmp_trail: [{ a: 'bear', ang: 125, label: '곰' }, { a: 'rabbit', ang: 125, label: '토끼' }, { a: 'chick', ang: 125, label: '병아리' }, { a: 'bear', ang: 125, label: '게임 거리', far: true }],
+  trail: [
+    { a: null, ang: 180, label: '자국 근접', close: true }, { a: 'bear', ang: 125, label: '곰' }, { a: 'rabbit', ang: 125, label: '토끼' },
+    { a: 'fox', ang: 125, label: '여우' }, { a: 'chick', ang: 125, label: '병아리' }, { a: 'bear', ang: 125, label: '게임 거리', far: true },
+  ],
+};
+
+const qs = new URLSearchParams(location.search);
+const itemId = VARIANTS[qs.get('item')] ? qs.get('item') : 'cp_bucket_hat';
+const ITEM = VARIANTS[itemId];
+const slot = ITEM.slot;
+const rowOf = r => ({ ...ITEM[r], anchor: ITEM[r].anchor || ITEM.anchor });
+
+const used = Object.entries(FP);
+const over = used.filter(([, c]) => luma(c) > BLOOM_LUMA);
+document.getElementById('head').innerHTML =
+  `<h1>${ITEM.name}</h1><span class="sub">${itemId} · ${slot} 슬롯 · 시안 A/B/C</span>` +
+  (over.length ? `<span class="bad">블룸 초과 ${over.map(([k]) => k).join(', ')}</span>`
+               : `<span class="ok">블룸 0.85 이하 ${used.length}색 통과</span>`) +
+  `<nav>${Object.keys(VARIANTS).map(id => `<a href="?item=${id}" class="${id === itemId ? 'on' : ''}">${VARIANTS[id].name}</a>`).join('')}</nav>`;
+
+function start() {
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.setScissorTest(true);
+document.body.appendChild(renderer.domElement);
+
+const TOP = 64, COLH = 30, LEFTW = 200;
+const cols = COLS[qs.get('cols') === 'cmp' ? 'cmp_' + slot : (ITEM.cols || slot)];
+const rows = qs.get('row') ? qs.get('row').split(',') : (ITEM.rows || ['A', 'B', 'C']);
+const cw = (innerWidth - LEFTW) / cols.length, ch = (innerHeight - TOP - COLH) / rows.length;
+const ov = document.getElementById('ov');
+const cells = [];
+
+cols.forEach((c, ci) => {
+  const el = document.createElement('div');
+  el.className = 'col'; el.textContent = c.label;
+  Object.assign(el.style, { left: LEFTW + ci * cw + 'px', width: cw + 'px', top: TOP + 6 + 'px' });
+  ov.appendChild(el);
+});
+
+rows.forEach((r, ri) => {
+  const v = rowOf(r);
+  const re = document.createElement('div');
+  re.className = 'row';
+  re.innerHTML = `<div class="L">${r.startsWith('REF') ? '기준' : r}</div>${r === ITEM.rec ? '<div class="n" style="color:#b0566e">추천</div>' : ''}<div class="n">${v.name}</div><div class="d">${v.note}</div>`;
+  Object.assign(re.style, { left: 0, width: LEFTW + 'px', top: TOP + COLH + ri * ch + 'px', height: ch + 'px' });
+  ov.appendChild(re);
+
+  cols.forEach((c, ci) => {
+    const scene = stage();
+    const a = c.a ? ANIMALS[c.a] : null;
+    let clips = null, target, dist, elev = 14;
+    if (slot === 'trail') {
+      if (c.close) {
+        [-1, 1].forEach(s => {
+          const m = new THREE.Group();
+          m.position.set(s * 0.14, 0, s * 0.10);
+          m.rotation.y = s * 0.15;
+          if (v.ref) m.add(buildTrailMark(THREE, v.ref, 1.0, 'bear'));
+          else v.build(THREE, m, TRAIL_S, 1.0, 'bear', HT);
+          scene.add(m);
+        });
+        target = new THREE.Vector3(0, 0.02, 0); dist = 0.95; elev = 52;
+      } else {
+        scene.add(buildAnimal(a));
+        scene.add(trailRow(v, a));
+        target = new THREE.Vector3(0, 0.2, -1.1); dist = c.far ? 7.5 : 4.0; elev = c.far ? 38 : 34;
+      }
+    } else {
+      const d = dressed(a, v, slot);
+      scene.add(d.g);
+      clips = c.noClip ? null : d.clips;
+      const k = anchorsOf(a);
+      if (c.far) { target = new THREE.Vector3(0, 0.75, 0); dist = 8.5; elev = 36; }
+      else if (slot === 'head') { target = new THREE.Vector3(0, k.HY + k.HR * 0.45, 0); dist = 2.3 + k.HR * 1.6; }
+      else if (slot === 'neck') { target = new THREE.Vector3(0, k.HY - k.HR * 0.75, 0); dist = 2.5 + k.HR * 1.6; }
+      else { target = new THREE.Vector3(0, k.bodyY + k.R * 0.55, 0); dist = 3.4 + k.R * 1.5; elev = 18; }
+    }
+    const cam = new THREE.PerspectiveCamera(32, cw / ch, 0.05, 60);
+    const ar = THREE.MathUtils.degToRad(c.ang), er = THREE.MathUtils.degToRad(elev);
+    cam.position.set(target.x + Math.sin(ar) * Math.cos(er) * dist, target.y + Math.sin(er) * dist, target.z + Math.cos(ar) * Math.cos(er) * dist);
+    cam.lookAt(target);
+    const x = LEFTW + ci * cw, y = TOP + COLH + ri * ch;
+    cells.push({ scene, cam, x, y });
+    const ce = document.createElement('div');
+    ce.className = 'cell';
+    Object.assign(ce.style, { left: x + 'px', top: y + 'px', width: cw + 'px', height: ch + 'px' });
+    if (clips !== null && slot === 'back') {
+      ce.innerHTML = `<span class="t ${clips ? 'warn' : 'pass'}">꼬리 겹침 ${clips ? clips + '점' : '없음'}</span>`;
+    }
+    ov.appendChild(ce);
+  });
+});
+
+function draw() {
+  const Hh = innerHeight;
+  renderer.setScissor(0, 0, innerWidth, Hh); renderer.setViewport(0, 0, innerWidth, Hh);
+  renderer.setClearColor(0xe9efe9); renderer.clear();
+  cells.forEach(({ scene, cam, x, y }) => {
+    const yb = Hh - y - ch;
+    renderer.setViewport(x, yb, cw, ch); renderer.setScissor(x, yb, cw, ch);
+    renderer.render(scene, cam);
+  });
+}
+let frames = 0;
+function tick() { draw(); if (++frames < 3) requestAnimationFrame(tick); }
+tick();
+}
+setTimeout(start, 400);
+</script>
