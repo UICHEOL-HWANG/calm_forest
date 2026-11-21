@@ -23,6 +23,8 @@ import { buildAntlerBand, buildHollyTie, buildGiftPack } from './art-xmas-pick.j
 import { buildPirateScarf, buildAnchorNecklace, buildLighthousePack } from './art-sea-pick.js';
 import { buildCakeHat, buildMacaronBrooch, buildCupcakePack } from './art-dessert-pick.js';
 import { buildMoonPin, buildGalaxyScarf, buildStarLanternPack } from './art-night-pick.js';
+import { buildPouchBand, buildGoreumTie, buildKitePack } from './art-newyear-pick.js';
+import { buildBucketHat, buildBandana, buildSleepingbagPack } from './art-camp-pick.js';
 
 export const PALETTE = Object.freeze({
   straw: 0xd9bd7e, strawDark: 0xb99a5c,
@@ -362,6 +364,8 @@ function makeTables(THREE) {
     sp_pirate_scarf: (g, k) => buildPirateScarf(THREE, g, k, h),
     ds_cake_hat: (g, k) => buildCakeHat(THREE, g, k, h),
     ns_moon_pin: (g, k) => buildMoonPin(THREE, g, k, h),
+    ny_pouch_band: (g, k) => buildPouchBand(THREE, g, k, h),
+    cp_bucket_hat: (g, k) => buildBucketHat(THREE, g, k, h),
     star_pin: (g, k) => {       // 별 머리핀 — 옆머리에 하나. 가장 작고 가장 싸다
       // ⚠️ 1차엔 옆머리 **뒤**에 박혀 정면에서 안 보였다. 앞쪽으로 당기고 키운다.
       const H = k.HR * 0.46, rad = ringR(k.HR, 0.46);
@@ -430,6 +434,8 @@ function makeTables(THREE) {
     sp_anchor_necklace: (g, k) => buildAnchorNecklace(THREE, g, k, h),
     ds_macaron_brooch: (g, k) => buildMacaronBrooch(THREE, g, k, h),
     ns_galaxy_scarf: (g, k) => buildGalaxyScarf(THREE, g, k, h),
+    ny_goreum_tie: (g, k) => buildGoreumTie(THREE, g, k, h),
+    cp_bandana: (g, k) => buildBandana(THREE, g, k, h),
     bowtie: (g, k) => {         // 나비 넥타이 — 목띠 + 날개 두 장 + 가운데 매듭
       //  ▶ 날개는 **꼭짓점이 가운데를 향하는 사각뿔**이다. 저폴리에서 나비 날개를 그리는 제일 싼 방법 —
       //    옆에서 봐도 삼각으로 읽히고, 정면에선 두 삼각이 매듭에서 만나 나비가 된다.
@@ -506,6 +512,8 @@ function makeTables(THREE) {
     sp_lighthouse_pack: (g, k) => buildLighthousePack(THREE, g, k, h),
     ds_cupcake_pack: (g, k) => buildCupcakePack(THREE, g, k, h),
     ns_star_lantern_pack: (g, k) => buildStarLanternPack(THREE, g, k, h),
+    ny_kite_pack: (g, k) => buildKitePack(THREE, g, k, h),
+    cp_sleepingbag_pack: (g, k) => buildSleepingbagPack(THREE, g, k, h),
     pack: (g, k) => {           // 메신저 가방 — 왼쪽 옆구리에 걸치고 끈이 오른쪽 어깨를 넘어간다
       const R = k.R, w = R * 0.76;
       const out = 0;
