@@ -74,7 +74,7 @@ export function buildAntlerBand(THREE, g, k, h) {
   flatten(THREE, g);
 }
 
-function neckWrap(THREE, g, k, h, colors, tubeK) {
+export function neckWrap(THREE, g, k, h, colors, tubeK) {
   const r = k.neckR, segs = 12;
   for (let i = 0; i < segs; i++) {
     const t = h.put(g, new THREE.Mesh(new THREE.TorusGeometry(r, r * tubeK, 7, 4, TAU / segs + 0.02), h.clay(colors[i % colors.length], false)), 0, r * 0.04, 0);
@@ -105,7 +105,7 @@ export function buildHollyTie(THREE, g, k0, h) {
   flatten(THREE, g);
 }
 
-function clearZ(k, y0, y1, pad = 0.03) {
+export function clearZ(k, y0, y1, pad = 0.03) {
   let z = 0;
   for (let i = 0; i <= 8; i++) z = Math.min(z, backFront(k, y0 + (y1 - y0) * i / 8, pad).z);
   return z;
