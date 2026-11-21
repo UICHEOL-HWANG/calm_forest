@@ -3020,6 +3020,8 @@ export const EN = {
   '자정에 바뀌어요': 'Changes at midnight', '내일의 꾸미기': "Tomorrow's pick", '{0} 뒤 공개': 'Revealed in {0}',
   '📖 테마 도감 {0#}/{1#}': '📖 Theme collection {0}/{1}', '눌러서 보기': 'Tap to view', '✓ 있어요': '✓ Owned',
   '{0#}일 뒤': 'In {0} days', '다시 오는 날': 'Comes back', '완성': 'Complete',
+  '겨울 준비': 'Winter prep', '숲속 친구': 'Forest friends', '크리스마스': 'Christmas', '바닷가': 'Seaside', '디저트 카페': 'Dessert café', '설날': 'Lunar New Year',
+  '캠핑': 'Camping', '찻집': 'Tea house', '아틀리에': 'Atelier', '음악회': 'Concert', '여름밤 축제': 'Summer night festival', '도구 세트': 'Tool sets',
   //   👣 발자국 → ✨ 이펙트 (2026-09-23) — 상품은 그대로고 **분류 이름만** 바뀌었다
   '🎩 머리': '🎩 Head', '🧣 목': '🧣 Neck', '✨ 이펙트': '✨ Effects',
   //   🧥 전신 스킨(2026-10-01 2단계) — 상품명·설명·연출 카드는 통문장

@@ -155,7 +155,9 @@ function fillChips(row, book, redraw) {
 function grid(t) {
   const g = el('div', 'dp-grid');
   const head = el('div', 'dp-grid-h');
-  head.append(el('span', null, `${t.emoji} ${t.name} ${t.got}/${t.total}`), el('small', null, '다시 오는 날'));
+  const title = el('span');
+  title.append(el('span', null, t.emoji), ' ', el('span', null, t.name), ' ', el('span', null, `${t.got}/${t.total}`));
+  head.append(title, el('small', null, '다시 오는 날'));
   g.append(head);
   for (const it of t.items) {
     const cls = it.owned ? 'own' : it.days === 0 ? 'today' : 'soon';
