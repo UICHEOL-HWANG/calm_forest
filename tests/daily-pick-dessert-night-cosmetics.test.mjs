@@ -56,7 +56,7 @@ test('dessert and night pick wearables build merged meshes', () => {
 
 test('cupcake pack height follows the tail of each of the 7 animals', () => {
   const tails = { fox: 'bushy', dog: 'curl', rabbit: 'puff', cat: 'long', bear: 'stub', panda: 'stub', chick: 'feather' };
-  const want = { fox: 0.74, dog: 0.86, rabbit: 0.66, cat: 0.56, bear: 0.56, panda: 0.56, chick: 0.62 };
+  const want = { fox: 0.74, dog: 0.86, rabbit: 0.66, cat: 0.56, bear: 0.56, panda: 0.56, chick: -0.2 };
   for (const [id, type] of Object.entries(tails)) {
     assert.equal(packY({ tail: { type } }), want[id], id);
     assert.equal(packY({ tail: type }), want[id], id);

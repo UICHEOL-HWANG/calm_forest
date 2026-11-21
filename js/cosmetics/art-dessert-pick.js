@@ -139,7 +139,7 @@ function scallopFlap(THREE, w, hh, n) {
   return sh;
 }
 
-export const PACK_Y = Object.freeze({ bushy: 0.74, curl: 0.86, puff: 0.66, feather: 0.62 });
+export const PACK_Y = Object.freeze({ bushy: 0.74, curl: 0.86, puff: 0.66, feather: -0.2 });
 export const packY = k => PACK_Y[tailType(k.tail)] ?? 0.56;
 
 export function buildCupcakePack(THREE, g, k0, h) {
