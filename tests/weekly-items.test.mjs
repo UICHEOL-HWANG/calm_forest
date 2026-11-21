@@ -257,7 +257,7 @@ test('the shade still reserves its whole canopy for overlap, turned with the ite
 });
 
 test('posts is used by the shade and the busker stage only and game.js turns it into circles before the box branch', () => {
-  const withPosts = catalog.split('\n').filter(l => /\bposts:/.test(l) && !/id: '(noteflags|hornpost|wp_snowman|fp_deer_mailbox|xm_wreath_arch|ns_starlight_arch|ny_kite_stand|sb_petal_swing|sb_blossom_arch|at_outdoor_easel)'/.test(l));
+  const withPosts = catalog.split('\n').filter(l => /\bposts:/.test(l) && !/id: '(noteflags|hornpost|wp_snowman|fp_deer_mailbox|xm_wreath_arch|ns_starlight_arch|ny_kite_stand|sb_petal_swing|sb_blossom_arch|at_outdoor_easel|mu_mini_stage)'/.test(l));
   assert.equal(withPosts.length, 2);
   assert.ok(withPosts[0].includes("id: 'buskerstage'") || withPosts[1].includes("id: 'buskerstage'"));
   assert.ok(withPosts[0].includes("id: 'shellshade'") || withPosts[1].includes("id: 'shellshade'"));

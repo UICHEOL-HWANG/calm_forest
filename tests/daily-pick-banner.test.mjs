@@ -53,5 +53,5 @@ test('테마별 모은 수·전체 수·완성', () => {
 test('실제 풀 도감 합계는 풀 크기와 같다', () => {
   const book = themeBook(DAILY_PICK_POOL.map(p => ({ id: p.id, owned: false })), 0);
   assert.equal(book.reduce((s, t) => s + t.total, 0), DAILY_PICK_POOL.length);
-  assert.equal(book.find(t => t.key === 'tools_').total, 11);
+  assert.equal(book.find(t => t.key === 'tools_').total, 13);
 });
