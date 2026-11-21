@@ -173,3 +173,39 @@ export function adGrant(shown, day) {
   if (shown?.d !== day || shown?.id !== pickOf(day).id) return null;
   return { d: day, id: shown.id, half: true };
 }
+
+const THEMES = Object.freeze([
+  ['wp_', '❄️', '겨울 준비'], ['fp_', '🐿️', '숲속 친구'], ['xm_', '🎄', '크리스마스'], ['sp_', '🐚', '바닷가'],
+  ['ds_', '🍰', '디저트 카페'], ['ns_', '🌙', '밤하늘'], ['ny_', '🧧', '설날'], ['cp_', '🏕️', '캠핑'],
+  ['sb_', '🌸', '벚꽃'], ['rn_', '☔', '비 오는 날'], ['tc_', '🍵', '찻집'], ['at_', '🎨', '아틀리에'],
+  ['mu_', '🎵', '음악회'], ['sf_', '🎆', '여름밤 축제'], ['tools_', '🛠️', '도구 세트'], ['', '🎀', '기타'],
+].map(([prefix, emoji, name]) => Object.freeze({ key: prefix || 'etc', prefix, emoji, name })));
+
+export const themeOf = (id) => THEMES.find(t => t.prefix && id.startsWith(t.prefix)) || THEMES[THEMES.length - 1];
+
+export function nextDayKey(dateKey) {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  const t = new Date(Date.UTC(y, m - 1, d + 1));
+  return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, '0')}-${String(t.getUTCDate()).padStart(2, '0')}`;
+}
+
+export const tomorrowPick = (dateKey) => pickOf(nextDayKey(dateKey));
+
+export const daysUntil = (itemIndex, todayIndex, n = DAILY_PICK_POOL.length) => ((itemIndex - todayIndex) % n + n) % n;
+
+export function dexLabel(owned, days) {
+  if (owned) return '✓ 있어요';
+  if (days === 0) return '오늘';
+  return days === 1 ? '내일' : `${days}일 뒤`;
+}
+
+export function themeBook(entries, todayIndex) {
+  const n = entries.length;
+  return THEMES.map(t => {
+    const items = entries
+      .map((e, idx) => ({ ...e, days: daysUntil(idx, todayIndex, n) }))
+      .filter(e => themeOf(e.id) === t);
+    const got = items.filter(e => e.owned).length;
+    return { key: t.key, emoji: t.emoji, name: t.name, got, total: items.length, full: items.length > 0 && got === items.length, items };
+  }).filter(t => t.total > 0);
+}

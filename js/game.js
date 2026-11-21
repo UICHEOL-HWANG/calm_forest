@@ -92,7 +92,7 @@ import { forgeView, forgeBegin, forgeAbort, forgeFinish, settleForge, forgeRushR
 import { initAuction, updateAuction, auctionMapSpot, auctionSpotNow, openAuction, auctionScatterBlocks, auctionOutdoorMesh, auctionDefault, restoreAuction, auctionGuideActive } from './auction/index.js';
 import { initWeekly, updateWeekly, weeklyNote, weeklySpotNow, openWeekly, weeklyDefault, restoreWeekly, weeklyScatterBlocks, weeklyDecorMesh, weeklyDev, weeklyGuideActive, weeklyPriority, weekIndex, BOARD_POS, MARKET_POS } from './weekly/index.js';
 import { makeWeeklyBridge } from './weekly/bridge.js';
-import { DAILY_PICK_POOL, cardState, adGrant, cleanDailyPick, decorOwned, leftLabel, msLeft, pickIndex, pickOf, planBuy, priceOf as dailyPriceOf } from './data/daily-pick.js';
+import { DAILY_PICK_POOL, cardState, adGrant, cleanDailyPick, decorOwned, leftLabel, msLeft, pickIndex, pickOf, planBuy, priceOf as dailyPriceOf, tomorrowPick } from './data/daily-pick.js';
 import { initConcert, updateConcert, concertSpotNow, openConcert, concertDefault, restoreConcert, concertScatterBlocks, concertDecorMesh, concertDev, STAGE_POS, concertGuideActive } from './concert/index.js';
 import { makeConcertBridge } from './concert/bridge.js';
 import { refreshPond, updatePond, pondScatterBlocks } from './pond/index.js';
@@ -2144,10 +2144,17 @@ function noteDailyView(day, id, state) {
 function dailyPickInfo() {
   const day = todayStr();
   const pick = pickOf(day);
-  const item = pick.kind === 'cos' ? findItem(pick.id) : [...DECOR, ...OUTDOOR].find(d => d.id === pick.id);
+  const item = dailyPickItem(pick);
   if (!item) return null;
-  const owned = pick.kind === 'cos' ? gameState.cosmetics.owned.includes(pick.id) : decorOwned(gameState, pick.id);
-  return { day, pick, item, owned };
+  return { day, pick, item, owned: dailyPickOwned(pick) };
+}
+
+function dailyPickItem(pick) {
+  return pick.kind === 'cos' ? findItem(pick.id) : [...DECOR, ...OUTDOOR].find(d => d.id === pick.id);
+}
+
+function dailyPickOwned(pick) {
+  return pick.kind === 'cos' ? gameState.cosmetics.owned.includes(pick.id) : decorOwned(gameState, pick.id);
 }
 
 function dailyPickView() {
@@ -2159,7 +2166,8 @@ function dailyPickView() {
   const state = cardState({ owned, half, adOpen: !owned && !half && !!rewarded?.offer('daily_pick') });
   noteDailyView(day, pick.id, state);
   return { d: day, id: pick.id, kind: pick.kind, ico: item.ico, name: item.name, state, price: dailyPriceOf(pick, dp, day), full: pick.price,
-    left: leftLabel(msLeft(Date.now())), count: DAILY_PICK_POOL.length, index: pickIndex(day) };
+    left: leftLabel(msLeft(Date.now())), index: pickIndex(day), tomorrow: dailyPickItem(tomorrowPick(day))?.ico || '🎀',
+    dex: DAILY_PICK_POOL.map(p => ({ id: p.id, ico: dailyPickItem(p)?.ico || '🎀', owned: dailyPickOwned(p) })) };
 }
 
 function buyDailyPick(shown) {
