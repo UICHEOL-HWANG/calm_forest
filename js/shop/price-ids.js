@@ -31,6 +31,9 @@ export const PRICE_IDS = Object.freeze({
   sb_blossom_crown: null, sb_petal_ribbon: null, sb_picnic_pack: null, sb_petal_trail: null,
   rn_rain_hood: null, rn_drop_scarf: null, rn_frog_pack: null, rn_puddle_trail: null,
   tools_watermelon: null, tools_sunflower: null,
+  tc_leaf_pin: null, tc_tea_cord: null, tc_teapot_pack: null, tc_leaf_trail: null,
+  at_beret: null, at_paint_scarf: null, at_palette_pack: null, at_paint_trail: null,
+  tools_peach: null,
   // 💎 프리미엄(현금 전용, 2026-10-01 스펙) — scripts/paddle-seed.mjs 가 채운다
   firefly: 'pri_01m3x4q3sjhg1c19b0vsz55b80', rainbow: 'pri_01m3x4q4a0v0pv06yreaqe3dh7', forest_spirit: 'pri_01m3x4q4szrecdh3rwc5sya6zt', plush_doll: 'pri_01m3x4q5abzr8m2xvzqb93rfrn',
   // 🪓 도구 테마 세트(2026-10-02 라이브 등록) — 키는 macOS 키체인 calmforest-paddle-live
