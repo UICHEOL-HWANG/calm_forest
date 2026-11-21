@@ -184,3 +184,8 @@ test('단골 명패는 언어에 맞춰 그린다', () => {
   assert.match(STUB, /buildRegularBoard\(THREE, regs, t\('단골'\)\)/);
   assert.match(read('js/i18n-en.js'), /'단골': 'Regular'/);
 });
+
+test('식당 입장이 오늘의 특선을 정하고 세션에 넘긴다', () => {
+  assert.match(STUB, /todaySpecial\(/);
+  assert.match(STUB, /sessionOpts: \(\) => \(restaurantGuideActive\(\) \? \{ first: true \} : \{ special \}\)/);
+});

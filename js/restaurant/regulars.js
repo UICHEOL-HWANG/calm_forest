@@ -1,3 +1,5 @@
+import { SPECIAL_ODDS } from './special.js';
+
 export const GUEST_NPCS = ['farmer', 'builder', 'stargazer', 'angler', 'ferryman', 'forager', 'rancher', 'curator'];
 export const FAV = {
   farmer: 'riceball', builder: 'riceball', stargazer: 'riceball',
@@ -14,9 +16,10 @@ export function pickGuestNpc(free, busy, rng) {
   return open.length ? pick(open, rng) : null;
 }
 
-export function pickMenu(npc, menus, rng) {
+export function pickMenu(npc, menus, rng, special = null) {
   const fav = npc && FAV[npc];
   if (fav && menus.includes(fav) && rng() < FAV_ODDS) return fav;
+  if (special && menus.includes(special) && rng() < SPECIAL_ODDS) return special;
   return pick(menus, rng);
 }
 

@@ -23,6 +23,7 @@ import { MENU, RESTAURANT, RESTAURANT_GATE, RESTAURANT_FACE, RESTAURANT_SIGN, HA
 import { buildBistro, setBistroEvening } from '../restaurant/exterior.js';
 import { buildHall } from '../restaurant/hall.js';
 import { grantStarter, panState } from '../restaurant/rules.js';
+import { todaySpecial } from '../restaurant/special.js';
 import { createRestaurantRuntime } from '../restaurant/runtime.js';
 import { restaurantGuideSteps, guideStage, shownStep, villageVia, hallVia } from '../restaurant/guide-steps.js';
 import { createGuide } from '../guide/runner.js';
@@ -52,6 +53,7 @@ const EXIT_R = 1.2;
 const PLANT_R = 0.3;
 const free = new Map();
 let exterior = null, hall = null, runtime = null, chopHinted = false;
+let special = null;
 let regularBoard = null, regularBoardSolid = null, boardSeq = 0;
 const stationSolids = [], tableSolids = [];
 const projV = new THREE.Vector3();
@@ -219,7 +221,7 @@ export function buildRestaurantHall() {
       refreshInventoryUI();
     },
     trackEvent, requestSave,
-    sessionOpts: () => (restaurantGuideActive() ? { first: true } : {}),
+    sessionOpts: () => (restaurantGuideActive() ? { first: true } : { special }),
     onChopStart: () => { if (chopHinted) return; chopHinted = true; ui.toast?.(RESTAURANT_COPY.chop); },
     onFinish: () => syncSolids(),
     adButton: (coins) => (coins > 0 ? adPill('restaurant_double', () => { giveReward({ coins }, 'restaurant_double', 'restaurant'); requestSave(); }) : null),
@@ -241,6 +243,9 @@ export function enterRestaurant() {
     ui.toast?.(RESTAURANT_COPY.starter);
     requestSave();
   }
+  const sp = todaySpecial(gameState.restaurant, STAR[gameState.restaurant.star].menus, gameState.port?.pantry, todayStr());
+  special = sp.menu;
+  if (sp.rest !== gameState.restaurant) { gameState.restaurant = sp.rest; requestSave(); }
   runtime?.refresh();
   rebuildRegularBoard();
   syncSolids();

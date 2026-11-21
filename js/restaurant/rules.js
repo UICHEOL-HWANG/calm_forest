@@ -1,5 +1,6 @@
 import { COOK, FLIP, CHOP_TAPS, CHOP_GAP, PATIENCE, STAR, STAR_UP, MENU, MENU_KEYS, DDA_MIN, DDA_MAX, DDA_EASY, DDA_HARD, DDA_EASY_BELOW, DDA_HARD_FROM, STARTER_STOCK } from './data.js';
 import { sanitizeRegulars } from './regulars.js';
+import { sanitizeSpecial } from './special.js';
 
 const nat = v => (Number.isFinite(v) && v > 0 ? Math.floor(v) : 0);
 const clampDda = v => Math.round(Math.max(DDA_MIN, Math.min(DDA_MAX, v)) * 100) / 100;
@@ -7,7 +8,7 @@ const ddaVal = v => (Number.isFinite(v) ? clampDda(v) : 1);
 
 export function defaultRestaurant() {
   return { v: 1, star: 1, rating: 0, served: Object.fromEntries(MENU_KEYS.map(k => [k, 0])), combo: 0, bestCombo: 0,
-    dda: { iv: 1, pat: 1, win: 1 }, starterGiven: false, guideDone: false, services: 0, regulars: {} };
+    dda: { iv: 1, pat: 1, win: 1 }, starterGiven: false, guideDone: false, services: 0, regulars: {}, special: null };
 }
 
 export function sanitizeRestaurant(raw) {
@@ -21,6 +22,7 @@ export function sanitizeRestaurant(raw) {
     dda: { iv: ddaVal(raw.dda?.iv), pat: ddaVal(raw.dda?.pat), win: ddaVal(raw.dda?.win) },
     starterGiven: raw.starterGiven === true, guideDone: raw.guideDone === true, services: nat(raw.services),
     regulars: sanitizeRegulars(raw.regulars),
+    special: sanitizeSpecial(raw.special),
   };
 }
 

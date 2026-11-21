@@ -1,4 +1,5 @@
 import { pickGuestNpc, pickMenu } from './regulars.js';
+import { SPECIAL_COIN_MUL } from './special.js';
 import { HALL, SERVICE_SEC, LAST_SPAWN_SEC, STAR, EAT_SEC, COIN_PER_STAR, PATIENCE, COOK, MENU } from './data.js';
 import { cookState, panState, flipOk, flipZone, chopTap, chopDone, serveStars, spawnInterval, serviceAvg } from './rules.js';
 
@@ -48,11 +49,11 @@ function blocked(S, g, pos) {
 
 const FIRST_PAT = 1.2;
 
-export function createSession({ star, dda, rng = Math.random, first = false, stock = null, neighbors = null }) {
+export function createSession({ star, dda, rng = Math.random, first = false, stock = null, neighbors = null, special = null }) {
   const stations = {};
   for (const s of HALL.stations) stations[s.id] = { item: null, t: 0, chop: FRESH_CHOP(), flipped: null };
   return {
-    star, cfg: STAR[star], dda: first ? { ...dda, pat: dda.pat * FIRST_PAT } : { ...dda }, first, rng, stock, neighbors, time: 0, next: 1.5, guests: [], tickets: [], gid: 0,
+    star, cfg: STAR[star], dda: first ? { ...dda, pat: dda.pat * FIRST_PAT } : { ...dda }, first, rng, stock, neighbors, special: first ? null : special, time: 0, next: 1.5, guests: [], tickets: [], gid: 0,
     held: null, stations, staff: null, ended: false,
     stats: { served: 0, stars: [], late: 0, perfect: 0, takes: 0, burnt: 0, coins: 0, npcServed: 0 },
   };
@@ -78,7 +79,7 @@ function spawn(S) {
   if (!free.length) return null;
   const busy = new Set(S.guests.map(g => g.npc).filter(Boolean));
   const npc = S.neighbors ? pickGuestNpc(S.neighbors(), busy, S.rng) : null;
-  const menu = pickMenu(npc, menus, S.rng);
+  const menu = pickMenu(npc, menus, S.rng, S.special);
   const table = free[Math.floor(S.rng() * free.length)];
   const g = { id: ++S.gid, table, menu, npc, state: 'walk', t: 0, walk: walkTime(table) };
   S.guests.push(g);
@@ -92,7 +93,7 @@ function serve(S, tk, it) {
   S.tickets.splice(S.tickets.indexOf(tk), 1);
   const g = S.guests.find(x => x.id === tk.id);
   if (g) { g.state = 'eat'; g.t = 0; }
-  const coins = stars * COIN_PER_STAR;
+  const coins = stars * COIN_PER_STAR * (tk.menu === S.special ? SPECIAL_COIN_MUL : 1);
   S.stats.served++;
   S.stats.stars.push(stars);
   S.stats.coins += coins;
