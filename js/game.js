@@ -376,6 +376,8 @@ import { YARD_IDS as NEWYEAR_PICK_YARD_IDS, build as buildNewyearPick } from './
 import { YARD_IDS as CAMP_PICK_YARD_IDS, build as buildCampPick } from './decor-drops/art-camp-pick.js';
 import { YARD_IDS as SPRING_PICK_YARD_IDS, build as buildSpringPick } from './decor-drops/art-spring-pick.js';
 import { YARD_IDS as RAIN_PICK_YARD_IDS, build as buildRainPick } from './decor-drops/art-rain-pick.js';
+import { YARD_IDS as TEA_PICK_YARD_IDS, build as buildTeaPick } from './decor-drops/art-tea-pick.js';
+import { YARD_IDS as ATELIER_PICK_YARD_IDS, build as buildAtelierPick } from './decor-drops/art-atelier-pick.js';
 import { requestSignupNudge } from './signup-gift/index.js';
 import { FRIEND_ARCH_ID, buildFriendArch } from './spaces/friend-arch-art.js';   // 🌈 무지개 우정 아치(🤝 초대 보상)
 import { MINE_CART_ID, MINE_CART_BOX, buildMineCart } from './delve/cart-art.js';
@@ -6201,6 +6203,10 @@ function outdoorMesh(id) {
     g.add(buildSpringPick(id));
   } else if (RAIN_PICK_YARD_IDS.includes(id)) {
     g.add(buildRainPick(id));
+  } else if (TEA_PICK_YARD_IDS.includes(id)) {
+    g.add(buildTeaPick(id));
+  } else if (ATELIER_PICK_YARD_IDS.includes(id)) {
+    g.add(buildAtelierPick(id));
   } else if (id === 'kiln') {
     // 🔥 화덕 — sims/kiln-sim.html 에서 확정한 C안(낮은 아궁이). 상판이 표시 면이라
     //    완성물이 쌓이면 가까이 가지 않아도 "다 구워졌다" 가 읽힌다.
