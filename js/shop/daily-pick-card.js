@@ -50,7 +50,7 @@ const CSS = `
 .dp-row>i{font-style:normal;width:40px;height:40px;border-radius:11px;background:#fff8e4;display:flex;align-items:center;justify-content:center;font-size:24px}
 .dp-row-t{display:flex;flex-direction:column;gap:1px;min-width:0}
 .dp-row-t b{font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.dp-row-t small{font-size:10.5px;font-weight:700;color:#a8641a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dp-row-t small{font-size:10.5px;font-weight:700;color:#a8641a;line-height:1.35;word-break:keep-all}
 .dp-row .dp-buys{grid-column:1 / -1}
 .dp-row .dp-buys>*{flex:1 1 auto;min-height:40px}
 @media (max-width:760px),(max-height:500px){.dp-ico{width:44px;height:44px;font-size:26px}.dp-name{font-size:13px}.dp-buys .dp-buy{padding:6px 9px;font-size:11.5px}}
@@ -168,7 +168,7 @@ const coins = (n) => `🪙 ${n.toLocaleString()}`;
 function itemNote(it, view) {
   if (it.owned) return '보유 중';
   if (it.days === 0) return '오늘의 꾸미기예요';
-  return view.deal ? `${dexLabel(it.days, true)} 광고 보면 반값` : '언제든 살 수 있어요';
+  return view.deal ? `${dexLabel(it.days, true)} 광고 보고 반값에 할인받기` : '언제든 살 수 있어요';
 }
 
 function buyRow(it, view, { onBuy, onBuyItem, adButton }) {
