@@ -18,7 +18,7 @@ import { gainAffinity, issueRegularLetter } from '../affinity/index.js';
 import { giftGain } from '../affinity/stages.js';
 import { isUnlocked } from '../world/unlocks.js';
 import { buildCafeGuestCast } from './cafe.js';
-import { GUEST_NPCS, FAV, serveLove, recordRegular } from '../restaurant/regulars.js';
+import { GUEST_NPCS, FAV, serveLove, recordRegular, SET_LOVE } from '../restaurant/regulars.js';
 import { MENU, RESTAURANT, RESTAURANT_GATE, RESTAURANT_FACE, RESTAURANT_SIGN, HALL, STAR, restaurantLocal, restaurantBox } from '../restaurant/data.js';
 import { buildBistro, setBistroEvening } from '../restaurant/exterior.js';
 import { buildHall } from '../restaurant/hall.js';
@@ -181,9 +181,10 @@ async function rebuildSpecialMark() {
   specialMark = next;
 }
 
-function onGuestServed({ npc, menu, stars, table }) {
+function onGuestServed({ npc, menu, stars, table, set }) {
   if (!npc || runtime.session()?.first) return;
-  const love = serveLove(npc, menu, stars);
+  if (set) trackEvent('restaurant_set', { npc, stars: set.stars, coins: set.coins });
+  const love = serveLove(npc, menu, stars) + (set && set.stars >= 4 ? SET_LOVE : 0);
   if (love > 0) {
     const { gain, state } = giftGain(gameState.hintsSeen?.affGift, todayStr(), npc, love);
     gameState.hintsSeen = { ...gameState.hintsSeen, affGift: state };

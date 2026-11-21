@@ -481,6 +481,7 @@ enter_restaurant,crafting,restaurant,2,N,not_fired,0,0,,,,js/spaces/restaurant.j
 exit_restaurant,crafting,restaurant,2,N,not_fired,0,0,,,,js/spaces/restaurant.js:156,식당에서 마을로 나왔을 때 (영업 중이면 결과 없이 끝),
 restaurant_service,crafting,restaurant,1,N,not_fired,0,0,,,star|served|avg_score|dda|regular_n,js/restaurant/runtime.js:174,"식당 저녁 영업 한 판이 끝났을 때 (star=영업 때 별 단계, served=받은 손님 수, avg_score=못 받은 주문을 1점으로 센 평균 별점, dda=영업 뒤 손님 간격 배율, regular_n=이웃 손님에게 서빙한 횟수(나그네 제외, 같은 이웃도 매번 셈))",
 restaurant_regular,crafting,restaurant,2,N,not_fired,0,0,,,npc,js/spaces/restaurant.js:151,이웃이 식당 단골이 됐을 때 (npc=이웃 id),
+restaurant_set,crafting,restaurant,2,N,not_fired,0,0,,,npc|stars|coins,js/spaces/restaurant.js:186,단골 세트 주문 두 접시를 다 냈을 때 (npc=이웃 id·stars=세트 평균 별점·coins=세트 코인 합),
 restaurant_star_up,crafting,restaurant,1,N,not_fired,0,0,,,star,js/restaurant/runtime.js:148,식당 평판 별이 올랐을 때 (star=오른 뒤 별 단계),
 promo_gift_arrive,onboarding,promo_gift,2,N,not_fired,0,0,,,code|via,js/promo-gift/flow.js:18,"프로모 선물 링크로 들어왔을 때 (code=선물 코드, via=도착 경로)",
 promo_gift_claim,onboarding,promo_gift,2,N,not_fired,0,0,,,code|step|result,js/promo-gift/flow.js:30,"프로모 선물을 받으려고 시도했을 때 (step=1 게스트 또는 2 로그인, result=new·dup·만료 사유·net_fail)",

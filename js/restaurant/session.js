@@ -1,4 +1,4 @@
-import { pickGuestNpc, pickMenu } from './regulars.js';
+import { pickGuestNpc, pickMenu, FAV } from './regulars.js';
 import { SPECIAL_COIN_MUL } from './special.js';
 import { HALL, SERVICE_SEC, LAST_SPAWN_SEC, STAR, EAT_SEC, COIN_PER_STAR, PATIENCE, COOK, MENU } from './data.js';
 import { cookState, panState, flipOk, flipZone, chopTap, chopDone, serveStars, spawnInterval, serviceAvg } from './rules.js';
@@ -48,12 +48,13 @@ function blocked(S, g, pos) {
 }
 
 const FIRST_PAT = 1.2;
+export const SET_ODDS = 0.25, SET_PATIENCE = 1.5, SET_COIN_MUL = 1.5;
 
-export function createSession({ star, dda, rng = Math.random, first = false, stock = null, neighbors = null, special = null }) {
+export function createSession({ star, dda, rng = Math.random, first = false, stock = null, neighbors = null, special = null, regulars = null }) {
   const stations = {};
   for (const s of HALL.stations) stations[s.id] = { item: null, t: 0, chop: FRESH_CHOP(), flipped: null };
   return {
-    star, cfg: STAR[star], dda: first ? { ...dda, pat: dda.pat * FIRST_PAT } : { ...dda }, first, rng, stock, neighbors, special: first ? null : special, time: 0, next: 1.5, guests: [], tickets: [], gid: 0,
+    star, cfg: STAR[star], dda: first ? { ...dda, pat: dda.pat * FIRST_PAT } : { ...dda }, first, rng, stock, neighbors, special: first ? null : special, regulars: first ? null : regulars, setUsed: new Set(), time: 0, next: 1.5, guests: [], tickets: [], gid: 0,
     held: null, stations, staff: null, ended: false,
     stats: { served: 0, stars: [], late: 0, perfect: 0, takes: 0, burnt: 0, coins: 0, npcServed: 0 },
   };
@@ -65,11 +66,31 @@ function freeTables(S) {
   return out;
 }
 
+const dishes = g => g.set || [g.menu];
+
+function stockLeft(S, kind) {
+  const pending = g => (g.state === 'wait' ? S.tickets.filter(t => t.id === g.id).map(t => t.menu) : dishes(g));
+  const waiting = S.guests.filter(g => g.state !== 'leave' && g.state !== 'eat').flatMap(pending).filter(m => MENU[m].from === kind).length;
+  return S.stock(kind) - waiting;
+}
+
 function inStock(S, menu) {
-  if (!S.stock) return true;
-  const kind = MENU[menu].from;
-  const waiting = S.guests.filter(g => g.state !== 'leave' && g.state !== 'eat' && MENU[g.menu].from === kind).length;
-  return S.stock(kind) - waiting > 0;
+  return !S.stock || stockLeft(S, MENU[menu].from) > 0;
+}
+
+function pickSet(S, npc, menus) {
+  const fav = npc && FAV[npc];
+  if (!fav || !S.regulars?.[npc]?.done || S.setUsed.has(npc) || !menus.includes(fav)) return null;
+  if (S.rng() >= SET_ODDS) return null;
+  const others = menus.filter(m => m !== fav);
+  if (!others.length) return null;
+  const set = [fav, others[Math.floor(S.rng() * others.length)]];
+  if (S.stock) {
+    const need = {};
+    for (const m of set) need[MENU[m].from] = (need[MENU[m].from] || 0) + 1;
+    if (Object.entries(need).some(([k, n]) => stockLeft(S, k) < n)) return null;
+  }
+  return set;
 }
 
 function spawn(S) {
@@ -79,26 +100,39 @@ function spawn(S) {
   if (!free.length) return null;
   const busy = new Set(S.guests.map(g => g.npc).filter(Boolean));
   const npc = S.neighbors ? pickGuestNpc(S.neighbors(), busy, S.rng) : null;
-  const menu = pickMenu(npc, menus, S.rng, S.special);
+  const set = S.first ? null : pickSet(S, npc, menus);
+  const menu = set ? set[0] : pickMenu(npc, menus, S.rng, S.special);
+  if (set) S.setUsed.add(npc);
   const table = free[Math.floor(S.rng() * free.length)];
-  const g = { id: ++S.gid, table, menu, npc, state: 'walk', t: 0, walk: walkTime(table) };
+  const g = { id: ++S.gid, table, menu, npc, state: 'walk', t: 0, walk: walkTime(table), ...(set ? { set } : {}) };
   S.guests.push(g);
   return g;
 }
 
+function setDone(S, g, stars, coins) {
+  g.got = [...(g.got || []), { stars, coins }];
+  if (S.tickets.some(t => t.id === g.id)) return { coins, set: null };
+  const sum = g.got.reduce((a, x) => a + x.coins, 0);
+  const total = Math.round(sum * SET_COIN_MUL);
+  const avg = Math.round(g.got.reduce((a, x) => a + x.stars, 0) / g.got.length);
+  return { coins: coins + total - sum, set: { stars: avg, coins: total } };
+}
+
 function serve(S, tk, it) {
   const wait = S.time - tk.t0;
-  const stars = serveStars(wait, it.q, S.dda.pat);
-  if (wait >= PATIENCE[1] * S.dda.pat) S.stats.late++;
+  const pat = S.dda.pat * (tk.pat || 1);
+  const stars = serveStars(wait, it.q, pat);
+  if (wait >= PATIENCE[1] * pat) S.stats.late++;
   S.tickets.splice(S.tickets.indexOf(tk), 1);
   const g = S.guests.find(x => x.id === tk.id);
-  if (g) { g.state = 'eat'; g.t = 0; }
-  const coins = stars * COIN_PER_STAR * (tk.menu === S.special ? SPECIAL_COIN_MUL : 1);
+  const dish = stars * COIN_PER_STAR * (tk.menu === S.special ? SPECIAL_COIN_MUL : 1);
+  const { coins, set } = g?.set ? setDone(S, g, stars, dish) : { coins: dish, set: null };
+  if (g && !S.tickets.some(t => t.id === g.id)) { g.state = 'eat'; g.t = 0; }
   S.stats.served++;
   S.stats.stars.push(stars);
   S.stats.coins += coins;
   if (g?.npc) S.stats.npcServed++;
-  return { menu: tk.menu, stars, coins, table: tk.table, id: tk.id, npc: g?.npc ?? null };
+  return { menu: tk.menu, stars, coins, table: tk.table, id: tk.id, npc: g?.npc ?? null, ...(set ? { set } : {}) };
 }
 
 function stepStaff(S, dt, ev) {
@@ -107,12 +141,12 @@ function stepStaff(S, dt, ev) {
   if (!S.staff) {
     if (!pass.item) return;
     const tk = S.tickets.find(t => t.menu === pass.item.kind);
-    if (tk) S.staff = { t: 0, ticket: tk.id };
+    if (tk) S.staff = { t: 0, ticket: tk.id, menu: tk.menu };
     return;
   }
   S.staff.t += dt;
   if (S.staff.t < STAFF_SEC) return;
-  const tk = S.tickets.find(t => t.id === S.staff.ticket);
+  const tk = S.tickets.find(t => t.id === S.staff.ticket && t.menu === S.staff.menu);
   const it = pass.item;
   S.staff = null;
   if (!tk || !it || it.kind !== tk.menu) return;
@@ -145,7 +179,7 @@ export function tickSession(S, dt, { pos = null } = {}) {
     g.t += dt;
     if (g.state === 'walk' && g.t >= g.walk) {
       g.state = 'wait'; g.t = 0;
-      S.tickets.push({ id: g.id, table: g.table, menu: g.menu, t0: S.time });
+      for (const m of dishes(g)) S.tickets.push({ id: g.id, table: g.table, menu: m, t0: S.time, ...(g.set ? { set: true, pat: SET_PATIENCE } : {}) });
       ev.push({ type: 'seat', id: g.id, table: g.table, menu: g.menu });
     } else if (g.state === 'eat' && g.t >= EAT_SEC) {
       g.state = 'leave'; g.t = 0;
@@ -220,7 +254,7 @@ function stationContext(S, s) {
 export function contextAt(S, pos) {
   if (S.ended) return null;
   const tk = servableTicket(S, pos);
-  if (tk) return { do: 'serve', id: tk.id, ico: '🍽️' };
+  if (tk) return { do: 'serve', id: tk.id, menu: tk.menu, ico: '🍽️' };
   const s = nearestStation(S, pos);
   return s ? stationContext(S, s) : null;
 }
@@ -239,7 +273,7 @@ export function actAt(S, pos, { take }) {
   const c = contextAt(S, pos);
   if (!c) return [];
   if (c.do === 'serve') {
-    const tk = S.tickets.find(t => t.id === c.id);
+    const tk = S.tickets.find(t => t.id === c.id && t.menu === c.menu);
     const it = S.held;
     S.held = null;
     return [{ type: 'served', ...serve(S, tk, it) }];

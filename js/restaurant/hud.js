@@ -15,6 +15,9 @@ const CSS = `
 #rest-hud .tk.late u s{background:#d9604c}
 #rest-hud .tk .face{position:absolute;left:-9px;top:-9px;width:26px;height:26px;border-radius:50%;background:#fff;border:2px solid #2f5e47;display:grid;place-items:center;font-size:15px;box-shadow:0 2px 6px rgba(0,0,0,.2)}
 #rest-hud .tk.fav .face{border-color:#e46f8f;background:#ffe9ef}
+#rest-hud .tk.set{width:92px;border-color:#e46f8f}
+#rest-hud .tk .two{display:flex;justify-content:center;gap:4px}
+#rest-hud .tk .two i.done{opacity:.35;filter:grayscale(1)}
 html body.rest-hud-on #guide-card{top:calc(env(safe-area-inset-top) + 80px)}
 #rest-hud .st{position:fixed;transform:translate(-50%,-100%);pointer-events:none}
 #rest-hud .dots{display:flex;gap:3px}
@@ -192,12 +195,25 @@ export function goalRows(rest) {
   return rows;
 }
 
+export function setTickets(tickets, guests) {
+  const out = [];
+  for (const t of tickets) {
+    if (!t.set) { out.push(t); continue; }
+    if (out.some(x => x.id === t.id)) continue;
+    const g = guests.find(x => x.id === t.id);
+    out.push({ ...t, set: (g?.set || [t.menu]).map(m => ({ menu: m, done: !tickets.some(x => x.id === t.id && x.menu === m) })) });
+  }
+  return out;
+}
+
 export function ticketHtml(t, now, pat, focus) {
-  const w = now - t.t0, a = PATIENCE[0] * pat, b = PATIENCE[1] * pat;
+  const p = pat * (t.pat || 1);
+  const w = now - t.t0, a = PATIENCE[0] * p, b = PATIENCE[1] * p;
   const cls = w < a ? '' : w < b ? ' mid' : ' late';
   const left = Math.round(Math.max(0, 1 - w / b) * 20) * 5;
   const face = t.face ? `<span class="face">${t.face}</span>` : '';
-  return `<div class="tk${cls}${t.id === focus ? ' now' : ''}${t.fav ? ' fav' : ''}">${face}<b>${t.table + 1}</b><i>${MENU[t.menu].ico}</i><u><s style="width:${left}%"></s></u></div>`;
+  const dish = Array.isArray(t.set) ? `<div class="two">${t.set.map(d => `<i${d.done ? ' class="done"' : ''}>${MENU[d.menu].ico}</i>`).join('')}</div>` : `<i>${MENU[t.menu].ico}</i>`;
+  return `<div class="tk${Array.isArray(t.set) ? ' set' : ''}${cls}${t.id === focus ? ' now' : ''}${t.fav ? ' fav' : ''}">${face}<b>${t.table + 1}</b>${dish}<u><s style="width:${left}%"></s></u></div>`;
 }
 
 export function mountHud(doc) {

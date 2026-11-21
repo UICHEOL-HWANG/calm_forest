@@ -2,7 +2,7 @@ import { HALL, STAR, RESTAURANT, PATIENCE } from './data.js';
 import { createSession, tickSession, contextAt, actAt, finishSession, stationView, guestAt } from './session.js';
 import { recordServe, takeIngredient, settleService } from './rules.js';
 import { showForStar, itemMesh, itemHeight } from './hall.js';
-import { mountHud, contextLabel, goalRows, resultView, menuView, stockNeed } from './hud.js';
+import { mountHud, contextLabel, goalRows, resultView, menuView, stockNeed, setTickets } from './hud.js';
 import { nextStep } from './next-step.js';
 import { FAV } from './regulars.js';
 
@@ -112,7 +112,7 @@ export function createRestaurantRuntime(env) {
   function drawHud() {
     hud.clock(S.time);
     const nx = drawNext();
-    hud.tickets(S.tickets.map(t => { const g = S.guests.find(x => x.id === t.id); return { ...t, face: env.faceOf?.(g) ?? '', fav: !!g?.npc && FAV[g.npc] === t.menu }; }), S.time, S.dda.pat, nx?.ticket ?? null);
+    hud.tickets(setTickets(S.tickets.map(t => { const g = S.guests.find(x => x.id === t.id); return { ...t, face: env.faceOf?.(g) ?? '', fav: !!g?.npc && (!!t.set || FAV[g.npc] === t.menu) }; }), S.guests), S.time, S.dda.pat, nx?.ticket ?? null);
     for (const s of HALL.stations) {
       const view = stationView(S, s.id);
       const p = view ? env.project(world(s.x, 1.55, s.z)) : null;
@@ -123,7 +123,8 @@ export function createRestaurantRuntime(env) {
       const m = guests.get(t.id);
       if (!m) continue;
       waiting.add(t.id);
-      const w = S.time - t.t0, a = PATIENCE[0] * S.dda.pat, b = PATIENCE[1] * S.dda.pat;
+      const pat = S.dda.pat * (t.pat || 1);
+      const w = S.time - t.t0, a = PATIENCE[0] * pat, b = PATIENCE[1] * pat;
       const p = env.project(world(m.position.x, 2.2, m.position.z));
       hud.station(`g${t.id}`, p.on ? { kind: 'bubble', n: t.table + 1, mood: w < a ? '' : w < b ? 'mid' : 'late' } : null, p.x, p.y);
     }
@@ -183,7 +184,7 @@ export function createRestaurantRuntime(env) {
     const r = env.rest();
     before = r;
     refresh();
-    S = createSession({ star: r.star, dda: r.dda, neighbors: env.neighbors, stock: k => Math.max(0, Math.floor(env.port()?.pantry?.[k] || 0)), ...(env.sessionOpts?.() || {}) });
+    S = createSession({ star: r.star, dda: r.dda, regulars: r.regulars, neighbors: env.neighbors, stock: k => Math.max(0, Math.floor(env.port()?.pantry?.[k] || 0)), ...(env.sessionOpts?.() || {}) });
     hud.show(true);
     env.onStart?.();
   }

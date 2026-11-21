@@ -7,6 +7,7 @@ export const FAV = {
   forager: 'soup', rancher: 'soup', curator: 'soup',
 };
 export const REGULAR_AT = 5;
+export const SET_LOVE = 2;
 const FAV_ODDS = 0.5;
 const nat = v => (Number.isFinite(v) && v > 0 ? Math.floor(v) : 0);
 const pick = (list, rng) => list[Math.floor(rng() * list.length)];
