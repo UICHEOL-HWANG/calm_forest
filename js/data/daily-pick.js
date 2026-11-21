@@ -214,7 +214,10 @@ export const daysUntil = (itemIndex, todayIndex, n = DAILY_PICK_POOL.length) => 
 export function dexLabel(owned, days) {
   if (owned) return '✓ 있어요';
   if (days === 0) return '오늘';
-  return days === 1 ? '내일' : `${days}일 뒤`;
+  if (days === 1) return '내일';
+  if (days < 14) return `${days}일 뒤`;
+  if (days < 60) return `${Math.floor(days / 7)}주 뒤`;
+  return `${Math.round(days / 30)}달 뒤`;
 }
 
 export function themeBook(entries, todayIndex) {

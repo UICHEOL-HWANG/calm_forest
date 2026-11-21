@@ -28,7 +28,7 @@ const CSS = `
 .dp-chips.all{flex-wrap:wrap}
 .dp-chip{flex:0 0 46px;width:46px;min-height:42px;padding:0;border:none;border-radius:12px;background:rgba(255,255,255,.8);display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:inset 0 0 0 1.5px #f0dfb2;font:inherit;color:inherit;cursor:pointer}
 .dp-chip i{font-style:normal;font-size:15px;line-height:1.15}
-.dp-chip span{font-size:9.5px;font-weight:800;color:#8a6a2a;line-height:1.2;white-space:nowrap}
+.dp-chip>span{font-size:9.5px;font-weight:800;color:#8a6a2a;line-height:1.2;white-space:nowrap}
 .dp-chip.full{background:linear-gradient(160deg,#ffe9a8,#ffd36b);box-shadow:inset 0 0 0 1.5px #e7b64b}
 .dp-chip.on{background:#fff;box-shadow:inset 0 0 0 2px #d6a23a}
 .dp-chip.full.on{background:linear-gradient(160deg,#ffe9a8,#ffd36b);box-shadow:inset 0 0 0 2px #c48a1e}
@@ -38,10 +38,10 @@ const CSS = `
 .dp-grid-h small{font-weight:700;opacity:.65;font-size:10.5px}
 .dp-g{display:flex;flex-direction:column;align-items:center;gap:1px;padding:4px 0 3px;border-radius:9px;background:#fff;min-width:0}
 .dp-g i{font-style:normal;font-size:18px;line-height:1.15}
-.dp-g span{font-size:9px;font-weight:800;color:#8a7a5a;white-space:nowrap}
-.dp-g.own span{color:#3d8a57}
+.dp-g>span{font-size:9px;font-weight:800;color:#8a7a5a;white-space:nowrap}
+.dp-g.own>span{color:#3d8a57}
 .dp-g.today{box-shadow:inset 0 0 0 2px #d6a23a}
-.dp-g.today span{color:#a8641a}
+.dp-g.today>span{color:#a8641a}
 .dp-g.soon i{filter:grayscale(1);opacity:.38}
 @media (max-width:760px),(max-height:500px){.dp-ico{width:44px;height:44px;font-size:26px}.dp-name{font-size:13px}.dp-buys .dp-buy{padding:6px 9px;font-size:11.5px}}
 @media (max-height:500px){.dp-hero{grid-template-columns:auto minmax(0,1fr) auto}.dp-ico{grid-row:span 2}.dp-hero .dp-buys{grid-column:3;grid-row:1 / span 2;flex-wrap:nowrap}.dp-sil{width:28px;height:28px;border-radius:8px}.dp-sil i{font-size:17px}.dp-tz{flex-direction:row;align-items:baseline;gap:6px}.dp-grid{grid-template-columns:repeat(8,minmax(0,1fr));padding:6px}.dp-g i{font-size:16px}}
@@ -126,7 +126,7 @@ function tomorrowLine(view) {
 function chip(t, redraw) {
   const c = button(`dp-chip${t.full ? ' full' : ''}${ui.open === t.key ? ' on' : ''}`, () => {
     ui.open = ui.open === t.key ? null : t.key;
-    redraw();
+    redraw(!!ui.open);
   });
   c.setAttribute('aria-label', `${t.name} ${t.got}/${t.total}`);
   c.append(el('i', null, t.emoji), el('span', null, t.full ? '완성' : `${t.got}/${t.total}`));
@@ -170,19 +170,22 @@ function grid(t) {
 
 function dexSection(view) {
   const wrap = el('div', 'dp-dex');
-  const draw = () => {
+  const draw = (focus = false) => {
     const book = themeBook(view.dex, view.index);
     const got = book.reduce((s, t) => s + t.got, 0);
     const open = book.find(t => t.key === ui.open) || null;
     const head = button('dp-dex-h', () => {
       ui.open = open ? null : themeOf(view.id).key;
-      draw();
+      draw(!open);
     });
     head.append(el('b', null, `📖 테마 도감 ${got}/${view.dex.length}`), el('small', null, open ? '접기' : '눌러서 보기'));
     const row = el('div', 'dp-chips');
     wrap.replaceChildren(head, row);
     fillChips(row, book, draw);
-    if (open) wrap.append(grid(open));
+    if (!open) return;
+    const g = grid(open);
+    wrap.append(g);
+    if (focus) g.scrollIntoView({ block: 'nearest' });
   };
   return { wrap, draw };
 }
