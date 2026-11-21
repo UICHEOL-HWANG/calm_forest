@@ -80,3 +80,25 @@ test('섬 안내는 경매 길 안내를 이름만 바꿔 쓰고, 영업 시작 
   assert.match(r, /spot: \{ x: PORT_PIER\.ax, z: PORT_PIER\.az \}/);
   assert.match(read('js/restaurant/runtime.js'), /hud\.menu\(menuView\(env\.rest\(\)\.star, first, env\.port\(\)\?\.pantry, env\.sessionOpts\?\.\(\)\?\.special\), start, env\.onStockGuide\)/);
 });
+
+test('주문 없이 집은 재료는 같은 상자에 되돌려 놓을 수 있다', async () => {
+  const { contextAt, actAt } = await import('../js/restaurant/session.js');
+  const { returnIngredient } = await import('../js/restaurant/rules.js');
+  const S = createSession({ star: 6, dda: one, rng: seq(0), stock: () => 5 });
+  const at = id => { const s = HALL.stations.find(x => x.id === id); return { x: s.x, z: s.z }; };
+  S.held = { kind: 'shrimp', q: 1 };
+  assert.equal(contextAt(S, at('crate_squid')), null);
+  assert.equal(contextAt(S, at('crate_shrimp')).do, 'back');
+  assert.deepEqual(actAt(S, at('crate_shrimp'), { take: () => true }), [{ type: 'back', kind: 'shrimp' }]);
+  assert.equal(S.held, null);
+  S.held = { kind: 'fish', q: 1, plated: true };
+  assert.equal(contextAt(S, at('crate_fish')), null);
+  assert.deepEqual(returnIngredient({ pantry: { shrimp: 2 } }, 'shrimp').pantry, { shrimp: 3 });
+  assert.deepEqual(returnIngredient({ pantry: {} }, 'veg').pantry, { veg: 1 });
+});
+
+test('되돌려 놓기: 화면 라벨은 기존 내려놓기, 런타임은 창고에 다시 넣는다(연습판 제외)', async () => {
+  const { contextLabel } = await import('../js/restaurant/hud.js');
+  assert.equal(contextLabel({ do: 'back' }), contextLabel({ do: 'put' }));
+  assert.match(read('js/restaurant/runtime.js'), /e\.type === 'back' && !S\.first\) env\.setPort\(returnIngredient\(env\.port\(\), e\.kind\)\)/);
+});

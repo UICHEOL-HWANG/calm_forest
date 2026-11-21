@@ -1,6 +1,6 @@
 import { HALL, STAR, RESTAURANT, PATIENCE } from './data.js';
 import { createSession, tickSession, contextAt, actAt, finishSession, stationView, guestAt } from './session.js';
-import { recordServe, takeIngredient, settleService } from './rules.js';
+import { recordServe, takeIngredient, returnIngredient, settleService } from './rules.js';
 import { showForStar, itemMesh, itemHeight } from './hall.js';
 import { mountHud, contextLabel, goalRows, resultView, menuView, stockNeed, setTickets } from './hud.js';
 import { nextStep } from './next-step.js';
@@ -151,6 +151,7 @@ export function createRestaurantRuntime(env) {
       else if (e.type === 'shake') pop(e.id, '🫧');
       else if (e.type === 'chop' && e.taps === 1 && e.id !== 'bowl') env.onChopStart?.();
       else if (e.type === 'empty') env.toast(env.copy.empty);
+      else if (e.type === 'back' && !S.first) env.setPort(returnIngredient(env.port(), e.kind));
     }
   }
 

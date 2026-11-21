@@ -136,6 +136,10 @@ export function takeIngredient(port, kind) {
   return { ok: true, port: { ...port, pantry: { ...port.pantry, [kind]: n - 1 } } };
 }
 
+export function returnIngredient(port, kind) {
+  return { ...port, pantry: { ...port?.pantry, [kind]: nat(port?.pantry?.[kind]) + 1 } };
+}
+
 export function grantStarter(rest, port) {
   if (rest.starterGiven) return { given: false, rest, port };
   const pantry = { ...port.pantry };

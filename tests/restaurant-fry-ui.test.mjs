@@ -177,3 +177,27 @@ test('낮은 화면에서 메뉴 카드는 화면 안에 들어오고 오른쪽�
   assert.match(m, /#rest-card \.box > :last-child\{overflow-y:auto;min-width:0;/);
   assert.match(m, /#rest-card \.foot\{[^}]*position:sticky;bottom:0;/);
 });
+
+test('메뉴 카드: 가장 긴 튀김 순서도 카드 폭 안에 다 들어간다', () => {
+  const css = read('js/restaurant/hud.js');
+  const px = re => Number(css.match(re)[1]);
+  const box = px(/#rest-card \.box\{width:min\((\d+)px/);
+  const pad = px(/#rest-card \.menu\{padding:\d+px (\d+)px/);
+  const [, label, colGap] = css.match(/#rest-card \.mr\{display:grid;grid-template-columns:(\d+)px 1fr;align-items:center;gap:(\d+)px/).map(Number);
+  const gap = px(/#rest-card \.mr \.steps\{display:flex;gap:(\d+)px/);
+  const ico = px(/#rest-card \.mr i\{font-style:normal;width:(\d+)px/);
+  const em = px(/#rest-card \.mr em\{width:(\d+)px/);
+  const n = Math.max(...MENU_KEYS.map(k => RECIPE[k].length - 1));
+  const steps = n * ico + (n - 1) * (em + 2 * gap);
+  assert.ok(label + colGap + steps <= box - 2 * pad, `${label + colGap + steps} > ${box - 2 * pad}`);
+});
+
+test('메뉴 카드 요리 요령: C안 제목 띠 카드', () => {
+  const h = menuHtml(menuView(6, false, { fish: 9, rice: 9, shrimp: 9, squid: 9, veg: 9 }));
+  assert.equal(MENU_COPY.tipTitle, '🍳 요리 요령');
+  assert.match(h, /<div class="tip"><div class="tl">🍳 요리 요령<\/div><div>🍳 막대가 초록 칸일 때 뒤집어요<\/div>/);
+  const css = read('js/restaurant/hud.js');
+  assert.match(css, /#rest-card \.tip\{[^}]*background:#fff;[^}]*border:1\.5px solid #e3d8c2/);
+  assert.match(css, /#rest-card \.tip \.tl\{/);
+  assert.match(read('js/i18n-en.js'), /'요리 요령': 'Cooking tips'/);
+});

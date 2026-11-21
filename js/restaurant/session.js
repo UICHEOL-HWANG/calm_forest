@@ -229,7 +229,7 @@ function stationContext(S, s) {
   const st = S.stations[s.id], h = S.held;
   const c = (d, ico) => ({ do: d, id: s.id, ico });
   switch (s.kind) {
-    case 'crate': return h ? null : c('take', '✋');
+    case 'crate': return !h ? c('take', '✋') : h.kind === s.give && !h.plated ? c('back', '🫳') : null;
     case 'board':
       if (h && !h.plated && (h.kind === 'rice' || (h.kind === 'fish' && S.cfg.pot)) && !st.item) return c('put', '🫳');
       if (!h && st.item && chopDone(st.chop)) return c('pick', '✋');
@@ -305,6 +305,9 @@ export function actAt(S, pos, { take }) {
       if (!take(s.give)) return [{ type: 'empty', kind: s.give }];
       S.held = { kind: s.give, q: 1 };
       return [{ type: 'take', kind: s.give }];
+    case 'back':
+      S.held = null;
+      return [{ type: 'back', kind: s.give }];
     case 'put':
       st.item = S.held; st.t = 0; st.chop = FRESH_CHOP(); st.flipped = null;
       if (s.kind === 'fryer') { st.phase = 'heat'; st.h0 = S.time; st.heat = null; st.shakes = [false, false]; }

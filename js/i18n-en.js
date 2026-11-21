@@ -2573,6 +2573,7 @@ export const EN = {
   '오징어튀김': 'Fried Squid',
   '채소튀김': 'Veggie Tempura',
   '바늘이 초록 칸일 때 불을 맞춰요': 'Set the heat when the needle is in the green',
+  '요리 요령': 'Cooking tips',
   '새우': 'Shrimp',
   '오징어': 'Squid',
   '채소': 'Vegetables',

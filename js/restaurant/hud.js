@@ -88,10 +88,12 @@ body.is-touch #rest-hud .steps i{width:24px;height:24px;font-size:13px}
 #rest-card .spchip{display:flex;align-items:center;gap:3px;width:max-content;margin-top:5px;background:#e2b54a;color:#fff;font-size:11.5px;font-weight:800;border-radius:999px;padding:2px 8px}
 #rest-card .spnote{display:block;grid-column:1/-1;margin-top:-4px;font-size:11.5px;font-weight:700;color:#8a6420;line-height:1.35;word-break:keep-all}
 #rest-card .mr:last-child{border:0}
-#rest-card .mr .steps{display:flex;gap:6px;align-items:center;letter-spacing:0}
-#rest-card .mr i{font-style:normal;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:#f3ece0;font-size:16px}
-#rest-card .mr em{width:10px;height:2px;background:#c9b99f}
-#rest-card .tip{margin:6px 16px 0;background:#f3ece0;border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.6;letter-spacing:.03em;word-break:keep-all;word-spacing:.1em;color:#6b5d4c}
+#rest-card .mr .steps{display:flex;gap:4px;align-items:center;letter-spacing:0}
+#rest-card .mr i{font-style:normal;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:#f3ece0;font-size:14px}
+#rest-card .mr em{width:6px;height:2px;background:#c9b99f}
+#rest-card .tip{margin:6px 16px 0;background:#fff;border:1.5px solid #e3d8c2;border-radius:10px;overflow:hidden;padding:0 0 6px;font-size:12.5px;line-height:1.6;letter-spacing:.03em;word-break:keep-all;word-spacing:.1em;color:#6b5d4c}
+#rest-card .tip .tl{background:#f3ece0;font-size:12px;font-weight:800;padding:5px 12px;border-bottom:1.5px solid #e3d8c2;margin-bottom:4px}
+#rest-card .tip > div:not(.tl){padding:1px 12px}
 #rest-card button{display:block;width:100%;border:0;border-radius:14px;padding:12px;font:inherit;font-size:15.5px;font-weight:800;background:#2f5e47;color:#fff8e8;cursor:pointer;pointer-events:auto}
 #rest-card button:active{transform:scale(.97)}
 #rest-card .stock{margin:8px 16px 0;background:#fff1d6;border:1px solid #e8c88a;border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.7;word-break:keep-all;color:#6b4a14}
@@ -121,7 +123,7 @@ body.is-touch #rest-hud .steps i{width:24px;height:24px;font-size:13px}
 
 const BUBBLE_H = 40;
 const FRYER_STAGGER = { fryer1: 46 };
-const LABEL = { batter: '🥣 반죽 묻히기', heat: '🔥 불 맞추기', shake: '🫧 흔들기', take: '✋ 꺼내기', put: '🫳 내려놓기', chop: '🔪 썰기', flip: '🍳 뒤집기', pick: '✋ 들기', pickCook: '✋ 꺼내기', plate: '🍽️ 담기', trash: '🗑️ 버리기', serve: '🍽️ 내가기' };
+const LABEL = { batter: '🥣 반죽 묻히기', heat: '🔥 불 맞추기', shake: '🫧 흔들기', take: '✋ 꺼내기', put: '🫳 내려놓기', back: '🫳 내려놓기', chop: '🔪 썰기', flip: '🍳 뒤집기', pick: '✋ 들기', pickCook: '✋ 꺼내기', plate: '🍽️ 담기', trash: '🗑️ 버리기', serve: '🍽️ 내가기' };
 export const contextLabel = c => (c ? LABEL[c.do] : null);
 
 export function resultView(r, out, goals, copy, need = null) {
@@ -156,7 +158,7 @@ export function nextHtml(v) {
 }
 
 const DISH_NAME = { grilled: '🐟 생선구이', riceball: '🍙 주먹밥', soup: '🍲 생선국', shrimpfry: '🍤 새우튀김', squidfry: '🦑 오징어튀김', vegfry: '🥬 채소튀김' };
-export const MENU_COPY = { kicker: '칠판', title: '오늘의 메뉴', tips: ['🍳 막대가 초록 칸일 때 뒤집어요', '🔪 박자에 맞춰 네 번 눌러요'], fryTip: '🔥 바늘이 초록 칸일 때 불을 맞춰요', start: '🔔 영업 시작' };
+export const MENU_COPY = { kicker: '칠판', title: '오늘의 메뉴', tips: ['🍳 막대가 초록 칸일 때 뒤집어요', '🔪 박자에 맞춰 네 번 눌러요'], fryTip: '🔥 바늘이 초록 칸일 때 불을 맞춰요', start: '🔔 영업 시작', tipTitle: '🍳 요리 요령' };
 
 export const STOCK_COPY = {
   title: '⚠️ 재고가 부족해요',
@@ -189,7 +191,7 @@ function stockHtml(st) {
 
 export function menuHtml(v) {
   const rows = v.rows.map(([name, icos, k]) => `<div class="mr${k && k === v.special ? ' sp' : ''}"><span>${name}${k && k === v.special ? `<b class="spchip">${SPECIAL_COPY.chip}</b>` : ''}</span><div class="steps">${icos.map((ico, j) => `${j ? '<em></em>' : ''}<i>${ico}</i>`).join('')}</div>${k && k === v.special ? `<small class="spnote">${SPECIAL_COPY.note}</small>` : ''}</div>`).join('');
-  return `<div class="head"><div class="kick">${MENU_COPY.kicker}</div><h3>${MENU_COPY.title}</h3></div><div><div class="menu">${rows}</div><div class="tip">${(v.fry ? [...MENU_COPY.tips, MENU_COPY.fryTip] : MENU_COPY.tips).map(t => `<div>${t}</div>`).join('')}</div>${stockHtml(v.stock)}<div class="foot">${v.stock?.none ? `<button type="button" data-act="later">${STOCK_COPY.later}</button><button type="button" data-act="guide">${STOCK_COPY.guide}</button>` : `<button type="button">${MENU_COPY.start}</button>`}</div></div>`;
+  return `<div class="head"><div class="kick">${MENU_COPY.kicker}</div><h3>${MENU_COPY.title}</h3></div><div><div class="menu">${rows}</div><div class="tip"><div class="tl">${MENU_COPY.tipTitle}</div>${(v.fry ? [...MENU_COPY.tips, MENU_COPY.fryTip] : MENU_COPY.tips).map(t => `<div>${t}</div>`).join('')}</div>${stockHtml(v.stock)}<div class="foot">${v.stock?.none ? `<button type="button" data-act="later">${STOCK_COPY.later}</button><button type="button" data-act="guide">${STOCK_COPY.guide}</button>` : `<button type="button">${MENU_COPY.start}</button>`}</div></div>`;
 }
 
 const needLine = ({ k, n }) => { const it = STOCK_COPY.items[k]; return `<div class="gneed">${it.ico} ${it.name} ${n} · ${it.where}</div>`; };
