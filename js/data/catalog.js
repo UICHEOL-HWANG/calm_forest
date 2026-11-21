@@ -148,6 +148,11 @@ export const DECOR = [
   { id: 'at_easel', name: '풍경화 이젤', ico: '🎨', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.7, 0.6], desc: '나무 세 다리 이젤에 하늘과 언덕, 해를 그린 캔버스를 올렸어요' },
   { id: 'at_paint_shelf', name: '두 칸 물감 선반', ico: '🖌️', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.8, 0.4], desc: '위 칸에 물감 병 넷과 붓 통, 아래 칸에 스케치북을 쌓았어요' },
   { id: 'at_frame_wall', name: '액자 벽', ico: '🖼️', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [1.2, 0.2], desc: '가운데 풍경화를 두고 꽃과 해, 정물 액자를 벽에 걸었어요' },
+  { id: 'mu_gramophone', name: '금빛 나팔 축음기', ico: '📯', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.6, 0.55], desc: '나무 상자 위 검은 판에 붉은 라벨을 얹고 금빛 나팔을 달았어요' },
+  { id: 'mu_piano_stool', name: '둥근 벨벳 피아노 의자', ico: '🎹', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.55, 0.55], desc: '단추 박힌 진홍 벨벳 방석을 금빛 나사 기둥과 굽은 네 다리가 받쳐요' },
+  { id: 'mu_music_stand', name: '나무 악보대', ico: '🎼', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.6, 0.5], desc: '깎은 나무 기둥 위 둥근 받침에 악보를 펼치고 벨벳 책갈피를 끼웠어요' },
+  { id: 'sf_lantern_string', name: '처진 줄 등롱 다섯', ico: '🏮', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [1.6, 0.35], desc: '나무 기둥 둘 사이 늘어진 줄에 빨강·주황 둥근 등롱 다섯을 달았어요' },
+  { id: 'sf_goldfish_bowl', name: '나무 의자 위 어항', ico: '🐠', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.55, 0.55], desc: '낮은 나무 의자 위 둥근 어항에 금붕어 둘과 물풀 하나가 살아요' },
   { id: 'ns_moon_sofa', name: '구름 위 달 소파', ico: '🌙', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [1.35, 0.75], desc: '연보라 구름 방석 뒤로 초승달 등받이를 세웠어요' },
   ...AFF_FRAMES,
 ];
@@ -321,6 +326,9 @@ export const OUTDOOR = [
   { id: 'rn_snail_garden', name: '이끼 돌 달팽이', ico: '🐌', cost: { coins: 9999 }, desc: '이끼 덮인 돌 위로 노란 달팽이가 버섯 둘 곁을 지나가요', hidden: true, quest: true, box: [1.4, 1.1] },
   { id: 'tc_bamboo_basin', name: '둥근 돌확', ico: '🎋', cost: { coins: 9999 }, desc: '대나무 대롱에서 떨어지는 물줄기가 이끼 곁 둥근 돌확에 고여요', hidden: true, quest: true, box: [1.2, 0.9] },
   { id: 'at_outdoor_easel', name: '파라솔 이젤', ico: '⛱️', cost: { coins: 9999 }, desc: '크림·남색 줄무늬 파라솔 아래 풍경 캔버스 이젤과 접이 의자를 놓았어요', hidden: true, quest: true, box: [2.0, 2.0], posts: [[-0.6, 0.15, 0.25], [0.15, -0.15, 0.08]] },
+  { id: 'mu_mini_stage', name: '벨벳 커튼 무대', ico: '🎭', cost: { coins: 9999 }, desc: '둥근 나무 무대 뒤 기둥 둘에 진홍 벨벳 휘장을 드리우고 커튼을 묶었어요', hidden: true, quest: true, box: [2.0, 1.6], posts: [[-0.78, -0.5, 0.09], [0.78, -0.5, 0.09]] },
+  { id: 'sf_shaved_ice_stand', name: '줄무늬 차양 빙수 가게', ico: '🍧', cost: { coins: 9999 }, desc: '빨강·크림 줄무늬 차양 아래 빙수 기계와 빙수 셋을 놓고 등롱 하나를 걸었어요', hidden: true, quest: true, box: [1.4, 0.9] },
+  { id: 'sf_festival_stall', name: '금붕어 뜨기 노점', ico: '🎏', cost: { coins: 9999 }, desc: '줄무늬 지붕 아래 긴 물통에 금붕어가 헤엄치고 종이 뜰채와 등롱 셋이 걸렸어요', hidden: true, quest: true, box: [1.8, 1.1] },
   { id: 'ns_starlight_arch', name: '별 전구 아치', ico: '🌠', cost: { coins: 9999 }, desc: '반원 철사에 별 전구를 달고 꼭대기에 큰 금별을 얹었어요', hidden: true, quest: true, box: [2.0, 0.4], posts: [[-0.9, 0, 0.15], [0.9, 0, 0.15]] },
   ...AFF_OUTDOOR,
   ...REWARD_DECOR,   // 🤝 친구 초대 보상 장식(js/data/reward-decor.js) — 원장이 보관함에 넣어 준다 · 서버 가드 대상
