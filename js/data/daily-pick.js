@@ -89,6 +89,23 @@ export const DAILY_PICK_POOL = Object.freeze([
   Object.freeze({ id: 'tools_sunflower', kind: 'cos', price: 3600 }),
   Object.freeze({ id: 'rn_puddle_trail', kind: 'cos', price: 1600 }),
   Object.freeze({ id: 'sb_blossom_arch', kind: 'decor', price: 1300 }),
+  Object.freeze({ id: 'tc_leaf_pin', kind: 'cos', price: 1200 }),
+  Object.freeze({ id: 'at_easel', kind: 'decor', price: 1200 }),
+  Object.freeze({ id: 'tc_tea_table', kind: 'decor', price: 1300 }),
+  Object.freeze({ id: 'at_beret', kind: 'cos', price: 1200 }),
+  Object.freeze({ id: 'tc_tea_cord', kind: 'cos', price: 1000 }),
+  Object.freeze({ id: 'at_outdoor_easel', kind: 'decor', price: 1400 }),
+  Object.freeze({ id: 'tools_peach', kind: 'cos', price: 3600 }),
+  Object.freeze({ id: 'at_paint_scarf', kind: 'cos', price: 1000 }),
+  Object.freeze({ id: 'tc_floor_cushion', kind: 'decor', price: 900 }),
+  Object.freeze({ id: 'at_paint_shelf', kind: 'decor', price: 1100 }),
+  Object.freeze({ id: 'tc_teapot_pack', kind: 'cos', price: 1500 }),
+  Object.freeze({ id: 'at_palette_pack', kind: 'cos', price: 1500 }),
+  Object.freeze({ id: 'tc_teaware_shelf', kind: 'decor', price: 1300 }),
+  Object.freeze({ id: 'at_frame_wall', kind: 'decor', price: 1100 }),
+  Object.freeze({ id: 'tc_leaf_trail', kind: 'cos', price: 1600 }),
+  Object.freeze({ id: 'at_paint_trail', kind: 'cos', price: 1600 }),
+  Object.freeze({ id: 'tc_bamboo_basin', kind: 'decor', price: 1300 }),
 ]);
 
 const DAY_MS = 86400000;
