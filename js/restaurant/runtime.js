@@ -147,7 +147,9 @@ export function createRestaurantRuntime(env) {
       } else if (e.type === 'flip') pop(e.id, e.ok ? '✨' : '💨');
       else if (e.type === 'cooked') pop(e.id, e.kind === 'burnt' ? '💨' : e.q === 1 ? '✨' : '');
       else if (e.type === 'chopDone') pop(e.id, '✔️');
-      else if (e.type === 'chop' && e.taps === 1) env.onChopStart?.();
+      else if (e.type === 'heat') pop(e.id, e.ok ? '✨' : '💨');
+      else if (e.type === 'shake') pop(e.id, '🫧');
+      else if (e.type === 'chop' && e.taps === 1 && e.id !== 'bowl') env.onChopStart?.();
       else if (e.type === 'empty') env.toast(env.copy.empty);
     }
   }

@@ -20,26 +20,37 @@ export const CHOP_TAPS = 4;
 export const CHOP_GAP = 0.22;
 export const COOK = { pan: { cook: 5, burn: 6.5 }, pot: { cook: 7, win: 3.2, burn: 8 } };
 export const FLIP = { at: 2.7, half: 0.5 };
+export const FRY = { swing: 1.6, zone: [0.58, 0.82], cook: 4.5, win: 1.8, burn: 2.5, bubbles: [1.2, 2.8], bubbleWin: 0.8 };
+export const BATTER_TAPS = 2;
+export const FRY_OF = { shrimp: 'shrimpfry', squid: 'squidfry', veg: 'vegfry' };
 export const PATIENCE = [25, 45];
 export const COIN_PER_STAR = 5;
 export const EAT_SEC = 3.5;
-export const MENU_KEYS = ['grilled', 'riceball', 'soup'];
-export const BOARD_ROW_Y = { grilled: 1.22, riceball: 1.04, soup: 0.86 };
+export const MENU_KEYS = ['grilled', 'riceball', 'soup', 'shrimpfry', 'squidfry', 'vegfry'];
+export const FRY_COIN_MUL = 1.5;
+export const BOARD_ROW_Y = { grilled: 1.31, riceball: 1.2, soup: 1.09, shrimpfry: 0.98, squidfry: 0.87, vegfry: 0.76 };
 export const MENU = {
   grilled: { ico: '🐟', from: 'fish' },
   riceball: { ico: '🍙', from: 'rice' },
   soup: { ico: '🍲', from: 'fish' },
+  shrimpfry: { ico: '🍤', from: 'shrimp', fry: true },
+  squidfry: { ico: '🦑', from: 'squid', fry: true },
+  vegfry: { ico: '🥬', from: 'veg', fry: true },
 };
 export const STAR = {
   1: { tables: 2, menus: ['grilled', 'riceball'], pans: 1, pot: false, staff: false, iv: [14, 11] },
   2: { tables: 3, menus: ['grilled', 'riceball', 'soup'], pans: 1, pot: true, staff: false, iv: [12, 9] },
   3: { tables: 3, menus: ['grilled', 'riceball', 'soup'], pans: 2, pot: true, staff: true, iv: [11, 8] },
   4: { tables: 4, menus: ['grilled', 'riceball', 'soup'], pans: 2, pot: true, staff: true, iv: [10, 7] },
+  5: { tables: 4, menus: ['grilled', 'riceball', 'soup', 'shrimpfry', 'squidfry'], pans: 2, pot: true, staff: true, fryers: 1, iv: [9, 6.5] },
+  6: { tables: 4, menus: ['grilled', 'riceball', 'soup', 'shrimpfry', 'squidfry', 'vegfry'], pans: 2, pot: true, staff: true, fryers: 2, iv: [9, 6] },
 };
 export const STAR_UP = {
   2: { rating: 40, served: { riceball: 5 }, coins: 100 },
   3: { rating: 100, combo: 4, coins: 200 },
   4: { rating: 200, served: { soup: 8 }, coins: 300 },
+  5: { rating: 320, served: { soup: 15 }, coins: 400 },
+  6: { rating: 480, served: { shrimpfry: 10 }, coins: 600 },
 };
 export const DDA_MIN = 0.8, DDA_MAX = 1.2, DDA_EASY = 0.08, DDA_HARD = 0.06;
 export const DDA_EASY_BELOW = 3.2, DDA_HARD_FROM = 4.3;
@@ -58,6 +69,12 @@ export const HALL = {
     { id: 'pan0', kind: 'pan', x: 6.55, z: -2.6, need: 1 },
     { id: 'pan1', kind: 'pan', x: 6.55, z: -1.45, need: 3 },
     { id: 'pot', kind: 'pot', x: 6.55, z: -0.3, need: 2 },
+    { id: 'crate_shrimp', kind: 'crate', give: 'shrimp', x: 1.6, z: 3.55, need: 5 },
+    { id: 'crate_squid', kind: 'crate', give: 'squid', x: 2.5, z: 3.55, need: 5 },
+    { id: 'crate_veg', kind: 'crate', give: 'veg', x: 4.4, z: 3.55, need: 6 },
+    { id: 'bowl', kind: 'bowl', x: 3.5, z: 0.9, need: 5 },
+    { id: 'fryer0', kind: 'fryer', x: 4.45, z: 0.9, need: 5 },
+    { id: 'fryer1', kind: 'fryer', x: 5.4, z: 0.9, need: 6 },
     { id: 'plates', kind: 'plates', x: 6.55, z: 1.2 },
     { id: 'trash', kind: 'trash', x: 3.4, z: 3.55 },
     { id: 'pass', kind: 'pass', x: 0.8, z: -0.9 },

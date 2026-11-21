@@ -64,8 +64,9 @@ test('막힌 목표 재료가 없으면 그 목표 줄 아래에 한 줄로 알�
 test('막힌 목표와 상관없는 재료만 모자라면 마지막 목표 줄 아래에 모두 보여 준다', () => {
   const rest = { ...rest1, served: { grilled: 4, riceball: 5, soup: 0 } };
   assert.deepEqual(stockNeed(rest, { fish: 0, rice: 3 }), { row: 1, items: [{ k: 'fish', n: 0 }] });
-  assert.deepEqual(stockNeed({ ...rest, star: 4 }, { fish: 0, rice: 0 }), { row: -1, items: [{ k: 'fish', n: 0 }, { k: 'rice', n: 0 }] });
-  const h = resultHtml(resultView(r, { bonus: 0, starUp: false, rest: { star: 4 } }, [], soldCopy, stockNeed({ ...rest, star: 4 }, { fish: 0, rice: 0 })));
+  const full = { shrimp: 3, squid: 3, veg: 3 };
+  assert.deepEqual(stockNeed({ ...rest, star: 6 }, { fish: 0, rice: 0, ...full }), { row: -1, items: [{ k: 'fish', n: 0 }, { k: 'rice', n: 0 }] });
+  const h = resultHtml(resultView(r, { bonus: 0, starUp: false, rest: { star: 6 } }, [], soldCopy, stockNeed({ ...rest, star: 6 }, { fish: 0, rice: 0, ...full })));
   assert.equal((h.match(/class="gneed"/g) || []).length, 2);
 });
 

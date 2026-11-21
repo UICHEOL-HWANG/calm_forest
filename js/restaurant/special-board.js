@@ -41,7 +41,7 @@ export async function buildSpecialMark(THREE, menu) {
   const { ICON_ALL } = await import('../icons/toss-icons-all.js');
   const [icon, spark, star] = await Promise.all([MENU[menu].ico, '✨', '⭐'].map(e => loadImg(svgUrl(ICON_ALL, e))));
   const g = new THREE.Group();
-  const ring = plane(THREE, tex(THREE, ringCanvas()), 0.86, 0.22);
+  const ring = plane(THREE, tex(THREE, ringCanvas()), 0.86, 0.15);
   ring.position.set(-0.04, y, zOn(y)); ring.rotation.x = LEAN; g.add(ring);
   if (star) {
     const s = document.createElement('canvas'); s.width = 128; s.height = 128;

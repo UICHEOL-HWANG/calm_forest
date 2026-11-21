@@ -1,7 +1,8 @@
-import { COOK, FLIP, CHOP_TAPS, CHOP_GAP, PATIENCE, STAR, STAR_UP, MENU, MENU_KEYS, DDA_MIN, DDA_MAX, DDA_EASY, DDA_HARD, DDA_EASY_BELOW, DDA_HARD_FROM, STARTER_STOCK } from './data.js';
+import { COOK, FLIP, FRY, CHOP_TAPS, CHOP_GAP, PATIENCE, STAR, STAR_UP, MENU, MENU_KEYS, DDA_MIN, DDA_MAX, DDA_EASY, DDA_HARD, DDA_EASY_BELOW, DDA_HARD_FROM, STARTER_STOCK } from './data.js';
 import { sanitizeRegulars } from './regulars.js';
 import { sanitizeSpecial } from './special.js';
 
+const MAX_STAR = Math.max(...Object.keys(STAR).map(Number));
 const nat = v => (Number.isFinite(v) && v > 0 ? Math.floor(v) : 0);
 const clampDda = v => Math.round(Math.max(DDA_MIN, Math.min(DDA_MAX, v)) * 100) / 100;
 const ddaVal = v => (Number.isFinite(v) ? clampDda(v) : 1);
@@ -14,7 +15,7 @@ export function defaultRestaurant() {
 export function sanitizeRestaurant(raw) {
   const base = defaultRestaurant();
   if (!raw || typeof raw !== 'object') return base;
-  const star = Math.min(4, Math.max(1, nat(raw.star) || 1));
+  const star = Math.min(MAX_STAR, Math.max(1, nat(raw.star) || 1));
   return {
     ...base, star, rating: nat(raw.rating),
     served: Object.fromEntries(MENU_KEYS.map(k => [k, nat(raw.served?.[k])])),
@@ -51,13 +52,40 @@ export function flipOk(t, win) {
   return t >= a && t <= b;
 }
 
-export function chopTap(c, now) {
+export function chopTap(c, now, taps = CHOP_TAPS) {
   if (c.last >= 0 && now - c.last < CHOP_GAP) return c;
-  return { taps: Math.min(CHOP_TAPS, c.taps + 1), last: now };
+  return { taps: Math.min(taps, c.taps + 1), last: now };
 }
 
-export function chopDone(c) {
-  return c.taps >= CHOP_TAPS;
+export function chopDone(c, taps = CHOP_TAPS) {
+  return c.taps >= taps;
+}
+
+export function fryNeedle(t) {
+  const ph = (t % FRY.swing) / FRY.swing;
+  return ph < 0.5 ? ph * 2 : 2 - ph * 2;
+}
+
+export function fryZone(win) {
+  const [a, b] = FRY.zone, mid = (a + b) / 2, half = ((b - a) * win) / 2;
+  return [mid - half, mid + half];
+}
+
+export function fryHeatOk(t, win) {
+  const [a, b] = fryZone(win), p = fryNeedle(t);
+  return p >= a && p <= b;
+}
+
+export function fryBubble(t) {
+  return FRY.bubbles.findIndex(b => t >= b && t < b + FRY.bubbleWin);
+}
+
+export function fryState(t, win) {
+  const w = FRY.win * win;
+  if (t < FRY.cook) return 'raw';
+  if (t < FRY.cook + w) return 'perfect';
+  if (t < FRY.cook + w + FRY.burn) return 'over';
+  return 'burnt';
 }
 
 export function serveStars(wait, quality, pat) {

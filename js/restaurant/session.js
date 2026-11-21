@@ -1,10 +1,13 @@
 import { pickGuestNpc, pickMenu, FAV } from './regulars.js';
 import { SPECIAL_COIN_MUL } from './special.js';
-import { HALL, SERVICE_SEC, LAST_SPAWN_SEC, STAR, EAT_SEC, COIN_PER_STAR, PATIENCE, COOK, MENU } from './data.js';
-import { cookState, panState, flipOk, flipZone, chopTap, chopDone, serveStars, spawnInterval, serviceAvg } from './rules.js';
+import { HALL, SERVICE_SEC, LAST_SPAWN_SEC, STAR, EAT_SEC, COIN_PER_STAR, FRY_COIN_MUL, PATIENCE, COOK, MENU, MENU_KEYS, FRY, BATTER_TAPS, FRY_OF } from './data.js';
+import { cookState, panState, flipOk, flipZone, chopTap, chopDone, fryNeedle, fryZone, fryHeatOk, fryBubble, fryState, serveStars, spawnInterval, serviceAvg } from './rules.js';
 
-const DISH = new Set(['grilled', 'riceball', 'soup']);
+const DISH = new Set(MENU_KEYS);
 const RAW = new Set(['fish', 'rice']);
+const FRY_RAW = new Set(Object.keys(FRY_OF));
+const batOf = raw => `${raw}Bat`;
+const isBat = k => typeof k === 'string' && FRY_RAW.has(k.slice(0, -3)) && k.endsWith('Bat');
 const STAFF_SEC = 2;
 const FRESH_CHOP = () => ({ taps: 0, last: -1 });
 
@@ -52,7 +55,7 @@ export const SET_ODDS = 0.25, SET_PATIENCE = 1.5, SET_COIN_MUL = 1.5;
 
 export function createSession({ star, dda, rng = Math.random, first = false, stock = null, neighbors = null, special = null, regulars = null }) {
   const stations = {};
-  for (const s of HALL.stations) stations[s.id] = { item: null, t: 0, chop: FRESH_CHOP(), flipped: null };
+  for (const s of HALL.stations) stations[s.id] = { item: null, t: 0, chop: FRESH_CHOP(), flipped: null, phase: null, h0: 0, heat: null, shakes: null };
   return {
     star, cfg: STAR[star], dda: first ? { ...dda, pat: dda.pat * FIRST_PAT } : { ...dda }, first, rng, stock, neighbors, special: first ? null : special, regulars: first ? null : regulars, setUsed: new Set(), time: 0, next: 1.5, guests: [], tickets: [], gid: 0,
     held: null, stations, staff: null, ended: false,
@@ -125,7 +128,7 @@ function serve(S, tk, it) {
   if (wait >= PATIENCE[1] * pat) S.stats.late++;
   S.tickets.splice(S.tickets.indexOf(tk), 1);
   const g = S.guests.find(x => x.id === tk.id);
-  const dish = stars * COIN_PER_STAR * (tk.menu === S.special ? SPECIAL_COIN_MUL : 1);
+  const dish = Math.round(stars * COIN_PER_STAR * (tk.menu === S.special ? SPECIAL_COIN_MUL : 1) * (MENU[tk.menu].fry ? FRY_COIN_MUL : 1));
   const { coins, set } = g?.set ? setDone(S, g, stars, dish) : { coins: dish, set: null };
   if (g && !S.tickets.some(t => t.id === g.id)) { g.state = 'eat'; g.t = 0; }
   S.stats.served++;
@@ -168,7 +171,7 @@ export function tickSession(S, dt, { pos = null } = {}) {
   }
   for (const s of HALL.stations) {
     const st = S.stations[s.id];
-    if ((s.kind === 'pan' || s.kind === 'pot') && st.item) st.t += dt;
+    if ((s.kind === 'pan' || s.kind === 'pot' || (s.kind === 'fryer' && st.phase === 'fry')) && st.item) st.t += dt;
   }
   stepStaff(S, dt, ev);
   const walking = S.guests.some(g => g.state === 'walk');
@@ -241,6 +244,18 @@ function stationContext(S, s) {
       if (h && h.kind === 'fishChop' && !st.item) return c('put', '🫳');
       if (!h && st.item && cookState('pot', st.t, S.dda.win) !== 'raw') return c('pickCook', '✋');
       return null;
+    case 'bowl':
+      if (h && !h.plated && FRY_RAW.has(h.kind) && !st.item) return c('put', '🫳');
+      if (!h && st.item && chopDone(st.chop, BATTER_TAPS)) return c('pick', '✋');
+      if (!h && st.item) return c('batter', '🥣');
+      return null;
+    case 'fryer':
+      if (h && isBat(h.kind) && !h.plated && !st.item) return c('put', '🫳');
+      if (!st.item) return null;
+      if (st.phase === 'heat') return c('heat', '🔥');
+      if (st.phase !== 'fry') return null;
+      if (fryBubble(st.t) >= 0 && !st.shakes[fryBubble(st.t)]) return c('shake', '🫧');
+      return !h && st.t >= FRY.cook ? c('pickCook', '✋') : null;
     case 'plates': return h && !h.plated && DISH.has(h.kind) ? c('plate', '🍽️') : null;
     case 'trash': return h ? c('trash', '🗑️') : null;
     case 'pass':
@@ -260,6 +275,12 @@ export function contextAt(S, pos) {
 }
 
 function cookOut(S, s, st) {
+  if (s.kind === 'fryer') {
+    const state = fryState(st.t, S.dda.win);
+    if (state === 'burnt') return { kind: 'burnt' };
+    const best = st.heat && st.shakes.every(Boolean) && state === 'perfect';
+    return { kind: FRY_OF[st.item.kind.slice(0, -3)], q: best ? 1 : 0.75 };
+  }
   if (s.kind === 'pan') {
     if (panState(st.t) === 'burnt') return { kind: 'burnt' };
     return { kind: 'grilled', q: st.flipped ? 1 : 0.75 };
@@ -286,8 +307,25 @@ export function actAt(S, pos, { take }) {
       return [{ type: 'take', kind: s.give }];
     case 'put':
       st.item = S.held; st.t = 0; st.chop = FRESH_CHOP(); st.flipped = null;
+      if (s.kind === 'fryer') { st.phase = 'heat'; st.h0 = S.time; st.heat = null; st.shakes = [false, false]; }
       S.held = null;
       return [{ type: 'put', id: c.id, kind: st.item.kind }];
+    case 'batter':
+      st.chop = chopTap(st.chop, S.time, BATTER_TAPS);
+      if (chopDone(st.chop, BATTER_TAPS)) {
+        st.item = { kind: batOf(st.item.kind), q: 1 };
+        return [{ type: 'chopDone', id: c.id, kind: st.item.kind }];
+      }
+      return [{ type: 'chop', id: c.id, taps: st.chop.taps }];
+    case 'heat':
+      st.heat = fryHeatOk(S.time - st.h0, S.dda.win);
+      st.phase = 'fry'; st.t = 0;
+      return [{ type: 'heat', id: c.id, ok: st.heat }];
+    case 'shake': {
+      const i = fryBubble(st.t);
+      st.shakes = st.shakes.map((v, k) => v || k === i);
+      return [{ type: 'shake', id: c.id, i }];
+    }
     case 'chop':
       st.chop = chopTap(st.chop, S.time);
       if (chopDone(st.chop) && RAW.has(st.item.kind)) {
@@ -309,7 +347,7 @@ export function actAt(S, pos, { take }) {
       S.stats.takes++;
       if (it.kind === 'burnt') S.stats.burnt++;
       else if (it.q === 1) S.stats.perfect++;
-      st.item = null; st.t = 0; st.flipped = null;
+      st.item = null; st.t = 0; st.flipped = null; st.phase = null; st.heat = null; st.shakes = null;
       S.held = it;
       return [{ type: 'cooked', id: c.id, kind: it.kind, q: it.q ?? 0 }];
     }
@@ -342,6 +380,13 @@ export function stationView(S, id) {
   if (!isActive(S, s)) return null;
   const st = S.stations[id];
   if (!st.item) return null;
+  if (s.kind === 'bowl') return chopDone(st.chop, BATTER_TAPS) ? null : { kind: 'chop', taps: st.chop.taps, beat: S.time % BEAT < 0.12, need: BATTER_TAPS };
+  if (s.kind === 'fryer') {
+    if (st.phase === 'heat') return { kind: 'fryHeat', p: fryNeedle(S.time - st.h0), zone: fryZone(S.dda.win) };
+    const w = FRY.win * S.dda.win, span = FRY.cook + w + FRY.burn, state = fryState(st.t, S.dda.win);
+    return { kind: 'gauge', p: Math.min(1, st.t / span), zone: [FRY.cook / span, (FRY.cook + w) / span], state,
+      perfect: !!st.heat && st.shakes.every(Boolean), bubble: fryBubble(st.t), shaken: st.shakes.filter(Boolean).length };
+  }
   if (s.kind === 'board') return chopDone(st.chop) ? null : { kind: 'chop', taps: st.chop.taps, beat: S.time % BEAT < 0.12 };
   if (s.kind === 'pan') {
     const state = panState(st.t), cook = COOK.pan.cook;

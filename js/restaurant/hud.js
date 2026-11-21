@@ -30,6 +30,16 @@ html body.rest-hud-on #guide-card{top:calc(env(safe-area-inset-top) + 80px)}
 #rest-hud .gauge.done{background:rgba(201,138,74,.9)}
 #rest-hud .gauge.burn{background:rgba(217,96,76,.9)}
 #rest-hud .gauge.perfect{box-shadow:0 0 0 3px #6bd36a}
+#rest-hud .gauge.oil{background:rgba(214,158,46,.9)}
+#rest-hud .fry{display:flex;flex-direction:column;align-items:center;gap:2px}
+#rest-hud .fry .fr{display:flex;align-items:center;gap:4px}
+#rest-hud .fry .ico{font-style:normal;font-size:18px;line-height:20px;height:20px}
+#rest-hud .fry .ico.off{visibility:hidden}
+#rest-hud .fry .ico.bob{animation:rh-bub .45s ease-in-out infinite alternate}
+@keyframes rh-bub{to{transform:translateY(-6px)}}
+#rest-hud .fry .shk{display:flex;gap:5px}
+#rest-hud .fry .shk span{width:9px;height:9px;border-radius:50%;border:2px solid #fff8e8;background:rgba(47,94,71,.35)}
+#rest-hud .fry .shk span.on{background:#ffc94a}
 #rest-hud .num{width:26px;height:26px;border-radius:50%;background:#2f5e47;color:#fff8e8;font-weight:800;font-size:14px;display:grid;place-items:center;border:3px solid #6bd36a;box-shadow:0 2px 6px rgba(0,0,0,.25)}
 #rest-hud .num.mid{border-color:#e9b949}
 #rest-hud .num.late{border-color:#d9604c}
@@ -46,6 +56,7 @@ html body.rest-hud-on #guide-card{top:calc(env(safe-area-inset-top) + 80px)}
 #rest-hud .steps i.on{background:#ffc94a;opacity:1;box-shadow:0 0 0 3px rgba(255,201,74,.4)}
 #rest-hud .steps em{width:10px;height:2px;background:#c9b99f}
 body.is-touch #rest-hud .next{font-size:13px;gap:10px;bottom:calc(env(safe-area-inset-bottom) + 10px);padding:5px 14px 5px 8px}
+@media (max-width:520px){#rest-hud .next{max-width:calc(100vw - 20px);box-sizing:border-box;flex-wrap:wrap;justify-content:center;row-gap:4px;padding:6px 12px}}
 body.is-touch #rest-hud .steps{gap:4px}
 body.is-touch #rest-hud .steps em{width:7px}
 body.is-touch #rest-hud .steps i{width:24px;height:24px;font-size:13px}
@@ -98,12 +109,19 @@ body.is-touch #rest-hud .steps i{width:24px;height:24px;font-size:13px}
 #rest-card .stars{font-size:22px}
 #rest-card .grid{padding:12px 14px 4px}
 #rest-card .gwrap{padding:8px 14px 0}
-#rest-card .foot{padding:6px 14px 12px}
+#rest-card .foot{padding:6px 14px 12px;position:sticky;bottom:0;background:#fffaf0}
+#rest-card .box{max-height:calc(100vh - 16px)}
+#rest-card .box > :last-child{overflow-y:auto;min-width:0;max-height:calc(100vh - 16px)}
+#rest-card .mr{grid-template-columns:96px 1fr;gap:8px}
+#rest-card .mr .steps{gap:3px}
+#rest-card .mr i{width:24px;height:24px;font-size:13px}
+#rest-card .mr em{width:6px}
 }
 `;
 
 const BUBBLE_H = 40;
-const LABEL = { take: '✋ 꺼내기', put: '🫳 내려놓기', chop: '🔪 썰기', flip: '🍳 뒤집기', pick: '✋ 들기', pickCook: '✋ 꺼내기', plate: '🍽️ 담기', trash: '🗑️ 버리기', serve: '🍽️ 내가기' };
+const FRYER_STAGGER = { fryer1: 46 };
+const LABEL = { batter: '🥣 반죽 묻히기', heat: '🔥 불 맞추기', shake: '🫧 흔들기', take: '✋ 꺼내기', put: '🫳 내려놓기', chop: '🔪 썰기', flip: '🍳 뒤집기', pick: '✋ 들기', pickCook: '✋ 꺼내기', plate: '🍽️ 담기', trash: '🗑️ 버리기', serve: '🍽️ 내가기' };
 export const contextLabel = c => (c ? LABEL[c.do] : null);
 
 export function resultView(r, out, goals, copy, need = null) {
@@ -137,12 +155,12 @@ export function nextHtml(v) {
   return `${steps ? `<div class="steps">${steps}</div>` : ''}<span>${v.text}</span>`;
 }
 
-const DISH_NAME = { grilled: '🐟 생선구이', riceball: '🍙 주먹밥', soup: '🍲 생선국' };
-export const MENU_COPY = { kicker: '칠판', title: '오늘의 메뉴', tips: ['🍳 막대가 초록 칸일 때 뒤집어요', '🔪 박자에 맞춰 네 번 눌러요'], start: '🔔 영업 시작' };
+const DISH_NAME = { grilled: '🐟 생선구이', riceball: '🍙 주먹밥', soup: '🍲 생선국', shrimpfry: '🍤 새우튀김', squidfry: '🦑 오징어튀김', vegfry: '🥬 채소튀김' };
+export const MENU_COPY = { kicker: '칠판', title: '오늘의 메뉴', tips: ['🍳 막대가 초록 칸일 때 뒤집어요', '🔪 박자에 맞춰 네 번 눌러요'], fryTip: '🔥 바늘이 초록 칸일 때 불을 맞춰요', start: '🔔 영업 시작' };
 
 export const STOCK_COPY = {
   title: '⚠️ 재고가 부족해요',
-  items: { fish: { ico: '🐟', name: '생선', where: '포구 섬에서 낚아 와요' }, rice: { ico: '🍚', name: '쌀', where: '포구 섬 시장에서 사 와요' } },
+  items: { fish: { ico: '🐟', name: '생선', where: '포구 섬에서 낚아 와요' }, rice: { ico: '🍚', name: '쌀', where: '포구 섬 시장에서 사 와요' }, shrimp: { ico: '🦐', name: '새우', where: '포구 섬 가까운 바다에서 낚아 와요' }, squid: { ico: '🦑', name: '오징어', where: '포구 섬 먼바다나 밤바다에서 낚아 와요' }, veg: { ico: '🥬', name: '채소', where: '포구 섬 시장에서 사 와요' } },
   partial: '있는 재료로 만드는 메뉴만 주문이 들어와요',
   ask: '섬에 가서 식자재를 받아 와야 해요. 안내받으시겠어요?',
   guide: '🧭 안내 받기',
@@ -158,6 +176,7 @@ export function menuView(star, first = false, pantry = undefined, special = null
     rows: menus.map(k => [DISH_NAME[k], RECIPE[k].slice(0, -1), k]),
     stock: first ? null : stockStatus(menus, pantry),
     special: !first && menus.includes(special) ? special : null,
+    fry: menus.some(k => MENU[k].fry),
   };
 }
 
@@ -170,7 +189,7 @@ function stockHtml(st) {
 
 export function menuHtml(v) {
   const rows = v.rows.map(([name, icos, k]) => `<div class="mr${k && k === v.special ? ' sp' : ''}"><span>${name}${k && k === v.special ? `<b class="spchip">${SPECIAL_COPY.chip}</b>` : ''}</span><div class="steps">${icos.map((ico, j) => `${j ? '<em></em>' : ''}<i>${ico}</i>`).join('')}</div>${k && k === v.special ? `<small class="spnote">${SPECIAL_COPY.note}</small>` : ''}</div>`).join('');
-  return `<div class="head"><div class="kick">${MENU_COPY.kicker}</div><h3>${MENU_COPY.title}</h3></div><div><div class="menu">${rows}</div><div class="tip">${MENU_COPY.tips.map(t => `<div>${t}</div>`).join('')}</div>${stockHtml(v.stock)}<div class="foot">${v.stock?.none ? `<button type="button" data-act="later">${STOCK_COPY.later}</button><button type="button" data-act="guide">${STOCK_COPY.guide}</button>` : `<button type="button">${MENU_COPY.start}</button>`}</div></div>`;
+  return `<div class="head"><div class="kick">${MENU_COPY.kicker}</div><h3>${MENU_COPY.title}</h3></div><div><div class="menu">${rows}</div><div class="tip">${(v.fry ? [...MENU_COPY.tips, MENU_COPY.fryTip] : MENU_COPY.tips).map(t => `<div>${t}</div>`).join('')}</div>${stockHtml(v.stock)}<div class="foot">${v.stock?.none ? `<button type="button" data-act="later">${STOCK_COPY.later}</button><button type="button" data-act="guide">${STOCK_COPY.guide}</button>` : `<button type="button">${MENU_COPY.start}</button>`}</div></div>`;
 }
 
 const needLine = ({ k, n }) => { const it = STOCK_COPY.items[k]; return `<div class="gneed">${it.ico} ${it.name} ${n} · ${it.where}</div>`; };
@@ -275,9 +294,13 @@ export function mountHud(doc) {
 
   function gauge(el, view) {
     const [a, b] = view.zone || [0, 0];
-    const cls = view.state === 'burnt' ? ' burn' : view.state === 'done' ? ' done' : view.perfect ? ' perfect' : '';
+    const fry = view.kind === 'fryHeat' || view.bubble !== undefined;
+    const cls = view.state === 'burnt' ? ' burn' : `${view.bubble !== undefined ? ' oil' : ''}${view.state === 'done' || view.state === 'over' ? ' done' : view.perfect ? ' perfect' : ''}`;
     const zone = view.zone ? `<em style="left:${(a * 100).toFixed(1)}%;width:${((b - a) * 100).toFixed(1)}%"></em>` : '';
-    setHtml(el, `<div class="gauge${cls}">${zone}<s></s></div>`);
+    const bar = `<div class="gauge${cls}">${zone}<s></s></div>`;
+    const ico = view.kind === 'fryHeat' ? '<i class="ico">🔥</i>' : `<i class="ico${view.bubble >= 0 ? ' bob' : ' off'}">🫧</i>`;
+    const shk = view.kind === 'fryHeat' ? '' : `<div class="shk">${[0, 1].map(i => `<span${i < view.shaken ? ' class="on"' : ''}></span>`).join('')}</div>`;
+    setHtml(el, fry ? `<div class="fry"><div class="fr">${ico}${bar}</div>${shk}</div>` : bar);
     const needle = el.querySelector('s');
     const left = `${Math.min(100, view.p * 100).toFixed(1)}%`;
     if (needle.style.left !== left) needle.style.left = left;
@@ -303,9 +326,9 @@ export function mountHud(doc) {
     station(id, view, x, y) {
       if (!view) { const el = stEls.get(id); if (el && el.style.display !== 'none') el.style.display = 'none'; return; }
       const el = stEl(id);
-      place(el, x, view.kind === 'bubble' ? Math.max(y, bubbleMin) : y);
+      place(el, x, view.kind === 'bubble' ? Math.max(y, bubbleMin) : y - (FRYER_STAGGER[id] || 0));
       if (view.kind === 'bubble') setHtml(el, `<div class="num${view.mood ? ` ${view.mood}` : ''}">${view.n}</div>`);
-      else if (view.kind === 'chop') setHtml(el, `<div class="dots">${Array.from({ length: CHOP_TAPS }, (_, i) => `<span class="${i < view.taps ? 'on' : ''}${i === view.taps && view.beat ? ' beat' : ''}"></span>`).join('')}</div>`);
+      else if (view.kind === 'chop') setHtml(el, `<div class="dots">${Array.from({ length: view.need || CHOP_TAPS }, (_, i) => `<span class="${i < view.taps ? 'on' : ''}${i === view.taps && view.beat ? ' beat' : ''}"></span>`).join('')}</div>`);
       else gauge(el, view);
     },
     next(view) {
