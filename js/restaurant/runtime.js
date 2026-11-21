@@ -5,6 +5,7 @@ import { showForStar, itemMesh, itemHeight } from './hall.js';
 import { mountHud, contextLabel, goalRows, resultView, menuView, stockNeed, setTickets } from './hud.js';
 import { nextStep } from './next-step.js';
 import { FAV } from './regulars.js';
+import { CARRY, poseCarry, handsMid } from './carry.js';
 
 const BOARD_R = 1.6;
 const START_PROMPT = '🍽️ 저녁 영업 시작';
@@ -58,9 +59,19 @@ export function createRestaurantRuntime(env) {
     held = null;
     if (!k) return;
     const m = itemMesh(THREE, S.held);
-    m.position.set(0, 1.42, 0.5);
+    m.position.set(0, 0.8, 0.55);
     env.player.add(m);
     held = { key: k, mesh: m };
+  }
+
+  const mid = new THREE.Vector3();
+  function carryHeld() {
+    const arms = env.arms?.();
+    if (!held || !arms) return;
+    poseCarry(arms);
+    env.player.updateMatrixWorld(true);
+    env.player.worldToLocal(handsMid(arms, mid));
+    held.mesh.position.set(mid.x, mid.y, mid.z + CARRY.fwd);
   }
 
   function placeGuest(g, m) {
@@ -223,7 +234,7 @@ export function createRestaurantRuntime(env) {
     frame(dt) {
       if (!S) return;
       handle(tickSession(S, dt, { pos: local(env.player.position) }));
-      syncItems(); syncHeld(); syncGuests(); drawHud();
+      syncItems(); syncHeld(); carryHeld(); syncGuests(); drawHud();
       if (S.ended) finish();
     },
     abort() { hud.closeCard(); if (S) clear(); },

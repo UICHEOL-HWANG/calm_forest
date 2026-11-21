@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {
   $w, adPill, camera, cameraFree, colliders, gameState, giveReward, makeSignpost, obstacles, player, projectToScreen, refreshInventoryUI, requestSave, scene,
-  setFogExempt, setSpaceVisible, snapCamera, solidBox, solidCircle, spawnFloatText, ui, npcObjs, todayStr,
+  setFogExempt, setSpaceVisible, snapCamera, playerArms, solidBox, solidCircle, spawnFloatText, ui, npcObjs, todayStr,
 } from '../game.js';
 import { buildRegularBoard } from '../restaurant/regular-board.js';
 import { createAuctionGuide } from '../auction/guide.js';
@@ -219,7 +219,7 @@ export function buildRestaurantHall() {
   $w.restaurantInGroup = hall.group;
   hallSolids();
   runtime = createRestaurantRuntime({
-    THREE, hall, doc: document, player, copy: RESTAURANT_COPY,
+    THREE, hall, doc: document, player, arms: () => playerArms, copy: RESTAURANT_COPY,
     rest: () => gameState.restaurant,
     setRest: r => { gameState.restaurant = r; },
     port: () => gameState.port,

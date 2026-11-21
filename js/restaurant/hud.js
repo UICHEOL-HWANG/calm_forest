@@ -18,7 +18,7 @@ const CSS = `
 #rest-hud .tk.set{width:92px;border-color:#e46f8f}
 #rest-hud .tk .two{display:flex;justify-content:center;gap:4px}
 #rest-hud .tk .two i.done{opacity:.35;filter:grayscale(1)}
-html body.rest-hud-on #guide-card{top:calc(env(safe-area-inset-top) + 80px)}
+html body.rest-hud-on #guide-card{top:calc(env(safe-area-inset-top) + 80px + var(--rest-bar-drop, 0px))}
 #rest-hud .st{position:fixed;transform:translate(-50%,-100%);pointer-events:none}
 #rest-hud .dots{display:flex;gap:3px}
 #rest-hud .dots span{width:13px;height:13px;border-radius:3px;border:2px solid #fff8e8;background:rgba(47,94,71,.35)}
@@ -237,6 +237,18 @@ export function ticketHtml(t, now, pat, focus) {
   return `<div class="tk${Array.isArray(t.set) ? ' set' : ''}${cls}${t.id === focus ? ' now' : ''}${t.fav ? ' fav' : ''}">${face}<b>${t.table + 1}</b>${dish}<u><s style="width:${left}%"></s></u></div>`;
 }
 
+export function barDrop(items, blockers, gap = 8) {
+  if (!items.length) return 0;
+  const top = Math.min(...items.map(i => i.top));
+  let d = 0;
+  for (let k = 0; k <= blockers.length; k++) {
+    const hit = blockers.filter(b => items.some(i => i.left < b.right && i.right > b.left && i.top + d < b.bottom && i.bottom + d > b.top));
+    if (!hit.length) return d;
+    d = Math.max(d, ...hit.map(b => b.bottom + gap - top));
+  }
+  return d;
+}
+
 export function mountHud(doc) {
   if (!doc.getElementById('rest-hud-css')) {
     const st = doc.createElement('style'); st.id = 'rest-hud-css'; st.textContent = CSS; doc.head.appendChild(st);
@@ -278,8 +290,19 @@ export function mountHud(doc) {
   };
   const watch = guideCard && typeof MutationObserver !== 'undefined' ? new MutationObserver(markDirty) : null;
   watch?.observe(guideCard, { attributes: true, attributeFilter: ['hidden'], childList: true, characterData: true, subtree: true });
-  addEventListener('resize', markDirty);
+  addEventListener('resize', () => { markDirty(); fitBar(); });
   const setHtml = (el, html) => { if (el._html !== html) { el._html = html; el.innerHTML = html; } };
+  let drop = 0;
+  const fitBar = () => {
+    const blockers = ['#topright', '#minimap', '#coach'].map(q => doc.querySelector(q)).filter(e => e?.getClientRects().length).map(e => e.getBoundingClientRect());
+    const items = [clock, ...tks.children].map(e => { const r = e.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top - drop, bottom: r.bottom - drop }; });
+    const d = barDrop(items, blockers);
+    if (d === drop) return;
+    drop = d;
+    bar.style.transform = d ? `translateY(${d}px)` : '';
+    doc.body.style.setProperty('--rest-bar-drop', `${d}px`);
+    dirty = true;
+  };
 
   function stEl(id) {
     let el = stEls.get(id);
@@ -323,7 +346,7 @@ export function mountHud(doc) {
     },
     tickets(list, now, pat, focus = null) {
       const html = list.map(t => ticketHtml(t, now, pat, focus)).join('');
-      if (html !== ticketCache) { ticketCache = html; tks.innerHTML = html; }
+      if (html !== ticketCache) { ticketCache = html; tks.innerHTML = html; fitBar(); }
     },
     station(id, view, x, y) {
       if (!view) { const el = stEls.get(id); if (el && el.style.display !== 'none') el.style.display = 'none'; return; }

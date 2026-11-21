@@ -18,6 +18,7 @@ import {
 import { trackEvent } from '../analytics.js';
 import { weeklyNote } from '../weekly/index.js';
 import { buildAnimalHead } from '../animal-faces.js';
+import { buildGuestFigure } from '../guest-figure.js';
 import { findItem } from '../cosmetics/catalog.js';
 import { buy as buyCos, equip as equipCos } from '../cosmetics/equip.js';
 import { shopRows, sproutOpen, defaultCosTab } from '../cosmetics/sprout.js';
@@ -1415,77 +1416,8 @@ export function buildCafeHall() {
 //    → dispose 가 사라져 **재질별 지오메트리 병합**을 손님에게도 쓸 수 있다(1명 15메시 → 4메시).
 export const cafeGuestCastCache = new Map();
 
-// 귀 모양 — 실루엣의 절반은 귀가 만든다(이름표를 못 읽는 거리에서 누군지 가르는 단서)
-export function guestEarGeos(ear) {
-  const g = [];
-  const put = (geo, x, y, z, rz = 0) => { if (rz) geo.rotateZ(rz); g.push(geo.translate(x, y, z)); };
-  for (const s of [-1, 1]) {
-    if (ear === 'point')      put(new THREE.ConeGeometry(0.13, 0.3, 7),            s * 0.19, 1.52, 0, s * 0.22);
-    else if (ear === 'round') put(new THREE.SphereGeometry(0.13, 9, 7),            s * 0.24, 1.44, 0);
-    else if (ear === 'long')  put(new THREE.CapsuleGeometry(0.075, 0.34, 4, 8),    s * 0.15, 1.66, 0, s * 0.16);
-    else                      put(new THREE.SphereGeometry(0.075, 8, 6),           s * 0.25, 1.38, 0);   // tiny
-  }
-  return g;
-}
-
-// 소품 — 귀와 짝지어 "이 색 + 이 실루엣 = 이 손님" 이 되게. 재질키(body/skin/accent/dark)별로 담는다
-export function guestAccGeos(acc, add) {
-  const box = (w, h, d, x, y, z) => new THREE.BoxGeometry(w, h, d).translate(x, y, z);
-  if (acc === 'scarf') {
-    add('accent', new THREE.TorusGeometry(0.3, 0.075, 7, 14).rotateX(Math.PI / 2).translate(0, 1.02, 0));
-    add('accent', box(0.16, 0.34, 0.1, 0.13, 0.85, 0.24));                        // 흘러내린 자락
-  } else if (acc === 'beanie') {
-    add('accent', new THREE.SphereGeometry(0.35, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2).translate(0, 1.3, 0));
-    add('accent', new THREE.TorusGeometry(0.34, 0.055, 7, 16).rotateX(Math.PI / 2).translate(0, 1.3, 0));
-    add('accent', new THREE.SphereGeometry(0.08, 8, 6).translate(0, 1.68, 0));    // 방울
-  } else if (acc === 'ribbon') {
-    for (const s of [-1, 1]) add('accent', new THREE.SphereGeometry(0.11, 9, 7).scale(1, 0.72, 0.6).translate(s * 0.15, 1.56, 0));
-    add('accent', new THREE.SphereGeometry(0.055, 8, 6).translate(0, 1.56, 0));
-  } else if (acc === 'glasses') {
-    for (const s of [-1, 1]) add('dark', new THREE.TorusGeometry(0.1, 0.022, 6, 14).translate(s * 0.12, 1.27, 0.29));
-    add('dark', box(0.1, 0.02, 0.02, 0, 1.27, 0.3));
-  } else if (acc === 'antler') {
-    for (const s of [-1, 1]) {
-      add('accent', new THREE.CylinderGeometry(0.03, 0.04, 0.34, 5).translate(s * 0.17, 1.6, -0.02));
-      add('accent', new THREE.CylinderGeometry(0.024, 0.028, 0.2, 5).rotateZ(s * 0.7).translate(s * 0.27, 1.74, -0.02));
-    }
-  } else if (acc === 'cap') {
-    add('accent', new THREE.SphereGeometry(0.34, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2).translate(0, 1.32, 0));
-    add('accent', box(0.44, 0.05, 0.3, 0, 1.33, 0.3));                            // 챙
-  } else if (acc === 'spike') {
-    for (let i = 0; i < 6; i++) {
-      const a = -0.9 + i * 0.36;
-      add('dark', new THREE.ConeGeometry(0.06, 0.22, 5).rotateX(-0.9).translate(Math.sin(a) * 0.3, 1.0 + Math.cos(a) * 0.12, -0.3));
-    }
-  } else {                                                                        // flower
-    add('accent', new THREE.SphereGeometry(0.075, 8, 6).translate(0.2, 1.47, 0.12));
-    for (let i = 0; i < 5; i++) {
-      const a = (i / 5) * Math.PI * 2;
-      add('accent', new THREE.SphereGeometry(0.055, 7, 6).translate(0.2 + Math.cos(a) * 0.1, 1.47 + Math.sin(a) * 0.1, 0.1));
-    }
-  }
-}
-
-// 손님 한 명 — 재질 4가지(몸·얼굴·소품·짙은색)로 병합해 메시 4개 + 눈 1개로 끝낸다
 export function buildCafeGuestCast(def) {
-  const g = new THREE.Group();
-  const MATS = {
-    body:   clayMat(def.color, false),
-    skin:   clayMat(0xffe0c0, false),
-    accent: clayMat(def.hat, false),
-    dark:   clayMat(0x3a2f2a, false),
-  };
-  const parts = new Map();
-  const add = (k, geo) => { const a = parts.get(k); a ? a.push(geo) : parts.set(k, [geo]); };
-  add('body', new THREE.IcosahedronGeometry(0.44, 1).translate(0, 0.72, 0));       // 몸
-  add('skin', new THREE.IcosahedronGeometry(0.33, 1).translate(0, 1.24, 0));       // 머리
-  guestEarGeos(def.ear).forEach(geo => add('body', geo));                          // 귀는 몸 색(종 구분)
-  guestAccGeos(def.acc, add);
-  for (const ex of [-0.11, 0.11]) add('dark', new THREE.SphereGeometry(0.045, 8, 8).translate(ex, 1.27, 0.28));  // 눈
-  for (const [k, geos] of parts) {
-    const m = new THREE.Mesh(geos.length > 1 ? mergeGeos(geos) : geos[0], MATS[k]);
-    m.castShadow = true; g.add(m);
-  }
+  const g = buildGuestFigure(def);
   const tag = makeNameTag(def);                       // 🏷️ 주문판의 이름 ↔ 자리 매칭(서빙은 사람을 맞혀야 한다)
   const tagY = new THREE.Box3().setFromObject(g).max.y + 0.28;
   tag.position.y = tagY; tag.visible = true; tag.material.opacity = 1;
