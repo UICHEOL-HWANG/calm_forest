@@ -138,6 +138,10 @@ export const DECOR = [
   { id: 'ny_bokjori_wall', name: '복조리 횃대', ico: '🧧', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.8, 0.3], desc: '낮은 횃대에 복조리 둘과 다홍 복주머니를 걸었어요' },
   { id: 'cp_camp_chair', name: '접이식 캔버스 의자', ico: '🪑', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.6, 0.6], desc: '나무 X자 다리에 올리브 천을 씌운 캠핑 의자예요' },
   { id: 'cp_lantern_hook', name: '쇠 고리 랜턴', ico: '🏮', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.5, 0.5], desc: '남색 쇠기둥 고리 끝에 머스터드 랜턴이 은은하게 빛나요' },
+  { id: 'sb_blossom_pot', name: '크림 화분 벚나무', ico: '🌸', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.7, 0.7], desc: '둥근 크림 화분에서 굽은 줄기가 분홍 꽃송이 셋을 피웠어요' },
+  { id: 'sb_picnic_mat', name: '체크 돗자리', ico: '🧺', cost: 0, pay: 'coins', hidden: true, keep: true, desc: '분홍·크림 체크에 연두 테두리를 두르고 꽃잎이 떨어졌어요' },
+  { id: 'rn_umbrella_stand', name: '하늘색 우산꽂이', ico: '☂️', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.5, 0.5], desc: '하늘색 둥근 통에 노랑·연두 우산 둘을 꽂았어요' },
+  { id: 'rn_rain_curtain', name: '구름 빗방울 모빌', ico: '🌧️', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.7, 0.45], desc: '굽은 나무 걸이에 크림 구름과 빗방울 다섯 줄을 달았어요' },
   { id: 'ns_moon_sofa', name: '구름 위 달 소파', ico: '🌙', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [1.35, 0.75], desc: '연보라 구름 방석 뒤로 초승달 등받이를 세웠어요' },
   ...AFF_FRAMES,
 ];
@@ -305,6 +309,10 @@ export const OUTDOOR = [
   { id: 'ny_kite_stand', name: '연 세 줄', ico: '🪁', cost: { coins: 9999 }, desc: '두 기둥 사이 줄에 쪽빛·다홍·연두 가오리연 셋을 달았어요', hidden: true, quest: true, box: [2.0, 0.4], posts: [[-0.9, 0, 0.12], [0.9, 0, 0.12]] },
   { id: 'cp_tent', name: '머스터드 삼각 텐트', ico: '⛺', cost: { coins: 9999 }, desc: '크림 문을 걷어 올리고 꼭대기에 벽돌색 깃발을 꽂았어요', hidden: true, quest: true, box: [1.7, 1.9] },
   { id: 'cp_marshmallow_fire', name: '꼬치 받침 화로', ico: '🏕️', cost: { coins: 9999 }, desc: '돌 둘레 모닥불 위로 마시멜로 세 개를 꼬치에 걸었어요', hidden: true, quest: true, box: [1.8, 1.15] },
+  { id: 'sb_petal_swing', name: '나무 그네', ico: '🎐', cost: { coins: 9999 }, desc: '나무 A자 틀 가로대에 꽃 덩굴을 감고 분홍 자리를 매달았어요', hidden: true, quest: true, box: [2.0, 0.9], posts: [[-0.85, -0.38, 0.1], [-0.85, 0.38, 0.1], [0.85, -0.38, 0.1], [0.85, 0.38, 0.1]] },
+  { id: 'sb_blossom_arch', name: '꽃구름 아치', ico: '💮', cost: { coins: 9999 }, desc: '나무 기둥 위 반원에 분홍 꽃송이를 촘촘히 얹었어요', hidden: true, quest: true, box: [2.0, 0.4], posts: [[-0.9, 0, 0.15], [0.9, 0, 0.15]] },
+  { id: 'rn_rain_planter', name: '토란잎 빗물 화분', ico: '🌿', cost: { coins: 9999 }, desc: '하늘색 화분의 넓은 토란잎마다 빗방울이 한 알씩 맺혔어요', hidden: true, quest: true, box: [1.1, 1.0] },
+  { id: 'rn_snail_garden', name: '이끼 돌 달팽이', ico: '🐌', cost: { coins: 9999 }, desc: '이끼 덮인 돌 위로 노란 달팽이가 버섯 둘 곁을 지나가요', hidden: true, quest: true, box: [1.4, 1.1] },
   { id: 'ns_starlight_arch', name: '별 전구 아치', ico: '🌠', cost: { coins: 9999 }, desc: '반원 철사에 별 전구를 달고 꼭대기에 큰 금별을 얹었어요', hidden: true, quest: true, box: [2.0, 0.4], posts: [[-0.9, 0, 0.15], [0.9, 0, 0.15]] },
   ...AFF_OUTDOOR,
   ...REWARD_DECOR,   // 🤝 친구 초대 보상 장식(js/data/reward-decor.js) — 원장이 보관함에 넣어 준다 · 서버 가드 대상
