@@ -179,12 +179,14 @@ export function decorOwned(state, id) {
 const STALE = Object.freeze({ ok: false, msg: '오늘의 꾸미기가 바뀌었어요', stale: true });
 
 export function planBuy({ day, shown, dp, coins, owned }) {
-  const pick = pickOf(day);
-  if (shown?.d !== day || shown?.id !== pick.id) return { ...STALE };
+  if (shown?.d !== day) return { ...STALE };
+  const pick = DAILY_PICK_POOL.find(p => p.id === shown.id);
+  if (!pick) return { ok: false, msg: '지금은 살 수 없어요' };
   if (owned) return { ok: false, msg: '이미 있어요' };
-  const price = priceOf(pick, dp, day);
+  const today = pick.id === pickOf(day).id;
+  const price = today ? priceOf(pick, dp, day) : pick.price;
   if (coins < price) return { ok: false, msg: '코인이 모자라요' };
-  return { ok: true, pick, price, half: price < pick.price };
+  return { ok: true, pick, price, half: price < pick.price, today };
 }
 
 export function adGrant(shown, day) {
@@ -211,9 +213,8 @@ export const tomorrowPick = (dateKey) => pickOf(nextDayKey(dateKey));
 
 export const daysUntil = (itemIndex, todayIndex, n = DAILY_PICK_POOL.length) => ((itemIndex - todayIndex) % n + n) % n;
 
-export function dexLabel(owned, days) {
-  if (owned) return '✓ 있어요';
-  if (days === 0) return '오늘';
+export function dexLabel(days, deal) {
+  if (days === 0) return deal ? '오늘 특가' : '오늘';
   if (days === 1) return '내일';
   if (days < 14) return `${days}일 뒤`;
   if (days < 60) return `${Math.floor(days / 7)}주 뒤`;

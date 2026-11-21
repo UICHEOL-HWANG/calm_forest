@@ -33,16 +33,15 @@ test('n일 뒤는 (아이템 칸 - 오늘 칸) mod 풀 크기', () => {
   assert.equal(daysUntil(5, 5, 10), 0);
   assert.equal(daysUntil(6, 5, 10), 1);
   assert.equal(daysUntil(2, 5, 10), 7);
-  assert.equal(dexLabel(true, 0), '✓ 있어요');
-  assert.equal(dexLabel(false, 0), '오늘');
-  assert.equal(dexLabel(false, 1), '내일');
-  assert.equal(dexLabel(false, 4), '4일 뒤');
-  assert.equal(dexLabel(false, 13), '13일 뒤');
-  assert.equal(dexLabel(false, 14), '2주 뒤');
-  assert.equal(dexLabel(false, 59), '8주 뒤');
-  assert.equal(dexLabel(false, 60), '2달 뒤');
-  assert.equal(dexLabel(false, 105), '4달 뒤');
-  assert.equal(dexLabel(true, 105), '✓ 있어요');
+  assert.equal(dexLabel(0, true), '오늘 특가');
+  assert.equal(dexLabel(0, false), '오늘');
+  assert.equal(dexLabel(1, true), '내일');
+  assert.equal(dexLabel(4), '4일 뒤');
+  assert.equal(dexLabel(13), '13일 뒤');
+  assert.equal(dexLabel(14), '2주 뒤');
+  assert.equal(dexLabel(59), '8주 뒤');
+  assert.equal(dexLabel(60), '2달 뒤');
+  assert.equal(dexLabel(105), '4달 뒤');
 });
 
 test('테마별 모은 수·전체 수·완성', () => {

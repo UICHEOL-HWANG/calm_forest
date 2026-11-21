@@ -2165,24 +2165,28 @@ function dailyPickView() {
   const half = dp?.half === true && dp.d === day && dp.id === pick.id;
   const state = cardState({ owned, half, adOpen: !owned && !half && !!rewarded?.offer('daily_pick') });
   noteDailyView(day, pick.id, state);
-  return { d: day, id: pick.id, kind: pick.kind, ico: item.ico, name: item.name, state, price: dailyPriceOf(pick, dp, day), full: pick.price,
+  const deal = state === 'half' || state === 'ad' || (owned && !!rewarded?.open('daily_pick'));
+  return { d: day, id: pick.id, kind: pick.kind, ico: item.ico, name: item.name, state, deal, price: dailyPriceOf(pick, dp, day), full: pick.price,
     left: leftLabel(msLeft(Date.now())), index: pickIndex(day), tomorrow: dailyPickItem(tomorrowPick(day))?.ico || '🎀',
-    dex: DAILY_PICK_POOL.map(p => ({ id: p.id, ico: dailyPickItem(p)?.ico || '🎀', owned: dailyPickOwned(p) })) };
+    dex: DAILY_PICK_POOL.map(p => {
+      const it = dailyPickItem(p);
+      return { id: p.id, kind: p.kind, ico: it?.ico || '🎀', name: it?.name || '', price: p.price, owned: dailyPickOwned(p) };
+    }) };
 }
 
 function buyDailyPick(shown) {
-  const info = dailyPickInfo();
-  if (!info) return { ok: false, msg: '지금은 살 수 없어요' };
-  const plan = planBuy({ day: info.day, shown, dp: gameState.dailyPick, coins: gameState.inventory.coins, owned: info.owned });
+  const target = DAILY_PICK_POOL.find(p => p.id === shown?.id);
+  if (!target || !dailyPickItem(target)) return { ok: false, msg: '지금은 살 수 없어요' };
+  const plan = planBuy({ day: todayStr(), shown, dp: gameState.dailyPick, coins: gameState.inventory.coins, owned: dailyPickOwned(target) });
   if (!plan.ok) return plan;
-  const { pick, price, half } = plan;
+  const { pick, price, half, today } = plan;
   if (pick.kind === 'cos') {
     if (!grantCosmetic(pick.id)) return { ok: false, msg: '지금은 살 수 없어요' };
     gameState.cosmetics = equipCos(gameState.cosmetics, pick.id);
   } else if (!grantDecor(pick.id)) return { ok: false, msg: '지금은 살 수 없어요' };
   gameState.inventory.coins -= price;
   logEcon('daily_pick', 'coins', -price, gameState.inventory.coins);
-  trackEvent('daily_pick_buy', { item_id: pick.id, half: half ? 1 : 0, price_coins: price, coins_after: gameState.inventory.coins });
+  trackEvent('daily_pick_buy', { item_id: pick.id, half: half ? 1 : 0, price_coins: price, coins_after: gameState.inventory.coins, is_today: today ? 1 : 0 });
   if (pick.kind === 'decor') ui.toast?.('보관함에 넣었어요 — 작업대 장식 탭에서 꺼내 놓아요 🧺', 2600);
   refreshInventoryUI();
   requestSave();

@@ -36,20 +36,31 @@ const CSS = `
 .dp-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;padding:8px;border-radius:12px;background:rgba(255,255,255,.6)}
 .dp-grid-h{grid-column:1 / -1;display:flex;justify-content:space-between;gap:6px;font-size:11px;font-weight:800;color:#8a6a2a;padding:0 2px 2px;white-space:nowrap}
 .dp-grid-h small{font-weight:700;opacity:.65;font-size:10.5px}
-.dp-g{display:flex;flex-direction:column;align-items:center;gap:1px;padding:4px 0 3px;border-radius:9px;background:#fff;min-width:0}
+.dp-g{position:relative;display:flex;flex-direction:column;align-items:center;gap:1px;min-height:52px;padding:4px 0 3px;border:none;border-radius:9px;background:#fff;min-width:0;font:inherit;color:inherit;cursor:pointer;overflow:hidden}
 .dp-g i{font-style:normal;font-size:18px;line-height:1.15}
-.dp-g>span{font-size:9px;font-weight:800;color:#8a7a5a;white-space:nowrap}
-.dp-g.own>span{color:#3d8a57}
+.dp-g>b{font-size:9px;font-weight:800;color:#6b5a3a;white-space:nowrap;line-height:1.2;letter-spacing:-.02em}
+.dp-g>span{font-size:9px;font-weight:800;color:#8a7a5a;white-space:nowrap;line-height:1.2}
 .dp-g.today{box-shadow:inset 0 0 0 2px #d6a23a}
 .dp-g.today>span{color:#a8641a}
-.dp-g.soon i{filter:grayscale(1);opacity:.38}
+.dp-g.own::after{content:'';position:absolute;inset:0;background:rgba(236,232,222,.62);pointer-events:none}
+.dp-g.own i{filter:grayscale(.6);opacity:.55}
+.dp-g.own>span{position:relative;z-index:1;color:#3d8a57}
+.dp-g.sel{box-shadow:inset 0 0 0 2.5px #c48a1e;background:#fffaf0}
+.dp-row{grid-column:1 / -1;display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 10px;align-items:center;padding:8px;border-radius:12px;background:#fff;box-shadow:inset 0 0 0 1.5px #f0dfb2;min-width:0}
+.dp-row>i{font-style:normal;width:40px;height:40px;border-radius:11px;background:#fff8e4;display:flex;align-items:center;justify-content:center;font-size:24px}
+.dp-row-t{display:flex;flex-direction:column;gap:1px;min-width:0}
+.dp-row-t b{font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dp-row-t small{font-size:10.5px;font-weight:700;color:#a8641a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dp-row .dp-buys{grid-column:1 / -1}
+.dp-row .dp-buys>*{flex:1 1 auto;min-height:40px}
 @media (max-width:760px),(max-height:500px){.dp-ico{width:44px;height:44px;font-size:26px}.dp-name{font-size:13px}.dp-buys .dp-buy{padding:6px 9px;font-size:11.5px}}
-@media (max-height:500px){.dp-hero{grid-template-columns:auto minmax(0,1fr) auto}.dp-ico{grid-row:span 2}.dp-hero .dp-buys{grid-column:3;grid-row:1 / span 2;flex-wrap:nowrap}.dp-sil{width:28px;height:28px;border-radius:8px}.dp-sil i{font-size:17px}.dp-tz{flex-direction:row;align-items:baseline;gap:6px}.dp-grid{grid-template-columns:repeat(8,minmax(0,1fr));padding:6px}.dp-g i{font-size:16px}}
+@media (max-height:500px){.dp-hero{grid-template-columns:auto minmax(0,1fr) auto}.dp-ico{grid-row:span 2}.dp-hero .dp-buys{grid-column:3;grid-row:1 / span 2;flex-wrap:nowrap}.dp-sil{width:28px;height:28px;border-radius:8px}.dp-sil i{font-size:17px}.dp-tz{flex-direction:row;align-items:baseline;gap:6px}.dp-grid{grid-template-columns:repeat(8,minmax(0,1fr));padding:6px}.dp-g i{font-size:16px}.dp-row{grid-template-columns:auto minmax(0,1fr) auto}.dp-row .dp-buys{grid-column:3;flex-wrap:nowrap}}
 `;
 
 const CHIP_W = 46;
 const CHIP_GAP = 5;
-const ui = { open: null, all: false };
+const ui = { open: null, all: false, sel: null };
+const HEADER = '다음 특가 일정';
 
 function ensureStyle() {
   if (document.getElementById('dp-card-style')) return;
@@ -152,23 +163,57 @@ function fillChips(row, book, redraw) {
   row.append(...book.slice(0, slots - 1).map(t => chip(t, redraw)), moreChip(`+${book.length - slots + 1}`, redraw));
 }
 
-function grid(t) {
+const coins = (n) => `🪙 ${n.toLocaleString()}`;
+
+function itemNote(it, view) {
+  if (it.owned) return '보유 중';
+  if (it.days === 0) return '오늘의 꾸미기예요';
+  return view.deal ? `${dexLabel(it.days, true)} 광고 보면 반값` : '언제든 살 수 있어요';
+}
+
+function buyRow(it, view, { onBuy, onBuyItem, adButton }) {
+  const row = el('div', 'dp-row');
+  const t = el('div', 'dp-row-t');
+  t.append(el('b', null, it.name), el('small', null, itemNote(it, view)));
+  const buys = el('div', 'dp-buys');
+  if (it.days === 0) {
+    buys.append(buyButton(view, onBuy));
+    const ad = view.state === 'ad' ? adButton() : null;
+    if (ad) buys.append(ad);
+  } else {
+    const b = el('button', 'dp-buy', it.owned ? '이미 있어요' : `${coins(it.price)}에 사기`);
+    b.type = 'button';
+    b.disabled = it.owned;
+    b.addEventListener('click', (e) => { e.stopPropagation(); onBuyItem(it.id); });
+    buys.append(b);
+  }
+  row.append(el('i', null, it.ico), t, buys);
+  return row;
+}
+
+function grid(t, view, handlers, redraw) {
   const g = el('div', 'dp-grid');
   const head = el('div', 'dp-grid-h');
   const title = el('span');
   title.append(el('span', null, t.emoji), ' ', el('span', null, t.name), ' ', el('span', null, `${t.got}/${t.total}`));
-  head.append(title, el('small', null, '다시 오는 날'));
+  head.append(title, el('small', null, view.deal ? HEADER : '오늘의 꾸미기 차례'));
   g.append(head);
+  const sel = t.items.find(it => it.id === ui.sel) || null;
   for (const it of t.items) {
-    const cls = it.owned ? 'own' : it.days === 0 ? 'today' : 'soon';
-    const cell = el('div', `dp-g ${cls}${it.owned && it.days === 0 ? ' today' : ''}`);
-    cell.append(el('i', null, it.ico), el('span', null, dexLabel(it.owned, it.days)));
+    const cell = button(`dp-g${it.owned ? ' own' : ''}${it.days === 0 ? ' today' : ''}${it === sel ? ' sel' : ''}`, () => {
+      ui.sel = ui.sel === it.id ? null : it.id;
+      redraw();
+    });
+    cell.setAttribute('aria-label', it.name);
+    const price = it.days === 0 ? view.price : it.price;
+    cell.append(el('i', null, it.ico), el('b', null, coins(price)), el('span', null, it.owned ? '보유 중' : dexLabel(it.days, view.deal)));
     g.append(cell);
   }
+  if (sel) g.append(buyRow(sel, view, handlers));
   return g;
 }
 
-function dexSection(view) {
+function dexSection(view, handlers) {
   const wrap = el('div', 'dp-dex');
   const draw = (focus = false) => {
     const book = themeBook(view.dex, view.index);
@@ -178,14 +223,15 @@ function dexSection(view) {
       ui.open = open ? null : themeOf(view.id).key;
       draw(!open);
     });
-    head.append(el('b', null, `📖 테마 도감 ${got}/${view.dex.length}`), el('small', null, open ? '접기' : '눌러서 보기'));
+    head.append(el('b', null, `📖 테마 도감 ${got}/${view.dex.length}`), el('small', null, open ? '접기' : '눌러서 고르기'));
     const row = el('div', 'dp-chips');
     wrap.replaceChildren(head, row);
     fillChips(row, book, draw);
     if (!open) return;
-    const g = grid(open);
+    const g = grid(open, view, handlers, () => draw());
     wrap.append(g);
     if (focus) g.scrollIntoView({ block: 'nearest' });
+    else g.querySelector('.dp-row')?.scrollIntoView({ block: 'nearest' });
   };
   return { wrap, draw };
 }
@@ -193,7 +239,7 @@ function dexSection(view) {
 export function drawDailyPickCard(box, view, handlers) {
   ensureStyle();
   const card = el('div', 'dp-card');
-  const dex = dexSection(view);
+  const dex = dexSection(view, handlers);
   card.append(hero(view, handlers), tomorrowLine(view), dex.wrap);
   box.append(card);
   dex.draw();
