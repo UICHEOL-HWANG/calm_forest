@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { HALL, SERVICE_SEC } from '../js/restaurant/data.js';
-import { createSession, tickSession, contextAt, actAt, finishSession, stationView } from '../js/restaurant/session.js';
+import { createSession, tickSession, contextAt, actAt, finishSession, stationView, guestAt } from '../js/restaurant/session.js';
 
 const at = id => {
   const s = HALL.stations.find(s => s.id === id);
@@ -204,4 +204,132 @@ test('손님은 식탁·다른 의자를 뚫지 않고 통로로 걸어 자리�
     assert.deepEqual(xz(pointAlong(path, 0)), HALL.door);
     assert.deepEqual(xz(pointAlong(path, pathLen(path))), { x: tx, z: tz - 1.0 });
   });
+});
+
+test('재료가 바닥나고 손님이 모두 나가면 영업이 일찍 끝난다', () => {
+  let fish = 1;
+  const S = createSession({ star: 1, dda: one, rng: seq(0), stock: k => (k === 'fish' ? fish : 0) });
+  const ev = [];
+  let served = false;
+  for (let i = 0; i < 4000 && !S.ended; i++) {
+    ev.push(...tickSession(S, 0.05));
+    if (!served && S.tickets.length) {
+      fish = 0;
+      const tk = S.tickets[0];
+      S.held = { kind: tk.menu, q: 1, plated: true };
+      const tb = HALL.tables[tk.table];
+      actAt(S, { x: tb[0], z: tb[1] + 1.0 }, { take: yes });
+      served = true;
+    }
+  }
+  const end = ev.find(e => e.type === 'end');
+  assert.ok(end);
+  assert.equal(end.soldOut, true);
+  assert.ok(S.time < SERVICE_SEC - 30);
+  assert.equal(finishSession(S).soldOut, true);
+});
+
+test('재료가 남아 있으면 일찍 끝나지 않는다', () => {
+  const S = createSession({ star: 1, dda: one, rng: seq(0), stock: () => 5 });
+  for (let i = 0; i < 600; i++) tickSession(S, 0.05);
+  assert.equal(S.ended, false);
+});
+
+test('재고 함수가 없는 첫 영업 연습판은 품절로 끝나지 않는다', () => {
+  const S = createSession({ star: 1, dda: one, rng: seq(0), first: true });
+  const ev = [];
+  for (let i = 0; i < 100; i++) ev.push(...tickSession(S, 0.05));
+  assert.ok(!ev.some(e => e.type === 'end'));
+});
+
+const BODY = 0.9;
+const lcg = s => () => (s = (s * 16807) % 2147483647) / 2147483647;
+function serveAfter(S, sec) {
+  for (const tk of [...S.tickets]) {
+    const g = S.guests.find(x => x.id === tk.id);
+    if (g && g.t > sec) { S.tickets.splice(S.tickets.indexOf(tk), 1); g.state = 'eat'; g.t = 0; }
+  }
+}
+
+test('들어오는 손님과 나가는 손님은 같은 때에 걷지 않는다', () => {
+  for (let run = 1; run <= 20; run++) {
+    const S = createSession({ star: 4, dda: one, rng: lcg(run) });
+    for (let i = 0; i < 2400 && !S.ended; i++) {
+      tickSession(S, 0.05);
+      serveAfter(S, 3);
+      const st = new Set(S.guests.map(g => g.state));
+      assert.ok(!(st.has('walk') && st.has('leave')), `run ${run} t=${S.time.toFixed(1)}`);
+    }
+  }
+});
+
+test('걷는 손님끼리 몸이 겹치지 않는다', () => {
+  for (const star of [1, 2, 3, 4]) for (let run = 1; run <= 20; run++) {
+    const S = createSession({ star, dda: one, rng: lcg(run * 31 + star) });
+    for (let i = 0; i < 2400 && !S.ended; i++) {
+      tickSession(S, 0.05);
+      serveAfter(S, 3);
+      const mv = S.guests.filter(g => g.state === 'walk' || g.state === 'leave').map(guestAt);
+      for (let a = 0; a < mv.length; a++) for (let b = a + 1; b < mv.length; b++) {
+        assert.ok(Math.hypot(mv[a].x - mv[b].x, mv[a].z - mv[b].z) >= BODY, `star ${star} run ${run}`);
+      }
+    }
+  }
+});
+
+test('손님은 앞을 막은 플레이어 앞에서 멈췄다가 비키면 다시 걷는다', () => {
+  const S = createSession({ star: 1, dda: one, rng: seq(0) });
+  let g = null;
+  for (let i = 0; i < 200 && !g; i++) { tickSession(S, 0.05); g = S.guests[0]; }
+  for (let i = 0; i < 6; i++) tickSession(S, 0.05);
+  const p = guestAt(g);
+  const block = { x: p.x + Math.sin(p.dir) * 0.6, z: p.z + Math.cos(p.dir) * 0.6 };
+  const t0 = g.t;
+  for (let i = 0; i < 20; i++) tickSession(S, 0.05, { pos: block });
+  assert.equal(g.t, t0);
+  const behind = { x: p.x - Math.sin(p.dir) * 0.6, z: p.z - Math.cos(p.dir) * 0.6 };
+  for (let i = 0; i < 4; i++) tickSession(S, 0.05, { pos: behind });
+  assert.ok(g.t > t0);
+});
+
+test('플레이어가 계속 길을 막으면 손님은 잠시 뒤 지나간다', () => {
+  const S = createSession({ star: 1, dda: one, rng: seq(0), first: true });
+  let g = null;
+  for (let i = 0; i < 200 && !g; i++) { tickSession(S, 0.05); g = S.guests[0]; }
+  for (let i = 0; i < 6; i++) tickSession(S, 0.05);
+  const p = guestAt(g);
+  const block = { x: p.x + Math.sin(p.dir) * 0.6, z: p.z + Math.cos(p.dir) * 0.6 };
+  const t0 = g.t;
+  for (let i = 0; i < 60; i++) tickSession(S, 0.05, { pos: block });
+  assert.ok(g.t > t0);
+});
+
+test('손님은 돌아온 이웃 중에서 오고, 같은 이웃은 동시에 두 번 앉지 않으며, 남는 자리는 나그네', () => {
+  const S = createSession({ star: 4, dda: one, rng: seq(0), neighbors: () => ['angler', 'farmer'] });
+  const seen = [];
+  for (let i = 0; i < 2000 && S.gid < 4; i++) {
+    for (const e of tickSession(S, 0.05)) if (e.type === 'spawn') seen.push(e.npc);
+  }
+  const live = S.guests.filter(g => g.npc).map(g => g.npc);
+  assert.equal(new Set(live).size, live.length);
+  assert.ok(seen.includes('angler'));
+  assert.ok(seen.includes('farmer'));
+  assert.ok(seen.includes(null));
+});
+
+test('이웃 목록이 없으면 모두 나그네', () => {
+  const S = createSession({ star: 1, dda: one, rng: seq(0) });
+  for (let i = 0; i < 200 && !S.guests.length; i++) tickSession(S, 0.05);
+  assert.equal(S.guests[0].npc, null);
+});
+
+test('서빙 이벤트에 손님 이웃이 실리고 결과에 이웃 손님 수가 남는다', () => {
+  const S = createSession({ star: 1, dda: one, rng: seq(0), neighbors: () => ['angler'] });
+  for (let i = 0; i < 400 && !S.tickets.length; i++) tickSession(S, 0.05);
+  const tk = S.tickets[0];
+  S.held = { kind: tk.menu, q: 1, plated: true };
+  const tb = HALL.tables[tk.table];
+  const ev = actAt(S, { x: tb[0], z: tb[1] + 1.0 }, { take: yes }).find(e => e.type === 'served');
+  assert.equal(ev.npc, 'angler');
+  assert.equal(finishSession(S).regularN, 1);
 });

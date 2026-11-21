@@ -1,4 +1,6 @@
 import { AFFINITY_NPCS } from './stages.js';
+import { pantryClaimToast } from './copy.js';
+import { getLang as lang } from '../i18n.js';
 
 const GIFT_ICO = Object.freeze({ seed: '🌰', crop: '🥕', wood: '🪵', coins: '🪙', bait: '🪱', fish: '🐟', flour: '🌾', honey: '🍯', forage: '🍄', bug: '🌟', egg: '🥚', stone: '🪨', coal: '⚫', gem: '💎' });
 const GIFT_LABEL = Object.freeze({ seed: '씨앗', crop: '작물', wood: '목재', coins: '코인', bait: '미끼', fish: '물고기', flour: '밀가루', honey: '꿀', forage: '채집물', bug: '반딧불이', egg: '달걀', stone: '돌', coal: '석탄', gem: '보석' });
@@ -55,7 +57,7 @@ export function renderLetters({ box, wrap, det, countEl, Input, t, toast, focusK
       btn.addEventListener('click', () => {
         if (!Input.claimLetter(l.key)) return;
         btn.textContent = t('받았어요'); btn.disabled = true;
-        toast(l.gift.decor ? '🧺 보관함에 넣었어요' : '🎒 가방에 넣었어요');
+        toast(l.gift.pantry ? pantryClaimToast(lang()) : l.gift.decor ? '🧺 보관함에 넣었어요' : '🎒 가방에 넣었어요');
       });
       det.appendChild(btn);
     }

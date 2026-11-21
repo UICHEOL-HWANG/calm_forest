@@ -294,5 +294,9 @@ export const ICON_ALL = {
  "📒": "<img class=\"ti\" src=\"js/icons/tossface/u1F4D2.svg\" alt=\"\" draggable=\"false\">",
  "↩": "<img class=\"ti\" src=\"js/icons/tossface/u21A9.svg\" alt=\"\" draggable=\"false\">",
  "🔕": "<img class=\"ti\" src=\"js/icons/tossface/u1F515.svg\" alt=\"\" draggable=\"false\">",
- "📱": "<img class=\"ti\" src=\"js/icons/tossface/u1F4F1.svg\" alt=\"\" draggable=\"false\">"
+ "📱": "<img class=\"ti\" src=\"js/icons/tossface/u1F4F1.svg\" alt=\"\" draggable=\"false\">",
+ "🫧": "<img class=\"ti\" src=\"js/icons/tossface/u1FAE7.svg\" alt=\"\" draggable=\"false\">",
+ "🦐": "<img class=\"ti\" src=\"js/icons/tossface/u1F990.svg\" alt=\"\" draggable=\"false\">",
+ "🦑": "<img class=\"ti\" src=\"js/icons/tossface/u1F991.svg\" alt=\"\" draggable=\"false\">",
+ "🥬": "<img class=\"ti\" src=\"js/icons/tossface/u1F96C.svg\" alt=\"\" draggable=\"false\">"
 };

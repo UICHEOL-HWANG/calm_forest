@@ -24,6 +24,7 @@ export const GAME_IDS = ['sickle', 'net', 'homi', 'homi_long', 'homi_eye', 'homi
 export const TOSSFACE_FILES = {
   '🪓': 'u1FA93', '⛏': 'u26CF', '🌰': 'u1F330', '💧': 'u1F4A7', '🔨': 'u1F528', '🎣': 'u1F3A3', '🌾': 'u1F33E', '🏕': 'u1F3D5',
   '🍄': 'u1F344', '📒': 'u1F4D2', '↩': 'u21A9', '🔇': 'u1F507', '🔕': 'u1F515', '📱': 'u1F4F1',
+  '🫧': 'u1FAE7', '🦐': 'u1F990', '🦑': 'u1F991', '🥬': 'u1F96C',
 };
 
 const norm = (e) => e.replace(/\uFE0F/g, '');

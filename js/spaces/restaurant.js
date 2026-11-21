@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import {
   $w, adPill, camera, cameraFree, colliders, gameState, giveReward, makeSignpost, obstacles, player, projectToScreen, refreshInventoryUI, requestSave, scene,
-  setFogExempt, setSpaceVisible, snapCamera, solidBox, solidCircle, spawnFloatText, ui,
+  setFogExempt, setSpaceVisible, snapCamera, solidBox, solidCircle, spawnFloatText, ui, npcObjs, todayStr,
 } from '../game.js';
+import { buildRegularBoard } from '../restaurant/regular-board.js';
 import { createAuctionGuide } from '../auction/guide.js';
-import { PORT_PIER } from '../data/places.js';
+import { PORT_PIER, CAFE_GUESTS } from '../data/places.js';
 import { walkLimit } from '../world/walk-bounds.js';
 import { inVillage2 } from './doors.js';
 import { t } from '../i18n.js';
@@ -12,11 +13,18 @@ import { STOCK_COPY } from '../restaurant/hud.js';
 import { trackEvent } from '../analytics.js';
 import { logEcon } from '../metrics.js';
 import { NPCS } from '../data/npcs.js';
-import { buildNPCFigure } from './npc.js';
-import { RESTAURANT, RESTAURANT_GATE, RESTAURANT_FACE, RESTAURANT_SIGN, HALL, STAR, restaurantLocal, restaurantBox } from '../restaurant/data.js';
+import { buildNPCFigure, setNpcHidden } from './npc.js';
+import { gainAffinity, issueRegularLetter } from '../affinity/index.js';
+import { giftGain } from '../affinity/stages.js';
+import { isUnlocked } from '../world/unlocks.js';
+import { buildCafeGuestCast } from './cafe.js';
+import { GUEST_NPCS, FAV, serveLove, recordRegular, SET_LOVE } from '../restaurant/regulars.js';
+import { MENU, RESTAURANT, RESTAURANT_GATE, RESTAURANT_FACE, RESTAURANT_SIGN, HALL, STAR, restaurantLocal, restaurantBox } from '../restaurant/data.js';
 import { buildBistro, setBistroEvening } from '../restaurant/exterior.js';
 import { buildHall } from '../restaurant/hall.js';
 import { grantStarter, panState } from '../restaurant/rules.js';
+import { todaySpecial } from '../restaurant/special.js';
+import { buildSpecialMark } from '../restaurant/special-board.js';
 import { createRestaurantRuntime } from '../restaurant/runtime.js';
 import { restaurantGuideSteps, guideStage, shownStep, villageVia, hallVia } from '../restaurant/guide-steps.js';
 import { createGuide } from '../guide/runner.js';
@@ -36,15 +44,18 @@ export const RESTAURANT_COPY = {
   empty: '창고에 재료가 없어요. 포구 섬에서 구해 와요',
   starter: '첫 영업 재료를 받았어요 🐟4 🍚4',
   done: '영업 끝!',
+  soldOut: '재료가 다 떨어졌어요',
   starUp: n => `⭐${n} 식당이 됐어요`,
   chop: '박자에 맞춰 네 번 눌러요',
 };
 
 const DBG = typeof location !== 'undefined' && new URLSearchParams(location.search).has('dbg');
-const GUEST_POOL = NPCS.filter(d => d.id !== 'courier' && d.id !== 'merchant');
 const EXIT_R = 1.2;
+const PLANT_R = 0.3;
 const free = new Map();
 let exterior = null, hall = null, runtime = null, chopHinted = false;
+let special = null, specialMark = null, specialSeq = 0;
+let regularBoard = null, regularBoardSolid = null, boardSeq = 0;
 const stationSolids = [], tableSolids = [];
 const projV = new THREE.Vector3();
 
@@ -83,6 +94,7 @@ function hallSolids() {
   solidBox(wx(0.55), wz(-1.7), wx(1.05), wz(-0.1));
   solidBox(wx(0.65), wz(-4.2), wx(0.95), wz(-1.7));
   solidBox(wx(0.65), wz(0.3), wx(0.95), wz(1.7));
+  HALL.plants.forEach(([px, pz]) => solidCircle(wx(px), wz(pz), PLANT_R));
   HALL.tables.forEach(([tx, tz]) => {
     tableSolids.push([solidCircle(wx(tx), wz(tz), 0.78), solidCircle(wx(tx), wz(tz - 1.0), 0.32)]);
   });
@@ -94,12 +106,26 @@ function syncSolids() {
   tableSolids.forEach((pair, i) => { for (const c of pair) c.off = i >= STAR[star].tables; });
 }
 
-const guestDef = id => GUEST_POOL[(id - 1) % GUEST_POOL.length];
+const npcObj = id => npcObjs.find(o => o.def.id === id);
+const hiddenByRest = new Set();
+export const restaurantHidesNpc = id => hiddenByRest.has(id);
+function hideNeighbor(id) {
+  const o = npcObj(id);
+  if (!o) return;
+  hiddenByRest.add(id);
+  if (!o.hidden) setNpcHidden(o, true);
+}
+function showNeighbor(id) {
+  hiddenByRest.delete(id);
+}
 
-function takeGuest(id) {
-  const def = guestDef(id);
-  const m = free.get(def.id)?.pop() || buildNPCFigure(def).group;
-  m.userData.restGuest = def.id;
+function takeGuest(g) {
+  const key = g.npc || CAFE_GUESTS[(g.id - 1) % CAFE_GUESTS.length].id;
+  const fresh = () => (g.npc ? buildNPCFigure(NPCS.find(d => d.id === g.npc)).group : buildCafeGuestCast(CAFE_GUESTS.find(c => c.id === key)).group);
+  const m = free.get(key)?.pop() || fresh();
+  m.userData.restGuest = key;
+  m.userData.restNpc = g.npc;
+  if (g.npc) hideNeighbor(g.npc);
   setFogExempt(m, true);
   return m;
 }
@@ -107,8 +133,75 @@ function takeGuest(id) {
 function releaseGuest(m) {
   const id = m.userData.restGuest;
   if (!id) return;
+  if (m.userData.restNpc) showNeighbor(m.userData.restNpc);
   if (!free.has(id)) free.set(id, []);
   free.get(id).push(m);
+}
+
+function disposeBoard(g) {
+  g.traverse(o => {
+    o.geometry?.dispose();
+    for (const m of [].concat(o.material || [])) { m.map?.dispose(); m.dispose(); }
+  });
+}
+
+async function rebuildRegularBoard() {
+  if (!hall) return;
+  const seq = ++boardSeq;
+  const regs = GUEST_NPCS
+    .filter(id => gameState.restaurant?.regulars?.[id]?.done)
+    .map(id => {
+      const def = NPCS.find(n => n.id === id);
+      return { face: def?.emoji ?? '', name: def ? t(def.name) : id, menu: MENU[FAV[id]]?.ico ?? '' };
+    });
+  const next = regs.length ? await buildRegularBoard(THREE, regs, t('단골')).catch(() => null) : null;
+  if (seq !== boardSeq) { if (next) disposeBoard(next); return; }
+  if (regularBoard) { hall.group.remove(regularBoard); disposeBoard(regularBoard); regularBoard = null; }
+  if (regularBoardSolid) regularBoardSolid.off = !next;
+  if (!next) return;
+  next.position.set(-6.85, 0, 1.9);
+  next.scale.setScalar(1.35);
+  hall.group.add(next);
+  setFogExempt(next, true);
+  regularBoard = next;
+  if (!regularBoardSolid) regularBoardSolid = solidCircle(RESTAURANT.x - 6.85, RESTAURANT.z + 1.9, 0.15);
+}
+
+async function rebuildSpecialMark() {
+  if (!hall) return;
+  const seq = ++specialSeq;
+  const shown = restaurantGuideActive() ? null : special;
+  const next = shown ? await buildSpecialMark(THREE, shown).catch(() => null) : null;
+  if (seq !== specialSeq) { if (next) disposeBoard(next); return; }
+  if (specialMark) { hall.group.remove(specialMark); disposeBoard(specialMark); specialMark = null; }
+  if (!next) return;
+  next.position.set(HALL.board.x, 0, HALL.board.z);
+  hall.group.add(next);
+  setFogExempt(next, true);
+  specialMark = next;
+}
+
+function onGuestServed({ npc, menu, stars, table, set }) {
+  if (!npc || runtime.session()?.first) return;
+  if (set) trackEvent('restaurant_set', { npc, stars: set.stars, coins: set.coins });
+  const love = serveLove(npc, menu, stars) + (set && set.stars >= 4 ? SET_LOVE : 0);
+  if (love > 0) {
+    const { gain, state } = giftGain(gameState.hintsSeen?.affGift, todayStr(), npc, love);
+    gameState.hintsSeen = { ...gameState.hintsSeen, affGift: state };
+    if (gain > 0) {
+      gainAffinity(npc, gain, 'restaurant');
+      const [tx, tz] = HALL.tables[table];
+      spawnFloatText(RESTAURANT.x + tx + 0.5, 2.0, RESTAURANT.z + tz, '❤️', '#ffffff', 1.1);
+    }
+  }
+  const r = gameState.restaurant;
+  const { regulars, became } = recordRegular(r.regulars || {}, npc, menu, stars);
+  if (regulars !== r.regulars) gameState.restaurant = { ...gameState.restaurant, regulars };
+  if (became) {
+    trackEvent('restaurant_regular', { npc });
+    issueRegularLetter(npc);
+    rebuildRegularBoard();
+  }
 }
 
 function project(p) {
@@ -132,6 +225,9 @@ export function buildRestaurantHall() {
     port: () => gameState.port,
     setPort: p => { gameState.port = p; },
     takeGuest, releaseGuest, project,
+    faceOf: g => (g ? (g.npc ? NPCS.find(d => d.id === g.npc)?.emoji : CAFE_GUESTS[(g.id - 1) % CAFE_GUESTS.length].emoji) : '') ?? '',
+    neighbors: () => GUEST_NPCS.filter(id => isUnlocked(gameState, id)),
+    onGuestServed,
     popAt: (p, ico) => spawnFloatText(p.x, p.y, p.z, ico, '#ffffff', 1.1),
     toast: t => ui.toast?.(t),
     earnCoins: n => {
@@ -141,7 +237,7 @@ export function buildRestaurantHall() {
       refreshInventoryUI();
     },
     trackEvent, requestSave,
-    sessionOpts: () => (restaurantGuideActive() ? { first: true } : {}),
+    sessionOpts: () => (restaurantGuideActive() ? { first: true } : { special }),
     onChopStart: () => { if (chopHinted) return; chopHinted = true; ui.toast?.(RESTAURANT_COPY.chop); },
     onFinish: () => syncSolids(),
     adButton: (coins) => (coins > 0 ? adPill('restaurant_double', () => { giveReward({ coins }, 'restaurant_double', 'restaurant'); requestSave(); }) : null),
@@ -163,7 +259,12 @@ export function enterRestaurant() {
     ui.toast?.(RESTAURANT_COPY.starter);
     requestSave();
   }
+  const sp = todaySpecial(gameState.restaurant, STAR[gameState.restaurant.star].menus, gameState.port?.pantry, todayStr());
+  special = sp.menu;
+  if (sp.rest !== gameState.restaurant) { gameState.restaurant = sp.rest; requestSave(); }
+  rebuildSpecialMark();
   runtime?.refresh();
+  rebuildRegularBoard();
   syncSolids();
   player.position.set(RESTAURANT.x + HALL.door.x + 1.2, 0, RESTAURANT.z + HALL.door.z - 0.9);
   player.rotation.y = Math.PI;
@@ -174,6 +275,7 @@ export function enterRestaurant() {
 
 export function exitRestaurant() {
   runtime?.abort();
+  for (const id of [...hiddenByRest]) showNeighbor(id);
   $w.atRestaurant = false;
   document.body.classList.remove('at-restaurant');
   setFogExempt(player, false);
@@ -231,6 +333,7 @@ function guideStall() {
   if (!guideStalled(stepAt, now)) return false;
   trackEvent('guide_step', { flow: 'restaurant', step: guide.index() + 1, act: 'stall' });
   guide = null; view?.hide(); setPoint(null);
+  rebuildSpecialMark();
   return true;
 }
 
@@ -245,9 +348,11 @@ export function maybeStartRestaurantGuide(ok) {
     onDone: () => {
       gameState.restaurant = { ...gameState.restaurant, guideDone: true };
       requestSave(); view.hide(); setPoint(null); guide = null;
+      rebuildSpecialMark();
       if (DBG) window.__restGuide = { step: null };
     },
   });
+  rebuildSpecialMark();
   return true;
 }
 
