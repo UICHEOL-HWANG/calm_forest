@@ -44,6 +44,8 @@ import { IDS as WINTER_PICK_IDS, build as buildWinterPick } from '../decor-drops
 import { IDS as FOREST_PICK_IDS, build as buildForestPick } from '../decor-drops/art-forest-pick.js';
 import { IDS as XMAS_PICK_IDS, build as buildXmasPick } from '../decor-drops/art-xmas-pick.js';
 import { IDS as SEA_PICK_IDS, build as buildSeaPick } from '../decor-drops/art-sea-pick.js';
+import { IDS as DESSERT_PICK_IDS, build as buildDessertPick } from '../decor-drops/art-dessert-pick.js';
+import { IDS as NIGHT_PICK_IDS, build as buildNightPick } from '../decor-drops/art-night-pick.js';
 import { SOUVENIR_INDOOR_IDS, buildSouvenir } from '../mountain/souvenir-art.js';
 import { hasItemArt, weeklyDecorMesh } from '../weekly/items.js';
 import { hasConcertArt, concertDecorMesh } from '../concert/items.js';
@@ -467,6 +469,10 @@ export function decorMesh(id) {
     g.add(buildXmasPick(id));
   } else if (SEA_PICK_IDS.includes(id)) {
     g.add(buildSeaPick(id));
+  } else if (DESSERT_PICK_IDS.includes(id)) {
+    g.add(buildDessertPick(id));
+  } else if (NIGHT_PICK_IDS.includes(id)) {
+    g.add(buildNightPick(id));
   } else if (CANDY_DECOR_IDS.includes(id)) {
     g.add(buildCandyDecor(id));
   } else if (MIRROR_DECOR_IDS.includes(id)) {   // 🪞 거울 장식 — 🪞 거울 조각으로 산다(js/mirror/decor-art.js)

@@ -6,10 +6,12 @@ import { SM } from '../js/cosmetics/tool-skins-snowman.js';
 import { SQ } from '../js/cosmetics/tool-skins-squirrel.js';
 import { CD } from '../js/cosmetics/tool-skins-candy.js';
 import { OC } from '../js/cosmetics/tool-skins-octopus.js';
+import { ST } from '../js/cosmetics/tool-skins-starry.js';
+import { SB } from '../js/cosmetics/tool-skins-strawberry.js';
 
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
 const luma = h => (0.2126 * ((h >> 16) & 255) + 0.7152 * ((h >> 8) & 255) + 0.0722 * (h & 255)) / 255;
-const FILES = { snowman: '../js/cosmetics/tool-skins-snowman.js', squirrel: '../js/cosmetics/tool-skins-squirrel.js', candy: '../js/cosmetics/tool-skins-candy.js', octopus: '../js/cosmetics/tool-skins-octopus.js' };
+const FILES = { snowman: '../js/cosmetics/tool-skins-snowman.js', squirrel: '../js/cosmetics/tool-skins-squirrel.js', candy: '../js/cosmetics/tool-skins-candy.js', octopus: '../js/cosmetics/tool-skins-octopus.js', starry: '../js/cosmetics/tool-skins-starry.js', strawberry: '../js/cosmetics/tool-skins-strawberry.js' };
 
 test('⛄🐿️ 오늘의 픽 도구 테마 — 규칙 표에 있고 카탈로그 id 로 찾힌다', () => {
   for (const t of Object.keys(FILES)) {
@@ -32,7 +34,7 @@ test('⛄🐿️ 9종 전부 + 우산 · tool-skins.js 에 frost 처럼 배선(�
 });
 
 test('⛄🐿️ 넓은 면 색은 블룸 임계 0.85 이하 · 발광 없음', () => {
-  for (const [k, c] of [...Object.entries(SM), ...Object.entries(SQ), ...Object.entries(CD), ...Object.entries(OC)]) assert.ok(luma(c) <= 0.85, `${k} ${luma(c).toFixed(3)}`);
+  for (const [k, c] of [...Object.entries(SM), ...Object.entries(SQ), ...Object.entries(CD), ...Object.entries(OC), ...Object.entries(ST), ...Object.entries(SB)]) assert.ok(luma(c) <= 0.85, `${k} ${luma(c).toFixed(3)}`);
   for (const f of Object.values(FILES)) assert.doesNotMatch(read(f), /glow:/);
 });
 
@@ -52,8 +54,8 @@ test('🐿️ 꼬리는 발바닥이 쥐는 자루 아래쪽(y < 0.18)을 피해
 });
 
 test('🍬🐙 umbrella look covers outer·inner·shaft·deco·finial and the theme order ends with candy·octopus', () => {
-  assert.deepEqual(TOOL_THEMES.slice(-4), ['snowman', 'squirrel', 'candy', 'octopus']);
-  for (const t of ['candy', 'octopus']) {
+  assert.deepEqual(TOOL_THEMES.slice(-6), ['snowman', 'squirrel', 'candy', 'octopus', 'starry', 'strawberry']);
+  for (const t of ['candy', 'octopus', 'starry', 'strawberry']) {
     const src = read(FILES[t]);
     const look = src.slice(src.indexOf(`export function ${t}UmbrellaLook`));
     for (const k of ['outer:', 'inner:', 'shaft()', 'deco(', 'finial(']) assert.ok(look.includes(k), `${t} ${k}`);
@@ -75,5 +77,24 @@ test('🐙 tentacles stay off the grip: every handle tool hangs its tentacles at
     const ys = [...fn.matchAll(/\b(top|cy|y)(?: ([-+]) ([\d.]+))?, /g)].map(m => (m[1] === 'top' ? top : top - 0.04) + (m[2] === '-' ? -1 : 1) * (+m[3] || 0));
     assert.ok(ys.length > 0, tool);
     for (const y of ys) assert.ok(y >= 0.18, `${tool} y ${y.toFixed(3)}`);
+  }
+});
+
+test('🌙 shooting-star tails on handle tools start at y ≥ 0.18 so they stay off the grip', () => {
+  const src = read(FILES.starry);
+  const body = src.slice(src.indexOf('starry: {'), src.indexOf('export const STARRY_UMBRELLA'));
+  for (const tool of ['axe', 'hoe', 'sickle', 'shovel', 'hammer']) {
+    const fn = body.slice(body.indexOf(`${tool}(g)`), body.indexOf('g.scale', body.indexOf(`${tool}(g)`)));
+    for (const m of fn.matchAll(/streak\(g, \[\[[-\d.]+, ([\d.]+), /g)) assert.ok(+m[1] >= 0.18, `${tool} y0 ${m[1]}`);
+  }
+  assert.match(src, /const tail = \(g, top, x1, y1\) => streak\(g, \[\[0\.02, 0\.2, /);
+});
+
+test('🌙🍓 every tool and umbrella builds through buildToolSkin and buildUmbrella', async () => {
+  const THREE = await import('../vendor/three/three.module.js');
+  const { buildToolSkin, buildUmbrella } = await import('../js/cosmetics/tool-skins.js');
+  for (const t of ['starry', 'strawberry']) {
+    for (const tool of SKIN_TOOLS) assert.ok(buildToolSkin(THREE, t, tool)?.children.length > 0, `${t}.${tool}`);
+    assert.ok(buildUmbrella(THREE, t)?.children.length > 0, `${t} umbrella`);
   }
 });

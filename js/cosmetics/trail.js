@@ -25,6 +25,8 @@ import { WP } from './art-winter-pick.js';
 import { buildAcornTrail } from './art-forest-pick.js';
 import { buildStardustTrail } from './art-xmas-pick.js';
 import { buildWaveTrail } from './art-sea-pick.js';
+import { buildCreamTrail } from './art-dessert-pick.js';
+import { buildMeteorTrail } from './art-night-pick.js';
 
 export const TRAIL_S = 0.10;      // 자국 하나의 기준 반지름(월드) — 1차엔 0.34 로 캐릭터 몸통만 했다
 export const TRAIL_CAP = 12;      // 동시 표시 상한
@@ -206,6 +208,8 @@ function makeMarks(THREE) {
     fp_acorn_trail: (g, s, o) => buildAcornTrail(THREE, g, s, o, { film, put }),
     xm_stardust_trail: (g, s, o) => buildStardustTrail(THREE, g, s, o, { film, put }),
     sp_wave_trail: (g, s, o) => buildWaveTrail(THREE, g, s, o, { film, put }),
+    ds_cream_trail: (g, s, o) => buildCreamTrail(THREE, g, s, o, { film, put }),
+    ns_meteor_trail: (g, s, o) => buildMeteorTrail(THREE, g, s, o, { film, put }),
     wp_boot_trail: (g, s, o) => {
       const sc = 1.15, sole = film(WP.berry, o), tread = film(WP.cream, o);
       put(g, new THREE.Mesh(new THREE.SphereGeometry(s * 0.50 * sc, 12, 7), sole), 0, 0.006, s * 0.42 * sc, false).scale.set(0.82, 0.08, 1.10);

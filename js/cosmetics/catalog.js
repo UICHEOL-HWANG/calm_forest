@@ -112,10 +112,20 @@ const RAW = [
   { id: 'sp_anchor_necklace', slot: 'neck',  ico: '⚓', name: '닻 목걸이',          coins: 1000, group: 'daily' },
   { id: 'sp_lighthouse_pack', slot: 'back',  ico: '🗼', name: '등대 배낭',          coins: 1500, anchor: 'back', group: 'daily' },
   { id: 'sp_wave_trail',      slot: 'trail', ico: '🌊', name: '파도 발자국',        coins: 1600, tier: '특별', group: 'daily' },
+  { id: 'ds_cake_hat',          slot: 'head',  ico: '🍰', name: '딸기 케이크 머리띠', coins: 1200, earSafe: 'low', group: 'daily' },
+  { id: 'ds_macaron_brooch',    slot: 'neck',  ico: '🎀', name: '마카롱 목걸이',      coins: 1000, group: 'daily' },
+  { id: 'ds_cupcake_pack',      slot: 'back',  ico: '🧁', name: '컵케이크 배낭',      coins: 1500, anchor: 'back', group: 'daily' },
+  { id: 'ds_cream_trail',       slot: 'trail', ico: '🍦', name: '크림 발자국',        coins: 1600, tier: '특별', group: 'daily' },
+  { id: 'ns_moon_pin',          slot: 'head',  ico: '🌜', name: '초승달 머리핀',      coins: 1200, earSafe: 'low', group: 'daily' },
+  { id: 'ns_galaxy_scarf',      slot: 'neck',  ico: '🌌', name: '은하수 목도리',      coins: 1000, group: 'daily' },
+  { id: 'ns_star_lantern_pack', slot: 'back',  ico: '🏮', name: '별 랜턴 배낭',       coins: 1500, anchor: 'back', group: 'daily' },
+  { id: 'ns_meteor_trail',      slot: 'trail', ico: '☄️', name: '유성 발자국',        coins: 1600, tier: '특별', group: 'daily' },
   { id: 'tools_snowman',  slot: 'tools', ico: '⛄', name: '눈사람 세트',       coins: 3600, tier: '특별', group: 'daily' },
   { id: 'tools_squirrel', slot: 'tools', ico: '🐿️', name: '다람쥐 도토리 세트', coins: 3600, tier: '특별', group: 'daily' },
   { id: 'tools_candy',    slot: 'tools', ico: '🍬', name: '사탕 지팡이 세트',   coins: 3600, tier: '특별', group: 'daily' },
   { id: 'tools_octopus',  slot: 'tools', ico: '🐙', name: '문어 세트',          coins: 3600, tier: '특별', group: 'daily' },
+  { id: 'tools_starry',     slot: 'tools', ico: '🌙', name: '별밤 세트',          coins: 3600, tier: '특별', group: 'daily' },
+  { id: 'tools_strawberry', slot: 'tools', ico: '🍓', name: '딸기 세트',          coins: 3600, tier: '특별', group: 'daily' },
 ];
 
 export const ITEMS = Object.freeze(RAW.map(({ coins = null, won = null, ...it }) => Object.freeze(it.reward || it.quest || it.set

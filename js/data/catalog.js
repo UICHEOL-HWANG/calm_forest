@@ -129,6 +129,11 @@ export const DECOR = [
   { id: 'sp_shell_lamp', name: '조개 램프', ico: '🦪', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.7, 0.6], desc: '벌어진 조개 속 진주가 은은하게 빛나요' },
   { id: 'sp_lighthouse_model', name: '등대 모형', ico: '🏝️', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.75, 0.75], desc: '바위섬 위에 줄무늬 등대를 세운 모형이에요' },
   { id: 'sp_boat_planter', name: '보트 화분', ico: '⛵', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [1.0, 0.55], desc: '노 두 자루를 얹은 쪽배에 들꽃을 심었어요' },
+  { id: 'ds_cake_case', name: '딸기 카운터 진열장', ico: '🍰', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [1.1, 0.6], desc: '민트 지붕 유리장에 웃는 컵케이크와 케이크를 진열했어요' },
+  { id: 'ds_pudding_chair', name: '웃는 푸딩 스툴', ico: '🍮', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.6, 0.6], desc: '캐러멜이 흘러내린 푸딩에 크림과 체리를 얹었어요' },
+  { id: 'ds_waffle_rug', name: '하트 꽃 와플 러그', ico: '🧇', cost: 0, pay: 'coins', hidden: true, keep: true, desc: '하트 다섯 장 와플 가운데 딸기잼을 올렸어요' },
+  { id: 'ns_constellation_lamp', name: '별 구멍 돔 등', ico: '🌌', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.6, 0.6], desc: '남색 갓에 뚫린 별자리 구멍으로 불빛이 새어 나와요' },
+  { id: 'ns_moon_sofa', name: '구름 위 달 소파', ico: '🌙', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [1.35, 0.75], desc: '연보라 구름 방석 뒤로 초승달 등받이를 세웠어요' },
   ...AFF_FRAMES,
 ];
 
@@ -290,6 +295,9 @@ export const OUTDOOR = [
   { id: 'fp_deer_mailbox', name: '사슴 우체통', ico: '🦌', cost: { coins: 9999 }, desc: '자작나무 기둥 위에 사슴 얼굴 편지함을 얹었어요', hidden: true, quest: true, box: [0.6, 0.6], posts: [[0, 0, 0.3]] },
   { id: 'xm_wreath_arch', name: '리스 아치', ico: '💝', cost: { coins: 9999 }, desc: '지팡이 사탕 둘이 하트로 맞닿은 리스 아치예요', hidden: true, quest: true, box: [2.0, 0.4], posts: [[-0.84, 0, 0.14], [0.84, 0, 0.14]] },
   { id: 'sp_net_hammock', name: '그물 해먹', ico: '🪢', cost: { coins: 9999 }, desc: '유목 받침대에 남색 그물 해먹을 걸었어요', hidden: true, quest: true, box: [2.5, 0.8] },
+  { id: 'ds_icecream_cart', name: '파라솔 수레', ico: '🍦', cost: { coins: 9999 }, desc: '분홍·노랑 파라솔 아래 아이스크림 세 통을 실었어요', hidden: true, quest: true, box: [1.6, 0.8] },
+  { id: 'ns_telescope', name: '삼각대 망원경', ico: '🔭', cost: { coins: 9999 }, desc: '나무 삼각대 위 남색 망원경이 밤하늘을 향해요', hidden: true, quest: true, box: [0.8, 0.8] },
+  { id: 'ns_starlight_arch', name: '별 전구 아치', ico: '🌠', cost: { coins: 9999 }, desc: '반원 철사에 별 전구를 달고 꼭대기에 큰 금별을 얹었어요', hidden: true, quest: true, box: [2.0, 0.4], posts: [[-0.9, 0, 0.15], [0.9, 0, 0.15]] },
   ...AFF_OUTDOOR,
   ...REWARD_DECOR,   // 🤝 친구 초대 보상 장식(js/data/reward-decor.js) — 원장이 보관함에 넣어 준다 · 서버 가드 대상
   { id: 'mine_cart', name: '광산 수레', ico: '🛒', cost: { coins: 9999 }, desc: '광부 아저씨가 준 수레 · 지하 20층 도달 보상', hidden: true, quest: 'delve' },
