@@ -13,6 +13,8 @@ test('id 접두사로 테마를 정하고 모르는 접두사는 기타로', () 
   assert.equal(themeOf('kn_knit_pot').emoji, '🧶');
   assert.equal(themeOf('tr_station_clock').name, '기차 여행');
   assert.equal(themeOf('tr_station_clock').emoji, '🚂');
+  assert.equal(themeOf('au_igloo_lamp').name, '오로라 마을');
+  assert.equal(themeOf('au_igloo_lamp').emoji, '🌌');
   assert.equal(themeOf('zz_new').name, '기타');
   assert.equal(themeOf('zz_new').emoji, '🎀');
 });

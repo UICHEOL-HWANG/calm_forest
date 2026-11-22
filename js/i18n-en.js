@@ -3044,7 +3044,7 @@ export const EN = {
   '오늘의 꾸미기예요': "It's today's pick", '{0} 광고 보고 반값에 할인받기': '{0}: watch an ad for half off', '언제든 살 수 있어요': 'Buy any time',
   '{0#}일 뒤': 'In {0} days', '{0#}주 뒤': 'In {0} weeks', '{0#}달 뒤': 'In {0} months', '다시 오는 날': 'Comes back', '완성': 'Complete',
   '겨울 준비': 'Winter prep', '숲속 친구': 'Forest friends', '크리스마스': 'Christmas', '바닷가': 'Seaside', '디저트 카페': 'Dessert café', '설날': 'Lunar New Year',
-  '캠핑': 'Camping', '찻집': 'Tea house', '아틀리에': 'Atelier', '음악회': 'Concert', '여름밤 축제': 'Summer night festival', '숲속 책방': 'Forest bookshop', '뜨개 공방': 'Knitting workshop', '기차 여행': 'Train trip', '도구 세트': 'Tool sets',
+  '캠핑': 'Camping', '찻집': 'Tea house', '아틀리에': 'Atelier', '음악회': 'Concert', '여름밤 축제': 'Summer night festival', '숲속 책방': 'Forest bookshop', '뜨개 공방': 'Knitting workshop', '기차 여행': 'Train trip', '오로라 마을': 'Aurora village', '도구 세트': 'Tool sets',
   //   👣 발자국 → ✨ 이펙트 (2026-09-23) — 상품은 그대로고 **분류 이름만** 바뀌었다
   '🎩 머리': '🎩 Head', '🧣 목': '🧣 Neck', '✨ 이펙트': '✨ Effects',
   //   🧥 전신 스킨(2026-10-01 2단계) — 상품명·설명·연출 카드는 통문장
@@ -3681,6 +3681,12 @@ export const EN = {
   '자줏빛 트렁크에 호두나무 띠를 두르고 놋쇠 모서리와 자물쇠를 달았어요': 'A plum trunk wrapped in walnut bands with brass corners and a lock',
   '놋쇠 레일 타원 철길 위로 숲색 기관차가 자줏빛 객차를 끌어요': 'A forest green engine pulls a plum carriage around an oval brass track',
   '놋쇠 띠를 두른 숲색 기둥 위에 둥근 양면 시계와 놋쇠 꼭지를 얹었어요': 'A round two-faced clock with a brass finial on a brass-banded forest green post',
+  '보송 털 오로라 머리띠': 'Fluffy Aurora Fur Headband', '보송 털 목도리': 'Fluffy Fur Muffler', '나무 썰매 배낭': 'Wooden Sled Backpack', '오로라 커튼 발자국': 'Aurora Curtain Steps',
+  '얼음 벽돌 이글루 등': 'Ice Brick Igloo Lamp', '눈송이 등받이 의자': 'Snowflake Back Chair', '앉은 북극곰 인형': 'Sitting Polar Bear Plush', '아치 오로라 창': 'Arched Aurora Window',
+  '얼음 벽돌 돔의 아치 입구와 양옆 둥근 창에서 따뜻한 빛이 새어 나와요': 'Warm light glows from the arched door and round side windows of an ice brick dome',
+  '고드름 다리 넷 위에 분홍 방석을 깔고 눈송이 모양 등받이를 세웠어요': 'A pink cushion on four icicle legs with a snowflake-shaped back',
+  '하얀 곰이 민트 줄무늬 남색 목도리를 두르고 얌전히 앉아 있어요': 'A white bear sits quietly in a navy scarf with a mint stripe',
+  '남색 아치 창틀 너머 네 칸 유리에 오로라 리본과 별이 은은하게 빛나요': 'Aurora ribbons and stars glow softly in four panes behind a navy arched frame',
   '꽈배기 방울 털모자': 'Cable Pom-Pom Beanie', '꽈배기 밧줄 목도리': 'Twisted Rope Scarf', '털실 바구니 배낭': 'Yarn Basket Backpack', '털실 공 발자국': 'Yarn Ball Steps',
   '살대 흔들의자': 'Spindle Rocking Chair', '등나무 털실 바구니': 'Wicker Yarn Basket', '땋은 타원 러그': 'Braided Oval Rug', '방울꽃 뜨개 화분': 'Pom-Pom Flower Knit Pot',
   '나무 살대 등받이에 크림 골지 방석을 깔고 장미·겨자 줄무늬 담요를 걸쳤어요': 'A spindle-back wooden rocker with a ribbed cream cushion and a rose and mustard striped blanket',

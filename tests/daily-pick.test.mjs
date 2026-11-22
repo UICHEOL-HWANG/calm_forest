@@ -8,11 +8,11 @@ const addDays = (key, n) => {
   return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, '0')}-${String(t.getUTCDate()).padStart(2, '0')}`;
 };
 
-test('풀은 겨울·숲·크리스마스·바닷가·디저트·밤하늘·설날·캠핑·벚꽃·비 오는 날·찻집·아틀리에·음악회·여름밤 축제·숲속 책방·뜨개 공방·기차 여행 136종 + 도구 세트 17종, id 중복 없음', () => {
-  assert.equal(DAILY_PICK_POOL.length, 153);
-  assert.equal(DAILY_PICK_POOL.filter(p => p.kind === 'cos').length, 85);
-  assert.equal(DAILY_PICK_POOL.filter(p => p.kind === 'decor').length, 68);
-  assert.equal(new Set(DAILY_PICK_POOL.map(p => p.id)).size, 153);
+test('풀은 겨울·숲·크리스마스·바닷가·디저트·밤하늘·설날·캠핑·벚꽃·비 오는 날·찻집·아틀리에·음악회·여름밤 축제·숲속 책방·뜨개 공방·기차 여행·오로라 마을 144종 + 도구 세트 17종, id 중복 없음', () => {
+  assert.equal(DAILY_PICK_POOL.length, 161);
+  assert.equal(DAILY_PICK_POOL.filter(p => p.kind === 'cos').length, 89);
+  assert.equal(DAILY_PICK_POOL.filter(p => p.kind === 'decor').length, 72);
+  assert.equal(new Set(DAILY_PICK_POOL.map(p => p.id)).size, 161);
   for (const id of ['tools_snowman', 'tools_squirrel', 'tools_candy', 'tools_octopus', 'tools_starry', 'tools_strawberry', 'tools_penguin', 'tools_tangerine', 'tools_watermelon', 'tools_sunflower', 'tools_peach', 'tools_dino', 'tools_frog', 'tools_owl', 'tools_hedgehog', 'tools_snowbunny', 'tools_sweetpotato']) assert.equal(DAILY_PICK_POOL.find(p => p.id === id)?.price, 3600);
   for (const p of DAILY_PICK_POOL) assert.ok(Number.isInteger(p.price) && p.price > 0);
 });
