@@ -3017,7 +3017,7 @@ export const EN = {
   '내일 바뀌어요': 'Changes tomorrow',
   '이미 있어요': 'Already have',
   '오늘의 꾸미기가 바뀌었어요': "Today's pick has changed",
-  '자정에 바뀌어요': 'Changes at midnight', '내일의 꾸미기': "Tomorrow's pick", '{0} 뒤 공개': 'Revealed in {0}',
+  '자정에 바뀌어요': 'Changes at midnight', '특가': 'Deal', '내일의 꾸미기': "Tomorrow's pick", '{0} 뒤 공개': 'Revealed in {0}',
   '📖 테마 도감 {0#}/{1#}': '📖 Theme collection {0}/{1}', '눌러서 보기': 'Tap to view', '✓ 있어요': '✓ Owned',
   '눌러서 고르기': 'Tap to choose', '다음 특가 일정': 'Upcoming deals', '오늘 특가': "Today's deal", '오늘의 꾸미기 차례': "Today's pick schedule",
   '오늘의 꾸미기예요': "It's today's pick", '{0} 광고 보고 반값에 할인받기': '{0}: watch an ad for half off', '언제든 살 수 있어요': 'Buy any time',
