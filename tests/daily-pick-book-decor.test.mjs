@@ -42,12 +42,13 @@ test('wired into indoor mesh dispatch', () => {
   assert.match(IN, /BOOK_PICK_IDS\.includes\(id\)\) \{\n\s*g\.add\(buildBookPick\(id\)\)/);
 });
 
-test('art is baked smooth, lamp glows by flicker rows, no lights, no comments, no sims imports', () => {
+test('art is baked smooth, lamp glows steady, no lights, no comments, no sims imports', () => {
   assert.match(ART, /bakeGroup/);
   assert.match(ART, /flatShading: false/);
   assert.doesNotMatch(ART, /flatShading: true|PointLight|SpotLight|emissive|sims\//);
   assert.doesNotMatch(ART, /^\s*\/\/|\/\*/m);
-  assert.match(ART, /MeshBasicMaterial\(\{ vertexColors: true \}\)\); m\.position\.y = k \/ 10; m\.userData\.flicker = true/);
+  assert.match(ART, /MeshBasicMaterial\(\{ vertexColors: true \}\)\); m\.position\.y = k \/ 10; return m;/);
+  assert.doesNotMatch(ART, /userData\.flicker/);
 });
 
 test('built meshes match the heights above and only the lamp glows', async () => {
@@ -60,6 +61,7 @@ test('built meshes match the heights above and only the lamp glows', async () =>
   for (const id of INDOOR) {
     const g = build(id), box = new THREE.Box3().setFromObject(g);
     assert.ok(box.max.y <= H[id] + 0.01 && box.min.y > -0.02, `${id} ${box.min.y} ${box.max.y}`);
-    assert.equal(g.children.some(c => c.userData.flicker), id === 'bk_reading_lamp', id);
+    assert.equal(g.children.some(c => c.material?.type === 'MeshBasicMaterial'), id === 'bk_reading_lamp', id);
+    assert.ok(!g.children.some(c => c.userData.flicker), id);
   }
 });

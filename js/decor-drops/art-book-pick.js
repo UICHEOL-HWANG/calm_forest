@@ -167,7 +167,7 @@ function flickerRows(glow) {
     m.position.y -= k / 10;
     rows.get(k).add(m);
   });
-  return [...rows].map(([k, row]) => { const m = new THREE.Mesh(bakeGroup(row), new THREE.MeshBasicMaterial({ vertexColors: true })); m.position.y = k / 10; m.userData.flicker = true; return m; });
+  return [...rows].map(([k, row]) => { const m = new THREE.Mesh(bakeGroup(row), new THREE.MeshBasicMaterial({ vertexColors: true })); m.position.y = k / 10; return m; });
 }
 
 export function build(id) {
