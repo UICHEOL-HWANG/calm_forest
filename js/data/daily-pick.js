@@ -124,6 +124,16 @@ export const DAILY_PICK_POOL = Object.freeze([
   Object.freeze({ id: 'tools_dino', kind: 'cos', price: 3600 }),
   Object.freeze({ id: 'sf_firework_trail', kind: 'cos', price: 1600 }),
   Object.freeze({ id: 'mu_mini_stage', kind: 'decor', price: 1300 }),
+  Object.freeze({ id: 'bk_round_glasses', kind: 'cos', price: 1200 }),
+  Object.freeze({ id: 'bk_bookshelf', kind: 'decor', price: 1400 }),
+  Object.freeze({ id: 'tools_owl', kind: 'cos', price: 3600 }),
+  Object.freeze({ id: 'bk_bookmark_charm', kind: 'cos', price: 1000 }),
+  Object.freeze({ id: 'bk_reading_lamp', kind: 'decor', price: 1200 }),
+  Object.freeze({ id: 'bk_book_pack', kind: 'cos', price: 1500 }),
+  Object.freeze({ id: 'bk_reading_chair', kind: 'decor', price: 1300 }),
+  Object.freeze({ id: 'tools_hedgehog', kind: 'cos', price: 3600 }),
+  Object.freeze({ id: 'bk_paper_moth_trail', kind: 'cos', price: 1600 }),
+  Object.freeze({ id: 'bk_globe', kind: 'decor', price: 1100 }),
 ]);
 
 const DAY_MS = 86400000;
@@ -198,7 +208,7 @@ const THEMES = Object.freeze([
   ['wp_', '❄️', '겨울 준비'], ['fp_', '🐿️', '숲속 친구'], ['xm_', '🎄', '크리스마스'], ['sp_', '🐚', '바닷가'],
   ['ds_', '🍰', '디저트 카페'], ['ns_', '🌙', '밤하늘'], ['ny_', '🧧', '설날'], ['cp_', '🏕️', '캠핑'],
   ['sb_', '🌸', '벚꽃'], ['rn_', '☔', '비 오는 날'], ['tc_', '🍵', '찻집'], ['at_', '🎨', '아틀리에'],
-  ['mu_', '🎵', '음악회'], ['sf_', '🎆', '여름밤 축제'], ['tools_', '🛠️', '도구 세트'], ['', '🎀', '기타'],
+  ['mu_', '🎵', '음악회'], ['sf_', '🎆', '여름밤 축제'], ['bk_', '📚', '숲속 책방'], ['tools_', '🛠️', '도구 세트'], ['', '🎀', '기타'],
 ].map(([prefix, emoji, name]) => Object.freeze({ key: prefix || 'etc', prefix, emoji, name })));
 
 export const themeOf = (id) => THEMES.find(t => t.prefix && id.startsWith(t.prefix)) || THEMES[THEMES.length - 1];

@@ -5,13 +5,13 @@ import { SLOTS, ITEMS, itemsOf, findItem } from '../js/cosmetics/catalog.js';
 
 test('슬롯 7개 · 품목 65종(🪏 호미 3 + 🦀 갯벌 세트 구성품 2 + 코인 18 + 프리미엄 자국 2 + 스킨 2 + 도구 세트 3 + 🎃 할로윈 10 + 🍁 2차 11 + 🤝 초대 보상 3 + 🌱 새싹반 3 + ⛏️ 광부 보상 1 + 🎁 오늘의 특가 4)', () => {
   assert.deepEqual([...SLOTS], ['head', 'neck', 'back', 'trail', 'skin', 'tools', 'homi']);
-  assert.equal(ITEMS.length, 130);
-  assert.equal(itemsOf('head').length, 27);
-  assert.equal(itemsOf('neck').length, 18);
-  assert.equal(itemsOf('back').length, 25);
-  assert.equal(itemsOf('trail').length, 26);
+  assert.equal(ITEMS.length, 136);
+  assert.equal(itemsOf('head').length, 28);
+  assert.equal(itemsOf('neck').length, 19);
+  assert.equal(itemsOf('back').length, 26);
+  assert.equal(itemsOf('trail').length, 27);
   assert.equal(itemsOf('skin').length, 6);
-  assert.equal(itemsOf('tools').length, 24);
+  assert.equal(itemsOf('tools').length, 26);
   assert.equal(itemsOf('homi').length, 4);
   assert.equal(ITEMS.filter(i => i.reward).length, 3);
 });
@@ -70,7 +70,7 @@ test('가방류는 side 앵커, 망토만 back — 🦊여우 꼬리 회피(§3-
 
 test('발자국 — 프리미엄 2개가 맨 앞, 코인 자국은 등급이 오를수록 비싸다(§4-4)', () => {
   const t = itemsOf('trail');
-  assert.deepEqual(t.map(i => i.id), ['firefly', 'rainbow', 'pumpkin_glow', 'bat_swirl', 'maple_trail', 'bubble_trail', 'paw', 'drop', 'flower', 'star', 'sparkle', 'snowflake', 'wp_boot_trail', 'fp_acorn_trail', 'xm_stardust_trail', 'sp_wave_trail', 'ds_cream_trail', 'ns_meteor_trail', 'ny_yut_trail', 'cp_ember_trail', 'sb_petal_trail', 'rn_puddle_trail', 'tc_leaf_trail', 'at_paint_trail', 'mu_note_trail', 'sf_firework_trail']);
+  assert.deepEqual(t.map(i => i.id), ['firefly', 'rainbow', 'pumpkin_glow', 'bat_swirl', 'maple_trail', 'bubble_trail', 'paw', 'drop', 'flower', 'star', 'sparkle', 'snowflake', 'wp_boot_trail', 'fp_acorn_trail', 'xm_stardust_trail', 'sp_wave_trail', 'ds_cream_trail', 'ns_meteor_trail', 'ny_yut_trail', 'cp_ember_trail', 'sb_petal_trail', 'rn_puddle_trail', 'tc_leaf_trail', 'at_paint_trail', 'mu_note_trail', 'sf_firework_trail', 'bk_paper_moth_trail']);
   const coin = t.filter(i => !i.premium && !i.shop && i.group !== 'daily');
   assert.deepEqual(coin.map(i => i.tier), ['기본', '기본', '고급', '특별', '특별']);
   for (let i = 1; i < coin.length; i++) assert.ok(coin[i].price.coins > coin[i - 1].price.coins);
