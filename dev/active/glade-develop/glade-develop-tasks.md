@@ -29,3 +29,4 @@
 - [x] 8 무리. 캡처 `impl/{pc,phone}-gnight_plain_gswarm_1.png`. 잡는 흐름은 CDP로 직접 휘둘러 확인: 꼬마 남았을 때 큰 반디 안 잡힘, 차례대로면 꼬마 4 + 큰 반디 4(덤 2) = 8, 순서 틀리면 6
 - [x] 9 전체 확인·리뷰·기록(npm test 6674, build-web, 영어 캡처, 새 게스트 확인, 리뷰 반영)
 - [ ] 사용자 확인 뒤 병합·5곳 배포(새 배지 glade_ring·저장 키가 있어 동시 배포 권장)
+- [x] 길 안내 화살표가 배너를 가리던 문제 수정(2026-11-22): 경매·주말 장터·식당이 함께 쓰는 `js/auction/guide.js` 가장자리 화살표가 위쪽 104px 에 고정이라 `#hint-banner` 와 겹쳤다. `js/guide/banner-inset.js` 로 배너 아래로 내린다. 이번 작업 이전부터 있던 문제. 캡처 `impl/pc-gnight_stream-banner.png`, `impl/phone-gnight_mono-banner.png`
