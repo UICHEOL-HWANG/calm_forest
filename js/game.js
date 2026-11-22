@@ -380,6 +380,7 @@ import { YARD_IDS as TEA_PICK_YARD_IDS, build as buildTeaPick } from './decor-dr
 import { YARD_IDS as ATELIER_PICK_YARD_IDS, build as buildAtelierPick } from './decor-drops/art-atelier-pick.js';
 import { YARD_IDS as CONCERT_PICK_YARD_IDS, build as buildConcertPick } from './decor-drops/art-concert-pick.js';
 import { YARD_IDS as FESTIVAL_PICK_YARD_IDS, build as buildFestivalPick } from './decor-drops/art-festival-pick.js';
+import { YARD_IDS as TRAIN_PICK_YARD_IDS, build as buildTrainPick } from './decor-drops/art-train-pick.js';
 import { requestSignupNudge } from './signup-gift/index.js';
 import { FRIEND_ARCH_ID, buildFriendArch } from './spaces/friend-arch-art.js';   // 🌈 무지개 우정 아치(🤝 초대 보상)
 import { MINE_CART_ID, MINE_CART_BOX, buildMineCart } from './delve/cart-art.js';
@@ -6239,6 +6240,8 @@ function outdoorMesh(id) {
     g.add(buildConcertPick(id));
   } else if (FESTIVAL_PICK_YARD_IDS.includes(id)) {
     g.add(buildFestivalPick(id));
+  } else if (TRAIN_PICK_YARD_IDS.includes(id)) {
+    g.add(buildTrainPick(id));
   } else if (id === 'kiln') {
     // 🔥 화덕 — sims/kiln-sim.html 에서 확정한 C안(낮은 아궁이). 상판이 표시 면이라
     //    완성물이 쌓이면 가까이 가지 않아도 "다 구워졌다" 가 읽힌다.

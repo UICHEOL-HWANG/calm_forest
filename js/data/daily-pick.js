@@ -142,6 +142,24 @@ export const DAILY_PICK_POOL = Object.freeze([
   Object.freeze({ id: 'kn_patch_rug', kind: 'decor', price: 1100 }),
   Object.freeze({ id: 'kn_yarn_trail', kind: 'cos', price: 1600 }),
   Object.freeze({ id: 'kn_knit_pot', kind: 'decor', price: 1000 }),
+  Object.freeze({ id: 'tr_conductor_cap', kind: 'cos', price: 1200 }),
+  Object.freeze({ id: 'tr_station_bench', kind: 'decor', price: 1500 }),
+  Object.freeze({ id: 'tools_snowbunny', kind: 'cos', price: 3600 }),
+  Object.freeze({ id: 'tr_ticket_charm', kind: 'cos', price: 1000 }),
+  Object.freeze({ id: 'tr_trunk', kind: 'decor', price: 1200 }),
+  Object.freeze({ id: 'tools_sweetpotato', kind: 'cos', price: 3600 }),
+  Object.freeze({ id: 'tr_suitcase_pack', kind: 'cos', price: 1500 }),
+  Object.freeze({ id: 'tr_mini_train', kind: 'decor', price: 1100 }),
+  Object.freeze({ id: 'tr_steam_trail', kind: 'cos', price: 1600 }),
+  Object.freeze({ id: 'tr_station_clock', kind: 'decor', price: 1300 }),
+  Object.freeze({ id: 'au_aurora_band', kind: 'cos', price: 1200 }),
+  Object.freeze({ id: 'au_igloo_lamp', kind: 'decor', price: 1500 }),
+  Object.freeze({ id: 'au_fur_muff', kind: 'cos', price: 1000 }),
+  Object.freeze({ id: 'au_ice_chair', kind: 'decor', price: 1100 }),
+  Object.freeze({ id: 'au_sled_pack', kind: 'cos', price: 1500 }),
+  Object.freeze({ id: 'au_polar_bear_plush', kind: 'decor', price: 1200 }),
+  Object.freeze({ id: 'au_aurora_trail', kind: 'cos', price: 1600 }),
+  Object.freeze({ id: 'au_aurora_window', kind: 'decor', price: 1300 }),
 ]);
 
 const DAY_MS = 86400000;
@@ -216,7 +234,7 @@ const THEMES = Object.freeze([
   ['wp_', '❄️', '겨울 준비'], ['fp_', '🐿️', '숲속 친구'], ['xm_', '🎄', '크리스마스'], ['sp_', '🐚', '바닷가'],
   ['ds_', '🍰', '디저트 카페'], ['ns_', '🌙', '밤하늘'], ['ny_', '🧧', '설날'], ['cp_', '🏕️', '캠핑'],
   ['sb_', '🌸', '벚꽃'], ['rn_', '☔', '비 오는 날'], ['tc_', '🍵', '찻집'], ['at_', '🎨', '아틀리에'],
-  ['mu_', '🎵', '음악회'], ['sf_', '🎆', '여름밤 축제'], ['bk_', '📚', '숲속 책방'], ['kn_', '🧶', '뜨개 공방'], ['tools_', '🛠️', '도구 세트'], ['', '🎀', '기타'],
+  ['mu_', '🎵', '음악회'], ['sf_', '🎆', '여름밤 축제'], ['bk_', '📚', '숲속 책방'], ['kn_', '🧶', '뜨개 공방'], ['tr_', '🚂', '기차 여행'], ['au_', '🌌', '오로라 마을'], ['tools_', '🛠️', '도구 세트'], ['', '🎀', '기타'],
 ].map(([prefix, emoji, name]) => Object.freeze({ key: prefix || 'etc', prefix, emoji, name })));
 
 export const themeOf = (id) => THEMES.find(t => t.prefix && id.startsWith(t.prefix)) || THEMES[THEMES.length - 1];

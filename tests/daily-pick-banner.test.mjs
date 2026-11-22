@@ -11,6 +11,10 @@ test('id 접두사로 테마를 정하고 모르는 접두사는 기타로', () 
   assert.equal(themeOf('bk_globe').emoji, '📚');
   assert.equal(themeOf('kn_knit_pot').name, '뜨개 공방');
   assert.equal(themeOf('kn_knit_pot').emoji, '🧶');
+  assert.equal(themeOf('tr_station_clock').name, '기차 여행');
+  assert.equal(themeOf('tr_station_clock').emoji, '🚂');
+  assert.equal(themeOf('au_igloo_lamp').name, '오로라 마을');
+  assert.equal(themeOf('au_igloo_lamp').emoji, '🌌');
   assert.equal(themeOf('zz_new').name, '기타');
   assert.equal(themeOf('zz_new').emoji, '🎀');
 });
@@ -62,5 +66,5 @@ test('테마별 모은 수·전체 수·완성', () => {
 test('실제 풀 도감 합계는 풀 크기와 같다', () => {
   const book = themeBook(DAILY_PICK_POOL.map(p => ({ id: p.id, owned: false })), 0);
   assert.equal(book.reduce((s, t) => s + t.total, 0), DAILY_PICK_POOL.length);
-  assert.equal(book.find(t => t.key === 'tools_').total, 15);
+  assert.equal(book.find(t => t.key === 'tools_').total, 17);
 });

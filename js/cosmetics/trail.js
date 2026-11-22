@@ -37,6 +37,8 @@ import { buildNoteTrail } from './art-concert-pick.js';
 import { buildFireworkTrail } from './art-festival-pick.js';
 import { buildMothTrail } from './art-book-pick.js';
 import { buildYarnTrail } from './art-knit-pick.js';
+import { buildSteamTrail } from './art-train-pick.js';
+import { buildAuroraTrail } from './art-aurora-pick.js';
 
 export const TRAIL_S = 0.10;      // 자국 하나의 기준 반지름(월드) — 1차엔 0.34 로 캐릭터 몸통만 했다
 export const TRAIL_CAP = 12;      // 동시 표시 상한
@@ -230,6 +232,8 @@ function makeMarks(THREE) {
     sf_firework_trail: (g, s, o) => buildFireworkTrail(THREE, g, s, o, { film, put }),
     bk_paper_moth_trail: (g, s, o) => buildMothTrail(THREE, g, s, o, { film, put }),
     kn_yarn_trail: (g, s, o) => buildYarnTrail(THREE, g, s, o, { film, put }),
+    tr_steam_trail: (g, s, o) => buildSteamTrail(THREE, g, s, o, { film, put }),
+    au_aurora_trail: (g, s, o) => buildAuroraTrail(THREE, g, s, o, { film, put }),
     wp_boot_trail: (g, s, o) => {
       const sc = 1.15, sole = film(WP.berry, o), tread = film(WP.cream, o);
       put(g, new THREE.Mesh(new THREE.SphereGeometry(s * 0.50 * sc, 12, 7), sole), 0, 0.006, s * 0.42 * sc, false).scale.set(0.82, 0.08, 1.10);
@@ -284,7 +288,7 @@ export function mergeGeos(THREE, geos) {
 //  🎃 조명 없이(MeshBasicMaterial) 굽는 자국 — 스스로 빛나는 등불은 밤에 어두워지면 안 된다
 //     (시안 lanternCell 도 unlit). 색은 시안 낮 값(pumpkinGeo(false)) 그대로 — 밤 빛은 trail-fx.js 의 온기 입자가 더한다.
 //     나머지 자국은 지금처럼 조명 받는 재질이다.
-export const TRAIL_UNLIT = Object.freeze(new Set(['pumpkin_glow']));
+export const TRAIL_UNLIT = Object.freeze(new Set(['pumpkin_glow', 'au_aurora_trail', 'tr_steam_trail']));
 
 /** 자국 하나의 재질 — 자국마다 새로 만든다(공유 아님: 페이드·무지개 색을 자국마다 따로 움직인다) */
 export function markMaterial(THREE, itemId, opacity) {
