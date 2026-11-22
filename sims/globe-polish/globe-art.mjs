@@ -36,3 +36,57 @@ export function gridLines(g, R, col) {
 export function poles(g, R, col) {
   [-1, 1].forEach(s => { cap(g, R, s * 90, 0, 16, col, 50 + s); });
 }
+
+export const LANDS2 = [
+  [[50, -100, 24], [60, -118, 15], [42, -86, 16], [32, -100, 12], [22, -100, 8], [15, -92, 6], [9, -82, 4], [68, -95, 13], [58, -78, 9], [47, -70, 7], [64, -150, 8]],
+  [[-4, -60, 16], [-14, -50, 13], [-24, -54, 12], [-34, -64, 9], [-44, -68, 6], [-52, -71, 4], [6, -68, 9], [0, -78, 6]],
+  [[48, 12, 12], [52, 30, 14], [57, 55, 18], [58, 85, 20], [52, 110, 18], [38, 108, 14], [30, 112, 9], [64, 120, 15], [66, 75, 14], [27, 78, 9], [22, 80, 6], [40, 42, 10], [33, 50, 9], [24, 45, 9], [14, 102, 7], [44, -4, 6]],
+  [[12, 15, 16], [4, 20, 15], [-6, 24, 14], [-18, 26, 11], [-28, 26, 7], [20, 0, 12], [26, 20, 11], [10, 40, 6]],
+  [[-24, 134, 12], [-30, 146, 7], [-20, 122, 6]],
+  [[73, -40, 9], [54, -3, 4], [37, 138, 4], [-19, 47, 4], [-42, 173, 3], [64, -18, 3], [-6, 106, 4], [0, 114, 4], [-5, 140, 4]],
+];
+
+export function landmasses2(g, R, cols) {
+  let k = 0;
+  LANDS2.forEach((land, i) => land.forEach(([lat, lon, deg]) => {
+    const d = new THREE.Vector3(Math.cos(lat * D) * Math.cos(lon * D), Math.sin(lat * D), -Math.cos(lat * D) * Math.sin(lon * D));
+    const m = part(g, new THREE.SphereGeometry(R * (1.008 + (k++) * 0.0003), 20, 6, 0, TAU, 0, deg * D), cols[i % cols.length]);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d);
+  }));
+}
+
+const CAPS = LANDS2.flat().map(([lat, lon, deg]) => [new THREE.Vector3(Math.cos(lat * D) * Math.cos(lon * D), Math.sin(lat * D), -Math.cos(lat * D) * Math.sin(lon * D)), Math.cos(deg * D)]);
+const wobble = v => 0.035 * Math.sin(v.x * 9 + v.y * 4) * Math.cos(v.z * 7 - v.y * 5);
+export const isLand = v => CAPS.some(([c, cosR]) => v.dot(c) + wobble(v) > cosR);
+
+export function facetLand(g, R, col, detail = 4) {
+  const src = new THREE.IcosahedronGeometry(1, detail).toNonIndexed(), p = src.attributes.position, out = [];
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), m = new THREE.Vector3();
+  for (let i = 0; i < p.count; i += 3) {
+    a.fromBufferAttribute(p, i); b.fromBufferAttribute(p, i + 1); c.fromBufferAttribute(p, i + 2);
+    m.copy(a).add(b).add(c).normalize();
+    if (isLand(m)) for (const v of [a, b, c]) out.push(v.x * R * 1.006, v.y * R * 1.006, v.z * R * 1.006);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(out, 3));
+  geo.computeVertexNormals();
+  src.dispose();
+  return part(g, geo, col);
+}
+
+export function facetGlobe(g, R, sea, land, detail = 4) {
+  const src = new THREE.IcosahedronGeometry(R, detail).toNonIndexed(), p = src.attributes.position, buf = [[], []];
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), m = new THREE.Vector3();
+  for (let i = 0; i < p.count; i += 3) {
+    a.fromBufferAttribute(p, i); b.fromBufferAttribute(p, i + 1); c.fromBufferAttribute(p, i + 2);
+    m.copy(a).add(b).add(c).normalize();
+    buf[isLand(m) ? 1 : 0].push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
+  }
+  src.dispose();
+  [sea, land].forEach((col, k) => {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(buf[k], 3));
+    geo.computeVertexNormals();
+    part(g, geo, col);
+  });
+}

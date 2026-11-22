@@ -20,7 +20,7 @@ canvas { display:block; }
 <script type="module">
 import * as THREE from 'three';
 import { bakeGroup, part } from '../js/dream/art.js';
-import { landmasses, gridLines, poles } from './globe-polish/globe-art.mjs';
+import { landmasses, landmasses2, gridLines, poles, facetLand, facetGlobe } from './globe-polish/globe-art.mjs';
 const C = { walnut: 0x6e4a32, walnutDk: 0x4e3424, green: 0x3f6a4e, greenDk: 0x2c4c38, wine: 0x8e2f3c, cream: 0xe2d4b6, creamDk: 0xc8b48e, brass: 0xc99a48 };
 const TAU = Math.PI * 2;
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -35,10 +35,10 @@ function oldDots(g, R) {
   });
 }
 const VARIANTS = [
-  ['지금', '색이 섞인 둥근 점 9개 · 물방울무늬처럼 보임', C.cream, g => oldDots(g, 0.25)],
-  ['A 초록 대륙', '크림 바다에 초록 대륙 다섯 덩어리(아메리카 둘·유라시아·아프리카·오세아니아)', C.cream, g => landmasses(g, 0.25, [C.green])],
-  ['B 고지도', '짙은 초록 바다에 크림 대륙 · 가는 놋쇠 경위선', C.greenDk, g => { landmasses(g, 0.25, [C.cream]); gridLines(g, 0.25, C.brass); }],
-  ['C 초록 대륙 + 극지', '크림 바다 · 초록 두 톤 대륙 · 호두나무 경위선 · 흰 극지', C.cream, g => { landmasses(g, 0.25, [C.green, C.greenDk]); gridLines(g, 0.25, C.walnut); poles(g, 0.25, 0xf1e8d6); }],
+  ['B 지금', '짙은 초록 바다 · 크림 대륙 다섯 덩어리 · 놋쇠 경위선', C.greenDk, g => { landmasses(g, 0.25, [C.cream]); gridLines(g, 0.25, C.brass); }],
+  ['B+ 해안·섬', '큰 원 대신 작은 원을 촘촘히 겹쳐 해안선을 매끈하게 · 그린란드·영국·일본·마다가스카르·뉴질랜드·동남아 섬 추가', C.greenDk, g => { landmasses2(g, 0.25, [C.cream]); gridLines(g, 0.25, C.brass); }],
+  ['C 각진 해안선', '잘게 나눈 구에서 땅 삼각형만 남겨 저폴리 해안선 · 섬 포함 · 놋쇠 경위선', null, g => { facetGlobe(g, 0.25, C.greenDk, C.cream); gridLines(g, 0.25, C.brass); }],
+  ['B+ 해안·섬·극지', 'B+ 에 크림 극지 모자를 더해 위에서 볼 때도 지구본으로 읽히게', C.greenDk, g => { landmasses2(g, 0.25, [C.cream]); gridLines(g, 0.25, C.brass); poles(g, 0.25, C.cream); }],
 ];
 function build(ocean, lands) {
   const s = new THREE.Group(), R = 0.25, cy = 0.56 + R;
@@ -48,7 +48,7 @@ function build(ocean, lands) {
   });
   part(s, new THREE.TorusGeometry(0.215, 0.012, 6, 30), C.walnutDk, 0, 0.2, 0).rotation.x = Math.PI / 2;
   const g = new THREE.Group(); g.position.set(0, cy, 0); g.rotation.z = 0.41; s.add(g);
-  part(g, new THREE.SphereGeometry(R, 32, 24), ocean);
+  if (ocean != null) part(g, new THREE.SphereGeometry(R, 32, 24), ocean);
   lands(g);
   part(g, new THREE.TorusGeometry(R * 1.08, R * 0.035, 8, 48, Math.PI * 1.25), C.brass).rotation.set(0, Math.PI / 2, -Math.PI * 0.125);
   part(s, new THREE.TorusGeometry(R * 1.18, 0.02, 6, 48), C.brass, 0, cy, 0).rotation.x = Math.PI / 2;
@@ -64,10 +64,10 @@ for (const [name, desc, ocean, lands] of VARIANTS) {
   const sun = new THREE.DirectionalLight(0xfff0d8, 2.2); sun.position.set(2, 4, 3); sun.castShadow = true; sc.add(sun);
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(6, 6), new THREE.MeshStandardMaterial({ color: 0x8a5a38 })); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; sc.add(floor);
   const near = build(ocean, lands); near.position.set(0, 0, 0.3); near.rotation.y = 0.5; sc.add(near);
-  const cam = new THREE.PerspectiveCamera(32, 360 / 420, 0.1, 50); cam.position.set(0.9, 1.6, 2.4); cam.lookAt(0, 0.6, 0);
+  const cam = new THREE.PerspectiveCamera(32, 360 / 420, 0.1, 50); cam.position.set(0.6, 1.5, 1.6); cam.lookAt(0, 0.6, 0);
   r.render(sc, cam);
   const r2 = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); r2.setPixelRatio(2); r2.setSize(360, 200); r2.outputColorSpace = THREE.SRGBColorSpace;
-  const cam2 = new THREE.PerspectiveCamera(30, 360 / 200, 0.1, 50); cam2.position.set(0, 6.5, 5.5); cam2.lookAt(0, 0.4, 0.3);
+  const cam2 = new THREE.PerspectiveCamera(30, 360 / 200, 0.1, 50); cam2.position.set(0.4, 3.2, 2.2); cam2.lookAt(0, 0.6, 0.3);
   r2.render(sc, cam2);
   cell.append(r.domElement, r2.domElement);
   cell.insertAdjacentHTML('beforeend', `<b>${name}</b><small>${desc}<br>위: 가까이 · 아래: 실제 실내 카메라 거리</small>`);
