@@ -8,12 +8,12 @@ const addDays = (key, n) => {
   return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, '0')}-${String(t.getUTCDate()).padStart(2, '0')}`;
 };
 
-test('풀은 겨울·숲·크리스마스·바닷가·디저트·밤하늘·설날·캠핑·벚꽃·비 오는 날·찻집·아틀리에 96종 + 도구 세트 11종, id 중복 없음', () => {
-  assert.equal(DAILY_PICK_POOL.length, 107);
-  assert.equal(DAILY_PICK_POOL.filter(p => p.kind === 'cos').length, 59);
-  assert.equal(DAILY_PICK_POOL.filter(p => p.kind === 'decor').length, 48);
-  assert.equal(new Set(DAILY_PICK_POOL.map(p => p.id)).size, 107);
-  for (const id of ['tools_snowman', 'tools_squirrel', 'tools_candy', 'tools_octopus', 'tools_starry', 'tools_strawberry', 'tools_penguin', 'tools_tangerine', 'tools_watermelon', 'tools_sunflower', 'tools_peach']) assert.equal(DAILY_PICK_POOL.find(p => p.id === id)?.price, 3600);
+test('풀은 겨울·숲·크리스마스·바닷가·디저트·밤하늘·설날·캠핑·벚꽃·비 오는 날·찻집·아틀리에·음악회·여름밤 축제 112종 + 도구 세트 13종, id 중복 없음', () => {
+  assert.equal(DAILY_PICK_POOL.length, 125);
+  assert.equal(DAILY_PICK_POOL.filter(p => p.kind === 'cos').length, 69);
+  assert.equal(DAILY_PICK_POOL.filter(p => p.kind === 'decor').length, 56);
+  assert.equal(new Set(DAILY_PICK_POOL.map(p => p.id)).size, 125);
+  for (const id of ['tools_snowman', 'tools_squirrel', 'tools_candy', 'tools_octopus', 'tools_starry', 'tools_strawberry', 'tools_penguin', 'tools_tangerine', 'tools_watermelon', 'tools_sunflower', 'tools_peach', 'tools_dino', 'tools_frog']) assert.equal(DAILY_PICK_POOL.find(p => p.id === id)?.price, 3600);
   for (const p of DAILY_PICK_POOL) assert.ok(Number.isInteger(p.price) && p.price > 0);
 });
 
@@ -91,17 +91,31 @@ test('가구 보유: 보관함·실내·마당 어디든 하나 있으면 가짐
   assert.equal(decorOwned({ outdoor: [{ id: 'other' }] }, 'wp_snowman'), false);
 });
 
-test('구매 판단: 카드에 보인 아이템·가격 그대로만 판다', async () => {
+test('구매 판단: 오늘의 꾸미기는 보인 날짜·가격 그대로 판다', async () => {
   const { planBuy, pickOf, halfPrice } = await import('../js/data/daily-pick.js');
   const day = '2026-12-01', pick = pickOf(day);
   const shown = { d: day, id: pick.id };
-  assert.deepEqual(planBuy({ day, shown, dp: null, coins: 5000, owned: false }), { ok: true, pick, price: pick.price, half: false });
+  assert.deepEqual(planBuy({ day, shown, dp: null, coins: 5000, owned: false }), { ok: true, pick, price: pick.price, half: false, today: true });
   const half = { d: day, id: pick.id, half: true };
-  assert.deepEqual(planBuy({ day, shown, dp: half, coins: 5000, owned: false }), { ok: true, pick, price: halfPrice(pick.price), half: true });
+  assert.deepEqual(planBuy({ day, shown, dp: half, coins: 5000, owned: false }), { ok: true, pick, price: halfPrice(pick.price), half: true, today: true });
+  assert.deepEqual(planBuy({ day, shown, dp: { ...half, d: '2026-11-30' }, coins: 5000, owned: false }), { ok: true, pick, price: pick.price, half: false, today: true });
   assert.deepEqual(planBuy({ day, shown, dp: null, coins: 5000, owned: true }), { ok: false, msg: '이미 있어요' });
   assert.deepEqual(planBuy({ day, shown, dp: null, coins: pick.price - 1, owned: false }), { ok: false, msg: '코인이 모자라요' });
-  assert.deepEqual(planBuy({ day, shown: { d: '2026-11-30', id: pick.id }, dp: null, coins: 5000, owned: false }), { ok: false, msg: '오늘의 꾸미기가 바뀌었어요', stale: true });
-  assert.deepEqual(planBuy({ day, shown: { d: day, id: 'other' }, dp: null, coins: 5000, owned: false }), { ok: false, msg: '오늘의 꾸미기가 바뀌었어요', stale: true });
+  assert.deepEqual(planBuy({ day, shown: { d: '2026-11-30', id: pick.id }, dp: half, coins: 5000, owned: false }), { ok: false, msg: '오늘의 꾸미기가 바뀌었어요', stale: true });
+});
+
+test('구매 판단: 도감의 다른 아이템은 언제든 정가로 판다', async () => {
+  const { planBuy, pickOf, DAILY_PICK_POOL } = await import('../js/data/daily-pick.js');
+  const day = '2026-12-01', today = pickOf(day);
+  const other = DAILY_PICK_POOL.find(p => p.id !== today.id && p.kind === 'decor');
+  const tool = DAILY_PICK_POOL.find(p => p.id.startsWith('tools_') && p.id !== today.id);
+  const half = { d: day, id: today.id, half: true };
+  assert.deepEqual(planBuy({ day, shown: { d: day, id: other.id }, dp: half, coins: 5000, owned: false }), { ok: true, pick: other, price: other.price, half: false, today: false });
+  assert.deepEqual(planBuy({ day, shown: { d: day, id: tool.id }, dp: null, coins: 5000, owned: false }), { ok: true, pick: tool, price: tool.price, half: false, today: false });
+  assert.deepEqual(planBuy({ day, shown: { d: day, id: other.id }, dp: { d: day, id: other.id, half: true }, coins: 5000, owned: false }).price, other.price);
+  assert.deepEqual(planBuy({ day, shown: { d: day, id: other.id }, dp: null, coins: 5000, owned: true }), { ok: false, msg: '이미 있어요' });
+  assert.deepEqual(planBuy({ day, shown: { d: day, id: other.id }, dp: null, coins: other.price - 1, owned: false }), { ok: false, msg: '코인이 모자라요' });
+  assert.deepEqual(planBuy({ day, shown: { d: day, id: 'nope' }, dp: null, coins: 5000, owned: false }), { ok: false, msg: '지금은 살 수 없어요' });
 });
 
 test('광고 반값은 버튼을 만들 때 보인 카드에만 준다', async () => {

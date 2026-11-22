@@ -7,7 +7,7 @@ const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 test('game.js only wires the concert module', () => {
   const game = read('js/game.js');
   const lines = game.split('\n').filter(l => /concert/i.test(l));
-  assert.ok(lines.length <= 16, `${lines.length} concert lines:\n${lines.join('\n')}`);
+  assert.ok(lines.length <= 19, `${lines.length} concert lines:\n${lines.join('\n')}`);
   assert.ok(!/function\s+\w*concert/i.test(game));
   for (const k of ["from './concert/index.js'", "from './concert/bridge.js'", 'initConcert(', 'updateConcert(', 'concertSpotNow()', 'openConcert()', 'concert: concertDefault()', 'restoreConcert(saved.concert)', "rollDifficulty('concert')", "settleDifficulty('concert'", "trackDiffAbandon('concert'"]) {
     assert.ok(game.includes(k), k);

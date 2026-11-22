@@ -144,6 +144,14 @@ const RAW = [
   { id: 'at_paint_scarf',      slot: 'neck',  ico: '🖼️', name: '팔레트 목도리',      coins: 1000, group: 'daily' },
   { id: 'at_palette_pack',     slot: 'back',  ico: '🎨', name: '나무 팔레트 배낭',   coins: 1500, anchor: 'back', group: 'daily' },
   { id: 'at_paint_trail',      slot: 'trail', ico: '🖍️', name: '물감 발바닥 발자국', coins: 1600, tier: '특별', group: 'daily' },
+  { id: 'mu_note_pin',         slot: 'head',  ico: '🎵', name: '금빛 음표 머리띠',   coins: 1200, earSafe: 'low', group: 'daily' },
+  { id: 'mu_bow_tie',          slot: 'neck',  ico: '👔', name: '벨벳 나비넥타이',    coins: 1000, group: 'daily' },
+  { id: 'mu_violin_pack',      slot: 'back',  ico: '🎻', name: '바이올린 케이스 배낭', coins: 1500, anchor: 'back', group: 'daily' },
+  { id: 'mu_note_trail',       slot: 'trail', ico: '🎶', name: '음표 발자국',        coins: 1600, tier: '특별', group: 'daily' },
+  { id: 'sf_mask_pin',         slot: 'head',  ico: '🦊', name: '여우 가면 머리띠',   coins: 1200, earSafe: 'low', group: 'daily' },
+  { id: 'sf_yukata_cord',      slot: 'neck',  ico: '🐠', name: '금붕어 목걸이',      coins: 1000, group: 'daily' },
+  { id: 'sf_fan_pack',         slot: 'back',  ico: '🪭', name: '부채 복주머니 배낭', coins: 1500, anchor: 'back', group: 'daily' },
+  { id: 'sf_firework_trail',   slot: 'trail', ico: '🎆', name: '불꽃놀이 발자국',    coins: 1600, tier: '특별', group: 'daily' },
   { id: 'tools_snowman',  slot: 'tools', ico: '⛄', name: '눈사람 세트',       coins: 3600, tier: '특별', group: 'daily' },
   { id: 'tools_squirrel', slot: 'tools', ico: '🐿️', name: '다람쥐 도토리 세트', coins: 3600, tier: '특별', group: 'daily' },
   { id: 'tools_candy',    slot: 'tools', ico: '🍬', name: '사탕 지팡이 세트',   coins: 3600, tier: '특별', group: 'daily' },
@@ -155,6 +163,8 @@ const RAW = [
   { id: 'tools_watermelon', slot: 'tools', ico: '🍉', name: '수박 세트',          coins: 3600, tier: '특별', group: 'daily' },
   { id: 'tools_sunflower',  slot: 'tools', ico: '🌻', name: '해바라기 세트',      coins: 3600, tier: '특별', group: 'daily' },
   { id: 'tools_peach',      slot: 'tools', ico: '🍑', name: '복숭아 세트',        coins: 3600, tier: '특별', group: 'daily' },
+  { id: 'tools_dino', slot: 'tools', ico: '🦕', name: '공룡 세트', coins: 3600, tier: '특별', group: 'daily' },
+  { id: 'tools_frog', slot: 'tools', ico: '🐸', name: '개구리 세트', coins: 3600, tier: '특별', group: 'daily' },
 ];
 
 export const ITEMS = Object.freeze(RAW.map(({ coins = null, won = null, ...it }) => Object.freeze(it.reward || it.quest || it.set

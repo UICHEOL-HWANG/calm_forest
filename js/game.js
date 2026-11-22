@@ -92,7 +92,7 @@ import { forgeView, forgeBegin, forgeAbort, forgeFinish, settleForge, forgeRushR
 import { initAuction, updateAuction, auctionMapSpot, auctionSpotNow, openAuction, auctionScatterBlocks, auctionOutdoorMesh, auctionDefault, restoreAuction, auctionGuideActive } from './auction/index.js';
 import { initWeekly, updateWeekly, weeklyNote, weeklySpotNow, openWeekly, weeklyDefault, restoreWeekly, weeklyScatterBlocks, weeklyDecorMesh, weeklyDev, weeklyGuideActive, weeklyPriority, weekIndex, BOARD_POS, MARKET_POS } from './weekly/index.js';
 import { makeWeeklyBridge } from './weekly/bridge.js';
-import { DAILY_PICK_POOL, cardState, adGrant, cleanDailyPick, decorOwned, leftLabel, msLeft, pickIndex, pickOf, planBuy, priceOf as dailyPriceOf } from './data/daily-pick.js';
+import { DAILY_PICK_POOL, cardState, adGrant, cleanDailyPick, decorOwned, leftLabel, msLeft, pickIndex, pickOf, planBuy, priceOf as dailyPriceOf, tomorrowPick } from './data/daily-pick.js';
 import { initConcert, updateConcert, concertSpotNow, openConcert, concertDefault, restoreConcert, concertScatterBlocks, concertDecorMesh, concertDev, STAGE_POS, concertGuideActive } from './concert/index.js';
 import { makeConcertBridge } from './concert/bridge.js';
 import { refreshPond, updatePond, pondScatterBlocks } from './pond/index.js';
@@ -378,6 +378,8 @@ import { YARD_IDS as SPRING_PICK_YARD_IDS, build as buildSpringPick } from './de
 import { YARD_IDS as RAIN_PICK_YARD_IDS, build as buildRainPick } from './decor-drops/art-rain-pick.js';
 import { YARD_IDS as TEA_PICK_YARD_IDS, build as buildTeaPick } from './decor-drops/art-tea-pick.js';
 import { YARD_IDS as ATELIER_PICK_YARD_IDS, build as buildAtelierPick } from './decor-drops/art-atelier-pick.js';
+import { YARD_IDS as CONCERT_PICK_YARD_IDS, build as buildConcertPick } from './decor-drops/art-concert-pick.js';
+import { YARD_IDS as FESTIVAL_PICK_YARD_IDS, build as buildFestivalPick } from './decor-drops/art-festival-pick.js';
 import { requestSignupNudge } from './signup-gift/index.js';
 import { FRIEND_ARCH_ID, buildFriendArch } from './spaces/friend-arch-art.js';   // 🌈 무지개 우정 아치(🤝 초대 보상)
 import { MINE_CART_ID, MINE_CART_BOX, buildMineCart } from './delve/cart-art.js';
@@ -2142,10 +2144,17 @@ function noteDailyView(day, id, state) {
 function dailyPickInfo() {
   const day = todayStr();
   const pick = pickOf(day);
-  const item = pick.kind === 'cos' ? findItem(pick.id) : [...DECOR, ...OUTDOOR].find(d => d.id === pick.id);
+  const item = dailyPickItem(pick);
   if (!item) return null;
-  const owned = pick.kind === 'cos' ? gameState.cosmetics.owned.includes(pick.id) : decorOwned(gameState, pick.id);
-  return { day, pick, item, owned };
+  return { day, pick, item, owned: dailyPickOwned(pick) };
+}
+
+function dailyPickItem(pick) {
+  return pick.kind === 'cos' ? findItem(pick.id) : [...DECOR, ...OUTDOOR].find(d => d.id === pick.id);
+}
+
+function dailyPickOwned(pick) {
+  return pick.kind === 'cos' ? gameState.cosmetics.owned.includes(pick.id) : decorOwned(gameState, pick.id);
 }
 
 function dailyPickView() {
@@ -2156,23 +2165,28 @@ function dailyPickView() {
   const half = dp?.half === true && dp.d === day && dp.id === pick.id;
   const state = cardState({ owned, half, adOpen: !owned && !half && !!rewarded?.offer('daily_pick') });
   noteDailyView(day, pick.id, state);
-  return { d: day, id: pick.id, kind: pick.kind, ico: item.ico, name: item.name, state, price: dailyPriceOf(pick, dp, day), full: pick.price,
-    left: leftLabel(msLeft(Date.now())), count: DAILY_PICK_POOL.length, index: pickIndex(day) };
+  const deal = state === 'half' || state === 'ad' || (owned && !!rewarded?.open('daily_pick'));
+  return { d: day, id: pick.id, kind: pick.kind, ico: item.ico, name: item.name, state, deal, price: dailyPriceOf(pick, dp, day), full: pick.price,
+    left: leftLabel(msLeft(Date.now())), index: pickIndex(day), tomorrow: dailyPickItem(tomorrowPick(day))?.ico || '🎀',
+    dex: DAILY_PICK_POOL.map(p => {
+      const it = dailyPickItem(p);
+      return { id: p.id, kind: p.kind, ico: it?.ico || '🎀', name: it?.name || '', price: p.price, owned: dailyPickOwned(p) };
+    }) };
 }
 
 function buyDailyPick(shown) {
-  const info = dailyPickInfo();
-  if (!info) return { ok: false, msg: '지금은 살 수 없어요' };
-  const plan = planBuy({ day: info.day, shown, dp: gameState.dailyPick, coins: gameState.inventory.coins, owned: info.owned });
+  const target = DAILY_PICK_POOL.find(p => p.id === shown?.id);
+  if (!target || !dailyPickItem(target)) return { ok: false, msg: '지금은 살 수 없어요' };
+  const plan = planBuy({ day: todayStr(), shown, dp: gameState.dailyPick, coins: gameState.inventory.coins, owned: dailyPickOwned(target) });
   if (!plan.ok) return plan;
-  const { pick, price, half } = plan;
+  const { pick, price, half, today } = plan;
   if (pick.kind === 'cos') {
     if (!grantCosmetic(pick.id)) return { ok: false, msg: '지금은 살 수 없어요' };
     gameState.cosmetics = equipCos(gameState.cosmetics, pick.id);
   } else if (!grantDecor(pick.id)) return { ok: false, msg: '지금은 살 수 없어요' };
   gameState.inventory.coins -= price;
   logEcon('daily_pick', 'coins', -price, gameState.inventory.coins);
-  trackEvent('daily_pick_buy', { item_id: pick.id, half: half ? 1 : 0, price_coins: price, coins_after: gameState.inventory.coins });
+  trackEvent('daily_pick_buy', { item_id: pick.id, half: half ? 1 : 0, price_coins: price, coins_after: gameState.inventory.coins, is_today: today ? 1 : 0 });
   if (pick.kind === 'decor') ui.toast?.('보관함에 넣었어요 — 작업대 장식 탭에서 꺼내 놓아요 🧺', 2600);
   refreshInventoryUI();
   requestSave();
@@ -6221,6 +6235,10 @@ function outdoorMesh(id) {
     g.add(buildTeaPick(id));
   } else if (ATELIER_PICK_YARD_IDS.includes(id)) {
     g.add(buildAtelierPick(id));
+  } else if (CONCERT_PICK_YARD_IDS.includes(id)) {
+    g.add(buildConcertPick(id));
+  } else if (FESTIVAL_PICK_YARD_IDS.includes(id)) {
+    g.add(buildFestivalPick(id));
   } else if (id === 'kiln') {
     // 🔥 화덕 — sims/kiln-sim.html 에서 확정한 C안(낮은 아궁이). 상판이 표시 면이라
     //    완성물이 쌓이면 가까이 가지 않아도 "다 구워졌다" 가 읽힌다.

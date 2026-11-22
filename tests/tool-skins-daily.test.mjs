@@ -13,10 +13,12 @@ import { TG } from '../js/cosmetics/tool-skins-tangerine.js';
 import { WM } from '../js/cosmetics/tool-skins-watermelon.js';
 import { SF } from '../js/cosmetics/tool-skins-sunflower.js';
 import { PE } from '../js/cosmetics/tool-skins-peach.js';
+import { DC } from '../js/cosmetics/tool-skins-dino.js';
+import { FG } from '../js/cosmetics/tool-skins-frog.js';
 
 const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
 const luma = h => (0.2126 * ((h >> 16) & 255) + 0.7152 * ((h >> 8) & 255) + 0.0722 * (h & 255)) / 255;
-const FILES = { snowman: '../js/cosmetics/tool-skins-snowman.js', squirrel: '../js/cosmetics/tool-skins-squirrel.js', candy: '../js/cosmetics/tool-skins-candy.js', octopus: '../js/cosmetics/tool-skins-octopus.js', starry: '../js/cosmetics/tool-skins-starry.js', strawberry: '../js/cosmetics/tool-skins-strawberry.js', penguin: '../js/cosmetics/tool-skins-penguin.js', tangerine: '../js/cosmetics/tool-skins-tangerine.js', watermelon: '../js/cosmetics/tool-skins-watermelon.js', sunflower: '../js/cosmetics/tool-skins-sunflower.js', peach: '../js/cosmetics/tool-skins-peach.js' };
+const FILES = { snowman: '../js/cosmetics/tool-skins-snowman.js', squirrel: '../js/cosmetics/tool-skins-squirrel.js', candy: '../js/cosmetics/tool-skins-candy.js', octopus: '../js/cosmetics/tool-skins-octopus.js', starry: '../js/cosmetics/tool-skins-starry.js', strawberry: '../js/cosmetics/tool-skins-strawberry.js', penguin: '../js/cosmetics/tool-skins-penguin.js', tangerine: '../js/cosmetics/tool-skins-tangerine.js', watermelon: '../js/cosmetics/tool-skins-watermelon.js', sunflower: '../js/cosmetics/tool-skins-sunflower.js', peach: '../js/cosmetics/tool-skins-peach.js', dino: '../js/cosmetics/tool-skins-dino.js', frog: '../js/cosmetics/tool-skins-frog.js' };
 
 test('⛄🐿️ 오늘의 픽 도구 테마 — 규칙 표에 있고 카탈로그 id 로 찾힌다', () => {
   for (const t of Object.keys(FILES)) {
@@ -39,7 +41,7 @@ test('⛄🐿️ 9종 전부 + 우산 · tool-skins.js 에 frost 처럼 배선(�
 });
 
 test('⛄🐿️ 넓은 면 색은 블룸 임계 0.85 이하 · 발광 없음', () => {
-  for (const [k, c] of [...Object.entries(SM), ...Object.entries(SQ), ...Object.entries(CD), ...Object.entries(OC), ...Object.entries(ST), ...Object.entries(SB), ...Object.entries(PG), ...Object.entries(TG), ...Object.entries(WM), ...Object.entries(SF), ...Object.entries(PE)]) assert.ok(luma(c) <= 0.85, `${k} ${luma(c).toFixed(3)}`);
+  for (const [k, c] of [...Object.entries(SM), ...Object.entries(SQ), ...Object.entries(CD), ...Object.entries(OC), ...Object.entries(ST), ...Object.entries(SB), ...Object.entries(PG), ...Object.entries(TG), ...Object.entries(WM), ...Object.entries(SF), ...Object.entries(PE), ...Object.entries(DC), ...Object.entries(FG)]) assert.ok(luma(c) <= 0.85, `${k} ${luma(c).toFixed(3)}`);
   for (const f of Object.values(FILES)) assert.doesNotMatch(read(f), /glow:/);
 });
 
@@ -59,8 +61,8 @@ test('🐿️ 꼬리는 발바닥이 쥐는 자루 아래쪽(y < 0.18)을 피해
 });
 
 test('🍬🐙 umbrella look covers outer·inner·shaft·deco·finial and the theme order ends with candy·octopus', () => {
-  assert.deepEqual(TOOL_THEMES.slice(-11), ['snowman', 'squirrel', 'candy', 'octopus', 'starry', 'strawberry', 'penguin', 'tangerine', 'watermelon', 'sunflower', 'peach']);
-  for (const t of ['candy', 'octopus', 'starry', 'strawberry', 'penguin', 'tangerine', 'watermelon', 'sunflower', 'peach']) {
+  assert.deepEqual(TOOL_THEMES.slice(-13), ['snowman', 'squirrel', 'candy', 'octopus', 'starry', 'strawberry', 'penguin', 'tangerine', 'watermelon', 'sunflower', 'peach', 'dino', 'frog']);
+  for (const t of ['candy', 'octopus', 'starry', 'strawberry', 'penguin', 'tangerine', 'watermelon', 'sunflower', 'peach', 'dino', 'frog']) {
     const src = read(FILES[t]);
     const look = src.slice(src.indexOf(`export function ${t}UmbrellaLook`));
     for (const k of ['outer:', 'inner:', 'shaft()', 'deco(', 'finial(']) assert.ok(look.includes(k), `${t} ${k}`);
@@ -98,7 +100,7 @@ test('🌙 shooting-star tails on handle tools start at y ≥ 0.18 so they stay 
 test('🌙🍓 every tool and umbrella builds through buildToolSkin and buildUmbrella', async () => {
   const THREE = await import('../vendor/three/three.module.js');
   const { buildToolSkin, buildUmbrella } = await import('../js/cosmetics/tool-skins.js');
-  for (const t of ['starry', 'strawberry', 'penguin', 'tangerine', 'watermelon', 'sunflower', 'peach']) {
+  for (const t of ['starry', 'strawberry', 'penguin', 'tangerine', 'watermelon', 'sunflower', 'peach', 'dino', 'frog']) {
     for (const tool of SKIN_TOOLS) assert.ok(buildToolSkin(THREE, t, tool)?.children.length > 0, `${t}.${tool}`);
     assert.ok(buildUmbrella(THREE, t)?.children.length > 0, `${t} umbrella`);
   }
@@ -123,4 +125,12 @@ test('🍑 the peach keeps a clean apricot base: brighter skin and a lift ramp o
   assert.equal(PE.skin, 0xffcc96);
   assert.ok(luma(PE.skin) > luma(0xffc08c) && luma(PE.skin) <= 0.85);
   assert.match(src, /\[0\.92, 1\.3, PE\.mid, 0\.17\], \[1\.3, Math\.PI, PE\.skin, 0\.26\]/);
+});
+
+test('🐸🦕 frog is a fresh leaf green, dino stays mint, and the frog eye whites carry a lift', () => {
+  const hue = h => { const r = (h >> 16) & 255, g = (h >> 8) & 255, b = h & 255; return Math.atan2(Math.sqrt(3) * (g - b), 2 * r - g - b) * 180 / Math.PI; };
+  assert.ok(hue(FG.body) < 115 && hue(DC.mint) > 150, `frog ${hue(FG.body).toFixed(0)} dino ${hue(DC.mint).toFixed(0)}`);
+  assert.ok(luma(FG.eye) <= 0.85);
+  assert.match(read(FILES.frog), /const EYE_LIFT = 0\.3;/);
+  assert.match(read(FILES.frog), /FG\.eye, 0, er \* 0\.04, er \* 0\.34, \[1, 1, 0\.78\], ews, EYE_LIFT/);
 });

@@ -888,13 +888,15 @@ export function tryOnCos(it) {
 function drawDaily(box) {
   const view = Input.dailyPickView?.();
   if (!view) return;
+  const buy = (id) => {
+    const r = Input.buyDailyPick({ d: view.d, id });
+    if (!r.ok) { ui.toast?.(r.msg, 2000); if (r.stale) drawCosMenu(); return; }
+    if (view.dex.find(e => e.id === id)?.kind === 'cos') { applyCosmetics(gameState.cosmetics); cosTryOn = null; cosPreview?.refresh(null); }
+    drawCosMenu();
+  };
   drawDailyPickCard(box, view, {
-    onBuy: () => {
-      const r = Input.buyDailyPick({ d: view.d, id: view.id });
-      if (!r.ok) { ui.toast?.(r.msg, 2000); if (r.stale) drawCosMenu(); return; }
-      if (view.kind === 'cos') { applyCosmetics(gameState.cosmetics); cosTryOn = null; cosPreview?.refresh(null); }
-      drawCosMenu();
-    },
+    onBuy: () => buy(view.id),
+    onBuyItem: buy,
     onTry: view.kind === 'cos' && view.state !== 'owned' ? () => {
       const it = findItem(view.id);
       if (!it) return;

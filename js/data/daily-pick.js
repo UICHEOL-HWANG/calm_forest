@@ -106,6 +106,24 @@ export const DAILY_PICK_POOL = Object.freeze([
   Object.freeze({ id: 'tc_leaf_trail', kind: 'cos', price: 1600 }),
   Object.freeze({ id: 'at_paint_trail', kind: 'cos', price: 1600 }),
   Object.freeze({ id: 'tc_bamboo_basin', kind: 'decor', price: 1300 }),
+  Object.freeze({ id: 'mu_note_pin', kind: 'cos', price: 1200 }),
+  Object.freeze({ id: 'sf_lantern_string', kind: 'decor', price: 1200 }),
+  Object.freeze({ id: 'mu_gramophone', kind: 'decor', price: 1300 }),
+  Object.freeze({ id: 'sf_mask_pin', kind: 'cos', price: 1200 }),
+  Object.freeze({ id: 'mu_bow_tie', kind: 'cos', price: 1000 }),
+  Object.freeze({ id: 'sf_shaved_ice_stand', kind: 'decor', price: 1400 }),
+  Object.freeze({ id: 'tools_frog', kind: 'cos', price: 3600 }),
+  Object.freeze({ id: 'sf_yukata_cord', kind: 'cos', price: 1000 }),
+  Object.freeze({ id: 'mu_piano_stool', kind: 'decor', price: 1000 }),
+  Object.freeze({ id: 'sf_goldfish_bowl', kind: 'decor', price: 1100 }),
+  Object.freeze({ id: 'mu_violin_pack', kind: 'cos', price: 1500 }),
+  Object.freeze({ id: 'sf_fan_pack', kind: 'cos', price: 1500 }),
+  Object.freeze({ id: 'mu_music_stand', kind: 'decor', price: 1100 }),
+  Object.freeze({ id: 'sf_festival_stall', kind: 'decor', price: 1400 }),
+  Object.freeze({ id: 'mu_note_trail', kind: 'cos', price: 1600 }),
+  Object.freeze({ id: 'tools_dino', kind: 'cos', price: 3600 }),
+  Object.freeze({ id: 'sf_firework_trail', kind: 'cos', price: 1600 }),
+  Object.freeze({ id: 'mu_mini_stage', kind: 'decor', price: 1300 }),
 ]);
 
 const DAY_MS = 86400000;
@@ -161,15 +179,55 @@ export function decorOwned(state, id) {
 const STALE = Object.freeze({ ok: false, msg: '오늘의 꾸미기가 바뀌었어요', stale: true });
 
 export function planBuy({ day, shown, dp, coins, owned }) {
-  const pick = pickOf(day);
-  if (shown?.d !== day || shown?.id !== pick.id) return { ...STALE };
+  if (shown?.d !== day) return { ...STALE };
+  const pick = DAILY_PICK_POOL.find(p => p.id === shown.id);
+  if (!pick) return { ok: false, msg: '지금은 살 수 없어요' };
   if (owned) return { ok: false, msg: '이미 있어요' };
-  const price = priceOf(pick, dp, day);
+  const today = pick.id === pickOf(day).id;
+  const price = today ? priceOf(pick, dp, day) : pick.price;
   if (coins < price) return { ok: false, msg: '코인이 모자라요' };
-  return { ok: true, pick, price, half: price < pick.price };
+  return { ok: true, pick, price, half: price < pick.price, today };
 }
 
 export function adGrant(shown, day) {
   if (shown?.d !== day || shown?.id !== pickOf(day).id) return null;
   return { d: day, id: shown.id, half: true };
+}
+
+const THEMES = Object.freeze([
+  ['wp_', '❄️', '겨울 준비'], ['fp_', '🐿️', '숲속 친구'], ['xm_', '🎄', '크리스마스'], ['sp_', '🐚', '바닷가'],
+  ['ds_', '🍰', '디저트 카페'], ['ns_', '🌙', '밤하늘'], ['ny_', '🧧', '설날'], ['cp_', '🏕️', '캠핑'],
+  ['sb_', '🌸', '벚꽃'], ['rn_', '☔', '비 오는 날'], ['tc_', '🍵', '찻집'], ['at_', '🎨', '아틀리에'],
+  ['mu_', '🎵', '음악회'], ['sf_', '🎆', '여름밤 축제'], ['tools_', '🛠️', '도구 세트'], ['', '🎀', '기타'],
+].map(([prefix, emoji, name]) => Object.freeze({ key: prefix || 'etc', prefix, emoji, name })));
+
+export const themeOf = (id) => THEMES.find(t => t.prefix && id.startsWith(t.prefix)) || THEMES[THEMES.length - 1];
+
+export function nextDayKey(dateKey) {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  const t = new Date(Date.UTC(y, m - 1, d + 1));
+  return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, '0')}-${String(t.getUTCDate()).padStart(2, '0')}`;
+}
+
+export const tomorrowPick = (dateKey) => pickOf(nextDayKey(dateKey));
+
+export const daysUntil = (itemIndex, todayIndex, n = DAILY_PICK_POOL.length) => ((itemIndex - todayIndex) % n + n) % n;
+
+export function dexLabel(days, deal) {
+  if (days === 0) return deal ? '오늘 특가' : '오늘';
+  if (days === 1) return '내일';
+  if (days < 14) return `${days}일 뒤`;
+  if (days < 60) return `${Math.floor(days / 7)}주 뒤`;
+  return `${Math.round(days / 30)}달 뒤`;
+}
+
+export function themeBook(entries, todayIndex) {
+  const n = entries.length;
+  return THEMES.map(t => {
+    const items = entries
+      .map((e, idx) => ({ ...e, days: daysUntil(idx, todayIndex, n) }))
+      .filter(e => themeOf(e.id) === t);
+    const got = items.filter(e => e.owned).length;
+    return { key: t.key, emoji: t.emoji, name: t.name, got, total: items.length, full: items.length > 0 && got === items.length, items };
+  }).filter(t => t.total > 0);
 }
