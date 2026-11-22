@@ -179,6 +179,8 @@ const RAW = [
   { id: 'tools_frog', slot: 'tools', ico: '🐸', name: '개구리 세트', coins: 3600, tier: '특별', group: 'daily' },
   { id: 'tools_owl', slot: 'tools', ico: '🦉', name: '부엉이 세트', coins: 3600, tier: '특별', group: 'daily' },
   { id: 'tools_hedgehog', slot: 'tools', ico: '🦔', name: '고슴도치 세트', coins: 3600, tier: '특별', group: 'daily' },
+  { id: 'tools_snowbunny', slot: 'tools', ico: '🐰', name: '눈토끼 세트', coins: 3600, tier: '특별', group: 'daily' },
+  { id: 'tools_sweetpotato', slot: 'tools', ico: '🍠', name: '군고구마 세트', coins: 3600, tier: '특별', group: 'daily' },
 ];
 
 export const ITEMS = Object.freeze(RAW.map(({ coins = null, won = null, ...it }) => Object.freeze(it.reward || it.quest || it.set

@@ -25,7 +25,7 @@ test('🪓 도구 칸 — 테마 세트 3종 ₩5,000 + 🎃 할로윈 2종 ₩4
 });
 
 test('테마 = 버섯·달밤·꽃 + 🎃 달밤 보라·수확제 · 카탈로그 id ↔ 테마', () => {
-  assert.deepEqual([...TOOL_THEMES], ['shroom', 'moon', 'bloom', 'batnight', 'harvest', 'star', 'maple', 'frost', 'honey', 'kitty', 'shell', 'snowman', 'squirrel', 'candy', 'octopus', 'starry', 'strawberry', 'penguin', 'tangerine', 'watermelon', 'sunflower', 'peach', 'dino', 'frog', 'owl', 'hedgehog']);   // ⭐ star = 🤝 초대 보상
+  assert.deepEqual([...TOOL_THEMES], ['shroom', 'moon', 'bloom', 'batnight', 'harvest', 'star', 'maple', 'frost', 'honey', 'kitty', 'shell', 'snowman', 'squirrel', 'candy', 'octopus', 'starry', 'strawberry', 'penguin', 'tangerine', 'watermelon', 'sunflower', 'peach', 'dino', 'frog', 'owl', 'hedgehog', 'snowbunny', 'sweetpotato']);   // ⭐ star = 🤝 초대 보상
   assert.equal(themeOf('tools_moon'), 'moon');
   assert.equal(themeOf('cape'), null);
   assert.equal(themeOf(null), null);

@@ -13,7 +13,7 @@ const FILES = { owl: '../js/cosmetics/tool-skins-owl.js', hedgehog: '../js/cosme
 const verts = g => { let n = 0; g.traverse(o => { if (o.isMesh) n += o.geometry.attributes.position.count; }); return n; };
 
 test('owl and hedgehog are tool themes with catalog ids, wired like frog', () => {
-  assert.deepEqual(TOOL_THEMES.slice(-2), ['owl', 'hedgehog']);
+  assert.deepEqual(TOOL_THEMES.slice(-4, -2), ['owl', 'hedgehog']);
   const ts = read('../js/cosmetics/tool-skins.js');
   for (const t of ['owl', 'hedgehog']) {
     const UP = t.toUpperCase();
