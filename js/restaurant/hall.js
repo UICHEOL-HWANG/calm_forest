@@ -1,4 +1,4 @@
-import { HALL } from './data.js';
+import { HALL, BOARD_ROW_Y, MENU, MENU_KEYS, STAR } from './data.js';
 import { paintKit, bake } from './paint-merge.js';
 
 const C = {
@@ -7,14 +7,18 @@ const C = {
   stove: 0x3b3b3e, pan: 0x2c2c30, steel: 0x9aa0a8, crate: 0x9b6b3f, board: 0xd9a868,
   table: 0x9c6b42, tableLeg: 0x6e4a2c, stool: 0x2f5e47, leaf: 0x5f8f4e, pot: 0xe8dcc4, mat: 0x2f5e47,
   chalk: 0x2b2f2c, chalkFrame: 0x8a6a48, plate: 0xffffff, bin: 0x6d7a6a, fish: 0x5b8fb0, rice: 0xf4efe4,
+  shrimp: 0xf08a6a, squid: 0xf1e3e8, veg: 0x6fb35a, batter: 0xf2dca0, fried: 0xe0a040, oil: 0xe0a83a, rim: 0x6f757d,
 };
+const ROW_DOT = { grilled: C.fish, riceball: C.rice, soup: 0xe8a85a, shrimpfry: C.shrimp, squidfry: C.squid, vegfry: C.veg };
+const LEAN = -0.14;
+const PIECE = { shrimp: [1.7, 0.6, 0.7], squid: [1.2, 0.5, 1.2], veg: [1.4, 0.5, 1.0] };
 
 function easel(K, g, THREE) {
   const { put, box, cyl, ball, tag } = K;
   const e = new THREE.Group();
   e.position.set(HALL.board.x, 0, HALL.board.z);
   g.add(e);
-  const lean = -0.14;
+  const lean = LEAN;
   for (const s of [-1, 1]) {
     put(e, box(0.08, 1.75, 0.08), tag(C.chalkFrame), [s * 0.55, 0.86, 0.02], [lean, 0, 0]);
     put(e, box(0.07, 1.6, 0.07), tag(C.tableLeg), [s * 0.5, 0.78, -0.42], [0.28, 0, 0]);
@@ -23,12 +27,6 @@ function easel(K, g, THREE) {
   put(e, box(1.04, 1.0, 0.05), tag(C.chalkFrame), [0, 1.12, 0], [lean, 0, 0]);
   put(e, box(0.92, 0.88, 0.04), tag(C.chalk), [0, 1.12, 0.03], [lean, 0, 0]);
   put(e, box(0.62, 0.05, 0.01), tag(C.rice), [0, 1.44, 0.1], [lean, 0, 0]);
-  const dish = [[C.fish, 1.22], [C.rice, 1.04], [0xe8a85a, 0.86]];
-  for (const [c, y] of dish) {
-    const z = 0.08 + (y - 1.12) * 0.14;
-    put(e, ball(0.06, 0), tag(c), [-0.28, y, z], [0, 0, 0], [1.3, 1, 0.5]);
-    put(e, box(0.38, 0.035, 0.01), tag(C.rice), [0.08, y, z + 0.01], [lean, 0, 0]);
-  }
   put(e, box(0.9, 0.24, 0.06), tag(C.green), [0, 1.74, -0.05], [lean, 0, 0]);
   put(e, cyl(0.02, 0.02, 0.18, 6), tag(C.chalkFrame), [0.44, 1.95, -0.06]);
   put(e, cyl(0.03, 0.13, 0.16, 10), tag(0xe2b54a), [0.44, 2.08, -0.06]);
@@ -60,11 +58,17 @@ function room(K, g, THREE) {
   put(g, box(0.5, 0.85, 1.6), tag(C.counter), [split, 0.43, -0.9]);
   put(g, box(0.56, 0.06, 1.66), tag(C.top), [split, 0.88, -0.9]);
   put(g, box(1.3, 0.02, 0.8), tag(C.mat), [HALL.door.x + 0.3, 0.03, HALL.door.z + 0.1]);
-  for (const [x, z] of [[-6.6, -3.6], [-0.4, -3.6]]) {
+  for (const [x, z] of HALL.plants) {
     put(g, K.cyl(0.26, 0.2, 0.42, 10), tag(C.pot), [x, 0.21, z]);
     put(g, ball(0.38, 0), tag(C.leaf), [x, 0.68, z]);
   }
   easel(K, g, THREE);
+}
+
+function boardRow(K, g, k) {
+  const y = BOARD_ROW_Y[k], z = 0.08 - (y - 1.12) * 0.14;
+  K.put(g, K.ball(0.05, 0), K.tag(ROW_DOT[k]), [-0.28, y, z], [0, 0, 0], [1.3, 1, 0.5]);
+  K.put(g, K.box(0.38, 0.03, 0.01), K.tag(C.rice), [0.08, y, z + 0.01], [LEAN, 0, 0]);
 }
 
 function counter(K, g) {
@@ -79,11 +83,20 @@ function station(K, g, s) {
     put(g, cyl(0.35, 0.35, 0.06, 10), tag(0x56614f), [0, 0.78, 0]);
     return;
   }
+  if (s.kind === 'fryer') {
+    put(g, box(1.1, 0.85, 1.0), tag(C.steel), [0, 0.43, 0]);
+    put(g, box(1.14, 0.08, 1.04), tag(C.rim), [0, 0.89, 0]);
+    put(g, box(0.72, 0.02, 0.6), tag(C.oil), [0, 0.94, 0]);
+    put(g, box(0.5, 0.1, 0.42), tag(C.stove), [0, 0.98, 0]);
+    put(g, box(0.05, 0.05, 0.4), tag(C.pan), [0, 1.04, 0.4]);
+    return;
+  }
   counter(K, g);
   if (s.kind === 'crate') {
     put(g, box(0.8, 0.35, 0.65), tag(C.crate), [0, 1.08, 0]);
     for (let i = 0; i < 3; i++) {
       if (s.give === 'fish') put(g, ball(0.12, 0), tag(C.fish), [-0.22 + i * 0.22, 1.28, 0], [0, 0, 0], [1.6, 0.7, 0.8]);
+      else if (PIECE[s.give]) put(g, ball(0.11, 0), tag(C[s.give]), [-0.22 + i * 0.22, 1.28, 0], [0, i * 0.6, 0], PIECE[s.give]);
       else put(g, ball(0.13, 0), tag(C.rice), [-0.22 + i * 0.22, 1.28, 0]);
     }
   } else if (s.kind === 'board') {
@@ -92,10 +105,14 @@ function station(K, g, s) {
   } else if (s.kind === 'pan') {
     put(g, box(1.0, 0.04, 0.9), tag(C.stove), [0, 0.92, 0]);
     put(g, cyl(0.33, 0.28, 0.08, 12), tag(C.pan), [0, 0.99, 0]);
-    put(g, box(0.45, 0.04, 0.07), tag(C.tableLeg), [-0.5, 0.99, 0]);
+    put(g, box(0.3, 0.04, 0.07), tag(C.tableLeg), [0.34, 0.99, -0.34], [0, Math.PI / 4, 0]);
   } else if (s.kind === 'pot') {
     put(g, box(1.0, 0.04, 0.9), tag(C.stove), [0, 0.92, 0]);
     put(g, cyl(0.34, 0.3, 0.4, 12), tag(C.steel), [0, 1.15, 0]);
+  } else if (s.kind === 'bowl') {
+    put(g, cyl(0.3, 0.22, 0.2, 12), tag(C.cream), [0, 1.01, 0]);
+    put(g, cyl(0.27, 0.27, 0.02, 12), tag(C.batter), [0, 1.1, 0]);
+    put(g, box(0.04, 0.04, 0.45), tag(C.steel), [0.15, 1.18, 0], [0.5, 0, 0]);
   } else if (s.kind === 'plates') {
     for (let i = 0; i < 5; i++) put(g, cyl(0.26, 0.22, 0.05, 10), tag(C.plate), [0, 0.94 + i * 0.06, 0]);
   }
@@ -120,6 +137,14 @@ export function buildHall(THREE) {
     group.add(g);
     stations[s.id] = g;
   }
+  const rows = {};
+  for (const k of MENU_KEYS) {
+    const g = new THREE.Group();
+    g.position.set(HALL.board.x, 0, HALL.board.z);
+    g.add(...bake(THREE, sc => boardRow(K, sc, k)));
+    group.add(g);
+    rows[k] = g;
+  }
   const tables = HALL.tables.map(([x, z]) => {
     const g = new THREE.Group();
     g.position.set(x, 0, z);
@@ -127,15 +152,16 @@ export function buildHall(THREE) {
     group.add(g);
     return g;
   });
-  return { group, stations, tables };
+  return { group, stations, tables, rows };
 }
 
 export function showForStar(hall, star, tablesForStar) {
   for (const s of HALL.stations) hall.stations[s.id].visible = !s.need || star >= s.need;
   hall.tables.forEach((t, i) => { t.visible = i < tablesForStar; });
+  for (const k of MENU_KEYS) hall.rows[k].visible = STAR[star].menus.includes(k);
 }
 
-const ITEM_Y = { pass: 0.92, pot: 1.38, pan: 1.04 };
+const ITEM_Y = { pass: 0.92, pot: 1.38, pan: 1.04, bowl: 1.12, fryer: 1.04 };
 export const itemHeight = kind => ITEM_Y[kind] ?? 0.98;
 
 function food(K, sc, item) {
@@ -154,6 +180,11 @@ function food(K, sc, item) {
     case 'soup':
       put(sc, cyl(0.2, 0.15, 0.14, 12), tag(0xf4efe4), [0, y + 0.07, 0]);
       put(sc, cyl(0.17, 0.17, 0.02, 12), tag(0xe8a85a), [0, y + 0.14, 0]);
+      break;
+    case 'shrimp': case 'squid': case 'veg': put(sc, ball(0.15, 0), tag(C[item.kind]), [0, y + 0.06, 0], [0, 0, 0], PIECE[item.kind]); break;
+    case 'shrimpBat': case 'squidBat': case 'vegBat': put(sc, ball(0.16, 0), tag(C.batter), [0, y + 0.06, 0], [0, 0, 0], PIECE[item.kind.slice(0, -3)]); break;
+    case 'shrimpfry': case 'squidfry': case 'vegfry':
+      for (const dx of [-0.1, 0.1]) put(sc, ball(0.13, 0), tag(C.fried), [dx, y + 0.06, 0], [0, dx * 4, 0], PIECE[MENU[item.kind].from]);
       break;
     default: put(sc, ball(0.15, 0), tag(0x3a3330), [0, y + 0.06, 0], [0, 0, 0], [1.4, 0.6, 0.8]);
   }

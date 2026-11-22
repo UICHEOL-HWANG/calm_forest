@@ -1,0 +1,329 @@
+<title>메타 경로 A/B 설계</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* 한 줄 흐름: 결론 → 구조도 → 설정 → 지표·판정 → 정밀도 → 교란 → 일정 → 한계 */
+:root{
+  --bg:#f6f8f6; --surface:#ffffff; --fg:#17201b; --muted:#5b6862; --line:#d9e1dc;
+  --accent:#2f6b4f; --a:#2d6fa3; --a-soft:#e3eef7; --b:#b06a12; --b-soft:#f7ecdc;
+  --out:#9aa6a0; --ok:#2f7d4f; --warn:#a4561b;
+  --sans:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121815; --surface:#1a221e; --fg:#e4ebe6; --muted:#9aa8a1; --line:#2c3832;
+  --accent:#7cc39c; --a:#7fb6e3; --a-soft:#1d2d3a; --b:#e3a75a; --b-soft:#33281a;
+  --out:#6c7872; --ok:#7cc39c; --warn:#e3a75a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121815; --surface:#1a221e; --fg:#e4ebe6; --muted:#9aa8a1; --line:#2c3832;
+  --accent:#7cc39c; --a:#7fb6e3; --a-soft:#1d2d3a; --b:#e3a75a; --b-soft:#33281a;
+  --out:#6c7872; --ok:#7cc39c; --warn:#e3a75a; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.65}
+.wrap{max-width:920px;margin:0 auto;padding-block:40px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:44px}
+h1{font-size:30px;line-height:1.25;margin:0;text-wrap:balance;font-weight:700}
+h2{font-size:20px;margin:0 0 12px;text-wrap:balance;font-weight:700}
+h3{font-size:15px;margin:0 0 6px;font-weight:600}
+p{margin:0;max-width:68ch}
+.eyebrow{font-size:12px;letter-spacing:.08em;color:var(--accent);font-weight:600}
+.lead{font-size:17px;color:var(--fg);max-width:62ch}
+.sub{color:var(--muted);font-size:13.5px}
+header{display:flex;flex-direction:column;gap:10px}
+.answer{border-left:3px solid var(--accent);padding:4px 0 4px 14px;display:flex;flex-direction:column;gap:6px}
+section{display:flex;flex-direction:column;gap:12px}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px}
+svg text{font-family:var(--sans)}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:560px}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12.5px;color:var(--muted);font-weight:600;letter-spacing:.02em}
+.tag{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px;white-space:nowrap}
+.tag.a{background:var(--a-soft);color:var(--a)}
+.tag.b{background:var(--b-soft);color:var(--b)}
+.tag.same{background:transparent;border:1px solid var(--line);color:var(--muted)}
+code{font-family:var(--mono);font-size:12.5px;word-break:break-all}
+.link{font-family:var(--mono);font-size:12.5px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px;word-break:break-all;line-height:1.5}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.grid2>*{min-width:0}
+.rule{display:grid;grid-template-columns:auto 1fr;gap:10px 16px;align-items:baseline}
+.rule .cond{font-family:var(--mono);font-size:14px;font-weight:500;white-space:nowrap}
+.check{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px}
+.check li{display:grid;grid-template-columns:22px 1fr;gap:8px}
+.check li::before{content:"";width:14px;height:14px;border:1.5px solid var(--accent);border-radius:3px;margin-top:5px}
+.check b{font-weight:600}
+ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;max-width:70ch}
+.formula{font-family:var(--mono);font-size:14px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px 14px;line-height:1.7;overflow-x:auto}
+.note{font-size:13px;color:var(--muted)}
+footer{font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px}
+@media (max-width:520px){h1{font-size:25px}.rule{grid-template-columns:1fr}.rule .cond{white-space:normal}}
+</style>
+
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">고요한 숲 · 메타 광고 3주차 · 사전등록 초안 (2026-11-16)</div>
+  <h1>웹 경유 vs 스토어 직행, 어느 쪽이 같은 돈으로 앱 설치를 더 데려오나</h1>
+  <div class="answer">
+    <p class="lead">하루 2만 원을 두 경로에 1만 원씩 나눠 7일(11/20 18:00 ~ 11/27 23:59) 돌리고, <b>Android 광고비 1만 원당 Android 설치 수</b>로 판정합니다.</p>
+    <p class="sub">애드센스 H5 승인과 상관없이 돌릴 수 있습니다. 게임 안 프리패스 A/B는 이것과 따로, 앱 안에서 기기 해시로 나뉩니다.</p>
+  </div>
+</header>
+
+<section>
+  <h2>두 실험이 어떻게 겹치나</h2>
+  <p class="sub">위층은 메타가 사람을 나누고, 아래층은 게임이 기기를 나눕니다. 서로의 배정에 끼어들지 않아서 한 번의 광고 집행으로 둘 다 돌아갑니다.</p>
+  <div class="panel scroll">
+    <svg viewBox="0 0 860 470" width="100%" style="min-width:680px;display:block" role="img" aria-label="메타 광고에서 두 경로로 나뉘어 앱 설치와 게임 안 실험으로 이어지는 흐름도">
+      <defs>
+        <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/></marker>
+      </defs>
+      <text x="16" y="24" font-size="12" fill="var(--accent)" font-weight="600">1층 · 메타 실험 화면이 사람을 무작위로 나눔</text>
+      <rect x="330" y="38" width="200" height="50" rx="8" fill="var(--surface)" stroke="var(--line)"/>
+      <text x="430" y="60" font-size="14" font-weight="600" fill="var(--fg)" text-anchor="middle">메타 광고 (같은 소재)</text>
+      <text x="430" y="78" font-size="12" fill="var(--muted)" text-anchor="middle">하루 2만 원 · Android·iOS 모두</text>
+      <path d="M400,88 C380,112 260,112 230,128" fill="none" stroke="var(--a)" stroke-width="2" marker-end="url(#ar)"/>
+      <path d="M460,88 C480,112 600,112 630,128" fill="none" stroke="var(--b)" stroke-width="2" marker-end="url(#ar)"/>
+      <text x="300" y="112" font-size="12" fill="var(--a)" text-anchor="middle" font-weight="600">50%</text>
+      <text x="560" y="112" font-size="12" fill="var(--b)" text-anchor="middle" font-weight="600">50%</text>
+
+      <rect x="110" y="130" width="250" height="60" rx="8" fill="var(--a-soft)" stroke="var(--a)"/>
+      <text x="235" y="154" font-size="14" font-weight="700" fill="var(--a)" text-anchor="middle">A · 웹 경유 (지금 방식)</text>
+      <text x="235" y="174" font-size="12" fill="var(--fg)" text-anchor="middle">calmforest.cloud 첫 화면 → 로그인 화면</text>
+      <rect x="500" y="130" width="250" height="60" rx="8" fill="var(--b-soft)" stroke="var(--b)"/>
+      <text x="625" y="154" font-size="14" font-weight="700" fill="var(--b)" text-anchor="middle">B · 스토어 직행</text>
+      <text x="625" y="174" font-size="12" fill="var(--fg)" text-anchor="middle">calmforest.cloud/app → 화면 없이 바로 이동</text>
+
+      <path d="M180,190 L120,240" fill="none" stroke="var(--out)" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#ar)"/>
+      <rect x="20" y="242" width="180" height="46" rx="8" fill="none" stroke="var(--out)" stroke-dasharray="4 4"/>
+      <text x="110" y="262" font-size="12.5" fill="var(--muted)" text-anchor="middle">웹에서 바로 플레이</text>
+      <text x="110" y="279" font-size="11.5" fill="var(--muted)" text-anchor="middle">프리패스 실험 밖 (애드센스 전)</text>
+      <path d="M270,190 L360,244" fill="none" stroke="var(--a)" stroke-width="2" marker-end="url(#ar)"/>
+      <text x="290" y="232" font-size="11.5" fill="var(--a)">스토어 배너</text>
+      <path d="M625,190 L520,244" fill="none" stroke="var(--b)" stroke-width="2" marker-end="url(#ar)"/>
+
+      <rect x="330" y="246" width="200" height="56" rx="8" fill="var(--surface)" stroke="var(--line)"/>
+      <text x="430" y="268" font-size="14" font-weight="600" fill="var(--fg)" text-anchor="middle">스토어 → 앱 설치</text>
+      <text x="430" y="288" font-size="11.5" fill="var(--muted)" text-anchor="middle">utm_content 로 A·B 구분</text>
+      <rect x="560" y="246" width="280" height="56" rx="8" fill="none" stroke="var(--line)"/>
+      <text x="575" y="268" font-size="12" fill="var(--fg)">Android · Play 설치 기록 → 판정</text>
+      <text x="575" y="288" font-size="12" fill="var(--muted)">iOS · App Store ct 합계 → 참고만</text>
+      <line x1="530" y1="274" x2="560" y2="274" stroke="var(--line)"/>
+
+      <line x1="16" y1="330" x2="844" y2="330" stroke="var(--line)" stroke-dasharray="2 4"/>
+      <text x="16" y="354" font-size="12" fill="var(--accent)" font-weight="600">2층 · 게임이 기기 해시로 나눔 (프리패스, 11/9 설계서)</text>
+      <path d="M430,302 L430,370" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ar)"/>
+      <rect x="330" y="372" width="200" height="40" rx="8" fill="var(--surface)" stroke="var(--line)"/>
+      <text x="430" y="397" font-size="13" fill="var(--fg)" text-anchor="middle">prepass-v1 해시 50:50</text>
+      <path d="M380,412 L270,440" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ar)"/>
+      <path d="M480,412 L590,440" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ar)"/>
+      <text x="200" y="458" font-size="13" fill="var(--fg)" text-anchor="middle">막힌 순간 광고 보고 재료 받기</text>
+      <text x="660" y="458" font-size="13" fill="var(--fg)" text-anchor="middle">버튼 없음 (대조군)</text>
+    </svg>
+  </div>
+</section>
+
+<section>
+  <h2>광고 설정</h2>
+  <p class="sub">다른 칸은 도착지 하나뿐입니다. 나머지가 하나라도 다르면 경로 차이와 섞입니다.</p>
+  <div class="panel scroll">
+    <table>
+      <thead><tr><th>항목</th><th>A · 웹 경유</th><th>B · 스토어 직행</th></tr></thead>
+      <tbody>
+        <tr><td>광고 세트 이름 (utm_term)</td><td><code>path_web</code></td><td><code>path_direct</code></td></tr>
+        <tr><td>광고 이름 (utm_content)</td><td><code>w{회차}_web_{소재}</code></td><td><code>w{회차}_direct_{소재}</code> (w3_web_general · w3_direct_general)</td></tr>
+        <tr><td>도착지</td><td><span class="tag a">calmforest.cloud/</span></td><td><span class="tag b">calmforest.cloud/app</span></td></tr>
+        <tr><td>하루 예산</td><td colspan="2"><span class="tag same">같음</span> 1만 원씩, 합계 2만 원</td></tr>
+        <tr><td>목표 · 최적화</td><td colspan="2"><span class="tag same">같음</span> 트래픽 · <b>링크 클릭</b> (B는 페이지가 안 떠서 랜딩 페이지 조회 최적화를 쓸 수 없음)</td></tr>
+        <tr><td>소재</td><td colspan="2"><span class="tag same">같음</span> 세트마다 광고 1개. 두 광고에 같은 영상을 같은 순서로 넣고, 영상 배분은 메타에 맡김 (분석 때 '미디어별' 분석으로 비중 확인)</td></tr>
+        <tr><td>타깃 · 노출 위치</td><td colspan="2"><span class="tag same">같음</span> 한국 18~44, 관심사 3개, 모바일 · FB/IG/Threads, OS 제한 없음</td></tr>
+        <tr><td>배정</td><td colspan="2"><span class="tag same">같음</span> 실험 화면(test-and-learn) 광고 세트 비교로 등록. 세트 두 개만 만들어 두지 않음</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="grid2">
+    <div class="panel">
+      <h3><span class="tag a">A</span> 링크</h3>
+      <div class="link">https://calmforest.cloud/?utm_source=meta&amp;utm_campaign={{campaign.name}}&amp;utm_term={{adset.name}}&amp;utm_content={{ad.name}}</div>
+      <p class="note" style="margin-top:8px">지금 쓰는 URL 매개변수 그대로. 스토어 배너가 utm_content 를 Play referrer 와 App Store ct 에 싣습니다.</p>
+    </div>
+    <div class="panel">
+      <h3><span class="tag b">B</span> 링크</h3>
+      <div class="link">https://calmforest.cloud/app?utm_source=meta&amp;utm_campaign={{campaign.name}}&amp;utm_term={{adset.name}}&amp;utm_content={{ad.name}}</div>
+      <p class="note" style="margin-top:8px">이미 있는 /app 이 기기를 보고 화면 없이 바로 보냅니다. Android 는 Play(referrer 에 utm_content), iPhone 은 App Store(ct). 11/16 로컬에서 동작 확인.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>소재 교체</h2>
+  <p class="sub">같은 영상을 오래 돌리면 반응이 떨어진다는 관찰을 반영합니다. 다만 지난 두 주 숫자로는 피로도만의 탓이라고 보기 어렵습니다.</p>
+  <div class="panel scroll">
+    <svg viewBox="0 0 720 250" width="100%" style="min-width:600px;display:block" role="img" aria-label="광고별 집행 일차별 링크 클릭률">
+      <rect x="125" y="20" width="180" height="180" fill="var(--a-soft)" opacity=".7"/>
+      <text x="215" y="34" font-size="11" fill="var(--a)" text-anchor="middle">토·일</text>
+      <g stroke="var(--line)">
+        <line x1="60" y1="200" x2="640" y2="200"/><line x1="60" y1="140" x2="640" y2="140" stroke-dasharray="2 4"/><line x1="60" y1="80" x2="640" y2="80" stroke-dasharray="2 4"/><line x1="60" y1="20" x2="640" y2="20" stroke-dasharray="2 4"/>
+      </g>
+      <g font-size="11" fill="var(--muted)" text-anchor="end" style="font-variant-numeric:tabular-nums">
+        <text x="54" y="204">0%</text><text x="54" y="144">2%</text><text x="54" y="84">4%</text><text x="54" y="24">6%</text>
+      </g>
+      <g font-size="11" fill="var(--muted)" text-anchor="middle">
+        <text x="80" y="218">1일차</text><text x="170" y="218">2</text><text x="260" y="218">3</text><text x="350" y="218">4</text><text x="440" y="218">5</text><text x="530" y="218">6</text><text x="620" y="218">7</text>
+        <text x="80" y="234">금</text><text x="170" y="234">토</text><text x="260" y="234">일</text><text x="350" y="234">월</text><text x="440" y="234">화</text><text x="530" y="234">수</text><text x="620" y="234">목</text>
+      </g>
+      <polyline fill="none" stroke="var(--accent)" stroke-width="2.2" points="80,32.9 170,52.4 260,55.1 350,63.2 440,93.8 530,40.1 620,65.6"/>
+      <polyline fill="none" stroke="var(--b)" stroke-width="2.2" points="80,47.9 170,23.3 260,53 350,68 440,46.7 530,66.8 620,94.4"/>
+      <polyline fill="none" stroke="var(--a)" stroke-width="2.2" points="80,53 170,51.8 260,60.8 350,67.7 440,75.8 530,85.7 620,71"/>
+      <polyline fill="none" stroke="var(--out)" stroke-width="2.2" stroke-dasharray="5 4" points="80,105.8 170,85.4 260,128.9 350,113.3 440,135.2 530,122.3 620,138.5"/>
+      <g font-size="11.5">
+        <text x="628" y="60" fill="var(--accent)">w1 일반</text>
+        <text x="628" y="78" fill="var(--a)">w2 원래</text>
+        <text x="628" y="98" fill="var(--b)">w2 바다</text>
+        <text x="628" y="142" fill="var(--muted)">w1 할로윈</text>
+      </g>
+    </svg>
+  </div>
+  <div class="grid2">
+    <div class="panel">
+      <h3>지난 두 주에서 본 것</h3>
+      <ul class="plain">
+        <li>링크 클릭률은 1주일 동안 천천히 10~25% 내려갔습니다. 3~4일차에 뚝 떨어지는 모양은 아닙니다.</li>
+        <li>1주일 누적 빈도가 1.4~1.9회입니다. 같은 사람이 여러 번 봐서 질리는 수준(보통 3회 이상)은 아닙니다.</li>
+        <li>두 주 모두 금요일에 시작해서 1~3일차가 주말이었습니다. 3~4일차 하락이 주말이 끝난 탓과 섞여 있습니다.</li>
+        <li>일 예산은 1만 원으로 그대로였지만, 메타가 자동으로 2일차에 1.2~1.5만 원을 쓰고 4~7일차엔 0.6~1만 원만 썼습니다. 일 예산을 평균으로 보고 날마다 더 쓰거나 덜 쓰는 메타의 기본 동작이고, 쓴 돈이 적은 날은 유입도 적습니다.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h3>그래서 이렇게 돌립니다</h3>
+      <ul class="plain">
+        <li>새로 찍는 15초 세로 영상 3편을 씁니다: <b>general</b> 하루 루틴(수확·낚시·카페 요리·저녁 경매·밤 집), <b>village</b> 마을 사람들(음악회·주민 선물과 편지·주말 장터·이웃 마을), <b>explore</b> 탐험(썰매·동굴·바다 잠수·천문대).</li>
+        <li>11/20 변경: 날짜별 영상 교체는 하지 않습니다. 세트마다 광고 하나(general)에 영상을 함께 넣고 7일 돌립니다. 메타가 세트마다 영상 배분을 따로 정하므로, 분석 때 두 세트의 영상 비중이 비슷한지 먼저 확인합니다.</li>
+        <li>영상에 나오는 기능은 집행 시작 전에 웹·Play·iOS·토스·itch 다섯 곳 모두에 나가 있어야 합니다. B는 스토어로 바로 보내서, 광고에서 본 장면이 앱에 없으면 바로 떠납니다.</li>
+        <li>덤으로, 교체한 날(화요일·토요일) 클릭률이 다시 오르면 피로도였다는 근거가 되고, 그대로면 요일·잠재 고객 소진 쪽입니다.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>무엇으로 판정하나</h2>
+  <div class="formula">설치 효율(경로) = 클릭 후 7일 안 Android 설치 수 ÷ 그 세트의 Android 광고비 × 10,000<br>R = 설치 효율(B) ÷ 설치 효율(A)</div>
+  <div class="panel scroll">
+    <table>
+      <thead><tr><th>구분</th><th>지표</th><th>어디서</th></tr></thead>
+      <tbody>
+        <tr><td><b>판정</b></td><td>R (위 식)</td><td>설치: Supabase install_attribution (source=meta, content=w3_*) · 광고비: 광고 관리자 '노출 기기' 분석</td></tr>
+        <tr><td>보조</td><td>설치 후 게임 행동까지 한 비율 · D1 재방문</td><td>GA4 BigQuery (지난번 기준 91대 중 87대)</td></tr>
+        <tr><td>보조</td><td>A만 있는 덤: 웹에서 바로 플레이한 사람 수</td><td>GA4 BigQuery (지난번 10일에 166명)</td></tr>
+        <tr><td>참고</td><td>iOS 경로별 첫 다운로드 비율</td><td>App Store Connect 소스별 (ct). 분석 공유 동의자만, 표본 작음</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="panel">
+    <h3>판정 규칙 (2026-11-20 고정)</h3>
+    <div class="rule" style="margin-top:8px">
+      <span class="cond">R ≥ 0.8</span><p>스토어 직행으로 바꿈. B로 온 설치는 전부 앱 안 실험 표본이 되고, 웹 로그인 화면 이탈이 없어서 20%까지는 덜 데려와도 B가 낫다고 봄.</p>
+      <span class="cond">R &lt; 0.8</span><p>웹 경유 유지.</p>
+      <span class="cond">함께 적음</span><p>R의 95% 신뢰구간. 구간이 0.8을 걸치면 "운영 결정, 효과 확정 아님"으로 기록.</p>
+    </div>
+    <p class="note" style="margin-top:10px">0.8 기준선은 2026-11-20 집행 시작 전에 확정했습니다(사용자).</p>
+  </div>
+</section>
+
+<section>
+  <h2>13일이면 얼마나 가려낼 수 있나</h2>
+  <p class="sub">지난 1~2주차 실적(Android 광고비 261,361원에 Android 설치 109대, 하루 약 7.8대)을 반으로 나눠 경로마다 하루 약 3.9대로 잡았습니다.</p>
+  <div class="panel scroll">
+    <svg viewBox="0 0 720 230" width="100%" style="min-width:560px;display:block" role="img" aria-label="기간별 경로당 예상 설치 수와 가려낼 수 있는 최소 차이">
+      <text x="0" y="16" font-size="12" fill="var(--muted)">경로당 예상 Android 설치 (막대) · 우연과 구별되는 최소 차이 (오른쪽)</text>
+      <g font-size="12.5" fill="var(--fg)">
+        <text x="0" y="62">7일 (확정)</text><text x="0" y="122">13일</text><text x="0" y="182">21일</text>
+      </g>
+      <line x1="90" y1="34" x2="90" y2="204" stroke="var(--line)"/>
+      <rect x="90" y="46" width="132" height="24" rx="3" fill="var(--out)"/>
+      <rect x="90" y="106" width="249" height="24" rx="3" fill="var(--accent)"/>
+      <rect x="90" y="166" width="400" height="24" rx="3" fill="var(--out)"/>
+      <g font-size="12.5" font-weight="600" style="font-variant-numeric:tabular-nums">
+        <text x="230" y="63" fill="var(--fg)">약 27대</text>
+        <text x="347" y="123" fill="var(--fg)">약 51대</text>
+        <text x="498" y="183" fill="var(--fg)">약 82대</text>
+      </g>
+      <g font-size="12.5" text-anchor="end" style="font-variant-numeric:tabular-nums">
+        <text x="716" y="63" fill="var(--muted)">약 1.7배</text>
+        <text x="716" y="123" fill="var(--fg)" font-weight="600">약 1.5배</text>
+        <text x="716" y="183" fill="var(--muted)">약 1.4배</text>
+      </g>
+      <line x1="90" y1="204" x2="490" y2="204" stroke="var(--line)"/>
+      <g font-size="11" fill="var(--muted)" text-anchor="middle" style="font-variant-numeric:tabular-nums">
+        <text x="90" y="220">0</text><text x="285" y="220">40</text><text x="480" y="220">80</text>
+      </g>
+    </svg>
+  </div>
+  <p class="note">11/20 결정으로 7일 집행합니다. 7일이면 한쪽이 1.7배쯤 더 데려와야 우연과 구별됩니다(13일은 1.5배). 그보다 작은 차이는 위 판정 규칙대로 운영 결정으로만 씁니다. 기간을 21일로 늘려도 1.4배라, 일정 부담에 비해 얻는 게 작습니다.</p>
+</section>
+
+<section>
+  <h2>교란을 막는 다섯 가지</h2>
+  <ul class="check">
+    <li><span><b>최적화 기준 통일.</b> 두 세트 모두 링크 클릭. 하나라도 랜딩 페이지 조회면 메타가 다른 사람에게 보여 줌.</span></li>
+    <li><span><b>실험 화면으로 등록.</b> 같은 사람이 두 세트에 겹치지 않게 메타가 무작위로 나눔.</span></li>
+    <li><span><b>웹 화면 고정.</b> 테스트 기간에 웹 첫 화면·로그인 화면·스토어 배너를 바꾸지 않음. 로그인 실험 E5 가 11/27 에 끝난 뒤 시작.</span></li>
+    <li><span><b>분모는 Android 광고비.</b> 메타가 세트마다 OS 비율을 다르게 내보내도 판정이 흔들리지 않게.</span></li>
+    <li><span><b>집계 창 고정.</b> 클릭 후 7일 안 설치만 셈. 마지막 날 클릭의 설치까지 기다린 뒤 분석.</span></li>
+  </ul>
+  <p class="note">게임 콘텐츠 배포는 설치 뒤에 두 경로가 똑같이 겪어서 경로 비교를 흔들지 않습니다. 다만 프리패스 실험은 유입 경로(A·B·자연)로 층화해서 봅니다.</p>
+</section>
+
+<section>
+  <h2>일정</h2>
+  <div class="panel scroll">
+    <svg viewBox="0 0 760 210" width="100%" style="min-width:620px;display:block" role="img" aria-label="11월 20일부터 12월 20일까지 일정표">
+      <g font-size="11.5" fill="var(--muted)" text-anchor="middle" style="font-variant-numeric:tabular-nums">
+        <text x="150" y="16">11/20</text><text x="290" y="16">11/27</text><text x="420" y="16">12/4</text><text x="550" y="16">12/11</text><text x="680" y="16">12/18</text>
+      </g>
+      <g stroke="var(--line)">
+        <line x1="150" y1="24" x2="150" y2="200"/><line x1="290" y1="24" x2="290" y2="200"/><line x1="420" y1="24" x2="420" y2="200"/><line x1="550" y1="24" x2="550" y2="200"/><line x1="680" y1="24" x2="680" y2="200"/>
+      </g>
+      <g font-size="12.5" fill="var(--fg)">
+        <text x="0" y="48">로그인 실험 E5</text>
+        <text x="0" y="84">앱 빌드 배포</text>
+        <text x="0" y="120">경로 A/B 집행</text>
+        <text x="0" y="156">설치 집계 창</text>
+        <text x="0" y="192">겨울 분수 배포</text>
+      </g>
+      <rect x="130" y="36" width="160" height="18" rx="3" fill="var(--out)"/>
+      <text x="296" y="50" font-size="11.5" fill="var(--muted)">~11/27</text>
+      <rect x="130" y="72" width="178" height="18" rx="3" fill="none" stroke="var(--warn)" stroke-dasharray="4 3"/>
+      <text x="316" y="86" font-size="11.5" fill="var(--warn)">애드몹·프리패스 포함 (2층에 필요)</text>
+      <rect x="309" y="108" width="241" height="18" rx="3" fill="var(--accent)"/>
+      <text x="430" y="122" font-size="11.5" fill="var(--bg)" text-anchor="middle" font-weight="600">11/20 ~ 11/27 · 7일</text>
+      <rect x="550" y="144" width="130" height="18" rx="3" fill="var(--a-soft)" stroke="var(--a)"/>
+      <text x="688" y="158" font-size="11.5" fill="var(--fg)">12/4 분석</text>
+      <rect x="550" y="180" width="37" height="18" rx="3" fill="var(--b-soft)" stroke="var(--b)"/>
+      <text x="595" y="194" font-size="11.5" fill="var(--muted)">12/11~12, 집행 끝난 뒤</text>
+    </svg>
+  </div>
+  <p class="note">11/20 변경: 집행은 11/20 18:00 ~ 11/27 23:59이고, 영상 교체 일정은 없습니다. 경로 A/B 자체는 앱 빌드가 늦어도 돌릴 수 있습니다. 프리패스(2층)는 애드몹이 들어간 앱이 스토어에 나가야 시작되고, 설계서대로 온보딩 수정 뒤 1주 기준선을 다시 잰 다음 켭니다.</p>
+</section>
+
+<section>
+  <h2>이 설계로 말할 수 없는 것</h2>
+  <ul class="plain">
+    <li>iOS 경로 차이. 광고비의 6%만 iOS로 나가서 7일에 몇 대 수준입니다.</li>
+    <li>A에서 배너를 안 누르고 나중에 스토어 검색으로 설치한 사람. 광고 설치로 안 잡혀 A가 조금 불리하게 나옵니다.</li>
+    <li>1.5배보다 작은 차이가 진짜인지. 판정 규칙은 운영 결정이고 효과 확정이 아닙니다.</li>
+    <li>장기 가치(LTV) 차이. 경로별 D1 까지만 보고, 매출은 프리패스 실험 쪽에서 봅니다.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>시작 전에 할 일</h2>
+  <ul class="check">
+    <li><span><b>판정 기준선 0.8 확정</b> (사용자)</span></li>
+    <li><span><b>광고 관리자에서 캠페인·세트 두 개 만들고 실험 화면에 등록</b> (사용자, 결제·게시)</span></li>
+    <li><span><b>Android 광고비 뽑는 법 확인.</b> 11/16 메타 API 기기별 분류가 빈 응답이라 광고 관리자 '노출 기기' 분석 내보내기로 대신 (Claude)</span></li>
+    <li><span><b>분석 쿼리 미리 작성·고정</b> (Claude, 집행 전)</span></li>
+  </ul>
+</section>
+
+<footer>근거: ml/reports/meta_acquisition_funnel_20261103 · 11/12 OS별 광고비 점검 · docs/superpowers/specs/2026-11-09-progress-prepass-rewarded-design.md · functions/app-link.js</footer>
+</div>

@@ -230,10 +230,33 @@ export function makeRock(vein, theme) {
 }
 
 export function makeLift() {
-  const g = new THREE.Group();
-  const wood = mat(0x7a5232, { flatShading: true });
-  for (const x of [-0.9, 0.9]) M(new THREE.BoxGeometry(0.18, 3, 0.18), wood, g, [x, 1.5, 0]);
-  M(new THREE.BoxGeometry(2.1, 0.2, 0.3), wood, g, [0, 3.0, 0]);
-  M(new THREE.BoxGeometry(1.5, 0.1, 1.2), mat(0x3e3b3a), g, [0, 0.05, 0]);
+  const g = new THREE.Group(), cage = new THREE.Group();
+  g.add(cage);
+  const wood = mat(0x8a6038, { flatShading: true }), rim = mat(0x5f4630, { flatShading: true }), rope = mat(0xc8b088);
+  const hole = new THREE.Mesh(new THREE.CircleGeometry(1.05, 20), new THREE.MeshBasicMaterial({ color: 0x050608 }));
+  hole.rotation.x = -Math.PI / 2; hole.position.y = 0.01; g.add(hole);
+  for (const x of [-1.1, 1.1]) M(new THREE.BoxGeometry(0.2, 3.2, 0.2), wood, g, [x, 1.6, 0]);
+  M(new THREE.BoxGeometry(2.6, 0.22, 0.22), wood, g, [0, 3.2, 0]);
+  const crank = new THREE.Group(); crank.position.set(1.55, 0.95, 0); g.add(crank);
+  M(new THREE.CylinderGeometry(0.28, 0.28, 0.5, 10), rim, crank, [0, 0, 0], [0, 0, Math.PI / 2]);
+  M(new THREE.BoxGeometry(0.08, 0.7, 0.08), wood, crank, [0.3, 0.3, 0]);
+  for (const z of [-0.3, 0.3]) M(new THREE.BoxGeometry(0.18, 1.0, 0.18), wood, g, [1.55, 0.5, z]);
+  M(new THREE.CylinderGeometry(0.85, 0.72, 0.8, 12, 1, true), mat(0x9a7448, { flatShading: true, side: THREE.DoubleSide }), cage, [0, 0.42, 0]);
+  M(new THREE.CylinderGeometry(0.72, 0.72, 0.08, 12), mat(0x7a5a38, { flatShading: true }), cage, [0, 0.06, 0]);
+  for (const y of [0.2, 0.62]) M(new THREE.TorusGeometry(0.8 - (0.62 - y) * 0.15, 0.04, 6, 16), rim, cage, [0, y, 0], [Math.PI / 2, 0, 0]);
+  for (const a of [0, 2.1, 4.2]) M(new THREE.BoxGeometry(0.03, 2.6, 0.03), rope, cage, [Math.cos(a) * 0.4, 2.1, Math.sin(a) * 0.4], [-Math.sin(a) * 0.15, 0, Math.cos(a) * 0.15]);
+  const line = M(new THREE.CylinderGeometry(0.03, 0.03, 1, 6), rope, g, [0, 0, 0], [0, 0, 0], [1, 1, 1], false);
+  M(new THREE.BoxGeometry(0.16, 0.22, 0.16), mat(0x3a3330), g, [-1.1, 2.6, 0.2]);
+  M(new THREE.SphereGeometry(0.07, 8, 6), glow(0xffc66a, 2), g, [-1.1, 2.58, 0.2], [0, 0, 0], [1, 1, 1], false);
+  const lamp = new THREE.PointLight(0xffc27a, 6, 9, 1.2); lamp.position.set(-1.1, 2.6, 0.6); g.add(lamp);
+  const setRide = (k) => {
+    const sink = Math.max(0, (k - 0.3) / 0.7);
+    cage.position.y = -2.8 * sink * sink;
+    const bot = cage.position.y + 3.4;
+    line.scale.y = Math.max(0.01, 3.2 - bot); line.position.y = (3.2 + bot) / 2;
+    crank.rotation.x = k * 9;
+  };
+  setRide(0);
+  g.userData = { cage, setRide };
   return g;
 }

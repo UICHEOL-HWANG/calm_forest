@@ -5,6 +5,13 @@ const ring = (cx, cy, r, n) => Array.from({ length: n }, (_, i) => {
   return { x: cx + r * Math.cos(a), y: cy - r * Math.sin(a) };
 });
 
+export function kitLayout({ cx, cy, n }) {
+  return Array.from({ length: n }, (_, i) => {
+    const a = (n > 1 ? 135 - 90 * i / (n - 1) : 90) * Math.PI / 180;
+    return { x: cx + FAN.rIn * Math.cos(a), y: cy - FAN.rIn * Math.sin(a) };
+  });
+}
+
 export function fanLayout({ cx, cy, inner, outer }) {
   return [...ring(cx, cy, FAN.rIn, inner), ...ring(cx, cy, FAN.rOut, outer)];
 }

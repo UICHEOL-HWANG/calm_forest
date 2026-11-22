@@ -91,7 +91,16 @@ export function extraKit(THREE, K) {
     return { bl, tip: V(px, py, 0) };
   }
   const netBag = (color, opacity) => clay(color, { opacity, side: THREE.DoubleSide });
+  const curve = pts => new THREE.CatmullRomCurve3(pts.map(p => p.isVector3 ? p : V(...p)));
+  function taper(c, rf, segs = 16, rad = 6) {
+    const geo = new THREE.TubeGeometry(c, segs, 1, rad, false), pos = geo.attributes.position, v = V(0, 0, 0);
+    for (let i = 0; i <= segs; i++) {
+      const ctr = c.getPointAt(i / segs), r = rf(i / segs);
+      for (let j = 0; j <= rad; j++) { const k = i * (rad + 1) + j; v.fromBufferAttribute(pos, k).sub(ctr).multiplyScalar(r).add(ctr); pos.setXYZ(k, v.x, v.y, v.z); }
+    }
+    geo.computeVertexNormals(); return geo;
+  }
   const goreSurf = (R, th, phi) => { const p = V(-Math.cos(phi) * Math.sin(th) * R, (Math.cos(th) - 1) * R, Math.sin(phi) * Math.sin(th) * R); return { p, n: p.clone().add(V(0, R, 0)).normalize() }; };
   return { TAU, small, starShape, polyShape, hexPts, circlePath, roundBlade, scallopBlade, scallopFan, mapleShape, puffStar, flake, faceX, rib, hemi,
-    handle, rodFrame, pickArms, sickleBlade, netBag, goreSurf };
+    handle, rodFrame, pickArms, sickleBlade, netBag, goreSurf, curve, taper };
 }

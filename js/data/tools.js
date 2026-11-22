@@ -66,4 +66,6 @@ export const ZONE_PAGE = {
 
 // 세트만으론 부족한 구역 — 들 도구까지 정해 준다. 광산은 ⛏️괭이 말고 할 일이 없는데
 // 세트만 펴 주면 마지막에 쓰던 🌰씨앗·낫이 손에 남아 "눌러도 안 캐진다"가 됐다(베타 피드백).
-export const ZONE_TOOL = { mine: 'hoe' };
+export const ZONE_TOOL = { mine: 'hoe', glade: 'net' };
+
+export const ZONE_KIT = { mine: ['hoe'] };

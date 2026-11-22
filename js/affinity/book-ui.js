@@ -21,6 +21,7 @@ function detail(n, { t, onBack, onLetter, ad }) {
   back.addEventListener('click', onBack);
   head.append(back, el('span', 'nbk-face big', n.face));
   const who = el('div', 'nbk-who'); who.append(el('b', null, n.name), el('span', 'nbk-chip', n.chip));
+  if (n.favChip) who.appendChild(el('span', 'nbk-chip', n.favChip));
   head.appendChild(who);
   d.appendChild(head);
   d.appendChild(el('p', 'nbk-gift', `${t('오늘 선물 하트')} ${n.giftToday}/${n.giftCap}`));

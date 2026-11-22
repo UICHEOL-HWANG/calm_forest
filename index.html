@@ -7,7 +7,7 @@
 <meta name="application-name" content="고요한 숲" />
 <meta name="apple-mobile-web-app-title" content="고요한 숲" />
 <meta name="theme-color" content="#bfe8c9" />
-<script>if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && /[?&]bootb=1/.test(location.search)) document.documentElement.classList.add('boot-b');</script>
+<script>document.documentElement.classList.add('boot-b');</script>
 <meta name="description" content="농사·낚시·잠수·집 꾸미기를 즐기는 로우폴리 3D 힐링 게임. 설치 없이 웹과 앱에서 바로 플레이." />
 <!-- 구글 서치콘솔 소유확인 — 삭제하면 색인 데이터 접근이 끊깁니다 -->
 <meta name="google-site-verification" content="GiZimkuR7Ek0fqWjnEuQtwlpdnW0kbQjKDPgeiOiroo" />
@@ -2878,7 +2878,7 @@
   html.boot-b #loading.boot-bg .load-pill { display: none; }
   html.boot-b #loading.boot-bg .boot-mark { display: block; position: absolute; left: 50%; top: 42%; width: 92px; height: 92px; margin: -46px 0 0 -46px; border-radius: 25%;
     background: url("assets/boot/mark.png") center / cover; box-shadow: 0 12px 30px rgba(20,40,30,.25); transition: opacity .6s ease, transform .9s cubic-bezier(.16,1,.3,1); }
-  html.boot-b #loading.boot-bg .boot-bar { display: block; position: absolute; left: 23%; right: 23%; top: calc(42% + 74px); height: 4px; border-radius: 4px; overflow: hidden;
+  html.boot-b #loading.boot-bg .boot-bar { display: block; position: absolute; left: 23%; right: 23%; max-width: 280px; margin: 0 auto; top: calc(42% + 74px); height: 4px; border-radius: 4px; overflow: hidden;
     background: rgba(47,107,79,.18); transition: opacity .5s ease; }
   html.boot-b #loading.boot-bg .boot-bar i { position: absolute; inset: 0; border-radius: 4px; background: #2f6b4f; transform-origin: left center;
     transform: scaleX(var(--to, .12)); transition: transform 6s cubic-bezier(.16,1,.3,1); }
@@ -3143,7 +3143,7 @@
     .ss-top .ss-sub { display: none; }
     .ss-row { flex: 1 1 auto; }
     #shop-menu .dm-actions #shop-close { padding: 8px 22px; font-size: 14px; }
-    body:has(#shop-menu.show) #hotbar { display: none; }
+    body:has(#shop-menu.show) #hotbar, body:has(#cos-menu.show) #hotbar { display: none; }
     #decor-menu .dm-hint, #cafe-menu .dm-hint, #kitchen-menu .dm-hint { font-size: 11px; line-height: 1.35; max-height: 2.8em; overflow-y: auto; }
     /* 🎀 꾸미기 — 프리뷰 + 목록 가로 배치는 유지, 높이는 창이 정한다(목록 42dvh 상한을 풀어 남는 자리를 다 쓴다) */
     #cos-menu { width: min(600px, 92vw); }
@@ -3153,7 +3153,7 @@
     #cos-tabs .sh-tab:first-child { margin-left: auto; }   /* 다 들어가면 가운데, 넘치면 왼쪽부터 스크롤 */
     #cos-tabs .sh-tab:last-child { margin-right: auto; }
     #cos-body { flex: 1 1 auto; min-height: 0; align-items: stretch; }
-    #cos-items { max-height: none; min-height: 0; }
+    #cos-items { max-height: none; min-height: 0; padding-bottom: 36px; scroll-padding-bottom: 36px; }
     #cos-preview-box { flex-basis: 120px; justify-content: center; padding: 6px 4px; }
     #cos-preview { width: 104px; height: 120px; }
     /* 🔥 가공·🏠 외관 — 구역이 여럿이라 창째 스크롤하되 닫기 줄은 바닥에 붙여 둔다 */
@@ -4392,6 +4392,11 @@
         slot.addEventListener('pointerdown', (e) => { Input.selectTool(i); e.stopPropagation(); });
         bar.appendChild(slot);
       });
+      const hand = document.createElement('div');
+      hand.className = 'slot'; hand.id = 'tool-bare'; hand.hidden = true;
+      hand.innerHTML = `<span class="s-ico">${iconHtml('✋')}</span><span class="s-key"><b class="s-n"></b>${t('맨손')}</span>`;
+      hand.addEventListener('pointerdown', (e) => { Input.setPage('none'); e.stopPropagation(); });
+      bar.appendChild(hand);
     }
 
     // 하단 프롬프트 겹침 방지 — 문/낚시 프롬프트가 떠 있으면 대사(zone-prompt)를 그 위로 올린다.
@@ -4864,14 +4869,21 @@
       setTool(idx, tools, page) {
         if (!$('hotbar').children.length) buildHotbar(tools);
         const bare = page === 'none';                      // ✋맨손 — 도구 칸을 접고 칩만 남긴다
-        $('hotbar').classList.toggle('bare', bare);
-        let n = 2;   // 도구 번호는 2번부터 — 1번은 세트 전환 칩이 쓴다
+        const kit = Input.toolKit?.() || null;
+        $('hotbar').classList.toggle('bare', bare && !kit);
+        $('tool-page').hidden = !!kit;
+        let n = kit ? 1 : 2;   // 도구 번호는 2번부터 — 1번은 세트 전환 칩이 쓴다
         [...$('hotbar').querySelectorAll('.slot[data-i]')].forEach((slot) => {
           const i = +slot.dataset.i;
           slot.classList.toggle('active', i === idx && !bare);
-          slot.hidden = bare || slot.dataset.grp !== page;  // 지금 페이지 도구만 노출
+          slot.hidden = kit ? !kit.includes(tools[i].id) : (bare || slot.dataset.grp !== page);  // 지금 페이지 도구만 노출
           if (!slot.hidden) slot.querySelector('.s-n').textContent = n++;
         });
+        const hand = $('tool-bare');
+        hand.hidden = !kit;
+        hand.classList.toggle('active', !!kit && bare);
+        if (kit) hand.querySelector('.s-n').textContent = n;
+        $('hint').textContent = kit ? '이동 WASD/방향키 · 1 괭이 · 2 맨손 · 상호작용 Space/클릭' : '이동 WASD/방향키 · 1 도구 세트 바꾸기 · 2~6 도구 고르기 · 상호작용 Space/클릭';
         const info = (Input.getToolPages?.() || []).find(p => p.id === page);
         const chip = $('tool-page');
         if (chip && info) {

@@ -60,10 +60,9 @@
   .stat2 .s span { font-size: 11px; color: var(--ink-3); }
 </style>
 </head>
-<body>
+<body data-nav="beta">
   <header>
     <div>
-      <a class="back" href="../index.html">← 게임으로</a>
       <h1>🧪 고요한 숲 · 베타 관제</h1>
     </div>
     <div id="range">
@@ -146,6 +145,7 @@
     </div>
   </div>
 
+  <script type="module" src="js/admin-nav.js"></script>
   <script type="module">
     import { CONFIG, isSupabaseConfigured } from '../js/config.js';
     import { LOGIN_GATE_HTML, mountLoginGate, ADMIN_AUTH, showNotAdmin } from './js/admin-login.js';

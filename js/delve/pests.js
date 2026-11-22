@@ -1,4 +1,4 @@
-import { PESTS } from '../data/delve.js';
+import { PESTS, DELVE_HALF } from '../data/delve.js';
 
 export const RING_SEC = 3;
 export const GRAB_R = 0.45;
@@ -61,3 +61,17 @@ export function baitPest(p, at) {
 export function pickableBeforeBat(chunk) { return chunk.age < RING_SEC; }
 
 export function canPick(chunk, player) { return d2(chunk, player) <= PICK_R; }
+
+export const PUSH_R = 0.75;
+
+const ROOM_LIM = DELVE_HALF - 0.3;
+const clampRoom = v => Math.max(-ROOM_LIM, Math.min(ROOM_LIM, v));
+
+export function pushOffPlayer(p, player) {
+  if (p.state === 'gone' || p.state === 'hide') return p;
+  if (p.state === 'carry' && d2(p, p.home) < 1) return p;
+  const dx = p.x - player.x, dz = p.z - player.z, d = Math.hypot(dx, dz);
+  if (d >= PUSH_R) return p;
+  const [ux, uz] = d > 1e-6 ? [dx / d, dz / d] : [1, 0];
+  return { ...p, x: clampRoom(player.x + ux * PUSH_R), z: clampRoom(player.z + uz * PUSH_R) };
+}

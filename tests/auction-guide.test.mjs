@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { onScreen, edgePoint, distLabel, nearBlockers, GUIDE_TUNING } from '../js/auction/guide.js';
 import { introStepView } from '../js/auction/intro.js';
+import { insetBelow } from '../js/guide/banner-inset.js';
 
 const read = p => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 
@@ -96,4 +97,15 @@ test('onboarding cleans up when play stops and only opens the panel at the spot'
   assert.match(src, /if \(auctionSpotNow\(\)\) openAuction\(\);/);
   assert.match(src, /if \(bannerLive\(day\)\) ensureGuide\(\)\.start\(\);/);
   assert.match(read('js/auction/intro.js'), /act: 'cancel'/);
+});
+
+test('the edge arrow drops below a hint banner shown in the top slot', () => {
+  assert.equal(insetBelow(null, 720), 0);
+  assert.equal(insetBelow({ height: 62, bottom: 158 }, 720), 198);
+  assert.equal(insetBelow({ height: 0, bottom: 158 }, 720), 0);
+  assert.equal(insetBelow({ height: 62, bottom: 430 }, 640), 0);
+  const src = read('js/auction/guide.js');
+  const upd = src.slice(src.indexOf('function update('));
+  assert.ok(upd.indexOf('bannerInset()') > 0 && upd.indexOf('bannerInset()') < upd.indexOf('compass.style.left'));
+  assert.match(src, /y1: Math\.max\(e\.top, top\)/);
 });

@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>도감에서 사기 시안</title>
+<style>
+:root { --mint:#bfe8c9; --ink:#4a5a4f; --panel:rgba(255,255,255,0.86); --shadow:0 6px 18px rgba(90,120,100,0.18); }
+* { box-sizing:border-box; }
+body { margin:0; padding:24px; font-family:'Segoe UI',system-ui,sans-serif; background:linear-gradient(180deg,#5f9a6b,#4d8459); color:var(--ink); }
+h1 { margin:0 0 4px; font-size:22px; color:#fff; }
+.lead { margin:0 0 20px; color:#e6f7e9; font-size:13px; line-height:1.5; max-width:1500px; }
+.cols { display:flex; gap:24px; align-items:flex-start; }
+.col { display:flex; flex-direction:column; gap:8px; }
+.col > h2 { margin:0; font-size:16px; color:#fff; }
+.col > p { margin:0; font-size:12px; color:#e6f7e9; max-width:var(--cw,560px); line-height:1.45; min-height:52px; }
+.stack { display:flex; flex-direction:column; gap:22px; }
+
+.screen { position:relative; overflow:hidden; border-radius:22px; background:
+  radial-gradient(circle at 18% 22%, rgba(60,110,70,.55) 0 60px, transparent 61px),
+  radial-gradient(circle at 82% 16%, rgba(50,100,62,.55) 0 80px, transparent 81px),
+  radial-gradient(circle at 70% 70%, rgba(210,190,140,.35) 0 120px, transparent 121px),
+  linear-gradient(180deg,#a9dcb2 0%,#8fcb98 45%,#7dbb86 100%);
+  box-shadow:0 14px 30px -14px rgba(0,0,0,.45); }
+.screen .tag { position:absolute; left:12px; top:10px; font-size:11px; font-weight:800; color:#fff; background:rgba(0,0,0,.28); padding:3px 8px; border-radius:8px; z-index:3; }
+.ls .tag { top:auto; bottom:10px; }
+.pc { width:600px; height:720px; }
+.pt { width:390px; height:844px; }
+.ls { width:844px; height:390px; }
+
+.panel { position:absolute; left:50%; transform:translateX(-50%); background:var(--panel); backdrop-filter:blur(8px); border-radius:18px; box-shadow:var(--shadow); padding:12px 16px; display:flex; flex-direction:column; gap:10px; color:var(--ink); }
+.pc .panel { width:460px; bottom:90px; }
+.pt .panel { width:94%; bottom:78px; padding:10px 12px; gap:8px; }
+.ls .panel { width:600px; top:8px; bottom:8px; padding:9px 14px; gap:6px; }
+.dm-head { font-weight:700; font-size:14px; }
+.ck-inv { font-size:12px; opacity:.75; margin-left:6px; }
+.tabs { display:flex; gap:6px; justify-content:center; flex-wrap:wrap; }
+.ls .tabs { flex-wrap:nowrap; overflow:hidden; justify-content:flex-start; }
+.sh-tab { border:none; border-radius:10px; padding:6px 12px; font:inherit; font-weight:700; font-size:13px; background:#eef2ee; color:var(--ink); white-space:nowrap; flex:0 0 auto; }
+.pt .sh-tab, .ls .sh-tab { padding:5px 11px; font-size:12px; }
+.sh-tab.active { background:var(--mint); }
+.body { display:flex; gap:10px; align-items:flex-start; }
+.pt .body { gap:8px; }
+.ls .body { flex:1 1 auto; min-height:0; align-items:stretch; }
+.prev { flex:0 0 136px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:8px 6px; border-radius:14px; background:linear-gradient(160deg,#eef7f0,#dcebe0); height:176px; }
+.pt .prev { flex-basis:108px; height:150px; }
+.ls .prev { flex-basis:120px; height:auto; }
+.prev .bear { font-size:62px; line-height:1; }
+.pt .prev .bear { font-size:50px; }
+.prev small { font-size:10px; opacity:.6; text-align:center; }
+.items { position:relative; flex:0 0 auto; display:flex; flex-direction:column; gap:6px; overflow:hidden; }
+.pc .items { width:282px; height:420px; }
+.pt .items { width:227px; height:330px; }
+.ls .items { width:442px; height:236px; }
+.sh-row { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 10px; border-radius:12px; background:#f4faf5; box-shadow:var(--shadow); flex:0 0 auto; }
+.sh-row > span { font-size:12px; font-weight:700; white-space:nowrap; }
+.sh-row .btn { border:none; border-radius:10px; padding:6px 10px; font:inherit; font-size:12px; font-weight:800; background:var(--mint); color:var(--ink); white-space:nowrap; }
+.dm-actions { display:flex; justify-content:flex-end; }
+.dm-actions button { border:none; border-radius:10px; padding:8px 14px; font:inherit; font-weight:600; font-size:13px; background:#eef2ee; color:var(--ink); }
+.ls .dm-actions { position:absolute; right:14px; bottom:9px; }
+.hotbar { position:absolute; left:258px; bottom:17px; width:327px; height:61px; border-radius:16px; background:rgba(240,244,240,.92); box-shadow:0 6px 16px -6px rgba(0,0,0,.35); display:flex; gap:4px; padding:5px; z-index:2; }
+.hotbar span { flex:1 1 0; border-radius:12px; background:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:20px; line-height:1; }
+.hotbar span small { font-size:9px; opacity:.6; margin-top:3px; }
+.hotbar span.on { background:var(--mint); }
+
+.dp { flex:0 0 auto; display:flex; flex-direction:column; gap:8px; padding:10px 12px; border-radius:16px; background:linear-gradient(160deg,#fff8e4,#fdeec8); box-shadow:0 8px 20px -10px rgba(160,110,30,.45), inset 0 0 0 1.5px #f0cf7a; min-width:0; }
+.hero { display:grid; grid-template-columns:auto minmax(0,1fr); gap:4px 12px; align-items:center; min-width:0; }
+.ico { grid-row:span 3; position:relative; width:52px; height:52px; border-radius:14px; background:#fff; display:flex; align-items:center; justify-content:center; font-size:30px; box-shadow:inset 0 0 0 1.5px #f3dfa8; }
+.k-pt .ico, .k-ls .ico { width:44px; height:44px; font-size:26px; }
+.k-ls .hero { grid-template-columns:auto minmax(0,1fr) auto; }
+.k-ls .ico { grid-row:span 2; }
+.top { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:0 6px; min-width:0; }
+.top em { font-style:normal; font-size:11px; font-weight:800; color:#a8641a; white-space:nowrap; }
+.top small { font-size:10.5px; opacity:.6; white-space:nowrap; }
+.off20 { font-size:10px; font-weight:800; color:#fff; background:#e0883a; border-radius:6px; padding:1px 5px; margin-left:4px; }
+.name { font-size:14px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+.k-pt .name, .k-ls .name { font-size:13px; }
+.buys { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+.k-ls .hero .buys { grid-column:3; grid-row:1 / span 2; flex-wrap:nowrap; }
+.buy { min-height:40px; border:none; border-radius:10px; padding:0 11px; font:inherit; font-size:12px; font-weight:800; background:var(--mint); color:var(--ink); white-space:nowrap; }
+.k-pt .buy, .k-ls .buy { padding:0 9px; font-size:11.5px; }
+.buy s { opacity:.55; font-weight:600; margin-right:4px; }
+.buy:disabled { background:#dfe6e0; color:#8a9a8f; }
+.rw-ad { min-height:40px; display:inline-flex; align-items:center; justify-content:center; border:0; border-radius:10px; padding:0 10px 0 7px; font:inherit; font-weight:700; font-size:12px; color:#fbf6e6; background:linear-gradient(180deg,#3d6b4a,#2f5a3a); box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 6px 14px -6px rgba(31,74,44,.6); white-space:nowrap; }
+.k-pt .rw-ad { font-size:11.5px; padding:0 8px 0 6px; }
+.rw-tag { display:inline-block; margin-right:5px; font-size:9.5px; font-weight:800; padding:2px 4px; border-radius:6px; background:rgba(255,211,107,.18); color:#ffd36b; }
+.tmr { display:flex; align-items:center; gap:8px; padding-top:7px; border-top:1.5px dashed #ecd498; }
+.sil { flex:0 0 auto; width:34px; height:34px; border-radius:10px; background:repeating-linear-gradient(135deg,#fff6df 0 5px,#fdeec8 5px 10px); box-shadow:inset 0 0 0 1.5px #ecd498; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+.k-ls .sil { width:28px; height:28px; border-radius:8px; }
+.sil i { font-style:normal; font-size:20px; filter:brightness(0) blur(1.2px); opacity:.28; }
+.tz { display:flex; flex-direction:column; gap:1px; }
+.k-ls .tz { flex-direction:row; align-items:baseline; gap:6px; }
+.tz b { font-size:11.5px; font-weight:800; color:#a8641a; white-space:nowrap; }
+.tz small { font-size:10.5px; opacity:.65; font-weight:700; white-space:nowrap; }
+.dex { display:flex; flex-direction:column; gap:4px; }
+.dex-h { display:flex; justify-content:space-between; align-items:center; min-height:40px; margin:-6px 0 -4px; }
+.dex-h b { font-size:11px; font-weight:800; color:#8a6a2a; white-space:nowrap; }
+.dex-h small { font-size:10.5px; opacity:.65; font-weight:700; white-space:nowrap; }
+.chips { display:flex; gap:5px; overflow:hidden; }
+.chip { flex:0 0 46px; min-height:42px; border-radius:12px; background:rgba(255,255,255,.8); display:flex; flex-direction:column; align-items:center; justify-content:center; box-shadow:inset 0 0 0 1.5px #f0dfb2; }
+.chip i { font-style:normal; font-size:15px; line-height:1.15; }
+.chip span { font-size:9.5px; font-weight:800; color:#8a6a2a; line-height:1.2; }
+.chip.on { background:#fff; box-shadow:inset 0 0 0 2px #d6a23a; }
+.chip.more { background:rgba(255,255,255,.55); }
+.grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:5px; padding:8px; border-radius:12px; background:rgba(255,255,255,.6); }
+.k-ls .grid { grid-template-columns:repeat(8,minmax(0,1fr)); padding:6px; }
+.grid-h { grid-column:1 / -1; display:flex; justify-content:space-between; gap:6px; font-size:11px; font-weight:800; color:#8a6a2a; padding:0 2px 2px; white-space:nowrap; }
+.grid-h small { font-weight:700; opacity:.65; font-size:10.5px; }
+.g { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; min-height:52px; padding:4px 3px 3px; border-radius:9px; background:#fff; min-width:0; }
+.g i { font-style:normal; font-size:18px; line-height:1.15; }
+.k-ls .g i { font-size:16px; }
+.g > span { font-size:9.5px; font-weight:800; color:#6f6a55; white-space:nowrap; }
+.g .c { font-size:8px; margin-right:1px; }
+.g > small { font-size:8.5px; font-weight:700; color:#9a8a68; white-space:nowrap; letter-spacing:-.02em; }
+.g.own > span { color:#3d8a57; }
+.g.today { box-shadow:inset 0 0 0 2px #d6a23a; }
+.g.today > span, .g.today > small { color:#b5651a; }
+.g.today > small { font-weight:800; }
+.g.wait i { filter:grayscale(1); opacity:.38; }
+.g.wait > span { color:#8a7a5a; }
+.g.sel { background:#f1fbf3; box-shadow:inset 0 0 0 2.5px #4f9d68; }
+.g.sel.today { box-shadow:inset 0 0 0 2.5px #4f9d68, 0 0 0 2px #d6a23a; }
+.sel-row { grid-column:1 / -1; display:grid; grid-template-columns:auto minmax(0,1fr); gap:6px 8px; align-items:center; margin-top:3px; padding:8px; border-radius:11px; background:#fff; box-shadow:0 4px 12px -6px rgba(90,120,100,.45), inset 0 0 0 1.5px #cfe7d5; }
+.k-ls .sel-row { grid-template-columns:auto minmax(0,1fr) auto; padding:6px 8px; }
+.sel-ico { width:36px; height:36px; border-radius:10px; background:#f6f1e2; display:flex; align-items:center; justify-content:center; font-size:21px; }
+.sel-tx { display:flex; flex-direction:column; gap:1px; min-width:0; }
+.sel-tx b { font-size:12.5px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sel-tx small { font-size:10.5px; font-weight:700; color:#8a7a5a; white-space:nowrap; }
+.sel-tx small.hot { color:#b5651a; }
+.sel-row .buys { grid-column:1 / -1; }
+.sel-row .buys > * { flex:1 1 auto; }
+.k-ls .sel-row .buys { grid-column:3; flex-wrap:nowrap; }
+.k-ls .sel-row .buys > * { flex:0 0 auto; }
+.note { min-height:40px; display:flex; align-items:center; justify-content:center; gap:5px; padding:0 10px; border-radius:10px; background:#fff3d6; color:#9a5f17; font-size:11.5px; font-weight:800; white-space:nowrap; }
+
+.sheet { display:flex; flex-direction:column; gap:18px; }
+.srow { display:flex; gap:22px; align-items:flex-start; }
+.rowlab { flex:0 0 64px; font-size:13px; font-weight:800; color:#fff; align-self:center; }
+.cap { font-size:11.5px; font-weight:800; color:#fff; margin-bottom:6px; }
+.cardbox { padding:12px; border-radius:16px; background:rgba(255,255,255,.86); }
+.w-pc { width:306px; } .w-pt { width:251px; } .w-ls { width:466px; }
+[data-ovf] { outline:2px solid red !important; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const SEA = [
+  { ico:'🦪', name:'조개 램프', price:1100, days:115, kind:'decor' },
+  { ico:'🧭', name:'해적 두건', price:1200, days:117, kind:'cos' },
+  { ico:'🏝️', name:'등대 모형', price:1400, days:119, kind:'decor' },
+  { ico:'⚓', name:'닻 목걸이', price:1000, days:121, kind:'cos', own:true },
+  { ico:'⛵', name:'보트 화분', price:1300, days:123, kind:'decor' },
+  { ico:'🗼', name:'등대 배낭', price:1500, days:0, kind:'cos' },
+  { ico:'🪢', name:'그물 해먹', price:1400, days:2, kind:'decor' },
+  { ico:'🌊', name:'파도 발자국', price:1600, days:5, kind:'cos' },
+];
+const TODAY = SEA[5];
+const CHIPS = [['❄️','0/8'],['🐿️','0/8'],['🎄','0/8'],['🐚','1/8','on'],['🍰','0/8'],['🌙','0/8'],['🧧','0/8']];
+const SEL = { sel:0, own:3, today:5 };
+
+const fmt = n => n.toLocaleString('ko-KR');
+const disc = p => Math.round(p * 0.8 / 10) * 10;
+function when(d) {
+  if (d === 0) return '오늘';
+  if (d === 1) return '내일';
+  if (d < 14) return `${d}일 뒤`;
+  if (d < 60) return `${Math.floor(d / 7)}주 뒤`;
+  return `${Math.round(d / 30)}달 뒤`;
+}
+const ad = (lab = '광고 보고 반값') => `<button class="rw-ad"><span class="rw-tag">AD</span>${lab}</button>`;
+const coin = p => `<b class="c">🪙</b>${fmt(p)}`;
+const shelf = it => it.kind === 'cos' ? '옷장' : '보관함';
+
+const CONCEPTS = {
+  A: {
+    title:'A · 도감에서 언제든 구매',
+    desc:'도감 칸을 누르면 바로 아래에 구매 줄이 열려요. 어느 칸이든 정가로 살 수 있고, 오늘 칸만 광고 반값이 붙어요. 칸 아래 작은 날짜는 반값 되는 날이에요.',
+    dexHint:'눌러서 사기', gridHint:'반값 되는 날',
+    heroBuys:() => `<button class="buy">🪙 ${fmt(TODAY.price)}</button>${ad()}`,
+    cell(it) {
+      if (it.own) return ['own', '✓ 있어요', ''];
+      if (it.days === 0) return ['today', coin(it.price), '오늘 반값'];
+      return ['', coin(it.price), when(it.days)];
+    },
+    sheet(it) {
+      if (it.own) return [`${shelf(it)}에 있어요`, '', `<button class="buy" disabled>이미 있어요</button>`];
+      if (it.days === 0) return ['오늘은 광고 보면 반값이에요', 'hot', `<button class="buy">🪙 ${fmt(it.price)}</button>${ad()}`];
+      return [`${when(it.days)} 오늘 칸에 오면 반값`, '', `<button class="buy">🪙 ${fmt(it.price)} 사기</button>`];
+    },
+  },
+  Aplus: {
+    title:'A+ · 언제든 구매 + 오늘만 할인',
+    desc:'A와 같이 언제든 살 수 있어요. 오늘 칸은 누구나 20% 할인, 광고를 보면 반값으로 바뀌어요(겹치지 않아요). 웹에서도 오늘 칸이 의미가 있어요.',
+    dexHint:'눌러서 사기', gridHint:'할인 되는 날',
+    heroTop:'<b class="off20">20%</b>',
+    heroBuys:() => `<button class="buy"><s>${fmt(TODAY.price)}</s>🪙 ${fmt(disc(TODAY.price))}</button>${ad()}`,
+    cell(it) {
+      if (it.own) return ['own', '✓ 있어요', ''];
+      if (it.days === 0) return ['today', coin(disc(it.price)), '오늘 20%'];
+      return ['', coin(it.price), when(it.days)];
+    },
+    sheet(it) {
+      if (it.own) return [`${shelf(it)}에 있어요`, '', `<button class="buy" disabled>이미 있어요</button>`];
+      if (it.days === 0) return ['오늘 20% · 광고 보면 반값', 'hot', `<button class="buy"><s>${fmt(it.price)}</s>🪙 ${fmt(disc(it.price))}</button>${ad('반값')}`];
+      return [`${when(it.days)} 오늘 칸에 오면 할인`, '', `<button class="buy">🪙 ${fmt(it.price)} 사기</button>`];
+    },
+  },
+  B: {
+    title:'B · 그날만 구매, 이름만 바꾸기',
+    desc:'규칙은 그대로예요. 머리글을 "구매 가능 날짜"로 바꾸고 칸에 언제 살 수 있는지 적어요. 다른 날 칸을 누르면 언제 살 수 있는지만 알려 줘요.',
+    dexHint:'눌러서 보기', gridHint:'구매 가능 날짜',
+    heroBuys:() => `<button class="buy">🪙 ${fmt(TODAY.price)}</button>${ad()}`,
+    cell(it) {
+      if (it.own) return ['own', '✓ 있어요', ''];
+      if (it.days === 0) return ['today', '오늘', '구매 가능'];
+      return ['wait', when(it.days), coin(it.price)];
+    },
+    sheet(it) {
+      if (it.own) return [`${shelf(it)}에 있어요`, '', `<button class="buy" disabled>이미 있어요</button>`];
+      if (it.days === 0) return ['오늘만 살 수 있어요', 'hot', `<button class="buy">🪙 ${fmt(it.price)}</button>${ad()}`];
+      return [`🪙 ${fmt(it.price)} · 정가`, '', `<div class="note">📅 ${when(it.days)}에 살 수 있어요</div>`];
+    },
+  },
+};
+
+function hero(c) {
+  return `<div class="hero"><div class="ico">${TODAY.ico}</div>
+    <div class="top"><em>📅 오늘의 꾸미기${c.heroTop || ''}</em><small>⏳ 19:37</small></div>
+    <div class="name">${TODAY.name}</div><div class="buys">${c.heroBuys()}</div></div>
+    <div class="tmr"><div class="sil"><i>🦭</i></div><div class="tz"><b>내일의 꾸미기</b><small>19:37 뒤 공개</small></div></div>`;
+}
+function chips(k) {
+  const n = k === 'ls' ? 7 : 3;
+  return `<div class="chips">${CHIPS.slice(0, n).map(([e, t, on]) => `<div class="chip ${on || ''}"><i>${e}</i><span>${t}</span></div>`).join('')}<div class="chip more"><i>📖</i><span>+${16 - n}</span></div></div>`;
+}
+function grid(c, selIdx) {
+  const cells = SEA.map((it, i) => {
+    const [cls, main, sub] = c.cell(it);
+    const sel = i === selIdx ? ' sel' : '';
+    const today = it.days === 0 && cls !== 'today' ? ' today' : '';
+    return `<div class="g ${cls}${today}${sel}"><i>${it.ico}</i><span>${main}</span><small>${sub || '&nbsp;'}</small></div>`;
+  }).join('');
+  let row = '';
+  if (selIdx != null) {
+    const it = SEA[selIdx];
+    const [line, hot, act] = c.sheet(it);
+    row = `<div class="sel-row"><div class="sel-ico">${it.ico}</div><div class="sel-tx"><b>${it.name}</b><small class="${hot}">${line}</small></div><div class="buys">${act}</div></div>`;
+  }
+  return `<div class="grid"><div class="grid-h"><span>🐚 바닷가 1/8</span><small>${c.gridHint}</small></div>${cells}${row}</div>`;
+}
+function card(id, k, st) {
+  const c = CONCEPTS[id];
+  const open = st !== 'closed';
+  const head = `<div class="dex-h"><b>📖 테마 도감 1/125</b><small>${open ? '접기' : c.dexHint}</small></div>`;
+  return `<div class="dp">${hero(c)}<div class="dex">${head}${chips(k)}${open ? grid(c, SEL[st]) : ''}</div></div>`;
+}
+
+const TABS = ['🌱 새싹반','🎩 머리','🧣 목','🎒 가방','✨ 이펙트','🧥 스킨','🪓 도구','🐾 펫'];
+function screen(k, inner) {
+  const tags = { pc:'PC 1280×800 · 카드 282', pt:'세로 폰 390×844 · 카드 227', ls:'가로 폰 844×390 · 카드 442 · 도구 줄 있음' };
+  const hb = k === 'ls' ? `<div class="hotbar">${['🌾','⛏️','🌰','💧','🪝','🪏'].map((e, i) => `<span class="${i === 1 ? 'on' : ''}">${e}<small>${i + 1}</small></span>`).join('')}</div>` : '';
+  return `<div class="screen ${k} k-${k}"><span class="tag">${tags[k]}</span><div class="panel">
+    <div class="dm-head">🎀 꾸미기<span class="ck-inv">🪙 2,340</span></div>
+    <div class="tabs">${TABS.map((t, i) => `<button class="sh-tab${i === 0 ? ' active' : ''}">${t}</button>`).join('')}</div>
+    <div class="body"><div class="prev"><div class="bear">🐻</div><small>🖐️ 드래그해서<br>돌려보기</small></div>
+      <div class="items">${inner}<div class="sh-row"><span>🧢 털모자</span><button class="btn">🪙 1,600</button></div></div></div>
+    <div class="dm-actions"><button>닫기</button></div></div>${hb}</div>`;
+}
+function compare(k) {
+  const w = { pc:600, pt:390, ls:844 }[k];
+  const label = { pc:'PC', pt:'세로 폰', ls:'가로 폰' }[k];
+  const body = Object.keys(CONCEPTS).map(id => `<div class="col" style="--cw:${w}px"><h2>${CONCEPTS[id].title}</h2><p>${CONCEPTS[id].desc}</p>${screen(k, card(id, k, 'sel'))}</div>`).join('');
+  return `<h1>📖 테마 도감에서 사기 · ${label} 비교</h1><p class="lead">상태: 바닷가 펼침, 4달 뒤 칸(조개 램프) 선택. 앱·토스 광고 버전. 카드는 실제 자리와 폭 그대로이고, 구매 줄이 보이도록 목록을 내려 둔 화면이에요.</p>
+    <div class="${k === 'ls' ? 'stack' : 'cols'}">${body}</div>`;
+}
+function sheet(id) {
+  const c = CONCEPTS[id];
+  const states = [['closed', '접힘'], ['sel', '4달 뒤 칸 선택'], ['own', '있는 칸 선택'], ['today', '오늘 칸 선택']];
+  const rows = [['pc', 'PC'], ['pt', '세로 폰'], ['ls', '가로 폰']].map(([k, lab]) => `<div class="srow"><div class="rowlab">${lab}</div>` +
+    states.map(([s, cap]) => `<div class="k-${k}"><div class="cap">${cap}</div><div class="cardbox w-${k}">${card(id, k, s)}</div></div>`).join('') + '</div>').join('');
+  return `<h1>${c.title} · 상태 시트</h1><p class="lead">${c.desc} 카드만 실제 폭(PC 282 · 세로 227 · 가로 442px)으로 잘라 보여요.</p><div class="sheet">${rows}</div>`;
+}
+const v = new URLSearchParams(location.search).get('v') || 'pc';
+document.getElementById('root').innerHTML = CONCEPTS[v] ? sheet(v) : compare(v);
+for (const box of document.querySelectorAll('.items')) {
+  const row = box.querySelector('.sel-row');
+  if (row) box.scrollTop = Math.max(0, row.offsetTop + row.offsetHeight + 8 - box.clientHeight);
+}
+let ovf = 0;
+for (const n of document.querySelectorAll('.g, .buy, .rw-ad, .note, .sel-tx small, .top, .grid-h, .dex-h, .tz, .buys')) {
+  if (n.scrollWidth > n.clientWidth) { n.setAttribute('data-ovf', ''); ovf++; }
+}
+document.body.dataset.count = ovf;
+</script>
+</body>
+</html>

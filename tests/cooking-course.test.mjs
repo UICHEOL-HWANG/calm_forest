@@ -123,10 +123,9 @@ test('손님끼리도 id·이모지가 서로 다르다', () => {
 });
 
 test('손님의 귀·소품은 실제로 그려지는 종류만 쓴다 — 오타면 조용히 민둥머리가 된다', () => {
-  const earSrc = block(/^function guestEarGeos\(ear\) \{/m, '\n}');
-  const accSrc = block(/^function guestAccGeos\(acc, add\) \{/m, '\n}');
-  const ears = new Set([...earSrc.matchAll(/ear === '([a-z]+)'/g)].map(m => m[1]).concat('tiny'));   // tiny = else 기본값
-  const accs = new Set([...accSrc.matchAll(/acc === '([a-z]+)'/g)].map(m => m[1]).concat('flower')); // flower = else 기본값
+  const figSrc = readFileSync(new URL('../js/guest-figure.js', import.meta.url), 'utf8');
+  const ears = new Set([...figSrc.matchAll(/kind === '([a-z]+)'/g)].map(m => m[1]).concat('tiny'));
+  const accs = new Set([...figSrc.matchAll(/acc === '([a-z]+)'/g)].map(m => m[1]));
   for (const g of GUESTS) {
     assert.ok(ears.has(g.ear), `${g.name} 의 알 수 없는 귀 모양: ${g.ear}`);
     assert.ok(accs.has(g.acc), `${g.name} 의 알 수 없는 소품: ${g.acc}`);

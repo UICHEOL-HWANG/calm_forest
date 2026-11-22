@@ -13,7 +13,12 @@ const CSS = `
 #rest-hud .tk u s{display:block;height:100%;background:#6bb35a}
 #rest-hud .tk.mid u s{background:#e9b949}
 #rest-hud .tk.late u s{background:#d9604c}
-html body.rest-hud-on #guide-card{top:calc(env(safe-area-inset-top) + 80px)}
+#rest-hud .tk .face{position:absolute;left:-9px;top:-9px;width:26px;height:26px;border-radius:50%;background:#fff;border:2px solid #2f5e47;display:grid;place-items:center;font-size:15px;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+#rest-hud .tk.fav .face{border-color:#e46f8f;background:#ffe9ef}
+#rest-hud .tk.set{width:92px;border-color:#e46f8f}
+#rest-hud .tk .two{display:flex;justify-content:center;gap:4px}
+#rest-hud .tk .two i.done{opacity:.35;filter:grayscale(1)}
+html body.rest-hud-on #guide-card{top:calc(env(safe-area-inset-top) + 80px + var(--rest-bar-drop, 0px))}
 #rest-hud .st{position:fixed;transform:translate(-50%,-100%);pointer-events:none}
 #rest-hud .dots{display:flex;gap:3px}
 #rest-hud .dots span{width:13px;height:13px;border-radius:3px;border:2px solid #fff8e8;background:rgba(47,94,71,.35)}
@@ -25,6 +30,16 @@ html body.rest-hud-on #guide-card{top:calc(env(safe-area-inset-top) + 80px)}
 #rest-hud .gauge.done{background:rgba(201,138,74,.9)}
 #rest-hud .gauge.burn{background:rgba(217,96,76,.9)}
 #rest-hud .gauge.perfect{box-shadow:0 0 0 3px #6bd36a}
+#rest-hud .gauge.oil{background:rgba(214,158,46,.9)}
+#rest-hud .fry{display:flex;flex-direction:column;align-items:center;gap:2px}
+#rest-hud .fry .fr{display:flex;align-items:center;gap:4px}
+#rest-hud .fry .ico{font-style:normal;font-size:18px;line-height:20px;height:20px}
+#rest-hud .fry .ico.off{visibility:hidden}
+#rest-hud .fry .ico.bob{animation:rh-bub .45s ease-in-out infinite alternate}
+@keyframes rh-bub{to{transform:translateY(-6px)}}
+#rest-hud .fry .shk{display:flex;gap:5px}
+#rest-hud .fry .shk span{width:9px;height:9px;border-radius:50%;border:2px solid #fff8e8;background:rgba(47,94,71,.35)}
+#rest-hud .fry .shk span.on{background:#ffc94a}
 #rest-hud .num{width:26px;height:26px;border-radius:50%;background:#2f5e47;color:#fff8e8;font-weight:800;font-size:14px;display:grid;place-items:center;border:3px solid #6bd36a;box-shadow:0 2px 6px rgba(0,0,0,.25)}
 #rest-hud .num.mid{border-color:#e9b949}
 #rest-hud .num.late{border-color:#d9604c}
@@ -41,6 +56,7 @@ html body.rest-hud-on #guide-card{top:calc(env(safe-area-inset-top) + 80px)}
 #rest-hud .steps i.on{background:#ffc94a;opacity:1;box-shadow:0 0 0 3px rgba(255,201,74,.4)}
 #rest-hud .steps em{width:10px;height:2px;background:#c9b99f}
 body.is-touch #rest-hud .next{font-size:13px;gap:10px;bottom:calc(env(safe-area-inset-bottom) + 10px);padding:5px 14px 5px 8px}
+@media (max-width:520px){#rest-hud .next{max-width:calc(100vw - 20px);box-sizing:border-box;flex-wrap:wrap;justify-content:center;row-gap:4px;padding:6px 12px}}
 body.is-touch #rest-hud .steps{gap:4px}
 body.is-touch #rest-hud .steps em{width:7px}
 body.is-touch #rest-hud .steps i{width:24px;height:24px;font-size:13px}
@@ -49,7 +65,7 @@ body.is-touch #rest-hud .steps i{width:24px;height:24px;font-size:13px}
 #rest-card .box{width:min(340px,90vw);background:#fffaf0;border-radius:22px;overflow:hidden;box-shadow:0 18px 40px rgba(0,0,0,.3);animation:rc-pop .38s cubic-bezier(.2,1.4,.4,1) both}
 #rest-card .head{background:radial-gradient(circle at 30% 20%,#3d6b52,#24493a);color:#fff8e8;text-align:center;padding:16px 16px 18px;border-bottom:6px solid #a8794a}
 #rest-card .kick{font-size:12px;opacity:.75;letter-spacing:2px}
-#rest-card h3{margin:2px 0 6px;font-size:21px}
+#rest-card h3{margin:2px 0 6px;font-size:21px;word-break:keep-all}
 #rest-card .stars{font-size:26px;letter-spacing:2px;color:#ffd45e;filter:drop-shadow(0 2px 2px rgba(0,0,0,.3))}
 #rest-card .stars em{font-style:normal;opacity:.28;color:#fff8e8}
 #rest-card .avg{font-size:12.5px;opacity:.85;margin-top:2px}
@@ -67,18 +83,26 @@ body.is-touch #rest-hud .steps i{width:24px;height:24px;font-size:13px}
 #rest-card .foot{padding:8px 16px 16px}
 #rest-card .menu{padding:10px 16px 2px}
 #rest-card .mr{display:grid;grid-template-columns:104px 1fr;align-items:center;gap:12px;padding:8px 0;letter-spacing:.03em;border-bottom:1px dashed #e3d8c2;font-size:14px;font-weight:700}
+#rest-card .mr.sp,#rest-card .mr.sp:last-child{background:linear-gradient(90deg,#fff1c8,#fff8e4);border:2px solid #e2b54a;border-radius:12px;padding:8px;margin:4px -10px}
+#rest-card .mr.sp > span{display:block}
+#rest-card .spchip{display:flex;align-items:center;gap:3px;width:max-content;margin-top:5px;background:#e2b54a;color:#fff;font-size:11.5px;font-weight:800;border-radius:999px;padding:2px 8px}
+#rest-card .spnote{display:block;grid-column:1/-1;margin-top:-4px;font-size:11.5px;font-weight:700;color:#8a6420;line-height:1.35;word-break:keep-all}
 #rest-card .mr:last-child{border:0}
-#rest-card .mr .steps{display:flex;gap:6px;align-items:center;letter-spacing:0}
-#rest-card .mr i{font-style:normal;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:#f3ece0;font-size:16px}
-#rest-card .mr em{width:10px;height:2px;background:#c9b99f}
-#rest-card .tip{margin:6px 16px 0;background:#f3ece0;border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.6;letter-spacing:.03em;word-break:keep-all;word-spacing:.1em;color:#6b5d4c}
+#rest-card .mr .steps{display:flex;gap:4px;align-items:center;letter-spacing:0}
+#rest-card .mr i{font-style:normal;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:#f3ece0;font-size:14px}
+#rest-card .mr em{width:6px;height:2px;background:#c9b99f}
+#rest-card .tip{margin:6px 16px 0;background:#fff;border:1.5px solid #e3d8c2;border-radius:10px;overflow:hidden;padding:0 0 6px;font-size:12.5px;line-height:1.6;letter-spacing:.03em;word-break:keep-all;word-spacing:.1em;color:#6b5d4c}
+#rest-card .tip .tl{background:#f3ece0;font-size:12px;font-weight:800;padding:5px 12px;border-bottom:1.5px solid #e3d8c2;margin-bottom:4px}
+#rest-card .tip > div:not(.tl){padding:1px 12px}
 #rest-card button{display:block;width:100%;border:0;border-radius:14px;padding:12px;font:inherit;font-size:15.5px;font-weight:800;background:#2f5e47;color:#fff8e8;cursor:pointer;pointer-events:auto}
 #rest-card button:active{transform:scale(.97)}
 #rest-card .stock{margin:8px 16px 0;background:#fff1d6;border:1px solid #e8c88a;border-radius:10px;padding:8px 12px;font-size:12.5px;line-height:1.7;word-break:keep-all;color:#6b4a14}
 #rest-card .stock b{display:block;font-size:13.5px;color:#8a5a10}
 #rest-card .stock .ask{margin-top:4px;font-weight:800;color:#4a3a20}
 #rest-card .foot:has(button+button){display:flex;gap:8px}
-#rest-card button[data-act="later"]{background:#efe6d6;color:#5a4a34;flex:0 0 34%}
+#rest-card .gneed{grid-column:1/-1;margin:-3px 0 7px;font-size:11.5px;line-height:1.5;word-break:keep-all;color:#8a5a10;background:#fff1d6;border-radius:8px;padding:4px 8px}
+#rest-card .gwrap>.gneed{margin:0 0 6px}
+#rest-card button[data-act="later"],#rest-card button[data-act="done"]{background:#efe6d6;color:#5a4a34;flex:0 0 34%}
 @keyframes rc-pop{from{transform:scale(.86) translateY(14px);opacity:0}}
 @keyframes rc-grow{from{width:0}}
 @media (max-height:480px){
@@ -87,18 +111,26 @@ body.is-touch #rest-hud .steps i{width:24px;height:24px;font-size:13px}
 #rest-card .stars{font-size:22px}
 #rest-card .grid{padding:12px 14px 4px}
 #rest-card .gwrap{padding:8px 14px 0}
-#rest-card .foot{padding:6px 14px 12px}
+#rest-card .foot{padding:6px 14px 12px;position:sticky;bottom:0;background:#fffaf0}
+#rest-card .box{max-height:calc(100vh - 16px)}
+#rest-card .box > :last-child{overflow-y:auto;min-width:0;max-height:calc(100vh - 16px)}
+#rest-card .mr{grid-template-columns:96px 1fr;gap:8px}
+#rest-card .mr .steps{gap:3px}
+#rest-card .mr i{width:24px;height:24px;font-size:13px}
+#rest-card .mr em{width:6px}
 }
 `;
 
 const BUBBLE_H = 40;
-const LABEL = { take: '✋ 꺼내기', put: '🫳 내려놓기', chop: '🔪 썰기', flip: '🍳 뒤집기', pick: '✋ 들기', pickCook: '✋ 꺼내기', plate: '🍽️ 담기', trash: '🗑️ 버리기', serve: '🍽️ 내가기' };
+const FRYER_STAGGER = { fryer1: 46 };
+const LABEL = { batter: '🥣 반죽 묻히기', heat: '🔥 불 맞추기', shake: '🫧 흔들기', take: '✋ 꺼내기', put: '🫳 내려놓기', back: '🫳 내려놓기', chop: '🔪 썰기', flip: '🍳 뒤집기', pick: '✋ 들기', pickCook: '✋ 꺼내기', plate: '🍽️ 담기', trash: '🗑️ 버리기', serve: '🍽️ 내가기' };
 export const contextLabel = c => (c ? LABEL[c.do] : null);
 
-export function resultView(r, out, goals, copy) {
+export function resultView(r, out, goals, copy, need = null) {
   return {
     kicker: out.starUp ? '축하해요' : '오늘의 영업',
-    title: out.starUp ? copy.starUp(out.rest.star) : copy.done,
+    title: out.starUp ? copy.starUp(out.rest.star) : r.soldOut ? copy.soldOut : copy.done,
+    need,
     avg: r.avg,
     stats: [[`${r.served}명`, '손님'], [`${r.perfect}개`, '완벽한 요리'], [`🪙 ${r.coins}`, '번 코인']],
     bonus: out.bonus,
@@ -112,10 +144,12 @@ export function resultHtml(v) {
   const head = `<div class="head"><div class="kick">${v.kicker}</div><h3>${v.title}</h3><div class="stars">${stars}</div><div class="avg">평균 ★${v.avg.toFixed(1)}</div></div>`;
   const grid = `<div class="grid">${v.stats.map(([b, l]) => `<div><b>${b}</b>${l}</div>`).join('')}</div>`;
   const bonus = v.bonus ? `<div class="bonus">🎁 별 올리기 선물 🪙 ${v.bonus}</div>` : '';
+  const need = v.need ? v.need.items.map(needLine).join('') : '';
   const goals = v.goals.length
-    ? `<div class="gwrap"><div class="gl">다음 별까지</div><div class="goal">${v.goals.map(([k, a, n]) => `<span>${k}</span><b>${a} / ${n}</b><div class="bar${a >= n ? ' full' : ''}"><i style="width:${Math.round(Math.min(1, a / n) * 100)}%"></i></div>`).join('')}</div></div>`
-    : '';
-  return `${head}<div>${grid}${bonus}${goals}<div class="foot"><button type="button">확인</button></div></div>`;
+    ? `<div class="gwrap"><div class="gl">다음 별까지</div><div class="goal">${v.goals.map(([k, a, n], i) => `<span>${k}</span><b>${a} / ${n}</b><div class="bar${a >= n ? ' full' : ''}"><i style="width:${Math.round(Math.min(1, a / n) * 100)}%"></i></div>${i === v.need?.row ? need : ''}`).join('')}</div></div>`
+    : need ? `<div class="gwrap">${need}</div>` : '';
+  const foot = v.need ? `<button type="button" data-act="done">확인</button><button type="button" data-act="guide">${STOCK_COPY.guide}</button>` : '<button type="button">확인</button>';
+  return `${head}<div>${grid}${bonus}${goals}<div class="foot">${foot}</div></div>`;
 }
 
 export function nextHtml(v) {
@@ -123,12 +157,12 @@ export function nextHtml(v) {
   return `${steps ? `<div class="steps">${steps}</div>` : ''}<span>${v.text}</span>`;
 }
 
-const DISH_NAME = { grilled: '🐟 생선구이', riceball: '🍙 주먹밥', soup: '🍲 생선국' };
-export const MENU_COPY = { kicker: '칠판', title: '오늘의 메뉴', tips: ['🍳 막대가 초록 칸일 때 뒤집어요', '🔪 박자에 맞춰 네 번 눌러요'], start: '🔔 영업 시작' };
+const DISH_NAME = { grilled: '🐟 생선구이', riceball: '🍙 주먹밥', soup: '🍲 생선국', shrimpfry: '🍤 새우튀김', squidfry: '🦑 오징어튀김', vegfry: '🥬 채소튀김' };
+export const MENU_COPY = { kicker: '칠판', title: '오늘의 메뉴', tips: ['🍳 막대가 초록 칸일 때 뒤집어요', '🔪 박자에 맞춰 네 번 눌러요'], fryTip: '🔥 바늘이 초록 칸일 때 불을 맞춰요', start: '🔔 영업 시작', tipTitle: '🍳 요리 요령' };
 
 export const STOCK_COPY = {
   title: '⚠️ 재고가 부족해요',
-  items: { fish: { ico: '🐟', name: '생선', where: '포구 섬에서 낚아 와요' }, rice: { ico: '🍚', name: '쌀', where: '포구 섬 시장에서 사 와요' } },
+  items: { fish: { ico: '🐟', name: '생선', where: '포구 섬에서 낚아 와요' }, rice: { ico: '🍚', name: '쌀', where: '포구 섬 시장에서 사 와요' }, shrimp: { ico: '🦐', name: '새우', where: '포구 섬 가까운 바다에서 낚아 와요' }, squid: { ico: '🦑', name: '오징어', where: '포구 섬 먼바다나 밤바다에서 낚아 와요' }, veg: { ico: '🥬', name: '채소', where: '포구 섬 시장에서 사 와요' } },
   partial: '있는 재료로 만드는 메뉴만 주문이 들어와요',
   ask: '섬에 가서 식자재를 받아 와야 해요. 안내받으시겠어요?',
   guide: '🧭 안내 받기',
@@ -136,9 +170,16 @@ export const STOCK_COPY = {
   follow: '화살표를 따라 포구 부두로 가요',
 };
 
-export function menuView(star, first = false, pantry = undefined) {
+export const SPECIAL_COPY = { chip: '✨ 오늘의 특선', note: '코인 두 배, 주문도 많이 들어와요' };
+
+export function menuView(star, first = false, pantry = undefined, special = null) {
   const menus = first ? ['grilled'] : STAR[star].menus;
-  return { rows: menus.map(k => [DISH_NAME[k], RECIPE[k].slice(0, -1)]), stock: first ? null : stockStatus(menus, pantry) };
+  return {
+    rows: menus.map(k => [DISH_NAME[k], RECIPE[k].slice(0, -1), k]),
+    stock: first ? null : stockStatus(menus, pantry),
+    special: !first && menus.includes(special) ? special : null,
+    fry: menus.some(k => MENU[k].fry),
+  };
 }
 
 function stockHtml(st) {
@@ -149,17 +190,63 @@ function stockHtml(st) {
 }
 
 export function menuHtml(v) {
-  const rows = v.rows.map(([name, icos]) => `<div class="mr"><span>${name}</span><div class="steps">${icos.map((ico, k) => `${k ? '<em></em>' : ''}<i>${ico}</i>`).join('')}</div></div>`).join('');
-  return `<div class="head"><div class="kick">${MENU_COPY.kicker}</div><h3>${MENU_COPY.title}</h3></div><div><div class="menu">${rows}</div><div class="tip">${MENU_COPY.tips.map(t => `<div>${t}</div>`).join('')}</div>${stockHtml(v.stock)}<div class="foot">${v.stock?.none ? `<button type="button" data-act="later">${STOCK_COPY.later}</button><button type="button" data-act="guide">${STOCK_COPY.guide}</button>` : `<button type="button">${MENU_COPY.start}</button>`}</div></div>`;
+  const rows = v.rows.map(([name, icos, k]) => `<div class="mr${k && k === v.special ? ' sp' : ''}"><span>${name}${k && k === v.special ? `<b class="spchip">${SPECIAL_COPY.chip}</b>` : ''}</span><div class="steps">${icos.map((ico, j) => `${j ? '<em></em>' : ''}<i>${ico}</i>`).join('')}</div>${k && k === v.special ? `<small class="spnote">${SPECIAL_COPY.note}</small>` : ''}</div>`).join('');
+  return `<div class="head"><div class="kick">${MENU_COPY.kicker}</div><h3>${MENU_COPY.title}</h3></div><div><div class="menu">${rows}</div><div class="tip"><div class="tl">${MENU_COPY.tipTitle}</div>${(v.fry ? [...MENU_COPY.tips, MENU_COPY.fryTip] : MENU_COPY.tips).map(t => `<div>${t}</div>`).join('')}</div>${stockHtml(v.stock)}<div class="foot">${v.stock?.none ? `<button type="button" data-act="later">${STOCK_COPY.later}</button><button type="button" data-act="guide">${STOCK_COPY.guide}</button>` : `<button type="button">${MENU_COPY.start}</button>`}</div></div>`;
+}
+
+const needLine = ({ k, n }) => { const it = STOCK_COPY.items[k]; return `<div class="gneed">${it.ico} ${it.name} ${n} · ${it.where}</div>`; };
+
+export function stockNeed(rest, pantry) {
+  const st = stockStatus(STAR[rest.star].menus, pantry);
+  if (!st.short.length) return null;
+  const short = new Set(st.short.map(s => s.k));
+  const served = Object.entries(STAR_UP[rest.star + 1]?.served || {});
+  const hit = served.findIndex(([k, n]) => (rest.served[k] || 0) < n && short.has(MENU[k].from));
+  if (hit < 0) return { row: goalRows(rest).length - 1, items: st.short };
+  const kind = MENU[served[hit][0]].from;
+  return { row: hit + 1, items: st.short.filter(s => s.k === kind) };
 }
 
 export function goalRows(rest) {
   const c = STAR_UP[rest.star + 1];
   if (!c) return [];
   const rows = [['식당 평점', Math.min(rest.rating, c.rating), c.rating]];
-  for (const [k, n] of Object.entries(c.served || {})) rows.push([`${MENU[k].ico} 내기`, Math.min(rest.served[k] || 0, n), n]);
+  for (const [k, n] of Object.entries(c.served || {})) rows.push([`${DISH_NAME[k]} 대접하기`, Math.min(rest.served[k] || 0, n), n]);
   if (c.combo) rows.push(['별점 4 이상 연속', Math.min(rest.bestCombo, c.combo), c.combo]);
   return rows;
+}
+
+export function setTickets(tickets, guests) {
+  const out = [];
+  for (const t of tickets) {
+    if (!t.set) { out.push(t); continue; }
+    if (out.some(x => x.id === t.id)) continue;
+    const g = guests.find(x => x.id === t.id);
+    out.push({ ...t, set: (g?.set || [t.menu]).map(m => ({ menu: m, done: !tickets.some(x => x.id === t.id && x.menu === m) })) });
+  }
+  return out;
+}
+
+export function ticketHtml(t, now, pat, focus) {
+  const p = pat * (t.pat || 1);
+  const w = now - t.t0, a = PATIENCE[0] * p, b = PATIENCE[1] * p;
+  const cls = w < a ? '' : w < b ? ' mid' : ' late';
+  const left = Math.round(Math.max(0, 1 - w / b) * 20) * 5;
+  const face = t.face ? `<span class="face">${t.face}</span>` : '';
+  const dish = Array.isArray(t.set) ? `<div class="two">${t.set.map(d => `<i${d.done ? ' class="done"' : ''}>${MENU[d.menu].ico}</i>`).join('')}</div>` : `<i>${MENU[t.menu].ico}</i>`;
+  return `<div class="tk${Array.isArray(t.set) ? ' set' : ''}${cls}${t.id === focus ? ' now' : ''}${t.fav ? ' fav' : ''}">${face}<b>${t.table + 1}</b>${dish}<u><s style="width:${left}%"></s></u></div>`;
+}
+
+export function barDrop(items, blockers, gap = 8) {
+  if (!items.length) return 0;
+  const top = Math.min(...items.map(i => i.top));
+  let d = 0;
+  for (let k = 0; k <= blockers.length; k++) {
+    const hit = blockers.filter(b => items.some(i => i.left < b.right && i.right > b.left && i.top + d < b.bottom && i.bottom + d > b.top));
+    if (!hit.length) return d;
+    d = Math.max(d, ...hit.map(b => b.bottom + gap - top));
+  }
+  return d;
 }
 
 export function mountHud(doc) {
@@ -167,7 +254,7 @@ export function mountHud(doc) {
     const st = doc.createElement('style'); st.id = 'rest-hud-css'; st.textContent = CSS; doc.head.appendChild(st);
   }
   const root = doc.createElement('div'); root.id = 'rest-hud'; root.style.display = 'none';
-  root.innerHTML = '<div class="bar"><div class="clock"></div><div class="tks" style="display:flex;gap:8px"></div></div><div class="sts"></div><div class="arrow" style="display:none"></div><div class="next" hidden></div>';
+  root.innerHTML = '<div class="bar"><div class="clock"></div><div class="tks" style="display:flex;gap:14px;margin-left:8px"></div></div><div class="sts"></div><div class="arrow" style="display:none"></div><div class="next" hidden></div>';
   doc.body.appendChild(root);
   const card = doc.createElement('div'); card.id = 'rest-card';
   card.innerHTML = '<div class="box"></div>';
@@ -183,13 +270,13 @@ export function mountHud(doc) {
   };
   card.addEventListener('click', e => {
     const b = e.target.closest('button');
-    if (b?.dataset.act === 'guide') { closeCard(false); onGuide?.(); return; }
+    if (b?.dataset.act === 'guide') { const g = onGuide; closeCard(cardMode === 'result'); g?.(); return; }
     if (b?.dataset.act === 'later') { closeCard(false); return; }
     if (b) closeCard(true);
     else if (cardMode === 'menu' && !e.target.closest('.box')) closeCard(false);
   });
   const stEls = new Map();
-  let clockText = '', ticketHtml = '';
+  let clockText = '', ticketCache = '';
 
   const guideCard = doc.getElementById('guide-card');
   const bar = root.querySelector('.bar');
@@ -203,8 +290,19 @@ export function mountHud(doc) {
   };
   const watch = guideCard && typeof MutationObserver !== 'undefined' ? new MutationObserver(markDirty) : null;
   watch?.observe(guideCard, { attributes: true, attributeFilter: ['hidden'], childList: true, characterData: true, subtree: true });
-  addEventListener('resize', markDirty);
+  addEventListener('resize', () => { markDirty(); fitBar(); });
   const setHtml = (el, html) => { if (el._html !== html) { el._html = html; el.innerHTML = html; } };
+  let drop = 0;
+  const fitBar = () => {
+    const blockers = ['#topright', '#minimap', '#coach'].map(q => doc.querySelector(q)).filter(e => e?.getClientRects().length).map(e => e.getBoundingClientRect());
+    const items = [clock, ...tks.children].map(e => { const r = e.getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top - drop, bottom: r.bottom - drop }; });
+    const d = barDrop(items, blockers);
+    if (d === drop) return;
+    drop = d;
+    bar.style.transform = d ? `translateY(${d}px)` : '';
+    doc.body.style.setProperty('--rest-bar-drop', `${d}px`);
+    dirty = true;
+  };
 
   function stEl(id) {
     let el = stEls.get(id);
@@ -221,9 +319,13 @@ export function mountHud(doc) {
 
   function gauge(el, view) {
     const [a, b] = view.zone || [0, 0];
-    const cls = view.state === 'burnt' ? ' burn' : view.state === 'done' ? ' done' : view.perfect ? ' perfect' : '';
+    const fry = view.kind === 'fryHeat' || view.bubble !== undefined;
+    const cls = view.state === 'burnt' ? ' burn' : `${view.bubble !== undefined ? ' oil' : ''}${view.state === 'done' || view.state === 'over' ? ' done' : view.perfect ? ' perfect' : ''}`;
     const zone = view.zone ? `<em style="left:${(a * 100).toFixed(1)}%;width:${((b - a) * 100).toFixed(1)}%"></em>` : '';
-    setHtml(el, `<div class="gauge${cls}">${zone}<s></s></div>`);
+    const bar = `<div class="gauge${cls}">${zone}<s></s></div>`;
+    const ico = view.kind === 'fryHeat' ? '<i class="ico">🔥</i>' : `<i class="ico${view.bubble >= 0 ? ' bob' : ' off'}">🫧</i>`;
+    const shk = view.kind === 'fryHeat' ? '' : `<div class="shk">${[0, 1].map(i => `<span${i < view.shaken ? ' class="on"' : ''}></span>`).join('')}</div>`;
+    setHtml(el, fry ? `<div class="fry"><div class="fr">${ico}${bar}</div>${shk}</div>` : bar);
     const needle = el.querySelector('s');
     const left = `${Math.min(100, view.p * 100).toFixed(1)}%`;
     if (needle.style.left !== left) needle.style.left = left;
@@ -234,7 +336,7 @@ export function mountHud(doc) {
       root.style.display = on ? '' : 'none';
       doc.body.classList.toggle('rest-hud-on', on);
       dirty = true;
-      if (!on) { sts.innerHTML = ''; stEls.clear(); clockText = ''; ticketHtml = ''; tks.innerHTML = ''; nextEl.hidden = true; nextEl._html = ''; arrowEl.style.display = 'none'; }
+      if (!on) { sts.innerHTML = ''; stEls.clear(); clockText = ''; ticketCache = ''; tks.innerHTML = ''; nextEl.hidden = true; nextEl._html = ''; arrowEl.style.display = 'none'; }
     },
     cardOpen: () => card.classList.contains('show'),
     clock(sec) {
@@ -243,20 +345,15 @@ export function mountHud(doc) {
       if (t !== clockText) { clockText = t; clock.textContent = t; }
     },
     tickets(list, now, pat, focus = null) {
-      const html = list.map(t => {
-        const w = now - t.t0, a = PATIENCE[0] * pat, b = PATIENCE[1] * pat;
-        const cls = w < a ? '' : w < b ? ' mid' : ' late';
-        const left = Math.round(Math.max(0, 1 - w / b) * 20) * 5;
-        return `<div class="tk${cls}${t.id === focus ? ' now' : ''}"><b>${t.table + 1}</b><i>${MENU[t.menu].ico}</i><u><s style="width:${left}%"></s></u></div>`;
-      }).join('');
-      if (html !== ticketHtml) { ticketHtml = html; tks.innerHTML = html; }
+      const html = list.map(t => ticketHtml(t, now, pat, focus)).join('');
+      if (html !== ticketCache) { ticketCache = html; tks.innerHTML = html; fitBar(); }
     },
     station(id, view, x, y) {
       if (!view) { const el = stEls.get(id); if (el && el.style.display !== 'none') el.style.display = 'none'; return; }
       const el = stEl(id);
-      place(el, x, view.kind === 'bubble' ? Math.max(y, bubbleMin) : y);
+      place(el, x, view.kind === 'bubble' ? Math.max(y, bubbleMin) : y - (FRYER_STAGGER[id] || 0));
       if (view.kind === 'bubble') setHtml(el, `<div class="num${view.mood ? ` ${view.mood}` : ''}">${view.n}</div>`);
-      else if (view.kind === 'chop') setHtml(el, `<div class="dots">${Array.from({ length: CHOP_TAPS }, (_, i) => `<span class="${i < view.taps ? 'on' : ''}${i === view.taps && view.beat ? ' beat' : ''}"></span>`).join('')}</div>`);
+      else if (view.kind === 'chop') setHtml(el, `<div class="dots">${Array.from({ length: view.need || CHOP_TAPS }, (_, i) => `<span class="${i < view.taps ? 'on' : ''}${i === view.taps && view.beat ? ' beat' : ''}"></span>`).join('')}</div>`);
       else gauge(el, view);
     },
     next(view) {
@@ -274,10 +371,10 @@ export function mountHud(doc) {
       el.remove();
       stEls.delete(id);
     },
-    result(view, onDone, ad = null) {
+    result(view, onDone, ad = null, guide = null) {
       card.querySelector('.box').innerHTML = resultHtml(view);
       if (ad) card.querySelector('.box .foot')?.before(ad);
-      onClose = onDone; cardMode = 'result';
+      onClose = onDone; onGuide = guide; cardMode = 'result';
       card.classList.add('show');
     },
     menu(view, onStart, guide) {

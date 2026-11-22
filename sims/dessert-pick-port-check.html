@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dessert Pick Check</title>
+<style>
+  body { margin: 0; background: #1f1a16; color: #f3e9dc; font: 13px/1.35 system-ui, sans-serif; }
+  #grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 12px; }
+  .cell { background: #2c251f; border-radius: 10px; overflow: hidden; }
+  .cell canvas { display: block; width: 100%; aspect-ratio: 1 / 1; }
+  .lab { padding: 6px 8px; }
+</style>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}</script>
+</head>
+<body>
+<div id="grid"></div>
+<script type="module">
+import * as THREE from 'three';
+import { META, build } from './dessert-pick/decor-art.mjs';
+import { DECOR_SCALE } from '../js/data/catalog.js';
+
+const YARD = ['ds_icecream_cart'];
+const NAMES = { ds_cake_case: '케이크 진열장', ds_pudding_chair: '푸딩 의자', ds_waffle_rug: '와플 러그', ds_icecream_cart: '아이스크림 수레' };
+const shots = [['ds_cake_case', 'A'], ['ds_pudding_chair', 'A'], ['ds_waffle_rug', 'A'], ['ds_icecream_cart', 'A'], ['ds_cake_case', 'B'], ['ds_pudding_chair', 'C']];
+const R = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+R.setPixelRatio(1); R.setSize(300, 300, false);
+R.toneMapping = THREE.ACESFilmicToneMapping; R.toneMappingExposure = 1.05;
+for (const [id, v] of shots) {
+  const yard = YARD.includes(id), k = yard ? 1 : DECOR_SCALE, meta = META[id][v];
+  const scene = new THREE.Scene(); scene.background = new THREE.Color(yard ? 0x9cc4d8 : 0x3a3029);
+  scene.add(new THREE.HemisphereLight(0xfff6e6, 0x3a3340, 1.1));
+  const sun = new THREE.DirectionalLight(0xfff1d6, 0.95); sun.position.set(6, 12, 8); scene.add(sun);
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(8, 0.1, 8), new THREE.MeshStandardMaterial({ color: yard ? 0x86ae6c : 0xc9ac86, roughness: 0.95 })); floor.position.y = -0.05; scene.add(floor);
+  const [fw, fd] = meta.foot.map(x => x * k);
+  scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([[-1, -1], [1, -1], [1, 1], [-1, 1], [-1, -1]].map(([x, z]) => new THREE.Vector3(x * fw / 2, 0.01, z * fd / 2))), new THREE.LineBasicMaterial({ color: 0x2fa84a })));
+  const root = new THREE.Group(); root.scale.setScalar(k); root.add(build(id, v)); scene.add(root);
+  const sz = new THREE.Box3().setFromObject(root).getSize(new THREE.Vector3());
+  const span = Math.max(sz.x, sz.y, sz.z), cy = sz.y * 0.45;
+  const cam = new THREE.PerspectiveCamera(36, 1, 0.05, 100);
+  cam.position.set(span * 0.7 + 0.4, cy + span * 0.7 + 0.4, span * 1.5 + 0.8); cam.lookAt(0, cy, 0);
+  R.render(scene, cam);
+  const cell = document.createElement('div'); cell.className = 'cell';
+  const cv = document.createElement('canvas'); cv.width = cv.height = 300; cv.getContext('2d').drawImage(R.domElement, 0, 0);
+  const lab = document.createElement('div'); lab.className = 'lab';
+  lab.textContent = `${NAMES[id]} ${v} · ${meta.name} · h ${(sz.y / k).toFixed(2)} w ${(sz.x / k).toFixed(2)} d ${(sz.z / k).toFixed(2)}`;
+  cell.append(cv, lab); document.getElementById('grid').append(cell);
+}
+document.title = 'done';
+</script>
+</body>
+</html>

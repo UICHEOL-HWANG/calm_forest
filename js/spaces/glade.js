@@ -6,21 +6,215 @@
 //     game.js 에 남은 let 에 쓸 때는 `$w.x = …` (읽기는 그냥 x). 도구·증명: tools/refactor/
 // =============================================================
 import {
-  $w, GLADE_MAX, WEATHER, atFarm, atMine, atOrchard, bugJarMesh, bugRespawnAt, catchCeremony, clayMat, clearPest,
-  clock, dexDiscover, dist2D, doPlayerAction, gameState, gladeBugs, gladeGroup, indoor, isNight, isOpen, makeSignpost,
-  nightLevel, obstacles, pestTarget, player, questEvent, refreshInventoryUI, scene, showCatchItem, situation,
-  spawnFloatText, spawnSparkle, spawnTree, trackGateBlocked, tryUnlockDrop, ui,
+  $w, GLADE_MAX, SEASON, WEATHER, atFarm, atMine, atOrchard, awardBadge, bugJarMesh, bugRespawnAt, catchCeremony, clayMat, clearPest,
+  clock, dexDiscover, dist2D, doPlayerAction, gameState, giveReward, gladeBugs, gladeGroup, indoor, isNight, isOpen, makeSignpost,
+  mergeGeos, nightLevel, obstacles, pestTarget, player, questEvent, refreshInventoryUI, requestSave, scene, showCatchItem, situation,
+  spawnFloatText, spawnSparkle, spawnTree, todayStr, trackGateBlocked, trees, tryUnlockDrop, ui,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
 import { onPlay } from '../decor-drops/index.js';
 import { BUG_KINDS, CAFE_GATE, GLADE, GLADE_R, LIGHT_WORKSHOP, LIGHT_WORKSHOP_POND } from '../data/places.js';
 import { PAL } from '../data/world.js';
 import { NIGHT_MIN } from '../daynight.js';
-import { rollKind } from '../dex-gates.js';
+import { gateOf, gateOpen, rollKind } from '../dex-gates.js';
+import { NIGHT_KINDS, STREAM, TUNE, monoKind, nightKind, pickKindId, streamPoint } from '../glade/night.js';
+import { buildPools, updatePools } from '../glade/pool-art.js';
+import { MONO_BANNER, NIGHT_BANNER, SWARM_BANNER, catchText, comboText, perfectText, stringBanner } from '../glade/copy.js';
+import { FIRST_DELAY, KIDS, LEADER_BUGS, NEXT_DELAY, PERFECT_BONUS, createSwarm, delay, expired, kidBright, kidsLeft, nextKid, swingKid, swingLeader } from '../glade/swarm.js';
+import { makeLeader, setLeaderGlow } from '../glade/swarm-art.js';
+import { JARS_PER_SEG, SEG_COINS, THRESHOLDS, addCatch, nextThreshold, segmentsLit, stringColors } from '../glade/string.js';
+import { layoutAnchors } from '../glade/string-layout.js';
+import { buildString, refreshString } from '../glade/string-art.js';
 import { concertScatterBlocks } from '../concert/index.js';
 import { netBonus } from '../workbench/rules.js';
 import { Sound } from '../sound.js';
 import * as THREE from 'three';
+
+const devQuery = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) ? new URLSearchParams(location.search) : new URLSearchParams();
+let gladeNight = null;
+let nightBannerDay = '';
+let streamPhase = 0, poolArt = null;
+let stringArt = null, stringNight = null, stringCaught = -1, devApplied = false;
+const FALLBACK_COLOR = 0xfff2a8;
+
+function paintString(night) {
+  if (!stringArt) return;
+  const caught = gameState.hintsSeen?.gladeCaught | 0;
+  const lit = segmentsLit(caught);
+  const colors = stringColors(gameState.hintsSeen?.gladeString).map(seg => seg.map(id => BUG_KINDS.find(k => k.id === id)?.color ?? FALLBACK_COLOR));
+  while (colors.length < lit) colors.push(Array(JARS_PER_SEG).fill(FALLBACK_COLOR));
+  refreshString(stringArt, colors.slice(0, lit), night);
+  stringNight = night; stringCaught = caught;
+}
+
+function applyDev() {
+  if (devApplied) return;
+  devApplied = true;
+  const n = parseInt(devQuery.get('gcaught'), 10);
+  if (!Number.isFinite(n)) return;
+  let s = { caught: 0, seg: '', string: '' };
+  for (let i = 0; i < n; i++) s = addCatch(s, ['yellow', 'yellow', 'blue', 'green'][i % 4]);
+  gameState.hintsSeen = { ...gameState.hintsSeen, gladeCaught: s.caught, gladeSeg: s.seg, gladeString: s.string };
+}
+
+function sparkleSegment(seg) {
+  if (!stringArt) return;
+  for (let j = 0; j < JARS_PER_SEG; j++) {
+    const p = stringArt.jarPos[seg * JARS_PER_SEG + j];
+    if (p) setTimeout(() => spawnSparkle(GLADE.x + p.x, p.y - 0.37, GLADE.z + p.z, 10), j * 180);
+  }
+}
+
+function noteCatch(kind) {
+  const h = gameState.hintsSeen || {};
+  const r = addCatch({ caught: h.gladeCaught, seg: h.gladeSeg, string: h.gladeString }, kind.id);
+  gameState.hintsSeen = { ...h, gladeCaught: r.caught, gladeSeg: r.seg, gladeString: r.string };
+  if (!r.lit) return;
+  const coins = SEG_COINS[r.lit - 1];
+  if (coins) giveReward({ coins }, 'glade_string', String(r.lit));
+  if (r.lit === THRESHOLDS.length) awardBadge('glade_ring');
+  const copy = stringBanner(r.lit, r.caught, nextThreshold(r.caught));
+  ui.showHintBanner?.({ ico: '🏮', title: copy.title, line: copy.line, kind: 'misc', key: 'glade-string-' + r.lit });
+  trackEvent('glade_string', { step: r.lit, total: r.caught });
+  sparkleSegment(r.lit - 1);
+  requestSave();
+}
+
+let swarm = null, swarmObjs = null, swarmAt = 0, swarmBoost = 0;
+const swarmPath = (u) => ({ x: 2.6 * Math.sin(u), y: 1.5 + 0.28 * Math.sin(2 * u), z: 1.6 * Math.cos(u) });
+const leaderBright = (t) => (kidsLeft(swarm) ? 0 : 0.5 + 0.5 * Math.sin(t * 2.6));
+
+function catchBugs(kind, bugs, wx, wz, text) {
+  gameState.inventory.bug = (gameState.inventory.bug || 0) + bugs;
+  refreshInventoryUI();
+  Sound.harvest();
+  spawnFloatText(wx, 1.4, wz, text, '#c98a2a');
+  spawnSparkle(wx, 1.2, wz, kind.id === 'yellow' ? 12 : 20);
+  for (let i = 0; i < bugs; i++) { questEvent('catch'); noteCatch(kind); }
+  dexDiscover('bug', kind.id);
+  catchCeremony('bugZoom');
+  if (kind.id === 'rainbow') tryUnlockDrop(0.5);
+  trackEvent('firefly_catch', { kind: kind.id, weather: WEATHER, night: Math.round(nightLevel * 100), mode: nightNow().kind });
+  onPlay('firefly');
+}
+
+function endSwarm(t, result) {
+  if (!swarm) return;
+  trackEvent('firefly_swarm', { result, combo: swarm.combo, caught: swarm.caught, mode: nightNow().kind });
+  for (const o of [swarmObjs.leader, ...swarmObjs.kids]) { gladeGroup.remove(o); o.traverse(m => { m.geometry?.dispose(); m.material?.dispose(); }); }
+  swarm = null; swarmObjs = null;
+  swarmAt = t + delay(NEXT_DELAY, Math.random);
+}
+
+function startSwarm(t) {
+  const kind = rollBugKind();
+  swarm = createSwarm(kind.id, t);
+  const leader = makeLeader(kind.color, clayMat);
+  const kids = Array.from({ length: KIDS }, () => makeFirefly(kind));
+  for (const o of [leader, ...kids]) gladeGroup.add(o);
+  swarmObjs = { leader, kids, kind, su: 0 };
+  if (gameState.hintsSeen?.gladeSwarmSeen) return;
+  ui.showHintBanner?.({
+    ico: '✨', title: SWARM_BANNER.title, line: SWARM_BANNER.line, kind: 'misc', key: 'glade-swarm', live: () => !!swarm,
+    burn: () => { gameState.hintsSeen = { ...gameState.hintsSeen, gladeSwarmSeen: true }; requestSave(); },
+  });
+}
+
+function updateSwarm(dt, t) {
+  const away = dist2D(GLADE, player.position);
+  if (!swarm) {
+    if (away > GLADE_R + 0.5) return;
+    if (!swarmAt) swarmAt = t + (devQuery.has('gswarm') ? 3 : delay(FIRST_DELAY, Math.random));
+    if (t >= swarmAt) startSwarm(t);
+    return;
+  }
+  if (expired(swarm, t)) { endSwarm(t, 'timeout'); return; }
+  if (away > GLADE_R + 4) { endSwarm(t, 'left'); return; }
+  swarmBoost = Math.max(0, swarmBoost - dt);
+  swarmObjs.su += dt * (swarmBoost > 0 ? 1.3 : 0.55);
+  const fade = Math.min(1, (nightLevel - NIGHT_MIN) / 0.2);
+  const lp = swarmPath(swarmObjs.su), ahead = swarmPath(swarmObjs.su + 0.1);
+  swarmObjs.leader.position.set(lp.x, lp.y, lp.z);
+  swarmObjs.leader.rotation.y = Math.atan2(ahead.x - lp.x, ahead.z - lp.z) + Math.PI;
+  setLeaderGlow(swarmObjs.leader, (kidsLeft(swarm) ? 0.55 : leaderBright(t)) * fade);
+  swarmObjs.kids.forEach((kid, i) => {
+    if (!swarm.kids[i]) return;
+    const p = swarmPath(swarmObjs.su - (i + 1) * 0.34);
+    kid.position.set(p.x, p.y, p.z);
+    const b = kidBright(i, t);
+    kid.userData.bright = b;
+    kid.userData.core.material.opacity = (0.25 + b * 0.75) * fade;
+    kid.userData.halo.material.opacity = (0.04 + b * 0.34) * fade;
+    kid.userData.halo.scale.setScalar(0.8 + b * 0.6);
+  });
+}
+
+function netSwarm() {
+  if (!swarm) return false;
+  const t = clock.elapsedTime;
+  let best = null, nd = 2.2;
+  const near = (obj, idx) => {
+    const d = Math.hypot(obj.position.x + GLADE.x - player.position.x, obj.position.z + GLADE.z - player.position.z);
+    if (d < nd) { nd = d; best = { obj, idx }; }
+  };
+  near(swarmObjs.leader, -1);
+  swarmObjs.kids.forEach((kid, i) => { if (swarm.kids[i]) near(kid, i); });
+  for (const bug of gladeBugs) near(bug, null);
+  if (!best || best.idx === null) return false;
+  const wx = best.obj.position.x + GLADE.x, wy = best.obj.position.y, wz = best.obj.position.z + GLADE.z;
+  doPlayerAction(wx, wz);
+  const bonus = netBonus(gameState), kind = swarmObjs.kind;
+  const odds = { chanceLit: Math.min(0.98, 0.9 + bonus), chanceDim: Math.min(0.98, nightNow().tune.dimChance + bonus), rnd: Math.random };
+  if (best.idx < 0) {
+    const res = swingLeader(swarm, { ...odds, bright: leaderBright(t) });
+    if (!res.hit) {
+      Sound.blip();
+      if (res.reason === 'miss') { swarmBoost = 1.2; spawnFloatText(wx, wy + 0.5, wz, '휙— 놓쳤다!', '#8a8f7a'); return true; }
+      const kid = swarmObjs.kids[nextKid(swarm)];
+      if (kid) spawnSparkle(kid.position.x + GLADE.x, kid.position.y, kid.position.z + GLADE.z, 14);
+      return true;
+    }
+    swarm = res.sw;
+    const bugs = LEADER_BUGS + (res.perfect ? PERFECT_BONUS : 0);
+    catchBugs(kind, bugs, wx, wz, res.perfect ? perfectText(kind.ico, kind.name, bugs) : catchText(kind.ico, kind.name, bugs));
+    endSwarm(t, 'done');
+    return true;
+  }
+  const res = swingKid(swarm, best.idx, { ...odds, bright: best.obj.userData.bright || 0 });
+  if (!res.hit) {
+    swarmBoost = 1.2; Sound.blip();
+    spawnFloatText(wx, wy + 0.5, wz, '휙— 놓쳤다!', '#8a8f7a');
+    return true;
+  }
+  swarm = res.sw;
+  gladeGroup.remove(best.obj);
+  catchBugs(kind, 1, wx, wz, res.inTurn ? comboText(kind.ico, kind.name, swarm.combo, KIDS) : catchText(kind.ico, kind.name, 1));
+  return true;
+}
+
+export function nightNow() {
+  if (gladeNight) return gladeNight;
+  const key = todayStr();
+  const forced = devQuery.get('gnight');
+  const kind = NIGHT_KINDS.includes(forced) ? forced : nightKind(key);
+  const open = BUG_KINDS.map(k => k.id).filter(id => gateOpen(gateOf('bug', id), { weather: 'clear', season: SEASON, night: true }));
+  gladeNight = { key, kind, monoId: kind === 'mono' ? monoKind(key, open) : null, tune: TUNE[kind] };
+  return gladeNight;
+}
+
+function announceNight(now) {
+  if (now.kind === 'plain' || nightBannerDay === now.key) return;
+  if (gameState.hintsSeen?.gladeNightSeen === now.key) { nightBannerDay = now.key; return; }
+  if (dist2D(GLADE, player.position) > GLADE_R + 0.5 || ui.coachActive?.()) return;
+  const copy = now.kind === 'mono' ? MONO_BANNER[now.monoId] : NIGHT_BANNER[now.kind];
+  nightBannerDay = now.key;
+  if (!copy) return;
+  ui.showHintBanner?.({
+    ico: '🌙', title: copy.title, line: copy.line, kind: 'place', key: 'glade-night',
+    near: () => dist2D(GLADE, player.position) < GLADE_R + 3,
+    burn: () => { gameState.hintsSeen = { ...gameState.hintsSeen, gladeNightSeen: now.key }; requestSave(); },
+  });
+}
 
 export function buildGlade() {
   $w.gladeGroup = new THREE.Group(); gladeGroup.position.copy(GLADE);
@@ -49,6 +243,11 @@ export function buildGlade() {
     spawnTree(tx, tz);
   }
   obstacles.push({ x: GLADE.x, z: GLADE.z, r: GLADE_R });   // 계곡 안엔 밭 금지(빈터 유지)
+  const ringTrees = trees.map(t => ({ x: t.position.x - GLADE.x, z: t.position.z - GLADE.z }));
+  const anchors = layoutAnchors(ringTrees, GLADE_R);
+  for (const a of anchors) if (!a.post) trees[a.i].userData.holdsString = true;
+  stringArt = buildString({ group: gladeGroup, anchors, clayMat, mergeGeos });
+  poolArt = buildPools(gladeGroup, GLADE_MAX + KIDS);
 }
 
 // 종류 추첨 — 🌈무지개반디는 🌧️비·🌫️안개 낀 날 **밤**에만(게이트 안에서 18%). 표는 js/dex-gates.js
@@ -58,7 +257,9 @@ export function rollBugKind() {
   const rnd = (WEATHER === 'rain' || WEATHER === 'fog')
     ? () => Math.min(Math.random(), Math.random())   // 두 번 굴려 작은 값 → 희귀↑
     : Math.random;
-  return rollKind(BUG_KINDS, 'bug', situation(), rnd);
+  const night = nightNow();
+  const id = pickKindId(night.kind, night.monoId, Math.random, () => rollKind(BUG_KINDS, 'bug', situation(), rnd).id);
+  return BUG_KINDS.find(k => k.id === id);
 }
 
 // 반딧불이 한 마리 — 발광 코어 + 넓은 헤일로(Additive). 블룸과 겹쳐 밤에 또렷하게 빛남
@@ -75,15 +276,16 @@ export function makeFirefly(kind) {
     phase: Math.random() * Math.PI * 2,          // 점멸 위상 — 밝을 때 휘둘러야 잘 잡힘
     tx: 0, tz: 0, ty: 1.4,                       // 배회 목적지(계곡 로컬)
     flee: 0,                                     // 남은 도망 시간(초)
+    so: 0, home: Math.random() * STREAM.window,
   };
   retargetFirefly(g);
   return g;
 }
 
 export function retargetFirefly(bug) {
-  const u = bug.userData;
+  const u = bug.userData, tune = nightNow().tune;
   const a = Math.random() * Math.PI * 2, r = Math.random() * (GLADE_R - 0.8);
-  u.tx = Math.cos(a) * r; u.tz = Math.sin(a) * r; u.ty = 0.9 + Math.random() * 1.9;
+  u.tx = Math.cos(a) * r; u.tz = Math.sin(a) * r; u.ty = tune.yMin + Math.random() * (tune.yMax - tune.yMin);
 }
 
 // 계곡 안 랜덤 위치에 한 마리 추가(최대 GLADE_MAX)
@@ -91,7 +293,13 @@ export function spawnFirefly() {
   if (gladeBugs.length >= GLADE_MAX || !gladeGroup) return;
   const bug = makeFirefly(rollBugKind());
   const a = Math.random() * Math.PI * 2, r = Math.random() * (GLADE_R - 1);
-  bug.position.set(Math.cos(a) * r, 0.9 + Math.random() * 1.6, Math.sin(a) * r);
+  const tune = nightNow().tune;
+  bug.position.set(Math.cos(a) * r, tune.yMin + Math.random() * (tune.yMax - tune.yMin), Math.sin(a) * r);
+  if (nightNow().kind === 'stream') {
+    bug.userData.so = bug.userData.home;
+    const p = streamPoint(streamPhase - bug.userData.so, GLADE_R - 0.8);
+    bug.position.x = p.x; bug.position.z = p.z;
+  }
   gladeGroup.add(bug); gladeBugs.push(bug);
 }
 
@@ -106,13 +314,22 @@ export function updateFireflyBugs(dt, t) {
   if (!gladeGroup) return;
   const night = isNight();
   gladeGroup.visible = !indoor && !atFarm && !atMine && !atOrchard;
+  applyDev();
+  if (stringNight !== night || stringCaught !== (gameState.hintsSeen?.gladeCaught | 0)) paintString(night);
   if (!night || !isOpen('glade')) {               // ☀️ 낮 → 전부 사라짐(밤에 다시 피어오름) · 🔓 계곡이 아직 안 돌아왔으면 피지 않는다
     while (gladeBugs.length) removeFirefly(gladeBugs[gladeBugs.length - 1]);
+    if (swarm) endSwarm(t, 'timeout');
+    swarmAt = 0;
+    gladeNight = null;
+    if (poolArt) poolArt.mesh.count = 0;
     return;
   }
-  if (t >= bugRespawnAt && gladeBugs.length < GLADE_MAX) {
+  const now = nightNow(), tune = now.tune, stream = now.kind === 'stream';
+  announceNight(now);
+  if (stream) streamPhase += dt * STREAM.speed;
+  if (t >= bugRespawnAt && gladeBugs.length < GLADE_MAX && !swarm) {
     spawnFirefly();
-    $w.bugRespawnAt = t + 1.2 + Math.random() * 2.4;  // 천천히 하나씩 피어오름
+    $w.bugRespawnAt = t + (1.2 + Math.random() * 2.4) * tune.respawn;
   }
   // 플레이어의 계곡 로컬 좌표(도망 판정용)
   const plx = player.position.x - GLADE.x, plz = player.position.z - GLADE.z;
@@ -122,15 +339,21 @@ export function updateFireflyBugs(dt, t) {
     // 점멸 — 밝을 때가 "잡을 타이밍"(사인 곡선 그대로 UI/성공률에 연동)
     const bright = 0.5 + 0.5 * Math.sin(u.phase);
     const fade = Math.min(1, (nightLevel - NIGHT_MIN) / 0.2);   // 해질녘엔 서서히 나타남
+    u.bright = bright;
     u.core.material.opacity = (0.3 + bright * 0.7) * fade;
     u.halo.material.opacity = (0.05 + bright * 0.3) * fade;
     u.halo.scale.setScalar(0.8 + bright * 0.55);
     // 이동 — 목적지로 부드럽게. 가까이 오면 반대 방향으로 튐
     const dx = bug.position.x - plx, dz = bug.position.z - plz;
     const pd = Math.hypot(dx, dz);
-    if (pd < 1.5 && u.flee <= 0) { u.flee = 0.9; }
-    let sp = 0.55;
-    if (u.flee > 0) {
+    if (pd < tune.fleeDist && u.flee <= 0) { u.flee = 0.9; }
+    let sp = tune.speed;
+    if (stream) {
+      if (u.flee > 0) { u.flee -= dt; u.so = Math.max(-STREAM.ahead, u.so - dt * 0.8); }
+      else u.so += (u.home - u.so) * Math.min(1, dt * 0.6);
+      const p = streamPoint(streamPhase - u.so, GLADE_R - 0.8);
+      u.tx = p.x; u.tz = p.z; sp = u.flee > 0 ? 2.8 : 2.4;
+    } else if (u.flee > 0) {
       u.flee -= dt; sp = 2.3;
       const k = pd || 0.001;
       u.tx = Math.max(-GLADE_R + 0.8, Math.min(GLADE_R - 0.8, plx + (dx / k) * 3.4));
@@ -138,13 +361,17 @@ export function updateFireflyBugs(dt, t) {
     }
     const tdx = u.tx - bug.position.x, tdz = u.tz - bug.position.z, tdy = u.ty - bug.position.y;
     const td = Math.hypot(tdx, tdz);
-    if (td < 0.25 && u.flee <= 0) retargetFirefly(bug);
+    if (td < 0.25 && u.flee <= 0 && !stream) retargetFirefly(bug);
     else {
-      bug.position.x += (tdx / (td || 1)) * sp * dt;
-      bug.position.z += (tdz / (td || 1)) * sp * dt;
+      const step = Math.min(td, sp * dt);
+      bug.position.x += (tdx / (td || 1)) * step;
+      bug.position.z += (tdz / (td || 1)) * step;
     }
     bug.position.y += tdy * dt * 0.8 + Math.sin(t * 2.2 + u.phase) * dt * 0.35;   // 위아래로 하늘하늘
   }
+  updateSwarm(dt, t);
+  const kidsOut = swarm ? swarmObjs.kids.filter((k, i) => swarm.kids[i]) : [];
+  if (poolArt) updatePools(poolArt, kidsOut.length ? [...gladeBugs, ...kidsOut] : gladeBugs, Math.max(0, Math.min(1, (nightLevel - NIGHT_MIN) / 0.2)));
 }
 
 // 🦋 포충망 휘두르기 — 밤 + 계곡 + 반딧불이 근처에서만. 반짝일 때 휘둘러야 잘 잡힘
@@ -153,6 +380,7 @@ export function tryNet() {
   if (!isOpen('glade')) { ui.toast?.('🌟 반딧불이 계곡이 깨어나면 쓰는 도구예요'); return; }   // 🔓 아직 없는 곳을 가리키지 않는다
   if (dist2D(GLADE, player.position) > GLADE_R + 2.5) { ui.toast?.('🌟 남쪽 반딧불이 계곡에서 쓰는 도구예요'); return; }
   if (!isNight()) { ui.toast?.('🌙 반딧불이는 밤에만 나와요. 해가 지면 다시 오세요', 2600); return; }
+  if (netSwarm()) return;
   let target = null, nd = 2.2;
   for (const bug of gladeBugs) {
     const d = Math.hypot(bug.position.x + GLADE.x - player.position.x, bug.position.z + GLADE.z - player.position.z);
@@ -165,7 +393,7 @@ export function tryNet() {
   const u = target.userData, kind = u.kind;
   const bright = 0.5 + 0.5 * Math.sin(u.phase);
   // 성공률: 반짝일 때 크게 유리 + 촘촘한 포충망(영구 업그레이드) 보정
-  const base = bright > 0.6 ? 0.9 : 0.35;
+  const base = bright > 0.6 ? 0.9 : nightNow().tune.dimChance;
   const chance = Math.min(0.98, base + netBonus(gameState));
   const ok = Math.random() < chance;
   trackEvent('firefly_swing', { kind: kind.id, bright: Math.round(bright * 100), lit: bright > 0.6, upgraded: !!gameState.upgrades.net, caught: ok }); // [GA4] 타이밍 성공률 분석
@@ -176,19 +404,9 @@ export function tryNet() {
     ui.toast?.('🌟 놓쳤어요! 반딧불이가 밝게 반짝일 때 휘둘러보세요', 2400);
     return;
   }
-  gameState.inventory.bug = (gameState.inventory.bug || 0) + 1;
-  refreshInventoryUI();
   removeFirefly(target);
-  $w.bugRespawnAt = Math.min(bugRespawnAt, clock.elapsedTime + 2.5);   // 곧 새 개체가 피어남
-  Sound.harvest();
-  spawnFloatText(wx, 1.4, wz, `+1 ${kind.ico} ${kind.name}`, '#c98a2a');
-  spawnSparkle(wx, 1.2, wz, kind.id === 'yellow' ? 12 : 20);
-  questEvent('catch');                                    // 🦉 데일리 의뢰(반딧불이 잡기)
-  dexDiscover('bug', kind.id);                            // 📖 도감(반딧불이 첫 발견)
-  trackGateBlocked('bug', 'rainbow');     // [GA4] 📖
-  catchCeremony('bugZoom');                               // 🎉 첫 반딧불이만 밀착, 이후 폴짝 + 병 팝
+  $w.bugRespawnAt = Math.min(bugRespawnAt, clock.elapsedTime + 2.5);
+  catchBugs(kind, 1, wx, wz, catchText(kind.ico, kind.name, 1));
+  trackGateBlocked('bug', 'rainbow');
   showCatchItem(bugJarMesh(kind), wx, target.position.y, wz);
-  if (kind.id === 'rainbow') tryUnlockDrop(0.5);          // 🎨 최희귀 → 집 색 해금 확률
-  trackEvent('firefly_catch', { kind: kind.id, weather: WEATHER, night: Math.round(nightLevel * 100) }); // [GA4] 밤 콘텐츠 KPI
-  onPlay('firefly');
 }

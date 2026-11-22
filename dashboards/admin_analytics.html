@@ -20,6 +20,7 @@
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:image" content="https://calmforest.cloud/preview.jpg" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
 <link rel="stylesheet" href="_dash.css" />
 <link rel="stylesheet" href="_admin.css" />
 <style>
@@ -27,14 +28,10 @@
   #msg .msg-char { display: block; width: 72px; height: 72px; object-fit: contain; margin: 0 auto 8px; }
 </style>
 </head>
-<body>
+<body data-nav="analytics">
   <div id="page" class="is-loading is-first">
     <div class="ah">
-      <a class="crumb" href="index.html">← 관리자 홈</a>
-    </div>
-    <div class="ah" style="margin-top:6px">
-      <img class="brand" src="img/chars/bear.png" alt="" />
-      <h1>고요한 숲 · 관리자 애널리틱스</h1>
+      <h1>애널리틱스</h1>
       <div class="seg range" id="range" role="group" aria-label="기간">
         <!-- 게이트 통과 전에는 기간 전환이 의미 없으므로 비활성 -->
         <button data-d="7" disabled>7일</button>
@@ -61,7 +58,7 @@
       </nav>
 
       <main class="dash" id="dash">
-        <section class="rsec" id="s-ov">
+        <section class="rsec flat" id="s-ov">
           <div class="sh" style="--av:url(img/chars/fox.png)">
             <span class="eyebrow" id="ovEyebrow">개요</span>
             <h2>이번 기간 한눈에</h2>
@@ -120,7 +117,7 @@
           <div class="sh" style="--av:url(img/chars/dog.png)">
             <span class="eyebrow">Growth accounting</span>
             <h2>DAU 상세 구성</h2>
-            <p class="insight">신규·연속 복귀·재활성(쉬었다 돌아옴)이 위로, 전날 왔는데 그날 안 온 이탈이 아래로 쌓입니다. 오늘 이탈은 하루가 끝나야 셉니다.</p>
+            <p class="insight">신규·연속 복귀·재활성(쉬었다 돌아옴)이 위로, 전날 왔는데 그날 안 온 이탈이 아래로 쌓입니다. 오늘 이탈은 하루가 끝나야 셉니다. <a class="more-link" data-keep-k href="active.html">WAU · MAU 는 활성 유저 창에서</a></p>
           </div>
           <div class="chartbox"><canvas id="cGrowth" height="120"></canvas></div>
           <div class="panel">
@@ -225,6 +222,7 @@
     </div>
   </div>
 
+  <script type="module" src="js/admin-nav.js"></script>
   <script type="module" src="js/admin-analytics.js"></script>
 </body>
 </html>

@@ -3,6 +3,8 @@ import { offsetRoute } from './sail.js';
 export const PANTRY_KEYS = ['fish', 'bigfish', 'squid', 'shrimp', 'clam', 'rice', 'veg'];
 export const PANTRY_ICO = { fish: '🐟', bigfish: '🐠', squid: '🦑', shrimp: '🦐', clam: '🐚', rice: '🍚', veg: '🥬' };
 
+export const PANTRY_NAME = { fish: '생선', bigfish: '큰 생선', squid: '오징어', shrimp: '새우', clam: '조개', rice: '쌀', veg: '채소' };
+
 export const ISLAND = { x: 44, z: 0 };
 export const ISLAND_R = 20;
 export const WALK_R = ISLAND_R - 0.8;

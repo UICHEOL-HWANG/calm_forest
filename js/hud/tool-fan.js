@@ -1,4 +1,4 @@
-import { FAN, fanLayout, clampFan, pickSlot, stepTool, swipeDir } from './fan-layout.js';
+import { FAN, fanLayout, kitLayout, clampFan, pickSlot, stepTool, swipeDir } from './fan-layout.js';
 import { iconHtml } from '../icons/index.js';
 
 const SEEN_KEY = 'cf_toolfan_seen';
@@ -62,11 +62,13 @@ export function createToolFan({ Input, t, act, trackEvent }) {
   }
 
   function buildFan() {
-    const farm = order().filter(i => tools[i].grp === 'farm').map(i => ({ kind: 'tool', i }));
-    const out = order().filter(i => tools[i].grp !== 'farm').map(i => ({ kind: 'tool', i }));
+    const kit = Input.toolKit?.();
+    const farm = order().filter(i => (kit ? kit.includes(tools[i].id) : tools[i].grp === 'farm')).map(i => ({ kind: 'tool', i }));
+    const out = kit ? [] : order().filter(i => tools[i].grp !== 'farm').map(i => ({ kind: 'tool', i }));
     items = [...farm, ...out, { kind: 'bare' }];
     const r = btn.getBoundingClientRect();
-    const raw = fanLayout({ cx: r.left + r.width / 2, cy: r.top + r.height / 2, inner: farm.length, outer: out.length + 1 });
+    const at = { cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
+    const raw = kit ? kitLayout({ ...at, n: items.length }) : fanLayout({ ...at, inner: farm.length, outer: out.length + 1 });
     const top = document.getElementById('topright')?.getBoundingClientRect().bottom || 0;
     pts = clampFan(raw, { w: innerWidth, h: innerHeight, pad: 30, top });
     fan = document.createElement('div');
@@ -120,7 +122,8 @@ export function createToolFan({ Input, t, act, trackEvent }) {
     const dir = swipeDir(e.clientX - start.x, e.clientY - start.y);
     if (!dir) return;
     clearTimeout(timer); swiped = true;
-    const next = stepTool(order(), cur, dir);
+    const kit = Input.toolKit?.();
+    const next = stepTool(kit ? order().filter(i => kit.includes(tools[i].id)) : order(), cur, dir);
     Input.selectTool(next);
     act?.('toolpage');
     markSeen(); render();
