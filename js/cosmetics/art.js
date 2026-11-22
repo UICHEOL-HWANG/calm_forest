@@ -33,6 +33,7 @@ import { buildNotePin, buildBowTie, buildViolinPack } from './art-concert-pick.j
 import { buildMaskPin, buildYukataCord, buildFanPack } from './art-festival-pick.js';
 import { buildRoundGlasses, buildBookmarkCharm, buildBookPack } from './art-book-pick.js';
 import { buildCableBeanie, buildRopeScarf, buildYarnPack } from './art-knit-pick.js';
+import { buildConductorCap, buildTicketCharm, buildSuitcasePack } from './art-train-pick.js';
 
 export const PALETTE = Object.freeze({
   straw: 0xd9bd7e, strawDark: 0xb99a5c,
@@ -382,6 +383,7 @@ function makeTables(THREE) {
     sf_mask_pin: (g, k) => buildMaskPin(THREE, g, k, h),
     bk_round_glasses: (g, k) => buildRoundGlasses(THREE, g, k, h),
     kn_beanie: (g, k) => buildCableBeanie(THREE, g, k, h),
+    tr_conductor_cap: (g, k) => buildConductorCap(THREE, g, k, h),
     star_pin: (g, k) => {       // 별 머리핀 — 옆머리에 하나. 가장 작고 가장 싸다
       // ⚠️ 1차엔 옆머리 **뒤**에 박혀 정면에서 안 보였다. 앞쪽으로 당기고 키운다.
       const H = k.HR * 0.46, rad = ringR(k.HR, 0.46);
@@ -460,6 +462,7 @@ function makeTables(THREE) {
     sf_yukata_cord: (g, k) => buildYukataCord(THREE, g, k, h),
     bk_bookmark_charm: (g, k) => buildBookmarkCharm(THREE, g, k, h),
     kn_scarf: (g, k) => buildRopeScarf(THREE, g, k, h),
+    tr_ticket_charm: (g, k) => buildTicketCharm(THREE, g, k, h),
     bowtie: (g, k) => {         // 나비 넥타이 — 목띠 + 날개 두 장 + 가운데 매듭
       //  ▶ 날개는 **꼭짓점이 가운데를 향하는 사각뿔**이다. 저폴리에서 나비 날개를 그리는 제일 싼 방법 —
       //    옆에서 봐도 삼각으로 읽히고, 정면에선 두 삼각이 매듭에서 만나 나비가 된다.
@@ -546,6 +549,7 @@ function makeTables(THREE) {
     sf_fan_pack: (g, k) => buildFanPack(THREE, g, k, h),
     bk_book_pack: (g, k) => buildBookPack(THREE, g, k, h),
     kn_yarn_pack: (g, k) => buildYarnPack(THREE, g, k, h),
+    tr_suitcase_pack: (g, k) => buildSuitcasePack(THREE, g, k, h),
     pack: (g, k) => {           // 메신저 가방 — 왼쪽 옆구리에 걸치고 끈이 오른쪽 어깨를 넘어간다
       const R = k.R, w = R * 0.76;
       const out = 0;
