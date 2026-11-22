@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Glade Develop Directions</title>
+<style>
+  :root { --bg: #f4efe6; --ink: #2b2118; --muted: #6b5b4a; --card: #fffaf2; --line: #e2d6c4; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Pretendard", "Apple SD Gothic Neo", sans-serif; }
+  header { padding: 16px 20px 4px; max-width: 1400px; }
+  h1 { margin: 0 0 4px; font-size: 20px; }
+  header p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+  section { max-width: 1400px; padding: 14px 20px 4px; }
+  section h2 { margin: 0 0 2px; font-size: 17px; }
+  section .lead { margin: 0 0 10px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+  .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
+  .card h3 { margin: 0; padding: 10px 12px 2px; font-size: 15px; }
+  .card .how { margin: 0; padding: 0 12px 10px; color: var(--muted); font-size: 12.5px; line-height: 1.55; min-height: 4.8em; }
+  .view { position: relative; border-top: 2px solid var(--line); background: #0d1626; }
+  .view canvas { display: block; width: 100%; height: auto; }
+  .tag { position: absolute; left: 8px; top: 8px; background: rgba(255,250,242,.9); color: var(--ink); font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; }
+  .hud { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); background: rgba(20,28,44,.8); color: #fff; font-size: 12px; padding: 5px 12px; border-radius: 999px; white-space: nowrap; border: 1px solid rgba(255,255,255,.18); }
+  .gets { padding: 10px 12px 12px; font-size: 12.5px; background: #f3ead8; margin-top: auto; line-height: 1.55; }
+  .gets b { margin-right: 6px; }
+  footer { max-width: 1400px; padding: 10px 20px 28px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+  @media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } .card .how { min-height: 0; } section { padding: 12px 16px 4px; } header { padding: 14px 16px 4px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>반딧불이 계곡 디벨롭 · 방향 시안</h1>
+  <p>지금 계곡은 밤마다 같고, 종류 8종을 한 번씩 잡으면 목표가 끝나며, 많이 잡아도 공터가 변하지 않습니다. A는 밤의 종류라 여러 개를 같이 넣을 수 있고, B와 C는 하나를 고르는 시안입니다.</p>
+</header>
+<div id="root"></div>
+<footer>방향을 보는 그림이라 캐릭터와 나무는 단순한 모양으로 대신했습니다. 등과 반디의 조형은 고른 방향으로 따로 시안을 냅니다.</footer>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+const W = 640, H = 430, GLADE_R = 7;
+const KIND = { yellow: 0xfff2a8, blue: 0x9ad8ff, green: 0xa8ffb0, rainbow: 0xffc0f0, petal: 0xffb3d1, ember: 0xffa35c, amber: 0xf0c060, frost: 0xd6f1ff };
+const KIND_LIST = Object.values(KIND);
+const NIGHT = 0x0d1626;
+
+const clay = (c, flat = true) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.95, metalness: 0, flatShading: flat });
+const glow = (c, o = 1) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o });
+const add = (c, o) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o, blending: THREE.AdditiveBlending, depthWrite: false });
+const rng = (seed) => () => { seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+
+function firefly(color, scale = 1) {
+  const g = new THREE.Group();
+  const core = new THREE.Mesh(new THREE.SphereGeometry(0.1 * scale, 10, 8), glow(color));
+  const halo = new THREE.Mesh(new THREE.SphereGeometry(0.24 * scale, 12, 8), add(color, 0.22));
+  g.add(core, halo);
+  g.userData = { core, halo };
+  return g;
+}
+function setBright(g, b) {
+  g.userData.core.material.opacity = 0.25 + b * 0.75;
+  g.userData.halo.material.opacity = 0.04 + b * 0.34;
+  g.userData.halo.scale.setScalar(0.8 + b * 0.6);
+}
+const wander = (i, t, R, y0, ya, sp) => {
+  const a = i * 2.399, r = R * (0.3 + 0.7 * ((i * 0.618) % 1));
+  return [Math.cos(a + t * sp * (0.6 + (i % 3) * 0.25)) * r, y0 + ya * Math.sin(t * 1.3 + i), Math.sin(a * 1.3 + t * sp * (0.5 + (i % 4) * 0.2)) * r];
+};
+function groundGlow(color, r, o) {
+  const m = new THREE.Mesh(new THREE.CircleGeometry(r, 28), add(color, o));
+  m.rotation.x = -Math.PI / 2; m.position.y = 0.05;
+  return m;
+}
+function jar(color, haloO = 0.3) {
+  const g = new THREE.Group();
+  const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.5, 5), clay(0x5a4632));
+  cord.position.y = 0.42;
+  const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.06, 10), clay(0x8a6a4a));
+  lid.position.y = 0.16;
+  const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.13, 0.28, 10), new THREE.MeshStandardMaterial({ color: 0xdff5ff, transparent: true, opacity: 0.3, roughness: 0.2 }));
+  const core = new THREE.Mesh(new THREE.SphereGeometry(0.075, 10, 8), glow(color));
+  const halo = new THREE.Mesh(new THREE.SphereGeometry(0.26, 12, 8), add(color, haloO));
+  g.add(cord, lid, glass, core, halo);
+  return g;
+}
+function bear(x, z) {
+  const g = new THREE.Group();
+  const fur = clay(0xc89a6a, false);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 12), fur); body.position.y = 0.6; body.scale.y = 1.05;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.46, 16, 12), fur); head.position.y = 1.38;
+  const earL = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), fur); earL.position.set(-0.32, 1.76, 0);
+  const earR = earL.clone(); earR.position.x = 0.32;
+  const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.3, 6), clay(0x9a7650)); stick.position.set(0.62, 1.25, -0.2); stick.rotation.set(-0.5, 0, -0.35);
+  const hoop = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.025, 6, 18), clay(0xe8e0d0)); hoop.position.set(0.86, 1.86, -0.5); hoop.rotation.x = 1.0;
+  const web = new THREE.Mesh(new THREE.CircleGeometry(0.25, 16), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.16, side: THREE.DoubleSide })); web.position.copy(hoop.position); web.rotation.x = 1.0;
+  g.add(body, head, earL, earR, stick, hoop, web);
+  g.position.set(x, 0, z);
+  return g;
+}
+function base({ near = false, stump = true } = {}) {
+  const r = rng(7);
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(NIGHT);
+  scene.fog = new THREE.FogExp2(NIGHT, 0.016);
+  scene.add(new THREE.HemisphereLight(0x8fa6d8, 0x16241f, 0.8));
+  const moon = new THREE.DirectionalLight(0xa9c0ff, 0.75); moon.position.set(-6, 12, 4); scene.add(moon);
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(90, 90), clay(0x4f8a66, false)); ground.rotation.x = -Math.PI / 2; scene.add(ground);
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(GLADE_R + 0.6, 36), clay(0x8ac9a2, false)); floor.rotation.x = -Math.PI / 2; floor.position.y = 0.02; scene.add(floor);
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 7) * Math.PI * 2 + 0.4, d = 2.4 + r() * 3.4;
+    const rock = new THREE.Mesh(new THREE.IcosahedronGeometry(0.3 + r() * 0.32, 0), clay(0x9aab9a));
+    rock.position.set(Math.cos(a) * d, 0.16, Math.sin(a) * d); scene.add(rock);
+  }
+  if (stump) { const s = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.58, 0.5, 9), clay(0x8a6a4a)); s.position.set(-1.6, 0.25, 1.2); scene.add(s); }
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 1.2, 6), clay(0x8a6a4a)); post.position.set(0, 0.6, -GLADE_R + 1.2);
+  const board = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.5, 0.08), clay(0xd9b98a)); board.position.set(0, 1.25, -GLADE_R + 1.2);
+  scene.add(post, board);
+  const trees = [];
+  for (let i = 0; i < 11; i++) {
+    const a = (i / 11) * Math.PI * 2 + 0.25, d = GLADE_R + 1.9 + r() * 0.5;
+    const x = Math.cos(a) * d, z = Math.sin(a) * d, s = 0.9 + r() * 0.3;
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.18 * s, 0.26 * s, 1.5 * s, 7), clay(0x8a6a4a)); trunk.position.set(x, 0.75 * s, z);
+    const leafA = new THREE.Mesh(new THREE.IcosahedronGeometry(1.05 * s, 0), clay(0x5fa878)); leafA.position.set(x, 2.1 * s, z);
+    const leafB = new THREE.Mesh(new THREE.IcosahedronGeometry(0.72 * s, 0), clay(0x76bb8a)); leafB.position.set(x + 0.15, 3.0 * s, z - 0.1);
+    scene.add(trunk, leafA, leafB);
+    trees.push({ x, z, a, s });
+  }
+  const cam = new THREE.PerspectiveCamera(42, W / H, 0.1, 120);
+  if (near) { cam.position.set(0.4, 4.6, 9.6); cam.lookAt(0, 1.15, 1.0); } else { cam.position.set(0, 11, 16); cam.lookAt(0, 0.8, -0.6); }
+  return { scene, cam, trees, ticks: [] };
+}
+function swarm(b, n, color, opts) {
+  const list = [];
+  for (let i = 0; i < n; i++) { const f = firefly(typeof color === 'function' ? color(i) : color, opts.scale || 1); b.scene.add(f); list.push(f); }
+  b.ticks.push((t) => list.forEach((f, i) => {
+    const [x, y, z] = wander(i + (opts.off || 0), t, opts.R, opts.y0, opts.ya, opts.sp);
+    f.position.set(x, y, z);
+    setBright(f, 0.5 + 0.5 * Math.sin(t * 3.4 + i * 1.7));
+  }));
+}
+
+function sceneA1() {
+  const b = base(); b.scene.add(bear(-2.6, 3.4));
+  const list = [];
+  for (let i = 0; i < 16; i++) { const f = firefly(KIND_LIST[[0, 0, 1, 0, 2, 0, 1, 0][i % 8]]); b.scene.add(f); list.push(f); }
+  b.ticks.push((t) => list.forEach((f, i) => {
+    const u = t * 0.35 - i * 0.17;
+    f.position.set(4.8 * Math.sin(u), 1.3 + 0.45 * Math.sin(u * 2.3 + i * 0.5), 2.7 * Math.sin(2 * u));
+    setBright(f, 0.5 + 0.5 * Math.sin(t * 3.4 + i * 0.7));
+  }));
+  return b;
+}
+function sceneA2() {
+  const b = base(); b.scene.add(bear(1.4, 3.2));
+  const tint = new THREE.PointLight(0x7dffa0, 14, 16); tint.position.set(0, 2.4, 0); b.scene.add(tint);
+  for (let i = 0; i < 7; i++) { const g = groundGlow(KIND.green, 0.9 + (i % 3) * 0.4, 0.07); g.position.x = Math.cos(i * 2.1) * (1.5 + i * 0.6); g.position.z = Math.sin(i * 2.1) * (1.2 + i * 0.5); b.scene.add(g); }
+  swarm(b, 14, KIND.green, { R: 5.6, y0: 1.5, ya: 0.6, sp: 0.3 });
+  return b;
+}
+function sceneA3() {
+  const b = base(); b.scene.add(bear(0.4, 3.0));
+  for (let i = 0; i < 6; i++) { const g = groundGlow(0xcfe0ff, 2.2 + (i % 2) * 0.8, 0.045); g.position.set(Math.cos(i * 1.3) * 3.2, 0.3, Math.sin(i * 1.3) * 2.6); b.scene.add(g); }
+  swarm(b, 9, (i) => KIND_LIST[[0, 1, 0, 2, 0, 1, 0, 0, 2][i]], { R: 4.8, y0: 0.75, ya: 0.18, sp: 0.12, scale: 1.7 });
+  return b;
+}
+function sceneB1() {
+  const b = base(); b.scene.add(bear(0.6, 3.2));
+  b.trees.forEach((tr, i) => {
+    const d = Math.hypot(tr.x, tr.z), x = tr.x - (tr.x / d) * 1.15, z = tr.z - (tr.z / d) * 1.15;
+    const j = jar(KIND_LIST[i % 8], 0.13); j.position.set(x, 1.35, z); j.scale.setScalar(2.3); b.scene.add(j);
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 1.2, 5), clay(0x8a6a4a));
+    arm.position.set(tr.x - (tr.x / d) * 0.58, 2.45, tr.z - (tr.z / d) * 0.58); arm.rotation.set(0, -tr.a, Math.PI / 2); b.scene.add(arm);
+    const g = groundGlow(KIND_LIST[i % 8], 1.1, 0.045); g.position.set(x, 0.05, z); b.scene.add(g);
+  });
+  swarm(b, 5, (i) => KIND_LIST[i % 3], { R: 4.5, y0: 1.5, ya: 0.5, sp: 0.3 });
+  return b;
+}
+function sceneB2() {
+  const b = base({ stump: false }); b.scene.add(bear(2.4, 3.0));
+  const root = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.62, 0.5, 9), clay(0x8a6a4a)); root.position.y = 0.25;
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.16, 4.6, 7), clay(0x9a7650)); pole.position.y = 2.7;
+  b.scene.add(root, pole);
+  let k = 0;
+  [[2.3, 4, 1.7], [3.5, 3, 1.25]].forEach(([y, n, len], tier) => {
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 + tier * 0.6;
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, len, 5), clay(0x9a7650));
+      arm.position.set(Math.cos(a) * len / 2, y, Math.sin(a) * len / 2); arm.rotation.set(0, -a, Math.PI / 2); b.scene.add(arm);
+      const j = jar(KIND_LIST[k++]); j.position.set(Math.cos(a) * len, y - 1.05, Math.sin(a) * len); j.scale.setScalar(2.0); b.scene.add(j);
+    }
+  });
+  const top = jar(KIND_LIST[k]); top.position.set(0, 5.3, 0); top.scale.setScalar(2.4); b.scene.add(top);
+  b.scene.add(groundGlow(0xffe6a8, 4.2, 0.1));
+  const warm = new THREE.PointLight(0xffe2a0, 22, 13); warm.position.set(0, 3.2, 0); b.scene.add(warm);
+  swarm(b, 5, (i) => KIND_LIST[i % 3], { R: 5.2, y0: 1.4, ya: 0.5, sp: 0.3, off: 3 });
+  return b;
+}
+function sceneB3() {
+  const b = base(); b.scene.add(bear(0.6, 3.2));
+  const pts = b.trees.map((tr) => new THREE.Vector3(tr.x * 0.93, 2.55, tr.z * 0.93));
+  pts.forEach((p, i) => {
+    const q = pts[(i + 1) % pts.length], line = [];
+    for (let s = 0; s <= 12; s++) { const u = s / 12; line.push(new THREE.Vector3().lerpVectors(p, q, u).setY(2.55 - 0.6 * 4 * u * (1 - u))); }
+    b.scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(line), new THREE.LineBasicMaterial({ color: 0x1c1a18 })));
+    for (let s = 1; s <= 6; s++) {
+      const u = s / 7, c = KIND_LIST[(i + s) % 8];
+      const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.085, 8, 6), glow(c));
+      bulb.position.lerpVectors(p, q, u).setY(2.47 - 0.6 * 4 * u * (1 - u));
+      const halo = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), add(c, 0.26)); halo.position.copy(bulb.position);
+      b.scene.add(bulb, halo);
+    }
+  });
+  b.scene.add(groundGlow(0xffe6c0, GLADE_R + 0.4, 0.05));
+  swarm(b, 5, (i) => KIND_LIST[i % 3], { R: 4.5, y0: 1.5, ya: 0.5, sp: 0.3, off: 5 });
+  return b;
+}
+function sceneC1() {
+  const b = base({ near: true }); b.scene.add(bear(0, 3.0));
+  const list = [];
+  for (let i = 0; i < 5; i++) { const f = firefly(KIND.yellow, 1.15); b.scene.add(f); list.push(f); }
+  const geo = new THREE.BufferGeometry().setFromPoints(list.map(() => new THREE.Vector3()));
+  b.scene.add(new THREE.Line(geo, new THREE.LineBasicMaterial({ color: 0xfff2a8, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending })));
+  b.ticks.push((t) => {
+    list.forEach((f, i) => {
+      const u = t * 0.9 - i * 0.3;
+      f.position.set(2.3 * Math.sin(u), 1.45 + 0.28 * Math.sin(2 * u), 0.7 + 1.0 * Math.cos(u));
+      setBright(f, 0.08 + 0.92 * Math.pow(Math.max(0, Math.sin(t * 2.4 - i * 1.0)), 2));
+    });
+    geo.setFromPoints(list.map((f) => f.position));
+  });
+  swarm(b, 3, KIND.blue, { R: 5.5, y0: 1.6, ya: 0.4, sp: 0.2, off: 9 });
+  return b;
+}
+function sceneC2() {
+  const b = base({ near: true }); b.scene.add(bear(0, 3.0));
+  const list = [];
+  for (let i = 0; i < 6; i++) { const f = firefly(KIND.blue, 1.15); b.scene.add(f); list.push(f); }
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(1.15, 0.012, 5, 48), add(KIND.blue, 0.3)); ring.rotation.x = Math.PI / 2; ring.position.set(0, 1.45, 0.9); b.scene.add(ring);
+  b.ticks.push((t) => list.forEach((f, i) => {
+    const a = (i / 6) * Math.PI * 2 + t * 0.8;
+    f.position.set(Math.cos(a) * 1.15, 1.45 + 0.08 * Math.sin(t * 2 + i), 0.9 + Math.sin(a) * 1.15);
+    setBright(f, 0.1 + 0.9 * Math.pow(Math.max(0, Math.cos((i / 6) * Math.PI * 2 - t * 2.2)), 8));
+  }));
+  swarm(b, 3, KIND.yellow, { R: 5.5, y0: 1.6, ya: 0.4, sp: 0.2, off: 11 });
+  return b;
+}
+function sceneC3() {
+  const b = base({ near: true }); b.scene.add(bear(0, 3.0));
+  const big = firefly(0xffc46b, 2.0); b.scene.add(big);
+  const kids = [];
+  for (let i = 0; i < 5; i++) { const f = firefly(KIND.yellow, 0.8); b.scene.add(f); kids.push(f); }
+  b.ticks.push((t) => {
+    big.position.set(1.3 * Math.sin(t * 0.5), 1.6 + 0.2 * Math.sin(t * 0.9), 0.9 + 0.6 * Math.cos(t * 0.4));
+    const bright = 0.5 + 0.5 * Math.sin(t * 2.6);
+    setBright(big, bright);
+    kids.forEach((f, i) => {
+      const a = (i / 5) * Math.PI * 2 + t * 1.4;
+      f.position.set(big.position.x + Math.cos(a) * 0.8, big.position.y + 0.3 * Math.sin(t * 2 + i * 1.3), big.position.z + Math.sin(a) * 0.8);
+      setBright(f, bright);
+    });
+  });
+  swarm(b, 3, KIND.blue, { R: 5.5, y0: 1.6, ya: 0.4, sp: 0.2, off: 13 });
+  return b;
+}
+
+function linePos(u, ox = 0) { return [ox + 2.3 * Math.sin(u), 1.45 + 0.28 * Math.sin(2 * u), 0.7 + 1.0 * Math.cos(u)]; }
+function sceneM1() {
+  const b = base({ near: true }); b.scene.add(bear(0, 3.0));
+  const big = firefly(0xffc46b, 1.9); b.scene.add(big);
+  const kids = [];
+  for (let i = 0; i < 4; i++) { const f = firefly(KIND.yellow, 0.85); b.scene.add(f); kids.push(f); }
+  const all = [big, ...kids];
+  const geo = new THREE.BufferGeometry().setFromPoints(all.map(() => new THREE.Vector3()));
+  b.scene.add(new THREE.Line(geo, new THREE.LineBasicMaterial({ color: 0xfff2a8, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending })));
+  b.ticks.push((t) => {
+    all.forEach((f, i) => { f.position.set(...linePos(t * 0.8 - i * 0.32)); });
+    setBright(big, 0.55 + 0.15 * Math.sin(t * 2));
+    kids.forEach((f, i) => setBright(f, 0.08 + 0.92 * Math.pow(Math.max(0, Math.sin(t * 2.4 + i * 1.0)), 2)));
+    geo.setFromPoints(all.map((f) => f.position));
+  });
+  swarm(b, 3, KIND.blue, { R: 5.5, y0: 1.6, ya: 0.4, sp: 0.2, off: 15 });
+  return b;
+}
+function sceneM2() {
+  const b = base({ near: true }); b.scene.add(bear(0, 3.0));
+  const line = [];
+  for (let i = 0; i < 4; i++) { const f = firefly(KIND.yellow, 1.05); b.scene.add(f); line.push(f); }
+  const geo = new THREE.BufferGeometry().setFromPoints(line.map(() => new THREE.Vector3()));
+  b.scene.add(new THREE.Line(geo, new THREE.LineBasicMaterial({ color: 0xfff2a8, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending })));
+  const big = firefly(0xffc46b, 1.9); b.scene.add(big);
+  const kids = [];
+  for (let i = 0; i < 4; i++) { const f = firefly(KIND.yellow, 0.75); b.scene.add(f); kids.push(f); }
+  b.ticks.push((t) => {
+    line.forEach((f, i) => {
+      const u = t * 0.7 - i * 0.3;
+      f.position.set(-2.2 + 1.0 * Math.sin(u), 1.4 + 0.25 * Math.sin(2 * u), 0.9 + 0.8 * Math.cos(u));
+      setBright(f, 0.08 + 0.92 * Math.pow(Math.max(0, Math.sin(t * 2.4 - i * 1.0)), 2));
+    });
+    geo.setFromPoints(line.map((f) => f.position));
+    big.position.set(2.2 + 0.5 * Math.sin(t * 0.5), 1.6 + 0.2 * Math.sin(t * 0.9), 0.9 + 0.4 * Math.cos(t * 0.4));
+    const bright = 0.5 + 0.5 * Math.sin(t * 2.6);
+    setBright(big, bright);
+    kids.forEach((f, i) => {
+      const a = (i / 4) * Math.PI * 2 + t * 1.4;
+      f.position.set(big.position.x + Math.cos(a) * 0.75, big.position.y + 0.28 * Math.sin(t * 2 + i * 1.3), big.position.z + Math.sin(a) * 0.75);
+      setBright(f, bright);
+    });
+  });
+  return b;
+}
+function sceneM3() {
+  const b = base({ near: true }); b.scene.add(bear(0, 3.0));
+  const big = firefly(0xffc46b, 1.9); b.scene.add(big);
+  const kids = [];
+  for (let i = 0; i < 4; i++) { const f = firefly(KIND.yellow, 0.85); b.scene.add(f); kids.push(f); }
+  const geo = new THREE.BufferGeometry().setFromPoints([big, ...kids].map(() => new THREE.Vector3()));
+  const link = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: 0xfff2a8, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending }));
+  b.scene.add(link);
+  b.ticks.push((t) => {
+    const ph = (t % 8) / 8, raw = ph < 0.55 ? 0 : Math.min(1, (ph - 0.55) / 0.15) * (ph > 0.9 ? Math.max(0, (1 - ph) / 0.1) : 1);
+    const g = raw * raw * (3 - 2 * raw);
+    big.position.set(...linePos(t * 0.8));
+    const sync = 0.5 + 0.5 * Math.sin(t * 2.6);
+    setBright(big, 0.55 + 0.15 * Math.sin(t * 2) + g * 0.3 * sync);
+    kids.forEach((f, i) => {
+      const lp = linePos(t * 0.8 - (i + 1) * 0.32), a = (i / 4) * Math.PI * 2 + t * 1.4;
+      const op = [big.position.x + Math.cos(a) * 0.75, big.position.y + 0.28 * Math.sin(t * 2 + i * 1.3), big.position.z + Math.sin(a) * 0.75];
+      f.position.set(lp[0] + (op[0] - lp[0]) * g, lp[1] + (op[1] - lp[1]) * g, lp[2] + (op[2] - lp[2]) * g);
+      const seq = 0.08 + 0.92 * Math.pow(Math.max(0, Math.sin(t * 2.4 + i * 1.0)), 2);
+      setBright(f, seq + (sync - seq) * g);
+    });
+    link.material.opacity = 0.35 * (1 - g);
+    geo.setFromPoints([big, ...kids].map((f) => f.position));
+  });
+  swarm(b, 3, KIND.blue, { R: 5.5, y0: 1.6, ya: 0.4, sp: 0.2, off: 17 });
+  return b;
+}
+
+const SECTIONS = [
+  { title: 'A · 오늘 밤의 빛', lead: '날짜마다 그 밤의 계곡이 하나로 정해지고, 모두에게 같은 밤입니다. 밤의 종류라서 셋을 다 넣을 수도 있습니다.', cards: [
+    { tag: 'A1', name: '무리 지어 도는 밤', how: '반디들이 한 줄기로 계곡을 돕니다. 길목에 서서 기다리면 연달아 잡기 쉽습니다.', gets: '평소보다 많이 잡히는 밤', hud: '🌙 오늘 밤 · 무리 지어 도는 밤', build: sceneA1 },
+    { tag: 'A2', name: '한 빛깔 밤', how: '그날은 한 종류가 계곡을 가득 채웁니다(그림은 초록반디). 아직 못 모은 종류를 노리는 날이 됩니다.', gets: '그 종류를 모으기 좋은 밤', hud: '🌙 오늘 밤 · 초록빛 밤', build: sceneA2 },
+    { tag: 'A3', name: '낮게 내려앉은 밤', how: '반디가 크고 느리게 무릎 높이로 떠다닙니다. 처음 온 사람도 쉽게 잡습니다.', gets: '놓칠 일이 적은 밤', hud: '🌙 오늘 밤 · 낮게 내려앉은 밤', build: sceneA3 },
+  ] },
+  { title: 'B · 등 걸이', lead: '잡은 만큼 계곡이 밝아집니다. 그림은 모두 끝까지 채운 모습이고, 하나를 고릅니다.', cards: [
+    { tag: 'B1', name: '나무마다 병등', how: '잡은 수가 쌓일 때마다 둘레 나무에 병등이 하나씩 걸립니다. 열한 그루가 다 차면 끝입니다.', gets: '누적 마릿수 목표 11단계', hud: '🏮 병등 11 / 11', build: sceneB1 },
+    { tag: 'B2', name: '가운데 등 나무', how: '공터 가운데에 등 기둥이 섭니다. 새 종류를 처음 잡을 때마다 그 빛깔 등이 하나 달립니다.', gets: '종류 8종이 한눈에 보이는 목표', hud: '🏮 등 나무 8 / 8', build: sceneB2 },
+    { tag: 'B3', name: '나무 사이 줄등', how: '나무와 나무 사이에 줄등이 한 칸씩 이어집니다. 다 이으면 계곡을 한 바퀴 두릅니다.', gets: '누적 마릿수 목표 11칸', hud: '🏮 줄등 11 / 11', build: sceneB3 },
+  ] },
+  { title: 'C · 무리 잡기', lead: '가끔 나타나는 무리를 차례에 맞춰 연달아 잡습니다. 하나를 고릅니다.', cards: [
+    { tag: 'C1', name: '줄지어 나는 무리', how: '다섯 마리가 줄지어 납니다. 앞에서부터 차례로 밝아질 때 맞춰 휘두르면 연속으로 잡힙니다.', gets: '연속으로 잡을수록 덤', hud: '✨ 연속 2 / 5', build: sceneC1, dt: -1.24 },
+    { tag: 'C2', name: '둥글게 도는 무리', how: '여섯 마리가 원을 그리며 돕니다. 밝은 빛이 내 앞에 올 때마다 휘두릅니다.', gets: '한 자리에서 박자 맞추기', hud: '✨ 연속 3 / 6', build: sceneC2 },
+    { tag: 'C3', name: '큰 반디와 꼬마들', how: '큰 반디 하나를 꼬마들이 따라다닙니다. 모두 함께 밝아지는 순간 큰 반디를 잡으면 꼬마들도 같이 잡힙니다.', gets: '한 번에 여러 마리', hud: '✨ 함께 밝아질 때', build: sceneC3 },
+  ] },
+  { title: 'C 혼합 · 줄 무리와 큰 반디', lead: 'C1과 C3을 섞는 방법 세 가지입니다. 하나를 고릅니다.', cards: [
+    { tag: 'M1', name: '앞장선 큰 반디', how: '큰 반디가 앞장서고 꼬마 넷이 줄지어 따라갑니다. 꼬마를 뒤에서부터 차례로 잡은 다음 마지막에 큰 반디를 잡습니다.', gets: '차례를 지킬수록 덤, 큰 반디로 마무리', hud: '✨ 연속 2 / 4 · 큰 반디는 마지막', build: sceneM1, dt: -1.24 },
+    { tag: 'M2', name: '두 무리가 따로', how: '어떤 때는 줄 무리가, 어떤 때는 큰 반디 무리가 나타납니다. 무리마다 잡는 법이 다릅니다(그림은 둘을 같이 놓음).', gets: '만날 때마다 다른 잡기', hud: '✨ 줄 무리 또는 큰 반디 무리', build: sceneM2 },
+    { tag: 'M3', name: '줄지어 날다 모이는 무리', how: '줄지어 날 때는 차례로 하나씩 잡고, 큰 반디 곁에 모여 함께 밝아질 때는 남은 꼬마를 한 번에 잡습니다.', gets: '차례 잡기와 한 번에 잡기 중 골라서', hud: '✨ 지금은 모이는 중', build: sceneM3, dt: -0.32 },
+  ] },
+];
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1); renderer.setSize(W, H, false);
+const composer = new EffectComposer(renderer);
+const pass = new RenderPass(new THREE.Scene(), new THREE.PerspectiveCamera());
+composer.addPass(pass);
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(W, H), 0.85, 0.8, 0.6));
+composer.addPass(new OutputPass());
+
+const root = document.getElementById('root'), views = [];
+for (const sec of SECTIONS) {
+  const el = document.createElement('section');
+  el.innerHTML = `<h2>${sec.title}</h2><p class="lead">${sec.lead}</p><div class="grid"></div>`;
+  for (const c of sec.cards) {
+    const card = document.createElement('div'); card.className = 'card';
+    card.innerHTML = `<h3>${c.name}</h3><p class="how">${c.how}</p><div class="view"><canvas width="${W}" height="${H}"></canvas><span class="tag">${c.tag}</span><span class="hud">${c.hud}</span></div><div class="gets"><b>얻는 것</b>${c.gets}</div>`;
+    el.querySelector('.grid').appendChild(card);
+    views.push({ ctx: card.querySelector('canvas').getContext('2d'), b: c.build(), dt: c.dt || 0 });
+  }
+  root.appendChild(el);
+}
+function draw(t) {
+  for (const v of views) {
+    v.b.ticks.forEach((fn) => fn(t + v.dt));
+    pass.scene = v.b.scene; pass.camera = v.b.cam;
+    composer.render();
+    v.ctx.drawImage(renderer.domElement, 0, 0, W, H);
+  }
+}
+const query = new URLSearchParams(location.search);
+if (query.get('w')) document.body.style.maxWidth = `${Number(query.get('w'))}px`;
+const fixed = Number(query.get('t'));
+if (Number.isFinite(fixed) && fixed > 0) { draw(fixed); document.body.dataset.ready = '1'; }
+else {
+  let last = 0;
+  const loop = (ms) => { if (ms - last > 33) { last = ms; draw(ms / 1000 + 3); } requestAnimationFrame(loop); };
+  draw(3); document.body.dataset.ready = '1'; requestAnimationFrame(loop);
+}
+</script>
+</body>
+</html>
