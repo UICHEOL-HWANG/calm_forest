@@ -18,16 +18,21 @@ const CSS = `
 .dp-buys>*{flex:1 1 auto;white-space:nowrap}
 .dp-hero>.dp-buys{grid-column:1 / -1;grid-row:3}
 .dp-buys .dp-buy{display:inline-flex;align-items:center;justify-content:center;min-height:40px;border:none;border-radius:11px;padding:0 12px;font:inherit;font-size:12px;font-weight:800;cursor:pointer;background:var(--mint);color:#2f4a38;white-space:nowrap;font-variant-numeric:tabular-nums;box-shadow:0 5px 12px -7px rgba(47,110,70,.7)}
+.dp-buys .rw-ad{min-height:40px;border-radius:11px;padding:8px 10px 8px 7px;line-height:24px;font-size:12px}
+.dp-buys .dp-buy:not(:disabled):hover{background:#acdfb9}
+.dp-g:hover{background:#fff}
+.dp-chip:not(.on):hover{background:rgba(255,255,255,.6)}
+.dp-card button:focus-visible{outline:2px solid #4f9d68;outline-offset:2px}
 .dp-buys .dp-buy:disabled{background:#e3e8e3;color:#8a9a8f;cursor:default;box-shadow:none}
 .dp-buys .dp-buy s{opacity:.55;font-weight:600;margin-right:4px}
 .dp-tmr{display:flex;align-items:center;gap:8px;padding:0 2px;min-width:0}
 .dp-sil{flex:0 0 auto;width:28px;height:28px;border-radius:9px;background:#f2f5f1;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .dp-sil i{font-style:normal;font-size:16px;filter:brightness(0) blur(1.2px);opacity:.26}
-.dp-tz{flex:1 1 auto;display:flex;align-items:baseline;justify-content:space-between;gap:6px;min-width:0}
+.dp-tz{flex:1 1 auto;display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px;min-width:0}
 .dp-tz b{font-size:11px;font-weight:800;color:#6a7a6f;white-space:nowrap}
 .dp-tz small{font-size:10.5px;font-weight:800;color:#7a8a7f;white-space:nowrap;font-variant-numeric:tabular-nums}
 .dp-dex{display:flex;flex-direction:column;gap:6px;min-width:0}
-.dp-dex-h{display:flex;justify-content:space-between;align-items:center;gap:6px;min-height:40px;margin:-6px 0 -6px;padding:2px 2px 0;border:none;border-top:1px solid #edf1ec;background:none;font:inherit;color:inherit;cursor:pointer;text-align:left}
+.dp-dex-h{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:6px;min-height:40px;margin:-6px 0 -6px;padding:2px 2px 0;border:none;border-top:1px solid #edf1ec;background:none;font:inherit;color:inherit;cursor:pointer;text-align:left}
 .dp-dex-h b{font-size:11.5px;font-weight:900;color:#4a5a4f;white-space:nowrap}
 .dp-dex-h small{font-size:10.5px;font-weight:800;color:#8a9a8f;white-space:nowrap}
 .dp-chips{display:flex;gap:2px;flex-wrap:nowrap;overflow:hidden;min-width:0;padding:3px;border-radius:14px;background:#eef3ee}
