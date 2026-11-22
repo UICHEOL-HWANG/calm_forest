@@ -90,20 +90,35 @@ function legs(p, xs, zs, h, col, r = 0.025, foot = C.brass) {
   xs.forEach(x => zs.forEach(z => { part(p, cyl(r, r * 0.75, h, 10), col, x, h / 2, z); if (foot) part(p, sph(r * 0.9, 10, 8), foot, x, r * 0.6, z); }));
 }
 
-function continents(g, R, cols) {
-  const spots = [[0.5, 0.3, 0.35], [0.2, 1.2, 0.28], [-0.4, 0.8, 0.3], [0.9, 2.4, 0.22], [-0.2, 2.9, 0.33], [0.3, 4.0, 0.3], [-0.7, 4.6, 0.2], [0.6, 5.4, 0.25], [-0.1, 5.9, 0.18]];
-  spots.forEach(([lat, lon, s], i) => {
-    const d = V(Math.cos(lat) * Math.cos(lon), Math.sin(lat), Math.cos(lat) * Math.sin(lon));
-    const m = part(g, sph(R * 1.012, 18, 6, 0, TAU, 0, s * 0.9), cols[i % cols.length]);
+const LANDS = [
+  [[50, -100, 26], [62, -120, 16], [40, -85, 17], [30, -100, 12], [18, -95, 8], [70, -80, 12], [10, -80, 6]],
+  [[-5, -60, 17], [-20, -55, 16], [-35, -65, 10], [5, -70, 9], [-48, -70, 6]],
+  [[50, 20, 16], [55, 60, 22], [50, 100, 24], [35, 105, 16], [62, 95, 18], [25, 78, 10], [40, 40, 12], [65, 30, 10]],
+  [[10, 20, 18], [-5, 22, 17], [-22, 25, 12], [20, 5, 13], [28, 15, 10]],
+  [[-25, 135, 13], [-30, 145, 8]],
+];
+const DEG = Math.PI / 180;
+
+function continents(g, R, col) {
+  LANDS.flat().forEach(([lat, lon, deg], k) => {
+    const d = V(Math.cos(lat * DEG) * Math.cos(lon * DEG), Math.sin(lat * DEG), -Math.cos(lat * DEG) * Math.sin(lon * DEG));
+    const m = part(g, sph(R * (1.008 + k * 0.0004), 20, 6, 0, TAU, 0, deg * DEG), col);
     m.quaternion.setFromUnitVectors(V(0, 1, 0), d);
-    m.scale.set(1.25, 1, 0.8);
   });
+}
+
+function gridLines(g, R, col) {
+  [-45, 0, 45].forEach(lat => {
+    part(g, torus(R * Math.cos(lat * DEG) * 1.012, R * 0.008, 4, 48), col, 0, R * Math.sin(lat * DEG) * 1.012, 0).rotation.x = Math.PI / 2;
+  });
+  [0, 60, 120].forEach(lon => { part(g, torus(R * 1.012, R * 0.008, 4, 48), col).rotation.y = lon * DEG; });
 }
 
 function globe(p, x, y, z, R, ocean, land, ring = C.brass, tilt = 0.41) {
   const g = grp(p, x, y, z); g.rotation.z = tilt;
   part(g, sph(R, 32, 24), ocean);
   continents(g, R, land);
+  gridLines(g, R, ring);
   part(g, torus(R * 1.08, R * 0.035, 8, 48, Math.PI * 1.25), ring).rotation.set(0, Math.PI / 2, -Math.PI * 0.125);
   [-1, 1].forEach(s => part(g, sph(R * 0.06, 10, 8), ring, 0, s * R * 1.08, 0));
   return g;
@@ -154,7 +169,7 @@ const BUILD = {
       part(s, sph(0.026), C.brass, ca * 0.29, 0.02, sa * 0.29);
     });
     part(s, torus(0.215, 0.012, 6, 30), C.walnutDk, 0, 0.2, 0).rotation.x = Math.PI / 2;
-    globe(s, 0, cy, 0, R, C.cream, [C.green, C.wine, C.greenDk]);
+    globe(s, 0, cy, 0, R, C.greenDk, C.cream);
     part(s, torus(R * 1.18, 0.02, 6, 48), C.brass, 0, cy, 0).rotation.x = Math.PI / 2;
   },
 };
