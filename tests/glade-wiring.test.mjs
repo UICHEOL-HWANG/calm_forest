@@ -42,3 +42,18 @@ test('regular fireflies pause while a swarm is out', () => {
 test('new events stay within five parameters', () => {
   for (const m of src.matchAll(/trackEvent\('(glade_string|firefly_swarm)', \{([^}]*)\}/g)) assert.ok(m[2].split(',').length <= 5, m[1]);
 });
+
+test('a closer regular firefly wins the swing over the swarm', () => {
+  assert.match(src, /for \(const bug of gladeBugs\) near\(bug, null\)/);
+  assert.match(src, /if \(!best \|\| best\.idx === null\) return false/);
+});
+
+test('swarm objects are freed and its first banner only shows while it is out', () => {
+  assert.match(src, /o\.traverse\(m => \{ m\.geometry\?\.dispose\(\); m\.material\?\.dispose\(\); \}\)/);
+  assert.match(src, /live: \(\) => !!swarm/);
+});
+
+test('every catch path gets the catch ceremony', () => {
+  const body = src.slice(src.indexOf('function catchBugs('), src.indexOf('function endSwarm('));
+  assert.match(body, /catchCeremony\('bugZoom'\)/);
+});

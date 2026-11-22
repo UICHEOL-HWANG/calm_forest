@@ -90,6 +90,7 @@ function catchBugs(kind, bugs, wx, wz, text) {
   spawnSparkle(wx, 1.2, wz, kind.id === 'yellow' ? 12 : 20);
   for (let i = 0; i < bugs; i++) { questEvent('catch'); noteCatch(kind); }
   dexDiscover('bug', kind.id);
+  catchCeremony('bugZoom');
   if (kind.id === 'rainbow') tryUnlockDrop(0.5);
   trackEvent('firefly_catch', { kind: kind.id, weather: WEATHER, night: Math.round(nightLevel * 100), mode: nightNow().kind });
   onPlay('firefly');
@@ -98,7 +99,7 @@ function catchBugs(kind, bugs, wx, wz, text) {
 function endSwarm(t, result) {
   if (!swarm) return;
   trackEvent('firefly_swarm', { result, combo: swarm.combo, caught: swarm.caught, mode: nightNow().kind });
-  for (const o of [swarmObjs.leader, ...swarmObjs.kids]) gladeGroup.remove(o);
+  for (const o of [swarmObjs.leader, ...swarmObjs.kids]) { gladeGroup.remove(o); o.traverse(m => { m.geometry?.dispose(); m.material?.dispose(); }); }
   swarm = null; swarmObjs = null;
   swarmAt = t + delay(NEXT_DELAY, Math.random);
 }
@@ -112,7 +113,7 @@ function startSwarm(t) {
   swarmObjs = { leader, kids, kind, su: 0 };
   if (gameState.hintsSeen?.gladeSwarmSeen) return;
   ui.showHintBanner?.({
-    ico: '✨', title: SWARM_BANNER.title, line: SWARM_BANNER.line, kind: 'misc', key: 'glade-swarm',
+    ico: '✨', title: SWARM_BANNER.title, line: SWARM_BANNER.line, kind: 'misc', key: 'glade-swarm', live: () => !!swarm,
     burn: () => { gameState.hintsSeen = { ...gameState.hintsSeen, gladeSwarmSeen: true }; requestSave(); },
   });
 }
@@ -156,7 +157,8 @@ function netSwarm() {
   };
   near(swarmObjs.leader, -1);
   swarmObjs.kids.forEach((kid, i) => { if (swarm.kids[i]) near(kid, i); });
-  if (!best) return false;
+  for (const bug of gladeBugs) near(bug, null);
+  if (!best || best.idx === null) return false;
   const wx = best.obj.position.x + GLADE.x, wy = best.obj.position.y, wz = best.obj.position.z + GLADE.z;
   doPlayerAction(wx, wz);
   const bonus = netBonus(gameState), kind = swarmObjs.kind;
@@ -388,6 +390,5 @@ export function tryNet() {
   $w.bugRespawnAt = Math.min(bugRespawnAt, clock.elapsedTime + 2.5);
   catchBugs(kind, 1, wx, wz, catchText(kind.ico, kind.name, 1));
   trackGateBlocked('bug', 'rainbow');
-  catchCeremony('bugZoom');
   showCatchItem(bugJarMesh(kind), wx, target.position.y, wz);
 }
