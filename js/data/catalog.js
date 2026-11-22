@@ -153,6 +153,10 @@ export const DECOR = [
   { id: 'mu_music_stand', name: '나무 악보대', ico: '🎼', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.6, 0.5], desc: '깎은 나무 기둥 위 둥근 받침에 악보를 펼치고 벨벳 책갈피를 끼웠어요' },
   { id: 'sf_lantern_string', name: '처진 줄 등롱 다섯', ico: '🏮', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [1.6, 0.35], desc: '나무 기둥 둘 사이 늘어진 줄에 빨강·주황 둥근 등롱 다섯을 달았어요' },
   { id: 'sf_goldfish_bowl', name: '나무 의자 위 어항', ico: '🐠', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.55, 0.55], desc: '낮은 나무 의자 위 둥근 어항에 금붕어 둘과 물풀 하나가 살아요' },
+  { id: 'bk_bookshelf', name: '키 큰 호두나무 책장', ico: '📚', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.85, 0.35], desc: '세 칸 호두나무 책장에 색색 책을 꽂고 기운 책과 작은 화분을 두었어요' },
+  { id: 'bk_reading_lamp', name: '휘어진 독서 등', ico: '💡', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.45, 0.6], desc: '둥근 받침에서 앞으로 휜 놋쇠 팔 끝에 크림 천 갓이 은은하게 빛나요' },
+  { id: 'bk_reading_chair', name: '자줏빛 날개 의자', ico: '🪑', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.75, 0.7], desc: '높은 등받이 양옆에 날개를 달고 크림 방석과 놋쇠 징을 박았어요' },
+  { id: 'bk_globe', name: '세 다리 바닥 지구본', ico: '🌍', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.6, 0.6], desc: '휜 호두나무 다리 셋 위 놋쇠 고리 안에서 크림 바다 지구본이 돌아요' },
   { id: 'ns_moon_sofa', name: '구름 위 달 소파', ico: '🌙', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [1.35, 0.75], desc: '연보라 구름 방석 뒤로 초승달 등받이를 세웠어요' },
   ...AFF_FRAMES,
 ];
