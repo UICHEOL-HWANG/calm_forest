@@ -6,8 +6,8 @@ const CSS = `
 .dp-card button:not(:disabled):active{transform:scale(.96)}
 .dp-cn{display:inline-block;width:.85em;height:.85em;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ffe48a,#e9a92c 70%);box-shadow:inset 0 0 0 1px rgba(160,100,20,.35);margin-right:3px;flex:0 0 auto;vertical-align:-.08em}
 .dp-hero{position:relative;overflow:hidden;display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 12px;align-items:center;padding:10px;border-radius:14px;background:linear-gradient(160deg,#fff6dc,#fde9b9);cursor:pointer;min-width:0}
-.dp-flag{position:absolute;right:0;top:0;font-size:10px;font-weight:900;color:#fff;background:#d98a2b;padding:3px 9px 3px 10px;border-radius:0 0 0 10px}
-.dp-top{grid-column:1 / -1;grid-row:1;display:flex;flex-wrap:wrap;align-items:center;gap:2px 6px;min-width:0;padding-right:34px}
+.dp-flag{position:absolute;right:0;top:0;font-size:10px;font-weight:900;color:#fff;background:#d98a2b;padding:3px 9px 3px 10px;border-radius:0 0 0 10px;z-index:2}
+.dp-top{grid-column:1 / -1;grid-row:1;display:flex;flex-wrap:wrap;align-items:center;gap:2px 6px;min-width:0;padding-right:46px}
 .dp-top em{font-style:normal;font-size:11.5px;font-weight:900;color:#a8641a;white-space:nowrap}
 .dp-pill{display:inline-flex;align-items:center;font-size:10.5px;font-weight:800;color:#8a5a20;background:rgba(255,255,255,.8);padding:2px 7px;border-radius:99px;white-space:nowrap;font-variant-numeric:tabular-nums}
 .dp-half{font-size:10px;font-weight:800;color:#fff;background:#e0952e;border-radius:6px;padding:2px 6px;margin-left:4px}
@@ -167,7 +167,7 @@ function fillChips(row, book, redraw) {
     row.append(...book.map(t => chip(t, redraw)), moreChip('접기', redraw));
     return;
   }
-  const w = row.clientWidth;
+  const w = Math.max(0, row.clientWidth - 6);
   if (!w) requestAnimationFrame(() => { if (row.isConnected && row.clientWidth) redraw(); });
   const slots = w > 0 ? Math.max(2, Math.floor((w + CHIP_GAP) / (CHIP_W + CHIP_GAP))) : 4;
   if (book.length <= slots) { row.append(...book.map(t => chip(t, redraw))); return; }
