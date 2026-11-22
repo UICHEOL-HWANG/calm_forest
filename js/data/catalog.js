@@ -157,6 +157,10 @@ export const DECOR = [
   { id: 'bk_reading_lamp', name: '휘어진 독서 등', ico: '💡', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.45, 0.6], desc: '둥근 받침에서 앞으로 휜 놋쇠 팔 끝에 크림 천 갓이 은은하게 빛나요' },
   { id: 'bk_reading_chair', name: '자줏빛 날개 의자', ico: '🪑', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.75, 0.7], desc: '높은 등받이 양옆에 날개를 달고 크림 방석과 놋쇠 징을 박았어요' },
   { id: 'bk_globe', name: '세 다리 바닥 지구본', ico: '🌍', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.6, 0.6], desc: '휜 호두나무 다리 셋 위 놋쇠 고리 안에서 크림 바다 지구본이 돌아요' },
+  { id: 'kn_rocking_chair', name: '살대 흔들의자', ico: '🪑', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.6, 0.85], desc: '나무 살대 등받이에 크림 골지 방석을 깔고 장미·겨자 줄무늬 담요를 걸쳤어요' },
+  { id: 'kn_yarn_basket', name: '등나무 털실 바구니', ico: '🧶', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.5, 0.5], desc: '둥근 등나무 바구니에 털실 다섯 뭉치를 담고 대바늘 둘을 꽂았어요' },
+  { id: 'kn_patch_rug', name: '땋은 타원 러그', ico: '🟠', cost: 0, pay: 'coins', hidden: true, keep: true, desc: '장미·겨자·크림·세이지 땋은 줄을 둥글게 감아 만든 러그예요' },
+  { id: 'kn_knit_pot', name: '방울꽃 뜨개 화분', ico: '🌼', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.45, 0.45], desc: '장미·크림 줄무늬 뜨개 옷을 입은 화분에 방울 꽃 다섯 송이가 피었어요' },
   { id: 'ns_moon_sofa', name: '구름 위 달 소파', ico: '🌙', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [1.35, 0.75], desc: '연보라 구름 방석 뒤로 초승달 등받이를 세웠어요' },
   ...AFF_FRAMES,
 ];
