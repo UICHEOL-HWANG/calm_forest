@@ -9,6 +9,8 @@ test('id 접두사로 테마를 정하고 모르는 접두사는 기타로', () 
   assert.equal(themeOf('mu_drum').emoji, '🎵');
   assert.equal(themeOf('bk_globe').name, '숲속 책방');
   assert.equal(themeOf('bk_globe').emoji, '📚');
+  assert.equal(themeOf('kn_knit_pot').name, '뜨개 공방');
+  assert.equal(themeOf('kn_knit_pot').emoji, '🧶');
   assert.equal(themeOf('zz_new').name, '기타');
   assert.equal(themeOf('zz_new').emoji, '🎀');
 });
