@@ -105,3 +105,8 @@ sims/weekly-*
 sims/weekly-*/
 sims/concert-*
 sims/concert-*/
+
+tools/bi/
+ml/scripts/bi_sync.py
+ml/calm_ml/bi_rows.py
+ml/tests/test_bi_rows.py
