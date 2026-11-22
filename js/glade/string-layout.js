@@ -5,7 +5,7 @@ const spanTo = (a, b) => ((b - a) + TAU) % TAU || TAU;
 
 export function layoutAnchors(trees, R, count = 11) {
   let ring = trees
-    .map(p => ({ x: p.x, z: p.z, d: Math.hypot(p.x, p.z), a: Math.atan2(p.z, p.x) }))
+    .map((p, i) => ({ x: p.x, z: p.z, d: Math.hypot(p.x, p.z), a: Math.atan2(p.z, p.x), i }))
     .filter(p => p.d > R + BAND_IN && p.d < R + BAND_OUT)
     .sort((p, q) => p.a - q.a);
   while (ring.length > count) {
@@ -26,7 +26,7 @@ export function layoutAnchors(trees, R, count = 11) {
   }
   const out = [];
   ring.forEach((p, i) => {
-    out.push({ a: p.a, x: p.x * (1 - INSET / p.d), z: p.z * (1 - INSET / p.d), post: false });
+    out.push({ a: p.a, x: p.x * (1 - INSET / p.d), z: p.z * (1 - INSET / p.d), post: false, i: p.i });
     for (let k = 1; k <= gaps[i].posts; k++) {
       const a = p.a + (gaps[i].span * k) / (gaps[i].posts + 1);
       out.push({ a, x: Math.cos(a) * (R + POST_OUT), z: Math.sin(a) * (R + POST_OUT), post: true });

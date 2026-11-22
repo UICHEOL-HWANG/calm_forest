@@ -534,7 +534,7 @@ export function updateZoneHint() {
   const wasGlade = nearGlade;
   $w.nearGlade = inVillage2() && isOpen('glade') && dist2D(GLADE, player.position) < GLADE_R + 0.5;
   if (nearGlade && !nearLightWorkshop) {   // 🏮 공방 문 앞에선 공방 프롬프트만 — 밤에 안내 두 줄이 겹쳤다
-    hint = isNight() ? '🌟 반딧불이 — 포충망(5)으로 반짝일 때 휘두르기' : '🌟 반딧불이 계곡 — 🌙 밤에 다시 오세요';
+    hint = isNight() ? '🌟 반딧불이 · 포충망(5)으로 반짝일 때 휘두르기' : '🌟 반딧불이 계곡 · 🌙 밤에 다시 오세요';
     if (!wasGlade) { trackEvent('zone_enter', { zone: 'glade', night: isNight() }); decorBanner('firefly'); }   // [GA4] 밤 콘텐츠 유입
     firstHintBanner('glade', '🌟', '반딧불이 계곡', '밤에 포충망으로 반딧불이 잡는 곳');
   }

@@ -57,3 +57,46 @@ test('every catch path gets the catch ceremony', () => {
   const body = src.slice(src.indexOf('function catchBugs('), src.indexOf('function endSwarm('));
   assert.match(body, /catchCeremony\('bugZoom'\)/);
 });
+
+const read = (p) => readFileSync(new URL(p, import.meta.url), 'utf8');
+
+test('the bug net is handed over when entering the glade', async () => {
+  const { ZONE_TOOL, ZONE_PAGE } = await import('../js/data/tools.js');
+  assert.equal(ZONE_TOOL.glade, 'net');
+  assert.equal(ZONE_PAGE.glade, 'out');
+});
+
+test('trees holding the string lights are not chopped or auto-axed', () => {
+  assert.match(src, /userData\.holdsString = true/);
+  assert.match(read('../js/spaces/fishing.js'), /if \(tree\.userData\.fallen \|\| tree\.userData\.holdsString\) continue;/);
+  assert.match(read('../js/game.js'), /if \(tree\.userData\.fallen \|\| tree\.userData\.holdsString\) continue;/);
+});
+
+test('stream nights move along one shared phase', () => {
+  assert.match(src, /streamPhase \+= dt \* STREAM\.speed/);
+  assert.match(src, /streamPoint\(streamPhase - u\.so, GLADE_R - 0\.8\)/);
+});
+
+test('fireflies pool light on the floor', () => {
+  assert.match(src, /from '\.\.\/glade\/pool-art\.js'/);
+  assert.match(src, /updatePools\(poolArt, /);
+});
+
+test('swinging at a guarded leader points at the next kid', () => {
+  assert.match(src, /swarmObjs\.kids\[nextKid\(swarm\)\]/);
+});
+
+test('glade zone hints avoid the em dash', () => {
+  const doors = read('../js/spaces/doors.js');
+  const line = doors.split('\n').find(l => l.includes('반딧불이') && l.includes('포충망(5)'));
+  assert.ok(line && !line.includes('—'), line);
+});
+
+test('guidance and foraging ignore trees that hold the string lights', () => {
+  assert.match(read('../js/guide/goal-guide.js'), /const standing = \(t\) => !t\.userData\.fallen && !t\.userData\.holdsString;/);
+  assert.match(read('../js/game.js'), /for \(const tr of trees\) if \(!tr\.userData\.fallen && !tr\.userData\.holdsString\) treeD/);
+});
+
+test('floor pools never get a negative fade', () => {
+  assert.match(src, /updatePools\(poolArt, [^;]*Math\.max\(0, Math\.min\(1, \(nightLevel - NIGHT_MIN\) \/ 0\.2\)\)\)/);
+});

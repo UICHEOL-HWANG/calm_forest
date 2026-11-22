@@ -33,3 +33,10 @@ export const TUNE = Object.freeze({
 });
 
 export const streamPoint = (u, R) => ({ x: R * 0.68 * Math.sin(u), z: R * 0.4 * Math.sin(2 * u) });
+
+export const STREAM = Object.freeze({ speed: 0.35, window: 1.4, ahead: 0.6 });
+
+export function poolGlow(y, bright) {
+  const near = Math.min(1, Math.max(0, (1.7 - y) / 1.2));
+  return { k: near * (0.35 + 0.65 * bright), r: 0.35 + 0.45 * near };
+}

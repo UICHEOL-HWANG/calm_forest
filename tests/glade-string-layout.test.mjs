@@ -45,3 +45,13 @@ test('a full ring of eleven trees needs no posts and extra trees are dropped', (
   assert.equal(list.length, 11);
   assert.equal(list.filter(p => p.post).length, 0);
 });
+
+test('tree anchors remember which input tree they came from', () => {
+  const extra = [at(3.5, R + 9), ...real];
+  const list = layoutAnchors(extra, R);
+  for (const p of list.filter(q => !q.post)) {
+    const t = extra[p.i];
+    assert.ok(Math.abs(Math.atan2(t.z, t.x) - p.a) < 1e-9);
+  }
+  assert.ok(list.filter(p => p.post).every(p => p.i === undefined));
+});
