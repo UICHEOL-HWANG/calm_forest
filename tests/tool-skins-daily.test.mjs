@@ -61,7 +61,7 @@ test('🐿️ 꼬리는 발바닥이 쥐는 자루 아래쪽(y < 0.18)을 피해
 });
 
 test('🍬🐙 umbrella look covers outer·inner·shaft·deco·finial and the theme order ends with candy·octopus', () => {
-  assert.deepEqual(TOOL_THEMES.slice(-13), ['snowman', 'squirrel', 'candy', 'octopus', 'starry', 'strawberry', 'penguin', 'tangerine', 'watermelon', 'sunflower', 'peach', 'dino', 'frog']);
+  assert.deepEqual(TOOL_THEMES.slice(-15), ['snowman', 'squirrel', 'candy', 'octopus', 'starry', 'strawberry', 'penguin', 'tangerine', 'watermelon', 'sunflower', 'peach', 'dino', 'frog', 'owl', 'hedgehog']);
   for (const t of ['candy', 'octopus', 'starry', 'strawberry', 'penguin', 'tangerine', 'watermelon', 'sunflower', 'peach', 'dino', 'frog']) {
     const src = read(FILES[t]);
     const look = src.slice(src.indexOf(`export function ${t}UmbrellaLook`));

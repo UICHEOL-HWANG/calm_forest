@@ -54,6 +54,8 @@ import { IDS as TEA_PICK_IDS, build as buildTeaPick } from '../decor-drops/art-t
 import { IDS as ATELIER_PICK_IDS, build as buildAtelierPick } from '../decor-drops/art-atelier-pick.js';
 import { IDS as CONCERT_PICK_IDS, build as buildConcertPick } from '../decor-drops/art-concert-pick.js';
 import { IDS as FESTIVAL_PICK_IDS, build as buildFestivalPick } from '../decor-drops/art-festival-pick.js';
+import { IDS as BOOK_PICK_IDS, build as buildBookPick } from '../decor-drops/art-book-pick.js';
+import { IDS as KNIT_PICK_IDS, build as buildKnitPick } from '../decor-drops/art-knit-pick.js';
 import { SOUVENIR_INDOOR_IDS, buildSouvenir } from '../mountain/souvenir-art.js';
 import { hasItemArt, weeklyDecorMesh } from '../weekly/items.js';
 import { hasConcertArt, concertDecorMesh } from '../concert/items.js';
@@ -497,6 +499,10 @@ export function decorMesh(id) {
     g.add(buildConcertPick(id));
   } else if (FESTIVAL_PICK_IDS.includes(id)) {
     g.add(buildFestivalPick(id));
+  } else if (BOOK_PICK_IDS.includes(id)) {
+    g.add(buildBookPick(id));
+  } else if (KNIT_PICK_IDS.includes(id)) {
+    g.add(buildKnitPick(id));
   } else if (CANDY_DECOR_IDS.includes(id)) {
     g.add(buildCandyDecor(id));
   } else if (MIRROR_DECOR_IDS.includes(id)) {   // 🪞 거울 장식 — 🪞 거울 조각으로 산다(js/mirror/decor-art.js)
