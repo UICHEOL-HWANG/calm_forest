@@ -37,6 +37,21 @@ test('보상형 광고는 끝까지 본 것만, 시청 초를 값으로', () => 
   assert.equal(tenjinEventFor('prepass_ad_result', { result: 'skip', sec: 4 }), null);
 });
 
+test('튜토리얼 단계는 순서가 바뀌어도 같은 이름으로, 기기당 한 번 보낸다', () => {
+  assert.deepEqual(tenjinEventFor('tutorial_step', { step: 2, key: 'chop' }), { name: 'tut_chop', once: true });
+  assert.deepEqual(tenjinEventFor('tutorial_step', { step: 5, key: 'chop', auto: 1 }), { name: 'tut_chop', once: true });
+  assert.equal(tenjinEventFor('tutorial_step', { step: 3, key: 'Bad Key!' }), null);
+  assert.equal(tenjinEventFor('tutorial_step', {}), null);
+});
+
+test('튜토리얼 건너뛰기는 환영 창과 코치 중간을 따로, 도움말 닫기는 빼고', () => {
+  assert.deepEqual(tenjinEventFor('tutorial_skip', { at: 'welcome' }), { name: 'tutorial_skip_welcome', once: true });
+  assert.deepEqual(tenjinEventFor('tutorial_skip', { at: 1 }), { name: 'tutorial_skip_step', once: true, value: 2 });
+  assert.deepEqual(tenjinEventFor('tutorial_skip', { at: 0 }), { name: 'tutorial_skip_step', once: true, value: 1 });
+  assert.equal(tenjinEventFor('tutorial_skip', { at: 'help' }), null);
+  assert.equal(tenjinEventFor('tutorial_skip', { at: -1 }), null);
+});
+
 test('목록에 없는 이벤트는 보내지 않는다', () => {
   assert.equal(tenjinEventFor('chop_tree'), null);
   assert.equal(tenjinEventFor('session_time', { seconds: 60 }), null);

@@ -7,6 +7,9 @@ Only the native app sends these (Tenjin is absent on web and Toss).
 |---|---|---|---|
 | signup / tutorial_complete / first_chop / first_harvest / house_complete / first_share / push_granted | existing onboarding firsts | none | once |
 | bridge_fixed | `bridge_repaired` | none | once |
+| tut_<key> (tut_move, tut_chop, ... tut_curator) | `tutorial_step` (key only, order-independent for beta A) | none | once each |
+| tutorial_skip_welcome | `tutorial_skip` with at=welcome | none | once |
+| tutorial_skip_step | `tutorial_skip` with numeric at (coach skip) | 1-based step | once |
 | rv_arm_ad / rv_arm_control | first `prepass_eligible` (arm from rewarded.js) | none | once each |
 | rv_first_offer | first `prepass_eligible` in the ad arm | none | once |
 | rv_first_complete | first rewarded ad completed | none | once |
