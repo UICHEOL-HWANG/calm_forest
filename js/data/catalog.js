@@ -166,7 +166,7 @@ export const DECOR = [
   { id: 'tr_mini_train', name: '타원 철길 꼬마 기차', ico: '🚂', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [1.0, 0.65], desc: '놋쇠 레일 타원 철길 위로 숲색 기관차가 자줏빛 객차를 끌어요' },
   { id: 'au_igloo_lamp', name: '얼음 벽돌 이글루 등', ico: '🛖', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [1.0, 1.0], desc: '얼음 벽돌 돔의 아치 입구와 양옆 둥근 창에서 따뜻한 빛이 새어 나와요' },
   { id: 'au_ice_chair', name: '눈송이 등받이 의자', ico: '❄️', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.55, 0.55], desc: '고드름 다리 넷 위에 분홍 방석을 깔고 눈송이 모양 등받이를 세웠어요' },
-  { id: 'au_polar_bear_plush', name: '앉은 북극곰 인형', ico: '🐻‍❄️', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.6, 0.55], desc: '하얀 곰이 민트 줄무늬 남색 목도리를 두르고 얌전히 앉아 있어요' },
+  { id: 'au_polar_bear_plush', name: '앉은 북극곰 인형', ico: '🧸', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.6, 0.55], desc: '하얀 곰이 민트 줄무늬 남색 목도리를 두르고 얌전히 앉아 있어요' },
   { id: 'au_aurora_window', name: '아치 오로라 창', ico: '🌌', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.9, 0.25], desc: '남색 아치 창틀 너머 네 칸 유리에 오로라 리본과 별이 은은하게 빛나요' },
   { id: 'ns_moon_sofa', name: '구름 위 달 소파', ico: '🌙', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [1.35, 0.75], desc: '연보라 구름 방석 뒤로 초승달 등받이를 세웠어요' },
   ...AFF_FRAMES,
