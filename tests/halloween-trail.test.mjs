@@ -68,7 +68,7 @@ test('🎃 호박등 자국만 조명 없이(unlit) 굽는다 — 다른 자국 
   class Std { constructor(o) { this.kind = 'standard'; Object.assign(this, o); } }
   class Basic { constructor(o) { this.kind = 'basic'; Object.assign(this, o); } }
   const THREE = { MeshStandardMaterial: Std, MeshBasicMaterial: Basic };
-  assert.deepEqual([...TRAIL_UNLIT], ['pumpkin_glow']);
+  assert.deepEqual([...TRAIL_UNLIT], ['pumpkin_glow', 'au_aurora_trail']);
   const lit = markMaterial(THREE, 'firefly', 0.7);
   assert.equal(lit.kind, 'standard');
   assert.deepEqual({ ...lit }, { kind: 'standard', color: 0xffffff, vertexColors: true, roughness: 0.5, metalness: 0,
