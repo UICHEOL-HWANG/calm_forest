@@ -25,6 +25,6 @@
 - [x] 1~4 순수 모듈 night·string·string-layout·swarm, 테스트 28개
 - [x] 5 문구·영어·배지 glade_ring
 - [x] 6 오늘 밤의 빛 연결. 캡처 `sims/glade-develop/impl/pc-gnight_*`. 캡처 도구는 돌아온 플레이어 흉내(tutorialSeen·팁 건너뛰기·모달 닫기)를 넣어야 배너가 뜬다(새 게스트는 첫 안내 중이라 배너를 일부러 미룸)
-- [ ] 7 병등 줄
+- [x] 7 병등 줄. 캡처 `impl/{pc,phone}-*gcaught*`, 드로우콜 +7~10
 - [ ] 8 무리
 - [ ] 9 전체 확인·리뷰·기록

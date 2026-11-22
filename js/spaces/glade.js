@@ -6,10 +6,10 @@
 //     game.js 에 남은 let 에 쓸 때는 `$w.x = …` (읽기는 그냥 x). 도구·증명: tools/refactor/
 // =============================================================
 import {
-  $w, GLADE_MAX, SEASON, WEATHER, atFarm, atMine, atOrchard, bugJarMesh, bugRespawnAt, catchCeremony, clayMat, clearPest,
-  clock, dexDiscover, dist2D, doPlayerAction, gameState, gladeBugs, gladeGroup, indoor, isNight, isOpen, makeSignpost,
-  nightLevel, obstacles, pestTarget, player, questEvent, refreshInventoryUI, requestSave, scene, showCatchItem, situation,
-  spawnFloatText, spawnSparkle, spawnTree, todayStr, trackGateBlocked, tryUnlockDrop, ui,
+  $w, GLADE_MAX, SEASON, WEATHER, atFarm, atMine, atOrchard, awardBadge, bugJarMesh, bugRespawnAt, catchCeremony, clayMat, clearPest,
+  clock, dexDiscover, dist2D, doPlayerAction, gameState, giveReward, gladeBugs, gladeGroup, indoor, isNight, isOpen, makeSignpost,
+  mergeGeos, nightLevel, obstacles, pestTarget, player, questEvent, refreshInventoryUI, requestSave, scene, showCatchItem, situation,
+  spawnFloatText, spawnSparkle, spawnTree, todayStr, trackGateBlocked, trees, tryUnlockDrop, ui,
 } from '../game.js';   // 🔁 순환 import — 함수 안에서만 쓴다(로딩 시점엔 안 읽는다: verify-extract (d))
 import { trackEvent } from '../analytics.js';
 import { onPlay } from '../decor-drops/index.js';
@@ -18,7 +18,10 @@ import { PAL } from '../data/world.js';
 import { NIGHT_MIN } from '../daynight.js';
 import { gateOf, gateOpen, rollKind } from '../dex-gates.js';
 import { NIGHT_KINDS, TUNE, monoKind, nightKind, pickKindId, streamPoint } from '../glade/night.js';
-import { MONO_BANNER, NIGHT_BANNER } from '../glade/copy.js';
+import { MONO_BANNER, NIGHT_BANNER, stringBanner } from '../glade/copy.js';
+import { JARS_PER_SEG, SEG_COINS, THRESHOLDS, addCatch, nextThreshold, segmentsLit, stringColors } from '../glade/string.js';
+import { layoutAnchors } from '../glade/string-layout.js';
+import { buildString, refreshString } from '../glade/string-art.js';
 import { concertScatterBlocks } from '../concert/index.js';
 import { netBonus } from '../workbench/rules.js';
 import { Sound } from '../sound.js';
@@ -27,6 +30,51 @@ import * as THREE from 'three';
 const devQuery = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) ? new URLSearchParams(location.search) : new URLSearchParams();
 let gladeNight = null;
 let nightBannerDay = '';
+let stringArt = null, stringNight = null, stringCaught = -1, devApplied = false;
+const FALLBACK_COLOR = 0xfff2a8;
+
+function paintString(night) {
+  if (!stringArt) return;
+  const caught = gameState.hintsSeen?.gladeCaught | 0;
+  const lit = segmentsLit(caught);
+  const colors = stringColors(gameState.hintsSeen?.gladeString).map(seg => seg.map(id => BUG_KINDS.find(k => k.id === id)?.color ?? FALLBACK_COLOR));
+  while (colors.length < lit) colors.push(Array(JARS_PER_SEG).fill(FALLBACK_COLOR));
+  refreshString(stringArt, colors.slice(0, lit), night);
+  stringNight = night; stringCaught = caught;
+}
+
+function applyDev() {
+  if (devApplied) return;
+  devApplied = true;
+  const n = parseInt(devQuery.get('gcaught'), 10);
+  if (!Number.isFinite(n)) return;
+  let s = { caught: 0, seg: '', string: '' };
+  for (let i = 0; i < n; i++) s = addCatch(s, ['yellow', 'yellow', 'blue', 'green'][i % 4]);
+  gameState.hintsSeen = { ...gameState.hintsSeen, gladeCaught: s.caught, gladeSeg: s.seg, gladeString: s.string };
+}
+
+function sparkleSegment(seg) {
+  if (!stringArt) return;
+  for (let j = 0; j < JARS_PER_SEG; j++) {
+    const p = stringArt.jarPos[seg * JARS_PER_SEG + j];
+    if (p) setTimeout(() => spawnSparkle(GLADE.x + p.x, p.y - 0.37, GLADE.z + p.z, 10), j * 180);
+  }
+}
+
+function noteCatch(kind) {
+  const h = gameState.hintsSeen || {};
+  const r = addCatch({ caught: h.gladeCaught, seg: h.gladeSeg, string: h.gladeString }, kind.id);
+  gameState.hintsSeen = { ...h, gladeCaught: r.caught, gladeSeg: r.seg, gladeString: r.string };
+  if (!r.lit) return;
+  const coins = SEG_COINS[r.lit - 1];
+  if (coins) giveReward({ coins }, 'glade_string', String(r.lit));
+  if (r.lit === THRESHOLDS.length) awardBadge('glade_ring');
+  const copy = stringBanner(r.lit, r.caught, nextThreshold(r.caught));
+  ui.showHintBanner?.({ ico: '🏮', title: copy.title, line: copy.line, kind: 'misc', key: 'glade-string-' + r.lit });
+  trackEvent('glade_string', { step: r.lit, total: r.caught });
+  sparkleSegment(r.lit - 1);
+  requestSave();
+}
 
 export function nightNow() {
   if (gladeNight) return gladeNight;
@@ -79,6 +127,8 @@ export function buildGlade() {
     spawnTree(tx, tz);
   }
   obstacles.push({ x: GLADE.x, z: GLADE.z, r: GLADE_R });   // 계곡 안엔 밭 금지(빈터 유지)
+  const ringTrees = trees.map(t => ({ x: t.position.x - GLADE.x, z: t.position.z - GLADE.z }));
+  stringArt = buildString({ group: gladeGroup, anchors: layoutAnchors(ringTrees, GLADE_R), clayMat, mergeGeos });
 }
 
 // 종류 추첨 — 🌈무지개반디는 🌧️비·🌫️안개 낀 날 **밤**에만(게이트 안에서 18%). 표는 js/dex-gates.js
@@ -140,6 +190,8 @@ export function updateFireflyBugs(dt, t) {
   if (!gladeGroup) return;
   const night = isNight();
   gladeGroup.visible = !indoor && !atFarm && !atMine && !atOrchard;
+  applyDev();
+  if (stringNight !== night || stringCaught !== (gameState.hintsSeen?.gladeCaught | 0)) paintString(night);
   if (!night || !isOpen('glade')) {               // ☀️ 낮 → 전부 사라짐(밤에 다시 피어오름) · 🔓 계곡이 아직 안 돌아왔으면 피지 않는다
     while (gladeBugs.length) removeFirefly(gladeBugs[gladeBugs.length - 1]);
     gladeNight = null;
@@ -226,6 +278,7 @@ export function tryNet() {
   spawnFloatText(wx, 1.4, wz, `+1 ${kind.ico} ${kind.name}`, '#c98a2a');
   spawnSparkle(wx, 1.2, wz, kind.id === 'yellow' ? 12 : 20);
   questEvent('catch');                                    // 🦉 데일리 의뢰(반딧불이 잡기)
+  noteCatch(kind);
   dexDiscover('bug', kind.id);                            // 📖 도감(반딧불이 첫 발견)
   trackGateBlocked('bug', 'rainbow');     // [GA4] 📖
   catchCeremony('bugZoom');                               // 🎉 첫 반딧불이만 밀착, 이후 폴짝 + 병 팝

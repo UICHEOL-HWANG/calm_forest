@@ -33,3 +33,8 @@ Last Updated: 2026-11-22
 
 ## 따로 가는 일
 - 맞춤 가구(빛 공방 구조를 가구로): 계곡 다음에 시험 제작부터. Anthropic 키는 키체인 `calmforest-anthropic-aura`
+
+## 구현 기록 (2026-11-22)
+- 드로우콜(태스크 7): 줄등 메시 8개(기둥 2·줄 1·병 3·불빛 2). 같은 화면에서 줄등만 켜고 끈 차이 7~10회/프레임(PC 1280×720, 20프레임 평균 3회). 기준 12 이하. 전체 평균은 720~760으로 흔들려 단순 비교는 쓸 수 없다
+- 이벤트 분류표 `docs/analysis/event-taxonomy.csv` 에 `glade_string` 행 추가, `firefly_catch` custom_keys 에 `mode` 추가(분류표 테스트가 요구)
+- 캡처 도구 `verify/impl-shots.mjs` 는 돌아온 플레이어 흉내(tutorialSeen=true, 첫 안내·팁 건너뛰기, 모달 닫기)를 넣는다. 새 게스트는 첫 안내 중이라 계곡 배너가 일부러 미뤄진다
