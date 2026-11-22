@@ -1,0 +1,35 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>고슴도치 도구 세트 시안</title>
+<style>
+  html,body{margin:0;height:100%;background:#e9efe9;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:#33402f;overflow:hidden}
+  canvas{position:fixed;inset:0;display:block}
+  #head{position:fixed;left:0;right:0;top:0;height:64px;display:flex;align-items:center;gap:18px;padding:0 18px;background:#fff;border-bottom:1px solid #d4ddd2;z-index:2}
+  #head h1{font-size:20px;margin:0}
+  #head .sub{font-size:13px;opacity:.7}
+  #head .ok{color:#3f7a4a;font-weight:600;font-size:13px}
+  #head .bad{color:#b4553a;font-weight:600;font-size:13px}
+  #head nav{margin-left:auto;display:flex;gap:6px}
+  #head nav a{font-size:12px;padding:4px 9px;border:1px solid #b8c8b8;border-radius:7px;color:#33402f;text-decoration:none}
+  #head nav a.on{background:#5b8f5b;color:#fff;border-color:#4a7a4a}
+  #ov{position:fixed;inset:0;pointer-events:none;z-index:1}
+  .col{position:absolute;text-align:center;font-size:14px;font-weight:600}
+  .row{position:absolute;padding:10px 12px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;gap:6px}
+  .row .L{font-size:40px;font-weight:800;color:#5b8f5b;line-height:1}
+  .row .L.ref{font-size:20px;color:#8a978a}
+  .row .n{font-size:16px;font-weight:700}
+  .row .d{font-size:12px;opacity:.72;line-height:1.4}
+  .cell{position:absolute;box-sizing:border-box;border:1px solid rgba(80,100,80,.18)}
+  .cell.refc{background:rgba(120,130,120,.06)}
+  .sw{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:2px;vertical-align:-2px;border:1px solid rgba(0,0,0,.15)}
+</style>
+<div id="head"></div>
+<div id="ov"></div>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import { run } from './owl-pick/sim-page.mjs';
+import { SETS } from './hedgehog-pick/tool-art.mjs';
+setTimeout(() => run(SETS), 300);
+</script>
