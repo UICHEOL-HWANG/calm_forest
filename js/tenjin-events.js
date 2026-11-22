@@ -50,8 +50,19 @@ function completeEvents(p) {
     { name: 'rv_first_complete', once: true }, { tally: RV_TALLY }];
 }
 
+function tutorialStepEvent({ key } = {}) {
+  return typeof key === 'string' && /^[a-z0-9]{1,20}$/.test(key) ? { name: `tut_${key}`, once: true } : null;
+}
+
+function tutorialSkipEvent({ at } = {}) {
+  if (at === 'welcome') return { name: 'tutorial_skip_welcome', once: true };
+  return Number.isInteger(at) && at >= 0 ? { name: 'tutorial_skip_step', once: true, value: at + 1 } : null;
+}
+
 export function tenjinEventFor(name, p = {}) {
   if (ONCE[name]) return { name: ONCE[name], once: true };
+  if (name === 'tutorial_step') return tutorialStepEvent(p);
+  if (name === 'tutorial_skip') return tutorialSkipEvent(p);
   if (name === 'push_permission') return p.result === 'granted' ? { name: 'push_granted', once: true } : null;
   if (name === 'story_chapter_complete') return p.retro ? null : withValue('story_chapter', p.n);
   if (name === 'quest_complete') return { name: 'quest_complete' };

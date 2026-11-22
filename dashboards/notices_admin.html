@@ -79,10 +79,9 @@
   #vLog li:last-child { border-bottom: 0; }
 </style>
 </head>
-<body>
+<body data-nav="notices">
   <header>
     <div>
-      <a class="back" href="../index.html">← 게임으로</a>
       <h1>📮 고요한 숲 · 소식함 관리</h1>
     </div>
   </header>
@@ -152,6 +151,7 @@
   </div>
   <div class="toast" id="toast"></div>
 
+  <script type="module" src="js/admin-nav.js"></script>
   <script type="module">
     import { CONFIG, isSupabaseConfigured } from '../js/config.js';
     import { LOGIN_GATE_HTML, mountLoginGate, ADMIN_AUTH, showNotAdmin } from './js/admin-login.js';

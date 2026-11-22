@@ -21,6 +21,24 @@
 
 import { PALETTE as P, petalOf, put } from './art.js';
 import { mapleLeafGeo } from './art-forest-set.js';
+import { WP } from './art-winter-pick.js';
+import { buildAcornTrail } from './art-forest-pick.js';
+import { buildStardustTrail } from './art-xmas-pick.js';
+import { buildWaveTrail } from './art-sea-pick.js';
+import { buildCreamTrail } from './art-dessert-pick.js';
+import { buildMeteorTrail } from './art-night-pick.js';
+import { buildYutTrail } from './art-newyear-pick.js';
+import { buildEmberTrail } from './art-camp-pick.js';
+import { buildPetalTrail } from './art-spring-pick.js';
+import { buildPuddleTrail } from './art-rain-pick.js';
+import { buildLeafTrail } from './art-tea-pick.js';
+import { buildPaintTrail } from './art-atelier-pick.js';
+import { buildNoteTrail } from './art-concert-pick.js';
+import { buildFireworkTrail } from './art-festival-pick.js';
+import { buildMothTrail } from './art-book-pick.js';
+import { buildYarnTrail } from './art-knit-pick.js';
+import { buildSteamTrail } from './art-train-pick.js';
+import { buildAuroraTrail } from './art-aurora-pick.js';
 
 export const TRAIL_S = 0.10;      // 자국 하나의 기준 반지름(월드) — 1차엔 0.34 로 캐릭터 몸통만 했다
 export const TRAIL_CAP = 12;      // 동시 표시 상한
@@ -199,6 +217,40 @@ function makeMarks(THREE) {
       put(g, new THREE.Mesh(new THREE.RingGeometry(s * 0.18, s * 0.28, 14), film(0xf6c8ea, o * 0.45)), s * 0.55, 0.005, s * 0.3, false)
         .rotation.x = -Math.PI / 2;
     },
+    fp_acorn_trail: (g, s, o) => buildAcornTrail(THREE, g, s, o, { film, put }),
+    xm_stardust_trail: (g, s, o) => buildStardustTrail(THREE, g, s, o, { film, put }),
+    sp_wave_trail: (g, s, o) => buildWaveTrail(THREE, g, s, o, { film, put }),
+    ds_cream_trail: (g, s, o) => buildCreamTrail(THREE, g, s, o, { film, put }),
+    ns_meteor_trail: (g, s, o) => buildMeteorTrail(THREE, g, s, o, { film, put }),
+    ny_yut_trail: (g, s, o) => buildYutTrail(THREE, g, s, o, { film, put }),
+    cp_ember_trail: (g, s, o) => buildEmberTrail(THREE, g, s, o, { film, put }),
+    sb_petal_trail: (g, s, o) => buildPetalTrail(THREE, g, s, o, { film, put }),
+    rn_puddle_trail: (g, s, o) => buildPuddleTrail(THREE, g, s, o, { film, put }),
+    tc_leaf_trail: (g, s, o) => buildLeafTrail(THREE, g, s, o, { film, put }),
+    at_paint_trail: (g, s, o) => buildPaintTrail(THREE, g, s, o, { film, put }),
+    mu_note_trail: (g, s, o) => buildNoteTrail(THREE, g, s, o, { film, put }),
+    sf_firework_trail: (g, s, o) => buildFireworkTrail(THREE, g, s, o, { film, put }),
+    bk_paper_moth_trail: (g, s, o) => buildMothTrail(THREE, g, s, o, { film, put }),
+    kn_yarn_trail: (g, s, o) => buildYarnTrail(THREE, g, s, o, { film, put }),
+    tr_steam_trail: (g, s, o) => buildSteamTrail(THREE, g, s, o, { film, put }),
+    au_aurora_trail: (g, s, o) => buildAuroraTrail(THREE, g, s, o, { film, put }),
+    wp_boot_trail: (g, s, o) => {
+      const sc = 1.15, sole = film(WP.berry, o), tread = film(WP.cream, o);
+      put(g, new THREE.Mesh(new THREE.SphereGeometry(s * 0.50 * sc, 12, 7), sole), 0, 0.006, s * 0.42 * sc, false).scale.set(0.82, 0.08, 1.10);
+      put(g, new THREE.Mesh(new THREE.BoxGeometry(s * 0.56 * sc, s * 0.02, s * 0.50 * sc), sole), 0, 0.005, -s * 0.12 * sc, false);
+      put(g, new THREE.Mesh(new THREE.SphereGeometry(s * 0.38 * sc, 12, 7), sole), 0, 0.006, -s * 0.52 * sc, false).scale.set(0.95, 0.08, 0.85);
+      [0.78, 0.52, 0.26].forEach(z => [-1, 1].forEach(sd => {
+        put(g, new THREE.Mesh(new THREE.BoxGeometry(s * 0.34, s * 0.02, s * 0.07), tread), sd * s * 0.14, 0.011, z * s * sc, false).rotation.y = sd * 0.55;
+      }));
+      const heart = new THREE.Shape();
+      heart.moveTo(0, -0.9); heart.bezierCurveTo(0.9, -0.1, 0.8, 0.8, 0, 0.35); heart.bezierCurveTo(-0.8, 0.8, -0.9, -0.1, 0, -0.9);
+      const hg = new THREE.ShapeGeometry(heart, 8);
+      hg.scale(s * 0.24, s * 0.24, 1);
+      put(g, new THREE.Mesh(hg, tread), 0, 0.012, -s * 0.55 * sc, false).rotation.x = -Math.PI / 2;
+      [[0.30, 0.9, -0.2, 0.16, 0.8], [-0.25, 1.9, -0.5, 0.11, 0.5], [0.10, 2.9, -0.8, 0.08, 0.3]].forEach(([x, y, z, r, a]) => {
+        put(g, new THREE.Mesh(new THREE.IcosahedronGeometry(s * r, 1), film(WP.cream, o * a)), x * s, y * s, z * s, false);
+      });
+    },
   };
 
   return TRAIL;
@@ -236,7 +288,7 @@ export function mergeGeos(THREE, geos) {
 //  🎃 조명 없이(MeshBasicMaterial) 굽는 자국 — 스스로 빛나는 등불은 밤에 어두워지면 안 된다
 //     (시안 lanternCell 도 unlit). 색은 시안 낮 값(pumpkinGeo(false)) 그대로 — 밤 빛은 trail-fx.js 의 온기 입자가 더한다.
 //     나머지 자국은 지금처럼 조명 받는 재질이다.
-export const TRAIL_UNLIT = Object.freeze(new Set(['pumpkin_glow']));
+export const TRAIL_UNLIT = Object.freeze(new Set(['pumpkin_glow', 'au_aurora_trail', 'tr_steam_trail']));
 
 /** 자국 하나의 재질 — 자국마다 새로 만든다(공유 아님: 페이드·무지개 색을 자국마다 따로 움직인다) */
 export function markMaterial(THREE, itemId, opacity) {

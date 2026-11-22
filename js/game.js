@@ -92,6 +92,7 @@ import { forgeView, forgeBegin, forgeAbort, forgeFinish, settleForge, forgeRushR
 import { initAuction, updateAuction, auctionMapSpot, auctionSpotNow, openAuction, auctionScatterBlocks, auctionOutdoorMesh, auctionDefault, restoreAuction, auctionGuideActive } from './auction/index.js';
 import { initWeekly, updateWeekly, weeklyNote, weeklySpotNow, openWeekly, weeklyDefault, restoreWeekly, weeklyScatterBlocks, weeklyDecorMesh, weeklyDev, weeklyGuideActive, weeklyPriority, weekIndex, BOARD_POS, MARKET_POS } from './weekly/index.js';
 import { makeWeeklyBridge } from './weekly/bridge.js';
+import { DAILY_PICK_POOL, cardState, adGrant, cleanDailyPick, decorOwned, leftLabel, msLeft, pickIndex, pickOf, planBuy, priceOf as dailyPriceOf, tomorrowPick } from './data/daily-pick.js';
 import { initConcert, updateConcert, concertSpotNow, openConcert, concertDefault, restoreConcert, concertScatterBlocks, concertDecorMesh, concertDev, STAGE_POS, concertGuideActive } from './concert/index.js';
 import { makeConcertBridge } from './concert/bridge.js';
 import { refreshPond, updatePond, pondScatterBlocks } from './pond/index.js';
@@ -132,7 +133,7 @@ import { defaultDelve, sanitizeDelve } from './delve/rules.js';
 import { defaultPort, sanitizePort } from './port/rules.js';
 import { defaultRestaurant, sanitizeRestaurant } from './restaurant/rules.js';
 import { RESTAURANT, RESTAURANT_GATE, HALL, REST_LIGHT, restaurantScatterBlocks } from './restaurant/data.js';
-import { enterRestaurant, exitRestaurant, restaurantExitSpot, spawnRestaurantGate, buildRestaurantHall, restaurantAction, tickRestaurant, updateRestaurantNight, updateRestaurantGuide, maybeStartRestaurantGuide, restaurantGuideActive } from './spaces/restaurant.js';
+import { enterRestaurant, exitRestaurant, restaurantExitSpot, spawnRestaurantGate, buildRestaurantHall, restaurantAction, tickRestaurant, updateRestaurantNight, updateRestaurantGuide, maybeStartRestaurantGuide, restaurantGuideActive, restaurantHidesNpc } from './spaces/restaurant.js';
 import { restoreStage as restoreCosStage } from './cos-onboard.js';
 import { cosQuestActive, maybeOfferCosQuest, noteCosQuestVisit, updateCosQuestBubble } from './spaces/cos-quest.js';
 import { ORCHARD_TREE, GATE_PATCH, buildOrchardDecor, fruitSpots, buildTreeSoil, disposeOwned } from './orchard-art.js';   // 🍎 과수원 외관(나무 모양·안쪽 소품·입구 잔디 판)
@@ -169,7 +170,7 @@ import { spawnPet, snapIfFar, followPlayer, walkTo } from './pet/render.js';   /
 import { updatePetAnim, PET_KIND } from './pet/art.js';             // 🐾 펫 조형 애니메이션 규약 + 확정 종
 // 📦 데이터 표 — 원문 그대로 옮겼다(분리 1단계, 2026-09-24). 값만 있고 상태는 없다
 import {
-  CROP_TYPES, BASIC_CROPS, TOOLS, TOOL_PAGES, CHOP_WOOD, TREE_RESPAWN_SEC, WET_TIME, WILT_TIME, ZONE_PAGE, ZONE_TOOL,
+  CROP_TYPES, BASIC_CROPS, TOOLS, TOOL_PAGES, CHOP_WOOD, TREE_RESPAWN_SEC, WET_TIME, WILT_TIME, ZONE_PAGE, ZONE_TOOL, ZONE_KIT,
 } from './data/tools.js';
 import {
   FORECAST_MSG, SEVERE_INFO, WEATHER_MSG, DAY_SPEED, PAL,
@@ -365,6 +366,21 @@ import { souvenirOutdoorMesh } from './mountain/souvenir-art.js';
 import { SIGNUP_GIFT_IDS, buildSignupGift } from './spaces/signup-gift-art.js';
 import { buildPromoGift, PROMO_SUITCASE_BOX } from './spaces/promo-gift-art.js';
 import { PROMO_DECOR_IDS } from './promo-gift/rules.js';
+import { YARD_IDS as WINTER_PICK_YARD_IDS, build as buildWinterPick } from './decor-drops/art-winter-pick.js';
+import { YARD_IDS as FOREST_PICK_YARD_IDS, build as buildForestPick } from './decor-drops/art-forest-pick.js';
+import { YARD_IDS as XMAS_PICK_YARD_IDS, build as buildXmasPick } from './decor-drops/art-xmas-pick.js';
+import { YARD_IDS as SEA_PICK_YARD_IDS, build as buildSeaPick } from './decor-drops/art-sea-pick.js';
+import { YARD_IDS as DESSERT_PICK_YARD_IDS, build as buildDessertPick } from './decor-drops/art-dessert-pick.js';
+import { YARD_IDS as NIGHT_PICK_YARD_IDS, build as buildNightPick } from './decor-drops/art-night-pick.js';
+import { YARD_IDS as NEWYEAR_PICK_YARD_IDS, build as buildNewyearPick } from './decor-drops/art-newyear-pick.js';
+import { YARD_IDS as CAMP_PICK_YARD_IDS, build as buildCampPick } from './decor-drops/art-camp-pick.js';
+import { YARD_IDS as SPRING_PICK_YARD_IDS, build as buildSpringPick } from './decor-drops/art-spring-pick.js';
+import { YARD_IDS as RAIN_PICK_YARD_IDS, build as buildRainPick } from './decor-drops/art-rain-pick.js';
+import { YARD_IDS as TEA_PICK_YARD_IDS, build as buildTeaPick } from './decor-drops/art-tea-pick.js';
+import { YARD_IDS as ATELIER_PICK_YARD_IDS, build as buildAtelierPick } from './decor-drops/art-atelier-pick.js';
+import { YARD_IDS as CONCERT_PICK_YARD_IDS, build as buildConcertPick } from './decor-drops/art-concert-pick.js';
+import { YARD_IDS as FESTIVAL_PICK_YARD_IDS, build as buildFestivalPick } from './decor-drops/art-festival-pick.js';
+import { YARD_IDS as TRAIN_PICK_YARD_IDS, build as buildTrainPick } from './decor-drops/art-train-pick.js';
 import { requestSignupNudge } from './signup-gift/index.js';
 import { FRIEND_ARCH_ID, buildFriendArch } from './spaces/friend-arch-art.js';   // 🌈 무지개 우정 아치(🤝 초대 보상)
 import { MINE_CART_ID, MINE_CART_BOX, buildMineCart } from './delve/cart-art.js';
@@ -1213,6 +1229,7 @@ const gameState = {
   auction: auctionDefault(),
   weekly: weeklyDefault(),
   concert: concertDefault(),
+  dailyPick: null,
   neighbors: neighborsDefault(),       // 🏡 이웃 마을 { visited: 다녀온 횟수(📖 9장), seenAt: 다녀간 이웃 알림을 마지막으로 확인한 시각(ms) }
   unlocks: defaultUnlocks(),           // 🔓 마을 해금 { v, legacy, flags } — 새 세이브만 legacy:false. 판정은 js/world/unlocks.js(저장 안 하고 계산)
   tree: defaultTree(),                 // 🌳 세계수 판 { v, branches: { water|farm|kitchen|forest|snow: { tiles, given, habitat, bundles } } } — js/world/tree-board.js
@@ -1419,7 +1436,7 @@ function releasePlaceReveal(id) {
 function applyUnlocks() {
   for (const o of npcObjs) {
     const hide = (!isOpen(o.def.id) && !(o.def.id === 'merchant' && merchantVisit))   // 🧙 방문이 취소돼 좌판으로 돌아가는 중엔 걷게 둔다
-      || returnPending.has(o.def.id);   // 🚶 귀환 걷기를 기다리는 중(조망샷·귀환 모달이 끝날 때까지 안 보인다)
+      || returnPending.has(o.def.id) || restaurantHidesNpc(o.def.id);   // 🚶 귀환 걷기를 기다리는 중(조망샷·귀환 모달이 끝날 때까지 안 보인다)
     if (hide !== !!o.hidden) setNpcHidden(o, hide);
   }
   for (const id in lockHolders) {
@@ -1973,7 +1990,7 @@ export function projectToScreen(pos, lift = 0) {
 let spotTool = SPOT_IDLE;
 function nearestTreeDist() {
   let d = Infinity;
-  for (const tree of trees) { if (tree.userData.fallen) continue; const e = dist2D(tree.position, player.position); if (e < d) d = e; }
+  for (const tree of trees) { if (tree.userData.fallen || tree.userData.holdsString) continue; const e = dist2D(tree.position, player.position); if (e < d) d = e; }
   return d;
 }
 function updateSpotToolAuto() {
@@ -2019,6 +2036,7 @@ function updateToolPageAuto() {
   } else if (toolPage === 'none' && pageBeforeAuto) {
     setToolPage(pageBeforeAuto, true); pageBeforeAuto = null;               // 구역을 벗어나면 도로 꺼내 든다
   }
+  ui.setTool?.(currentTool, TOOLS, toolPage);
 }
 
 // =============================================================
@@ -2114,6 +2132,78 @@ function shortAdButton(slot, list, onDone, caps) {
 }
 export function guideShortAd(slot, list, onDone, caps) { return shortAdButton(slot, list, onDone, caps); }
 
+const DAILY_SEEN_KEY = 'cf_daily_pick_seen';
+
+function noteDailyView(day, id, state) {
+  try {
+    if (localStorage.getItem(DAILY_SEEN_KEY) === day) return;
+    localStorage.setItem(DAILY_SEEN_KEY, day);
+  } catch { return; }
+  trackEvent('daily_pick_view', { item_id: id, state });
+}
+
+function dailyPickInfo() {
+  const day = todayStr();
+  const pick = pickOf(day);
+  const item = dailyPickItem(pick);
+  if (!item) return null;
+  return { day, pick, item, owned: dailyPickOwned(pick) };
+}
+
+function dailyPickItem(pick) {
+  return pick.kind === 'cos' ? findItem(pick.id) : [...DECOR, ...OUTDOOR].find(d => d.id === pick.id);
+}
+
+function dailyPickOwned(pick) {
+  return pick.kind === 'cos' ? gameState.cosmetics.owned.includes(pick.id) : decorOwned(gameState, pick.id);
+}
+
+function dailyPickView() {
+  const info = dailyPickInfo();
+  if (!info) return null;
+  const { day, pick, item, owned } = info;
+  const dp = gameState.dailyPick;
+  const half = dp?.half === true && dp.d === day && dp.id === pick.id;
+  const state = cardState({ owned, half, adOpen: !owned && !half && !!rewarded?.offer('daily_pick') });
+  noteDailyView(day, pick.id, state);
+  const deal = state === 'half' || state === 'ad' || (owned && !!rewarded?.open('daily_pick'));
+  return { d: day, id: pick.id, kind: pick.kind, ico: item.ico, name: item.name, state, deal, price: dailyPriceOf(pick, dp, day), full: pick.price,
+    left: leftLabel(msLeft(Date.now())), index: pickIndex(day), tomorrow: dailyPickItem(tomorrowPick(day))?.ico || '🎀',
+    dex: DAILY_PICK_POOL.map(p => {
+      const it = dailyPickItem(p);
+      return { id: p.id, kind: p.kind, ico: it?.ico || '🎀', name: it?.name || '', price: p.price, owned: dailyPickOwned(p) };
+    }) };
+}
+
+function buyDailyPick(shown) {
+  const target = DAILY_PICK_POOL.find(p => p.id === shown?.id);
+  if (!target || !dailyPickItem(target)) return { ok: false, msg: '지금은 살 수 없어요' };
+  const plan = planBuy({ day: todayStr(), shown, dp: gameState.dailyPick, coins: gameState.inventory.coins, owned: dailyPickOwned(target) });
+  if (!plan.ok) return plan;
+  const { pick, price, half, today } = plan;
+  if (pick.kind === 'cos') {
+    if (!grantCosmetic(pick.id)) return { ok: false, msg: '지금은 살 수 없어요' };
+    gameState.cosmetics = equipCos(gameState.cosmetics, pick.id);
+  } else if (!grantDecor(pick.id)) return { ok: false, msg: '지금은 살 수 없어요' };
+  gameState.inventory.coins -= price;
+  logEcon('daily_pick', 'coins', -price, gameState.inventory.coins);
+  trackEvent('daily_pick_buy', { item_id: pick.id, half: half ? 1 : 0, price_coins: price, coins_after: gameState.inventory.coins, is_today: today ? 1 : 0 });
+  if (pick.kind === 'decor') ui.toast?.('보관함에 넣었어요. 작업대 장식 탭에서 꺼내 놓아요 🧺', 2600);
+  refreshInventoryUI();
+  requestSave();
+  return { ok: true };
+}
+
+function dailyPickAdButton(shown, onDone) {
+  if (!rewarded) return null;
+  return rewarded.button('daily_pick', ['광고 보고', ' ', '반값'], () => {
+    const grant = adGrant(shown, todayStr());
+    if (!grant) return;
+    gameState.dailyPick = grant;
+    requestSave();
+  }, (ok) => { if (ok) onDone?.(); });
+}
+
 function dailyAdButton(coins, streak) {
   if (!coins || !repeatOpen(gameState.houseStage) || !rewarded?.offer('daily_double')) return null;
   return rewarded.button('daily_double', ['광고 보고', ' ', `🪙 ${coins}`, ' ', '더 받기'], () => { giveReward({ coins }, 'daily_double', 'day' + streak); requestSave(); }, (ok, btn) => { if (ok) btn.remove(); });
@@ -2193,7 +2283,20 @@ export const Input = {
     ui.act?.('toolpage');   // 🎓 튜토리얼: "세트 바꿔 보기" 단계 통과
     return toolPage;
   },
-  setPage(id) { pageBeforeAuto = null; setToolPage(id); return toolPage; },
+  setPage(id) {
+    const keep = id === 'none' && Input.toolKit();
+    pageBeforeAuto = keep ? (toolPage !== 'none' ? toolPage : pageBeforeAuto) : null;
+    setToolPage(id);
+    return toolPage;
+  },
+  toolKit() { return ZONE_KIT[toolZoneKey()] || null; },
+  pickKitSlot(n) {
+    const kit = Input.toolKit();
+    if (!kit) return false;
+    if (n < kit.length) Input.selectTool(TOOLS.findIndex(x => x.id === kit[n]));
+    else if (n === kit.length) Input.setPage('none');
+    return true;
+  },
   // 🎓 튜토리얼이 "🪓도끼(1)" 처럼 특정 도구를 지시할 때, 그 도구가 있는 페이지를 펴 준다.
   //   고르지는 않는다 — 고르는 건 플레이어가 배워야 할 동작이라 칸만 보이게 한다.
   revealTool(id) {
@@ -2339,6 +2442,9 @@ export const Input = {
   boatViewMode() { return boatView; },
   getShopBuy() { return SHOP_BUY; },                    // 구매 목록
   sellAdButton(k, gain, onDone) { return sellAdButton(k, gain, onDone); },
+  dailyPickView() { return dailyPickView(); },
+  buyDailyPick(shown) { return buyDailyPick(shown); },
+  dailyPickAdButton(shown, onDone) { return dailyPickAdButton(shown, onDone); },
   craftAdButton(station, onDone) { return craftAdButton(station, onDone); },
   baitAdButton(done) { return adPill('bait_box', () => { giveReward({ bait: 2 }, 'bait_box'); requestSave(); }, done); },
   sellItem(k, req) { return sellItem(k, req); },        // 자원 판매
@@ -3426,6 +3532,7 @@ function applySave(saved) {
   gameState.auction = restoreAuction(saved.auction);
   gameState.weekly = restoreWeekly(saved.weekly);
   gameState.concert = restoreConcert(saved.concert);
+  gameState.dailyPick = cleanDailyPick(saved.dailyPick);
   gameState.neighbors = restoreNeighbors(saved.neighbors);   // 🏡 이웃 마을(옛 세이브=기본값)
   if (saved.affinity) gameState.affinity = { ...saved.affinity };    // 친밀도 복원
   // 💬 대화 횟수 복원 — 날짜가 오늘이 아니면 버린다(어제 소진이 오늘까지 남지 않게).
@@ -6105,6 +6212,36 @@ function outdoorMesh(id) {
     g.add(buildSignupGift(THREE, id, (m) => houseWindows.push(m)));
   } else if (PROMO_DECOR_IDS.includes(id)) {
     g.add(buildPromoGift(THREE, id));
+  } else if (WINTER_PICK_YARD_IDS.includes(id)) {
+    g.add(buildWinterPick(id));
+  } else if (FOREST_PICK_YARD_IDS.includes(id)) {
+    g.add(buildForestPick(id));
+  } else if (XMAS_PICK_YARD_IDS.includes(id)) {
+    g.add(buildXmasPick(id));
+  } else if (SEA_PICK_YARD_IDS.includes(id)) {
+    g.add(buildSeaPick(id));
+  } else if (DESSERT_PICK_YARD_IDS.includes(id)) {
+    g.add(buildDessertPick(id));
+  } else if (NIGHT_PICK_YARD_IDS.includes(id)) {
+    g.add(buildNightPick(id));
+  } else if (NEWYEAR_PICK_YARD_IDS.includes(id)) {
+    g.add(buildNewyearPick(id));
+  } else if (CAMP_PICK_YARD_IDS.includes(id)) {
+    g.add(buildCampPick(id));
+  } else if (SPRING_PICK_YARD_IDS.includes(id)) {
+    g.add(buildSpringPick(id));
+  } else if (RAIN_PICK_YARD_IDS.includes(id)) {
+    g.add(buildRainPick(id));
+  } else if (TEA_PICK_YARD_IDS.includes(id)) {
+    g.add(buildTeaPick(id));
+  } else if (ATELIER_PICK_YARD_IDS.includes(id)) {
+    g.add(buildAtelierPick(id));
+  } else if (CONCERT_PICK_YARD_IDS.includes(id)) {
+    g.add(buildConcertPick(id));
+  } else if (FESTIVAL_PICK_YARD_IDS.includes(id)) {
+    g.add(buildFestivalPick(id));
+  } else if (TRAIN_PICK_YARD_IDS.includes(id)) {
+    g.add(buildTrainPick(id));
   } else if (id === 'kiln') {
     // 🔥 화덕 — sims/kiln-sim.html 에서 확정한 C안(낮은 아궁이). 상판이 표시 면이라
     //    완성물이 쌓이면 가까이 가지 않아도 "다 구워졌다" 가 읽힌다.
@@ -6435,7 +6572,8 @@ function initInput() {
     if (e.code === 'KeyF' && boat.active) { wantSkill = true; return; }
     if (e.code === 'KeyC') Input.toggleSit();   // C: 앉기
     // 1 = 도구 세트 전환, 2~6 = 지금 세트의 도구 (하단바에 적힌 번호와 1:1 · 🌾농사는 5칸, 🏕️야외도구는 4칸)
-    if (e.code === 'Digit1') Input.cycleToolPage();
+    if (/^Digit[1-6]$/.test(e.code) && Input.pickKitSlot(parseInt(e.code.slice(5)) - 1)) ui.act?.('toolpick');
+    else if (e.code === 'Digit1') Input.cycleToolPage();
     else if (/^Digit[2-6]$/.test(e.code)) { Input.selectPageSlot(parseInt(e.code.slice(5)) - 2); ui.act?.('toolpick'); }
     // 방향키/스페이스는 브라우저 페이지 스크롤 방지(플레이 중 화면 밀림 방지)
     if (MOVE_KEYS.includes(e.code)) e.preventDefault();
@@ -7961,15 +8099,10 @@ function handleAction() {
     ui.toast?.('🛶 정박한 배로 가면 강을 내려갈 수 있어요');
     return;
   }
-  if (atMine) {                   // 동굴: 괭이로만 채굴 가능
-    // 🌾농사 세트의 다른 도구(씨앗·물조리개·낫·삽)를 들었으면 ⛏️괭이로 바꿔 그대로 캔다 —
-    // 입장 시 자동 선택(ZONE_TOOL)을 덮어쓰고 도구를 바꾼 경우의 안전망(밭 자동 전환과 같은 문법).
-    if (toolPage !== 'none') {
-      if (TOOLS[currentTool].grp === 'farm' && TOOLS[currentTool].id !== 'hoe') selectToolAuto('hoe');
-      if (TOOLS[currentTool].id === 'hoe') return delveFloorNow() > 0 ? tryDelveMine() : tryMine();
-    }
-    ui.toast?.('⛏️ 🌾농사 세트의 괭이(2)로 캐야 해요');
-    return;
+  if (atMine) {
+    if (toolPage !== 'farm') setToolPage('farm', true);
+    selectToolAuto('hoe');
+    return delveFloorNow() > 0 ? tryDelveMine() : tryMine();
   }
   if (atRestaurant) {
     restaurantAction();
@@ -8014,7 +8147,7 @@ function handleAction() {
   if (fg) {
     let treeD = Infinity;
     if (TOOLS[currentTool].id === 'axe') {
-      for (const tr of trees) if (!tr.userData.fallen) treeD = Math.min(treeD, dist2D(tr.position, player.position));
+      for (const tr of trees) if (!tr.userData.fallen && !tr.userData.holdsString) treeD = Math.min(treeD, dist2D(tr.position, player.position));
     }
     if (treeD >= fg.d) return tryForage(fg.node);
   }

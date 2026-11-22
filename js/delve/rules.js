@@ -189,6 +189,11 @@ export function jobFor(date) {
 
 export function liftTargets(d) { return [...new Set([1, ...stopsOpen(d)])]; }
 
+export function liftPanelRows(d) {
+  const open = liftTargets(d), deepest = open.at(-1);
+  return [1, ...DELVE_STOPS].map(f => ({ f, open: open.includes(f), deep: f === deepest && f > 1 }));
+}
+
 export function jobProgress(d, date) { return d.job.date === date ? d.job.n : 0; }
 
 export function bumpJob(d, date) { return { ...d, job: { date, n: jobProgress(d, date) + 1 } }; }

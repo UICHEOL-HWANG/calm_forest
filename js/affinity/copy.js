@@ -86,3 +86,18 @@ export function trackerLines({ name, nameEn, value, next, nextIdx, reward, giftL
 }
 
 export const trackerStart = (lang = 'ko') => (lang === 'en' ? '🎁 Befriend villagers for gifts' : '🎁 주민과 친해지면 선물이 와요');
+
+export function favChip({ ico, regular, lang = 'ko' }) {
+  if (lang === 'en') return `${ico} ${regular ? 'Regular' : 'Favorite'}`;
+  return `${ico} ${regular ? '단골' : '좋아함'}`;
+}
+
+export function regularRowText({ name, nameEn, ico, lang = 'ko' }) {
+  return `${lang === 'en' ? nameEn : name} · ${favChip({ ico, regular: true, lang })}`;
+}
+
+export function pantryGiftText({ ico, name, n, lang = 'ko' }) {
+  return `${ico} ${name} ${n} · ${lang === 'en' ? 'to the restaurant pantry' : '식당 창고로'}`;
+}
+
+export const pantryClaimToast = (lang = 'ko') => (lang === 'en' ? '🍽️ Added to the restaurant pantry' : '🍽️ 식당 창고에 넣었어요');

@@ -131,3 +131,61 @@ test('지도 이름표: 길목 이름(정류장·이웃 마을 가는 길)은 �
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(html, /const list = \(lastPlaces \|\| \[\]\)\.slice\(\)\.sort\(\(a, b\) => \(a\.late \? 1 : 0\) - \(b\.late \? 1 : 0\) \|\| a\.z - b\.z\);/);
 });
+
+test('식당 화분은 플레이어가 통과하지 못하게 충돌 원이 있다', () => {
+  assert.match(STUB, /HALL\.plants\.forEach\(\(\[px, pz\]\) => solidCircle\(wx\(px\), wz\(pz\), PLANT_R\)\)/);
+});
+
+test('식당 손님은 이웃 호감도·숨김·단골과 연결된다', () => {
+  assert.match(STUB, /import \{ gainAffinity, issueRegularLetter \} from '\.\.\/affinity\/index\.js'/);
+  assert.match(STUB, /giftGain\(/);
+  assert.match(STUB, /setNpcHidden\(o, true\)/);
+  assert.match(STUB, /export const restaurantHidesNpc = id => hiddenByRest\.has\(id\)/);
+  assert.match(SRC, /restaurantHidesNpc\(o\.def\.id\)/);
+  assert.match(STUB, /runtime\.session\(\)\?\.first/);
+  assert.match(STUB, /recordRegular\(/);
+  assert.match(STUB, /trackEvent\('restaurant_regular', \{ npc \}\)/);
+  assert.match(STUB, /neighbors: \(\) => GUEST_NPCS\.filter\(/);
+  assert.match(STUB, /for \(const id of \[\.\.\.hiddenByRest\]\) showNeighbor\(id\)/);
+  assert.match(STUB, /hiddenByRest\.add\(id\);\s*if \(!o\.hidden\) setNpcHidden\(o, true\)/);
+});
+
+test('식당 환경이 손님 얼굴을 돌려준다', () => {
+  assert.match(STUB, /faceOf: g =>/);
+});
+
+test('주민 수첩에 좋아하는 메뉴 칩이 붙는다', () => {
+  const BOOK = read('js/affinity/book-ui.js'), AFF = read('js/affinity/index.js');
+  assert.match(BOOK, /if \(n\.favChip\) who\.appendChild\(el\('span', 'nbk-chip', n\.favChip\)\)/);
+  assert.match(AFF, /favChip: FAV\[id\] \?/);
+});
+
+test('식당 입구 단골 명패 기둥을 세우고 입장할 때 다시 짓는다', () => {
+  assert.match(STUB, /buildRegularBoard\(/);
+  const enter = STUB.slice(STUB.indexOf('export function enterRestaurant('));
+  assert.match(enter.slice(0, enter.indexOf('\n}\n')), /rebuildRegularBoard\(/);
+  assert.match(STUB, /if \(became\) \{[\s\S]*rebuildRegularBoard\(/);
+});
+
+test('단골 편지는 소식함에 태우고 받으면 식당 창고로 들어간다', () => {
+  const AFF = read('js/affinity/index.js');
+  assert.match(AFF, /export function issueRegularLetter\(npc\)/);
+  assert.match(AFF, /key\.endsWith\(':regular'\)/);
+  assert.match(AFF, /addToPantry\(/);
+  assert.match(read('js/affinity/letters-ui.js'), /gift\.pantry/);
+});
+
+test('단골이 되면 편지를 보낸다', () => {
+  assert.match(STUB, /if \(became\) \{[\s\S]*issueRegularLetter\(npc\)/);
+});
+
+test('단골 명패는 언어에 맞춰 그린다', () => {
+  assert.match(STUB, /name: def \? t\(def\.name\)/);
+  assert.match(STUB, /buildRegularBoard\(THREE, regs, t\('단골'\)\)/);
+  assert.match(read('js/i18n-en.js'), /'단골': 'Regular'/);
+});
+
+test('식당 입장이 오늘의 특선을 정하고 세션에 넘긴다', () => {
+  assert.match(STUB, /todaySpecial\(/);
+  assert.match(STUB, /sessionOpts: \(\) => \(restaurantGuideActive\(\) \? \{ first: true \} : \{ special \}\)/);
+});

@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { twoProp, welch, srm, mdeProp, analyzeExperiment, funnelRows } from '../dashboards/js/admin-metrics.js';
+import { twoProp, welch, srm, mdeProp, analyzeExperiment, funnelRows, experimentSpan } from '../dashboards/js/admin-metrics.js';
 
 const src = (p) => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 const close = (a, b, eps = 0.05) => assert.ok(Math.abs(a - b) < eps, `${a} ≈ ${b}`);
@@ -79,6 +79,14 @@ test('CI 규칙이어도 목표 표본 전에는 판정하지 않는다', () => 
   assert.equal(analyzeExperiment(e, '2026-10-26').verdict[1], '표본 모으는 중');
 });
 
+test('판정 시점 전(running)인 실험은 표본·p 와 무관하게 진행 중으로만 보이고, SRM 만 경고한다', () => {
+  const v = (e) => analyzeExperiment(e, '2026-11-20').verdict[1];
+  assert.equal(v({ ...base, confound: '공통 변경', result: { ...twoArm([500, 300], [500, 200]), running: true } }), '진행 중 · 판정 전');
+  assert.equal(v({ ...base, result: { ...twoArm([0, 0], [0, 0]), running: true } }), '진행 중 · 판정 전');
+  assert.equal(v({ ...base, result: { ...twoArm([300, 150], [200, 60]), running: true } }), '배정 어긋남 · 판정 보류');
+  assert.equal(v({ ...base, result: { ...twoArm([102, 1], [22, 1]), ratio: [0.8, 0.2], running: true } }), '진행 중 · 판정 전');
+});
+
 test('설계 비율(ratio)이 있으면 SRM 을 그 비율로 잰다 — 90:10 홀드아웃', () => {
   const r = twoArm([900, 1], [100, 1], { ratio: [0.9, 0.1] });
   assert.ok(analyzeExperiment({ kind: 'ab', status: 'run', result: r }, '2026-10-26').srm > 0.5);
@@ -124,4 +132,33 @@ test('연결 안 되는 깔때기 단계는 직전 대비 비율을 내지 않�
   assert.equal(rows[1].cells[0].pct, null);
   assert.equal(rows[1].unlinked, true);
   assert.equal(rows[0].unlinked, false);
+});
+
+test('실험 기간은 결과 창의 시작일을 우선하고, 진행 중이면 오늘까지로 본다', () => {
+  const t = '2026-11-20';
+  assert.deepEqual(experimentSpan({ period: '10/16 – 진행 중 · 광고 시작(10/24)부터 최대 12주', result: { window: { from: '2026-10-16', to: null } } }, t), { from: '2026-10-16', to: t });
+  assert.deepEqual(experimentSpan({ period: '10/12 – 11/9 (채택)', result: { window: { from: '2026-10-12', to: null } } }, t), { from: '2026-10-12', to: '2026-11-09' });
+  assert.deepEqual(experimentSpan({ period: '9/6 – 10/6 · 관측 끝 10/13', result: { window: { from: '2026-09-06', to: '2026-10-06' } } }, t), { from: '2026-09-06', to: '2026-10-06' });
+});
+
+test('결과가 없어도 기간 글자에서 날짜를 읽고, 예정 종료일은 오늘 뒤여도 그대로 둔다', () => {
+  const t = '2026-11-20';
+  assert.deepEqual(experimentSpan({ period: '11/20 18:00 – 11/27 23:59', result: null }, t), { from: '2026-11-20', to: '2026-11-27' });
+  assert.deepEqual(experimentSpan({ period: '10/31 – 표본 도달까지 (최장 11/27)', result: { window: { from: '2026-10-31', to: null } } }, t), { from: '2026-10-31', to: '2026-11-27' });
+  assert.equal(experimentSpan({ period: '초안 · 배정 스위치 미배포', result: null }, t), null);
+});
+
+test('해를 넘기는 기간은 끝 날짜를 다음 해로 읽는다', () => {
+  assert.deepEqual(experimentSpan({ period: '12/20 – 1/10', result: { window: { from: '2026-12-20', to: null } } }, '2027-01-15'), { from: '2026-12-20', to: '2027-01-10' });
+});
+
+test('기간 글자의 비율 표기(90/10)는 날짜로 읽지 않는다', () => {
+  const t = '2026-11-20';
+  assert.deepEqual(experimentSpan({ period: '10/13 – 진행 중 · 배정 90/10', result: null }, t), { from: '2026-10-13', to: t });
+  assert.equal(experimentSpan({ period: '배정 50/50 예정', result: null }, t), null);
+});
+
+test('결과 창이 없을 때 시작일이 오늘보다 뒤로 읽히면 지난해로 본다', () => {
+  assert.deepEqual(experimentSpan({ period: '12/28 – 진행 중', result: null }, '2027-01-05'), { from: '2026-12-28', to: '2027-01-05' });
+  assert.deepEqual(experimentSpan({ period: '11/20 18:00 – 11/27 23:59', result: null }, '2026-11-20'), { from: '2026-11-20', to: '2026-11-27' });
 });

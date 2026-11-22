@@ -150,7 +150,7 @@ export function updateFishing() {
 export function tryChop() {
   let nearest = null, nd = 2.6;
   for (const tree of trees) {
-    if (tree.userData.fallen) continue;
+    if (tree.userData.fallen || tree.userData.holdsString) continue;
     const d = dist2D(tree.position, player.position);
     if (d < nd) { nd = d; nearest = tree; }
   }

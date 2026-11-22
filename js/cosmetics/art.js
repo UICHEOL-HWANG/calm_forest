@@ -17,6 +17,24 @@ import { buildFriendWing, buildFriendPin } from './art-friend.js';   // 🤝 친
 import { buildAcornCap, buildBeeBand, buildKittyPack, buildNestPack } from './art-forest-set.js';
 import { buildKinderHat, buildTulipTag, buildKinderBag } from './art-sprout.js';
 import { buildMinerHelmet } from './art-miner.js';
+import { buildPompomHat, buildKnitScarf, buildFirewood } from './art-winter-pick.js';
+import { buildSquirrelBand, buildOwlKerchief, buildHedgehogPack } from './art-forest-pick.js';
+import { buildAntlerBand, buildHollyTie, buildGiftPack } from './art-xmas-pick.js';
+import { buildPirateScarf, buildAnchorNecklace, buildLighthousePack } from './art-sea-pick.js';
+import { buildCakeHat, buildMacaronBrooch, buildCupcakePack } from './art-dessert-pick.js';
+import { buildMoonPin, buildGalaxyScarf, buildStarLanternPack } from './art-night-pick.js';
+import { buildPouchBand, buildGoreumTie, buildKitePack } from './art-newyear-pick.js';
+import { buildBucketHat, buildBandana, buildSleepingbagPack } from './art-camp-pick.js';
+import { buildBlossomCrown, buildPetalRibbon, buildPicnicPack } from './art-spring-pick.js';
+import { buildRainHood, buildDropScarf, buildFrogPack } from './art-rain-pick.js';
+import { buildLeafPin, buildTeaCord, buildTeapotPack } from './art-tea-pick.js';
+import { buildBeret, buildPaintScarf, buildPalettePack } from './art-atelier-pick.js';
+import { buildNotePin, buildBowTie, buildViolinPack } from './art-concert-pick.js';
+import { buildMaskPin, buildYukataCord, buildFanPack } from './art-festival-pick.js';
+import { buildRoundGlasses, buildBookmarkCharm, buildBookPack } from './art-book-pick.js';
+import { buildCableBeanie, buildRopeScarf, buildYarnPack } from './art-knit-pick.js';
+import { buildConductorCap, buildTicketCharm, buildSuitcasePack } from './art-train-pick.js';
+import { buildFurBand, buildFurMuff, buildAuroraSledPack } from './art-aurora-pick.js';
 
 export const PALETTE = Object.freeze({
   straw: 0xd9bd7e, strawDark: 0xb99a5c,
@@ -350,6 +368,24 @@ function makeTables(THREE) {
     },
 
     kinder_hat: (g, k) => buildKinderHat(THREE, g, k, h),
+    wp_pompom_hat: (g, k) => buildPompomHat(THREE, g, k, h),
+    fp_squirrel_band: (g, k) => buildSquirrelBand(THREE, g, k, h),
+    xm_antler_band: (g, k) => buildAntlerBand(THREE, g, k, h),
+    sp_pirate_scarf: (g, k) => buildPirateScarf(THREE, g, k, h),
+    ds_cake_hat: (g, k) => buildCakeHat(THREE, g, k, h),
+    ns_moon_pin: (g, k) => buildMoonPin(THREE, g, k, h),
+    ny_pouch_band: (g, k) => buildPouchBand(THREE, g, k, h),
+    cp_bucket_hat: (g, k) => buildBucketHat(THREE, g, k, h),
+    sb_blossom_crown: (g, k) => buildBlossomCrown(THREE, g, k, h),
+    rn_rain_hood: (g, k) => buildRainHood(THREE, g, k, h),
+    tc_leaf_pin: (g, k) => buildLeafPin(THREE, g, k, h),
+    at_beret: (g, k) => buildBeret(THREE, g, k, h),
+    mu_note_pin: (g, k) => buildNotePin(THREE, g, k, h),
+    sf_mask_pin: (g, k) => buildMaskPin(THREE, g, k, h),
+    bk_round_glasses: (g, k) => buildRoundGlasses(THREE, g, k, h),
+    kn_beanie: (g, k) => buildCableBeanie(THREE, g, k, h),
+    tr_conductor_cap: (g, k) => buildConductorCap(THREE, g, k, h),
+    au_aurora_band: (g, k) => buildFurBand(THREE, g, k, h),
     star_pin: (g, k) => {       // 별 머리핀 — 옆머리에 하나. 가장 작고 가장 싸다
       // ⚠️ 1차엔 옆머리 **뒤**에 박혀 정면에서 안 보였다. 앞쪽으로 당기고 키운다.
       const H = k.HR * 0.46, rad = ringR(k.HR, 0.46);
@@ -412,6 +448,24 @@ function makeTables(THREE) {
       loop.rotation.x = 0.3;
     },
     tulip_tag: (g, k) => buildTulipTag(THREE, g, k, h),
+    wp_knit_scarf: (g, k) => buildKnitScarf(THREE, g, k, h),
+    fp_owl_kerchief: (g, k) => buildOwlKerchief(THREE, g, k, h),
+    xm_holly_tie: (g, k) => buildHollyTie(THREE, g, k, h),
+    sp_anchor_necklace: (g, k) => buildAnchorNecklace(THREE, g, k, h),
+    ds_macaron_brooch: (g, k) => buildMacaronBrooch(THREE, g, k, h),
+    ns_galaxy_scarf: (g, k) => buildGalaxyScarf(THREE, g, k, h),
+    ny_goreum_tie: (g, k) => buildGoreumTie(THREE, g, k, h),
+    cp_bandana: (g, k) => buildBandana(THREE, g, k, h),
+    sb_petal_ribbon: (g, k) => buildPetalRibbon(THREE, g, k, h),
+    rn_drop_scarf: (g, k) => buildDropScarf(THREE, g, k, h),
+    tc_tea_cord: (g, k) => buildTeaCord(THREE, g, k, h),
+    at_paint_scarf: (g, k) => buildPaintScarf(THREE, g, k, h),
+    mu_bow_tie: (g, k) => buildBowTie(THREE, g, k, h),
+    sf_yukata_cord: (g, k) => buildYukataCord(THREE, g, k, h),
+    bk_bookmark_charm: (g, k) => buildBookmarkCharm(THREE, g, k, h),
+    kn_scarf: (g, k) => buildRopeScarf(THREE, g, k, h),
+    tr_ticket_charm: (g, k) => buildTicketCharm(THREE, g, k, h),
+    au_fur_muff: (g, k) => buildFurMuff(THREE, g, k, h),
     bowtie: (g, k) => {         // 나비 넥타이 — 목띠 + 날개 두 장 + 가운데 매듭
       //  ▶ 날개는 **꼭짓점이 가운데를 향하는 사각뿔**이다. 저폴리에서 나비 날개를 그리는 제일 싼 방법 —
       //    옆에서 봐도 삼각으로 읽히고, 정면에선 두 삼각이 매듭에서 만나 나비가 된다.
@@ -482,6 +536,24 @@ function makeTables(THREE) {
     //  ▶ 가방류는 **옆구리(side 앵커)** 에 맨다. 등 한가운데는 🦊여우 꼬리 자리다.
     //    앵커는 어깨끈 링의 가장 낮은 점이라, 가방을 거기서 **아래로 매달면** 끈과 붙는다.
     kinder_bag: (g, k) => buildKinderBag(THREE, g, k, h),
+    wp_firewood: (g, k) => buildFirewood(THREE, g, k, h),
+    fp_hedgehog_pack: (g, k) => buildHedgehogPack(THREE, g, k, h),
+    xm_gift_pack: (g, k) => buildGiftPack(THREE, g, k, h),
+    sp_lighthouse_pack: (g, k) => buildLighthousePack(THREE, g, k, h),
+    ds_cupcake_pack: (g, k) => buildCupcakePack(THREE, g, k, h),
+    ns_star_lantern_pack: (g, k) => buildStarLanternPack(THREE, g, k, h),
+    ny_kite_pack: (g, k) => buildKitePack(THREE, g, k, h),
+    cp_sleepingbag_pack: (g, k) => buildSleepingbagPack(THREE, g, k, h),
+    sb_picnic_pack: (g, k) => buildPicnicPack(THREE, g, k, h),
+    rn_frog_pack: (g, k) => buildFrogPack(THREE, g, k, h),
+    tc_teapot_pack: (g, k) => buildTeapotPack(THREE, g, k, h),
+    at_palette_pack: (g, k) => buildPalettePack(THREE, g, k, h),
+    mu_violin_pack: (g, k) => buildViolinPack(THREE, g, k, h),
+    sf_fan_pack: (g, k) => buildFanPack(THREE, g, k, h),
+    bk_book_pack: (g, k) => buildBookPack(THREE, g, k, h),
+    kn_yarn_pack: (g, k) => buildYarnPack(THREE, g, k, h),
+    tr_suitcase_pack: (g, k) => buildSuitcasePack(THREE, g, k, h),
+    au_sled_pack: (g, k) => buildAuroraSledPack(THREE, g, k, h),
     pack: (g, k) => {           // 메신저 가방 — 왼쪽 옆구리에 걸치고 끈이 오른쪽 어깨를 넘어간다
       const R = k.R, w = R * 0.76;
       const out = 0;

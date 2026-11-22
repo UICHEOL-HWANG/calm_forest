@@ -1,0 +1,146 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>도구 세트 픽 시안 3</title>
+<style>
+  html,body{margin:0;height:100%;background:#e9efe9;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;color:#33402f;overflow:hidden}
+  canvas{position:fixed;inset:0;display:block}
+  #head{position:fixed;left:0;right:0;top:0;height:64px;display:flex;align-items:center;gap:18px;padding:0 18px;background:#fff;border-bottom:1px solid #d4ddd2;z-index:2}
+  #head h1{font-size:20px;margin:0}
+  #head .sub{font-size:13px;opacity:.7}
+  #head .ok{color:#3f7a4a;font-weight:600;font-size:13px}
+  #head .bad{color:#b4553a;font-weight:600;font-size:13px}
+  #head nav{margin-left:auto;display:flex;gap:6px}
+  #head nav a{font-size:12px;padding:4px 9px;border:1px solid #b8c8b8;border-radius:7px;color:#33402f;text-decoration:none}
+  #head nav a.on{background:#5b8f5b;color:#fff;border-color:#4a7a4a}
+  #ov{position:fixed;inset:0;pointer-events:none;z-index:1}
+  .col{position:absolute;text-align:center;font-size:14px;font-weight:600}
+  .row{position:absolute;padding:10px 12px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;gap:6px}
+  .row .L{font-size:40px;font-weight:800;color:#5b8f5b;line-height:1}
+  .row .L.ref{font-size:20px;color:#8a978a}
+  .row .n{font-size:16px;font-weight:700}
+  .row .d{font-size:12px;opacity:.72;line-height:1.4}
+  .cell{position:absolute;box-sizing:border-box;border:1px solid rgba(80,100,80,.18)}
+  .cell.refc{background:rgba(120,130,120,.06)}
+  .sw{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:2px;vertical-align:-2px;border:1px solid rgba(0,0,0,.15)}
+</style>
+<div id="head"></div>
+<div id="ov"></div>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { buildAnimalHead, plushMat } from '../js/animal-faces.js';
+import { buildToolSkin } from '../js/cosmetics/tool-skins.js';
+import { extraKit } from '../js/cosmetics/tool-skins-extra-kit.js';
+import { SETS, simKit, baseTools } from './tool-set-pick-3/tool-art.mjs';
+
+const BLOOM_LUMA = 0.85;
+const luma = h => (0.2126 * ((h >> 16) & 255) + 0.7152 * ((h >> 8) & 255) + 0.0722 * (h & 255)) / 255;
+const hex = h => '#' + h.toString(16).padStart(6, '0');
+
+const qs = new URLSearchParams(location.search);
+const setId = SETS[qs.get('set')] ? qs.get('set') : 'tools_candy';
+const SET = SETS[setId];
+const K = simKit(THREE), X = extraKit(THREE, K);
+const BASE = baseTools(THREE, K, X), DIRS = SET.themes(THREE, K, X);
+
+const used = Object.entries(SET.pal);
+const over = used.filter(([, c]) => luma(c) > BLOOM_LUMA);
+document.getElementById('head').innerHTML =
+  `<h1>${SET.ico} ${SET.name}</h1><span class="sub">${setId} · 3,600코인 오늘의 픽 · 시안 A/B/C</span>` +
+  (over.length ? `<span class="bad">블룸 초과 ${over.map(([k, c]) => `${k} ${luma(c).toFixed(2)}`).join(', ')}</span>`
+               : `<span class="ok">블룸 0.85 이하 ${used.length}색 통과 (최대 ${Math.max(...used.map(([, c]) => luma(c))).toFixed(2)})</span>`) +
+  `<span>${used.map(([k, c]) => `<i class="sw" title="${k}" style="background:${hex(c)}"></i>`).join('')}</span>` +
+  `<nav>${Object.keys(SETS).map(id => `<a href="?set=${id}" class="${id === setId ? 'on' : ''}">${SETS[id].ico} ${SETS[id].name}</a>`).join('')}</nav>`;
+
+const fromFn = fn => () => { const g = new THREE.Group(); fn(g); return g; };
+const ROWS = [
+  { L: '기준', ref: true, name: '기본 도구', note: '0단계 game.js toolMesh', make: t => fromFn(BASE[t])() },
+  ...SET.refs.map(([id, name, note]) => ({ L: '기존', ref: true, name, note, make: t => buildToolSkin(THREE, id, t) })),
+  ...SET.dirs.map(([L, name, note]) => ({ L, name, note, make: t => fromFn(DIRS[L][t])() })),
+];
+const COLS = [{ t: 'axe', label: '🪓 도끼' }, { t: 'water', label: '💧 물조리개' }, { t: 'rod', label: '🎣 낚싯대' }, { t: 'axe', label: '🐱 게임 거리 (화면 높이 700px 실측)', held: true }];
+
+const CAT = { id: 'cat', body: 0x9fa0c2, belly: 0xf2f2f8, paw: 0xf0b0b8, R: 0.5, bs: [0.88, 1.1, 0.88], HR: 0.36, HY: 1.25 };
+function character(tool) {
+  const g = new THREE.Group(), a = CAT, R = a.R, bodyY = R * a.bs[1] + 0.02;
+  const body = new THREE.Mesh(new THREE.SphereGeometry(R, 28, 20), plushMat(a.body)); body.position.y = bodyY; body.scale.set(...a.bs); g.add(body);
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(R * 0.62, 20, 14), plushMat(a.belly)); belly.position.set(0, bodyY - R * 0.16, R * 0.55); belly.scale.set(1, 1.1, 0.6); g.add(belly);
+  g.add(buildAnimalHead(a.id, { HR: a.HR, HY: a.HY, body: a.body, belly: a.belly }));
+  const tail = new THREE.Mesh(new THREE.CapsuleGeometry(R * 0.1, R * 0.9, 4, 8), plushMat(a.body)); tail.position.set(0, bodyY + R * 0.3, -R * 0.85); tail.rotation.x = -0.5; g.add(tail);
+  const held = new THREE.Group(); held.position.set(0.78, 0.9, 0.06); held.rotation.set(-0.1, 0, -0.55); g.add(held);
+  const hand = new THREE.Group(); hand.position.set(0, -0.3, 0.08); held.add(hand);
+  hand.add(new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), plushMat(a.paw)));
+  hand.add(tool);
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  return g;
+}
+
+function stage(held) {
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(held ? 0xa9c98a : 0xe3ebe6);
+  scene.add(new THREE.HemisphereLight(0xeef6ff, 0x6f7f68, 0.9));
+  const sun = new THREE.DirectionalLight(0xfff3df, 1.15); sun.position.set(4, 8, 6); scene.add(sun);
+  const rim = new THREE.DirectionalLight(0xbfd8e8, 0.35); rim.position.set(-5, 3, -4); scene.add(rim);
+  if (held) {
+    sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
+    Object.assign(sun.shadow.camera, { left: -3, right: 3, top: 3, bottom: -3, near: 0.5, far: 20 });
+    const ground = new THREE.Mesh(new THREE.CircleGeometry(20, 32), new THREE.MeshStandardMaterial({ color: 0x9cc47a, roughness: 1 }));
+    ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+  }
+  return scene;
+}
+
+function start() {
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.setScissorTest(true);
+  document.body.appendChild(renderer.domElement);
+  const TOP = 64, COLH = 30, LEFTW = 240;
+  const cw = (innerWidth - LEFTW) / COLS.length, ch = (innerHeight - TOP - COLH) / ROWS.length;
+  const ov = document.getElementById('ov'), cells = [];
+  COLS.forEach((c, ci) => {
+    const el = document.createElement('div'); el.className = 'col'; el.textContent = c.label;
+    Object.assign(el.style, { left: LEFTW + ci * cw + 'px', width: cw + 'px', top: TOP + 6 + 'px' }); ov.appendChild(el);
+  });
+  ROWS.forEach((r, ri) => {
+    const re = document.createElement('div'); re.className = 'row';
+    re.innerHTML = `<div class="L ${r.ref ? 'ref' : ''}">${r.L}</div><div class="n">${r.name}</div><div class="d">${r.note}</div>`;
+    Object.assign(re.style, { left: 0, width: LEFTW + 'px', top: TOP + COLH + ri * ch + 'px', height: ch + 'px' }); ov.appendChild(re);
+    COLS.forEach((c, ci) => {
+      const scene = stage(c.held), tool = r.make(c.t);
+      let cam;
+      if (c.held) {
+        const ch_ = character(tool); ch_.rotation.y = 0.25; scene.add(ch_);
+        const D = Math.hypot(14, 16), V = 2 * D * Math.tan(THREE.MathUtils.degToRad(21)) * ch / 700;
+        cam = new THREE.PerspectiveCamera(THREE.MathUtils.radToDeg(2 * Math.atan(V / 2 / D)), cw / ch, 1, 80);
+        const tgt = new THREE.Vector3(0.25, 0.85, 0); cam.position.set(tgt.x, tgt.y + 14, tgt.z + 16); cam.lookAt(tgt);
+      } else {
+        const holder = new THREE.Group(); holder.add(tool); scene.add(holder);
+        const box = new THREE.Box3().setFromObject(holder), sph = box.getBoundingSphere(new THREE.Sphere());
+        cam = new THREE.PerspectiveCamera(30, cw / ch, 0.02, 40);
+        const hf = 2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(15)) * Math.min(1, cw / ch));
+        const dist = sph.radius / Math.sin(hf / 2) * 1.02, yaw = THREE.MathUtils.degToRad(28), el = THREE.MathUtils.degToRad(12);
+        cam.position.set(sph.center.x + Math.sin(yaw) * Math.cos(el) * dist, sph.center.y + Math.sin(el) * dist, sph.center.z + Math.cos(yaw) * Math.cos(el) * dist);
+        cam.lookAt(sph.center);
+      }
+      const x = LEFTW + ci * cw, y = TOP + COLH + ri * ch;
+      cells.push({ scene, cam, x, y });
+      const ce = document.createElement('div'); ce.className = 'cell' + (r.ref ? ' refc' : '');
+      Object.assign(ce.style, { left: x + 'px', top: y + 'px', width: cw + 'px', height: ch + 'px' }); ov.appendChild(ce);
+    });
+  });
+  function draw() {
+    const Hh = innerHeight;
+    renderer.setScissor(0, 0, innerWidth, Hh); renderer.setViewport(0, 0, innerWidth, Hh);
+    renderer.setClearColor(0xe9efe9); renderer.clear();
+    cells.forEach(({ scene, cam, x, y }) => { const yb = Hh - y - ch; renderer.setViewport(x, yb, cw, ch); renderer.setScissor(x, yb, cw, ch); renderer.render(scene, cam); });
+  }
+  let frames = 0;
+  (function tick() { draw(); if (++frames < 3) requestAnimationFrame(tick); })();
+}
+setTimeout(start, 300);
+</script>

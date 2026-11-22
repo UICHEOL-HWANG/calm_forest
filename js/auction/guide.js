@@ -1,5 +1,6 @@
 import { planAround, nextPoint, pathLength, guideStatus, blocked } from './route.js';
 import { createFootRing, footAngle, footHintCss } from '../guide/foot-ring.js';
+import { bannerInset } from '../guide/banner-inset.js';
 
 export const GUIDE_TUNING = Object.freeze({ pad: 0.9, gap: 1.6, reach: 1.4, replan: 0.75, near: 15, edge: { side: 44, top: 104, bottom: 132 } });
 
@@ -132,7 +133,7 @@ export function createAuctionGuide(deps) {
     edgeDist.textContent = label;
   }
 
-  function drawTarget(meters, at, w, h) {
+  function drawTarget(meters, at, w, h, top) {
     setLabel(distLabel(meters));
     if (onScreen(at, w, h, 30)) {
       edge.classList.remove('show');
@@ -143,7 +144,7 @@ export function createAuctionGuide(deps) {
     }
     mark.classList.remove('show');
     const e = GUIDE_TUNING.edge;
-    const rect = { x1: e.side, y1: e.top, x2: w - e.side, y2: h - e.bottom };
+    const rect = { x1: e.side, y1: Math.max(e.top, top), x2: w - e.side, y2: h - e.bottom };
     const cx = w / 2, cy = h / 2;
     const a = angleTo(deps.spot);
     const dir = at ? { x: at.x - cx, y: at.y - cy } : { x: Math.sin(a), y: -Math.cos(a) };
@@ -171,14 +172,14 @@ export function createAuctionGuide(deps) {
     const feet = deps.project(deps.player.position, 0);
     if (!feet) { hide(); return; }
     const at = deps.project(spotAt, 1.4);
-    const w = window.innerWidth, h = window.innerHeight;
+    const w = window.innerWidth, h = window.innerHeight, top = bannerInset();
     compass.style.left = feet.x + 'px';
     compass.style.top = (feet.y - 22) + 'px';
     compass.style.display = 'block';
     foot.show(deps.player.position.x, deps.player.position.y, deps.player.position.z, footAngle(deps.player.position, point));
     ring.visible = true;
     ring.material.opacity = 0.6 + 0.3 * Math.sin(clock * 4);
-    drawTarget(pathLength(here, route), at, w, h);
+    drawTarget(pathLength(here, route), at, w, h, top);
   }
 
   return {

@@ -91,8 +91,9 @@ export function createGoalGuide(deps) {
     if (key === 'tree') {
       if (!inV) return null;
       const npcs = deps.npcSpots();
-      const clear = (t) => !t.userData.fallen && npcs.every(n => Math.hypot(n.x - t.position.x, n.z - t.position.z) >= NPC_CLEAR);
-      return { at: nearest(deps.trees(), clear) || nearest(deps.trees(), t => !t.userData.fallen), g: GOALS.tree };
+      const standing = (t) => !t.userData.fallen && !t.userData.holdsString;
+      const clear = (t) => standing(t) && npcs.every(n => Math.hypot(n.x - t.position.x, n.z - t.position.z) >= NPC_CLEAR);
+      return { at: nearest(deps.trees(), clear) || nearest(deps.trees(), standing), g: GOALS.tree };
     }
     if (key === 'cave') {
       if (inV) return { at: deps.mineGate, g: GOALS.cave, arrive: GATE_ARRIVE };

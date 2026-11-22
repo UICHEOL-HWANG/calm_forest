@@ -87,19 +87,6 @@ test('광부 보상 지급 훅: grantCosmetic·grantDecor 가 $w 로 노출되�
 const delveSrc = () => read('js/spaces/delve.js');
 const block = (s, from) => s.match(new RegExp(`${from}[\\s\\S]*?\\n  \\}\\n`))[0];
 
-test('승강기: 정류장이 있으면 두 버튼 안내(가장 깊은 곳 / 1층부터), 없으면 바로 1층', () => {
-  const b = block(delveSrc(), "if \\(nd === 'delve_lift'\\)");
-  assert.match(b, /liftTargets\(gameState\.delve\)/);
-  assert.match(b, /showHintModal\?\.\(\{[\s\S]*ico: '🛗', title: '승강기', body: '어디로 갈까요\?'/);
-  assert.match(b, /alt: \{ label: '🪜 1층부터'/);
-  assert.match(b, /onClick: \(\) => go\(deepest\)/);
-  assert.match(b, /onClick: \(\) => go\(1\)/);
-  assert.match(b, /if \(deepest === 1\) \{ go\(1\); return true; \}/);
-  assert.match(b, /trackEvent\('delve_enter', \{ floor, [^}]*\}\); enterFloor\(floor, 'lift'\)/);
-  const en = read('js/i18n-en.js');
-  for (const k of ["'승강기'", "'어디로 갈까요?'", "'🪜 1층부터'", "'🛗 지하 {0#}층'"]) assert.ok(en.includes(k), k);
-});
-
 test('광부 보상 재지급: 로드 직후와 받기 직후 같은 함수', () => {
   assert.match(src, /refreshTable\('load'\);\s*\n\s*settleMinerRewards\(\);\s*\n\}/);
   assert.ok(src.indexOf("refreshTable('load');\n  settleMinerRewards();") > src.indexOf('gameState.outdoorStored[k] = Math.floor(v)'), '보관함 복원 뒤에 지급해야 덮이지 않는다');

@@ -287,7 +287,7 @@ export function analyzeExperiment(e, today) {
     return { verdict: ['obs', '설명용'], n: Object.values(first).reduce((s, v) => s + v, 0) };
   }
   if (!r || !r.arms?.length || !r.arms.some((a) => a.n > 0)) {
-    const v = e.status === 'plan' ? ['st', '시작 전'] : e.kind === 'ext' ? ['st', '결과 입력 전'] : ['st', '결과 없음'];
+    const v = r?.running ? ['obs', '진행 중 · 판정 전'] : e.status === 'plan' ? ['st', '시작 전'] : e.kind === 'ext' ? ['st', '결과 입력 전'] : ['st', '결과 없음'];
     return { verdict: v, n: 0 };
   }
   const [tk, ck] = r.compare || [r.arms[0].key, r.arms[1].key];
@@ -312,6 +312,7 @@ export function analyzeExperiment(e, today) {
 
   let verdict;
   if (e.kind === 'policy') verdict = ['obs', '인과 판정 안 함'];
+  else if (r.running) verdict = s != null && s < 0.01 ? ['lose', '배정 어긋남 · 판정 보류'] : ['obs', '진행 중 · 판정 전'];
   else if (e.confound) verdict = ['conf', '교란 주의'];
   else if (s != null && s < 0.01) verdict = ['lose', '배정 어긋남 · 판정 보류'];
   else if (e.decide_after && String(today) < String(e.decide_after)) verdict = ['obs', `관측 대기 · ${mmdd(e.decide_after)}`];
@@ -332,4 +333,47 @@ export function houseStageLabel(r) {
   if (!r.stage) return '없음';
   const name = (r.stage === 7 && HOUSE7_STYLES[r.style]?.name) || HOUSE_STAGE_NAMES[r.stage];
   return name ? `${r.stage} ${name}` : `${r.stage}단계`;
+}
+
+export function activeKpis(series, today) {
+  const done = (series || []).filter((r) => String(r.d) < String(today));
+  const n = done.length;
+  if (!n) return null;
+  const at = (i) => done[n - 1 - i];
+  const avg = (from, to) => {
+    const xs = done.slice(Math.max(0, n - to), n - from);
+    return xs.length ? xs.reduce((s, r) => s + r.dau, 0) / xs.length : null;
+  };
+  const stick = (a, m) => (a != null && m ? (a / m) * 100 : null);
+  const last = at(0);
+  return {
+    day: last.d,
+    dau: avg(0, 7), dauPrev: n >= 14 ? avg(7, 14) : null,
+    wau: last.wau, wauPrev: at(7)?.wau ?? null,
+    mau: last.mau, mauPrev: at(30)?.mau ?? null,
+    stick: stick(avg(0, 30), last.mau), stickPrev: n >= 60 ? stick(avg(30, 60), at(30)?.mau) : null,
+  };
+}
+
+export function activeDailyRows(series, today, k = 14) {
+  return (series || []).filter((r) => String(r.d) < String(today)).slice(-k).reverse()
+    .map((r) => ({ ...r, ret: r.dau - r.new, stick: r.mau ? (r.dau / r.mau) * 100 : null }));
+}
+
+export function experimentSpan(e, today) {
+  const w = e.result?.window || {};
+  const t = String(today);
+  const found = [...String(e.period || '').matchAll(/(\d{1,2})\/(\d{1,2})/g)]
+    .filter((m) => +m[1] >= 1 && +m[1] <= 12 && +m[2] >= 1 && +m[2] <= 31)
+    .map((m) => `${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}`);
+  const open = /진행 중/.test(e.period) || !found[1];
+  const year = +(w.from ? String(w.from) : t).slice(0, 4);
+  const start = w.from ? String(w.from).slice(0, 10) : found[0] ? `${year}-${found[0]}` : null;
+  if (!start) return null;
+  const from = !w.from && open && start > t ? `${year - 1}-${found[0]}` : start;
+  if (w.to) return { from, to: String(w.to).slice(0, 10) };
+  if (open) return { from, to: t };
+  const fy = +from.slice(0, 4);
+  const to = `${fy}-${found[1]}`;
+  return { from, to: to < from ? `${fy + 1}-${found[1]}` : to };
 }

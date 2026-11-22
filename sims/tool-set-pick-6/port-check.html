@@ -1,0 +1,141 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>도구 세트 이식 검수 6</title>
+<style>
+  html,body{margin:0;background:#dfe8e2;font-family:-apple-system,"Apple SD Gothic Neo",sans-serif;color:#2f3a2c}
+  canvas{display:block}
+  #ov{position:absolute;inset:0;pointer-events:none}
+  .lb{position:absolute;font-size:13px;font-weight:700;background:rgba(255,255,255,.85);padding:2px 7px;border-radius:6px;white-space:pre}
+  #out{position:absolute;left:8px;right:8px;bottom:6px;margin:0;background:rgba(255,255,255,.92);padding:6px 10px;border-radius:8px;font-size:11px;white-space:pre}
+</style>
+<div id="ov"></div><pre id="out"></pre>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { extraKit } from '../../js/cosmetics/tool-skins-extra-kit.js';
+import { simKit, portThemes, buildUmbrellaSim } from './tool-art.mjs';
+import { SKIN_TOOLS } from '../../js/cosmetics/tool-skin-rules.js';
+import { ARM_AIM_R, ARM_AIM_L, TOOL_QREST_HOLD, TOOL_GRIP } from '../../js/data/character.js';
+import { gripForwardZ } from '../../js/data/grip.js';
+import { buildAnimalHead, plushMat } from '../../js/animal-faces.js';
+
+const QS = new URLSearchParams(location.search), SET = QS.get('set') === 'sunflower' ? 'sunflower' : 'watermelon', REC = QS.get('rec') || 'A';
+const W = 1600, H = 1500, TOP = 930, PH = 270;
+const r = new THREE.WebGLRenderer({ antialias: true }); r.setPixelRatio(devicePixelRatio); r.setSize(W, H); r.setScissorTest(true); document.body.prepend(r.domElement);
+const ov = document.getElementById('ov');
+const label = (t, x, y) => { const d = document.createElement('div'); d.className = 'lb'; d.textContent = t; d.style.left = x + 'px'; d.style.top = y + 'px'; ov.appendChild(d); };
+function lit(sc, bg = 0xdfe8e2) {
+  sc.background = new THREE.Color(bg);
+  sc.add(new THREE.HemisphereLight(0xe6f2ff, 0x8a9a7a, 1.6));
+  const sun = new THREE.DirectionalLight(0xfff1dc, 2.0); sun.position.set(3, 6, 4); sc.add(sun);
+}
+const THEMES = ['A', 'B', 'C'].map(l => SET + l);
+const SK = simKit(THREE), SX = extraKit(THREE, SK), PORT = portThemes(THREE, SK, SX);
+const build = (th, id) => { const g = new THREE.Group(); PORT[th][id](g); return g; };
+const buildUmbrella = (_, th) => buildUmbrellaSim(THREE, SK, SX, th);
+const views = [], report = [];
+
+const toolSc = new THREE.Scene(); lit(toolSc);
+THEMES.forEach((th, row) => {
+  SKIN_TOOLS.forEach((id, c) => {
+    const m = build(th, id);
+    let nv = 0; m.traverse(o => { if (o.isMesh) nv += o.geometry.attributes.position.count; }); report.push(`정점 ${th}.${id} ${nv}`);
+    m.position.set((c - 4.5) * 0.66, (1 - row) * 1.5 - 0.25, 0); m.rotation.y = 0.35; toolSc.add(m);
+  });
+  const u = buildUmbrella(THREE, th); { let nv = 0; u.traverse(o => { if (o.isMesh) nv += o.geometry.attributes.position.count; }); report.push(`정점 ${th}.umbrella ${nv}`); } u.scale.setScalar(0.42); u.position.set(5.25 * 0.66, (1 - row) * 1.5 - 0.65, 0); toolSc.add(u);
+});
+const toolCam = new THREE.PerspectiveCamera(26, W / TOP, 0.1, 100); toolCam.position.set(0.15, 0.25, 10.6); toolCam.lookAt(0.15, 0.15, 0); toolCam.updateMatrixWorld(); toolCam.updateProjectionMatrix();
+views.push({ sc: toolSc, cam: toolCam, x: 0, y: 0, w: W, h: TOP });
+const sx = x => (new THREE.Vector3(x, 1.95, 0).project(toolCam).x * 0.5 + 0.5) * W - 20;
+SKIN_TOOLS.forEach((id, c) => label(id, sx((c - 4.5) * 0.66), 8));
+label('umbrella', sx(5.25 * 0.66), 8);
+THEMES.forEach((th, row) => label(th, 8, 40 + row * 300));
+
+const ANIMALS = {
+  bear: { id: 'bear', body: 0x936a44, belly: 0xd2b38a, ear: 0x6a4828, bodyR: .63, bs: [1.08, 1.00, 1.06], headR: .44, headY: 1.34 },
+  rabbit: { id: 'rabbit', body: 0xf3eeea, belly: 0xffffff, ear: 0xf0c0c8, bodyR: .46, bs: [1.00, .96, 1.00], headR: .39, headY: 1.12 },
+  cat: { id: 'cat', body: 0x9fa0c2, belly: 0xf2f2f8, ear: 0xf0b0b8, bodyR: .50, bs: [.88, 1.10, .88], headR: .36, headY: 1.25 },
+};
+const clay = c => new THREE.MeshStandardMaterial({ color: c, roughness: .95 });
+function rig(a, theme, toolId) {
+  const R = a.bodyR, bs = a.bs, bodyY = R * bs[1] + .02, root = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.SphereGeometry(R, 32, 24), plushMat(a.body)); body.position.y = bodyY; body.scale.set(...bs); root.add(body);
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(R * .62, 24, 18), plushMat(a.belly)); belly.position.set(0, bodyY - R * .16, R * .55); belly.scale.set(1, 1.1, .6); root.add(belly);
+  root.add(buildAnimalHead(a.id, { HR: a.headR, HY: a.headY, body: a.body, belly: a.belly }));
+  const ar = R * .23, al = R * .32, arms = {};
+  [1, -1].forEach(side => {
+    const pivot = new THREE.Group(); pivot.position.set(side * R * .85 * bs[0], bodyY + R * .54, R * .20); root.add(pivot);
+    const aim = new THREE.Group(); aim.quaternion.copy(side > 0 ? ARM_AIM_R : ARM_AIM_L); pivot.add(aim);
+    const upper = new THREE.Mesh(new THREE.CapsuleGeometry(ar, al, 4, 8), plushMat(a.body)); upper.position.y = -(al / 2 + ar * .4); aim.add(upper);
+    const paw = new THREE.Mesh(new THREE.SphereGeometry(ar * 1.06, 12, 10), clay(a.ear)); paw.position.y = -(al + ar * .9); aim.add(paw);
+    const hand = new THREE.Group(); hand.position.y = -(al + ar * .9); aim.add(hand);
+    arms[side] = { aim, upper, paw, hand };
+  });
+  const grip = TOOL_GRIP[toolId], gripG = new THREE.Group(); gripG.quaternion.copy(TOOL_QREST_HOLD); arms[1].hand.add(gripG);
+  const off = new THREE.Group(); off.position.copy(grip.p); if (grip.pawRel) off.position.z = gripForwardZ(R); off.quaternion.copy(grip.q); gripG.add(off);
+  const tool = build(theme, toolId); off.add(tool);
+  return { root, tool, arm: arms[1], ar, al };
+}
+const _v = new THREE.Vector3(), _a = new THREE.Vector3(), _b = new THREE.Vector3(), _c = new THREE.Vector3(), _l = new THREE.Vector3();
+function clash(k, parts) {
+  k.root.updateMatrixWorld(true);
+  const pawC = k.arm.paw.getWorldPosition(new THREE.Vector3()), pawR = k.ar * 1.06;
+  k.arm.upper.localToWorld(_a.set(0, -k.al / 2, 0)); k.arm.upper.localToWorld(_b.set(0, k.al / 2, 0));
+  const ab = _b.clone().sub(_a), abL2 = ab.lengthSq();
+  let n = 0;
+  k.tool.traverse(o => {
+    if (!o.isMesh) return;
+    const pos = o.geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      _l.fromBufferAttribute(pos, i);
+      if (Math.hypot(_l.x, _l.z) < 0.05) continue;
+      _v.copy(_l).applyMatrix4(o.matrixWorld);
+      const t = Math.max(0, Math.min(1, _c.copy(_v).sub(_a).dot(ab) / abL2));
+      if (_v.distanceTo(pawC) < pawR || _c.copy(_a).addScaledVector(ab, t).distanceTo(_v) < k.ar) { n++; if (parts) { const key = `${o.geometry.type.replace('Geometry', '')}@${o.getWorldPosition(new THREE.Vector3()).sub(k.tool.getWorldPosition(new THREE.Vector3())).toArray().map(v => v.toFixed(2)).join(',')}`; parts[key] = (parts[key] || 0) + 1; } }
+    }
+  });
+  return n;
+}
+for (const an of Object.keys(ANIMALS)) for (const th of THEMES) {
+  report.push(`관통 ${an}.${th}: ` + SKIN_TOOLS.map(id => `${id}=${clash(rig(ANIMALS[an], th, id))}`).join(' '));
+}
+for (const th of THEMES) {
+  const parts = {}; clash(rig(ANIMALS.cat, th, 'water'), parts);
+  report.push(`부위 cat.${th}.water: ` + Object.entries(parts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k, v]) => `${k}=${v}`).join(' '));
+}
+
+const RT = SET + REC, NM = SET === 'watermelon' ? '수박' : '해바라기';
+const PANELS = [
+  ['bear', RT, 'axe', 0.55, `곰 · ${NM} ${REC} 도끼`],
+  ['rabbit', RT, 'hoe', 0.55, `토끼 · ${NM} ${REC} 괭이`],
+  ['cat', RT, 'water', 0.9, `고양이 · ${NM} ${REC} 물조리개`],
+];
+const pw = W / 4, ph = PH;
+PANELS.forEach(([an, th, id, az, t], i) => {
+  const sc = new THREE.Scene(); lit(sc);
+  const k = rig(ANIMALS[an], th, id); sc.add(k.root); k.root.updateMatrixWorld(true);
+  const hp = k.arm.hand.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 0.15, 0));
+  const cam = new THREE.PerspectiveCamera(30, pw / ph, 0.05, 50), d = 1.5;
+  cam.position.set(hp.x + Math.sin(az) * d, hp.y + 0.35, hp.z + Math.cos(az) * d); cam.lookAt(hp);
+  const col = i % 3, row = Math.floor(i / 3), x = col * pw, y = TOP + row * ph;
+  views.push({ sc, cam, x, y, w: pw, h: ph });
+  label(`${t}  관통 ${clash(k)}`, x + 6, y + 6);
+});
+{
+  const sc = new THREE.Scene(); lit(sc, 0xb9d3a6);
+  const g = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshStandardMaterial({ color: 0x9cc27a })); g.rotation.x = -Math.PI / 2; sc.add(g);
+  [['bear', RT, 'axe', -1.5], ['cat', RT, 'water', 0], ['rabbit', RT, 'hoe', 1.5]].forEach(([an, th, id, x]) => { const k = rig(ANIMALS[an], th, id); k.root.position.x = x; k.root.rotation.y = 0.5; sc.add(k.root); });
+  const cam = new THREE.PerspectiveCamera(40, pw / ph, 0.1, 100); cam.position.set(0, 6.2, 8.5); cam.lookAt(0, 0.7, 0);
+  views.push({ sc, cam, x: 3 * pw, y: TOP, w: pw, h: ph });
+  label('게임 거리(근사)', 3 * pw + 6, TOP + 6);
+}
+document.getElementById('out').textContent = report.filter(s => s.startsWith('관통') || s.startsWith('부위')).join('\n') + '\n' + report.filter(s => s.startsWith('정점')).join(' · ').replace(/(.{150,}?) · /g, '$1\n');
+window.__report = report;
+let frames = 0;
+function frame() {
+  for (const v of views) { r.setViewport(v.x, H - v.y - v.h, v.w, v.h); r.setScissor(v.x, H - v.y - v.h, v.w, v.h); r.render(v.sc, v.cam); }
+  if (++frames < 3) requestAnimationFrame(frame);
+}
+frame();
+document.title = 'done';
+</script>
