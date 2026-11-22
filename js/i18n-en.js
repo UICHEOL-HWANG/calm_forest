@@ -3044,7 +3044,7 @@ export const EN = {
   '오늘의 꾸미기예요': "It's today's pick", '{0} 광고 보고 반값에 할인받기': '{0}: watch an ad for half off', '언제든 살 수 있어요': 'Buy any time',
   '{0#}일 뒤': 'In {0} days', '{0#}주 뒤': 'In {0} weeks', '{0#}달 뒤': 'In {0} months', '다시 오는 날': 'Comes back', '완성': 'Complete',
   '겨울 준비': 'Winter prep', '숲속 친구': 'Forest friends', '크리스마스': 'Christmas', '바닷가': 'Seaside', '디저트 카페': 'Dessert café', '설날': 'Lunar New Year',
-  '캠핑': 'Camping', '찻집': 'Tea house', '아틀리에': 'Atelier', '음악회': 'Concert', '여름밤 축제': 'Summer night festival', '숲속 책방': 'Forest bookshop', '뜨개 공방': 'Knitting workshop', '도구 세트': 'Tool sets',
+  '캠핑': 'Camping', '찻집': 'Tea house', '아틀리에': 'Atelier', '음악회': 'Concert', '여름밤 축제': 'Summer night festival', '숲속 책방': 'Forest bookshop', '뜨개 공방': 'Knitting workshop', '기차 여행': 'Train trip', '도구 세트': 'Tool sets',
   //   👣 발자국 → ✨ 이펙트 (2026-09-23) — 상품은 그대로고 **분류 이름만** 바뀌었다
   '🎩 머리': '🎩 Head', '🧣 목': '🧣 Neck', '✨ 이펙트': '✨ Effects',
   //   🧥 전신 스킨(2026-10-01 2단계) — 상품명·설명·연출 카드는 통문장
@@ -3674,6 +3674,13 @@ export const EN = {
   '금빛 동그란 안경': 'Golden Round Glasses', '리본 책갈피 목걸이': 'Ribbon Bookmark Necklace', '책 더미 배낭': 'Book Stack Backpack', '종이 나비 발자국': 'Paper Moth Steps',
   '부엉이 세트': 'Owl Set', '고슴도치 세트': 'Hedgehog Set',
   '키 큰 호두나무 책장': 'Tall Walnut Bookshelf', '휘어진 독서 등': 'Curved Reading Lamp', '자줏빛 날개 의자': 'Plum Wingback Chair', '세 다리 바닥 지구본': 'Three-Legged Floor Globe',
+  '숲색 차장 모자': 'Forest Green Conductor Cap', '승차권 목걸이': 'Train Ticket Necklace', '자줏빛 여행 가방': 'Plum Travel Suitcase', '뭉게 증기 발자국': 'Puffy Steam Steps',
+  '눈토끼 세트': 'Snow Bunny Set', '군고구마 세트': 'Roasted Sweet Potato Set',
+  '무쇠 다리 역 벤치': 'Iron-Leg Station Bench', '둥근 뚜껑 여행 트렁크': 'Domed Travel Trunk', '타원 철길 꼬마 기차': 'Oval Track Toy Train', '역 기둥 시계': 'Station Post Clock',
+  '숲색 무쇠 다리에 호두나무 살을 얹고 등받이에 놋쇠 이름판을 달았어요': 'Walnut slats on forest green iron legs with a brass name plate on the back',
+  '자줏빛 트렁크에 호두나무 띠를 두르고 놋쇠 모서리와 자물쇠를 달았어요': 'A plum trunk wrapped in walnut bands with brass corners and a lock',
+  '놋쇠 레일 타원 철길 위로 숲색 기관차가 자줏빛 객차를 끌어요': 'A forest green engine pulls a plum carriage around an oval brass track',
+  '놋쇠 띠를 두른 숲색 기둥 위에 둥근 양면 시계와 놋쇠 꼭지를 얹었어요': 'A round two-faced clock with a brass finial on a brass-banded forest green post',
   '꽈배기 방울 털모자': 'Cable Pom-Pom Beanie', '꽈배기 밧줄 목도리': 'Twisted Rope Scarf', '털실 바구니 배낭': 'Yarn Basket Backpack', '털실 공 발자국': 'Yarn Ball Steps',
   '살대 흔들의자': 'Spindle Rocking Chair', '등나무 털실 바구니': 'Wicker Yarn Basket', '땋은 타원 러그': 'Braided Oval Rug', '방울꽃 뜨개 화분': 'Pom-Pom Flower Knit Pot',
   '나무 살대 등받이에 크림 골지 방석을 깔고 장미·겨자 줄무늬 담요를 걸쳤어요': 'A spindle-back wooden rocker with a ribbed cream cushion and a rose and mustard striped blanket',
