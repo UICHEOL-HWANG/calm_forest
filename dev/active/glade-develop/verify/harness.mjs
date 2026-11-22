@@ -20,7 +20,7 @@ export async function open(devName, cdpPort) {
     for (let i = 0; i < n; i++) {
       const hit = await ev(`(() => { for (const id of ${JSON.stringify(DISMISS)}) { const e=document.getElementById(id); if (e && e.offsetParent) { e.click(); return id; } }
         const c=[...document.querySelectorAll('#spot-layer .sp-next, #spot-layer .sp-skip, #coach button')].find(x=>x.offsetParent); if (c) { c.click(); return 'coach'; }
-        const t=[...document.querySelectorAll('button')].find(x=>x.offsetParent && /^(건너뛰기|알겠어요|닫기|확인)/.test(x.textContent.trim())); if (t) { t.click(); return 'btn'; } return null; })()`);
+        const t=[...document.querySelectorAll('button')].find(x=>x.offsetParent && /^(건너뛰기|알겠어요|닫기|확인|Skip|Got it|Close|OK)/.test(x.textContent.trim())); if (t) { t.click(); return 'btn'; } return null; })()`);
       if (!hit && i > 2) break;
       await b.sleep(1300);
     }
