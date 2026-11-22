@@ -2188,7 +2188,7 @@ function buyDailyPick(shown) {
   gameState.inventory.coins -= price;
   logEcon('daily_pick', 'coins', -price, gameState.inventory.coins);
   trackEvent('daily_pick_buy', { item_id: pick.id, half: half ? 1 : 0, price_coins: price, coins_after: gameState.inventory.coins, is_today: today ? 1 : 0 });
-  if (pick.kind === 'decor') ui.toast?.('보관함에 넣었어요 — 작업대 장식 탭에서 꺼내 놓아요 🧺', 2600);
+  if (pick.kind === 'decor') ui.toast?.('보관함에 넣었어요. 작업대 장식 탭에서 꺼내 놓아요 🧺', 2600);
   refreshInventoryUI();
   requestSave();
   return { ok: true };

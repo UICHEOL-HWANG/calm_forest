@@ -37,7 +37,7 @@ test('익명(게스트) 기부 거절 문구 login — auth 와 같은 안내', 
 test('게이트 D 확정 문구 — 좌판·명판·환전(전부 A안)', () => {
   assert.deepEqual(PLAZA_COPY.stall, {
     title: '🍂 수확제 좌판', sub: '가진 단풍잎 🍂{0}', buy: '🍂{0} 사기',
-    bought: '보관함에 넣었어요 — 작업대 장식 탭에서 꺼내 놓아요 🧺',
+    bought: '보관함에 넣었어요. 작업대 장식 탭에서 꺼내 놓아요 🧺',
     leaf: '단풍잎이 모자라요 — 광장에 보태면 🍂 을 받아요', item: '지금은 팔지 않아요',
   });
   assert.deepEqual(PLAZA_COPY.plaque, {

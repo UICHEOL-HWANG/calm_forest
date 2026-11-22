@@ -390,7 +390,7 @@ export const EN = {
   //   좌판·명판·환전(게이트 D 확정, 2026-09-27)
   '가진 단풍잎 🍂{0}': 'Maple leaves: 🍂{0}',
   '🍂{0} 사기': 'Buy 🍂{0}',
-  '보관함에 넣었어요 — 작업대 장식 탭에서 꺼내 놓아요 🧺': 'Added to storage — place it from the workbench Decor tab 🧺',
+  '보관함에 넣었어요. 작업대 장식 탭에서 꺼내 놓아요 🧺': 'Added to storage. Place it from the workbench Decor tab 🧺',
   '단풍잎이 모자라요 — 광장에 보태면 🍂 을 받아요': 'Not enough maple leaves — chip in to the plaza to earn 🍂',
   '지금은 팔지 않아요': 'Not for sale right now',
   '🌾 광장 명판': '🌾 Plaza Plaque',
