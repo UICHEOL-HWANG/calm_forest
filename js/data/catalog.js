@@ -161,6 +161,9 @@ export const DECOR = [
   { id: 'kn_yarn_basket', name: '등나무 털실 바구니', ico: '🧶', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.5, 0.5], desc: '둥근 등나무 바구니에 털실 다섯 뭉치를 담고 대바늘 둘을 꽂았어요' },
   { id: 'kn_patch_rug', name: '땋은 타원 러그', ico: '🟠', cost: 0, pay: 'coins', hidden: true, keep: true, desc: '장미·겨자·크림·세이지 땋은 줄을 둥글게 감아 만든 러그예요' },
   { id: 'kn_knit_pot', name: '방울꽃 뜨개 화분', ico: '🌼', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.45, 0.45], desc: '장미·크림 줄무늬 뜨개 옷을 입은 화분에 방울 꽃 다섯 송이가 피었어요' },
+  { id: 'tr_station_bench', name: '무쇠 다리 역 벤치', ico: '🪑', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [1.25, 0.55], desc: '숲색 무쇠 다리에 호두나무 살을 얹고 등받이에 놋쇠 이름판을 달았어요' },
+  { id: 'tr_trunk', name: '둥근 뚜껑 여행 트렁크', ico: '🧳', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [0.85, 0.5], desc: '자줏빛 트렁크에 호두나무 띠를 두르고 놋쇠 모서리와 자물쇠를 달았어요' },
+  { id: 'tr_mini_train', name: '타원 철길 꼬마 기차', ico: '🚂', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [1.0, 0.65], desc: '놋쇠 레일 타원 철길 위로 숲색 기관차가 자줏빛 객차를 끌어요' },
   { id: 'ns_moon_sofa', name: '구름 위 달 소파', ico: '🌙', cost: 0, pay: 'coins', hidden: true, keep: true, foot: [1.35, 0.75], desc: '연보라 구름 방석 뒤로 초승달 등받이를 세웠어요' },
   ...AFF_FRAMES,
 ];
@@ -338,6 +341,7 @@ export const OUTDOOR = [
   { id: 'sf_shaved_ice_stand', name: '줄무늬 차양 빙수 가게', ico: '🍧', cost: { coins: 9999 }, desc: '빨강·크림 줄무늬 차양 아래 빙수 기계와 빙수 셋을 놓고 등롱 하나를 걸었어요', hidden: true, quest: true, box: [1.4, 0.9] },
   { id: 'sf_festival_stall', name: '금붕어 뜨기 노점', ico: '🎏', cost: { coins: 9999 }, desc: '줄무늬 지붕 아래 긴 물통에 금붕어가 헤엄치고 종이 뜰채와 등롱 셋이 걸렸어요', hidden: true, quest: true, box: [1.8, 1.1] },
   { id: 'ns_starlight_arch', name: '별 전구 아치', ico: '🌠', cost: { coins: 9999 }, desc: '반원 철사에 별 전구를 달고 꼭대기에 큰 금별을 얹었어요', hidden: true, quest: true, box: [2.0, 0.4], posts: [[-0.9, 0, 0.15], [0.9, 0, 0.15]] },
+  { id: 'tr_station_clock', name: '역 기둥 시계', ico: '🕰️', cost: { coins: 9999 }, desc: '놋쇠 띠를 두른 숲색 기둥 위에 둥근 양면 시계와 놋쇠 꼭지를 얹었어요', hidden: true, quest: true, box: [0.6, 0.6], posts: [[0, 0, 0.2]] },
   ...AFF_OUTDOOR,
   ...REWARD_DECOR,   // 🤝 친구 초대 보상 장식(js/data/reward-decor.js) — 원장이 보관함에 넣어 준다 · 서버 가드 대상
   { id: 'mine_cart', name: '광산 수레', ico: '🛒', cost: { coins: 9999 }, desc: '광부 아저씨가 준 수레 · 지하 20층 도달 보상', hidden: true, quest: 'delve' },
