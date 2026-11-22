@@ -9,7 +9,7 @@ export const TR = Object.freeze({
   brass: 0xc99a48, brassDk: 0x9c7434,
   walnut: 0x6e4a32, walnutDk: 0x4e3424,
   cream: 0xe4d6b4, creamDk: 0xc8b48e,
-  steam: 0xd2d6d8, steamDk: 0x94a2a8,
+  steam: 0xd2d6d8, steamDk: 0xaebcc2,
   ink: 0x3a3230,
 });
 

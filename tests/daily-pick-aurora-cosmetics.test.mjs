@@ -62,7 +62,7 @@ test('aurora trail is one unlit two-sided curtain mesh that stands up', () => {
   assert.equal(geo.attributes.color.itemSize, 4);
   assert.ok(box.max.y > 0.1 && box.min.y >= 0, `${box.min.y} ${box.max.y}`);
   assert.ok(geo.attributes.position.count >= 2 * 3 * 2 * 20 * 2, String(geo.attributes.position.count));
-  assert.equal(markMaterial(THREE, 'tr_steam_trail', 1).type, 'MeshStandardMaterial');
+  assert.equal(markMaterial(THREE, 'tr_steam_trail', 1).type, 'MeshBasicMaterial');
 });
 
 test('aurora pick colors stay under bloom threshold', () => {

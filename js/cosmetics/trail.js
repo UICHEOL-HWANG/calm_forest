@@ -288,7 +288,7 @@ export function mergeGeos(THREE, geos) {
 //  🎃 조명 없이(MeshBasicMaterial) 굽는 자국 — 스스로 빛나는 등불은 밤에 어두워지면 안 된다
 //     (시안 lanternCell 도 unlit). 색은 시안 낮 값(pumpkinGeo(false)) 그대로 — 밤 빛은 trail-fx.js 의 온기 입자가 더한다.
 //     나머지 자국은 지금처럼 조명 받는 재질이다.
-export const TRAIL_UNLIT = Object.freeze(new Set(['pumpkin_glow', 'au_aurora_trail']));
+export const TRAIL_UNLIT = Object.freeze(new Set(['pumpkin_glow', 'au_aurora_trail', 'tr_steam_trail']));
 
 /** 자국 하나의 재질 — 자국마다 새로 만든다(공유 아님: 페이드·무지개 색을 자국마다 따로 움직인다) */
 export function markMaterial(THREE, itemId, opacity) {
