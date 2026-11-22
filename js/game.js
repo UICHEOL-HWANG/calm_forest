@@ -1989,7 +1989,7 @@ export function projectToScreen(pos, lift = 0) {
 let spotTool = SPOT_IDLE;
 function nearestTreeDist() {
   let d = Infinity;
-  for (const tree of trees) { if (tree.userData.fallen) continue; const e = dist2D(tree.position, player.position); if (e < d) d = e; }
+  for (const tree of trees) { if (tree.userData.fallen || tree.userData.holdsString) continue; const e = dist2D(tree.position, player.position); if (e < d) d = e; }
   return d;
 }
 function updateSpotToolAuto() {
@@ -8144,7 +8144,7 @@ function handleAction() {
   if (fg) {
     let treeD = Infinity;
     if (TOOLS[currentTool].id === 'axe') {
-      for (const tr of trees) if (!tr.userData.fallen) treeD = Math.min(treeD, dist2D(tr.position, player.position));
+      for (const tr of trees) if (!tr.userData.fallen && !tr.userData.holdsString) treeD = Math.min(treeD, dist2D(tr.position, player.position));
     }
     if (treeD >= fg.d) return tryForage(fg.node);
   }

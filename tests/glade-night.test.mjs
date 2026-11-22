@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { MONO_SHARE, NIGHT_KINDS, TUNE, monoKind, nightKind, pickKindId, streamPoint } from '../js/glade/night.js';
+import { MONO_SHARE, NIGHT_KINDS, STREAM, TUNE, monoKind, nightKind, pickKindId, poolGlow, streamPoint } from '../js/glade/night.js';
 
 const days = Array.from({ length: 365 }, (_, i) => new Date(Date.UTC(2026, 10, 22 + i)).toISOString().slice(0, 10));
 
@@ -59,4 +59,23 @@ test('streamPoint stays inside the radius', () => {
     const p = streamPoint(u, 6);
     assert.ok(Math.hypot(p.x, p.z) <= 6);
   }
+});
+
+test('a stream keeps its fireflies on a short stretch of the loop', () => {
+  const arc = (a, b) => {
+    let len = 0, p = streamPoint(a, 6.2);
+    for (let i = 1; i <= 200; i++) { const q = streamPoint(a + ((b - a) * i) / 200, 6.2); len += Math.hypot(q.x - p.x, q.z - p.z); p = q; }
+    return len;
+  };
+  const loop = arc(0, Math.PI * 2);
+  for (let phase = 0; phase < 7; phase += 0.25) assert.ok(arc(phase - STREAM.window, phase) / loop < 0.3);
+  assert.ok(STREAM.speed > 0 && STREAM.ahead > 0);
+});
+
+test('poolGlow is strongest for low bright fireflies and gone for high ones', () => {
+  assert.ok(poolGlow(0.6, 1).k > poolGlow(1.6, 1).k);
+  assert.ok(poolGlow(0.6, 1).k > poolGlow(0.6, 0).k);
+  assert.ok(poolGlow(0.6, 1).r > poolGlow(1.6, 1).r);
+  assert.equal(poolGlow(2.8, 1).k, 0);
+  for (const y of [0, 0.5, 1, 2, 3]) for (const b of [0, 0.5, 1]) { const g = poolGlow(y, b); assert.ok(g.k >= 0 && g.k <= 1 && g.r > 0); }
 });
