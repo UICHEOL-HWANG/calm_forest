@@ -26,5 +26,5 @@
 - [x] 5 문구·영어·배지 glade_ring
 - [x] 6 오늘 밤의 빛 연결. 캡처 `sims/glade-develop/impl/pc-gnight_*`. 캡처 도구는 돌아온 플레이어 흉내(tutorialSeen·팁 건너뛰기·모달 닫기)를 넣어야 배너가 뜬다(새 게스트는 첫 안내 중이라 배너를 일부러 미룸)
 - [x] 7 병등 줄. 캡처 `impl/{pc,phone}-*gcaught*`, 드로우콜 +7~10
-- [ ] 8 무리
+- [x] 8 무리. 캡처 `impl/{pc,phone}-gnight_plain_gswarm_1.png`. 잡는 흐름은 CDP로 직접 휘둘러 확인: 꼬마 남았을 때 큰 반디 안 잡힘, 차례대로면 꼬마 4 + 큰 반디 4(덤 2) = 8, 순서 틀리면 6
 - [ ] 9 전체 확인·리뷰·기록

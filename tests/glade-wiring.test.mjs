@@ -27,3 +27,18 @@ test('string progress is saved only inside hintsSeen', () => {
   assert.match(src, /gladeCaught: r\.caught, gladeSeg: r\.seg, gladeString: r\.string/);
   assert.doesNotMatch(src, /gameState\.glade/);
 });
+
+test('glade runs the swarm and reports how it ended', () => {
+  assert.match(src, /from '\.\.\/glade\/swarm\.js'/);
+  assert.match(src, /from '\.\.\/glade\/swarm-art\.js'/);
+  assert.match(src, /trackEvent\('firefly_swarm', \{ result, combo: swarm\.combo, caught: swarm\.caught, mode: nightNow\(\)\.kind \}\)/);
+  assert.match(src, /gladeSwarmSeen/);
+});
+
+test('regular fireflies pause while a swarm is out', () => {
+  assert.match(src, /gladeBugs\.length < GLADE_MAX && !swarm/);
+});
+
+test('new events stay within five parameters', () => {
+  for (const m of src.matchAll(/trackEvent\('(glade_string|firefly_swarm)', \{([^}]*)\}/g)) assert.ok(m[2].split(',').length <= 5, m[1]);
+});

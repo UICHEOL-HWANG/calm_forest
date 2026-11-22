@@ -18,7 +18,9 @@ import { PAL } from '../data/world.js';
 import { NIGHT_MIN } from '../daynight.js';
 import { gateOf, gateOpen, rollKind } from '../dex-gates.js';
 import { NIGHT_KINDS, TUNE, monoKind, nightKind, pickKindId, streamPoint } from '../glade/night.js';
-import { MONO_BANNER, NIGHT_BANNER, stringBanner } from '../glade/copy.js';
+import { MONO_BANNER, NIGHT_BANNER, SWARM_BANNER, catchText, comboText, perfectText, stringBanner } from '../glade/copy.js';
+import { FIRST_DELAY, KIDS, LEADER_BUGS, NEXT_DELAY, PERFECT_BONUS, createSwarm, delay, expired, kidBright, kidsLeft, swingKid, swingLeader } from '../glade/swarm.js';
+import { makeLeader, setLeaderGlow } from '../glade/swarm-art.js';
 import { JARS_PER_SEG, SEG_COINS, THRESHOLDS, addCatch, nextThreshold, segmentsLit, stringColors } from '../glade/string.js';
 import { layoutAnchors } from '../glade/string-layout.js';
 import { buildString, refreshString } from '../glade/string-art.js';
@@ -74,6 +76,114 @@ function noteCatch(kind) {
   trackEvent('glade_string', { step: r.lit, total: r.caught });
   sparkleSegment(r.lit - 1);
   requestSave();
+}
+
+let swarm = null, swarmObjs = null, swarmAt = 0, swarmBoost = 0;
+const swarmPath = (u) => ({ x: 2.6 * Math.sin(u), y: 1.5 + 0.28 * Math.sin(2 * u), z: 1.6 * Math.cos(u) });
+const leaderBright = (t) => (kidsLeft(swarm) ? 0 : 0.5 + 0.5 * Math.sin(t * 2.6));
+
+function catchBugs(kind, bugs, wx, wz, text) {
+  gameState.inventory.bug = (gameState.inventory.bug || 0) + bugs;
+  refreshInventoryUI();
+  Sound.harvest();
+  spawnFloatText(wx, 1.4, wz, text, '#c98a2a');
+  spawnSparkle(wx, 1.2, wz, kind.id === 'yellow' ? 12 : 20);
+  for (let i = 0; i < bugs; i++) { questEvent('catch'); noteCatch(kind); }
+  dexDiscover('bug', kind.id);
+  if (kind.id === 'rainbow') tryUnlockDrop(0.5);
+  trackEvent('firefly_catch', { kind: kind.id, weather: WEATHER, night: Math.round(nightLevel * 100), mode: nightNow().kind });
+  onPlay('firefly');
+}
+
+function endSwarm(t, result) {
+  if (!swarm) return;
+  trackEvent('firefly_swarm', { result, combo: swarm.combo, caught: swarm.caught, mode: nightNow().kind });
+  for (const o of [swarmObjs.leader, ...swarmObjs.kids]) gladeGroup.remove(o);
+  swarm = null; swarmObjs = null;
+  swarmAt = t + delay(NEXT_DELAY, Math.random);
+}
+
+function startSwarm(t) {
+  const kind = rollBugKind();
+  swarm = createSwarm(kind.id, t);
+  const leader = makeLeader(kind.color, clayMat);
+  const kids = Array.from({ length: KIDS }, () => makeFirefly(kind));
+  for (const o of [leader, ...kids]) gladeGroup.add(o);
+  swarmObjs = { leader, kids, kind, su: 0 };
+  if (gameState.hintsSeen?.gladeSwarmSeen) return;
+  ui.showHintBanner?.({
+    ico: '✨', title: SWARM_BANNER.title, line: SWARM_BANNER.line, kind: 'misc', key: 'glade-swarm',
+    burn: () => { gameState.hintsSeen = { ...gameState.hintsSeen, gladeSwarmSeen: true }; requestSave(); },
+  });
+}
+
+function updateSwarm(dt, t) {
+  const away = dist2D(GLADE, player.position);
+  if (!swarm) {
+    if (away > GLADE_R + 0.5) return;
+    if (!swarmAt) swarmAt = t + (devQuery.has('gswarm') ? 3 : delay(FIRST_DELAY, Math.random));
+    if (t >= swarmAt) startSwarm(t);
+    return;
+  }
+  if (expired(swarm, t)) { endSwarm(t, 'timeout'); return; }
+  if (away > GLADE_R + 4) { endSwarm(t, 'left'); return; }
+  swarmBoost = Math.max(0, swarmBoost - dt);
+  swarmObjs.su += dt * (swarmBoost > 0 ? 1.3 : 0.55);
+  const fade = Math.min(1, (nightLevel - NIGHT_MIN) / 0.2);
+  const lp = swarmPath(swarmObjs.su), ahead = swarmPath(swarmObjs.su + 0.1);
+  swarmObjs.leader.position.set(lp.x, lp.y, lp.z);
+  swarmObjs.leader.rotation.y = Math.atan2(ahead.x - lp.x, ahead.z - lp.z) + Math.PI;
+  setLeaderGlow(swarmObjs.leader, (kidsLeft(swarm) ? 0.55 : leaderBright(t)) * fade);
+  swarmObjs.kids.forEach((kid, i) => {
+    if (!swarm.kids[i]) return;
+    const p = swarmPath(swarmObjs.su - (i + 1) * 0.34);
+    kid.position.set(p.x, p.y, p.z);
+    const b = kidBright(i, t);
+    kid.userData.bright = b;
+    kid.userData.core.material.opacity = (0.25 + b * 0.75) * fade;
+    kid.userData.halo.material.opacity = (0.04 + b * 0.34) * fade;
+    kid.userData.halo.scale.setScalar(0.8 + b * 0.6);
+  });
+}
+
+function netSwarm() {
+  if (!swarm) return false;
+  const t = clock.elapsedTime;
+  let best = null, nd = 2.2;
+  const near = (obj, idx) => {
+    const d = Math.hypot(obj.position.x + GLADE.x - player.position.x, obj.position.z + GLADE.z - player.position.z);
+    if (d < nd) { nd = d; best = { obj, idx }; }
+  };
+  near(swarmObjs.leader, -1);
+  swarmObjs.kids.forEach((kid, i) => { if (swarm.kids[i]) near(kid, i); });
+  if (!best) return false;
+  const wx = best.obj.position.x + GLADE.x, wy = best.obj.position.y, wz = best.obj.position.z + GLADE.z;
+  doPlayerAction(wx, wz);
+  const bonus = netBonus(gameState), kind = swarmObjs.kind;
+  const odds = { chanceLit: Math.min(0.98, 0.9 + bonus), chanceDim: Math.min(0.98, nightNow().tune.dimChance + bonus), rnd: Math.random };
+  if (best.idx < 0) {
+    const res = swingLeader(swarm, { ...odds, bright: leaderBright(t) });
+    if (!res.hit) {
+      swarmBoost = 1.2; Sound.blip();
+      if (res.reason === 'miss') spawnFloatText(wx, wy + 0.5, wz, '휙— 놓쳤다!', '#8a8f7a');
+      return true;
+    }
+    swarm = res.sw;
+    const bugs = LEADER_BUGS + (res.perfect ? PERFECT_BONUS : 0);
+    catchBugs(kind, bugs, wx, wz, res.perfect ? perfectText(kind.ico, kind.name, bugs) : catchText(kind.ico, kind.name, bugs));
+    endSwarm(t, 'done');
+    return true;
+  }
+  const res = swingKid(swarm, best.idx, { ...odds, bright: best.obj.userData.bright || 0 });
+  if (!res.hit) {
+    swarmBoost = 1.2; Sound.blip();
+    spawnFloatText(wx, wy + 0.5, wz, '휙— 놓쳤다!', '#8a8f7a');
+    return true;
+  }
+  swarm = res.sw;
+  gladeGroup.remove(best.obj);
+  catchBugs(kind, 1, wx, wz, res.inTurn ? comboText(kind.ico, kind.name, swarm.combo, KIDS) : catchText(kind.ico, kind.name, 1));
+  return true;
 }
 
 export function nightNow() {
@@ -194,12 +304,14 @@ export function updateFireflyBugs(dt, t) {
   if (stringNight !== night || stringCaught !== (gameState.hintsSeen?.gladeCaught | 0)) paintString(night);
   if (!night || !isOpen('glade')) {               // ☀️ 낮 → 전부 사라짐(밤에 다시 피어오름) · 🔓 계곡이 아직 안 돌아왔으면 피지 않는다
     while (gladeBugs.length) removeFirefly(gladeBugs[gladeBugs.length - 1]);
+    if (swarm) endSwarm(t, 'timeout');
+    swarmAt = 0;
     gladeNight = null;
     return;
   }
   const now = nightNow(), tune = now.tune, stream = now.kind === 'stream';
   announceNight(now);
-  if (t >= bugRespawnAt && gladeBugs.length < GLADE_MAX) {
+  if (t >= bugRespawnAt && gladeBugs.length < GLADE_MAX && !swarm) {
     spawnFirefly();
     $w.bugRespawnAt = t + (1.2 + Math.random() * 2.4) * tune.respawn;
   }
@@ -239,6 +351,7 @@ export function updateFireflyBugs(dt, t) {
     }
     bug.position.y += tdy * dt * 0.8 + Math.sin(t * 2.2 + u.phase) * dt * 0.35;   // 위아래로 하늘하늘
   }
+  updateSwarm(dt, t);
 }
 
 // 🦋 포충망 휘두르기 — 밤 + 계곡 + 반딧불이 근처에서만. 반짝일 때 휘둘러야 잘 잡힘
@@ -247,6 +360,7 @@ export function tryNet() {
   if (!isOpen('glade')) { ui.toast?.('🌟 반딧불이 계곡이 깨어나면 쓰는 도구예요'); return; }   // 🔓 아직 없는 곳을 가리키지 않는다
   if (dist2D(GLADE, player.position) > GLADE_R + 2.5) { ui.toast?.('🌟 남쪽 반딧불이 계곡에서 쓰는 도구예요'); return; }
   if (!isNight()) { ui.toast?.('🌙 반딧불이는 밤에만 나와요. 해가 지면 다시 오세요', 2600); return; }
+  if (netSwarm()) return;
   let target = null, nd = 2.2;
   for (const bug of gladeBugs) {
     const d = Math.hypot(bug.position.x + GLADE.x - player.position.x, bug.position.z + GLADE.z - player.position.z);
@@ -270,20 +384,10 @@ export function tryNet() {
     ui.toast?.('🌟 놓쳤어요! 반딧불이가 밝게 반짝일 때 휘둘러보세요', 2400);
     return;
   }
-  gameState.inventory.bug = (gameState.inventory.bug || 0) + 1;
-  refreshInventoryUI();
   removeFirefly(target);
-  $w.bugRespawnAt = Math.min(bugRespawnAt, clock.elapsedTime + 2.5);   // 곧 새 개체가 피어남
-  Sound.harvest();
-  spawnFloatText(wx, 1.4, wz, `+1 ${kind.ico} ${kind.name}`, '#c98a2a');
-  spawnSparkle(wx, 1.2, wz, kind.id === 'yellow' ? 12 : 20);
-  questEvent('catch');                                    // 🦉 데일리 의뢰(반딧불이 잡기)
-  noteCatch(kind);
-  dexDiscover('bug', kind.id);                            // 📖 도감(반딧불이 첫 발견)
-  trackGateBlocked('bug', 'rainbow');     // [GA4] 📖
-  catchCeremony('bugZoom');                               // 🎉 첫 반딧불이만 밀착, 이후 폴짝 + 병 팝
+  $w.bugRespawnAt = Math.min(bugRespawnAt, clock.elapsedTime + 2.5);
+  catchBugs(kind, 1, wx, wz, catchText(kind.ico, kind.name, 1));
+  trackGateBlocked('bug', 'rainbow');
+  catchCeremony('bugZoom');
   showCatchItem(bugJarMesh(kind), wx, target.position.y, wz);
-  if (kind.id === 'rainbow') tryUnlockDrop(0.5);          // 🎨 최희귀 → 집 색 해금 확률
-  trackEvent('firefly_catch', { kind: kind.id, weather: WEATHER, night: Math.round(nightLevel * 100), mode: nightNow().kind }); // [GA4] 밤 콘텐츠 KPI
-  onPlay('firefly');
 }
