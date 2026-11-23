@@ -133,3 +133,70 @@ Farm, fish and stargaze in a cozy 3D village with a dream forest and a mirror to
 
 ⚠️ 스크린샷은 **실기기 화면 밀도**(폰 3배·태블릿 2배)로 찍어야 버튼·글씨가 실제 크기로 나온다.
 ⚠️ AI 애셋 선언: 사용자 결정으로 **"라벨 지정 안 함"**(2026-09-23).
+
+---
+
+## 영어 전 세계 출시판 (2026-11-23)
+
+Play 콘솔 → 스토어 등록정보 → 번역 관리 → 영어(미국) en-US 에 붙여 넣는다. App Store 영어 설명을 바탕으로 10월 이후 기능(식당·포구 섬·광산 20층·반딧불이 계곡·음악회·이웃 식탁·오늘의 꾸미기·세계수 엔딩)을 더했다. 위의 옛 영어 짧은 설명은 83자라 80자 제한을 넘는다.
+
+앱 이름 (28자, 이름만 두려면 `calm forest`):
+```
+calm forest: cozy 3D village
+```
+
+짧은 설명:
+```
+Build a cabin, farm, fish and cook in a slow 3D village. No timers, no stamina.
+```
+
+자세한 설명:
+```
+calm forest is a cozy 3D life game that never hurries you.
+There is no stamina bar, no timer and no way to fail. Play for five minutes or an hour, and your village will be where you left it.
+
+【A home you build yourself】
+· Chop wood and grow a tiny cabin into a loft, an annex and a rooftop
+· Pick wall colors and roof shapes, then furnish every room piece by piece
+· Set out lanterns, benches and flower pots to make the yard your own
+
+【Fields and orchards】
+· Till, sow, water and harvest through four seasons
+· Expand your land at the survey office and hire helpers
+· Grow fruit trees and turn the harvest into jam and dried persimmons
+
+【Places to explore】
+· Take the ferry to the port island and run a small restaurant: fry, plate and serve your regulars
+· Ride the bucket lift down 20 floors of the mine for stone, coal and gems
+· Catch fireflies with a net in the glade at night and light up the string lights
+· Sled down the snowy mountain, fish at sea, and walk the Dream Forest after you fall asleep
+
+【Things to make and play】
+· Cook with mini-games in the open kitchen
+· Carve wood to fill orders at the workbench
+· Play rhythm songs with the villagers at the village concert
+· Find constellations through the telescope and take photos of your favorite moments
+
+【Neighbors】
+· Talk to villagers, take on requests and grow your friendship
+· Visit other players' villages and share a dish at their yard table
+· A nine-chapter story leads to the World Tree ending
+
+【Dress up】
+· Outfits, back items, footprint trails, pets and tool sets
+· A new Daily Pick in the shop each day, from more than 160 items across 16 themes
+
+【Pick up where you left off】
+· Sign in with Google or Play Games and your progress saves automatically
+· The same village is also playable in a web browser
+
+Available in English and Korean.
+```
+
+새로운 기능 (영어):
+```
+New Daily Pick in the dress-up shop: one item on sale each day, half price with an ad.
+161 outfits, furniture pieces and tool sets across 16 themes, available any time from the theme collection.
+Restaurant specials, regular sets and fried dishes. More kinds of nights in the Firefly Glade.
+The mine lift is now a bucket ride, and stuck mine requests are fixed.
+```
