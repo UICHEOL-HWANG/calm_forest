@@ -19,7 +19,7 @@
 //   · 밤 마을은 뿌옇게, 수확제 광장은 기간 한정(10/22 종료)이라 스토어샷에서 뺐다
 // =============================================================
 import { execFileSync } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launch } from './cdp.mjs';
@@ -61,29 +61,28 @@ const toMirror = async () => {
   await ev('__mirror.tp(0, 2)');
 };
 const toOrchard = async () => { await ev('__orchardOpen()'); await ev('__tp(33, 9)'); await until(nearDoor('orchard'), 15000); await pressSpace(); await b.sleep(4000); await ev('__orchardFill(6)'); };
-const toObservatory = async () => { await ev('__tp(25, 26.2)'); await until(nearDoor('observatory'), 15000); await pressSpace(); await b.sleep(5000); };
+const toObservatory = async () => { await ev('__tp(25, 26.2)'); await until(nearDoor('observatory'), 15000); await pressSpace(); await b.sleep(12000); };
 
 // [이름, 쿼리, 동작, 기기 한정?] — Play 등록 순서 그대로(2026-10-11 사용자 확정 8장)
-//   5-night 은 Play 에서 뺐지만 🍎 tools/store-shots/ios-frames.mjs 가 iphone-5-night.png 를 읽어 iphone 전용으로 남긴다
 const SCENES = [
   ['1-village', 'time=0.32', async () => { await ev('__tp(1.5, 3)'); }],
-  ['2-house', 'time=0.36&house=6', async () => { await ev('__tp(-8, 0)'); }],
-  ['3-farm', 'time=0.34&farm=1', async () => { await ev('__farmMax()'); }],
+  ['2-house', 'time=0.36&house=6', async () => { await ev('__tp(-7.2, -3.4)'); }],
+  ['3-farm', 'time=0.34&farm=1&unlocks=off', async () => { await ev('__farmMax()'); }],
   ['4-sea', 'time=0.40&sea=1', async () => {}],
   ['5-dream', 'time=0.8', toDream],
-  ['6-mirror', 'time=0.4', toMirror],
-  ['7-observatory', 'time=0.78', toObservatory],
-  ['8-orchard', 'time=0.36', toOrchard],
-  ['5-night', 'time=0.80&house=6', async () => { await ev('__tp(-3, 2)'); }, ['iphone']],
+  ['6-mirror', 'time=0.4&unlocks=off', toMirror],
+  ['7-observatory', 'time=0.78&unlocks=off', toObservatory],
+  ['8-orchard', 'time=0.36&unlocks=off', toOrchard],
 ];
 const DISMISS = ['intro-skip', 'coach-skip', 'tut-skip', 'seed-ok', 'hint-ok', 'daily-ok', 'weekly-close', 'notice-ok'];
 // 캡처 직전 정리 — 오프라인 표기·토스트·초보자 안내서 배너(클래스 제거로는 안 사라져 fixed 컨테이너를 숨긴다)
 const CLEAN = `(() => { document.body.classList.remove('hintbanner');
+  document.getElementById('spot-layer')?.style.setProperty('display','none'); document.body.classList.remove('spot-on', 'pre-world', 'world-ready'); document.querySelectorAll('.tb-tip').forEach(e => e.style.display='none'); ['app-banner','npc-prompt','coach','zone-prompt','door-prompt'].forEach(id => document.getElementById(id)?.style.setProperty('display','none'));
   for (const el of document.querySelectorAll('#topleft *')) if (el.childNodes.length===1 && el.firstChild.nodeType===3 && /오프라인|offline/.test(el.textContent)) el.textContent = el.textContent.replace('(오프라인)','').replace(' (offline)','');
   document.querySelectorAll('#toast').forEach(e => e.style.display='none');
   for (const el of document.querySelectorAll('body *')) if (el.children.length===0 && /초보자 안내서가 있어요|beginner.s guide/.test(el.textContent)) { let c=el; while (c && c!==document.body && getComputedStyle(c).position!=='fixed') c=c.parentElement; if (c && c!==document.body) c.style.display='none'; }
   return true; })()`;
-const CLOSE_NOTICE = `(() => { const t=[...document.querySelectorAll('button')].find(x=>x.offsetParent && /^(알겠어요|닫기|확인)/.test(x.textContent.trim())); t?.click(); return !!t; })()`;
+const CLOSE_NOTICE = `(() => { const t=[...document.querySelectorAll('button')].find(x=>x.offsetParent && /^(알겠어요|닫기|확인|Got it|Close|OK)/.test(x.textContent.trim())); t?.click(); return !!t; })()`;
 
 async function enterGame(params) {
   const lang = process.env.SHOT_LANG ? `lang=${process.env.SHOT_LANG}&` : '';   // SHOT_LANG=en → 영어 UI(App Store en-US)
@@ -96,6 +95,7 @@ async function enterGame(params) {
   // 🐻 캐릭터 고르기 — 헤드리스가 느리면 창이 늦게 뜬다: 창이 닫힐 때까지 다시 누른다
   for (let i = 0; i < 30; i++) {
     const r = await ev(`(() => { const m=document.getElementById('char-modal'); if (!m || !m.classList.contains('show')) return 'closed'; const c=[...document.querySelectorAll('#char-grid *')].find(e=>/곰|Bear/.test(e.textContent)); c?.click();
+      const n=document.getElementById('nick-input'); if (n && !n.value) { n.value='Mochi'; n.dispatchEvent(new Event('input',{bubbles:true})); }
       [...document.querySelectorAll('#char-modal button')].find(x=>/시작|확인|결정|이 친구|Start|OK|friend/i.test(x.textContent))?.click(); return 'open'; })()`);
     if (r === 'closed' && i > 2) break;
     await b.sleep(1000);
@@ -103,7 +103,7 @@ async function enterGame(params) {
   await b.sleep(2500);
   for (let i = 0; i < 12; i++) {
     const hit = await ev(`(() => { for (const id of ${JSON.stringify(DISMISS)}) { const e=document.getElementById(id); if (e && e.offsetParent) { e.click(); return id; } }
-      const t=[...document.querySelectorAll('button')].find(x=>x.offsetParent && /^(건너뛰기|알겠어요|닫기|확인)/.test(x.textContent.trim())); if (t) { t.click(); return 1; } return null; })()`);
+      const t=[...document.querySelectorAll('button')].find(x=>x.offsetParent && /^(건너뛰기|알겠어요|닫기|확인|Skip|Got it|Close|OK)/.test(x.textContent.trim())); if (t) { t.click(); return 1; } return null; })()`);
     if (!hit && i > 3) break;
     await b.sleep(1500);
   }
@@ -112,14 +112,19 @@ async function enterGame(params) {
 for (const [name, params, act, devices] of SCENES) {
   if (only && !name.startsWith(only)) continue;
   if (devices && !devices.includes(dev)) continue;
-  await enterGame(params);
-  await b.sleep(2500);
-  await act(); await b.sleep(3000);
-  for (let i = 0; i < 4; i++) { await ev(CLOSE_NOTICE); await b.sleep(900); }   // 도착 안내 창
-  await ev(CLEAN); await b.sleep(1200);
   const file = path.join(OUT, `${dev}${process.env.SHOT_LANG ? '-' + process.env.SHOT_LANG : ''}-${name}.png`);
-  await b.shot(file);
-  if (d.crop) execFileSync('sips', ['-c', String(d.crop[0]), String(d.crop[1]), file], { stdio: 'ignore' });
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    await enterGame(params);
+    await b.sleep(2500);
+    await act(); await b.sleep(3000);
+    for (let i = 0; i < 4; i++) { await ev(CLOSE_NOTICE); await b.sleep(900); }   // 도착 안내 창
+    await ev('window.__quality?.(0)'); await ev(CLEAN);
+    await ev('new Promise(r => { let n = 0; const f = () => (++n > 4 ? r(true) : requestAnimationFrame(f)); requestAnimationFrame(f); })', 30000); await b.sleep(600);
+    await b.shot(file);
+    if (d.crop) execFileSync('sips', ['-c', String(d.crop[0]), String(d.crop[1]), file], { stdio: 'ignore' });
+    if (statSync(file).size > 200_000) break;
+    console.log('  🔁 빈 화면 의심, 다시 찍기', name, attempt);
+  }
   console.log('📸', path.relative(ROOT, file));
 }
 clearInterval(front);

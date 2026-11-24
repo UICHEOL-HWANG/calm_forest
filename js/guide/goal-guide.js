@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { createShotRig } from '../world/tree-shot.js';
 import { regionFrame } from '../world/region-cine.js';
-import { ARRIVE, CINE_SUB, GOALS, detourPoint, edgeAnchor, exitFirst, guideEventParams, minerGoal, tutGoal } from './guide-rules.js';
+import { ARRIVE, CINE_SUB, GOALS, detourPoint, edgeAnchor, exitFirst, guideEventParams, minerGoal, minerMeetGoal, tutGoal } from './guide-rules.js';
 import { storyStep } from './story-steps.js';
 import { fillStepCard, stepSignature } from './step-card.js';
 import { goalFocus } from './quiet.js';
@@ -23,7 +23,7 @@ const CSS = `
 #goal-cine-modal .gc-cap{position:absolute;left:0;right:0;bottom:0;height:${BAR};display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;text-align:center;padding:0 20px;opacity:0;transform:translateY(8px);transition:opacity .6s ease .35s,transform .6s ease .35s}
 #goal-cine-modal.show .gc-cap{opacity:1;transform:none}
 #goal-cine-modal .gc-sub{font-size:clamp(11px,1.5vh,14px);font-weight:700;letter-spacing:.06em;opacity:.8}
-#goal-cine-modal .gc-main{font-size:clamp(16px,2.8vh,24px);font-weight:800;margin-top:2px}
+#goal-cine-modal .gc-main{font-size:clamp(16px,min(2.8vh,4vw),24px);font-weight:800;margin-top:2px}
 #goal-cine-modal .gc-skip{position:absolute;right:16px;top:calc(${BAR} / 2 - 8px);color:#fff;font-size:12px;opacity:.75}
 #goal-arrow{position:fixed;inset:0;z-index:24;pointer-events:none;display:none}
 #goal-arrow.show{display:block}
@@ -100,6 +100,7 @@ export function createGoalGuide(deps) {
       if (inMine) return { at: nearest(deps.oreRocks(), r => !r.userData.depleted && r.userData.ore?.id === 'stone'), g: GOALS.stone };
       return null;
     }
+    if (key === 'mineGate') return inV ? { at: deps.mineGate, g: GOALS.mineGate, arrive: GATE_ARRIVE } : null;
     if (key === 'farmBranch') return inV ? { at: deps.worldTree, g: GOALS.farmBranch } : null;
     if (key.startsWith('story_')) return storyTarget(key, inV);
     if (key === 'farm' && deps.atFarm()) { const at = deps.farmPlot?.(); return at ? { at, g: GOALS.farm } : null; }
@@ -110,6 +111,7 @@ export function createGoalGuide(deps) {
     const spots = deps.mineSpots();
     if (key === 'miner') return { at: spots.miner, g: GOALS.miner };
     if (key === 'lift') return { at: spots.lift, g: GOALS.lift };
+    if (key === 'minerMeet') return { at: spots.miner, g: GOALS.minerMeet };
     return null;
   }
 
@@ -133,12 +135,15 @@ export function createGoalGuide(deps) {
       if (g) return { flow: 'tut', step, ...g };
     }
     if (!seen('guideFarmTab') && deps.farmBranchDue()) return { flow: 'tree', step: 'farm', key: 'farmBranch', cine: true };
+    const meet = minerMeetGoal(gs.delve, deps.minerOpen?.(), deps.atMine(), gs.hintsSeen);
+    if (meet && deps.atMine()) return { flow: 'mine', step: 'meet', ...meet };
     if (deps.atMine()) {
       const g = minerGoal(gs.delve, gs.inventory);
       if (g) return { flow: 'mine', step: `stage${gs.delve.stage}`, ...g };
     }
     if (storyMemo && storyMemo.where !== 'board') return { flow: 'story', step: storyMemo.rule, key: `story_${storyMemo.where}`, story: storyMemo, cine: false };
     if (deps.houseDue?.() && deps.inVillage()) return { flow: 'house', step: `stage${gs.houseStage | 0}`, key: 'house', cine: false };
+    if (meet && deps.inVillage()) return { flow: 'mine', step: 'meet', ...meet };
     return null;
   }
 

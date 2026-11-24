@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { HALL } from '../js/restaurant/data.js';
 import { SPECIAL_ODDS, SPECIAL_COIN_MUL, pickSpecial, todaySpecial, sanitizeSpecial } from '../js/restaurant/special.js';
 import { pickMenu } from '../js/restaurant/regulars.js';
-import { createSession, tickSession, actAt } from '../js/restaurant/session.js';
+import { createSession, tickSession, actAt, finishSession } from '../js/restaurant/session.js';
 import { defaultRestaurant, sanitizeRestaurant } from '../js/restaurant/rules.js';
 
 const MENUS = ['grilled', 'riceball', 'soup'];
@@ -101,7 +101,7 @@ function serveOne(special) {
   S.special = special;
   S.held = { kind: tk.menu, q: 1, plated: true };
   const tb = HALL.tables[tk.table];
-  return { tk, ev: actAt(S, { x: tb[0], z: tb[1] + 1.0 }, { take: yes }).find(e => e.type === 'served') };
+  return { S, tk, ev: actAt(S, { x: tb[0], z: tb[1] + 1.0 }, { take: yes }).find(e => e.type === 'served') };
 }
 
 test('세션: 특선 메뉴 코인은 두 배', () => {
@@ -161,4 +161,34 @@ test('연습판 안내 중에는 칠판 특선 표시를 세우지 않고, 안�
   assert.match(r, /guideDone: true \};\s*requestSave\(\); view\.hide\(\); setPoint\(null\); guide = null;\s*rebuildSpecialMark\(\);/);
   assert.match(r, /guide = null; view\?\.hide\(\); setPoint\(null\);\s*rebuildSpecialMark\(\);/);
   assert.match(r, /onDone: \(\) => \{[\s\S]*?\}\);\s*rebuildSpecialMark\(\);/);
+});
+
+test('세션 결과: 특선과 튀김 판매 수를 센다', () => {
+  const plain = serveOne(null);
+  const sp = serveOne(plain.tk.menu);
+  assert.equal(finishSession(sp.S).specialN, 1);
+  assert.equal(finishSession(plain.S).specialN, 0);
+  assert.equal(finishSession(plain.S).fryN, 0);
+});
+
+test('세션 결과: 튀김 메뉴는 fryN 으로 센다', () => {
+  const S = createSession({ star: 5, dda: one, rng: seq(0.99) });
+  for (let i = 0; i < 400 && !S.tickets.length; i++) tickSession(S, 0.05);
+  const tk = S.tickets[0];
+  tk.menu = 'shrimpfry';
+  S.held = { kind: 'shrimpfry', q: 1, plated: true };
+  const tb = HALL.tables[tk.table];
+  actAt(S, { x: tb[0], z: tb[1] + 1.0 }, { take: yes });
+  assert.equal(finishSession(S).fryN, 1);
+});
+
+test('영업 결과 restaurant_service 에 특선·튀김 판매 수를 남긴다', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../js/restaurant/runtime.js', import.meta.url), 'utf8');
+  const m = src.match(/trackEvent\('restaurant_service', \{([^}]*)\}/);
+  assert.ok(m);
+  assert.match(m[1], /special_n: r\.specialN/);
+  assert.match(m[1], /fry_n: r\.fryN/);
+  assert.match(m[1], /special: r\.special \?\? 'none'/);
+  assert.doesNotMatch(src, /restaurant_sales/);
 });

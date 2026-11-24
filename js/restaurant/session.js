@@ -59,7 +59,7 @@ export function createSession({ star, dda, rng = Math.random, first = false, sto
   return {
     star, cfg: STAR[star], dda: first ? { ...dda, pat: dda.pat * FIRST_PAT } : { ...dda }, first, rng, stock, neighbors, special: first ? null : special, regulars: first ? null : regulars, setUsed: new Set(), time: 0, next: 1.5, guests: [], tickets: [], gid: 0,
     held: null, stations, staff: null, ended: false,
-    stats: { served: 0, stars: [], late: 0, perfect: 0, takes: 0, burnt: 0, coins: 0, npcServed: 0 },
+    stats: { served: 0, stars: [], late: 0, perfect: 0, takes: 0, burnt: 0, coins: 0, npcServed: 0, specialN: 0, fryN: 0 },
   };
 }
 
@@ -135,6 +135,8 @@ function serve(S, tk, it) {
   S.stats.stars.push(stars);
   S.stats.coins += coins;
   if (g?.npc) S.stats.npcServed++;
+  if (tk.menu === S.special) S.stats.specialN++;
+  if (MENU[tk.menu].fry) S.stats.fryN++;
   return { menu: tk.menu, stars, coins, table: tk.table, id: tk.id, npc: g?.npc ?? null, ...(set ? { set } : {}) };
 }
 
@@ -372,7 +374,7 @@ export function finishSession(S) {
   return {
     served: st.served, stars: [...st.stars], unserved, late: st.late, perfect: st.perfect,
     takes: st.takes, burnt: st.burnt, coins: st.coins, avg: serviceAvg(st.stars, unserved),
-    soldOut: !!S.soldOut, regularN: st.npcServed,
+    soldOut: !!S.soldOut, regularN: st.npcServed, special: S.special, specialN: st.specialN, fryN: st.fryN,
   };
 }
 
