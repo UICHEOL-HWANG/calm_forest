@@ -10,7 +10,7 @@ const CSS = `
 #place-cine .pc-cap{position:absolute;left:0;right:0;bottom:0;height:${BAR};display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;text-align:center;padding:0 20px;opacity:0;transform:translateY(8px);transition:opacity .45s ease,transform .45s ease}
 #place-cine .pc-cap.on{opacity:1;transform:none}
 #place-cine .pc-sub{font-size:clamp(11px,1.5vh,14px);font-weight:700;letter-spacing:.06em;opacity:.8}
-#place-cine .pc-main{font-size:clamp(16px,2.8vh,24px);font-weight:800;margin-top:2px}
+#place-cine .pc-main{font-size:clamp(16px,min(2.8vh,4vw),24px);font-weight:800;margin-top:2px}
 #place-cine .pc-skip{position:absolute;right:16px;top:calc(${BAR} / 2 - 8px);color:#fff;font-size:12px;opacity:.75}
 `;
 

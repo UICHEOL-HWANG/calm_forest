@@ -42,11 +42,12 @@ export function createRestaurantCine(deps) {
   function enter({ rest, special, running }) {
     if (running || !deps.free()) return false;
     if (tourDue(rest, seen())) return run('tour', REST_CINE.tour.shots.map(s => hallShot(s.spot)), null, true);
+    if (deps.coaching?.()) return false;
     const id = featureCineDue(rest, special, seen());
     if (!id) return false;
     const def = REST_CINE[id];
     return run(id, def.shots.map(s => hallShot(s.spot)), () => deps.banner(`restHint_${id}`, def.hint, () => deps.track('feature_hint', { id })), true);
   }
 
-  return { door, enter, cancel: () => cine?.cancel(), get active() { return !!cine?.active; } };
+  return { door, enter, cancel: () => { if (cine?.active) deps.showPlayer?.(true); cine?.cancel(); }, get active() { return !!cine?.active; } };
 }

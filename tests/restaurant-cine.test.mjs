@@ -9,7 +9,7 @@ test('문구는 고른 A안 그대로', () => {
   assert.equal(REST_CINE.door.shots[0].main, '🍽️ 식당이 문을 열었어요');
   assert.deepEqual(REST_CINE.tour.shots.map(s => s.main), ['📋 칠판을 누르면 영업 시작', '🐟 재료는 상자에서', '🙋 손님 자리로 가져다줘요']);
   assert.equal(REST_CINE.special.shots[0].main, '⭐ 오늘의 특선은 코인 2배예요');
-  assert.equal(REST_CINE.regular.shots[0].main, '💌 단골이 생기면 여기 이름표가 붙어요');
+  assert.equal(REST_CINE.regular.shots[0].main, '💌 단골 손님 이름표가 여기 붙어요');
   assert.equal(REST_CINE.fryer.shots[0].main, '🍤 튀김기가 들어왔어요. 새우·오징어 튀김을 만들어요');
   assert.equal(REST_CINE.fryer2.shots[0].main, '🥬 튀김기가 하나 더! 채소 튀김도 팔아요');
   assert.equal(REST_CINE.door.sub, '다음 목적지');
@@ -52,7 +52,8 @@ test('장면 대상 자리는 식당 배치에서 가져온다', () => {
 test('식당 모듈 배선: 안내 시작 때 문 장면, 입장 때 둘러보기·새 기능 장면', async () => {
   const { readFileSync } = await import('node:fs');
   const src = readFileSync(new URL('../js/spaces/restaurant.js', import.meta.url), 'utf8');
-  assert.match(src, /if \(!\$w\.atRestaurant\) restCine\(\)\.door\(\);/);
+  assert.match(src, /if \(visible && !ctx\.inside\) restCine\(\)\.door\(\);/);
+  assert.doesNotMatch(src, /if \(!\$w\.atRestaurant\) restCine\(\)\.door\(\);/);
   assert.match(src, /export function exitRestaurant\(\) \{\n  restCineObj\?\.cancel\(\);/);
   assert.match(src, /restCine\(\)\.enter\(\{ rest: gameState\.restaurant, special, running: !!runtime\?\.running\(\) \}\);/);
   const run = readFileSync(new URL('../js/restaurant/cine-run.js', import.meta.url), 'utf8');
@@ -73,4 +74,48 @@ test('실내 장면 동안 플레이어를 숨겼다가 끝나면 되돌린다',
   assert.match(run, /if \(indoor\) deps\.showPlayer\?\.\(false\);/);
   assert.match(run, /onEnd: r => \{ if \(indoor\) deps\.showPlayer\?\.\(true\);/);
   assert.match(readFileSync(new URL('../js/spaces/restaurant.js', import.meta.url), 'utf8'), /showPlayer: v => \{ player\.visible = v; \},/);
+});
+
+test('시네마틱 동안에는 8단계 안내 표시를 숨긴다', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../js/spaces/restaurant.js', import.meta.url), 'utf8');
+  assert.match(src, /if \(!visible \|\| !step \|\| restCineObj\?\.active\) \{ view\.hide\(\); setPoint\(null\); return; \}/);
+});
+
+test('튜토리얼 중에는 새 기능 장면을 미룬다(배너가 막혀 영영 안 뜨는 걸 막기)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const run = readFileSync(new URL('../js/restaurant/cine-run.js', import.meta.url), 'utf8');
+  assert.match(run, /if \(deps\.coaching\?\.\(\)\) return false;\n    const id = featureCineDue/);
+  assert.match(readFileSync(new URL('../js/spaces/restaurant.js', import.meta.url), 'utf8'), /coaching: \(\) => !!ui\.coachActive\?\.\(\) \|\| !!Input\.needsTutorial\?\.\(\),/);
+});
+
+test('식당을 나가며 장면을 끊으면 숨긴 플레이어를 되돌린다', async () => {
+  const { readFileSync } = await import('node:fs');
+  const run = readFileSync(new URL('../js/restaurant/cine-run.js', import.meta.url), 'utf8');
+  assert.match(run, /cancel: \(\) => \{ if \(cine\?\.active\) deps\.showPlayer\?\.\(true\); cine\?\.cancel\(\); \}/);
+  assert.ok(SHOT_LOOK_Y.specialBoard > 0.9);
+});
+
+test('세로 폰에서도 자막이 한 줄에 들어가게 글자 크기가 화면 폭을 따른다', async () => {
+  const { readFileSync } = await import('node:fs');
+  const read = p => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
+  assert.match(read('js/guide/place-cine.js'), /\.pc-main\{font-size:clamp\(16px,min\(2\.8vh,4vw\),24px\);/);
+  assert.match(read('js/guide/goal-guide.js'), /\.gc-main\{font-size:clamp\(16px,min\(2\.8vh,4vw\),24px\);/);
+});
+
+test('새 시네마틱·배너 문구는 영어 사전에 모두 있다', async () => {
+  const { EN } = await import('../js/i18n-en.js');
+  const { GOALS } = await import('../js/guide/guide-rules.js');
+  const keys = new Set(['새로 생겼어요', GOALS.mineGate.title, GOALS.minerMeet.title, GOALS.mineGate.label]);
+  for (const def of Object.values(REST_CINE)) {
+    keys.add(def.sub);
+    def.shots.forEach(s => keys.add(s.main));
+    if (def.hint) { keys.add(def.hint.title); keys.add(def.hint.line); }
+  }
+  assert.deepEqual([...keys].filter(k => !EN[k]), []);
+});
+
+test('창이 열려 있으면 시네마틱을 시작하지 않는다', async () => {
+  const { readFileSync } = await import('node:fs');
+  assert.match(readFileSync(new URL('../js/spaces/restaurant.js', import.meta.url), 'utf8'), /free: \(\) => cameraFree\(\) && !ui\.anyModalOpen\?\.\(\),/);
 });

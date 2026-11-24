@@ -23,7 +23,7 @@ const CSS = `
 #goal-cine-modal .gc-cap{position:absolute;left:0;right:0;bottom:0;height:${BAR};display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;text-align:center;padding:0 20px;opacity:0;transform:translateY(8px);transition:opacity .6s ease .35s,transform .6s ease .35s}
 #goal-cine-modal.show .gc-cap{opacity:1;transform:none}
 #goal-cine-modal .gc-sub{font-size:clamp(11px,1.5vh,14px);font-weight:700;letter-spacing:.06em;opacity:.8}
-#goal-cine-modal .gc-main{font-size:clamp(16px,2.8vh,24px);font-weight:800;margin-top:2px}
+#goal-cine-modal .gc-main{font-size:clamp(16px,min(2.8vh,4vw),24px);font-weight:800;margin-top:2px}
 #goal-cine-modal .gc-skip{position:absolute;right:16px;top:calc(${BAR} / 2 - 8px);color:#fff;font-size:12px;opacity:.75}
 #goal-arrow{position:fixed;inset:0;z-index:24;pointer-events:none;display:none}
 #goal-arrow.show{display:block}

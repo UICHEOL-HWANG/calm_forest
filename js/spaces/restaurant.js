@@ -333,12 +333,13 @@ export const restaurantGuideActive = () => !!guide?.active();
 
 let restCineObj = null;
 const restCine = () => (restCineObj ??= createRestaurantCine({
-  camera, setCameraRig, t, free: cameraFree, track: trackEvent, state: () => gameState, save: requestSave,
+  camera, setCameraRig, t, free: () => cameraFree() && !ui.anyModalOpen?.(), track: trackEvent, state: () => gameState, save: requestSave,
   stopAnalog: () => Input.setAnalog?.(0, 0), whoosh: () => Sound.cineWhoosh(),
   lookOf: () => ({ x: player.position.x, y: player.position.y + 1.2, z: player.position.z }),
   world: p => ({ x: RESTAURANT.x + p.x, y: p.y, z: RESTAURANT.z + p.z }),
   door: RESTAURANT_DOOR,
   showPlayer: v => { player.visible = v; },
+  coaching: () => !!ui.coachActive?.() || !!Input.needsTutorial?.(),
   banner: (key, h, onShown) => $w.firstHintBanner?.(key, h.ico, t(h.title), t(h.line), onShown),
 }));
 export const restaurantCineActive = () => !!restCineObj?.active;
@@ -370,7 +371,6 @@ export function maybeStartRestaurantGuide(ok) {
     },
   });
   rebuildSpecialMark();
-  if (!$w.atRestaurant) restCine().door();
   return true;
 }
 
@@ -458,8 +458,9 @@ export function updateRestaurantGuide(visible) {
   const ctx = guideCtx();
   guide.tick(ctx);
   if (!guide || guideStall()) return;
+  if (visible && !ctx.inside) restCine().door();
   const step = shownStep(GUIDE_STEPS, guide.index(), ctx.stage);
-  if (!visible || !step) { view.hide(); setPoint(null); return; }
+  if (!visible || !step || restCineObj?.active) { view.hide(); setPoint(null); return; }
   const idx = step.id === 'trash' ? guide.index() : Math.min(guide.index(), Math.max(0, ctx.stage));
   view.show(step, idx, guide.total, ctx, player.position, ctx.inside ? hallRoute : villageRoute, 0);
   setPoint(wantPoint(step) ? 'btn' : null);
