@@ -1,0 +1,72 @@
+# 광산 지하 조각 도둑 재설계 (2026-11-24)
+
+## 왜
+사용자가 직접 해 보고 "몹 2마리 너무 단순, 뭘 하라는 건지 모르겠다, 누르면 웃는 이모지만 나온다"고 했다.
+새 게스트로 확인한 사실:
+- 가만히 서 있으면 몹이 조각을 훔친다(광맥 960개 시뮬 약 75%, 평균 4초). 한 걸음만 가면 자동으로 주워져 0%. 대처할 이유가 없다.
+- 몹 설명은 조각을 물어 간 뒤에야 뜬다. 1층 배너는 "조각 도둑 · 가방은 안전해요"뿐.
+- 버튼은 훔칠 조각이 없어도 뜨고, 누르면 광부 부탁이 바로 찬다.
+- 머리 위 말풍선의 흰 배경이 블룸(임계 0.85)에 타서 😋 가 안 보인다.
+- 뺏긴 조각은 표시 없이 사라지고, 지켜도 집계가 없다.
+
+## 고른 안 (사용자 승인 2026-11-24)
+A1 첫 만남 소개 카드 + B2 받아먹기 + 부탁은 실제로 지켰을 때만 셈 + 문구 후보 a 전부.
+비교 자료: `sims/delve-pests-compare.html`(커밋 안 함).
+
+## 규칙 (B2 받아먹기)
+- 광맥은 다섯 번 쳐야 깨진다(`VEIN_HP` 5, 일반 바위 3 그대로). 대처할 틈을 준다.
+- 광맥을 처음 치는 순간, 그 광맥에서 `NOTICE_R` 안에 있는 몹이 `lurk` 가 되어 광맥 옆 `LURK_DIST` 자리로 걸어와 기다린다(👀).
+- 광맥이 깨지는 순간 그 광맥 `CATCH_R` 안에서 기다리던 몹(박쥐 제외, 먹는 중·도망 중 제외) 중 가장 가까운 하나가 조각을 바로 문다(`catchAtBreak`). 없으면 조각이 바닥에 떨어지고 예전처럼 줍기·접근 경쟁.
+- 박쥐는 기다리다가도 노란 고리 시간(`RING_SEC`) 안에는 못 가져간다. 대처 = 바로 줍기.
+- 등불벌레는 물고 가도 빛 자국 끝 굴을 파면 되찾는다(기존).
+- 오늘 다 캔 층(`oreOk` false)의 몹은 처음부터 `sleep`(💤). 층의 광맥이 다 깨지고 바닥 조각도 없으면 몹은 굴로 돌아가 `sleep`.
+- 대처는 폭력 없음: 톡(놀라서 도망), 미끼(먹느라 멈춤), 바로 줍기, 굴 파기.
+
+## 보이게 (A1)
+- 몹이 처음 `lurk`(또는 조각을 향해 `approach`)가 되는 순간, 몹 종류별로 한 번 기존 3칸 안내 카드(`firstHint` / `hint-modal`)를 띄운다. 기록 키는 `hintsSeen.delve_meet_<kind>`(새 키라 예전에 옛 배너를 본 사람도 한 번 본다). 1층 공통 배너(`delve_common`)는 뺀다.
+- 버튼은 할 이유가 있을 때만: 도롱뇽은 `lurk`·`approach`·`carry`, 수정집게는 `lurk`·`approach`(`counterFor`). 그 밖의 상태에서는 톡·미끼 자체가 null.
+- 머리 위 말풍선(이모지만): `lurk`·`approach` 👀, `carry` 💎, `flee` ❗, `eat` 🍄, `sleep` 💤. 말풍선 배경은 방문객 🔍 와 같은 베이지(블룸 아래), `toneMapped:false`·`fog:false`.
+- 누른 뒤: 미끼는 아래 줄 정보 문구 "수정집게가 버섯을 먹어요 · N초"(남은 초), 톡은 토스트 "도롱뇽이 놀라서 도망가요" / 물고 있었으면 "조각을 뱉었어요".
+- 뺏김: 몹이 무는 순간 토스트 "💎 수정집게가 조각을 물고 갔어요"(몹별 이름).
+- 층 결과: 조각이 하나라도 나온 층을 떠날 때 토스트 "⛏️ 지하 N층 · 지킨 조각 K · 뺏긴 조각 L". 지킴 = 주운 조각 + 굴에서 되찾은 조각, 뺏김 = 굴에 들어가고 못 되찾은 조각.
+
+## 부탁·저장
+- 저장 칸은 늘리지 않는다. `gameState.delve.counts.tap/bait/grab/reclaim` 그대로. 버튼이 위협 상태에서만 동작하므로 누를 때마다 = 실제로 지킨 것. 옛 누적 수와 `stage` 는 그대로 이어진다.
+- 박쥐 `grab` 은 박쥐가 살아 있고 고리 시간 안에 주웠을 때(기존 그대로).
+- 첫 만남 카드 기록만 `hintsSeen` 에 새 키로.
+
+## 기록
+새 이벤트 없음. 기존 이벤트에 키만 더한다.
+- `pest_meet { pest, floor }` → 카드를 띄운 순간(물어 간 뒤가 아니라). 키 그대로.
+- `pest_counter { pest, method, ok }` + `state`(누르기 직전 몹 상태).
+- `delve_floor`·`delve_exit` + `kept`, `lost`(떠나는 층 집계).
+
+## 코드 자리
+- 수치: `js/data/delve.js` (`VEIN_HP`, 몹 규칙 수치, `PEST_COPY` 몹별 카드·문구).
+- 순수 규칙: `js/delve/pests.js` (`lurk` 이동, `catchAtBreak`, `counterFor`, `sleep`, tap/bait 조건, 층 집계).
+- 연결: `js/spaces/delve.js`. 말풍선 색: `js/delve/pest-art.js` `emojiBubble`.
+- 문구: 한국어 원문 + `js/i18n-en.js`.
+
+## 문구 (승인된 a안)
+| 자리 | 한국어 | 영어 |
+|---|---|---|
+| 카드 제목 | 동굴 도롱뇽이 / 수정집게가 / 잎귀박쥐가 / 등불벌레가 조각을 노려요 | The cave axolotl / crystal crab / leaf-eared bat / lantern grub is after your ore |
+| 카드 한 줄 · 도롱뇽 | 웅덩이로 물고 가요 · 톡 치면 뱉어요 | It drags ore to its pool · Tap it to make it spit |
+| 카드 한 줄 · 수정집게 | 🍄 미끼를 주면 먹느라 멈춰요 | Toss 🍄 bait and it stops to eat |
+| 카드 한 줄 · 박쥐 | 노란 고리가 사라지기 전에 주워요 | Grab it before the yellow ring fades |
+| 카드 한 줄 · 등불벌레 | 놓쳐도 빛 자국 끝 굴을 파면 돼요 | If it gets away, dig at the end of the light trail |
+| 버튼 | ❗ 톡 치기 · 🍄 미끼 던지기 · ⛏️ 굴 파기 (그대로) | 기존 |
+| 미끼 뒤 | 수정집게가 버섯을 먹어요 · {0}초 | The crab is eating · {0}s |
+| 톡 뒤 | 도롱뇽이 놀라서 도망가요 / 조각을 뱉었어요 | The axolotl ran off / It spat out the ore |
+| 뺏김 | 🦎/💎/🦇/🐛 (이름)가 조각을 물고 갔어요 | The (name) took a piece of ore |
+| 층 결과 | ⛏️ 지하 {0}층 · 지킨 조각 {1} · 뺏긴 조각 {2} | ⛏️ B{0} · Kept {1} · Lost {2} |
+
+카드 세 칸 그림 문구(예: 수정집게 "💎 조각을 집어 → 🕳️ 굴로 가져가요 → 🍄 버섯을 주면 멈춰요")는 시안 그대로 쓰고 보고 때 같이 보여 준다.
+
+## 다음 단계 (별도 승인)
+몹 생김새 다듬기 방향과 새 도둑 몹 후보는 `sims/delve-mobs-compare.html` 시안으로 따로 고른다. 고른 뒤 `pest-art.js`·`PESTS`·`THEMES` 에 더한다.
+
+## 테스트
+- `tests/delve-pests.test.mjs`: lurk 이동·대기, catchAtBreak(박쥐·먹는 중 제외, 가장 가까운 하나), counterFor, 톡·미끼 조건 강화, sleep(다 캔 층·광맥 소진), 층 결과 집계.
+- `tests/delve-wiring.test.mjs`: 카드 키 `delve_meet_`, 1층 공통 배너 제거, 버튼이 `counterFor` 경유, 층 결과 토스트, 기록 키.
+- 옛 세이브: `sanitizeDelve` 가 counts·stage 를 그대로 복원(기존 테스트 유지).
