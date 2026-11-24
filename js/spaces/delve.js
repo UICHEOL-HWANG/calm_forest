@@ -17,6 +17,8 @@ import { playMinerLines, advanceMinerTalk, minerTalkOpen, closeMinerTalk } from 
 import { createPest, stepPest, tapPest, baitPest, canPick, pushOffPlayer, catchAtBreak, counterFor, grabChunk, floorTally, darkPest, plugPest, softOk, rollerAtBreak, mimicSpot, RING_SEC, TAP_R, BAIT_R, BAIT_EAT_SEC, DARK_R, PLUG_R } from '../delve/pests.js';
 import { makePest, makeOreChunk, makePuddle, makeBurrow, makeRing, makeBait, makeShaft, makeLadderUp, makeRock, makeLift, emojiBubble, makeTrail } from '../delve/pest-art.js';
 import { makeMiner } from '../delve/miner.js';
+import { makeStateBadge, makeGroundGlow } from '../delve/state-badge.js';
+import { PEST_BADGE, badgePop, badgeBob } from '../delve/badge-math.js';
 import { placeRootShrine, clearRootShrine } from '../delve/root-scene.js';
 import { openLiftPanel } from '../delve/lift-panel.js';
 import { Sound } from '../sound.js';
@@ -143,8 +145,9 @@ function spawnPests(layout) {
     const home = layout.burrows[i];
     const at = kind === 'axolotl' && layout.puddles[0] ? layout.puddles[0] : home;
     const art = makePest(kind, { submerged: kind === 'axolotl' });
+    const top = new THREE.Box3().setFromObject(art.g).max.y;
     group.add(art.g);
-    return { sim: createPest(kind, at, home, { asleep: !run.oreOk }), art, met: false, bubble: null, bubbleTxt: null };
+    return { sim: createPest(kind, at, home, { asleep: !run.oreOk }), art, top, tilt: (i % 2 ? 1 : -1) * 0.05, met: false, bubble: null, glow: null, bubbleTxt: null, bubbleAge: 0 };
   });
 }
 
@@ -547,8 +550,6 @@ function meetCard(kind) {
   trackEvent('pest_meet', { pest: kind, floor: run.floor });
 }
 
-const BUBBLE = { lurk: '👀', approach: '👀', carry: '💎', flee: '❗', eat: '🍄', sleep: '💤', doze: '💤', away: '🌙', lost: '❓' };
-
 function tickMimics(lp) {
   for (const p of run.pests) {
     if (p.sim.state !== 'mimic') continue;
@@ -625,14 +626,22 @@ export function updateDelve(dt, t) {
     }
     p.art.g.position.copy(W(p.sim.x, p.sim.z)); p.art.g.position.y = FLOOR_Y + (p.art.hover || 0);
     p.art.g.visible = pest.state !== 'gone';
-    const want = BUBBLE[pest.state] || null;
+    const badge = PEST_BADGE[pest.state] || null, want = badge ? badge.join('') : null;
     if (p.bubbleTxt !== want) {
-      if (p.bubble) { group.remove(p.bubble); disposeObj(p.bubble); }
-      p.bubble = want ? emojiBubble(want, 0.9) : null;
-      if (p.bubble) group.add(p.bubble);
-      p.bubbleTxt = want;
+      for (const o of [p.bubble, p.glow]) if (o) group.remove(o);
+      if (p.bubble) disposeObj(p.bubble);
+      if (p.glow) disposeObj(p.glow);
+      p.bubble = badge ? makeStateBadge(badge[0], badge[1], p.tilt) : null;
+      p.glow = badge ? makeGroundGlow(badge[1]) : null;
+      for (const o of [p.bubble, p.glow]) if (o) group.add(o);
+      p.bubbleTxt = want; p.bubbleAge = 0;
     }
-    if (p.bubble) p.bubble.position.set(p.art.g.position.x, p.art.g.position.y + 1.6, p.art.g.position.z);
+    if (p.bubble) {
+      p.bubbleAge += dt;
+      p.bubble.scale.setScalar(badgePop(p.bubbleAge));
+      p.bubble.position.set(p.art.g.position.x, p.art.g.position.y + p.top + 0.5 + badgeBob(t), p.art.g.position.z);
+      p.glow.position.set(p.art.g.position.x, FLOOR_Y + 0.035, p.art.g.position.z);
+    }
     if (pest.carryId) { const c = run.carried.get(pest.carryId); if (c) c.mesh.position.copy(p.art.g.position).add(new THREE.Vector3(0, 0.5, 0)); }
   }
 }
