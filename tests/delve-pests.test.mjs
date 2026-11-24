@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createPest, stepPest, tapPest, baitPest, pickableBeforeBat, canPick, catchAtBreak, counterFor, grabChunk, floorTally, darkPest, plugPest, softOk, rollerAtBreak, mimicSpot, RING_SEC, BAIT_EAT_SEC } from '../js/delve/pests.js';
+import { pushOffPlayer, createPest, stepPest, tapPest, baitPest, pickableBeforeBat, canPick, catchAtBreak, counterFor, grabChunk, floorTally, darkPest, plugPest, softOk, rollerAtBreak, mimicSpot, RING_SEC, BAIT_EAT_SEC } from '../js/delve/pests.js';
 import { PEST_LURK_DIST, PEST_CATCH_R, PEST_DARK_SEC, PEST_LOST_SEC, SOFT_PERIOD, SOFT_WINDOW } from '../js/data/delve.js';
 
 const W = (chunks, extra = {}) => ({ chunks, burrowAt: { x: 5, z: 5 }, ...extra });
@@ -222,5 +222,19 @@ test('수정공굴리: 깨질 때 받아 물지 않고 조각 옆에서 조각�
   const m = { ...r, state: 'mimic', x: s.x, z: s.z };
   const { p, ev } = run(m, W([{ id: 'a', x: 0, z: 0, age: 9 }]), 3);
   assert.equal(p.state, 'mimic');
+  assert.equal(ev.length, 0);
+});
+
+test('겨울잠쥐는 플레이어가 바로 옆에 서서 조금 밀려나도 광맥 옆에서 잠든다', () => {
+  let p = createPest('dormouse', { x: 0, z: 0 }, { x: -5, z: 0 });
+  const player = { x: vein.x - 1.1, z: 0.1 };
+  for (let t = 0; t < 10; t += 0.1) { p = stepPest(p, 0.1, W([], { lurkAt: vein })).pest; p = pushOffPlayer(p, player); }
+  assert.equal(p.state, 'doze');
+});
+
+test('살살 깨서 광맥이 사라지면 잠든 겨울잠쥐는 바닥 조각을 보고도 계속 잔다', () => {
+  const p = { ...createPest('dormouse', { x: 3.3, z: 0 }, { x: -5, z: 0 }), state: 'doze', spot: { x: 3.3, z: 0, ax: 4, az: 0 } };
+  const { p: after, ev } = run(p, W([{ id: 'a', x: 4, z: 0, age: 0 }]), 5);
+  assert.equal(after.state, 'sleep');
   assert.equal(ev.length, 0);
 });

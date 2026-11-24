@@ -14,7 +14,7 @@ import { rollChest, chestGive } from '../boat-chest.js';
 import { makeChestMesh } from '../boat-chest-art.js';
 import { jobCard, owedMinerRewards, minerTalk } from '../delve/miner-card.js';
 import { playMinerLines, advanceMinerTalk, minerTalkOpen, closeMinerTalk } from '../delve/miner-talk.js';
-import { createPest, stepPest, tapPest, baitPest, canPick, pushOffPlayer, catchAtBreak, counterFor, grabChunk, floorTally, darkPest, plugPest, softOk, rollerAtBreak, mimicSpot, RING_SEC, TAP_R, BAIT_R, BAIT_EAT_SEC, DARK_R, PLUG_R } from '../delve/pests.js';
+import { createPest, stepPest, tapPest, baitPest, canPick, pushOffPlayer, catchAtBreak, counterFor, grabChunk, floorTally, darkPest, plugPest, softOk, rollerAtBreak, mimicSpot, RING_SEC, TAP_R, BAIT_R, BAIT_EAT_SEC, DARK_R, PLUG_R, DOZE_R } from '../delve/pests.js';
 import { makePest, makeOreChunk, makePuddle, makeBurrow, makeRing, makeBait, makeShaft, makeLadderUp, makeRock, makeLift, emojiBubble, makeTrail } from '../delve/pest-art.js';
 import { makeMiner } from '../delve/miner.js';
 import { makeStateBadge, makeGroundGlow } from '../delve/state-badge.js';
@@ -305,7 +305,7 @@ function breakRock(i, soft) {
 
 const dozerAt = (i) => {
   const r = run.layout.rocks[i];
-  return run.pests.some(p => p.sim.state === 'doze' && Math.hypot(p.sim.x - r.x, p.sim.z - r.z) <= PEST_CATCH_R);
+  return run.pests.some(p => p.sim.state === 'doze' && Math.hypot(p.sim.x - r.x, p.sim.z - r.z) <= PEST_CATCH_R + DOZE_R);
 };
 
 const batAlive = () => run.pests.some(p => p.sim.kind === 'bat' && !['gone', 'sleep'].includes(p.sim.state));

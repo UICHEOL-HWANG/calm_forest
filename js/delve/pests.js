@@ -9,6 +9,7 @@ export const NOTICE_R = 9;
 export const PICK_R = 0.8;
 export const DARK_R = 4;
 export const PLUG_R = 1.8;
+export const DOZE_R = 0.45;
 
 const d2 = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 
@@ -38,6 +39,7 @@ export function stepPest(p, dt, w) {
   const speed = PESTS[p.kind].speed;
   const events = [];
   if (['gone', 'sleep', 'mimic'].includes(p.state)) return { pest: p, events };
+  if (p.state === 'doze' && !w.lurkAt) return { pest: { ...p, state: 'sleep', spot: null }, events };
   if (['eat', 'away', 'lost'].includes(p.state)) {
     const t = p.t - dt;
     const q = p.state === 'away' && w.lureAt ? moveToward(p, w.lureAt, speed, dt) : p;
@@ -60,10 +62,10 @@ export function stepPest(p, dt, w) {
     }
     if (w.lurkAt && d2(p, w.lurkAt) <= NOTICE_R) {
       const same = ['lurk', 'doze'].includes(p.state) && p.spot && p.spot.ax === w.lurkAt.x && p.spot.az === w.lurkAt.z;
-      if (same && p.state === 'doze') return { pest: p, events };
+      if (same && p.state === 'doze') return { pest: moveToward(p, p.spot, speed, dt), events };
       const spot = same ? p.spot : { ...lurkSpot(p, w.lurkAt, w.lurkTurn || 0), ax: w.lurkAt.x, az: w.lurkAt.z };
       const q = moveToward({ ...p, state: 'lurk', targetId: null, spot }, spot, speed, dt);
-      return { pest: p.kind === 'dormouse' && d2(q, spot) < 0.05 ? { ...q, state: 'doze' } : q, events };
+      return { pest: p.kind === 'dormouse' && d2(q, spot) < DOZE_R ? { ...q, state: 'doze' } : q, events };
     }
     return { pest: ['approach', 'lurk', 'doze'].includes(p.state) ? { ...p, state: restState(p), targetId: null, spot: null } : p, events };
   }
@@ -83,11 +85,12 @@ export function counterFor(p) {
 const NO_CATCH = ['bat', 'roller'];
 
 export function catchAtBreak(pests, at, { soft = false } = {}) {
-  let best = -1, bd = PEST_CATCH_R;
+  let best = -1, bd = PEST_CATCH_R + DOZE_R;
   pests.forEach((p, i) => {
     const d = d2(p, at);
+    const reach = p.state === 'doze' ? PEST_CATCH_R + DOZE_R : PEST_CATCH_R;
     const ready = (p.state === 'lurk' && !NO_CATCH.includes(p.kind)) || (p.state === 'doze' && !soft);
-    if (ready && d <= bd) { best = i; bd = d; }
+    if (ready && d <= Math.min(bd, reach)) { best = i; bd = d; }
   });
   return best;
 }
