@@ -1,11 +1,11 @@
 import {
-  $w, atMine, dexDiscover, dist2D, isOpen, doPlayerAction, gameState, player, questEvent, refreshInventoryUI, requestSave, scene,
+  $w, atMine, dexDiscover, dist2D, firstHint, isOpen, doPlayerAction, gameState, player, questEvent, refreshInventoryUI, requestSave, scene,
   removeSolid, setSpaceVisible, situation, snapCamera, solidCircle, spawnDust, spawnFloatText, spawnSparkle, ui, todayStr,
 } from '../game.js';
 import { trackEvent } from '../analytics.js';
 import { weeklyNote } from '../weekly/index.js';
 import { DELVE, MINE, MINE_HALF } from '../data/places.js';
-import { DELVE_HALF, DELVE_CHEST_FLOORS, PEST_COPY } from '../data/delve.js';
+import { DELVE_HALF, DELVE_CHEST_FLOORS, PEST_COPY, PEST_LINES, VEIN_HP } from '../data/delve.js';
 import {
   floorSeed, layoutFloor, ladderRevealed, themeOf, oreOdds, rollOre, makeRng, noteReach, oreAllowed, markOreFloor,
   bumpCount, canDescendFrom0, stopsOpen, liftPanelRows, bumpJob, jobProgress, reclaimGive, stepView, claimStep, noteChest, jobFor, hashSeed, chestSpot,
@@ -14,7 +14,7 @@ import { rollChest, chestGive } from '../boat-chest.js';
 import { makeChestMesh } from '../boat-chest-art.js';
 import { jobCard, owedMinerRewards, minerTalk } from '../delve/miner-card.js';
 import { playMinerLines, advanceMinerTalk, minerTalkOpen, closeMinerTalk } from '../delve/miner-talk.js';
-import { createPest, stepPest, tapPest, baitPest, canPick, pushOffPlayer, RING_SEC, TAP_R, BAIT_R } from '../delve/pests.js';
+import { createPest, stepPest, tapPest, baitPest, canPick, pushOffPlayer, catchAtBreak, counterFor, grabChunk, floorTally, RING_SEC, TAP_R, BAIT_R, BAIT_EAT_SEC } from '../delve/pests.js';
 import { makePest, makeOreChunk, makePuddle, makeBurrow, makeRing, makeBait, makeShaft, makeLadderUp, makeRock, makeLift, emojiBubble, makeTrail } from '../delve/pest-art.js';
 import { makeMiner } from '../delve/miner.js';
 import { placeRootShrine, clearRootShrine } from '../delve/root-scene.js';
@@ -131,7 +131,7 @@ function buildRoom(floor, layout) {
   const up = makeLadderUp(); up.position.copy(W(layout.arrival.x, layout.arrival.z - 1)); up.position.y = FLOOR_Y; group.add(up);
   const light = new THREE.PointLight(0xffb866, 2.0, 18, 1.2); light.position.copy(W(0, 0)); light.position.y = 4; group.add(light);
   spareLamp = new THREE.PointLight(0xffb866, 0, 6, 1.3); group.add(spareLamp);
-  run.rockMeshes = layout.rocks.map(r => { const m = makeRock(r.vein && run.oreOk, theme); m.position.copy(W(r.x, r.z)); m.position.y = FLOOR_Y; m.userData.hp = 3; group.add(m); const s = solidCircle(m.position.x, m.position.z, ROCK_R); roomSolids.push(s); m.userData.solid = s; return m; });
+  run.rockMeshes = layout.rocks.map(r => { const m = makeRock(r.vein && run.oreOk, theme); m.position.copy(W(r.x, r.z)); m.position.y = FLOOR_Y; m.userData.hp = r.vein && run.oreOk ? VEIN_HP : 3; group.add(m); const s = solidCircle(m.position.x, m.position.z, ROCK_R); roomSolids.push(s); m.userData.solid = s; return m; });
   for (const p of layout.puddles) { const m = makePuddle(0.85); m.position.copy(W(p.x, p.z)); m.position.y = FLOOR_Y; group.add(m); }
   for (const b of layout.burrows) { const m = makeBurrow(); m.position.copy(W(b.x, b.z)); m.position.y = FLOOR_Y; group.add(m); }
   scene.add(group);
@@ -143,7 +143,7 @@ function spawnPests(layout) {
     const at = kind === 'axolotl' && layout.puddles[0] ? layout.puddles[0] : home;
     const art = makePest(kind, { submerged: kind === 'axolotl' });
     group.add(art.g);
-    return { sim: createPest(kind, at, home), art, met: false, bubble: null, bubbleTxt: null };
+    return { sim: createPest(kind, at, home, { asleep: !run.oreOk }), art, met: false, bubble: null, bubbleTxt: null };
   });
 }
 
@@ -152,7 +152,8 @@ export function enterFloor(floor, via) {
   const layout = layoutFloor({ seed: floorSeed(date, floor, visitN++), floor });
   const oreOk = oreAllowed(gameState.delve, date, floor);
   const prevSec = run ? Math.round((performance.now() - run.enteredAt) / 1000) : 0, prevRocks = run ? run.broken : 0;
-  run = { enteredAt: performance.now(), floor, layout, oreOk, broken: 0, ladderShown: false, chunks: [], carried: new Map(), stash: [], ore: 0, chunkN: 0, trail: null };
+  const prev = closeFloorTally();
+  run = { enteredAt: performance.now(), floor, layout, oreOk, broken: 0, ladderShown: false, chunks: [], carried: new Map(), stash: [], ore: 0, chunkN: 0, trail: null, kept: 0, lost: 0, lurkAt: null };
   buildRoom(floor, layout);
   spawnPests(layout);
   run.chest = null;
@@ -169,10 +170,10 @@ export function enterFloor(floor, via) {
   player.rotation.y = 0;
   $w.nearDoor = null; ui.setDoorPrompt?.(null); snapCamera(); setSpaceVisible();
   if (layout.shrine) { const at = W(layout.shrine.x, layout.shrine.z); at.y = FLOOR_Y; placeRootShrine(group, at, themeOf(floor), layout.shrine.x > 0 ? 1 : -1, spareLamp); }
-  trackEvent('delve_floor', { floor, via, stops: stopsOpen(gameState.delve).length, sec: prevSec, rocks: prevRocks });
+  trackEvent('delve_floor', { floor, via, stops: stopsOpen(gameState.delve).length, sec: prevSec, rocks: prevRocks, kept: prev.kept, lost: prev.lost });
   if (via === 'ladder') weeklyNote('delve');
   if (!oreOk) ui.toast?.('⛏️ 이 층 광맥은 오늘 다 캤어요. 내일 다시 차올라요', 3200);
-  if (floor === 1) $w.firstHintBanner?.('delve_common', PEST_COPY.common.ico, PEST_COPY.common.title, PEST_COPY.common.line);
+  else if (prev.any) ui.toast?.(prev.line, 3200);
   $w.refreshQuestPanel?.();
 }
 
@@ -210,9 +211,17 @@ function tickLift(dt) {
   try { enterFloor(floor, 'lift'); } finally { ui.sleepFade?.(0); }
 }
 
+function closeFloorTally() {
+  if (!run) return { kept: 0, lost: 0, any: false, line: '' };
+  const t = floorTally({ kept: run.kept, lost: run.lost, pending: run.stash.length + run.carried.size });
+  return { ...t, line: PEST_LINES.result(run.floor, t.kept, t.lost) };
+}
+
 export function leaveToFloor0(reason) {
-  trackEvent('delve_exit', { floor: delveFloorNow(), reason, ore: run?.ore || 0 });
+  const t = closeFloorTally();
+  trackEvent('delve_exit', { floor: delveFloorNow(), reason, ore: run?.ore || 0, kept: t.kept, lost: t.lost });
   clearRoom(); run = null;
+  if (t.any) ui.toast?.(t.line, 3200);
   player.position.set(MINE.x + 5, 0, MINE.z - MINE_HALF + 5.5);
   $w.nearDoor = null; ui.setDoorPrompt?.(null); snapCamera(); setSpaceVisible();
 }
@@ -236,7 +245,17 @@ function nearestRock(maxD) {
 function dropChunk(lx, lz, ore) {
   const mesh = makeOreChunk(); mesh.position.copy(W(lx, lz)); mesh.position.y = FLOOR_Y + 0.12; group.add(mesh);
   const ring = makeRing(0.5); ring.position.copy(W(lx, lz)); ring.position.y = FLOOR_Y + 0.02; ring.visible = false; group.add(ring);
-  run.chunks.push({ id: `c${run.chunkN++}`, x: lx, z: lz, age: 0, ore, mesh, ring });
+  const c = { id: `c${run.chunkN++}`, x: lx, z: lz, age: 0, ore, mesh, ring };
+  run.chunks.push(c);
+  return c;
+}
+
+function carryOff(p, c) {
+  run.chunks = run.chunks.filter(x => x !== c);
+  group.remove(c.ring); disposeObj(c.ring);
+  run.carried.set(c.id, c);
+  p.grabAt = { x: c.x, z: c.z };
+  ui.toast?.(PEST_COPY[p.sim.kind].took, 2400);
 }
 
 function showLadder() {
@@ -254,11 +273,18 @@ export function tryDelveMine() {
   doPlayerAction(m.position.x, m.position.z);
   Sound.chop(); spawnDust(m.position.x, m.position.z, 8);
   m.userData.hp -= 1;
+  const ore = r.vein && run.oreOk;
+  if (ore) run.lurkAt = { x: r.x, z: r.z };
   if (m.userData.hp > 0) return;
   m.visible = false;
   removeSolid(m.userData.solid);
   run.broken++;
-  if (r.vein && run.oreOk) dropChunk(r.x, r.z, rollOre(makeRng((Date.now() ^ (i * 2654435761)) >>> 0), oreOdds(run.floor, situation().weather)));
+  if (ore) {
+    run.lurkAt = null;
+    const c = dropChunk(r.x, r.z, rollOre(makeRng((Date.now() ^ (i * 2654435761)) >>> 0), oreOdds(run.floor, situation().weather)));
+    const k = catchAtBreak(run.pests.map(p => p.sim), { x: r.x, z: r.z });
+    if (k >= 0) { const p = run.pests[k]; p.sim = grabChunk(p.sim, c.id); carryOff(p, c); }
+  }
   if (!run.ladderShown && ladderRevealed({ broken: run.broken, hitLadderRock: i === run.layout.ladderRock })) showLadder();
 }
 
@@ -269,6 +295,7 @@ function pickUp(c) {
   for (const o of [c.mesh, c.ring]) { group.remove(o); disposeObj(o); }
   gameState.inventory[c.ore] = (gameState.inventory[c.ore] || 0) + 1;
   run.ore++;
+  run.kept++;
   refreshInventoryUI();
   Sound.harvest();
   spawnFloatText(c.mesh.position.x, 1.4, c.mesh.position.z, `+1`, c.ore === 'gem' ? '#5ad0e0' : '#cfc8b8');
@@ -276,7 +303,7 @@ function pickUp(c) {
   dexDiscover('ore', c.ore);
   if (batAlive() && c.age < RING_SEC) {
     gameState.delve = bumpCount(gameState.delve, 'grab');
-    trackEvent('pest_counter', { pest: 'bat', method: 'grab', ok: 1 });
+    trackEvent('pest_counter', { pest: 'bat', method: 'grab', ok: 1, state: run.pests.find(p => p.sim.kind === 'bat' && p.sim.state !== 'gone')?.sim.state || 'gone' });
   }
   const j = jobFor(todayStr());
   if (gameState.delve.stage >= 8 && j.kind === 'ore' && run.floor >= j.floorMin) bumpTodayJob();
@@ -323,8 +350,8 @@ export function delvePrompt() {
   if (run.ladderShown && near(run.layout.ladderAt, 1.6)) return run.floor >= 20 ? { nd: 'delve_bottom', prompt: '🪜 가장 깊은 곳' } : { nd: 'delve_down', prompt: '🪜 내려가기' };
   if (run.chest && near(run.chest.at, 1.6)) return { nd: 'delve_chest', prompt: '🧰 상자 열기' };
   for (const p of run.pests) {
-    if (p.sim.kind === 'axolotl' && !['gone', 'flee'].includes(p.sim.state) && near(p.sim, TAP_R)) return { nd: 'delve_tap', prompt: PEST_COPY.axolotl.prompt };
-    if (p.sim.kind === 'crab' && ['idle', 'approach'].includes(p.sim.state) && near(p.sim, BAIT_R)) return { nd: 'delve_bait', prompt: PEST_COPY.crab.prompt };
+    if (counterFor(p.sim) === 'tap' && near(p.sim, TAP_R)) return { nd: 'delve_tap', prompt: PEST_COPY.axolotl.prompt };
+    if (counterFor(p.sim) === 'bait' && near(p.sim, BAIT_R)) return { nd: 'delve_bait', prompt: PEST_COPY.crab.prompt };
   }
   if (run.stash.length && run.layout.burrows.some(b => near(b, 1.4))) return { nd: 'delve_dig', prompt: PEST_COPY.grub.prompt };
   return null;
@@ -397,6 +424,7 @@ export function handleDelveDoor(nd) {
   if (nd === 'delve_tap') {
     const lp = L(player.position);
     for (const p of run.pests) {
+      const was = p.sim.state;
       const r = tapPest(p.sim, lp);
       if (!r) continue;
       p.sim = r.pest;
@@ -407,7 +435,8 @@ export function handleDelveDoor(nd) {
         dropChunk(e.x, e.z, c.ore);
       }
       gameState.delve = bumpCount(gameState.delve, 'tap');
-      trackEvent('pest_counter', { pest: 'axolotl', method: 'tap', ok: r.events.length ? 1 : 0 });
+      ui.toast?.(r.events.length ? PEST_LINES.spat : PEST_LINES.ran, 2400);
+      trackEvent('pest_counter', { pest: 'axolotl', method: 'tap', ok: 1, state: was });
       $w.refreshQuestPanel?.();
       return true;
     }
@@ -417,14 +446,16 @@ export function handleDelveDoor(nd) {
     if ((gameState.inventory.forage || 0) <= 0) { ui.toast?.('🍄 미끼로 줄 버섯이 없어요. 채집 숲에서 주워 와요', 3200); return true; }
     const at = L(player.position);
     for (const p of run.pests) {
+      const was = p.sim.state;
       const next = baitPest(p.sim, at);
       if (!next) continue;
       p.sim = next;
       gameState.inventory.forage -= 1; refreshInventoryUI();
       const b = makeBait(); b.position.copy(W(p.sim.x, p.sim.z + 0.5)); b.position.y = FLOOR_Y; group.add(b);
-      const g = group; setTimeout(() => { g.remove(b); disposeObj(b); }, 6000);
+      const g = group; setTimeout(() => { g.remove(b); disposeObj(b); }, BAIT_EAT_SEC * 1000);
       gameState.delve = bumpCount(gameState.delve, 'bait');
-      trackEvent('pest_counter', { pest: 'crab', method: 'bait', ok: 1 });
+      ui.toast?.(PEST_LINES.eat(BAIT_EAT_SEC), 2600);
+      trackEvent('pest_counter', { pest: 'crab', method: 'bait', ok: 1, state: was });
       $w.refreshQuestPanel?.();
       return true;
     }
@@ -433,12 +464,13 @@ export function handleDelveDoor(nd) {
   if (nd === 'delve_dig') {
     const give = reclaimGive(run.stash);
     const got = Object.values(give).reduce((a, b) => a + b, 0);
+    run.kept += run.stash.length;
     for (const [ore, n] of Object.entries(give)) gameState.inventory[ore] = (gameState.inventory[ore] || 0) + n;
     run.stash = [];
     refreshInventoryUI();
     spawnFloatText(player.position.x, 1.6, player.position.z, `+${got}`, '#ffe48a');
     gameState.delve = bumpCount(gameState.delve, 'reclaim');
-    trackEvent('pest_counter', { pest: 'grub', method: 'reclaim', ok: 1 });
+    trackEvent('pest_counter', { pest: 'grub', method: 'reclaim', ok: 1, state: 'stash' });
     if (gameState.delve.stage >= 8 && jobFor(todayStr()).kind === 'reclaim') bumpTodayJob();
     $w.refreshQuestPanel?.();
     return true;
@@ -446,11 +478,13 @@ export function handleDelveDoor(nd) {
   return false;
 }
 
-function meetBanner(kind) {
+function meetCard(kind) {
   const c = PEST_COPY[kind];
-  $w.firstHintBanner?.(`delve_${kind}`, c.ico, c.title, c.line);
+  firstHint(`delve_meet_${kind}`, c.ico, c.title, { steps: c.steps, note: c.line, ...(c.prompt ? { chip: c.prompt } : {}) });
   trackEvent('pest_meet', { pest: kind, floor: run.floor });
 }
+
+const BUBBLE = { lurk: '👀', approach: '👀', carry: '💎', flee: '❗', eat: '🍄', sleep: '💤' };
 
 export function updateDelve(dt, t) {
   tickLift(dt);
@@ -463,22 +497,25 @@ export function updateDelve(dt, t) {
     if (c.ring.visible) c.ring.scale.setScalar(1 - (c.age / RING_SEC) * 0.6);
     if (canPick(c, lp)) pickUp(c);
   }
+  const paused = !!ui.anyModalOpen?.();
+  const rest = !run.chunks.length && !run.layout.rocks.some((r, i) => r.vein && run.oreOk && run.rockMeshes[i].visible);
   for (const p of run.pests) {
-    const world = { chunks: run.chunks.map(c => ({ id: c.id, x: c.x, z: c.z, age: c.age })), burrowAt: p.sim.home };
-    const { pest, events } = stepPest(p.sim, dt, world);
+    const world = { chunks: run.chunks.map(c => ({ id: c.id, x: c.x, z: c.z, age: c.age })), burrowAt: p.sim.home, lurkAt: run.lurkAt, rest };
+    const { pest, events } = paused ? { pest: p.sim, events: [] } : stepPest(p.sim, dt, world);
     p.sim = pest;
     p.sim = pushOffPlayer(p.sim, lp);
+    if (!p.met && ['lurk', 'approach'].includes(pest.state)) { p.met = true; meetCard(pest.kind); }
     for (const e of events) {
       if (e.type === 'grab') {
         const c = run.chunks.find(x => x.id === e.chunkId);
-        if (c) { run.chunks = run.chunks.filter(x => x !== c); group.remove(c.ring); disposeObj(c.ring); run.carried.set(c.id, c); p.grabAt = { x: c.x, z: c.z }; }
-        if (!p.met) { p.met = true; meetBanner(pest.kind); }
+        if (c) carryOff(p, c);
       }
       if (e.type === 'stash') {
         const c = run.carried.get(e.chunkId);
         run.carried.delete(e.chunkId);
         if (c) {
           group.remove(c.mesh); disposeObj(c.mesh);
+          if (pest.kind !== 'grub') run.lost++;
           if (pest.kind === 'grub') {
             run.stash.push(c);
             if (!run.trail) {
@@ -492,7 +529,7 @@ export function updateDelve(dt, t) {
     }
     p.art.g.position.copy(W(p.sim.x, p.sim.z)); p.art.g.position.y = FLOOR_Y + (p.art.hover || 0);
     p.art.g.visible = pest.state !== 'gone';
-    const want = pest.state === 'carry' ? '💎' : pest.state === 'flee' ? '❗' : pest.state === 'eat' ? '😋' : null;
+    const want = BUBBLE[pest.state] || null;
     if (p.bubbleTxt !== want) {
       if (p.bubble) { group.remove(p.bubble); disposeObj(p.bubble); }
       p.bubble = want ? emojiBubble(want, 0.9) : null;

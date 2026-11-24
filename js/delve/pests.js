@@ -1,4 +1,4 @@
-import { PESTS, DELVE_HALF } from '../data/delve.js';
+import { PESTS, DELVE_HALF, PEST_LURK_DIST, PEST_CATCH_R } from '../data/delve.js';
 
 export const RING_SEC = 3;
 export const GRAB_R = 0.45;
@@ -10,8 +10,10 @@ export const PICK_R = 0.8;
 
 const d2 = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 
-export function createPest(kind, at, home) {
-  return { kind, state: kind === 'axolotl' ? 'hide' : 'idle', x: at.x, z: at.z, home: { ...home }, spawn: { x: at.x, z: at.z }, targetId: null, carryId: null, t: 0 };
+const restState = p => (p.kind === 'axolotl' ? 'hide' : 'idle');
+
+export function createPest(kind, at, home, { asleep = false } = {}) {
+  return { kind, state: asleep ? 'sleep' : restState({ kind }), x: at.x, z: at.z, home: { ...home }, spawn: { x: at.x, z: at.z }, targetId: null, carryId: null, t: 0 };
 }
 
 function moveToward(p, to, speed, dt) {
@@ -21,12 +23,20 @@ function moveToward(p, to, speed, dt) {
   return { ...p, x: p.x + (dx / len) * s, z: p.z + (dz / len) * s };
 }
 
+export function grabChunk(p, chunkId) { return { ...p, state: 'carry', carryId: chunkId, targetId: null }; }
+
+function lurkSpot(p, at) {
+  const dx = p.x - at.x, dz = p.z - at.z, len = Math.hypot(dx, dz);
+  const [ux, uz] = len > 1e-6 ? [dx / len, dz / len] : [1, 0];
+  return { x: at.x + ux * PEST_LURK_DIST, z: at.z + uz * PEST_LURK_DIST };
+}
+
 const wanted = (p, c) => !(p.kind === 'bat' && c.age < RING_SEC) && d2(p, c) <= NOTICE_R;
 
 export function stepPest(p, dt, w) {
   const speed = PESTS[p.kind].speed;
   const events = [];
-  if (p.state === 'gone') return { pest: p, events };
+  if (p.state === 'gone' || p.state === 'sleep') return { pest: p, events };
   if (p.state === 'eat') {
     const t = p.t - dt;
     return { pest: t <= 0 ? { ...p, state: 'idle', t: 0 } : { ...p, t }, events };
@@ -41,20 +51,46 @@ export function stepPest(p, dt, w) {
     return { pest: q, events };
   }
   const target = w.chunks.filter(c => wanted(p, c)).sort((a, b) => d2(p, a) - d2(p, b))[0];
-  if (!target) return { pest: p.state === 'approach' ? { ...p, state: p.kind === 'axolotl' ? 'hide' : 'idle', targetId: null } : p, events };
+  if (!target) {
+    if (w.rest) {
+      const q = moveToward({ ...p, state: restState(p), targetId: null }, p.home, speed, dt);
+      return { pest: d2(q, p.home) < 0.3 ? { ...q, state: 'sleep' } : q, events };
+    }
+    if (w.lurkAt && d2(p, w.lurkAt) <= NOTICE_R) return { pest: moveToward({ ...p, state: 'lurk', targetId: null }, lurkSpot(p, w.lurkAt), speed, dt), events };
+    return { pest: ['approach', 'lurk'].includes(p.state) ? { ...p, state: restState(p), targetId: null } : p, events };
+  }
   const q = moveToward({ ...p, state: 'approach', targetId: target.id }, target, speed, dt);
-  if (d2(q, target) <= GRAB_R) { events.push({ type: 'grab', chunkId: target.id }); return { pest: { ...q, state: 'carry', carryId: target.id, targetId: null }, events }; }
+  if (d2(q, target) <= GRAB_R) { events.push({ type: 'grab', chunkId: target.id }); return { pest: grabChunk(q, target.id), events }; }
   return { pest: q, events };
 }
 
+export function counterFor(p) {
+  if (p.kind === 'axolotl' && ['lurk', 'approach', 'carry'].includes(p.state)) return 'tap';
+  if (p.kind === 'crab' && ['lurk', 'approach'].includes(p.state)) return 'bait';
+  return null;
+}
+
+export function catchAtBreak(pests, at) {
+  let best = -1, bd = PEST_CATCH_R;
+  pests.forEach((p, i) => {
+    const d = d2(p, at);
+    if (p.state === 'lurk' && p.kind !== 'bat' && d <= bd) { best = i; bd = d; }
+  });
+  return best;
+}
+
+export function floorTally({ kept, lost, pending }) {
+  return { kept, lost: lost + pending, any: kept + lost + pending > 0 };
+}
+
 export function tapPest(p, player) {
-  if (p.kind !== 'axolotl' || p.state === 'gone' || d2(p, player) > TAP_R) return null;
+  if (counterFor(p) !== 'tap' || d2(p, player) > TAP_R) return null;
   const events = p.carryId ? [{ type: 'spit', chunkId: p.carryId, x: p.x, z: p.z }] : [];
   return { pest: { ...p, state: 'flee', carryId: null, targetId: null }, events };
 }
 
 export function baitPest(p, at) {
-  if (p.kind !== 'crab' || p.state === 'gone' || p.state === 'carry' || d2(p, at) > BAIT_R) return null;
+  if (counterFor(p) !== 'bait' || d2(p, at) > BAIT_R) return null;
   return { ...p, state: 'eat', t: BAIT_EAT_SEC, targetId: null };
 }
 
@@ -68,7 +104,7 @@ const ROOM_LIM = DELVE_HALF - 0.3;
 const clampRoom = v => Math.max(-ROOM_LIM, Math.min(ROOM_LIM, v));
 
 export function pushOffPlayer(p, player) {
-  if (p.state === 'gone' || p.state === 'hide') return p;
+  if (['gone', 'hide', 'sleep'].includes(p.state)) return p;
   if (p.state === 'carry' && d2(p, p.home) < 1) return p;
   const dx = p.x - player.x, dz = p.z - player.z, d = Math.hypot(dx, dz);
   if (d >= PUSH_R) return p;

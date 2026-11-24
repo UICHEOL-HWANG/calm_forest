@@ -20,9 +20,12 @@ test('방해꾼 4종은 각자 대응이 하나씩이고 테마에 소속된다'
   for (const th of THEMES) for (const id of th.pests) assert.ok(PESTS[id], id);
 });
 
-test('첫 만남 배너 한 줄은 18자 이내, 프롬프트 8자 이내, 엠대시 없음', () => {
+test('첫 만남 카드: 몹마다 세 칸, 한 줄 22자 이내, 프롬프트 8자 이내, 엠대시·놀다 없음', () => {
+  assert.deepEqual(Object.keys(PEST_COPY).sort(), Object.keys(PESTS).sort());
   for (const [id, c] of Object.entries(PEST_COPY)) {
-    assert.ok([...c.line].length <= 18, `${id}: ${c.line}`);
+    assert.equal(c.steps.length, 3, id);
+    assert.ok([...c.line].length <= 22, `${id}: ${c.line}`);
+    for (const t of [c.title, c.line, c.took, ...c.steps.map(x => x.label)]) assert.ok(!/—|놀[아다자]/.test(t), `${id}: ${t}`);
     assert.ok(!c.line.includes('—') && !c.title.includes('—'), id);
     if (c.prompt) assert.ok([...c.prompt].length <= 8, `${id} prompt`);
   }

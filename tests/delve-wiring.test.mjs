@@ -66,9 +66,11 @@ test('액션 아이콘: 동굴 프롬프트의 첫 이모지가 버튼 아이콘
   for (const e of ['❗', '⛏️', '🍄', '🛗', '🪜', '🧰']) assert.ok(line.split(e).length >= 3, e);
 });
 
-test('공통 배너는 1층 첫 진입, 빛 자국은 등불벌레가 굴에 넣을 때', () => {
-  assert.match(src, /delve_common/);
-  assert.match(src, /makeTrail\(/);
+test('1층 공통 배너 대신 몹별 첫 만남 카드, 빛 자국은 등불벌레가 굴에 넣을 때', () => {
+  const s = read('js/spaces/delve.js');
+  assert.doesNotMatch(s, /delve_common/);
+  assert.match(s, /firstHint\(`delve_meet_\$\{kind\}`/);
+  assert.match(s, /makeTrail\(/);
 });
 
 test('상자는 보물상자 규칙(rollChest·chestGive) 재사용, 열면 noteChest', () => {
@@ -128,7 +130,8 @@ test('GA4: delve_floor 에 sec·rocks, delve_step 에 sec, 도망 중 도롱뇽�
   assert.match(s, /trackEvent\('delve_floor', \{ floor, via, stops: [^}]*sec: [^}]*rocks: [^}]*\}/);
   for (const m of s.matchAll(/trackEvent\('delve_step', \{([^}]*)\}/g)) assert.match(m[1], /sec: /);
   assert.match(s, /started: true, startedAt: Date\.now\(\)/);
-  assert.match(s, /p\.sim\.kind === 'axolotl' && !\['gone', 'flee'\]\.includes\(p\.sim\.state\)/);
+  assert.match(s, /counterFor\(p\.sim\) === 'tap'/);
+  assert.match(s, /counterFor\(p\.sim\) === 'bait'/);
 });
 
 test('되찾기는 조각마다 제 광석(reclaimGive), 성공 뒤 패널 갱신', () => {
@@ -179,4 +182,36 @@ test('광부는 해금(miner) 전엔 동굴에 없고, 승강기는 세계수 �
   assert.match(d, /function syncMinerPresence\(\)/);
   assert.match(d, /isOpen\('miner'\)/);
   assert.match(d, /광산의 가지를 채우면 광부 아저씨가 돌아와요/);
+});
+
+test('받아먹기: 광맥은 VEIN_HP, 처음 치면 몹이 기다리고, 깨질 때 catchAtBreak', () => {
+  const s = delveSrc();
+  assert.match(s, /r\.vein && run\.oreOk \? VEIN_HP : 3/);
+  assert.match(s, /run\.lurkAt = /);
+  assert.match(s, /catchAtBreak\(/);
+});
+
+test('결과가 보인다: 뺏김 토스트, 층 결과 토스트, 기록 키', () => {
+  const s = delveSrc();
+  assert.match(s, /PEST_COPY\[[^\]]+\]\.took/);
+  assert.match(s, /floorTally\(/);
+  assert.match(s, /trackEvent\('delve_floor', \{[^}]*kept[^}]*lost[^}]*\}/);
+  assert.match(s, /trackEvent\('delve_exit', \{[^}]*kept[^}]*lost[^}]*\}/);
+  for (const m of s.matchAll(/trackEvent\('pest_counter', \{([^}]*)\}/g)) assert.match(m[1], /state: /);
+});
+
+test('말풍선은 블룸에 안 타는 베이지 배경', () => {
+  const art = read('js/delve/pest-art.js');
+  const b = art.slice(art.indexOf('export function emojiBubble'), art.indexOf('export function emojiBubble') + 900);
+  assert.match(b, /rgba\(226,196,158/);
+  assert.match(b, /toneMapped: false/);
+});
+
+test('새 문구는 영어 사전에 있다', async () => {
+  const { EN } = await import('../js/i18n-en.js');
+  const { PEST_COPY } = await import('../js/data/delve.js');
+  for (const c of Object.values(PEST_COPY)) {
+    for (const k of [c.title, c.line, c.took, ...c.steps.map(x => x.label)]) assert.ok(EN[k], k);
+  }
+  for (const k of ['수정집게가 버섯을 먹어요 · {0#}초', '도롱뇽이 놀라서 도망가요', '조각을 뱉었어요', '⛏️ 지하 {0#}층 · 지킨 조각 {1#} · 뺏긴 조각 {2#}']) assert.ok(EN[k], k);
 });

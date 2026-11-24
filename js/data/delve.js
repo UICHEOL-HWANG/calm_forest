@@ -29,12 +29,26 @@ export const PESTS = {
   grub: { ico: '🐛', name: '등불벌레', counter: 'reclaim', speed: 1.2 },
 };
 
+export const VEIN_HP = 5;
+export const PEST_LURK_DIST = 0.7;
+export const PEST_CATCH_R = 1.0;
+
 export const PEST_COPY = {
-  common: { ico: '⛏️', title: '조각 도둑', line: '가방은 안전해요. 조각만 노려요', prompt: null },
-  axolotl: { ico: '🦎', title: '동굴 도롱뇽', line: '웅덩이 아가미를 톡 치면 뱉어요', prompt: '❗ 톡 치기' },
-  crab: { ico: '💎', title: '수정집게', line: '먹보예요. 🍄 미끼를 던져요', prompt: '🍄 미끼 던지기' },
-  bat: { ico: '🦇', title: '잎귀박쥐', line: '반짝이면 툭! 조각은 바로 주워요', prompt: null },
-  grub: { ico: '🐛', title: '등불벌레', line: '놓쳐도 OK. 빛 자국 끝 굴로', prompt: '⛏️ 굴 파기' },
+  axolotl: { ico: '🦎', title: '동굴 도롱뇽이 조각을 노려요', line: '웅덩이로 물고 가요 · 톡 치면 뱉어요', prompt: '❗ 톡 치기', took: '🦎 동굴 도롱뇽이 조각을 물고 갔어요',
+    steps: [{ ico: '💎', label: '조각을 물고' }, { ico: '💧', label: '웅덩이로 가요' }, { ico: '❗', label: '톡 치면 뱉어요' }] },
+  crab: { ico: '💎', title: '수정집게가 조각을 노려요', line: '🍄 미끼를 주면 먹느라 멈춰요', prompt: '🍄 미끼 던지기', took: '💎 수정집게가 조각을 물고 갔어요',
+    steps: [{ ico: '💎', label: '조각을 집어' }, { ico: '🕳️', label: '굴로 가져가요' }, { ico: '🍄', label: '버섯을 주면 멈춰요' }] },
+  bat: { ico: '🦇', title: '잎귀박쥐가 조각을 노려요', line: '노란 고리가 사라지기 전에 주워요', prompt: null, took: '🦇 잎귀박쥐가 조각을 물고 갔어요',
+    steps: [{ ico: '✨', label: '노란 고리 동안은' }, { ico: '✋', label: '먼저 주우면 지켜요' }, { ico: '🦇', label: '끝나면 채 가요' }] },
+  grub: { ico: '🐛', title: '등불벌레가 조각을 노려요', line: '놓쳐도 빛 자국 끝 굴을 파면 돼요', prompt: '⛏️ 굴 파기', took: '🐛 등불벌레가 조각을 물고 갔어요',
+    steps: [{ ico: '💎', label: '조각을 끌고' }, { ico: '✨', label: '빛 자국을 남겨요' }, { ico: '⛏️', label: '끝의 굴을 파요' }] },
+};
+
+export const PEST_LINES = {
+  eat: n => `수정집게가 버섯을 먹어요 · ${n}초`,
+  ran: '도롱뇽이 놀라서 도망가요',
+  spat: '조각을 뱉었어요',
+  result: (floor, kept, lost) => `⛏️ 지하 ${floor}층 · 지킨 조각 ${kept} · 뺏긴 조각 ${lost}`,
 };
 
 export const MINER_STEPS = [

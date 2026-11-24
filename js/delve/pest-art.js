@@ -191,10 +191,12 @@ export function makeBait() {
 export function emojiBubble(txt, size = 0.85) {
   const c = document.createElement('canvas'); c.width = c.height = 128;
   const x = c.getContext('2d');
-  x.fillStyle = 'rgba(255,250,242,.95)'; x.beginPath(); x.arc(64, 58, 50, 0, Math.PI * 2); x.fill();
-  x.beginPath(); x.moveTo(52, 100); x.lineTo(64, 122); x.lineTo(76, 100); x.fill();
-  x.font = '62px "Apple Color Emoji","Segoe UI Emoji",sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(txt, 64, 62);
-  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false, transparent: true }));
+  x.fillStyle = 'rgba(226,196,158,.96)';
+  x.beginPath(); x.moveTo(36, 8); x.arcTo(118, 8, 118, 96, 26); x.arcTo(118, 96, 10, 96, 26); x.arcTo(10, 96, 10, 8, 26); x.arcTo(10, 8, 118, 8, 26); x.closePath(); x.fill();
+  x.beginPath(); x.moveTo(52, 94); x.lineTo(64, 120); x.lineTo(76, 94); x.fill();
+  x.font = '60px "Apple Color Emoji","Segoe UI Emoji",sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(txt, 64, 54);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true, toneMapped: false, fog: false }));
   sp.scale.setScalar(size); sp.renderOrder = 10; return sp;
 }
 
