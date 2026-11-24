@@ -1,6 +1,6 @@
 # delve-pests 맥락
 
-Last Updated: 2026-11-24 23:55 KST
+Last Updated: 2026-11-25 KST
 
 ## 핵심 파일
 - js/data/delve.js: PESTS(속도), PEST_COPY, MINER_STEPS(부탁 tap·bait·grab·reclaim)
@@ -23,3 +23,9 @@ Last Updated: 2026-11-24 23:55 KST
 
 ## 병행
 - 몹 생김새·새 몹 시안은 백그라운드 에이전트가 sims/delve-mobs/ 에서 작업(게임 코드 안 건드림).
+
+## 진행
+- 커밋: 4cc08bac(설계) · a8e07fe0(구현) · c86f6990(리뷰 반영). npm test 6817/0, build-ait 성공.
+- 플레이 캡처: 헤드리스(metal) 오프라인 게스트, PC·세로 폰·가로 폰. 카드가 안 뜨던 것은 하네스가 코치(튜토리얼) 진행 중이었기 때문(modalQueue 게이트), 실제 지하 플레이어는 해당 없음.
+- 리뷰 남은 LOW: 바닥에 남긴 조각은 지킴·뺏김 어디에도 안 셈, 미끼 6초는 고정 문구, 같은 광맥에 미끼 반복 가능(버섯 소모).
+- 몹 시안: sims/delve-mobs/(커밋 안 함). 추천 C안(생김새=훔치는 방식)+크기 1.6→2.2, 새 몹 달빛나방(불 끄기)·별코두더지(구멍 막기)·겨울잠쥐(살살 캐기), 수정공굴리는 보류.
