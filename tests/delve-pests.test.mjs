@@ -193,7 +193,7 @@ test('별코두더지: 노릴 때 구멍을 막으면 다른 곳에 튀어나와
   assert.equal(mid.p.state, 'lost');
 });
 
-test('겨울잠쥐: 광맥 옆에 도착하면 잠들고, 시끄럽게 깨면 받아 물고, 살살 깨면 계속 잔다', () => {
+test('도둑쥐: 광맥 옆에 도착하면 잠들고, 시끄럽게 깨면 받아 물고, 살살 깨면 계속 잔다', () => {
   const { p } = run(createPest('dormouse', { x: 0, z: 0 }, { x: -5, z: 0 }), W([], { lurkAt: vein }), 8);
   assert.equal(p.state, 'doze');
   assert.equal(counterFor(p), null);
@@ -225,21 +225,21 @@ test('수정공굴리: 깨질 때 받아 물지 않고 조각 옆에서 조각�
   assert.equal(ev.length, 0);
 });
 
-test('겨울잠쥐는 플레이어가 바로 옆에 서서 조금 밀려나도 광맥 옆에서 잠든다', () => {
+test('도둑쥐는 플레이어가 바로 옆에 서서 조금 밀려나도 광맥 옆에서 잠든다', () => {
   let p = createPest('dormouse', { x: 0, z: 0 }, { x: -5, z: 0 });
   const player = { x: vein.x - 1.1, z: 0.1 };
   for (let t = 0; t < 10; t += 0.1) { p = stepPest(p, 0.1, W([], { lurkAt: vein })).pest; p = pushOffPlayer(p, player); }
   assert.equal(p.state, 'doze');
 });
 
-test('살살 깨서 광맥이 사라지면 잠든 겨울잠쥐는 바닥 조각을 보고도 계속 잔다', () => {
+test('살살 깨서 광맥이 사라지면 잠든 도둑쥐는 바닥 조각을 보고도 계속 잔다', () => {
   const p = { ...createPest('dormouse', { x: 3.3, z: 0 }, { x: -5, z: 0 }), state: 'doze', spot: { x: 3.3, z: 0, ax: 4, az: 0 } };
   const { p: after, ev } = run(p, W([{ id: 'a', x: 4, z: 0, age: 0 }]), 5);
   assert.equal(after.state, 'sleep');
   assert.equal(ev.length, 0);
 });
 
-test('플레이어가 겨울잠쥐 자리를 막고 서 있어도 광맥 근처(DOZE_NEAR)에서 잠들고, 깨지면 받아 문다', () => {
+test('플레이어가 도둑쥐 자리를 막고 서 있어도 광맥 근처(DOZE_NEAR)에서 잠들고, 깨지면 받아 문다', () => {
   for (const gap of [0.65, 0.9, 1.2]) {
     let p = createPest('dormouse', { x: 0, z: 0 }, { x: -5, z: 0 });
     const player = { x: vein.x - gap, z: 0 };
