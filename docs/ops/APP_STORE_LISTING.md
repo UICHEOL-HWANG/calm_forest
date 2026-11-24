@@ -154,6 +154,6 @@ Available in Korean and English.
 | 저작권 | `© 2026 Hwang Cheorish` |
 | 연령 등급 | 설문 전부 '없음' → 4+ 예상(사용자 간 상호작용: 리더보드 닉네임·이웃 마을 구경은 '제한적'으로 답) |
 | 가격 | 무료, 앱 내 구입 없음 |
-| 스크린샷 6.9" | `assets/store/ios/01~05` (1320×2868) |
+| 스크린샷 6.9" | `assets/store/ios/01~08` + `en/01~08` (1320×2868, `tools/store-shots/frames.mjs`) |
 | 수출 규정 준수 | Info.plist `ITSAppUsesNonExemptEncryption=false` — 질문 안 뜸 |
 | 로그인 정보(심사용) | 필요 없음 — Apple 창을 닫으면 게스트로 바로 플레이 |

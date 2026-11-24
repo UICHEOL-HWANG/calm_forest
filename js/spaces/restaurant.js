@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {
-  $w, adPill, camera, cameraFree, colliders, gameState, giveReward, makeSignpost, obstacles, player, projectToScreen, refreshInventoryUI, requestSave, scene,
+  $w, Input, adPill, camera, cameraFree, setCameraRig, colliders, gameState, giveReward, makeSignpost, obstacles, player, projectToScreen, refreshInventoryUI, requestSave, scene,
   setFogExempt, setSpaceVisible, snapCamera, playerArms, solidBox, solidCircle, spawnFloatText, ui, npcObjs, todayStr,
 } from '../game.js';
 import { buildRegularBoard } from '../restaurant/regular-board.js';
@@ -33,6 +33,9 @@ import { guideStalled } from '../pond/yard-steps.js';
 import { createNav } from '../guide/path.js';
 import { STOP_SOLIDS } from '../restaurant/nav-solids.js';
 import { CAFE_GATE } from '../data/places.js';
+import { Sound } from '../sound.js';
+import { createRestaurantCine } from '../restaurant/cine-run.js';
+import { REGULAR_BOARD_AT } from '../restaurant/cine-plan.js';
 
 export const RESTAURANT_DOOR = restaurantLocal(0, 3.1);
 export const restaurantExitSpot = () => restaurantLocal(0, 3.9);
@@ -159,12 +162,12 @@ async function rebuildRegularBoard() {
   if (regularBoard) { hall.group.remove(regularBoard); disposeBoard(regularBoard); regularBoard = null; }
   if (regularBoardSolid) regularBoardSolid.off = !next;
   if (!next) return;
-  next.position.set(-6.85, 0, 1.9);
+  next.position.set(REGULAR_BOARD_AT.x, 0, REGULAR_BOARD_AT.z);
   next.scale.setScalar(1.35);
   hall.group.add(next);
   setFogExempt(next, true);
   regularBoard = next;
-  if (!regularBoardSolid) regularBoardSolid = solidCircle(RESTAURANT.x - 6.85, RESTAURANT.z + 1.9, 0.15);
+  if (!regularBoardSolid) regularBoardSolid = solidCircle(RESTAURANT.x + REGULAR_BOARD_AT.x, RESTAURANT.z + REGULAR_BOARD_AT.z, 0.15);
 }
 
 async function rebuildSpecialMark() {
@@ -271,9 +274,11 @@ export function enterRestaurant() {
   $w.nearDoor = null; ui.setDoorPrompt?.(null); ui.setZoneHint?.(null); $w.lastZoneHint = null;
   snapCamera(); setSpaceVisible();
   trackEvent('enter_restaurant');
+  restCine().enter({ rest: gameState.restaurant, special, running: !!runtime?.running() });
 }
 
 export function exitRestaurant() {
+  restCineObj?.cancel();
   runtime?.abort();
   for (const id of [...hiddenByRest]) showNeighbor(id);
   $w.atRestaurant = false;
@@ -325,6 +330,19 @@ const navMemo = { x: Infinity, z: Infinity, tx: NaN, tz: NaN, res: null };
 const gCtx = { inside: false, running: false, served: 0, held: null, pan: null, stage: 0, at: { ...GUIDE_AT, table: null } };
 
 export const restaurantGuideActive = () => !!guide?.active();
+
+let restCineObj = null;
+const restCine = () => (restCineObj ??= createRestaurantCine({
+  camera, setCameraRig, t, free: () => cameraFree() && !ui.anyModalOpen?.(), track: trackEvent, state: () => gameState, save: requestSave,
+  stopAnalog: () => Input.setAnalog?.(0, 0), whoosh: () => Sound.cineWhoosh(),
+  lookOf: () => ({ x: player.position.x, y: player.position.y + 1.2, z: player.position.z }),
+  world: p => ({ x: RESTAURANT.x + p.x, y: p.y, z: RESTAURANT.z + p.z }),
+  door: RESTAURANT_DOOR,
+  showPlayer: v => { player.visible = v; },
+  coaching: () => !!ui.coachActive?.() || !!Input.needsTutorial?.(),
+  banner: (key, h, onShown) => $w.firstHintBanner?.(key, h.ico, t(h.title), t(h.line), onShown),
+}));
+export const restaurantCineActive = () => !!restCineObj?.active;
 
 let stepSeen = -1, stepAt = 0;
 function guideStall() {
@@ -440,8 +458,9 @@ export function updateRestaurantGuide(visible) {
   const ctx = guideCtx();
   guide.tick(ctx);
   if (!guide || guideStall()) return;
+  if (visible && !ctx.inside) restCine().door();
   const step = shownStep(GUIDE_STEPS, guide.index(), ctx.stage);
-  if (!visible || !step) { view.hide(); setPoint(null); return; }
+  if (!visible || !step || restCineObj?.active) { view.hide(); setPoint(null); return; }
   const idx = step.id === 'trash' ? guide.index() : Math.min(guide.index(), Math.max(0, ctx.stage));
   view.show(step, idx, guide.total, ctx, player.position, ctx.inside ? hallRoute : villageRoute, 0);
   setPoint(wantPoint(step) ? 'btn' : null);

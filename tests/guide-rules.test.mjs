@@ -140,7 +140,7 @@ test('도착 반경은 그 목적지의 상호작용 거리보다 작다', async
   const INTERACT = {
     tree: 2.6, stone: 2.4, coal: 2.4,
     cave: 2.0, farm: 2.0,
-    miner: 1.8, lift: 2.0,
+    miner: 1.8, lift: 2.0, mineGate: 2.0, minerMeet: 1.8,
     farmBranch: 2.4 + 2.3,
     wall: 3.2, roof: 3.2, house: 3.2,
     cosShop: 2.8, bridge: 2.2, museum: 2.4,
