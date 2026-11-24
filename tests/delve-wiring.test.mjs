@@ -215,3 +215,13 @@ test('새 문구는 영어 사전에 있다', async () => {
   }
   for (const k of ['수정집게가 버섯을 먹어요 · {0#}초', '도롱뇽이 놀라서 도망가요', '조각을 뱉었어요', '⛏️ 지하 {0#}층 · 지킨 조각 {1#} · 뺏긴 조각 {2#}']) assert.ok(EN[k], k);
 });
+
+test('리뷰 반영: 뺏김 토스트가 사다리 토스트에 안 덮이고, 첫 만남 기록은 카드가 뜰 때만, 잠든 박쥐는 고리 없음', () => {
+  const s = delveSrc();
+  const mine = s.slice(s.indexOf('export function tryDelveMine()'), s.indexOf('const batAlive'));
+  assert.ok(mine.indexOf('showLadder()') < mine.indexOf('catchAtBreak('));
+  assert.match(s, /if \(gameState\.hintsSeen\[key\]\) return;/);
+  assert.match(s, /const batAlive = \(\) => run\.pests\.some\(p => p\.sim\.kind === 'bat' && !\['gone', 'sleep'\]\.includes\(p\.sim\.state\)\)/);
+  assert.match(s, /method: 'tap', ok: r\.events\.length \? 1 : 0, state: was/);
+  assert.match(s, /lurkTurn: /);
+});

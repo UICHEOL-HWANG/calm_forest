@@ -172,8 +172,10 @@ export function enterFloor(floor, via) {
   if (layout.shrine) { const at = W(layout.shrine.x, layout.shrine.z); at.y = FLOOR_Y; placeRootShrine(group, at, themeOf(floor), layout.shrine.x > 0 ? 1 : -1, spareLamp); }
   trackEvent('delve_floor', { floor, via, stops: stopsOpen(gameState.delve).length, sec: prevSec, rocks: prevRocks, kept: prev.kept, lost: prev.lost });
   if (via === 'ladder') weeklyNote('delve');
-  if (!oreOk) ui.toast?.('⛏️ 이 층 광맥은 오늘 다 캤어요. 내일 다시 차올라요', 3200);
-  else if (prev.any) ui.toast?.(prev.line, 3200);
+  const depleted = '⛏️ 이 층 광맥은 오늘 다 캤어요. 내일 다시 차올라요';
+  if (prev.any) ui.toast?.(prev.line, 3200);
+  if (!oreOk && prev.any) { const here = run; setTimeout(() => { if (run === here) ui.toast?.(depleted, 3200); }, 3300); }
+  else if (!oreOk) ui.toast?.(depleted, 3200);
   $w.refreshQuestPanel?.();
 }
 
@@ -279,16 +281,16 @@ export function tryDelveMine() {
   m.visible = false;
   removeSolid(m.userData.solid);
   run.broken++;
+  if (!run.ladderShown && ladderRevealed({ broken: run.broken, hitLadderRock: i === run.layout.ladderRock })) showLadder();
   if (ore) {
     run.lurkAt = null;
     const c = dropChunk(r.x, r.z, rollOre(makeRng((Date.now() ^ (i * 2654435761)) >>> 0), oreOdds(run.floor, situation().weather)));
     const k = catchAtBreak(run.pests.map(p => p.sim), { x: r.x, z: r.z });
     if (k >= 0) { const p = run.pests[k]; p.sim = grabChunk(p.sim, c.id); carryOff(p, c); }
   }
-  if (!run.ladderShown && ladderRevealed({ broken: run.broken, hitLadderRock: i === run.layout.ladderRock })) showLadder();
 }
 
-const batAlive = () => run.pests.some(p => p.sim.kind === 'bat' && p.sim.state !== 'gone');
+const batAlive = () => run.pests.some(p => p.sim.kind === 'bat' && !['gone', 'sleep'].includes(p.sim.state));
 
 function pickUp(c) {
   run.chunks = run.chunks.filter(x => x !== c);
@@ -436,7 +438,7 @@ export function handleDelveDoor(nd) {
       }
       gameState.delve = bumpCount(gameState.delve, 'tap');
       ui.toast?.(r.events.length ? PEST_LINES.spat : PEST_LINES.ran, 2400);
-      trackEvent('pest_counter', { pest: 'axolotl', method: 'tap', ok: 1, state: was });
+      trackEvent('pest_counter', { pest: 'axolotl', method: 'tap', ok: r.events.length ? 1 : 0, state: was });
       $w.refreshQuestPanel?.();
       return true;
     }
@@ -479,7 +481,8 @@ export function handleDelveDoor(nd) {
 }
 
 function meetCard(kind) {
-  const c = PEST_COPY[kind];
+  const c = PEST_COPY[kind], key = `delve_meet_${kind}`;
+  if (gameState.hintsSeen[key]) return;
   firstHint(`delve_meet_${kind}`, c.ico, c.title, { steps: c.steps, note: c.line, ...(c.prompt ? { chip: c.prompt } : {}) });
   trackEvent('pest_meet', { pest: kind, floor: run.floor });
 }
@@ -499,8 +502,8 @@ export function updateDelve(dt, t) {
   }
   const paused = !!ui.anyModalOpen?.();
   const rest = !run.chunks.length && !run.layout.rocks.some((r, i) => r.vein && run.oreOk && run.rockMeshes[i].visible);
-  for (const p of run.pests) {
-    const world = { chunks: run.chunks.map(c => ({ id: c.id, x: c.x, z: c.z, age: c.age })), burrowAt: p.sim.home, lurkAt: run.lurkAt, rest };
+  for (const [j, p] of run.pests.entries()) {
+    const world = { chunks: run.chunks.map(c => ({ id: c.id, x: c.x, z: c.z, age: c.age })), burrowAt: p.sim.home, lurkAt: run.lurkAt, rest, lurkTurn: (j - (run.pests.length - 1) / 2) * 1.1 };
     const { pest, events } = paused ? { pest: p.sim, events: [] } : stepPest(p.sim, dt, world);
     p.sim = pest;
     p.sim = pushOffPlayer(p.sim, lp);

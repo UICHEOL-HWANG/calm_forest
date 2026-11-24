@@ -23,12 +23,11 @@ function moveToward(p, to, speed, dt) {
   return { ...p, x: p.x + (dx / len) * s, z: p.z + (dz / len) * s };
 }
 
-export function grabChunk(p, chunkId) { return { ...p, state: 'carry', carryId: chunkId, targetId: null }; }
+export function grabChunk(p, chunkId) { return { ...p, state: 'carry', carryId: chunkId, targetId: null, spot: null }; }
 
-function lurkSpot(p, at) {
-  const dx = p.x - at.x, dz = p.z - at.z, len = Math.hypot(dx, dz);
-  const [ux, uz] = len > 1e-6 ? [dx / len, dz / len] : [1, 0];
-  return { x: at.x + ux * PEST_LURK_DIST, z: at.z + uz * PEST_LURK_DIST };
+function lurkSpot(p, at, turn = 0) {
+  const a = Math.atan2(p.z - at.z, p.x - at.x) + turn;
+  return { x: at.x + Math.cos(a) * PEST_LURK_DIST, z: at.z + Math.sin(a) * PEST_LURK_DIST };
 }
 
 const wanted = (p, c) => !(p.kind === 'bat' && c.age < RING_SEC) && d2(p, c) <= NOTICE_R;
@@ -56,8 +55,12 @@ export function stepPest(p, dt, w) {
       const q = moveToward({ ...p, state: restState(p), targetId: null }, p.home, speed, dt);
       return { pest: d2(q, p.home) < 0.3 ? { ...q, state: 'sleep' } : q, events };
     }
-    if (w.lurkAt && d2(p, w.lurkAt) <= NOTICE_R) return { pest: moveToward({ ...p, state: 'lurk', targetId: null }, lurkSpot(p, w.lurkAt), speed, dt), events };
-    return { pest: ['approach', 'lurk'].includes(p.state) ? { ...p, state: restState(p), targetId: null } : p, events };
+    if (w.lurkAt && d2(p, w.lurkAt) <= NOTICE_R) {
+      const same = p.state === 'lurk' && p.spot && p.spot.ax === w.lurkAt.x && p.spot.az === w.lurkAt.z;
+      const spot = same ? p.spot : { ...lurkSpot(p, w.lurkAt, w.lurkTurn || 0), ax: w.lurkAt.x, az: w.lurkAt.z };
+      return { pest: moveToward({ ...p, state: 'lurk', targetId: null, spot }, spot, speed, dt), events };
+    }
+    return { pest: ['approach', 'lurk'].includes(p.state) ? { ...p, state: restState(p), targetId: null, spot: null } : p, events };
   }
   const q = moveToward({ ...p, state: 'approach', targetId: target.id }, target, speed, dt);
   if (d2(q, target) <= GRAB_R) { events.push({ type: 'grab', chunkId: target.id }); return { pest: grabChunk(q, target.id), events }; }

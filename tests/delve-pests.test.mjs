@@ -150,3 +150,16 @@ test('층 결과: 지킴은 주운 수, 뺏김은 굴에 들어간 수 + 못 되
   assert.deepEqual(floorTally({ kept: 2, lost: 1, pending: 1 }), { kept: 2, lost: 2, any: true });
   assert.deepEqual(floorTally({ kept: 0, lost: 0, pending: 0 }), { kept: 0, lost: 0, any: false });
 });
+
+test('두 몹이 같은 광맥을 노리면 서로 다른 자리에서 기다린다', () => {
+  const a = run(createPest('crab', { x: 0, z: 0.2 }, { x: -5, z: 0 }), W([], { lurkAt: vein, lurkTurn: -0.6 }), 8).p;
+  const b = run(createPest('axolotl', { x: 0, z: -0.2 }, { x: -5, z: 0 }), W([], { lurkAt: vein, lurkTurn: 0.6 }), 8).p;
+  assert.ok(Math.hypot(a.x - b.x, a.z - b.z) > 0.6);
+});
+
+test('다른 광맥을 치기 시작하면 그 광맥 옆으로 옮겨 기다린다', () => {
+  const first = run(createPest('crab', { x: 0, z: 0 }, { x: -5, z: 0 }), W([], { lurkAt: vein }), 8).p;
+  const other = { x: 0, z: 4 };
+  const { p } = run(first, W([], { lurkAt: other }), 8);
+  assert.ok(Math.abs(Math.hypot(p.x - other.x, p.z - other.z) - PEST_LURK_DIST) < 0.05);
+});
