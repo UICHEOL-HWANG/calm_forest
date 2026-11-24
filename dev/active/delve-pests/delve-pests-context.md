@@ -1,6 +1,6 @@
 # delve-pests 맥락
 
-Last Updated: 2026-11-25 KST
+Last Updated: 2026-11-25 (2차) KST
 
 ## 핵심 파일
 - js/data/delve.js: PESTS(속도), PEST_COPY, MINER_STEPS(부탁 tap·bait·grab·reclaim)
