@@ -186,7 +186,7 @@ export function createRestaurantRuntime(env) {
     const out = first ? { ...settled, rest: { ...settled.rest, dda: env.rest().dda } } : settled;
     env.setRest(out.rest);
     env.earnCoins(out.bonus);
-    env.trackEvent('restaurant_service', { star: star0, served: r.served, avg_score: Math.round(r.avg * 10) / 10, dda: out.rest.dda.iv, regular_n: r.regularN });
+    env.trackEvent('restaurant_service', { star: star0, served: r.served, avg_score: Math.round(r.avg * 10) / 10, dda: out.rest.dda.iv, regular_n: r.regularN, special: r.special ?? 'none', special_n: r.specialN, fry_n: r.fryN });
     if (out.starUp) env.trackEvent('restaurant_star_up', { star: out.rest.star });
     env.requestSave();
     const need = stockNeed(out.rest, env.port()?.pantry);

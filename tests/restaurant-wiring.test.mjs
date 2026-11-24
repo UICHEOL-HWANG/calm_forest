@@ -117,11 +117,11 @@ test('문: 마을에서 들어가기, 안에서 나가기와 영업 맥락', () 
   assert.match(DOORS, /else prompt = updateRestaurantInteract\(\);/);
 });
 
-test('식당 이벤트 파라미터는 5개 이하', () => {
+test('식당 이벤트 파라미터는 GA4 한도(직접 키 23개) 안', () => {
   const src = read('js/restaurant/runtime.js');
   const m = src.match(/trackEvent\('restaurant_service', \{([^}]*)\}/);
   assert.ok(m);
-  assert.ok(m[1].split(',').length <= 5);
+  assert.ok(m[1].split(',').length <= 23);
 });
 
 test('지도 이름표: 길목 이름(정류장·이웃 마을 가는 길)은 시설 이름 뒤에 자리를 잡는다', () => {
