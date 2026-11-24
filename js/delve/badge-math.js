@@ -1,7 +1,7 @@
 export const BADGE_TONE = { wait: '#f2a23c', carry: '#e95f4e', stop: '#62c486' };
 
 export const PEST_BADGE = {
-  lurk: ['👀', 'wait'], approach: ['👀', 'wait'], carry: ['💎', 'carry'],
+  lurk: ['👀', 'wait'], approach: ['👀', 'wait'], feint: ['👀', 'wait'], carry: ['💎', 'carry'],
   flee: ['❗', 'stop'], eat: ['🍄', 'stop'], sleep: ['💤', 'stop'], doze: ['💤', 'stop'], away: ['🌙', 'stop'], lost: ['❓', 'stop'],
 };
 

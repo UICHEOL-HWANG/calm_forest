@@ -13,7 +13,7 @@ export const M = (geo, m, parent, p = [0, 0, 0], r = [0, 0, 0], s = [1, 1, 1], s
 export const put = (parent, geo, m, p = [0, 0, 0], s = [1, 1, 1], r = [0, 0, 0], shadow = true) => M(geo, m, parent, p, r, s, shadow);
 export const G = (parent, p = [0, 0, 0], r = [0, 0, 0]) => { const g = new THREE.Group(); g.position.set(...p); g.rotation.set(...r); parent.add(g); return g; };
 export const pair = fn => [-1, 1].map(fn);
-export const MOVING = new Set(['approach', 'carry', 'flee']);
+export const MOVING = new Set(['approach', 'carry', 'flee', 'feint']);
 export const BLUSH = 0xf6aab8;
 
 export const S = (r, w = r >= 0.15 ? 18 : r >= 0.08 ? 14 : r >= 0.04 ? 10 : 7) => new THREE.SphereGeometry(r, w, Math.max(4, Math.round(w * 0.7)));

@@ -65,3 +65,35 @@ export function makeGroundGlow(tone) {
   m.rotation.x = -Math.PI / 2; m.renderOrder = 3;
   return m;
 }
+
+const heartSheets = new Map();
+function heartSheet(n) {
+  if (heartSheets.has(n)) return heartSheets.get(n);
+  const c = document.createElement('canvas'); c.width = 256; c.height = 96;
+  const x = c.getContext('2d');
+  x.font = `64px ${FONT}`; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.shadowColor = 'rgba(8,6,4,0.5)'; x.shadowBlur = 8; x.shadowOffsetY = 3;
+  x.fillText('❤️'.repeat(n), 128, 52);
+  heartSheets.set(n, c);
+  return c;
+}
+
+export function makeHearts(n) {
+  const tex = new THREE.CanvasTexture(heartSheet(n)); tex.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false, fog: false, toneMapped: false }));
+  s.scale.set(0.66, 0.25, 1); s.renderOrder = 21;
+  return s;
+}
+
+export function makeGift() {
+  const s = makeStateBadge('🎁', 'stop');
+  s.scale.setScalar(0.7);
+  return s;
+}
+
+export function makeEmojiMark(emoji, size = 0.55) {
+  const c = once(`e${emoji}`, () => emojiLayer(emoji));
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture(c), transparent: true, depthWrite: false, fog: false, toneMapped: false }));
+  s.scale.setScalar(size); s.renderOrder = 20;
+  return s;
+}

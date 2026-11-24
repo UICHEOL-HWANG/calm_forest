@@ -35,12 +35,27 @@ export const PESTS = {
 
 export const VEIN_HP = 5;
 export const PEST_LURK_DIST = 0.7;
+export const MOLE_HOLE_R = 1.6;
 export const PEST_CATCH_R = 1.0;
 export const PEST_DARK_SEC = 6;
 export const PEST_LOST_SEC = 6;
 export const SOFT_PERIOD = 1.4;
 export const SOFT_WINDOW = [0.38, 0.62];
 export const MIMIC_DIST = 0.9;
+export const PEST_GRIT = 3;
+export const STREAK_BONUS = 3;
+export const REGROUP_SEC = 2.5;
+
+export const TACTICS = {
+  axolotl: [{}, { dive: true }, { feint: true }],
+  crab: [{}, { eatSec: 3 }, { claw: true }],
+  mole: [{ decoys: 0 }, { decoys: 1 }, { decoys: 2, speedMul: 1.3 }],
+  dormouse: [{ period: 1.4 }, { period: 0.9 }, { period: 1.4, peek: true }],
+  bat: [{ ringSec: 3 }, { ringSec: 1.8, circle: true }, { ringSec: 1.8, bounce: 1.5 }],
+  grub: [{}, { twoTrails: true }, { trailFadeSec: 4 }],
+  moth: [{ darkSec: 6 }, { darkSec: 3 }, { darkSec: 6, pair: true }],
+  roller: [{ swaps: 0, swapSec: 0 }, { swaps: 2, swapSec: 0.4 }, { swaps: 3, swapSec: 0.25 }],
+};
 
 export const PEST_COPY = {
   axolotl: { ico: '🦎', title: '동굴 도롱뇽이 조각을 노려요', line: '웅덩이로 물고 가요 · 톡 치면 뱉어요', prompt: '❗ 톡 치기', took: '🦎 동굴 도롱뇽이 조각을 물고 갔어요',
@@ -61,6 +76,8 @@ export const PEST_COPY = {
     steps: [{ ico: '🔮', label: '몸을 말아' }, { ico: '💎', label: '조각인 척해요' }, { ico: '👂', label: '귀 없는 쪽이 진짜' }] },
 };
 
+const iGa = w => ((w.charCodeAt(w.length - 1) - 0xac00) % 28 ? '이' : '가');
+
 export const PEST_LINES = {
   eat: n => `수정집게가 버섯을 먹어요 · ${n}초`,
   ran: '도롱뇽이 놀라서 도망가요',
@@ -70,7 +87,11 @@ export const PEST_LINES = {
   fake: '앗, 가짜였어요',
   real: '진짜를 골랐어요',
   spat: '조각을 뱉었어요',
-  result: (floor, kept, lost) => `⛏️ 지하 ${floor}층 · 지킨 조각 ${kept} · 뺏긴 조각 ${lost}`,
+  giveup: n => `🎁 ${n}${iGa(n)} 포기하고 선물을 두고 갔어요`,
+  bonus: n => `✨ ${n}연속! 광석 +1`,
+  empty: '빈 굴이에요',
+  peek: '👁️ 실눈 뜬 도둑쥐가 깼어요',
+  result: (floor, kept, lost, best = 0) => `⛏️ 지하 ${floor}층 · 지킨 조각 ${kept} · 뺏긴 조각 ${lost}${best >= 2 ? ` · 최고 연속 ${best}` : ''}`,
 };
 
 export const MINER_STEPS = [

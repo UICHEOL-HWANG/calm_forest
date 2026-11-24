@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const KINDS = ['axolotl', 'crab', 'bat', 'grub', 'moth', 'mole', 'dormouse', 'roller'];
-const STATES = ['idle', 'hide', 'lurk', 'approach', 'carry', 'flee', 'eat', 'sleep', 'gone', 'away', 'lost', 'doze', 'mimic'];
+const STATES = ['idle', 'hide', 'lurk', 'approach', 'carry', 'flee', 'eat', 'sleep', 'gone', 'away', 'lost', 'doze', 'mimic', 'feint'];
 const FILES = ['pest-art.js', 'pest-art-kit.js', 'pest-art-thieves.js', 'pest-art-new.js'];
 
 async function load() {
