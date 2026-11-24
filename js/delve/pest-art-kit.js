@@ -1,31 +1,49 @@
 import * as THREE from 'three';
+import { plushMat } from '../animal-faces.js';
 
 export const PEST_SCALE = 2.2;
 
 export const mat = (c, extra = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, metalness: 0, ...extra });
-export const flat = (c, extra = {}) => mat(c, { flatShading: true, ...extra });
 export const glow = (c, k = 0.9) => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: k, roughness: 0.35 });
+export const plush = (c, extra = {}) => Object.assign(plushMat(c), extra);
+export const gloss = (c, extra = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.3, metalness: 0, ...extra });
 export const M = (geo, m, parent, p = [0, 0, 0], r = [0, 0, 0], s = [1, 1, 1], shadow = true) => {
   const o = new THREE.Mesh(geo, m); o.position.set(...p); o.rotation.set(...r); o.scale.set(...s); o.castShadow = shadow; parent.add(o); return o;
 };
+export const put = (parent, geo, m, p = [0, 0, 0], s = [1, 1, 1], r = [0, 0, 0], shadow = true) => M(geo, m, parent, p, r, s, shadow);
 export const G = (parent, p = [0, 0, 0], r = [0, 0, 0]) => { const g = new THREE.Group(); g.position.set(...p); g.rotation.set(...r); parent.add(g); return g; };
 export const pair = fn => [-1, 1].map(fn);
+export const MOVING = new Set(['approach', 'carry', 'flee']);
+export const BLUSH = 0xf6aab8;
 
-export function teardrop(r, len, tip = 0.3, flatBottom = 0.3) {
-  const g = new THREE.SphereGeometry(r, 14, 10);
-  const p = g.attributes.position, v = new THREE.Vector3();
-  for (let i = 0; i < p.count; i++) {
-    v.fromBufferAttribute(p, i);
-    const zN = v.z / r, back = Math.max(0, -zN);
-    const k = 1 - (1 - tip) * Math.pow(back, 1.4);
-    v.x *= k; v.y *= k;
-    if (v.y < 0) v.y *= 1 - flatBottom;
-    v.z = zN * len / 2;
-    p.setXYZ(i, v.x, v.y, v.z);
+export const S = (r, w = r >= 0.15 ? 18 : r >= 0.08 ? 14 : r >= 0.04 ? 10 : 7) => new THREE.SphereGeometry(r, w, Math.max(4, Math.round(w * 0.7)));
+
+const sm = (a, b, u) => { const t = Math.min(1, Math.max(0, u)); return a + (b - a) * t * t * (3 - 2 * t); };
+export const keys = (ks) => (u) => { for (let i = 1; i < ks.length; i++) if (u <= ks[i][0]) return sm(ks[i - 1][1], ks[i][1], (u - ks[i - 1][0]) / (ks[i][0] - ks[i - 1][0])); return ks[ks.length - 1][1]; };
+
+export function taper(parent, pts, radFn, m, { segs = 10, radial = 8, caps = true } = {}) {
+  const curve = new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p)));
+  const geo = new THREE.TubeGeometry(curve, segs, 1, radial, false);
+  const pos = geo.attributes.position, v = new THREE.Vector3();
+  for (let i = 0; i <= segs; i++) {
+    const u = i / segs, c = curve.getPointAt(u), r = radFn(u);
+    for (let j = 0; j <= radial; j++) {
+      const k = i * (radial + 1) + j;
+      v.fromBufferAttribute(pos, k).sub(c).multiplyScalar(r).add(c);
+      pos.setXYZ(k, v.x, v.y, v.z);
+    }
   }
-  g.computeVertexNormals();
-  return g;
+  geo.computeVertexNormals();
+  const o = put(parent, geo, m);
+  if (caps) {
+    const r0 = radFn(0), r1 = Math.max(0.004, radFn(1));
+    put(parent, new THREE.SphereGeometry(r0, radial, Math.max(4, radial - 2)), m, curve.getPointAt(0).toArray());
+    put(parent, new THREE.SphereGeometry(r1, radial, Math.max(4, radial - 2)), m, curve.getPointAt(1).toArray());
+  }
+  return o;
 }
+
+export const lathe = (profile, segs = 16) => new THREE.LatheGeometry(profile.map(([x, y]) => new THREE.Vector2(x, y)), segs);
 
 export function crystal(r, h) {
   const prism = new THREE.CylinderGeometry(r, r * 1.08, h, 6); prism.translate(0, h / 2, 0);
@@ -43,49 +61,57 @@ export function crystalCluster(parent, p, list, k = 0.35) {
   return cl;
 }
 
-export function eye(parent, p, r) {
-  const g = G(parent, p);
-  M(new THREE.SphereGeometry(r, 10, 8), mat(0x1c1816, { roughness: 0.4 }), g, [0, 0, 0], [0, 0, 0], [1, 1, 0.8], false);
-  g.userData.hi = M(new THREE.SphereGeometry(r * 0.34, 6, 5), new THREE.MeshBasicMaterial({ color: 0xffffff }), g, [r * 0.3, r * 0.38, r * 0.62], [0, 0, 0], [1, 1, 1], false);
-  return g;
+export const US = (r, w = r >= 0.5 ? 20 : r >= 0.2 ? 12 : 8) => new THREE.SphereGeometry(r, w, Math.max(4, Math.round(w * 0.72)));
+
+export function uPatch(g, dx, dy, dz, w, h, color, roll = 0, sink = 0.94, thick = 0.12) {
+  const d = new THREE.Vector3(dx, dy, dz).normalize();
+  const m = new THREE.Mesh(US(1, 10), plush(color));
+  m.position.copy(d).multiplyScalar(sink); m.lookAt(d.clone().multiplyScalar(3)); m.rotateZ(roll);
+  m.scale.set(w, h, thick); g.add(m); return m;
 }
 
-export function lid(e, r, color) {
-  e.userData.lid = M(new THREE.SphereGeometry(r * 1.12, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), mat(color), e, [0, 0, 0], [-1.1, 0, 0], [1, 1, 0.85], false);
-}
-
-export function face(parent, sd, p, r, skin, browColor) {
-  const e = eye(parent, p, r);
-  lid(e, r, skin);
-  const y = p[1] + r * 1.5;
-  const b = M(new THREE.BoxGeometry(r * 1.9, r * 0.53, r * 0.57), mat(browColor), parent, [p[0], y, p[2] + r * 0.2], [0, 0, 0], [1, 1, 1], false);
-  return { e, brow: { b, sd, y } };
-}
-
-export function setEyes(eyes, mode) {
-  eyes.forEach(e => {
-    e.scale.set(1, 1, 1);
-    e.userData.hi.visible = true;
-    const l = e.userData.lid;
-    if (l) l.rotation.x = -1.1;
-    if (mode === 'closed') {
-      if (l) l.rotation.x = 1.45; else { e.scale.y = 0.14; e.userData.hi.visible = false; }
-    } else if (mode === 'half') {
-      if (l) l.rotation.x = 0.05; else e.scale.y = 0.6;
-    } else if (mode === 'wide') {
-      e.scale.setScalar(1.3);
-      if (l) l.rotation.x = -1.4;
-    }
+export function uEyes(g, { x, y, z, r, color = 0x2a1e22, ring = false }) {
+  const hi = gloss(0xffffff), pupil = gloss(color), shutM = gloss(0x3a2a30);
+  const open = [], shut = [];
+  pair(s => {
+    const e = G(g, [s * x, y, z]);
+    if (ring) put(e, US(r * 1.12, 10), plush(0xffffff), [0, 0, -r * 0.4], [1, 1, 1], [0, 0, 0], false);
+    put(e, US(r, 10), pupil, [0, 0, 0], [1, 1, 1], [0, 0, 0], false);
+    put(e, US(r * 0.36, 6), hi, [r * 0.34, r * 0.42, r * 0.78], [1, 1, 1], [0, 0, 0], false);
+    put(e, US(r * 0.16, 5), hi, [-r * 0.3, -r * 0.3, r * 0.86], [1, 1, 1], [0, 0, 0], false);
+    open.push(e);
+    const d = new THREE.Vector3(s * x, y, z).normalize();
+    const c = new THREE.Mesh(new THREE.TorusGeometry(r * 0.85, r * 0.2, 4, 10, Math.PI), shutM);
+    c.position.copy(d).multiplyScalar(1.0); c.lookAt(d.clone().multiplyScalar(3)); c.rotateZ(Math.PI);
+    g.add(c); shut.push(c);
   });
+  return { open, shut };
 }
 
-export function browPose(brows, mood) {
-  brows.forEach(({ b, sd, y }) => {
-    b.position.y = y; b.rotation.z = 0;
-    if (mood === 'scheme') b.rotation.z = sd * 0.45;
-    if (mood === 'shock') { b.position.y = y + 0.025; b.rotation.z = -sd * 0.25; }
-    if (mood === 'sad') b.rotation.z = -sd * 0.4;
-  });
+export function look(f, mode) {
+  const closed = mode === 'closed';
+  f.open.forEach(e => { e.visible = !closed; const k = mode === 'wide' ? 1.2 : 1; e.scale.set(k, mode === 'half' ? 0.55 : k, k); });
+  f.shut.forEach(c => { c.visible = closed; });
+}
+
+export function uEar(g, side, { x, y, z, outer, inner, w = 0.3, h = 1.35, tilt = 0.35, lean = 0 }) {
+  const e = G(g, [side * x, y, z], [lean, 0, -side * tilt]);
+  put(e, US(w, 12), plush(outer), [0, 0, 0], [0.9, h, 0.45]);
+  put(e, US(w * 0.7, 12), plush(inner), [0, -0.02, w * 0.42], [0.65, h * 0.78, 0.32]);
+  return e;
+}
+
+export function uSmile(g, x, y, z, r, color = 0x7a4a52) {
+  return put(g, new THREE.TorusGeometry(r, r * 0.2, 4, 10, Math.PI), gloss(color, { roughness: 0.6 }), [x, y, z], [1, 1, 1], [0, 0, Math.PI], false);
+}
+
+export function unitHead(parent, at, R, build) {
+  const pivot = G(parent, at);
+  const u = new THREE.Group();
+  const out = build(u);
+  u.scale.setScalar(R);
+  pivot.add(u);
+  return { pivot, u, ...out };
 }
 
 export function wing(pv, sd, tilt, sweep, dihedral) {
@@ -94,7 +120,7 @@ export function wing(pv, sd, tilt, sweep, dihedral) {
 }
 
 export function oreChunkInto(g) {
-  M(new THREE.IcosahedronGeometry(0.15, 0), flat(0x5a5854), g);
+  M(new THREE.IcosahedronGeometry(0.15, 0), mat(0x5a5854, { flatShading: true }), g);
   M(new THREE.IcosahedronGeometry(0.085, 0), glow(0x5ad0e0, 0.9), g, [0.07, 0.08, 0.05]);
   M(new THREE.IcosahedronGeometry(0.05, 0), glow(0x5ad0e0, 0.9), g, [-0.08, 0.07, 0.06]);
   return g;
@@ -105,5 +131,3 @@ export function baitInto(g) {
   M(new THREE.SphereGeometry(0.17, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), mat(0xc4553c), g, [0, 0.15, 0], [0, 0, 0], [1, 0.7, 1]);
   return g;
 }
-
-export const MOVING = new Set(['approach', 'carry', 'flee']);

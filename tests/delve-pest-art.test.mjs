@@ -71,7 +71,7 @@ test('the mole hides underground while approaching and the moth flies off when a
 
 test('triangle budget stays mobile friendly', async () => {
   const { art } = await load();
-  for (const kind of KINDS) assert.ok(triangles(art.makePest(kind).g) < 7000, kind);
+  for (const kind of KINDS) assert.ok(triangles(art.makePest(kind).g) < 6000, kind);
   assert.ok(triangles(art.makeMoleHole()) < 600);
   assert.ok(triangles(art.makeGlowCrystal()) < 600);
 });
