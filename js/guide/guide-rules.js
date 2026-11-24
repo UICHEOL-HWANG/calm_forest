@@ -9,6 +9,8 @@ export const GOALS = {
   coal: { ico: '⚫', label: '석탄', title: '⚫ 석탄 캐기' },
   miner: { ico: '⛏️', label: '광부', title: '⛏️ 광부에게 가기' },
   lift: { ico: '🛗', label: '승강기', title: '🛗 승강기 타기' },
+  mineGate: { ico: '⛏️', label: '광산', title: '⛏️ 광부 아저씨가 돌아왔어요' },
+  minerMeet: { ico: '⛏️', label: '광부', title: '⛏️ 광부 아저씨에게 말을 걸어 봐요' },
   wall: { ico: '🔨', label: '집 터', title: '🔨 벽 세우기' },
   farm: { ico: '🌾', label: '밭', title: '🌾 밭 가꾸기' },
   roof: { ico: '🏠', label: '집 터', title: '🏠 지붕 올리기' },
@@ -19,11 +21,11 @@ export const GOALS = {
   exit: { ico: '🚪', label: '나가는 문', title: '🚪 마을로 나가기' },
 };
 
-export const VILLAGE_KEYS = new Set(['tree', 'cave', 'farmBranch', 'wall', 'roof', 'house', 'farm', 'cosShop', 'bridge', 'museum', 'story_worldTree', 'story_cafeDoor']);
+export const VILLAGE_KEYS = new Set(['tree', 'cave', 'farmBranch', 'wall', 'roof', 'house', 'farm', 'cosShop', 'bridge', 'museum', 'story_worldTree', 'story_cafeDoor', 'mineGate']);
 
 const TUT_KEYS = { chop: 'tree', mine: 'cave', house2: 'wall', harvest: 'farm', build: 'roof', dress: 'cosShop', bridge: 'bridge', curator: 'museum' };
 
-export const ARRIVE = { tree: 2.3, cave: 1.6, stone: 2.2, farmBranch: 4.2, coal: 2.2, miner: 1.5, lift: 1.8, wall: 2.4, roof: 2.4, house: 2.4, farm: 1.6, cosShop: 1.8, bridge: 1.8, museum: 2.0, exit: 1.5, story_worldTree: 4.2, story_cafeDoor: 1.6, story_cafeGuest: 2.0 };
+export const ARRIVE = { tree: 2.3, cave: 1.6, stone: 2.2, farmBranch: 4.2, coal: 2.2, miner: 1.5, lift: 1.8, mineGate: 1.6, minerMeet: 1.5, wall: 2.4, roof: 2.4, house: 2.4, farm: 1.6, cosShop: 1.8, bridge: 1.8, museum: 2.0, exit: 1.5, story_worldTree: 4.2, story_cafeDoor: 1.6, story_cafeGuest: 2.0 };
 
 export const CINE_SUB = '다음 목적지';
 export const MERCHANT_WOOD = 5;
@@ -56,6 +58,11 @@ export function farmPlotTarget(plots, center) {
   if (!plots.length) return center;
   const p = plots.find(q => q.state === 'mature') || plots.find(q => q.state === 'empty') || plots.find(q => q.state === 'growing' && !q.watered);
   return p ? { x: p.x, z: p.z } : null;
+}
+
+export function minerMeetGoal(d, open, inMine, seen) {
+  if (!open || d?.started) return null;
+  return inMine ? { key: 'minerMeet', cine: true } : { key: 'mineGate', cine: !seen?.treeShot_mine_habitat };
 }
 
 export function minerGoal(d, inv = {}) {

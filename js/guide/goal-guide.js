@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { createShotRig } from '../world/tree-shot.js';
 import { regionFrame } from '../world/region-cine.js';
-import { ARRIVE, CINE_SUB, GOALS, detourPoint, edgeAnchor, exitFirst, guideEventParams, minerGoal, tutGoal } from './guide-rules.js';
+import { ARRIVE, CINE_SUB, GOALS, detourPoint, edgeAnchor, exitFirst, guideEventParams, minerGoal, minerMeetGoal, tutGoal } from './guide-rules.js';
 import { storyStep } from './story-steps.js';
 import { fillStepCard, stepSignature } from './step-card.js';
 import { goalFocus } from './quiet.js';
@@ -100,6 +100,7 @@ export function createGoalGuide(deps) {
       if (inMine) return { at: nearest(deps.oreRocks(), r => !r.userData.depleted && r.userData.ore?.id === 'stone'), g: GOALS.stone };
       return null;
     }
+    if (key === 'mineGate') return inV ? { at: deps.mineGate, g: GOALS.mineGate, arrive: GATE_ARRIVE } : null;
     if (key === 'farmBranch') return inV ? { at: deps.worldTree, g: GOALS.farmBranch } : null;
     if (key.startsWith('story_')) return storyTarget(key, inV);
     if (key === 'farm' && deps.atFarm()) { const at = deps.farmPlot?.(); return at ? { at, g: GOALS.farm } : null; }
@@ -110,6 +111,7 @@ export function createGoalGuide(deps) {
     const spots = deps.mineSpots();
     if (key === 'miner') return { at: spots.miner, g: GOALS.miner };
     if (key === 'lift') return { at: spots.lift, g: GOALS.lift };
+    if (key === 'minerMeet') return { at: spots.miner, g: GOALS.minerMeet };
     return null;
   }
 
@@ -133,12 +135,15 @@ export function createGoalGuide(deps) {
       if (g) return { flow: 'tut', step, ...g };
     }
     if (!seen('guideFarmTab') && deps.farmBranchDue()) return { flow: 'tree', step: 'farm', key: 'farmBranch', cine: true };
+    const meet = minerMeetGoal(gs.delve, deps.minerOpen?.(), deps.atMine(), gs.hintsSeen);
+    if (meet && deps.atMine()) return { flow: 'mine', step: 'meet', ...meet };
     if (deps.atMine()) {
       const g = minerGoal(gs.delve, gs.inventory);
       if (g) return { flow: 'mine', step: `stage${gs.delve.stage}`, ...g };
     }
     if (storyMemo && storyMemo.where !== 'board') return { flow: 'story', step: storyMemo.rule, key: `story_${storyMemo.where}`, story: storyMemo, cine: false };
     if (deps.houseDue?.() && deps.inVillage()) return { flow: 'house', step: `stage${gs.houseStage | 0}`, key: 'house', cine: false };
+    if (meet && deps.inVillage()) return { flow: 'mine', step: 'meet', ...meet };
     return null;
   }
 

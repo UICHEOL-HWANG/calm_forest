@@ -50,7 +50,7 @@ test('마당 채우기 연결', () => {
   assert.match(g, /if \(mode === 'play'\) yardGuide\?\.update\(dt\);/);
   assert.match(g, /guideArbiter\.register\(\{ name: 'yard', active: \(\) => !!yardGuide\?\.active\(\) \}\);/);
   assert.match(g, /free: \(\) => sceneFree\(\) && guideMay\('yard'\),/);
-  assert.match(g, /const sceneFree = \(\) => !ui\.anyModalOpen\?\.\(\) && !ui\.coachActive\?\.\(\) && !portGuideActive\(\) && !restaurantGuideActive\(\) && !auctionGuideActive\(\) && !goalGuide\?\.cinematic && !houseGuidance\?\.cinematic && cameraFree\(\);/);
+  assert.match(g, /const sceneFree = \(\) => !ui\.anyModalOpen\?\.\(\) && !ui\.coachActive\?\.\(\) && !portGuideActive\(\) && !restaurantGuideActive\(\) && !restaurantCineActive\(\) && !auctionGuideActive\(\) && !goalGuide\?\.cinematic && !houseGuidance\?\.cinematic && cameraFree\(\);/);
   assert.match(g, /held: \(\) => !guideMay\('yard'\),/);
   assert.match(y, /if \(deps\.held\?\.\(\)\) \{ suspend\(\); return; \}/);
 });

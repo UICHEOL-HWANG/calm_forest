@@ -133,7 +133,7 @@ import { defaultDelve, sanitizeDelve } from './delve/rules.js';
 import { defaultPort, sanitizePort } from './port/rules.js';
 import { defaultRestaurant, sanitizeRestaurant } from './restaurant/rules.js';
 import { RESTAURANT, RESTAURANT_GATE, HALL, REST_LIGHT, restaurantScatterBlocks } from './restaurant/data.js';
-import { enterRestaurant, exitRestaurant, restaurantExitSpot, spawnRestaurantGate, buildRestaurantHall, restaurantAction, tickRestaurant, updateRestaurantNight, updateRestaurantGuide, maybeStartRestaurantGuide, restaurantGuideActive, restaurantHidesNpc } from './spaces/restaurant.js';
+import { enterRestaurant, exitRestaurant, restaurantExitSpot, spawnRestaurantGate, buildRestaurantHall, restaurantAction, tickRestaurant, updateRestaurantNight, updateRestaurantGuide, maybeStartRestaurantGuide, restaurantGuideActive, restaurantCineActive, restaurantHidesNpc } from './spaces/restaurant.js';
 import { restoreStage as restoreCosStage } from './cos-onboard.js';
 import { cosQuestActive, maybeOfferCosQuest, noteCosQuestVisit, updateCosQuestBubble } from './spaces/cos-quest.js';
 import { ORCHARD_TREE, GATE_PATCH, buildOrchardDecor, fruitSpots, buildTreeSoil, disposeOwned } from './orchard-art.js';   // 🍎 과수원 외관(나무 모양·안쪽 소품·입구 잔디 판)
@@ -1706,7 +1706,7 @@ const guideRevamp = guideRevampOn(e6Decision());
 let houseShort = null;
 let yardGuide = null;
 let placeIdle = 0;
-const sceneFree = () => !ui.anyModalOpen?.() && !ui.coachActive?.() && !portGuideActive() && !restaurantGuideActive() && !auctionGuideActive() && !goalGuide?.cinematic && !houseGuidance?.cinematic && cameraFree();
+const sceneFree = () => !ui.anyModalOpen?.() && !ui.coachActive?.() && !portGuideActive() && !restaurantGuideActive() && !restaurantCineActive() && !auctionGuideActive() && !goalGuide?.cinematic && !houseGuidance?.cinematic && cameraFree();
 function countHint(key) {
   gameState.hintsSeen = { ...gameState.hintsSeen, [key]: (gameState.hintsSeen[key] | 0) + 1 };
   requestSave();
@@ -3242,7 +3242,7 @@ export async function enterGame() {
     touch: () => document.body.classList.contains('is-touch'),
     bottomInset: () => { const r = document.getElementById('tool-btn')?.getBoundingClientRect(); return r && r.height ? Math.round(innerHeight - r.top + 56) : 0; },
     topInset: () => { const c = document.getElementById('coach'); const r = c?.classList.contains('show') ? c.getBoundingClientRect() : null; return r && r.height ? Math.round(r.bottom + 30) : 0; },
-    trees: () => trees, oreRocks: () => oreRocks, mineSpots: delveGuideSpots,
+    trees: () => trees, oreRocks: () => oreRocks, mineSpots: delveGuideSpots, minerOpen: () => isOpen('miner'),
     npcSpots: () => npcObjs.filter(o => !o.hidden).map(o => o.group.position),
     solids: () => colliders.filter(c => ('r' in c ? c.r >= 1.0 : true)),
     mineGate: { x: MINE_GATE.x, z: MINE_GATE.z + 1.1 }, worldTree: WORLD_TREE,
