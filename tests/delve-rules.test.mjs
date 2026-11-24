@@ -14,9 +14,10 @@ test('테마 두 개가 1~20층을 빈틈없이 덮는다', () => {
   assert.deepEqual(covered, Array.from({ length: 20 }, (_, i) => i + 1));
 });
 
-test('방해꾼 4종은 각자 대응이 하나씩이고 테마에 소속된다', () => {
-  assert.deepEqual(Object.keys(PESTS).sort(), ['axolotl', 'bat', 'crab', 'grub']);
-  assert.deepEqual(Object.values(PESTS).map(p => p.counter).sort(), ['bait', 'grab', 'reclaim', 'tap']);
+test('방해꾼 8종은 각자 대응이 하나씩이고 테마에 소속된다', () => {
+  assert.deepEqual(Object.keys(PESTS).sort(), ['axolotl', 'bat', 'crab', 'dormouse', 'grub', 'mole', 'moth', 'roller']);
+  assert.deepEqual(Object.values(PESTS).map(p => p.counter).sort(), ['bait', 'dark', 'grab', 'pick', 'plug', 'reclaim', 'soft', 'tap']);
+  assert.deepEqual(THEMES.map(t => t.pests.length), [4, 4]);
   for (const th of THEMES) for (const id of th.pests) assert.ok(PESTS[id], id);
 });
 
@@ -136,8 +137,8 @@ test('방해꾼 굴은 도착점 근처에 없다', () => {
 test('방해꾼은 그 층 테마 소속, 도롱뇽이 있으면 웅덩이가 있다, 방해꾼마다 굴', () => {
   for (const seed of SEEDS.slice(0, 50)) {
     const a = layoutFloor({ seed, floor: 4 }), b = layoutFloor({ seed, floor: 16 });
-    for (const p of a.pests) assert.ok(['axolotl', 'crab'].includes(p));
-    for (const p of b.pests) assert.ok(['bat', 'grub'].includes(p));
+    for (const p of a.pests) assert.ok(THEMES[0].pests.includes(p));
+    for (const p of b.pests) assert.ok(THEMES[1].pests.includes(p));
     if (a.pests.includes('axolotl')) assert.ok(a.puddles.length >= 1, `${seed}`);
     assert.equal(a.burrows.length, a.pests.length, `${seed}`);
   }

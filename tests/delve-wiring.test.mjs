@@ -225,3 +225,23 @@ test('리뷰 반영: 뺏김 토스트가 사다리 토스트에 안 덮이고, �
   assert.match(s, /method: 'tap', ok: r\.events\.length \? 1 : 0, state: was/);
   assert.match(s, /lurkTurn: /);
 });
+
+test('새 몹 연결: 불 끄기·구멍 막기·살살 캐기 문, 굴리 흉내, 버튼 아이콘', () => {
+  const s = delveSrc();
+  for (const nd of ['delve_dark', 'delve_plug', 'delve_soft']) assert.match(s, new RegExp(`nd === '${nd}'`));
+  assert.match(s, /counterFor\(p\.sim\) === 'dark'/);
+  assert.match(s, /counterFor\(p\.sim\) === 'plug'/);
+  assert.match(s, /rollerAtBreak\(/);
+  assert.match(s, /softOk\(/);
+  const line = read('index.html').split('\n').find(l => l.includes('doorIcon = /^('));
+  for (const e of ['🌑', '🤫', '🪨']) assert.ok(line.split(e).length >= 3, e);
+  for (const m of s.matchAll(/trackEvent\('pest_counter', \{([^}]*)\}/g)) assert.match(m[1], /state: /);
+});
+
+test('광부 대사: 도롱뇽은 광맥을 캐야 다가온다', async () => {
+  const { MINER_STEPS } = await import('../js/data/delve.js');
+  const { EN } = await import('../js/i18n-en.js');
+  const line = '광맥을 캐면 다가와 기다리지. 그때 톡 쳐서 쫓아 주게';
+  assert.ok(MINER_STEPS.find(x => x.id === 'tap').ask.includes(line));
+  assert.ok(EN[line]);
+});

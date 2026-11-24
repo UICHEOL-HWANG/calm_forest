@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createPest, stepPest, tapPest, baitPest, pickableBeforeBat, canPick, catchAtBreak, counterFor, grabChunk, floorTally, RING_SEC, BAIT_EAT_SEC } from '../js/delve/pests.js';
-import { PEST_LURK_DIST, PEST_CATCH_R } from '../js/data/delve.js';
+import { createPest, stepPest, tapPest, baitPest, pickableBeforeBat, canPick, catchAtBreak, counterFor, grabChunk, floorTally, darkPest, plugPest, softOk, rollerAtBreak, mimicSpot, RING_SEC, BAIT_EAT_SEC } from '../js/delve/pests.js';
+import { PEST_LURK_DIST, PEST_CATCH_R, PEST_DARK_SEC, PEST_LOST_SEC, SOFT_PERIOD, SOFT_WINDOW } from '../js/data/delve.js';
 
 const W = (chunks, extra = {}) => ({ chunks, burrowAt: { x: 5, z: 5 }, ...extra });
 const run = (p, w, sec, dt = 0.1) => {
@@ -162,4 +162,65 @@ test('다른 광맥을 치기 시작하면 그 광맥 옆으로 옮겨 기다린
   const other = { x: 0, z: 4 };
   const { p } = run(first, W([], { lurkAt: other }), 8);
   assert.ok(Math.abs(Math.hypot(p.x - other.x, p.z - other.z) - PEST_LURK_DIST) < 0.05);
+});
+
+const at0 = (kind, state, x = 0, z = 0) => ({ ...createPest(kind, { x, z }, { x: 6, z: 6 }), state });
+
+test('달빛나방: 노릴 때 불을 끄면 빛나는 수정 쪽으로 떠났다가 시간이 지나면 돌아온다', () => {
+  assert.equal(counterFor(at0('moth', 'lurk')), 'dark');
+  assert.equal(counterFor(at0('moth', 'idle')), null);
+  assert.equal(darkPest(at0('moth', 'idle'), { x: 1, z: 0 }), null);
+  const p = darkPest(at0('moth', 'lurk'), { x: 1, z: 0 });
+  assert.equal(p.state, 'away');
+  const lure = { x: -4, z: 0 };
+  const mid = run(p, W([{ id: 'a', x: 0.2, z: 0, age: 9 }], { lureAt: lure, lurkAt: vein }), PEST_DARK_SEC - 0.5);
+  assert.equal(mid.p.state, 'away');
+  assert.equal(mid.ev.length, 0);
+  assert.ok(mid.p.x < -1);
+  const done = run(mid.p, W([]), 1);
+  assert.equal(done.p.state, 'idle');
+});
+
+test('별코두더지: 노릴 때 구멍을 막으면 다른 곳에 튀어나와 헤맨다', () => {
+  assert.equal(counterFor(at0('mole', 'lurk')), 'plug');
+  assert.equal(counterFor(at0('mole', 'approach')), null);
+  assert.equal(plugPest(at0('mole', 'lurk'), { x: 5, z: 0 }, { x: 6, z: 6 }), null);
+  const p = plugPest(at0('mole', 'lurk'), { x: 1, z: 0 }, { x: 6, z: 6 });
+  assert.equal(p.state, 'lost');
+  assert.deepEqual([p.x, p.z], [6, 6]);
+  const mid = run(p, W([{ id: 'a', x: 6.2, z: 6, age: 9 }], { lurkAt: vein }), PEST_LOST_SEC - 0.5);
+  assert.equal(mid.ev.length, 0);
+  assert.equal(mid.p.state, 'lost');
+});
+
+test('겨울잠쥐: 광맥 옆에 도착하면 잠들고, 시끄럽게 깨면 받아 물고, 살살 깨면 계속 잔다', () => {
+  const { p } = run(createPest('dormouse', { x: 0, z: 0 }, { x: -5, z: 0 }), W([], { lurkAt: vein }), 8);
+  assert.equal(p.state, 'doze');
+  assert.equal(counterFor(p), null);
+  const again = run(p, W([], { lurkAt: vein }), 1).p;
+  assert.equal(again.state, 'doze');
+  assert.equal(catchAtBreak([p], vein), 0);
+  assert.equal(catchAtBreak([p], vein, { soft: true }), -1);
+});
+
+test('살살 캐기 타이밍: 고리 주기 안의 초록 구간만 성공', () => {
+  const mid = (SOFT_WINDOW[0] + SOFT_WINDOW[1]) / 2 * SOFT_PERIOD;
+  assert.equal(softOk(mid), true);
+  assert.equal(softOk(mid + SOFT_PERIOD * 3), true);
+  assert.equal(softOk(0.01), false);
+  assert.equal(softOk(SOFT_PERIOD * 0.99), false);
+});
+
+test('수정공굴리: 깨질 때 받아 물지 않고 조각 옆에서 조각인 척한다', () => {
+  const r = at0('roller', 'lurk', 0.6, 0);
+  assert.equal(catchAtBreak([r], { x: 0, z: 0 }), -1);
+  assert.equal(rollerAtBreak([at0('crab', 'lurk', 0.5, 0), r], { x: 0, z: 0 }), 1);
+  assert.equal(rollerAtBreak([at0('roller', 'idle', 0.5, 0)], { x: 0, z: 0 }), -1);
+  const s = mimicSpot({ x: 0, z: 0 }, { x: -1, z: 0 });
+  assert.ok(Math.abs(Math.hypot(s.x, s.z) - 0.9) < 1e-6);
+  assert.ok(Math.abs(Math.hypot(s.x + 1, s.z) - Math.hypot(0 + 1, 0)) < 0.5);
+  const m = { ...r, state: 'mimic', x: s.x, z: s.z };
+  const { p, ev } = run(m, W([{ id: 'a', x: 0, z: 0, age: 9 }]), 3);
+  assert.equal(p.state, 'mimic');
+  assert.equal(ev.length, 0);
 });
