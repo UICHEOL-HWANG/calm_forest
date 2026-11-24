@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { pushOffPlayer, createPest, stepPest, tapPest, baitPest, pickableBeforeBat, canPick, catchAtBreak, counterFor, grabChunk, floorTally, darkPest, plugPest, softOk, rollerAtBreak, mimicSpot, RING_SEC, BAIT_EAT_SEC } from '../js/delve/pests.js';
+import { DOZE_NEAR, pushOffPlayer, createPest, stepPest, tapPest, baitPest, pickableBeforeBat, canPick, catchAtBreak, counterFor, grabChunk, floorTally, darkPest, plugPest, softOk, rollerAtBreak, mimicSpot, RING_SEC, BAIT_EAT_SEC } from '../js/delve/pests.js';
 import { PEST_LURK_DIST, PEST_CATCH_R, PEST_DARK_SEC, PEST_LOST_SEC, SOFT_PERIOD, SOFT_WINDOW } from '../js/data/delve.js';
 
 const W = (chunks, extra = {}) => ({ chunks, burrowAt: { x: 5, z: 5 }, ...extra });
@@ -237,4 +237,15 @@ test('살살 깨서 광맥이 사라지면 잠든 겨울잠쥐는 바닥 조각�
   const { p: after, ev } = run(p, W([{ id: 'a', x: 4, z: 0, age: 0 }]), 5);
   assert.equal(after.state, 'sleep');
   assert.equal(ev.length, 0);
+});
+
+test('플레이어가 겨울잠쥐 자리를 막고 서 있어도 광맥 근처(DOZE_NEAR)에서 잠들고, 깨지면 받아 문다', () => {
+  for (const gap of [0.65, 0.9, 1.2]) {
+    let p = createPest('dormouse', { x: 0, z: 0 }, { x: -5, z: 0 });
+    const player = { x: vein.x - gap, z: 0 };
+    for (let t = 0; t < 12; t += 0.1) { p = stepPest(p, 0.1, W([], { lurkAt: vein })).pest; p = pushOffPlayer(p, player); }
+    assert.equal(p.state, 'doze', `gap ${gap}`);
+    assert.ok(Math.hypot(p.x - vein.x, p.z - vein.z) <= DOZE_NEAR + 1e-6, `gap ${gap}`);
+    assert.equal(catchAtBreak([p], vein), 0, `gap ${gap}`);
+  }
 });

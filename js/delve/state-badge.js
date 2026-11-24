@@ -5,6 +5,8 @@ const FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif
 const CREAM = '#efe6d4';
 const CAP = 0xebebeb;
 const S = 256;
+const sheets = new Map();
+const once = (key, draw) => { if (!sheets.has(key)) sheets.set(key, draw()); return sheets.get(key); };
 
 const canvas = () => { const c = document.createElement('canvas'); c.width = c.height = S; return [c, c.getContext('2d')]; };
 const rgbOf = hex => { const n = parseInt(hex.slice(1), 16); return `${n >> 16},${(n >> 8) & 255},${n & 255}`; };
@@ -32,12 +34,25 @@ function texture(c) {
   return t;
 }
 
-export function makeStateBadge(emoji, tone, tilt = 0) {
+function badgeSheet(emoji, tone) {
   const em = emojiLayer(emoji);
   const [c, x] = canvas();
   x.save(); x.shadowColor = 'rgba(8,6,4,0.55)'; x.shadowBlur = 14; x.shadowOffsetY = 7; x.drawImage(rim(em, 30, BADGE_TONE[tone]), 0, 0); x.restore();
   x.drawImage(rim(em, 13, CREAM), 0, 0);
   x.drawImage(em, 0, 0);
+  return c;
+}
+
+function glowSheet(tone) {
+  const [c, x] = canvas(), rgb = rgbOf(BADGE_TONE[tone]);
+  const g = x.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2 - 2);
+  g.addColorStop(0, `rgba(${rgb},0.62)`); g.addColorStop(0.55, `rgba(${rgb},0.34)`); g.addColorStop(1, `rgba(${rgb},0)`);
+  x.fillStyle = g; x.fillRect(0, 0, S, S);
+  return c;
+}
+
+export function makeStateBadge(emoji, tone, tilt = 0) {
+  const c = once(`b${emoji}${tone}`, () => badgeSheet(emoji, tone));
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture(c), transparent: true, depthWrite: false, depthTest: false, fog: false, toneMapped: false, color: CAP }));
   s.material.rotation = tilt;
   s.renderOrder = 22;
@@ -45,10 +60,7 @@ export function makeStateBadge(emoji, tone, tilt = 0) {
 }
 
 export function makeGroundGlow(tone) {
-  const [c, x] = canvas(), rgb = rgbOf(BADGE_TONE[tone]);
-  const g = x.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2 - 2);
-  g.addColorStop(0, `rgba(${rgb},0.62)`); g.addColorStop(0.55, `rgba(${rgb},0.34)`); g.addColorStop(1, `rgba(${rgb},0)`);
-  x.fillStyle = g; x.fillRect(0, 0, S, S);
+  const c = once(`g${tone}`, () => glowSheet(tone));
   const m = new THREE.Mesh(new THREE.PlaneGeometry(1.45, 1.45), new THREE.MeshBasicMaterial({ map: texture(c), transparent: true, depthWrite: false, toneMapped: false, fog: false, color: CAP }));
   m.rotation.x = -Math.PI / 2; m.renderOrder = 3;
   return m;

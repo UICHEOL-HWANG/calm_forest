@@ -5,7 +5,7 @@ import {
 import { trackEvent } from '../analytics.js';
 import { weeklyNote } from '../weekly/index.js';
 import { DELVE, MINE, MINE_HALF } from '../data/places.js';
-import { DELVE_HALF, DELVE_CHEST_FLOORS, PEST_COPY, PEST_LINES, VEIN_HP, PEST_DARK_SEC, PEST_CATCH_R, SOFT_WINDOW, SOFT_PERIOD } from '../data/delve.js';
+import { DELVE_HALF, DELVE_CHEST_FLOORS, PEST_COPY, PEST_LINES, VEIN_HP, SOFT_WINDOW, SOFT_PERIOD } from '../data/delve.js';
 import {
   floorSeed, layoutFloor, ladderRevealed, themeOf, oreOdds, rollOre, makeRng, noteReach, oreAllowed, markOreFloor,
   bumpCount, canDescendFrom0, stopsOpen, liftPanelRows, bumpJob, jobProgress, reclaimGive, stepView, claimStep, noteChest, jobFor, hashSeed, chestSpot,
@@ -14,8 +14,8 @@ import { rollChest, chestGive } from '../boat-chest.js';
 import { makeChestMesh } from '../boat-chest-art.js';
 import { jobCard, owedMinerRewards, minerTalk } from '../delve/miner-card.js';
 import { playMinerLines, advanceMinerTalk, minerTalkOpen, closeMinerTalk } from '../delve/miner-talk.js';
-import { createPest, stepPest, tapPest, baitPest, canPick, pushOffPlayer, catchAtBreak, counterFor, grabChunk, floorTally, darkPest, plugPest, softOk, rollerAtBreak, mimicSpot, RING_SEC, TAP_R, BAIT_R, BAIT_EAT_SEC, DARK_R, PLUG_R, DOZE_R } from '../delve/pests.js';
-import { makePest, makeOreChunk, makePuddle, makeBurrow, makeRing, makeBait, makeShaft, makeLadderUp, makeRock, makeLift, emojiBubble, makeTrail } from '../delve/pest-art.js';
+import { createPest, stepPest, tapPest, baitPest, canPick, pushOffPlayer, catchAtBreak, counterFor, grabChunk, floorTally, darkPest, plugPest, softOk, rollerAtBreak, mimicSpot, RING_SEC, TAP_R, BAIT_R, BAIT_EAT_SEC, DARK_R, PLUG_R, DOZE_NEAR } from '../delve/pests.js';
+import { makePest, makeOreChunk, makePuddle, makeBurrow, makeRing, makeBait, makeShaft, makeLadderUp, makeRock, makeLift, emojiBubble, makeTrail, makeGlowCrystal, makeMoleHole } from '../delve/pest-art.js';
 import { makeMiner } from '../delve/miner.js';
 import { makeStateBadge, makeGroundGlow } from '../delve/state-badge.js';
 import { PEST_BADGE, badgePop, badgeBob } from '../delve/badge-math.js';
@@ -147,8 +147,17 @@ function spawnPests(layout) {
     const art = makePest(kind, { submerged: kind === 'axolotl' });
     const top = new THREE.Box3().setFromObject(art.g).max.y;
     group.add(art.g);
-    return { sim: createPest(kind, at, home, { asleep: !run.oreOk }), art, top, tilt: (i % 2 ? 1 : -1) * 0.05, met: false, bubble: null, glow: null, bubbleTxt: null, bubbleAge: 0 };
+    const hole = kind === 'mole' ? makeMoleHole() : null;
+    if (hole) { hole.visible = false; group.add(hole); }
+    return { sim: createPest(kind, at, home, { asleep: !run.oreOk }), art, top, hole, tilt: (i % 2 ? 1 : -1) * 0.05, met: false, bubble: null, glow: null, badgeRef: null, bubbleAge: 0 };
   });
+  if (layout.pests.includes('moth')) {
+    const far = DELVE_HALF - 1.2;
+    run.lureAt = { x: layout.arrival.x > 0 ? -far : far, z: far };
+    const crystal = makeGlowCrystal();
+    crystal.position.copy(W(run.lureAt.x, run.lureAt.z)); crystal.position.y = FLOOR_Y;
+    group.add(crystal);
+  }
 }
 
 export function enterFloor(floor, via) {
@@ -157,7 +166,7 @@ export function enterFloor(floor, via) {
   const oreOk = oreAllowed(gameState.delve, date, floor);
   const prevSec = run ? Math.round((performance.now() - run.enteredAt) / 1000) : 0, prevRocks = run ? run.broken : 0;
   const prev = closeFloorTally();
-  run = { enteredAt: performance.now(), floor, layout, oreOk, broken: 0, ladderShown: false, chunks: [], carried: new Map(), stash: [], ore: 0, chunkN: 0, trail: null, kept: 0, lost: 0, lurkAt: null, soft: null, softRing: null, darkUntil: 0, lureAt: null };
+  run = { enteredAt: performance.now(), floor, layout, oreOk, broken: 0, ladderShown: false, chunks: [], carried: new Map(), stash: [], ore: 0, chunkN: 0, trail: null, kept: 0, lost: 0, lurkAt: null, soft: null, softRing: null, lureAt: null };
   buildRoom(floor, layout);
   spawnPests(layout);
   run.chest = null;
@@ -293,19 +302,20 @@ function breakRock(i, soft) {
   run.broken++;
   run.soft = null;
   if (!run.ladderShown && ladderRevealed({ broken: run.broken, hitLadderRock: i === run.layout.ladderRock })) showLadder();
-  if (!(r.vein && run.oreOk)) return;
+  if (!(r.vein && run.oreOk)) return false;
   run.lurkAt = null;
   const c = dropChunk(r.x, r.z, rollOre(makeRng((Date.now() ^ (i * 2654435761)) >>> 0), oreOdds(run.floor, situation().weather)));
   const at = { x: r.x, z: r.z }, sims = run.pests.map(p => p.sim);
   const k = catchAtBreak(sims, at, { soft });
-  if (k >= 0) { const p = run.pests[k]; p.sim = grabChunk(p.sim, c.id); carryOff(p, c); return; }
+  if (k >= 0) { const p = run.pests[k]; p.sim = grabChunk(p.sim, c.id); carryOff(p, c); return true; }
   const ri = rollerAtBreak(sims, at);
   if (ri >= 0) { const s = mimicSpot(c, L(player.position)), p = run.pests[ri]; p.sim = { ...p.sim, state: 'mimic', x: s.x, z: s.z, mimicOf: c.id, spot: null }; }
+  return false;
 }
 
 const dozerAt = (i) => {
   const r = run.layout.rocks[i];
-  return run.pests.some(p => p.sim.state === 'doze' && Math.hypot(p.sim.x - r.x, p.sim.z - r.z) <= PEST_CATCH_R + DOZE_R);
+  return run.pests.some(p => p.sim.state === 'doze' && Math.hypot(p.sim.x - r.x, p.sim.z - r.z) <= DOZE_NEAR);
 };
 
 const batAlive = () => run.pests.some(p => p.sim.kind === 'bat' && !['gone', 'sleep'].includes(p.sim.state));
@@ -369,13 +379,13 @@ export function delvePrompt() {
   if (near({ x: run.layout.arrival.x, z: run.layout.arrival.z - 1 }, 1.6)) return { nd: 'delve_up', prompt: '🪜 올라가기' };
   if (run.ladderShown && near(run.layout.ladderAt, 1.6)) return run.floor >= 20 ? { nd: 'delve_bottom', prompt: '🪜 가장 깊은 곳' } : { nd: 'delve_down', prompt: '🪜 내려가기' };
   if (run.chest && near(run.chest.at, 1.6)) return { nd: 'delve_chest', prompt: '🧰 상자 열기' };
-  if (run.soft && run.rockMeshes[run.soft.i].visible && dozerAt(run.soft.i) && near(run.layout.rocks[run.soft.i], 2.4)) return { nd: 'delve_soft', prompt: PEST_COPY.dormouse.prompt };
   for (const p of run.pests) {
     if (counterFor(p.sim) === 'tap' && near(p.sim, TAP_R)) return { nd: 'delve_tap', prompt: PEST_COPY.axolotl.prompt };
     if (counterFor(p.sim) === 'bait' && near(p.sim, BAIT_R)) return { nd: 'delve_bait', prompt: PEST_COPY.crab.prompt };
     if (counterFor(p.sim) === 'dark' && near(p.sim, DARK_R)) return { nd: 'delve_dark', prompt: PEST_COPY.moth.prompt };
     if (counterFor(p.sim) === 'plug' && near(p.sim, PLUG_R)) return { nd: 'delve_plug', prompt: PEST_COPY.mole.prompt };
   }
+  if (run.soft && run.rockMeshes[run.soft.i].visible && dozerAt(run.soft.i) && near(run.layout.rocks[run.soft.i], 2.4)) return { nd: 'delve_soft', prompt: PEST_COPY.dormouse.prompt };
   if (run.stash.length && run.layout.burrows.some(b => near(b, 1.4))) return { nd: 'delve_dig', prompt: PEST_COPY.grub.prompt };
   return null;
 }
@@ -486,18 +496,15 @@ export function handleDelveDoor(nd) {
   }
   if (nd === 'delve_dark') {
     const lp = L(player.position);
+    let n = 0;
     for (const p of run.pests) {
       const was = p.sim.state;
       const next = darkPest(p.sim, lp);
       if (!next) continue;
-      p.sim = next;
-      const far = DELVE_HALF - 1;
-      run.lureAt = { x: lp.x > 0 ? -far : far, z: lp.z > 0 ? -far : far };
-      run.darkUntil = performance.now() + PEST_DARK_SEC * 1000;
-      ui.toast?.(PEST_LINES.dark, 2600);
+      p.sim = next; n++;
       trackEvent('pest_counter', { pest: 'moth', method: 'dark', ok: 1, state: was });
-      return true;
     }
+    if (n) ui.toast?.(PEST_LINES.dark, 2600);
     return true;
   }
   if (nd === 'delve_plug') {
@@ -521,9 +528,9 @@ export function handleDelveDoor(nd) {
     doPlayerAction(m.position.x, m.position.z);
     Sound.chop(); spawnDust(m.position.x, m.position.z, ok ? 3 : 8);
     m.userData.hp = 0;
-    breakRock(i, ok);
-    if (ok) ui.toast?.(PEST_LINES.soft, 2400);
-    trackEvent('pest_counter', { pest: 'dormouse', method: 'soft', ok: ok ? 1 : 0, state: 'doze' });
+    const caught = breakRock(i, ok);
+    if (ok && !caught) ui.toast?.(PEST_LINES.soft, 2400);
+    trackEvent('pest_counter', { pest: 'dormouse', method: 'soft', ok: ok && !caught ? 1 : 0, state: 'doze' });
     return true;
   }
   if (nd === 'delve_dig') {
@@ -592,7 +599,8 @@ export function updateDelve(dt, t) {
   }
   tickMimics(lp);
   tickSoftRing();
-  if (run.light) run.light.intensity += ((performance.now() < run.darkUntil ? 0.55 : 2.0) - run.light.intensity) * Math.min(1, dt * 4);
+  const dark = run.pests.some(p => p.sim.state === 'away');
+  if (run.light) run.light.intensity += ((dark ? 0.55 : 2.0) - run.light.intensity) * Math.min(1, dt * 4);
   const paused = !!ui.anyModalOpen?.();
   const rest = !run.chunks.length && !run.layout.rocks.some((r, i) => r.vein && run.oreOk && run.rockMeshes[i].visible);
   for (const [j, p] of run.pests.entries()) {
@@ -626,15 +634,16 @@ export function updateDelve(dt, t) {
     }
     p.art.g.position.copy(W(p.sim.x, p.sim.z)); p.art.g.position.y = FLOOR_Y + (p.art.hover || 0);
     p.art.g.visible = pest.state !== 'gone';
-    const badge = PEST_BADGE[pest.state] || null, want = badge ? badge.join('') : null;
-    if (p.bubbleTxt !== want) {
+    if (p.hole) { p.hole.visible = pest.state === 'lurk'; p.hole.position.copy(W(pest.x, pest.z)); p.hole.position.y = FLOOR_Y; }
+    const badge = PEST_BADGE[pest.state] || null;
+    if (p.badgeRef !== badge) {
       for (const o of [p.bubble, p.glow]) if (o) group.remove(o);
       if (p.bubble) disposeObj(p.bubble);
       if (p.glow) disposeObj(p.glow);
       p.bubble = badge ? makeStateBadge(badge[0], badge[1], p.tilt) : null;
       p.glow = badge ? makeGroundGlow(badge[1]) : null;
       for (const o of [p.bubble, p.glow]) if (o) group.add(o);
-      p.bubbleTxt = want; p.bubbleAge = 0;
+      p.badgeRef = badge; p.bubbleAge = 0;
     }
     if (p.bubble) {
       p.bubbleAge += dt;

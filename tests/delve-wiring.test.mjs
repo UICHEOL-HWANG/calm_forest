@@ -245,3 +245,17 @@ test('광부 대사: 도롱뇽은 광맥을 캐야 다가온다', async () => {
   assert.ok(MINER_STEPS.find(x => x.id === 'tap').ask.includes(line));
   assert.ok(EN[line]);
 });
+
+test('리뷰 반영 2: 대처 버튼이 살살 캐기보다 먼저, 나방 전부, 빛나는 수정·두더지 구멍 배치, 불빛은 나방 상태로', () => {
+  const s = delveSrc();
+  const prompt = s.slice(s.indexOf('export function delvePrompt()'), s.indexOf('export function handleDelveDoor'));
+  assert.ok(prompt.indexOf("counterFor(p.sim) === 'tap'") < prompt.indexOf("nd: 'delve_soft'"));
+  const dark = s.slice(s.indexOf("if (nd === 'delve_dark')"), s.indexOf("if (nd === 'delve_plug')"));
+  assert.doesNotMatch(dark, /return true;\n    \}\n    return true;/);
+  assert.match(s, /makeGlowCrystal\(\)/);
+  assert.match(s, /makeMoleHole\(\)/);
+  assert.doesNotMatch(s, /darkUntil/);
+  assert.match(s, /if \(caught\)|const caught = breakRock\(/);
+  const b = read('js/delve/state-badge.js');
+  assert.match(b, /new Map\(\)/);
+});
