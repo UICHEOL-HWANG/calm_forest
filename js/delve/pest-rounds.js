@@ -4,7 +4,9 @@ import { PEST_BADGE } from './badge-math.js';
 const HEARTLESS = ['mimic', 'hide', 'gone', 'sleep'];
 const NOTICING = ['lurk', 'approach', 'feint', 'doze'];
 
-export const heartCount = s => (HEARTLESS.includes(s.state) || submerged(s) ? 0 : Math.max(0, s.grit || 0));
+const resting = s => HEARTLESS.includes(s.state) && !(s.state === 'sleep' && s.round > 0);
+
+export const heartCount = s => (resting(s) || submerged(s) ? 0 : Math.max(0, s.grit || 0));
 
 export const noticed = (prev, next) => !NOTICING.includes(prev) && ['lurk', 'approach'].includes(next);
 

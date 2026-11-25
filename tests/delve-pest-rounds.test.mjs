@@ -54,3 +54,8 @@ test('수법 소리 신호가 없으면 매번 같은 얼린 빈 배열', () => 
 test('하트: 포기한 몹은 시간 상태여도 0', () => {
   assert.equal(heartCount(mk('crab', { state: 'eat', grit: 0, gaveUp: true })), 0);
 });
+
+test('하트: 살살 캐기 뒤 잠든 도둑쥐는 다시 올 거라 하트를 보여 준다', () => {
+  assert.equal(heartCount(mk('dormouse', { state: 'sleep', round: 1, grit: 2 })), 2);
+  assert.equal(heartCount(mk('dormouse', { state: 'sleep' })), 0);
+});
