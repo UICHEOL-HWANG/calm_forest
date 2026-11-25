@@ -309,6 +309,9 @@ test('3차 수법 연결: 몹마다 수법 훅이 delve.js 에서 불린다', ()
   assert.match(loop, /tickFloorTactics\(dt\)/);
   assert.match(s.slice(s.indexOf('function dropChunk'), s.indexOf('function carryOff')), /bounceChunk\(c, liveBat\(\)\.sim\)/);
   assert.match(s.slice(s.indexOf('function breakRock'), s.indexOf('const dozerNear')), /startShuffle\(p, c\)/);
+  assert.match(s.slice(s.indexOf('function breakRock'), s.indexOf('const dozerNear')), /mimicSpot\(c, screenRight\(\), /);
+  assert.ok(!t.slice(t.indexOf('function orbit'), t.indexOf('export function tickTactic')).includes('setTimeout'));
+  assert.ok(!t.includes('roller-fx') && !t.includes('rollerfx'));
   assert.match(s.slice(s.indexOf('export function tryDelveMine'), s.indexOf('function breakRock')), /if \(ore\) wakePeeker\(i\)/);
   const soft = s.slice(s.indexOf("if (nd === 'delve_soft')"), s.indexOf("if (nd === 'delve_dig_decoy')"));
   assert.ok(soft.indexOf('const woke = wakePeeker(i)') < soft.indexOf('breakRock(i, ok && !woke)'));

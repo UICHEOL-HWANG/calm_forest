@@ -99,3 +99,12 @@ test('박쥐 튕김·가짜 굴 자리: 거리 그대로, 방 안으로', () => 
   const far = decoyBurrowSpot({ x: -7, z: -7 }, { x: 7, z: -7 });
   for (const v of [far.x, far.z]) assert.ok(Math.abs(v) <= DELVE_HALF - 0.3);
 });
+
+test('잠수 도롱뇽: 플레이어가 대기 자리를 밟고 있어 밀려나도 도착으로 친다', () => {
+  const vein = { x: 0, z: 0 };
+  const spot = { x: 0.7, z: 0, ax: 0, az: 0 };
+  const p = { ...createPest('axolotl', { x: 1.45, z: 0 }, { x: 6, z: 0 }), state: 'lurk', round: 1, spot, arrived: false };
+  const { pest } = stepPest(p, 0.016, { chunks: [], burrowAt: p.home, lurkAt: vein });
+  assert.equal(pest.arrived, true);
+  assert.equal(submerged(pest), false);
+});

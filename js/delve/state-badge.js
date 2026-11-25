@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BADGE_TONE } from './badge-math.js';
+import { BADGE_TONE, HEARTS_SIZE } from './badge-math.js';
 
 const FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
 const CREAM = '#efe6d4';
@@ -81,7 +81,7 @@ function heartSheet(n) {
 export function makeHearts(n) {
   const tex = new THREE.CanvasTexture(heartSheet(n)); tex.colorSpace = THREE.SRGBColorSpace;
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false, fog: false, toneMapped: false }));
-  s.scale.set(0.66, 0.25, 1); s.renderOrder = 21;
+  s.scale.set(HEARTS_SIZE[0], HEARTS_SIZE[1], 1); s.renderOrder = 23;
   return s;
 }
 

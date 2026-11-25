@@ -18,11 +18,11 @@ import { createPest, stepPest, tapPest, baitPest, canPick, pushOffPlayer, catchA
 import { newStreak, streakStep } from '../delve/streak.js';
 import { pestSfx } from '../delve/pest-sfx.js';
 import { heartCount, tacticCues, streakCues, badgeFor } from '../delve/pest-rounds.js';
-import { bindTactics, tickTactic, tickFloorTactics, bounceChunk, startShuffle, layTrail, decoyNear, digDecoy, sfxLater } from '../delve/pest-tactics.js';
+import { bindTactics, tickTactic, tickFloorTactics, bounceChunk, startShuffle, screenRight, layTrail, decoyNear, digDecoy, sfxLater } from '../delve/pest-tactics.js';
 import { makePest, makeOreChunk, makePuddle, makeBurrow, makeRing, makeBait, makeShaft, makeLadderUp, makeRock, makeLift, emojiBubble, makeGlowCrystal, makeMoleHole } from '../delve/pest-art.js';
 import { makeMiner } from '../delve/miner.js';
 import { makeStateBadge, makeGroundGlow, makeHearts, makeGift } from '../delve/state-badge.js';
-import { badgePop, badgeBob } from '../delve/badge-math.js';
+import { badgePop, badgeBob, heartsCenterY } from '../delve/badge-math.js';
 import { placeRootShrine, clearRootShrine } from '../delve/root-scene.js';
 import { openLiftPanel } from '../delve/lift-panel.js';
 import { Sound } from '../sound.js';
@@ -238,7 +238,7 @@ function tickLift(dt) {
 
 function closeFloorTally() {
   if (!run) return { kept: 0, lost: 0, any: false, best: 0, line: '' };
-  const t = floorTally({ kept: run.kept, lost: run.lost, pending: run.stash.length + run.carried.size });
+  const t = floorTally({ kept: run.kept, lost: run.lost, pending: run.stash.length + run.carried.size, best: run.streak.best });
   return { ...t, best: run.streak.best, line: PEST_LINES.result(run.floor, t.kept, t.lost, run.streak.best) };
 }
 
@@ -383,7 +383,7 @@ function breakRock(i, soft) {
   const k = catchAtBreak(sims, at, { soft });
   if (k >= 0) { const p = run.pests[k]; if (p.sim.state === 'doze') pestSfx('wake'); p.sim = grabChunk(p.sim, c.id); carryOff(p, c); return true; }
   const ri = rollerAtBreak(sims, at);
-  if (ri >= 0) { const s = mimicSpot(c, L(player.position)), p = run.pests[ri]; p.sim = { ...p.sim, state: 'mimic', x: s.x, z: s.z, mimicOf: c.id, spot: null }; pestSfx('curl'); startShuffle(p, c); }
+  if (ri >= 0) { const s = mimicSpot(c, screenRight(), q => run.layout.rocks.some((o, j) => run.rockMeshes[j].visible && Math.hypot(o.x - q.x, o.z - q.z) < ROCK_R + 0.4)), p = run.pests[ri]; p.sim = { ...p.sim, state: 'mimic', x: s.x, z: s.z, mimicOf: c.id, spot: null }; pestSfx('curl'); startShuffle(p, c); }
   return false;
 }
 
@@ -682,7 +682,10 @@ function syncHearts(p) {
     if (p.hearts) group.add(p.hearts);
     p.heartN = n;
   }
-  if (p.hearts) p.hearts.position.set(p.art.g.position.x, p.art.g.position.y + p.top + (p.bubble ? 1.15 : 0.3), p.art.g.position.z);
+  if (!p.hearts) return;
+  if (p.bubble) p.hearts.position.copy(p.bubble.position);
+  else p.hearts.position.set(p.art.g.position.x, p.art.g.position.y + p.top + 0.3, p.art.g.position.z);
+  p.hearts.center.y = heartsCenterY(p.bubble ? p.bubble.scale.y : 0);
 }
 
 function tickSoftRing() {

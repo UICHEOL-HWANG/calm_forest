@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createPest, stepPest, repelPest, tacticOf, softPeriodFor, peekOn, clawUp, ringSecFor, counterFor, tapPest, baitPest, darkPest, plugPest, plugReady, catchAtBreak, moleHoles, shufflePlan, darkSecFor, softOk, pickableBeforeBat, BAIT_EAT_SEC, RING_SEC } from '../js/delve/pests.js';
+import { createPest, stepPest, repelPest, tacticOf, softPeriodFor, peekOn, clawUp, ringSecFor, counterFor, tapPest, baitPest, darkPest, plugPest, plugReady, catchAtBreak, moleHoles, shufflePlan, shuffleStart, swapSecFor, earPop, SHUFFLE_DELAY, EAR_SEC, LAST_SWAP_SLOW, darkSecFor, softOk, pickableBeforeBat, BAIT_EAT_SEC, RING_SEC } from '../js/delve/pests.js';
 import { PEST_GRIT, STREAK_BONUS, REGROUP_SEC, TACTICS, PESTS, PEST_LINES, PEST_DARK_SEC, PEST_LURK_DIST, MOLE_HOLE_R, SOFT_PERIOD, SOFT_WINDOW } from '../js/data/delve.js';
 import { heartCount } from '../js/delve/pest-rounds.js';
 import { newStreak, streakStep } from '../js/delve/streak.js';
@@ -241,6 +241,25 @@ test('수정공굴리: 라운드별 섞기 횟수와 속도', () => {
   assert.equal(r1.swaps, 2);
   assert.equal(r2.swaps, 3);
   assert.ok(r2.swapSec < r1.swapSec);
+});
+
+test('수정공굴리: 깨짐 먼지가 걷힌 뒤 섞고, 마지막 섞기는 느리게', () => {
+  assert.ok(SHUFFLE_DELAY >= 0.9);
+  const r0 = shuffleStart(mk('roller')), r1 = shuffleStart(mk('roller', { round: 1 }));
+  assert.deepEqual(r0, { left: 0, sec: 0, t: -SHUFFLE_DELAY });
+  assert.equal(r1.left, 2);
+  assert.equal(r1.t, -SHUFFLE_DELAY);
+  assert.equal(swapSecFor(r1), r1.sec);
+  assert.equal(swapSecFor({ ...r1, left: 1 }), r1.sec * LAST_SWAP_SLOW);
+});
+
+test('수정공굴리 귀 신호: 0.3초만 보이고 씰룩인다', () => {
+  assert.equal(EAR_SEC, 0.3);
+  assert.equal(earPop(-0.01), 0);
+  assert.equal(earPop(EAR_SEC), 0);
+  assert.equal(earPop(0), 1);
+  assert.ok(earPop(EAR_SEC / 4) > 1.25);
+  for (let t = 0; t < EAR_SEC; t += 0.01) assert.ok(earPop(t) >= 1 && earPop(t) <= 1.3 + 1e-9);
 });
 
 test('달빛나방: 라운드 1 은 불 끄기 효과가 3초', () => {

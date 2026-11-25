@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DOZE_NEAR, pushOffPlayer, createPest, stepPest, tapPest, baitPest, pickableBeforeBat, canPick, catchAtBreak, counterFor, grabChunk, floorTally, darkPest, plugPest, softOk, rollerAtBreak, mimicSpot, RING_SEC, BAIT_EAT_SEC } from '../js/delve/pests.js';
-import { PEST_LURK_DIST, PEST_CATCH_R, PEST_DARK_SEC, PEST_LOST_SEC, SOFT_PERIOD, SOFT_WINDOW } from '../js/data/delve.js';
+import { DELVE_HALF, PEST_LURK_DIST, PEST_CATCH_R, PEST_DARK_SEC, PEST_LOST_SEC, SOFT_PERIOD, SOFT_WINDOW } from '../js/data/delve.js';
 
 const W = (chunks, extra = {}) => ({ chunks, burrowAt: { x: 5, z: 5 }, ...extra });
 const run = (p, w, sec, dt = 0.1) => {
@@ -216,9 +216,8 @@ test('수정공굴리: 깨질 때 받아 물지 않고 조각 옆에서 조각�
   assert.equal(catchAtBreak([r], { x: 0, z: 0 }), -1);
   assert.equal(rollerAtBreak([at0('crab', 'lurk', 0.5, 0), r], { x: 0, z: 0 }), 1);
   assert.equal(rollerAtBreak([at0('roller', 'idle', 0.5, 0)], { x: 0, z: 0 }), -1);
-  const s = mimicSpot({ x: 0, z: 0 }, { x: -1, z: 0 });
-  assert.ok(Math.abs(Math.hypot(s.x, s.z) - 0.9) < 1e-6);
-  assert.ok(Math.abs(Math.hypot(s.x + 1, s.z) - Math.hypot(0 + 1, 0)) < 0.5);
+  const s = mimicSpot({ x: 0, z: 0 }, { x: 0.6, z: 0.8 });
+  assert.ok(Math.abs(s.x - 0.54) < 1e-9 && Math.abs(s.z - 0.72) < 1e-9);
   const m = { ...r, state: 'mimic', x: s.x, z: s.z };
   const { p, ev } = run(m, W([{ id: 'a', x: 0, z: 0, age: 9 }]), 3);
   assert.equal(p.state, 'mimic');
@@ -248,4 +247,24 @@ test('플레이어가 도둑쥐 자리를 막고 서 있어도 광맥 근처(DOZ
     assert.ok(Math.hypot(p.x - vein.x, p.z - vein.z) <= DOZE_NEAR + 1e-6, `gap ${gap}`);
     assert.equal(catchAtBreak([p], vein), 0, `gap ${gap}`);
   }
+});
+
+test('수정공굴리 흉내 자리: 화면 오른쪽, 벽이면 왼쪽', () => {
+  const lim = DELVE_HALF - 0.3;
+  const right = mimicSpot({ x: 1, z: 2 }, { x: 1, z: 0 });
+  assert.deepEqual(right, { x: 1.9, z: 2 });
+  const wall = mimicSpot({ x: lim - 0.2, z: 0 }, { x: 1, z: 0 });
+  assert.ok(Math.abs(wall.x - (lim - 1.1)) < 1e-9);
+  assert.equal(wall.z, 0);
+  const corner = mimicSpot({ x: lim, z: -lim }, { x: Math.SQRT1_2, z: -Math.SQRT1_2 });
+  for (const v of [corner.x, corner.z]) assert.ok(Math.abs(v) <= lim);
+  assert.ok(Math.hypot(corner.x - lim, corner.z + lim) > 0.8);
+});
+
+test('mimicSpot: 오른쪽에 바위가 있으면 왼쪽에 몸을 만다', () => {
+  const rock = { x: 1.9, z: 2 };
+  const blocked = s => Math.hypot(s.x - rock.x, s.z - rock.z) < 0.75;
+  const s = mimicSpot({ x: 1, z: 2 }, { x: 1, z: 0 }, blocked);
+  assert.ok(s.x < 1);
+  assert.ok(!blocked(s));
 });

@@ -1,14 +1,18 @@
-import { tacticOf, submerged, arrived, peekOn, moleHoles, shufflePlan, bounceSpot, decoyBurrowSpot, createPest } from './pests.js';
+import { tacticOf, submerged, arrived, peekOn, moleHoles, shuffleStart, swapSecFor, earPop, bounceSpot, decoyBurrowSpot, createPest } from './pests.js';
 import { makeMoleHole, makeBurrow, makeTrail } from './pest-art.js';
 import { makeEmojiMark } from './state-badge.js';
 import { pestSfx } from './pest-sfx.js';
 import { PEST_LINES } from '../data/delve.js';
-import { spawnDust, ui } from '../game.js';
+import { camera, spawnDust, ui } from '../game.js';
 import { trackEvent } from '../analytics.js';
+import { PEST_SCALE } from './pest-art-kit.js';
 
 const HOP_SEC = 0.35;
 const CIRCLE_R = 1;
 const BLINK_SEC = 1;
+const SWAP_BIG = 1.4;
+const SWAP_HOP = 0.85;
+const EAR_SIZE = 1.1;
 let C = null;
 
 export function bindTactics(ctx) { C = ctx; }
@@ -69,15 +73,36 @@ function placeChunk(c) {
   c.ring.position.set(at.x, C.Y + 0.02, at.z);
 }
 
-function tickShuffle(p, dt) {
+function orbit(a, b, k) {
+  const mx = (a.x + b.x) / 2, mz = (a.z + b.z) / 2, cs = Math.cos(Math.PI * k), sn = Math.sin(Math.PI * k);
+  const at = v => ({ x: mx + (v.x - mx) * cs - (v.z - mz) * sn, z: mz + (v.x - mx) * sn + (v.z - mz) * cs });
+  return [at(a), at(b)];
+}
+
+function setBig(p, c, k) { p.art.g.scale.setScalar(PEST_SCALE * k); c.mesh.scale.setScalar(k); }
+
+function endShuffle(p) {
   const s = p.shuffle;
-  if (!s) return;
-  const c = s.c;
-  if (p.sim.state !== 'mimic' || !C.run().chunks.includes(c)) { p.shuffle = null; placeChunk(c); return; }
-  p.shuffle = { ...s, t: s.t + dt };
-  if (p.shuffle.t < 0) return;
-  const k = Math.min(1, p.shuffle.t / s.sec), hop = Math.sin(k * Math.PI) * 0.4;
-  const r = C.W(s.a.x + (s.b.x - s.a.x) * k, s.a.z + (s.b.z - s.a.z) * k), q = C.W(s.b.x + (s.a.x - s.b.x) * k, s.b.z + (s.a.z - s.b.z) * k);
+  p.shuffle = null;
+  drop(s.ear);
+  setBig(p, s.c, 1);
+  placeChunk(s.c);
+}
+
+function tickEar(p) {
+  const s = p.shuffle, k = earPop(s.t);
+  if (!k) return endShuffle(p);
+  const g = p.art.g.position;
+  const ear = s.ear || add(makeEmojiMark('👂', EAR_SIZE), 0, 0);
+  ear.position.set(g.x, C.Y + p.top + 0.35, g.z);
+  ear.scale.setScalar(EAR_SIZE * k);
+  p.shuffle = { ...s, ear };
+}
+
+function tickSwap(p) {
+  const s = p.shuffle, c = s.c;
+  const k = Math.min(1, s.t / swapSecFor(s)), hop = Math.sin(k * Math.PI) * SWAP_HOP;
+  const [r, q] = orbit(s.a, s.b, k).map(v => C.W(v.x, v.z));
   p.art.g.position.set(r.x, p.art.g.position.y + hop, r.z);
   c.mesh.position.set(q.x, C.Y + 0.12 + hop, q.z);
   c.ring.position.set(q.x, C.Y + 0.02, q.z);
@@ -85,8 +110,20 @@ function tickShuffle(p, dt) {
   c.x = s.a.x; c.z = s.a.z;
   p.sim = { ...p.sim, x: s.b.x, z: s.b.z };
   placeChunk(c);
-  p.shuffle = s.left > 1 ? { ...s, left: s.left - 1, t: 0, a: s.b, b: s.a } : null;
-  if (p.shuffle) pestSfx('shuffle');
+  p.shuffle = { ...s, left: s.left - 1, t: 0, a: s.b, b: s.a };
+  if (p.shuffle.left) pestSfx('shuffle');
+  else setBig(p, c, 1);
+}
+
+function tickShuffle(p, dt) {
+  const s = p.shuffle;
+  if (!s) return;
+  if (p.sim.state !== 'mimic' || !C.run().chunks.includes(s.c)) return endShuffle(p);
+  p.shuffle = { ...s, t: s.t + dt };
+  if (s.left && s.t < 0 && p.shuffle.t >= 0) pestSfx('shuffle');
+  if (p.shuffle.t < 0) return;
+  if (s.left) tickSwap(p);
+  else tickEar(p);
 }
 
 export function tickTactic(p, dt, t) {
@@ -137,10 +174,14 @@ export function bounceChunk(c, bat) {
 }
 
 export function startShuffle(p, c) {
-  const { swaps, swapSec } = shufflePlan(p.sim);
-  if (!swaps) return;
-  p.shuffle = { c, left: swaps, sec: swapSec, t: -0.3, a: { x: p.sim.x, z: p.sim.z }, b: { x: c.x, z: c.z } };
-  sfxLater(300, 'shuffle');
+  const s = { ...shuffleStart(p.sim), c, ear: null, a: { x: p.sim.x, z: p.sim.z }, b: { x: c.x, z: c.z } };
+  p.shuffle = s;
+  if (s.left) setBig(p, c, SWAP_BIG);
+}
+
+export function screenRight() {
+  const e = camera.matrixWorld.elements, d = Math.hypot(e[0], e[2]);
+  return d > 1e-6 ? { x: e[0] / d, z: e[2] / d } : { x: 1, z: 0 };
 }
 
 export function layTrail(p, c) {

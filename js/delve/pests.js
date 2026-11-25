@@ -37,18 +37,32 @@ export function shufflePlan(p) {
   return { swaps, swapSec };
 }
 
+export const SHUFFLE_DELAY = 0.9;
+export const LAST_SWAP_SLOW = 1.8;
+export const EAR_SEC = 0.3;
+
+export function shuffleStart(p) {
+  const { swaps, swapSec } = shufflePlan(p);
+  return { left: swaps, sec: swapSec, t: -SHUFFLE_DELAY };
+}
+
+export const swapSecFor = s => (s.left === 1 ? s.sec * LAST_SWAP_SLOW : s.sec);
+
+export const earPop = t => (t < 0 || t >= EAR_SEC ? 0 : 1 + 0.3 * Math.abs(Math.sin((t / EAR_SEC) * Math.PI * 2)));
+
 const TIMED = ['eat', 'away', 'lost'];
+
+const regroup = p => ({ ...p, state: restState(p), t: REGROUP_SEC, targetId: null, spot: null, lt: 0 });
+const remembers = p => p.round > 0 && p.grit > 0;
 
 export function repelPest(p) {
   if (p.grit <= 0 || p.gaveUp) return { pest: p, events: [] };
   const next = { ...p, grit: p.grit - 1, round: p.round + 1 };
-  if (next.grit > 0) return { pest: next, events: [] };
+  if (next.grit > 0) return { pest: p.state === 'gone' ? { ...regroup(next), x: p.home.x, z: p.home.z, carryId: null } : next, events: [] };
   const spit = p.carryId ? [{ type: 'spit', chunkId: p.carryId, x: p.x, z: p.z }] : [];
   const left = TIMED.includes(p.state) ? next : { ...next, state: 'flee', targetId: null, spot: null };
   return { pest: { ...left, gaveUp: true, carryId: null }, events: [...spit, { type: 'gift', x: p.x, z: p.z, kind: p.kind }] };
 }
-
-const regroup = p => ({ ...p, state: restState(p), t: REGROUP_SEC, targetId: null, spot: null, lt: 0 });
 
 function moveToward(p, to, speed, dt) {
   const dx = to.x - p.x, dz = to.z - p.z, len = Math.hypot(dx, dz);
@@ -88,7 +102,8 @@ function feintFrom(p, lt) {
 export function stepPest(p, dt, w) {
   const speed = PESTS[p.kind].speed * (tacticOf(p).speedMul || 1);
   const events = [];
-  if (['gone', 'sleep', 'mimic'].includes(p.state)) return { pest: p, events };
+  const wakes = p.state === 'sleep' && remembers(p) && !!w.lurkAt && !w.rest;
+  if (['gone', 'sleep', 'mimic'].includes(p.state) && !wakes) return { pest: p, events };
   if (p.state === restState(p) && p.t > 0) return { pest: { ...p, t: Math.max(0, p.t - dt) }, events };
   if (p.state === 'feint') {
     const q = moveToward(p, p.feintTo, FEINT_DIST / FEINT_SEC, dt), t = p.t - dt;
@@ -117,7 +132,7 @@ export function stepPest(p, dt, w) {
       const q = moveToward({ ...p, state: restState(p), targetId: null }, p.home, speed, dt);
       return { pest: d2(q, p.home) < 0.3 ? { ...q, state: 'sleep' } : q, events };
     }
-    if (w.lurkAt && d2(p, w.lurkAt) <= NOTICE_R) {
+    if (w.lurkAt && (d2(p, w.lurkAt) <= NOTICE_R || remembers(p))) {
       const same = ['lurk', 'doze'].includes(p.state) && p.spot && p.spot.ax === w.lurkAt.x && p.spot.az === w.lurkAt.z;
       if (same && p.state === 'doze') return { pest: moveToward(p, p.spot, speed * 0.3, dt), events };
       const spot = same ? p.spot : { ...lurkSpot(p, w.lurkAt, w.lurkTurn || 0), ax: w.lurkAt.x, az: w.lurkAt.z };
@@ -126,7 +141,7 @@ export function stepPest(p, dt, w) {
       const feint = feintFrom({ ...p, spot }, lt);
       if (feint) return { pest: feint, events };
       const q0 = moveToward({ ...p, state: 'lurk', targetId: null, spot, lt, woke }, spot, speed, dt);
-      const q = { ...q0, arrived: (same && !!p.arrived) || d2(q0, spot) < 0.05 };
+      const q = { ...q0, arrived: (same && !!p.arrived) || d2(q0, spot) <= PUSH_R + 0.05 };
       return { pest: p.kind === 'dormouse' && !woke && d2(q, w.lurkAt) <= DOZE_NEAR ? { ...q, state: 'doze' } : q, events };
     }
     return { pest: ['approach', 'lurk', 'doze'].includes(p.state) ? { ...p, state: restState(p), targetId: null, spot: null } : p, events };
@@ -170,9 +185,10 @@ export function rollerAtBreak(pests, at) {
   return pests.findIndex(p => p.kind === 'roller' && p.state === 'lurk' && d2(p, at) <= PEST_CATCH_R * 1.5);
 }
 
-export function mimicSpot(chunk, player) {
-  const a = Math.atan2(chunk.z - player.z, chunk.x - player.x) + Math.PI / 2;
-  return { x: chunk.x + Math.cos(a) * MIMIC_DIST, z: chunk.z + Math.sin(a) * MIMIC_DIST };
+export function mimicSpot(chunk, dir, blocked = () => false) {
+  const at = k => ({ x: chunk.x + dir.x * MIMIC_DIST * k, z: chunk.z + dir.z * MIMIC_DIST * k });
+  const r = at(1), inside = Math.abs(r.x) <= ROOM_LIM && Math.abs(r.z) <= ROOM_LIM, s = inside && !blocked(r) ? r : at(-1);
+  return { x: clampRoom(s.x), z: clampRoom(s.z) };
 }
 
 export function softOk(sec, period = SOFT_PERIOD) {
@@ -197,8 +213,8 @@ export function plugPest(p, player, to) {
   return { ...p, state: 'lost', t: PEST_LOST_SEC, x: to.x, z: to.z, targetId: null, spot: null };
 }
 
-export function floorTally({ kept, lost, pending }) {
-  return { kept, lost: lost + pending, any: kept + lost + pending > 0 };
+export function floorTally({ kept, lost, pending, best = 0 }) {
+  return { kept, lost: lost + pending, any: kept + lost + pending > 0 || best >= 2 };
 }
 
 export function tapPest(p, player) {
