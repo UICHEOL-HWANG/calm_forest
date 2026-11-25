@@ -3,9 +3,10 @@ import { makeMoleHole, makeBurrow, makeTrail } from './pest-art.js';
 import { makeEmojiMark } from './state-badge.js';
 import { pestSfx } from './pest-sfx.js';
 import { PEST_LINES } from '../data/delve.js';
-import { camera, spawnDust, ui } from '../game.js';
+import { camera, projectToScreen, spawnDust, ui } from '../game.js';
 import { trackEvent } from '../analytics.js';
 import { PEST_SCALE } from './pest-art-kit.js';
+import { HEARTS_SIZE } from './badge-math.js';
 
 const HOP_SEC = 0.35;
 const CIRCLE_R = 1;
@@ -145,6 +146,21 @@ function clearDecoy() {
 export function sfxLater(ms, key) {
   const here = C.run();
   setTimeout(() => { if (C.run() === here) pestSfx(key); }, ms);
+}
+
+export const BONUS_TOAST_MS = 1400;
+
+export function toastLater(ms, line, dur) {
+  const here = C.run();
+  setTimeout(() => { if (C.run() === here) ui.toast?.(line, dur); }, ms);
+}
+
+export function pillAvoid() {
+  const p = C.run()?.promptPest;
+  if (!p) return null;
+  const at = p.art.g.position, y = p.top + 0.5, e = camera.matrixWorld.elements, w = HEARTS_SIZE[0] / 2;
+  const c = projectToScreen(at, y), s = projectToScreen({ x: at.x + e[0] * w, y: at.y + e[1] * w, z: at.z + e[2] * w }, y);
+  return c && s ? { ...c, r: Math.hypot(s.x - c.x, s.y - c.y) } : c;
 }
 
 export function tickFloorTactics(dt) {

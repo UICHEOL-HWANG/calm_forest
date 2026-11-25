@@ -18,7 +18,8 @@ export function badgeBob(t) {
   return Math.sin((t / BADGE_BOB.period) * Math.PI * 2) * BADGE_BOB.amp;
 }
 
-export const HEARTS_SIZE = [0.66, 0.25];
+export const HEARTS_SIZE = [1.12, 0.425];
+export const GIFT_SIZE = 1.15;
 export const HEARTS_GAP = 0.04;
 
 export function heartsCenterY(badgeScale) {

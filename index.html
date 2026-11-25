@@ -5636,7 +5636,7 @@
           : t.includes('분수에 보태기') ? '❄️' : t.includes('광장') ? '🌾' : t.includes('수확제 좌판') ? '🍂'
           : t.includes('깨어나') ? '🛏️' : t.includes('조각을 찾아') ? '✨' : t.includes('일어나기') ? '🪑' : '🚪';   // 🌙 꿈의 숲 — 안내 줄이 문(🚪)으로 보이지 않게
         refreshActionIcon();
-        lastDoorArgs = [text, !!opts?.info, doorIcon]; hud?.onDoor(...lastDoorArgs);
+        lastDoorArgs = [text, !!opts?.info, doorIcon, opts?.avoid || null]; hud?.onDoor(...lastDoorArgs);
         if (!text) { el.classList.remove('show'); layoutPrompts(); return; }
         el.textContent = text; el.classList.add('show');
         layoutPrompts();

@@ -193,6 +193,19 @@ export function mimicSpot(chunk, dir, blocked = () => false) {
   return { x: clampRoom(s.x), z: clampRoom(s.z) };
 }
 
+export const GIFT_NEAR = 1.2;
+export const GIFT_AWAY = 1.2;
+
+export function giftSpot(at, player, right, blocked = () => false) {
+  if (d2(at, player) >= GIFT_NEAR) return at;
+  const side = (at.x - player.x) * right.x + (at.z - player.z) * right.z < 0 ? -1 : 1;
+  const a0 = Math.atan2(right.z * side, right.x * side);
+  const ok = q => Math.abs(q.x) <= ROOM_LIM && Math.abs(q.z) <= ROOM_LIM && !blocked(q);
+  const spots = [0, 4, 1, -1, 3, -3, 2, -2].map(k => a0 + (k * Math.PI) / 4).map(a => ({ x: player.x + Math.cos(a) * GIFT_AWAY, z: player.z + Math.sin(a) * GIFT_AWAY }));
+  const s = spots.find(ok);
+  return s ? { x: clampRoom(s.x), z: clampRoom(s.z) } : at;
+}
+
 export function softOk(sec, period = SOFT_PERIOD) {
   const ph = (sec % period) / period;
   return ph >= SOFT_WINDOW[0] && ph <= SOFT_WINDOW[1];

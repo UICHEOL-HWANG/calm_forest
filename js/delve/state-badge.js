@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BADGE_TONE, HEARTS_SIZE } from './badge-math.js';
+import { BADGE_TONE, HEARTS_SIZE, GIFT_SIZE } from './badge-math.js';
 
 const FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
 const CREAM = '#efe6d4';
@@ -87,7 +87,7 @@ export function makeHearts(n) {
 
 export function makeGift() {
   const s = makeStateBadge('🎁', 'stop');
-  s.scale.setScalar(0.7);
+  s.scale.setScalar(GIFT_SIZE);
   return s;
 }
 
