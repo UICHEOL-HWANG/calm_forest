@@ -59,6 +59,22 @@ body.is-touch.near-pill-on #door-prompt { opacity: 0 !important; }
 
 const $ = (id) => document.getElementById(id);
 
+export const PILL_HYST = 10;
+export const PILL_DX = 38;
+export const PILL_HALF = 27;
+export function pillSide(prev, px, avoidX) {
+  if (avoidX == null) return 1;
+  if (avoidX > px + PILL_HYST) return -1;
+  if (avoidX < px - PILL_HYST) return 1;
+  return prev;
+}
+export function pillX(px, side, a) {
+  const base = px + PILL_DX * side;
+  if (!a) return base;
+  const clear = a.x + side * ((a.r || 0) + PILL_HALF);
+  return side > 0 ? Math.max(base, clear) : Math.min(base, clear);
+}
+
 export function initMobileHud({ Input, t, act, trackEvent, onPill = null }) {
   const style = document.createElement('style');
   style.id = 'mobile-hud-css'; style.textContent = CSS;
@@ -68,7 +84,7 @@ export function initMobileHud({ Input, t, act, trackEvent, onPill = null }) {
   const pill = document.createElement('button');
   pill.id = 'near-pill'; pill.type = 'button';
   document.body.appendChild(pill);
-  let npc = null, door = null, doorText = null, target = null, kind = null, raf = 0;
+  let npc = null, door = null, doorText = null, doorAvoid = null, side = 1, target = null, kind = null, raf = 0;
   pill.addEventListener('pointerdown', (e) => e.stopPropagation());
   pill.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -79,7 +95,9 @@ export function initMobileHud({ Input, t, act, trackEvent, onPill = null }) {
   function tick() {
     if (!kind) { raf = 0; return; }
     const p = Input.playerScreenPos?.();
-    if (p) { pill.style.left = Math.round(p.x + 38) + 'px'; pill.style.top = Math.round(p.y - 18) + 'px'; }
+    const a = kind === 'door' && p ? doorAvoid?.() : null;
+    side = pillSide(side, p?.x, a?.x);
+    if (p) { pill.style.left = Math.round(pillX(p.x, side, a)) + 'px'; pill.style.top = Math.round(p.y - 18) + 'px'; }
     pill.style.visibility = p ? '' : 'hidden';
     raf = requestAnimationFrame(tick);
   }
@@ -96,7 +114,7 @@ export function initMobileHud({ Input, t, act, trackEvent, onPill = null }) {
     onTool(idx, tools, page) { fan.mount($('hotbar')); fan.onTool(idx, tools, page); fan.layout(); },
     onNpc(text) { npc = text || null; refreshPill(); },
     onTarget(icon) { target = icon || null; refreshPill(); },
-    onDoor(text, info, icon) { door = text && !info ? icon : null; doorText = door ? text : null; refreshPill(); },
+    onDoor(text, info, icon, avoid) { door = text && !info ? icon : null; doorText = door ? text : null; doorAvoid = door ? avoid || null : null; refreshPill(); },
     setCoachStep(key) { document.body.classList.toggle('coach-toolpage', key === 'toolpage'); },
   };
 }

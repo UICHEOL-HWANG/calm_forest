@@ -27,7 +27,7 @@ test('20층 뿌리 터 안에는 바위·굴·웅덩이·사다리·상자가 �
 
 test('20층이 아닌 층의 배치는 바뀌지 않는다', () => {
   const print = (floor) => { let s = ''; for (let i = 0; i < 60; i++) s += JSON.stringify(layoutFloor({ seed: 1000 + i * 7, floor })); return hashSeed(s); };
-  assert.equal(print(10), 718294889);
-  assert.equal(print(19), 3534895323);
+  assert.equal(print(10), 801521747);
+  assert.equal(print(19), 3213200263);
   assert.equal(layoutFloor({ seed: 5, floor: 19 }).shrine, undefined);
 });

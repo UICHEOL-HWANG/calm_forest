@@ -18,8 +18,8 @@ export const ORE_ODDS = {
 };
 
 export const THEMES = [
-  { id: 'earth', from: 1, to: 10, pests: ['axolotl', 'crab'], floor: 0x3a3a40, rock: 0x565b66 },
-  { id: 'crystal', from: 11, to: 20, pests: ['bat', 'grub'], floor: 0x2c2a3a, rock: 0x4a4660 },
+  { id: 'earth', from: 1, to: 10, pests: ['axolotl', 'crab', 'mole', 'dormouse'], floor: 0x3a3a40, rock: 0x565b66 },
+  { id: 'crystal', from: 11, to: 20, pests: ['bat', 'grub', 'moth', 'roller'], floor: 0x2c2a3a, rock: 0x4a4660 },
 ];
 
 export const PESTS = {
@@ -27,21 +27,78 @@ export const PESTS = {
   crab: { ico: '💎', name: '수정집게', counter: 'bait', speed: 0.9 },
   bat: { ico: '🦇', name: '잎귀박쥐', counter: 'grab', speed: 3.0 },
   grub: { ico: '🐛', name: '등불벌레', counter: 'reclaim', speed: 1.2 },
+  mole: { ico: '⭐', name: '별코두더지', counter: 'plug', speed: 1.4 },
+  dormouse: { ico: '🐭', name: '도둑쥐', counter: 'soft', speed: 1.2 },
+  moth: { ico: '🦋', name: '달빛나방', counter: 'dark', speed: 2.2 },
+  roller: { ico: '🔮', name: '수정공굴리', counter: 'pick', speed: 1.6 },
+};
+
+export const VEIN_HP = 5;
+export const PEST_LURK_DIST = 0.7;
+export const MOLE_HOLE_R = 1.6;
+export const PEST_CATCH_R = 1.0;
+export const PEST_DARK_SEC = 6;
+export const PEST_LOST_SEC = 6;
+export const SOFT_PERIOD = 1.4;
+export const SOFT_WINDOW = [0.38, 0.62];
+export const MIMIC_DIST = 0.9;
+export const PEST_GRIT = 3;
+export const STREAK_BONUS = 3;
+export const REGROUP_SEC = 2.5;
+
+export const TACTICS = {
+  axolotl: [{}, { dive: true }, { feint: true }],
+  crab: [{}, { eatSec: 3 }, { claw: true }],
+  mole: [{ decoys: 0 }, { decoys: 1 }, { decoys: 2, speedMul: 1.3 }],
+  dormouse: [{ period: 1.4 }, { period: 0.9 }, { period: 1.4, peek: true }],
+  bat: [{ ringSec: 3 }, { ringSec: 1.8, circle: true }, { ringSec: 1.8, bounce: 1.5 }],
+  grub: [{}, { twoTrails: true }, { trailFadeSec: 4 }],
+  moth: [{ darkSec: 6 }, { darkSec: 3 }, { darkSec: 6, pair: true }],
+  roller: [{ swaps: 0, swapSec: 0 }, { swaps: 2, swapSec: 0.4 }, { swaps: 3, swapSec: 0.25 }],
 };
 
 export const PEST_COPY = {
-  common: { ico: '⛏️', title: '조각 도둑', line: '가방은 안전해요. 조각만 노려요', prompt: null },
-  axolotl: { ico: '🦎', title: '동굴 도롱뇽', line: '웅덩이 아가미를 톡 치면 뱉어요', prompt: '❗ 톡 치기' },
-  crab: { ico: '💎', title: '수정집게', line: '먹보예요. 🍄 미끼를 던져요', prompt: '🍄 미끼 던지기' },
-  bat: { ico: '🦇', title: '잎귀박쥐', line: '반짝이면 툭! 조각은 바로 주워요', prompt: null },
-  grub: { ico: '🐛', title: '등불벌레', line: '놓쳐도 OK. 빛 자국 끝 굴로', prompt: '⛏️ 굴 파기' },
+  axolotl: { ico: '🦎', title: '동굴 도롱뇽이 조각을 노려요', line: '웅덩이로 물고 가요 · 톡 치면 뱉어요', prompt: '❗ 톡 치기', took: '🦎 동굴 도롱뇽이 조각을 물고 갔어요',
+    steps: [{ ico: '💎', label: '조각을 물고' }, { ico: '💧', label: '웅덩이로 가요' }, { ico: '❗', label: '톡 치면 뱉어요' }] },
+  crab: { ico: '💎', title: '수정집게가 조각을 노려요', line: '🍄 미끼를 주면 먹느라 멈춰요', prompt: '🍄 미끼 던지기', took: '💎 수정집게가 조각을 물고 갔어요',
+    steps: [{ ico: '💎', label: '조각을 집어' }, { ico: '🕳️', label: '굴로 가져가요' }, { ico: '🍄', label: '버섯을 주면 멈춰요' }] },
+  bat: { ico: '🦇', title: '잎귀박쥐가 조각을 노려요', line: '노란 고리가 사라지기 전에 주워요', prompt: null, took: '🦇 잎귀박쥐가 조각을 물고 갔어요',
+    steps: [{ ico: '✨', label: '노란 고리 동안은' }, { ico: '✋', label: '먼저 주우면 지켜요' }, { ico: '🦇', label: '끝나면 채 가요' }] },
+  grub: { ico: '🐛', title: '등불벌레가 조각을 노려요', line: '놓쳐도 빛 자국 끝 굴을 파면 돼요', prompt: '⛏️ 굴 파기', took: '🐛 등불벌레가 조각을 물고 갔어요',
+    steps: [{ ico: '💎', label: '조각을 끌고' }, { ico: '✨', label: '빛 자국을 남겨요' }, { ico: '⛏️', label: '끝의 굴을 파요' }] },
+  mole: { ico: '⭐', title: '별코두더지가 조각을 노려요', line: '구멍에 숨어 기다려요 · 돌로 막아요', prompt: '🪨 구멍 막기', took: '⭐ 별코두더지가 조각을 물고 갔어요',
+    steps: [{ ico: '🕳️', label: '구멍에 숨어' }, { ico: '💎', label: '조각을 노려요' }, { ico: '🪨', label: '막으면 길을 잃어요' }] },
+  dormouse: { ico: '🐭', title: '도둑쥐가 조각을 노려요', line: '깨는 소리에 일어나요 · 끝은 살살 캐요', prompt: '🤫 살살 캐기', took: '🐭 도둑쥐가 조각을 물고 갔어요',
+    steps: [{ ico: '💤', label: '광맥 옆에서 자요' }, { ico: '💥', label: '깨지는 소리에 깨요' }, { ico: '🤫', label: '초록일 때 살살 캐요' }] },
+  moth: { ico: '🦋', title: '달빛나방이 조각을 노려요', line: '불빛을 따라와요 · 잠깐 불을 꺼요', prompt: '🌑 불 끄기', took: '🦋 달빛나방이 조각을 물고 갔어요',
+    steps: [{ ico: '🏮', label: '불빛을 따라와' }, { ico: '💎', label: '조각을 노려요' }, { ico: '🌑', label: '불을 끄면 떠나요' }] },
+  roller: { ico: '🔮', title: '수정공굴리가 조각을 노려요', line: '조각인 척해요 · 귀가 보이면 가짜예요', prompt: null, took: '🔮 수정공굴리가 조각을 굴려 갔어요',
+    steps: [{ ico: '🔮', label: '몸을 말아' }, { ico: '💎', label: '조각인 척해요' }, { ico: '👂', label: '귀 없는 쪽이 진짜' }] },
+};
+
+const iGa = w => ((w.charCodeAt(w.length - 1) - 0xac00) % 28 ? '이' : '가');
+
+export const PEST_LINES = {
+  eat: n => `수정집게가 버섯을 먹어요 · ${n}초`,
+  ran: '도롱뇽이 놀라서 도망가요',
+  dark: '불을 끄자 달빛나방이 수정 쪽으로 가요',
+  plug: '구멍을 막았어요 · 별코두더지가 헤매요',
+  soft: '쉿! 도둑쥐가 계속 자요',
+  fake: '앗, 가짜였어요',
+  real: '진짜를 골랐어요',
+  spat: '조각을 뱉었어요',
+  giveup: n => `🎁 ${n}${iGa(n)} 포기하고 선물을 두고 갔어요`,
+  bonus: n => `✨ ${n}연속! 광석 +1`,
+  empty: '빈 굴이에요',
+  peek: '👁️ 실눈 뜬 도둑쥐가 깼어요',
+  result: (floor, kept, lost, best = 0) => `⛏️ 지하 ${floor}층 · 지킨 조각 ${kept} · 뺏긴 조각 ${lost}${best >= 2 ? ` · 최고 연속 ${best}` : ''}`,
 };
 
 export const MINER_STEPS = [
   { id: 'reopen', title: '승강기 고치기', desc: '⚫ 석탄 3개 가져다주기', check: { kind: 'inv', key: 'coal', n: 3, take: true }, reward: { unlock: 1 },
     ask: ['어이쿠, 손님이군. 여긴 오래된 갱도라네', '옛날엔 등불이 꺼지지 않던 곳이지', '승강기가 멈춰서 아래로 못 내려가고 있지', '⚫ 석탄 3개만 캐 오게. 불을 때면 다시 돌아갈 거야'] },
   { id: 'tap', title: '웅덩이 속 도둑', desc: '🦎 웅덩이 아가미 톡 치기 · 지하 1~10층', check: { kind: 'count', key: 'tap', n: 1 }, reward: { gem: 1 },
-    ask: ['승강기가 다시 도네! 이제 내려갈 수 있어', '아래 웅덩이에 🦎 도롱뇽이 숨어 광석을 노린다네', '아가미가 보이면 톡 쳐서 쫓아 주게'] },
+    ask: ['승강기가 다시 도네! 이제 내려갈 수 있어', '아래 웅덩이에 🦎 도롱뇽이 숨어 광석을 노린다네', '광맥을 캐면 다가와 기다리지. 그때 톡 쳐서 쫓아 주게'] },
   { id: 'stop5', title: '첫 정류장', desc: '🪜 지하 5층까지 내려가기', check: { kind: 'floor', n: 5 }, reward: {},
     ask: ['그 녀석 한동안 얌전하겠군', '🪜 지하 5층까지 내려가 보게. 거기 정류장이 있다네'] },
   { id: 'bait', title: '먹보 달래기', desc: '🍄 수정집게에게 버섯 미끼 던지기 · 지하 1~10층', check: { kind: 'count', key: 'bait', n: 1 }, reward: { forage: 3 },
