@@ -66,9 +66,12 @@ test('액션 아이콘: 동굴 프롬프트의 첫 이모지가 버튼 아이콘
   for (const e of ['❗', '⛏️', '🍄', '🛗', '🪜', '🧰']) assert.ok(line.split(e).length >= 3, e);
 });
 
-test('공통 배너는 1층 첫 진입, 빛 자국은 등불벌레가 굴에 넣을 때', () => {
-  assert.match(src, /delve_common/);
-  assert.match(src, /makeTrail\(/);
+test('1층 공통 배너 대신 몹별 첫 만남 카드, 빛 자국은 등불벌레가 굴에 넣을 때', () => {
+  const s = read('js/spaces/delve.js');
+  assert.doesNotMatch(s, /delve_common/);
+  assert.match(s, /firstHint\(`delve_meet_\$\{kind\}`/);
+  assert.match(read('js/delve/pest-tactics.js'), /makeTrail\(/);
+  assert.match(s, /layTrail\(p, c\)/);
 });
 
 test('상자는 보물상자 규칙(rollChest·chestGive) 재사용, 열면 noteChest', () => {
@@ -128,7 +131,8 @@ test('GA4: delve_floor 에 sec·rocks, delve_step 에 sec, 도망 중 도롱뇽�
   assert.match(s, /trackEvent\('delve_floor', \{ floor, via, stops: [^}]*sec: [^}]*rocks: [^}]*\}/);
   for (const m of s.matchAll(/trackEvent\('delve_step', \{([^}]*)\}/g)) assert.match(m[1], /sec: /);
   assert.match(s, /started: true, startedAt: Date\.now\(\)/);
-  assert.match(s, /p\.sim\.kind === 'axolotl' && !\['gone', 'flee'\]\.includes\(p\.sim\.state\)/);
+  assert.match(s, /counterFor\(p\.sim\) === 'tap'/);
+  assert.match(s, /counterFor\(p\.sim\) === 'bait'/);
 });
 
 test('되찾기는 조각마다 제 광석(reclaimGive), 성공 뒤 패널 갱신', () => {
@@ -179,4 +183,176 @@ test('광부는 해금(miner) 전엔 동굴에 없고, 승강기는 세계수 �
   assert.match(d, /function syncMinerPresence\(\)/);
   assert.match(d, /isOpen\('miner'\)/);
   assert.match(d, /광산의 가지를 채우면 광부 아저씨가 돌아와요/);
+});
+
+test('받아먹기: 광맥은 VEIN_HP, 처음 치면 몹이 기다리고, 깨질 때 catchAtBreak', () => {
+  const s = delveSrc();
+  assert.match(s, /r\.vein && run\.oreOk \? VEIN_HP : 3/);
+  assert.match(s, /run\.lurkAt = /);
+  assert.match(s, /catchAtBreak\(/);
+});
+
+test('결과가 보인다: 뺏김 토스트, 층 결과 토스트, 기록 키', () => {
+  const s = delveSrc();
+  assert.match(s, /PEST_COPY\[[^\]]+\]\.took/);
+  assert.match(s, /floorTally\(/);
+  assert.match(s, /trackEvent\('delve_floor', \{[^}]*kept[^}]*lost[^}]*\}/);
+  assert.match(s, /trackEvent\('delve_exit', \{[^}]*kept[^}]*lost[^}]*\}/);
+  for (const m of s.matchAll(/trackEvent\('pest_counter', \{([^}]*)\}/g)) assert.match(m[1], /state: /);
+});
+
+test('말풍선은 블룸에 안 타는 베이지 배경', () => {
+  const art = read('js/delve/pest-art.js');
+  const b = art.slice(art.indexOf('export function emojiBubble'), art.indexOf('export function emojiBubble') + 900);
+  assert.match(b, /rgba\(226,196,158/);
+  assert.match(b, /toneMapped: false/);
+});
+
+test('새 문구는 영어 사전에 있다', async () => {
+  const { EN } = await import('../js/i18n-en.js');
+  const { PEST_COPY } = await import('../js/data/delve.js');
+  for (const c of Object.values(PEST_COPY)) {
+    for (const k of [c.title, c.line, c.took, ...c.steps.map(x => x.label)]) assert.ok(EN[k], k);
+  }
+  for (const k of ['수정집게가 버섯을 먹어요 · {0#}초', '도롱뇽이 놀라서 도망가요', '조각을 뱉었어요', '⛏️ 지하 {0#}층 · 지킨 조각 {1#} · 뺏긴 조각 {2#}']) assert.ok(EN[k], k);
+});
+
+test('리뷰 반영: 뺏김 토스트가 사다리 토스트에 안 덮이고, 첫 만남 기록은 카드가 뜰 때만, 잠든 박쥐는 고리 없음', () => {
+  const s = delveSrc();
+  const mine = s.slice(s.indexOf('export function tryDelveMine()'), s.indexOf('const batAlive'));
+  assert.ok(mine.indexOf('showLadder()') < mine.indexOf('catchAtBreak('));
+  assert.match(s, /if \(gameState\.hintsSeen\[key\]\) return;/);
+  assert.match(s, /const liveBat = \(\) => run\.pests\.find\(p => p\.sim\.kind === 'bat' && p\.sim\.grit > 0 && !\['gone', 'sleep'\]\.includes\(p\.sim\.state\)\)/);
+  assert.match(s, /method: 'tap', ok: r\.events\.length \? 1 : 0, state: was/);
+  assert.match(s, /lurkTurn: /);
+});
+
+test('새 몹 연결: 불 끄기·구멍 막기·살살 캐기 문, 굴리 흉내, 버튼 아이콘', () => {
+  const s = delveSrc();
+  for (const nd of ['delve_dark', 'delve_plug', 'delve_soft']) assert.match(s, new RegExp(`nd === '${nd}'`));
+  assert.match(s, /counterFor\(p\.sim\) === 'dark'/);
+  assert.match(s, /plugReady\(p\.sim, lp\)/);
+  assert.match(s, /rollerAtBreak\(/);
+  assert.match(s, /softOk\(/);
+  const line = read('index.html').split('\n').find(l => l.includes('doorIcon = /^('));
+  for (const e of ['🌑', '🤫', '🪨']) assert.ok(line.split(e).length >= 3, e);
+  for (const m of s.matchAll(/trackEvent\('pest_counter', \{([^}]*)\}/g)) assert.match(m[1], /state: /);
+});
+
+test('광부 대사: 도롱뇽은 광맥을 캐야 다가온다', async () => {
+  const { MINER_STEPS } = await import('../js/data/delve.js');
+  const { EN } = await import('../js/i18n-en.js');
+  const line = '광맥을 캐면 다가와 기다리지. 그때 톡 쳐서 쫓아 주게';
+  assert.ok(MINER_STEPS.find(x => x.id === 'tap').ask.includes(line));
+  assert.ok(EN[line]);
+});
+
+test('리뷰 반영 2: 대처 버튼이 살살 캐기보다 먼저, 나방 전부, 빛나는 수정·두더지 구멍 배치, 불빛은 나방 상태로', () => {
+  const s = delveSrc();
+  const prompt = s.slice(s.indexOf('export function delvePrompt()'), s.indexOf('export function handleDelveDoor'));
+  assert.ok(prompt.indexOf("counterFor(p.sim) === 'tap'") < prompt.indexOf("nd: 'delve_soft'"));
+  const dark = s.slice(s.indexOf("if (nd === 'delve_dark')"), s.indexOf("if (nd === 'delve_plug')"));
+  assert.doesNotMatch(dark, /return true;\n    \}\n    return true;/);
+  assert.match(s, /makeGlowCrystal\(\)/);
+  assert.match(s, /makeMoleHole\(\)/);
+  assert.doesNotMatch(s, /darkUntil/);
+  assert.match(s, /if \(caught\)|const caught = breakRock\(/);
+  const b = read('js/delve/state-badge.js');
+  assert.match(b, /new Map\(\)/);
+});
+
+test('3차 끈기: 대처 성공마다 repelPest, 기록에 round·streak, 포기는 giveup', () => {
+  const s = delveSrc();
+  for (const nd of ['delve_tap', 'delve_bait', 'delve_dark', 'delve_plug', 'delve_soft', 'delve_dig']) {
+    const b = s.slice(s.indexOf(`if (nd === '${nd}')`), s.indexOf('\n  }\n', s.indexOf(`if (nd === '${nd}')`)));
+    assert.match(b, /repel\(/, nd);
+  }
+  assert.match(s.slice(s.indexOf('function pickUp(c)'), s.indexOf('const TALK_CLOSE_R')), /repel\(bat, was\)/);
+  assert.match(s.slice(s.indexOf('function tickMimics'), s.indexOf('function syncHearts')), /repel\(p, 'mimic'\)/);
+  assert.match(s.slice(s.indexOf('function repel('), s.indexOf('function breakRock')), /repelPest\(p\.sim\)/);
+  const calls = [...s.matchAll(/trackEvent\('pest_counter', \{([^}]*)\}/g)].map(m => m[1]);
+  assert.ok(calls.length >= 10);
+  for (const c of calls) { assert.match(c, /state: /); assert.match(c, /round/); assert.match(c, /streak/); }
+  assert.ok(calls.some(c => /method: 'giveup', ok: 1/.test(c)));
+  assert.match(s, /PEST_LINES\.giveup\(/);
+});
+
+test('3차 선물·연속·결과: 선물은 몹 목록 밖, 층마다 새 연속, 결과와 delve_exit 에 best', () => {
+  const s = delveSrc();
+  assert.match(s, /streak: newStreak\(\), gifts: \[\]/);
+  assert.match(s, /const world = \{ chunks: run\.chunks, /);
+  assert.doesNotMatch(s, /run\.chunks = \[\.\.\.run\.chunks, [^\]]*gift/);
+  assert.match(s, /run\.gifts = \[\.\.\.run\.gifts, /);
+  assert.match(s, /PEST_LINES\.result\(run\.floor, t\.kept, t\.lost, run\.streak\.best\)/);
+  assert.match(s, /trackEvent\('delve_exit', \{[^}]*best: t\.best[^}]*\}/);
+  assert.match(s, /streakStep\(run\.streak, ok\)/);
+  assert.match(s.slice(s.indexOf('function carryOff'), s.indexOf('const rollHere')), /scoreStreak\(false\)/);
+  assert.match(s, /PEST_LINES\.bonus\(step\.cur\)/);
+});
+
+test('3차 수법 일부: 살살 고리는 softPeriodFor, 박쥐 고리는 ringSecFor, 하트 줄', () => {
+  const s = delveSrc();
+  assert.doesNotMatch(s, /SOFT_PERIOD|RING_SEC\b/);
+  assert.match(s, /softPeriodFor\(dozer\.sim\)/);
+  assert.match(s, /ringSecFor\(/);
+  assert.match(s, /makeHearts\(n\)/);
+  assert.match(s, /heartCount\(p\.sim\)/);
+  assert.ok(s.split('\n').length < 800);
+});
+
+test('3차 수법 연결: 몹마다 수법 훅이 delve.js 에서 불린다', () => {
+  const s = delveSrc(), t = read('js/delve/pest-tactics.js');
+  const loop = s.slice(s.indexOf('export function updateDelve'));
+  assert.match(loop, /tacticCues\(prev, pest\)\.forEach\(pestSfx\)/);
+  assert.ok(loop.indexOf('tickTactic(p, dt, t)') < loop.indexOf('badgeFor(p.sim, p.peek)'));
+  assert.ok(loop.indexOf('p.art.g.visible = ') < loop.indexOf('tickTactic(p, dt, t)'));
+  assert.match(loop, /tickFloorTactics\(dt\)/);
+  assert.match(s.slice(s.indexOf('function dropChunk'), s.indexOf('function carryOff')), /bounceChunk\(c, liveBat\(\)\.sim\)/);
+  assert.match(s.slice(s.indexOf('function breakRock'), s.indexOf('const dozerNear')), /startShuffle\(p, c\)/);
+  assert.match(s.slice(s.indexOf('function breakRock'), s.indexOf('const dozerNear')), /mimicSpot\(c, screenRight\(\), /);
+  assert.ok(!t.slice(t.indexOf('function orbit'), t.indexOf('export function tickTactic')).includes('setTimeout'));
+  assert.ok(!t.includes('roller-fx') && !t.includes('rollerfx'));
+  assert.match(s.slice(s.indexOf('export function tryDelveMine'), s.indexOf('function breakRock')), /if \(ore\) wakePeeker\(i\)/);
+  const soft = s.slice(s.indexOf("if (nd === 'delve_soft')"), s.indexOf("if (nd === 'delve_dig_decoy')"));
+  assert.ok(soft.indexOf('const woke = wakePeeker(i)') < soft.indexOf('breakRock(i, ok && !woke)'));
+  assert.match(soft, /const won = ok && !woke && !caught/);
+  assert.match(s, /peekWake\(p\.sim, p\.peek\)/);
+  assert.match(s, /PEST_LINES\.peek/);
+  const prompt = s.slice(s.indexOf('export function delvePrompt()'), s.indexOf('export function handleDelveDoor'));
+  assert.ok(prompt.indexOf('decoyNear(lp, 1.4)') < prompt.indexOf("nd: 'delve_dig'"));
+  assert.match(s, /nd === 'delve_dig_decoy'\) return digDecoy\(\)/);
+  assert.match(s, /bindTactics\(\{[^}]*newPest: pestEntry/);
+  for (const k of ['bubble', 'dust', 'shuffle', 'confused']) assert.match(t, new RegExp(`pestSfx\\('${k}'\\)|sfxLater\\(\\d+, '${k}'\\)`), k);
+  for (const e of ['🫧', '🔷', '✨']) assert.ok(t.includes(`makeEmojiMark('${e}'`), e);
+  assert.match(t, /moleHoles\(/);
+  assert.match(t, /PEST_LINES\.empty/);
+  assert.match(t, /createPest\(p\.sim\.kind, [^)]*\{ grit: 1 \}\)/);
+  assert.match(t, /trailFadeSec/);
+  assert.match(t, /tacticOf\(p\.sim\)\.circle/);
+  assert.doesNotMatch(t, /\/\/|\/\*/);
+});
+
+test('3차 포기 소리는 대처 소리와 겹치지 않게 늦게', () => {
+  const r = delveSrc().slice(delveSrc().indexOf('function repel('), delveSrc().indexOf('function showLadder'));
+  assert.match(r, /sfxLater\(300, 'giveUp'\)/);
+  assert.match(r, /sfxLater\(650, 'gift'\)/);
+});
+
+test('3차 다듬기: 포기 한 번만, 들고 있던 덩이는 뱉고, 늦은 소리는 같은 층에서만', () => {
+  const s = delveSrc(), t = read('js/delve/pest-tactics.js');
+  assert.match(s, /const batAlive = \(\) => !!liveBat\(\)/);
+  assert.match(s, /const liveBat = \(\) => run\.pests\.find\(p => p\.sim\.kind === 'bat' && p\.sim\.grit > 0 && /);
+  const r = s.slice(s.indexOf('function repel('), s.indexOf('function showLadder'));
+  assert.match(r, /if \(pest\.grit === before\) return/);
+  assert.ok(r.indexOf('if (pest.grit === before)') < r.indexOf('const streak = scoreStreak(true)'));
+  assert.match(r, /if \(e\.type === 'spit'\) spitChunk\(e\)/);
+  const tap = s.slice(s.indexOf("if (nd === 'delve_tap')"), s.indexOf("if (nd === 'delve_bait')"));
+  assert.match(tap, /r\.events\.forEach\(spitChunk\)/);
+  assert.match(s.slice(s.indexOf('function grantOre'), s.indexOf('function scoreStreak')), /questEvent\('mine', 1\)/);
+  assert.doesNotMatch(s, /setTimeout\(\(\) => pestSfx/);
+  assert.doesNotMatch(t, /setTimeout\(\(\) => pestSfx/);
+  assert.match(t, /export function sfxLater\(ms, key\) \{\s*const here = C\.run\(\);\s*setTimeout\(\(\) => \{ if \(C\.run\(\) === here\) pestSfx\(key\); \}, ms\);/);
+  const loop = s.slice(s.indexOf('export function updateDelve'));
+  assert.doesNotMatch(loop, /run\.(gifts|chunks)\.filter\(/);
+  assert.doesNotMatch(t.slice(t.indexOf('export function tickFloorTactics')), /run\.chunks\.filter\(/);
 });

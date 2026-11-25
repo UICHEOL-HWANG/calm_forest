@@ -19,7 +19,8 @@ test('pest steps name the floors where that pest lives', () => {
 
 test('floor already mined today shows plain rocks and says so', () => {
   assert.match(delve, /makeRock\(r\.vein && run\.oreOk, theme\)/);
-  assert.match(delve, /if \(!oreOk\) ui\.toast\?\.\('⛏️ 이 층 광맥은 오늘 다 캤어요\. 내일 다시 차올라요'/);
+  assert.match(delve, /const depleted = '⛏️ 이 층 광맥은 오늘 다 캤어요\. 내일 다시 차올라요'/);
+  assert.match(delve, /else if \(!oreOk\) ui\.toast\?\.\(depleted/);
   assert.ok(en.includes("'⛏️ 이 층 광맥은 오늘 다 캤어요. 내일 다시 차올라요'"));
 });
 

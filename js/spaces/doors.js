@@ -155,7 +155,7 @@ export function goFloor(f) {
 function nearGateEnd(kind) { const e = gateWalkEnd(kind); return !!e && dist2D(e, player.position) < 1.2; }
 
 export function updateDoorInteract() {
-  let nd = null, prompt = null, floorChoiceOpts = null;   // 🪜 floorChoiceOpts — 같은 자리에서 두 방향 다 갈 수 있을 때만(6단계 2층)
+  let nd = null, prompt = null, avoid = null, floorChoiceOpts = null;   // 🪜 floorChoiceOpts — 같은 자리에서 두 방향 다 갈 수 있을 때만(6단계 2층)
   $w.nearDecorMesh = null; $w.nearOutdoorMesh = null; if (decorNearRing) decorNearRing.visible = false;   // 🛋️🪵 옮기기 링은 대상이 있을 때만
   // 🪵 다른 구역으로 가면 배치 모드를 접는다 — 들고 있던 건 제자리로(분실 방지),
   //   작업대에서 막 고른 것도 접는다(아직 값을 안 치렀고, 실내·동굴에선 놓을 수 없는데 🫥미리보기와 ↻회전 버튼만 따라다닌다).
@@ -303,7 +303,7 @@ export function updateDoorInteract() {
     }
   } else if (atMine) {
     const dp = delvePrompt();
-    if (dp) { nd = dp.nd; prompt = dp.prompt; }
+    if (dp) { nd = dp.nd; prompt = dp.prompt; avoid = dp.avoid; }
     else if (delveFloorNow() === 0 && dist2D({ x: MINE.x, z: MINE.z - MINE_HALF }, player.position) < 1.7) { nd = 'mineexit'; prompt = '🚪 나가기'; }
   } else if (atOrchard) {   // 🍎 과수원 언덕: 들어온 남쪽 경계로 나가기
     if (dist2D({ x: ORCHARD.x, z: ORCHARD.z + ORCHARD_HALF }, player.position) < 1.9) { nd = 'orchardexit'; prompt = '🚪 나가기'; }
@@ -492,7 +492,7 @@ export function updateDoorInteract() {
   if (!prompt && !farmActionFirst() && !visitorTarget() && petChoresNear()) { $w.nearDoor = 'pet'; prompt = '🐾 맡기기'; }
   if (placingOutdoor) prompt = null;
   document.body.classList.toggle('at-pier', $w.nearDoor === 'port_board');
-  if (prompt !== lastDoorPrompt) { $w.lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt); }
+  if (prompt !== lastDoorPrompt) { $w.lastDoorPrompt = prompt; ui.setDoorPrompt?.(prompt, avoid ? { avoid } : undefined); }
   // 🪜 양방향 선택 UI(6단계 2층 전용) — door-prompt 와 같은 중복 갱신 방지 패턴.
   //   opts 가 바뀔 때만 버튼을 다시 그린다(매 프레임 onclick 재바인딩 낭비 방지).
   const fcKey = floorChoiceOpts ? floorChoiceOpts.map(o => o.f).join(',') : null;

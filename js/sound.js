@@ -35,6 +35,8 @@ export function initSound() {
   });
 }
 
+export function isSoundOn() { return enabled; }
+
 export function audioBus() {
   return { ctx: ensureCtx(), out: master, on: enabled };
 }

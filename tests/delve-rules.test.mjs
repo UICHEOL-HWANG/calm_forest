@@ -14,15 +14,19 @@ test('테마 두 개가 1~20층을 빈틈없이 덮는다', () => {
   assert.deepEqual(covered, Array.from({ length: 20 }, (_, i) => i + 1));
 });
 
-test('방해꾼 4종은 각자 대응이 하나씩이고 테마에 소속된다', () => {
-  assert.deepEqual(Object.keys(PESTS).sort(), ['axolotl', 'bat', 'crab', 'grub']);
-  assert.deepEqual(Object.values(PESTS).map(p => p.counter).sort(), ['bait', 'grab', 'reclaim', 'tap']);
+test('방해꾼 8종은 각자 대응이 하나씩이고 테마에 소속된다', () => {
+  assert.deepEqual(Object.keys(PESTS).sort(), ['axolotl', 'bat', 'crab', 'dormouse', 'grub', 'mole', 'moth', 'roller']);
+  assert.deepEqual(Object.values(PESTS).map(p => p.counter).sort(), ['bait', 'dark', 'grab', 'pick', 'plug', 'reclaim', 'soft', 'tap']);
+  assert.deepEqual(THEMES.map(t => t.pests.length), [4, 4]);
   for (const th of THEMES) for (const id of th.pests) assert.ok(PESTS[id], id);
 });
 
-test('첫 만남 배너 한 줄은 18자 이내, 프롬프트 8자 이내, 엠대시 없음', () => {
+test('첫 만남 카드: 몹마다 세 칸, 한 줄 22자 이내, 프롬프트 8자 이내, 엠대시·놀다 없음', () => {
+  assert.deepEqual(Object.keys(PEST_COPY).sort(), Object.keys(PESTS).sort());
   for (const [id, c] of Object.entries(PEST_COPY)) {
-    assert.ok([...c.line].length <= 18, `${id}: ${c.line}`);
+    assert.equal(c.steps.length, 3, id);
+    assert.ok([...c.line].length <= 22, `${id}: ${c.line}`);
+    for (const t of [c.title, c.line, c.took, ...c.steps.map(x => x.label)]) assert.ok(!/—|놀[아다자]/.test(t), `${id}: ${t}`);
     assert.ok(!c.line.includes('—') && !c.title.includes('—'), id);
     if (c.prompt) assert.ok([...c.prompt].length <= 8, `${id} prompt`);
   }
@@ -133,8 +137,8 @@ test('방해꾼 굴은 도착점 근처에 없다', () => {
 test('방해꾼은 그 층 테마 소속, 도롱뇽이 있으면 웅덩이가 있다, 방해꾼마다 굴', () => {
   for (const seed of SEEDS.slice(0, 50)) {
     const a = layoutFloor({ seed, floor: 4 }), b = layoutFloor({ seed, floor: 16 });
-    for (const p of a.pests) assert.ok(['axolotl', 'crab'].includes(p));
-    for (const p of b.pests) assert.ok(['bat', 'grub'].includes(p));
+    for (const p of a.pests) assert.ok(THEMES[0].pests.includes(p));
+    for (const p of b.pests) assert.ok(THEMES[1].pests.includes(p));
     if (a.pests.includes('axolotl')) assert.ok(a.puddles.length >= 1, `${seed}`);
     assert.equal(a.burrows.length, a.pests.length, `${seed}`);
   }
