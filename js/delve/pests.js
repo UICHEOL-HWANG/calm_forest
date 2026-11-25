@@ -187,7 +187,9 @@ export function rollerAtBreak(pests, at) {
 
 export function mimicSpot(chunk, dir, blocked = () => false) {
   const at = k => ({ x: chunk.x + dir.x * MIMIC_DIST * k, z: chunk.z + dir.z * MIMIC_DIST * k });
-  const r = at(1), inside = Math.abs(r.x) <= ROOM_LIM && Math.abs(r.z) <= ROOM_LIM, s = inside && !blocked(r) ? r : at(-1);
+  const side = k => ({ x: chunk.x - dir.z * MIMIC_DIST * k, z: chunk.z + dir.x * MIMIC_DIST * k });
+  const ok = q => Math.abs(q.x) <= ROOM_LIM && Math.abs(q.z) <= ROOM_LIM && !blocked(q);
+  const s = [at(1), at(-1), side(1), side(-1)].find(ok) || at(-1);
   return { x: clampRoom(s.x), z: clampRoom(s.z) };
 }
 

@@ -128,7 +128,7 @@ const MIX = {
 
 const GAIN = {
   notice: 1.22, snatch: 1.27, lost: 1.07, tap: 2.14, startle: 2.75, bait: 1.5, munch: 2.14, plug: 0.68, confused: 3.02, snore: 2.19,
-  hush: 1.66, wake: 1.17, ringdrop: 1.4, swoop: 2.63, dig: 1.48, reclaim: 1.27, lightsOff: 1.1, flutter: 12, lightsOn: 1.08, curl: 1.41,
+  hush: 1.66, wake: 1.17, ringdrop: 1.4, swoop: 2.63, dig: 1.48, reclaim: 1.27, lightsOff: 1.1, flutter: 20, lightsOn: 1.08, curl: 1.41,
   real: 1.19, fake: 2.21, roll: 3.2, heart: 2.14, combo1: 2.26, combo2: 1.82, combo3: 1.58, bonus: 1.24, comboBreak: 1.57, giveUp: 0.76,
   gift: 1.19, dive: 1.04, bubble: 3.76, feint: 6.68, rumble: 6.46, dust: 1.86, shuffle: 10.72,
 };

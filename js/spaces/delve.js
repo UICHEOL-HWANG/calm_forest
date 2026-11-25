@@ -14,7 +14,7 @@ import { rollChest, chestGive } from '../boat-chest.js';
 import { makeChestMesh } from '../boat-chest-art.js';
 import { jobCard, owedMinerRewards, minerTalk } from '../delve/miner-card.js';
 import { playMinerLines, advanceMinerTalk, minerTalkOpen, closeMinerTalk } from '../delve/miner-talk.js';
-import { createPest, stepPest, tapPest, baitPest, canPick, pushOffPlayer, catchAtBreak, counterFor, grabChunk, floorTally, darkPest, plugPest, softOk, rollerAtBreak, mimicSpot, repelPest, softPeriodFor, ringSecFor, peekWake, plugReady, TAP_R, BAIT_R, DARK_R, DOZE_NEAR } from '../delve/pests.js';
+import { createPest, stepPest, tapPest, baitPest, canPick, pushOffPlayer, catchAtBreak, counterFor, grabChunk, floorTally, darkPest, plugPest, softOk, rollerAtBreak, mimicSpot, repelPest, softPeriodFor, ringSecFor, peekWake, plugReady, TAP_R, BAIT_R, DARK_R, DOZE_NEAR, PICK_R } from '../delve/pests.js';
 import { newStreak, streakStep } from '../delve/streak.js';
 import { pestSfx } from '../delve/pest-sfx.js';
 import { heartCount, tacticCues, streakCues, badgeFor } from '../delve/pest-rounds.js';
@@ -383,7 +383,7 @@ function breakRock(i, soft) {
   const k = catchAtBreak(sims, at, { soft });
   if (k >= 0) { const p = run.pests[k]; if (p.sim.state === 'doze') pestSfx('wake'); p.sim = grabChunk(p.sim, c.id); carryOff(p, c); return true; }
   const ri = rollerAtBreak(sims, at);
-  if (ri >= 0) { const s = mimicSpot(c, screenRight(), q => run.layout.rocks.some((o, j) => run.rockMeshes[j].visible && Math.hypot(o.x - q.x, o.z - q.z) < ROCK_R + 0.4)), p = run.pests[ri]; p.sim = { ...p.sim, state: 'mimic', x: s.x, z: s.z, mimicOf: c.id, spot: null }; pestSfx('curl'); startShuffle(p, c); }
+  if (ri >= 0) { const s = mimicSpot(c, screenRight(), q => run.layout.rocks.some((o, j) => run.rockMeshes[j].visible && Math.hypot(o.x - q.x, o.z - q.z) < ROCK_R + 0.4) || dist2D(W(q.x, q.z), player.position) < PICK_R + 0.3), p = run.pests[ri]; p.sim = { ...p.sim, state: 'mimic', x: s.x, z: s.z, mimicOf: c.id, spot: null }; pestSfx('curl'); startShuffle(p, c); }
   return false;
 }
 

@@ -268,3 +268,12 @@ test('mimicSpot: 오른쪽에 바위가 있으면 왼쪽에 몸을 만다', () =
   assert.ok(s.x < 1);
   assert.ok(!blocked(s));
 });
+
+test('mimicSpot: 양옆이 다 막히면 앞뒤로, 플레이어 발밑은 피한다', () => {
+  const player = { x: 1.9, z: 2 };
+  const rock = { x: 0.1, z: 2 };
+  const blocked = s => Math.hypot(s.x - player.x, s.z - player.z) < 1.1 || Math.hypot(s.x - rock.x, s.z - rock.z) < 0.75;
+  const s = mimicSpot({ x: 1, z: 2 }, { x: 1, z: 0 }, blocked);
+  assert.ok(!blocked(s));
+  assert.ok(Math.abs(s.z - 2) > 0.8);
+});
