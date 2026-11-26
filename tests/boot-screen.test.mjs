@@ -55,10 +55,13 @@ test('veil: 남색 가림막 대신 쓰는 가림막 — hide 가 원을 열고 
   assert.equal(activeBootVeil(), null);
 });
 
-test('dismiss: 로그인 화면으로 갈 땐 페이드로 내리고, 그 뒤엔 가림막을 주지 않는다', async () => {
+test('dismiss: 로그인 화면으로 갈 때도 막대를 끝까지 채우고 원을 열어 내리고, 그 뒤엔 가림막을 주지 않는다', async () => {
   const el = fakeLoading();
-  const screen = createBootScreen(el, instant);
+  let opening = false;
+  const screen = createBootScreen(el, { ...instant, wait: () => { opening = el.classList.contains('boot-open'); return Promise.resolve(); } });
   await screen.dismiss();
+  assert.equal(opening, true);
+  assert.equal(el.vars['--to'], '1');
   assert.equal(el.style.display, 'none');
   assert.equal(screen.veil(), null);
   screen.step(2);

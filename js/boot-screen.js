@@ -5,7 +5,6 @@ export const BOOT_STEPS = Object.freeze([
 ]);
 
 const OPEN_MS = 1100;
-const FADE_MS = 500;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 let active = null;
@@ -34,15 +33,14 @@ export function createBootScreen(el, { t = (s) => s, wait = sleep } = {}) {
     el.classList.remove(cls);
   };
 
-  const veil = () => (isUp() ? {
-    show() {},
-    hide() {
-      fill?.style.setProperty('--to', '1');
-      return close('boot-open', OPEN_MS);
-    },
-  } : null);
+  const open = () => {
+    fill?.style.setProperty('--to', '1');
+    return close('boot-open', OPEN_MS);
+  };
 
-  const screen = { step, veil, isUp, dismiss: () => close('boot-fade', FADE_MS) };
+  const veil = () => (isUp() ? { show() {}, hide: open } : null);
+
+  const screen = { step, veil, isUp, dismiss: open };
   active = screen;
   return screen;
 }
