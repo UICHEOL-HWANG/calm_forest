@@ -26,6 +26,8 @@ import { expandWoodOf } from '../tool-tiers.js';
 import { HOUSE_CLEAR_R, HOUSE_STYLES, STYLE_INFO, normalizeHouseStyle, stage7Boxes, stage7DoorPoint, stage7ExitPoint } from '../house-stage7.js';   // 🏡 7단계(정원 저택) 규칙 — 새 로직은 그 순수 모듈에
 import * as THREE from 'three';
 
+import { UI_FONT } from '../fonts.js';
+import { fillIconText } from '../icons/canvas-text.js';
 export function buildHouseGhost() {
   // 눈에 띄는 집 터: 민트 바닥 + 초록 링(테두리)
   $w.houseGhost = new THREE.Group();
@@ -115,11 +117,11 @@ export function updateHouseSign() {
   //    92px 제목 '🏠 나무 바닥(데크)' 681 · '🏠 Wooden Deck' 684, 66px 재료줄 '🪵25 · 🪨15 · 🪙80' 517.
   //    간판 안쪽 안전선 880px — 한·영 모두 여유가 있다.
   const bi = buildInfo(gameState, RES_LABEL);
-  c.fillStyle = '#204a2c'; c.font = 'bold 92px sans-serif';
-  c.fillText(bi.next ? `🏠 ${t(bi.next.name)}` : t('🏠 여기에 집 짓기'), 512, 104);
-  c.fillStyle = '#33503c'; c.font = 'bold 66px sans-serif';
+  c.fillStyle = '#204a2c'; c.font = `bold 92px ${UI_FONT}`;
+  fillIconText(c, bi.next ? `🏠 ${t(bi.next.name)}` : t('🏠 여기에 집 짓기'), 512, 104);
+  c.fillStyle = '#33503c'; c.font = `bold 66px ${UI_FONT}`;
   // 🔨 묵직한 망치를 사면 목재 숫자도 따라 바뀐다(buildInfo 가 이미 깎아서 준다)
-  c.fillText(bi.items.map(i => `${RES_ICON[i.k] || ''}${i.need}`).join(' · '), 512, 212);
+  fillIconText(c, bi.items.map(i => `${RES_ICON[i.k] || ''}${i.need}`).join(' · '), 512, 212);
   houseSignTex.needsUpdate = true;
 }
 

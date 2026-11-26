@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mat, glow, M, crystalCluster, oreChunkInto, baitInto, PEST_SCALE } from './pest-art-kit.js';
 import { axolotl, crab, bat, grub } from './pest-art-thieves.js';
 import { moth, mole, dormouse, roller } from './pest-art-new.js';
+import { fillIconText } from '../icons/canvas-text.js';
 
 export function makeOreChunk() {
   return oreChunkInto(new THREE.Group());
@@ -77,7 +78,7 @@ export function emojiBubble(txt, size = 0.85) {
   x.fillStyle = 'rgba(226,196,158,.96)';
   x.beginPath(); x.moveTo(36, 8); x.arcTo(118, 8, 118, 96, 26); x.arcTo(118, 96, 10, 96, 26); x.arcTo(10, 96, 10, 8, 26); x.arcTo(10, 8, 118, 8, 26); x.closePath(); x.fill();
   x.beginPath(); x.moveTo(52, 94); x.lineTo(64, 120); x.lineTo(76, 94); x.fill();
-  x.font = '60px "Apple Color Emoji","Segoe UI Emoji",sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(txt, 64, 54);
+  x.font = '60px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; fillIconText(x, txt, 64, 54);
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true, toneMapped: false, fog: false }));
   sp.scale.setScalar(size); sp.renderOrder = 10; return sp;

@@ -388,6 +388,8 @@ import { AFF_ART_IDS, buildAffinityOutdoor } from './affinity/art.js';
 import { AFF_BOX, AFF_SOLID_K } from './data/affinity-decor.js';
 import { outdoorFootprint, blockedByWorld, postCircles } from './world/outdoor-overlap.js';
 // 🔁 js/spaces/* 가 game.js 의 let 에 쓸 때 거치는 접근자(읽기는 import 한 live binding) — tools/refactor/extract-module.mjs 가 만든다
+import { UI_FONT } from './fonts.js';
+import { fillIconText, measureIconText } from './icons/canvas-text.js';
 export const $w = {
   get _hintAnyPrev() { return _hintAnyPrev; }, set _hintAnyPrev(v) { _hintAnyPrev = v; },
   get _seaPrevTool() { return _seaPrevTool; }, set _seaPrevTool(v) { _seaPrevTool = v; },
@@ -5595,8 +5597,8 @@ function buildCoopSite() {
   const c = cv.getContext('2d');
   c.fillStyle = '#b8d2ba'; roundRect(c, 10, 10, 492, 172, 28); c.fill();
   c.fillStyle = '#3a4a40'; c.textAlign = 'center';
-  c.font = 'bold 46px sans-serif'; c.fillText(t('🐔 닭장 터'), 256, 74);
-  c.font = 'bold 30px sans-serif'; c.fillText(t('🔥 2일 연속 출석 + 🪵25 🪨10 🪙60'), 256, 134);
+  c.font = `bold 46px ${UI_FONT}`; fillIconText(c, t('🐔 닭장 터'), 256, 74);
+  c.font = `bold 30px ${UI_FONT}`; fillIconText(c, t('🔥 2일 연속 출석 + 🪵25 🪨10 🪙60'), 256, 134);
   const tex = new THREE.CanvasTexture(cv);
   tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter; tex.generateMipmaps = false;
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
@@ -6445,13 +6447,13 @@ function makeSignBoard(text) {
   const label = t(text).replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}\u{200D}]/gu, '').replace(/\s+/g, ' ').trim();
   // 글자 폭을 재서 판 안에 딱 맞게 폰트 자동 축소(넉넉한 양옆 여백 → 잘림 방지)
   const maxW = W - 130;
-  const fontFor = (s) => `bold ${s}px "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif`;
+  const fontFor = (s) => `bold ${s}px ${UI_FONT}`;
   let fs = 128;
   c.textAlign = 'center'; c.textBaseline = 'middle';
   c.font = fontFor(fs);
-  while (fs > 40 && c.measureText(label).width > maxW) { fs -= 4; c.font = fontFor(fs); }
+  while (fs > 40 && measureIconText(c, label).width > maxW) { fs -= 4; c.font = fontFor(fs); }
   c.fillStyle = '#4a3a24';
-  c.fillText(label, W / 2, H / 2 + 2);
+  fillIconText(c, label, W / 2, H / 2 + 2);
   const tex = new THREE.CanvasTexture(cv); tex.minFilter = THREE.LinearFilter; tex.anisotropy = 4;
   const face = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8 });   // 글자 면(앞뒤)
   const side = new THREE.MeshStandardMaterial({ color: 0xcdb083, roughness: 0.85 }); // 옆·위·아래(나무색)
@@ -8578,14 +8580,14 @@ function spawnFloatText(x, y, z, text, color = '#3a4a40', scale = 1) {
   const cv = document.createElement('canvas');
   text = t(text);   // [i18n] 캔버스 스프라이트는 옵저버 밖 — 폭 측정 전에 번역
   let c = cv.getContext('2d');
-  c.font = 'bold 52px sans-serif';
+  c.font = `bold 52px ${UI_FONT}`;
   // 캔버스 폭을 텍스트 길이에 맞춤 — 고정 256px 이던 시절 긴 한글("배가 가라앉아요…")이 잘렸음
-  const w = Math.ceil(Math.min(1024, Math.max(256, c.measureText(text).width + 48)));
+  const w = Math.ceil(Math.min(1024, Math.max(256, measureIconText(c, text).width + 48)));
   cv.width = w; cv.height = 96;                       // width 대입 → 컨텍스트 상태 리셋됨
   c = cv.getContext('2d');
-  c.font = 'bold 52px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.font = `bold 52px ${UI_FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle';
   c.lineWidth = 8; c.strokeStyle = 'rgba(255,255,255,0.92)'; c.strokeText(text, w / 2, 48);
-  c.fillStyle = color; c.fillText(text, w / 2, 48);
+  c.fillStyle = color; fillIconText(c, text, w / 2, 48);
   const tex = new THREE.CanvasTexture(cv);
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false }));
   sp.scale.set(0.72 * (w / 96) * scale, 0.72 * scale, 1);   // 캔버스 비율 유지(w=256, scale=1 → 기존 1.9와 동일)
@@ -8701,7 +8703,7 @@ const RES_LABEL = { ...FORAGE_LABEL, charcoal: '⚫숯', flour: '🌾밀가루',
 function makeNameTag(def, prefix = '') {
   // 캔버스는 가장 긴 이름(낚시꾼 할아버지)까지 여유 있게. 스프라이트 배율은 이 비율에 맞춘다.
   const W = 384, H = 96;
-  const FONT = (px) => `bold ${px}px -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif`;
+  const FONT = (px) => `bold ${px}px ${UI_FONT}`;
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
   const c = cv.getContext('2d');
   // 🧑‍🌾 같은 ZWJ 결합 이모지는 웹뷰마다 폭이 달라(한 글자/두 글자) 이름표에 큰 공백이 생겼다 → 마지막 조각(🌾)만 쓴다.
@@ -8721,7 +8723,7 @@ function makeNameTag(def, prefix = '') {
   let px = 34, textW = 0;
   for (;;) {
     c.font = FONT(px);
-    const m = c.measureText(label);
+    const m = measureIconText(c, label);
     textW = Math.max(m.width, (m.actualBoundingBoxLeft || 0) + (m.actualBoundingBoxRight || 0)) + zwjParts * px * 1.2;
     if (textW <= MAX_TEXT || px <= 22) break;
     px -= 2;                                   // 그래도 넘치면 글자를 줄여 배지 안에 넣는다
@@ -8736,7 +8738,7 @@ function makeNameTag(def, prefix = '') {
   c.save();                                     // 측정이 어긋나도 글자가 배지를 벗어나지 못하게
   roundRect(c, x, y, w, 56, 28); c.clip();
   c.fillStyle = shadeToLum(def.color, 0.14);    // 낮춘 바탕에 맞춰 글자도 진하게
-  c.fillText(label, x + (w - textW) / 2, y + 29);
+  fillIconText(c, label, x + (w - textW) / 2, y + 29);
   c.restore();
 
   const tex = new THREE.CanvasTexture(cv);

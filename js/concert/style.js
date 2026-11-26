@@ -3,7 +3,7 @@ const CSS = `
   padding: calc(12px + var(--top-inset, 0px)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
 .cc-root.show { display: grid; }
 .cc-root *, #concert-show-modal * { box-sizing: border-box; }
-.cc-card { --font: system-ui, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif; --num: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Apple SD Gothic Neo", sans-serif;
+.cc-card { --font: Pretendard, system-ui, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif; --num: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Apple SD Gothic Neo", sans-serif;
   position: relative; overflow: hidden; outline: none; font-family: var(--font); word-break: keep-all; line-height: 1.35; text-align: left; color: #f6ecd4; -webkit-font-smoothing: antialiased;
   border-radius: 26px; background: radial-gradient(130% 70% at 50% 0, #2c3d68 0, #1a2545 62%), #1a2545; box-shadow: inset 0 0 0 1.5px rgba(255,226,160,.3), 0 18px 40px rgba(4,8,24,.55); }
 .cc-card h2, .cc-card h3, .cc-card h4, .cc-card p { margin: 0; }
@@ -103,7 +103,7 @@ const CSS = `
 .cc-btns { display: grid; grid-template-columns: 1.35fr 1fr; gap: 8px; }
 .cc-btns .cc-btn { min-height: 48px; font-size: 15px; }
 #concert-show-modal { position: fixed; inset: 0; z-index: 43; display: none; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
-  font-family: system-ui, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif; word-break: keep-all; color: #f6ecd4; }
+  font-family: Pretendard, system-ui, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif; word-break: keep-all; color: #f6ecd4; }
 #concert-show-modal.show { display: block; }
 .cc-cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .cc-hud { position: absolute; left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); top: calc(12px + var(--top-inset, 0px)); display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; pointer-events: none; }

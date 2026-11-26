@@ -3,13 +3,15 @@ import { CONCERT_COPY as C } from './copy.js';
 import { LANE_COLORS, noteY } from './views.js';
 import { ensureConcertStyle } from './style.js';
 
+import { UI_FONT } from '../fonts.js';
+import { fillIconText } from '../icons/canvas-text.js';
 const LEAD_MS = 1600;
 const FLASH_MS = 350;
 const MISS_TAIL_MS = 320;
 const MAX_DPR = 2;
 const NAVY = '12,18,42';
 const CREAM = '#fff1c9';
-const FONT = 'system-ui, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif';
+const FONT = UI_FONT;
 const KEYS = { KeyF: 0, ArrowLeft: 0, KeyJ: 1, ArrowRight: 1 };
 
 const clamp = (v) => Math.max(0, Math.min(1, v));
@@ -62,7 +64,7 @@ function judgeText(c, text, x, y, a, glow, miss) {
   c.save(); c.font = `900 17px ${FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.globalAlpha = a;
   if (glow) { c.shadowColor = glow; c.shadowBlur = 12; }
   c.lineJoin = 'round'; c.lineWidth = 5; c.strokeStyle = `rgba(${NAVY},.9)`; c.strokeText(text, x, y);
-  c.shadowBlur = 0; c.fillStyle = miss ? '#c3cbe2' : CREAM; c.fillText(text, x, y); c.restore();
+  c.shadowBlur = 0; c.fillStyle = miss ? '#c3cbe2' : CREAM; fillIconText(c, text, x, y); c.restore();
 }
 
 function lantern(c, cx, y, col, lit, late, s) {
@@ -82,7 +84,7 @@ function lantern(c, cx, y, col, lit, late, s) {
 function keyMark(c, cx, cy, key) {
   rr(c, cx - 15, cy - 13, 30, 26, 7); c.fillStyle = 'rgba(255,241,201,.94)'; c.fill();
   c.lineWidth = 1; c.strokeStyle = `rgba(${NAVY},.35)`; c.stroke();
-  c.fillStyle = '#1a2545'; c.font = `900 15px ${FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(key, cx, cy + 1);
+  c.fillStyle = '#1a2545'; c.font = `900 15px ${FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle'; fillIconText(c, key, cx, cy + 1);
 }
 
 function drawLane(c, g, L, i, col, st) {

@@ -20,6 +20,8 @@ import {
 } from '../world/bridge.js';
 import * as THREE from 'three';
 
+import { UI_FONT } from '../fonts.js';
+import { fillIconText } from '../icons/canvas-text.js';
 let bridgeGroup = null, brokenGroup = null, fixedGroup = null, signGroup = null;
 let shownBroken = null;   // 지금 화면에 보이는 상태(같으면 아무것도 안 바꾼다)
 
@@ -140,8 +142,8 @@ export function buildBridge() {
   const c = cv.getContext('2d');
   c.fillStyle = '#d9c3a0'; roundRect(c, 10, 10, 492, 172, 28); c.fill();
   c.fillStyle = '#4a3a2c'; c.textAlign = 'center';
-  c.font = 'bold 46px sans-serif'; c.fillText(t('🌉 무너진 다리'), 256, 74);
-  c.font = 'bold 34px sans-serif'; c.fillText(`🪵${BRIDGE_COST.wood} 🪨${BRIDGE_COST.stone}`, 256, 136);
+  c.font = `bold 46px ${UI_FONT}`; fillIconText(c, t('🌉 무너진 다리'), 256, 74);
+  c.font = `bold 34px ${UI_FONT}`; fillIconText(c, `🪵${BRIDGE_COST.wood} 🪨${BRIDGE_COST.stone}`, 256, 136);
   const tex = new THREE.CanvasTexture(cv);
   tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter; tex.generateMipmaps = false;
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));

@@ -120,7 +120,9 @@
     --panel: rgba(255,255,255,0.72); --shadow: 0 6px 18px rgba(90,120,100,0.18);
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { margin: 0; height: 100%; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; overscroll-behavior: none; }
+  @font-face { font-family: Pretendard; font-weight: 100 599; font-display: swap; src: url(assets/fonts/Pretendard-Regular.subset.woff2) format('woff2'); }
+  @font-face { font-family: Pretendard; font-weight: 600 900; font-display: swap; src: url(assets/fonts/Pretendard-Bold.subset.woff2) format('woff2'); }
+  html, body { margin: 0; height: 100%; overflow: hidden; font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; overscroll-behavior: none; }
   /* 게임 월드에서만 페이지 팬/스크롤 차단(메뉴 스크롤은 살림). user-scalable=no 라 확대는 이미 차단됨 */
   #app { position: fixed; inset: 0; touch-action: none; }
   /* 스크롤되는 창들: 세로 스크롤 허용 + 스크롤 체이닝 방지 (도감·NPC·피드백·로그인 카드 포함) */
@@ -2036,7 +2038,7 @@
   #intro-skip:active { transform: scale(0.95); }
   #intro-caption { position: absolute; left: 50%; bottom: calc(max(10dvh, env(safe-area-inset-bottom)) + clamp(18px, 4.2dvh, 34px));
     width: min(620px, 88vw); text-align: center; color: #fffaf0;
-    font-family: system-ui, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+    font-family: Pretendard, system-ui, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
     font-size: clamp(15px, 4.1vw, 19px); font-weight: 600; line-height: 1.55; letter-spacing: 0.035em; word-break: keep-all;
     text-shadow: 0 1px 2px rgba(0,0,0,0.55), 0 2px 14px rgba(0,0,0,0.45), 0 0 28px rgba(0,0,0,0.25);
     opacity: 0; transform: translate(-50%, 10px); filter: blur(2px);
@@ -4316,6 +4318,8 @@
     import { t, LANG, setLang, translateDom, watchDom } from './js/i18n.js';   // 🌐 i18n(한국어 원문 키 사전)
     import { TUNING, isBetaA, betaDay } from './js/tuning.js';
     import { createBootScreen } from './js/boot-screen.js';
+    import { fontsReady } from './js/fonts.js';
+    import { loadCanvasIcons } from './js/icons/canvas-text.js';
 
     const $ = (id) => document.getElementById(id);
     const bootScreen = document.documentElement.classList.contains('boot-b') ? createBootScreen($('loading'), { t }) : null;
@@ -6474,7 +6478,7 @@
     }
     function ensureWorld() {
       if (!worldP) {
-        worldP = loadGameModules().then(() => {
+        worldP = Promise.all([loadGameModules(), fontsReady(), loadCanvasIcons().catch(() => {})]).then(() => {
           bootTiming.mark('m');
           setIcon($('season-emoji'), Input.seasonIco());
           initCafeGuests();

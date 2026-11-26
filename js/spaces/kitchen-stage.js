@@ -19,6 +19,8 @@ import { updateAuctionScene } from '../auction/index.js';
 import { buildCraftCart } from './exterior-art.js';
 import { buildDishBackdrop, hostSeat } from '../neighbors/dish-stage-art.js';
 
+import { UI_FONT } from '../fonts.js';
+import { fillIconText } from '../icons/canvas-text.js';
 export function spawnWorkbench() {
   const g = new THREE.Group(); g.position.copy(BENCH);
   g.add(buildCraftCart(THREE, { woodMap: woodMat(1, 1).map }));
@@ -69,16 +71,16 @@ export function spawnRankBoard() {
   c.fillStyle = '#fff8ea'; roundRect(c, 0, 0, 512, 336, 26); c.fill();
   c.fillStyle = '#7fce8b'; roundRect(c, 18, 16, 476, 74, 18); c.fill();
   c.fillStyle = '#2f4a3a'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.font = '700 46px sans-serif'; c.fillText(t('🏆 이번 주 랭킹'), 256, 54);
+  c.font = `700 46px ${UI_FONT}`; fillIconText(c, t('🏆 이번 주 랭킹'), 256, 54);
   const rows = [['🥇', '#f5d76e'], ['🥈', '#cfd6de'], ['🥉', '#e0a878']];
   rows.forEach(([medal, col], i) => {
     const y = 116 + i * 62;
-    c.font = '34px sans-serif'; c.textAlign = 'left'; c.fillStyle = '#3a4a40';
-    c.fillText(medal, 34, y + 18);
+    c.font = `34px ${UI_FONT}`; c.textAlign = 'left'; c.fillStyle = '#3a4a40';
+    fillIconText(c, medal, 34, y + 18);
     c.fillStyle = col; roundRect(c, 84, y, 340 - i * 60, 34, 12); c.fill();   // 장식용 점수 바(길이 차등)
   });
-  c.fillStyle = '#8a9a8e'; c.font = '600 24px sans-serif'; c.textAlign = 'center';
-  c.fillText(t('매주 월요일 새로 시작 · 가까이서 확인!'), 256, 312);
+  c.fillStyle = '#8a9a8e'; c.font = `600 24px ${UI_FONT}`; c.textAlign = 'center';
+  fillIconText(c, t('매주 월요일 새로 시작 · 가까이서 확인!'), 256, 312);
   const tex = new THREE.CanvasTexture(cv); tex.anisotropy = 8;
   const face = new THREE.Mesh(new THREE.PlaneGeometry(2.3, 1.44), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85 }));
   face.position.set(0, 1.62, 0.065); g.add(face);
@@ -114,8 +116,8 @@ export function emojiTexture(emoji) {
   const cv = document.createElement('canvas'); cv.width = cv.height = 128;
   const c = cv.getContext('2d');
   // ♨️처럼 위로 긴 글리프도 안 잘리게 폰트를 캔버스보다 넉넉히 작게(시각 크기는 sp.scale이 결정)
-  c.font = '84px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText(emoji, 64, 66);
+  c.font = `84px ${UI_FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle';
+  fillIconText(c, emoji, 64, 66);
   tex = new THREE.CanvasTexture(cv);
   _emojiTex.set(emoji, tex);
   return tex;

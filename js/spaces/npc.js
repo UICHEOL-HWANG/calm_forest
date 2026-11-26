@@ -43,6 +43,8 @@ import { markGuided } from '../guide/quiet.js';
 import { concertBusy } from '../concert/index.js';
 
 // id별 퀘스트 진행 상태(없으면 생성)
+import { UI_FONT } from '../fonts.js';
+import { fillIconText } from '../icons/canvas-text.js';
 export function npcState(id) {
   // ⚠️ allDone 은 더 이상 읽지 않는다(세이브 포맷 호환용으로만 계속 쓴다).
   //    "지금 내줄 의뢰가 있는가" 는 currentQuest(), "체인을 끝냈는가" 는 idx >= quests.length 로 본다.
@@ -395,8 +397,8 @@ export function updateNPCGlyph(o) {
   c.fillStyle = g === '✓' ? '#8fd6a0' : g === '!' ? '#ffd27a' : g === '💌' ? '#ffffff' : '#cfe3ff';
   roundRect(c, 18, 14, 92, 82, 22); c.fill();
   c.beginPath(); c.moveTo(54, 94); c.lineTo(74, 94); c.lineTo(60, 118); c.closePath(); c.fill();
-  c.fillStyle = '#3a4a40'; c.font = 'bold 60px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText(g, 64, 55);
+  c.fillStyle = '#3a4a40'; c.font = `bold 60px ${UI_FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle';
+  fillIconText(c, g, 64, 55);
   o.tex.needsUpdate = true;
 }
 
@@ -796,8 +798,8 @@ export let shopCue = null, shopCueUntil = 0;
 export function showShopCue(sec) {
   if (!shopCue) {
     const cv = document.createElement('canvas'); cv.width = cv.height = 128;
-    const c = cv.getContext('2d'); c.font = '96px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-    c.fillText('🛒', 64, 70);
+    const c = cv.getContext('2d'); c.font = `96px ${UI_FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle';
+    fillIconText(c, '🛒', 64, 70);
     const tex = new THREE.CanvasTexture(cv);
     shopCue = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
     shopCue.scale.set(1.1, 1.1, 1); shopCue.position.set(SHOP.x, 3.2, SHOP.z);

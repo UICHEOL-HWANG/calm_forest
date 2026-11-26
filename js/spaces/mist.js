@@ -23,6 +23,8 @@ import { Sound, setBGMTheme } from '../sound.js';
 import * as THREE from 'three';
 
 // 부드러운 방사형 안개 텍스처(캔버스 그라데이션) — 딱딱한 판 대신 가장자리가 스르르 사라지는 퍼프
+import { UI_FONT } from '../fonts.js';
+import { fillIconText, measureIconText } from '../icons/canvas-text.js';
 export let _mistPuffTex = null;
 
 export function mistPuffTexture() {
@@ -65,10 +67,10 @@ function gateLabel({ x, y, z, w, h }) {
   const c = cv.getContext('2d'), label = t('과수원');
   c.textAlign = 'center'; c.textBaseline = 'middle';
   let fs = Math.round(PX * 0.62);
-  const font = s2 => `bold ${s2}px "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif`;
-  c.font = font(fs); while (fs > 40 && c.measureText(label).width > cv.width * 0.86) { fs -= 6; c.font = font(fs); }
+  const font = s2 => `bold ${s2}px ${UI_FONT}`;
+  c.font = font(fs); while (fs > 40 && measureIconText(c, label).width > cv.width * 0.86) { fs -= 6; c.font = font(fs); }
   c.lineWidth = fs * 0.12; c.strokeStyle = '#7a1f1a'; c.strokeText(label, cv.width / 2, PX / 2 + 4);   // 빨간 사과 위 — 흰 글씨 + 짙은 테두리
-  c.fillStyle = '#fffaf0'; c.fillText(label, cv.width / 2, PX / 2 + 4);
+  c.fillStyle = '#fffaf0'; fillIconText(c, label, cv.width / 2, PX / 2 + 4);
   const tex = new THREE.CanvasTexture(cv); tex.minFilter = THREE.LinearFilter; tex.anisotropy = 4;
   const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: tex, transparent: true, depthWrite: false, roughness: 0.8 }));
   m.rotation.y = -Math.PI / 2; m.position.set(x, y, z);   // 판 앞면(+z)을 -x 로 — 사과 판보다 조금 앞(x 가 더 작다)
@@ -508,9 +510,9 @@ export function updateMist(dt, t) {
 export function startSoothe(sp) {
   const cv = document.createElement('canvas'); cv.width = 96; cv.height = 96;
   const c = cv.getContext('2d');
-  c.font = 'bold 64px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.font = `bold 64px ${UI_FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle';
   c.lineWidth = 7; c.strokeStyle = 'rgba(20,28,24,0.8)'; c.strokeText('♪', 48, 50);
-  c.fillStyle = '#aef3e2'; c.fillText('♪', 48, 50);
+  c.fillStyle = '#aef3e2'; fillIconText(c, '♪', 48, 50);
   const note = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthTest: false }));
   mistGroup.add(note);
   const md = rollDifficulty('mist');   // 🎚️ 정령 하나당 한 번 — 탭마다 뽑으면 한 마리 안에서 판정창이 요동친다

@@ -44,6 +44,7 @@ writeFileSync(`${OUT}/index.html`, html);
 cpSync('js', `${OUT}/js`, { recursive: true });
 cpSync('assets/decor-sets', `${OUT}/assets/decor-sets`, { recursive: true });
 cpSync('assets/boot', `${OUT}/assets/boot`, { recursive: true });
+cpSync('assets/fonts', `${OUT}/assets/fonts`, { recursive: true });
 
 // ② API_BASE 치환 — 앵커가 사라지면 조용히 깨진 번들이 나가지 않도록 빌드를 실패시킨다
 const CONFIG_PATH = `${OUT}/js/config.js`;

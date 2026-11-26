@@ -1,4 +1,5 @@
 import { kit } from './halloween-art.js';
+import { fillIconText } from '../icons/canvas-text.js';
 
 const PUMPKIN = 0xe8822e, STEM = 0x4f6b2e, CARVE = 0x2b1a12;
 const WOOD = 0x8a6a48, WOOD_DARK = 0x5e4630, PURPLE = 0x6b4a9a, CREAM = 0xfff4e0, INK = 0x2b2540;
@@ -120,7 +121,7 @@ export function candyBubbleTexture(T, ico = '🍬', bg = 'rgba(226,196,158,0.96)
   c.fillStyle = bg; c.beginPath(); c.roundRect(8, 8, 88, 64, 18); c.fill();
   c.beginPath(); c.moveTo(42, 72); c.lineTo(62, 72); c.lineTo(48, 94); c.closePath(); c.fill();
   c.font = "46px 'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif"; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText(ico, 52, 42);
+  fillIconText(c, ico, 52, 42);
   const tex = new T.CanvasTexture(cv); tex.colorSpace = T.SRGBColorSpace;
   return tex;
 }

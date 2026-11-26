@@ -31,6 +31,8 @@ import { getLang } from '../i18n.js';
 import * as THREE from 'three';
 
 // 로컬에선 파라미터가 엇나가면 바로 터지게(strict), 운영에선 경고만
+import { UI_FONT } from '../fonts.js';
+import { fillIconText } from '../icons/canvas-text.js';
 bindTracker(trackEvent, { strict: ['localhost', '127.0.0.1'].includes(location.hostname) });
 
 const HINT_AFTER_S = 30;
@@ -51,7 +53,7 @@ const W = (l) => ({ x: MIRROR.x + l.x, z: MIRROR.z + l.z });
 function bubbleSprite() {
   const cv = document.createElement('canvas'); cv.width = cv.height = 96;
   const x = cv.getContext('2d'); x.fillStyle = '#fff'; x.beginPath(); x.roundRect(8, 10, 80, 62, 18); x.fill();
-  x.font = '44px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('💬', 48, 42);
+  x.font = `44px ${UI_FONT}`; x.textAlign = 'center'; x.textBaseline = 'middle'; fillIconText(x, '💬', 48, 42);
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, depthWrite: false }));
   s.scale.set(0.8, 0.8, 0.8); s.position.y = 2.95; s.visible = false;
   return s;

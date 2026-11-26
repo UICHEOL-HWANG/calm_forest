@@ -8,6 +8,8 @@ import { savePhotoNative, sharePhotoNative, shareUrlNative } from '../photo-nati
 import { t } from '../i18n.js';
 import { trackEvent } from '../analytics.js';
 
+import { UI_FONT } from '../fonts.js';
+import { fillIconText } from '../icons/canvas-text.js';
 let $, ui, escapeHtml, isGuestNow;
 
 // ── 사진 찍기 (캡처 → 저장/공유) ──
@@ -37,18 +39,18 @@ function frameActionShot(dataURL) {
         const pad = Math.round(W * 0.032), fs = Math.round(S * 0.045);
         // 좌: 게임 타이틀 + 주소(유입 링크)
         c.textAlign = 'left'; c.fillStyle = '#fffdf4';
-        c.font = `800 ${fs}px sans-serif`;
-        c.fillText(t('🌿 고요한 숲'), pad, H - Math.round(barH * 0.55));
-        c.font = `500 ${Math.round(fs * 0.58)}px sans-serif`; c.fillStyle = 'rgba(255,253,244,0.85)';
-        c.fillText('calmforest.cloud', pad, H - Math.round(barH * 0.18));
+        c.font = `800 ${fs}px ${UI_FONT}`;
+        fillIconText(c, t('🌿 고요한 숲'), pad, H - Math.round(barH * 0.55));
+        c.font = `500 ${Math.round(fs * 0.58)}px ${UI_FONT}`; c.fillStyle = 'rgba(255,253,244,0.85)';
+        fillIconText(c, 'calmforest.cloud', pad, H - Math.round(barH * 0.18));
         // 우: 오늘 날씨 + 도감 진행도 + 날짜
         const dex = Input.getDex();
         const wIco = iconText($('time-emoji')) || '🌿';
         const now = new Date();
         const ds = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
         c.textAlign = 'right'; c.fillStyle = '#fffdf4';
-        c.font = `700 ${Math.round(fs * 0.75)}px sans-serif`;
-        c.fillText(t(`${wIco}  📖 도감 ${dex.count}/${dex.total}  ·  ${ds}`), W - pad, H - Math.round(barH * 0.38));
+        c.font = `700 ${Math.round(fs * 0.75)}px ${UI_FONT}`;
+        fillIconText(c, t(`${wIco}  📖 도감 ${dex.count}/${dex.total}  ·  ${ds}`), W - pad, H - Math.round(barH * 0.38));
         resolve(cv.toDataURL('image/png'));
       } catch (e) { resolve(dataURL); }   // 합성 실패 시 원본 그대로
     };

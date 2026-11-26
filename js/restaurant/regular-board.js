@@ -1,3 +1,5 @@
+import { UI_FONT } from '../fonts.js';
+import { fillIconText, measureIconText } from '../icons/canvas-text.js';
 const DARK = 0x6e4a2c;
 const COLS = [0.3, 0.75];
 const ROWS = 4;
@@ -26,12 +28,12 @@ async function tagTex(THREE, ICON_ALL, { face, name, menu }) {
   if (fi) g.drawImage(fi, w * 0.2, h * 0.08, w * 0.6, w * 0.6);
   g.fillStyle = '#2f3a33'; g.textAlign = 'center';
   let size = Math.round(w * 0.13);
-  const font = s => `800 ${s}px "Apple SD Gothic Neo", sans-serif`;
+  const font = s => `800 ${s}px ${UI_FONT}`;
   g.font = font(size);
   const maxW = w - 36;
-  const tw = g.measureText(name).width;
+  const tw = measureIconText(g, name).width;
   if (tw > maxW) { size = Math.floor(size * maxW / tw); g.font = font(size); }
-  g.fillText(name, w / 2, h * 0.68);
+  fillIconText(g, name, w / 2, h * 0.68);
   if (mi) g.drawImage(mi, w / 2 - w * 0.12, h * 0.74, w * 0.24, w * 0.24);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
@@ -39,7 +41,7 @@ async function tagTex(THREE, ICON_ALL, { face, name, menu }) {
 function signTex(THREE, label) {
   const c = document.createElement('canvas'); c.width = 384; c.height = 128;
   const g = c.getContext('2d'); g.fillStyle = '#2f5e47'; g.fillRect(0, 0, 384, 128); g.fillStyle = '#fff8e8';
-  g.font = '800 52px "Apple SD Gothic Neo", sans-serif'; g.textAlign = 'center'; g.fillText(label, 192, 128 * 0.68);
+  g.font = `800 52px ${UI_FONT}`; g.textAlign = 'center'; fillIconText(g, label, 192, 128 * 0.68);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 }
 

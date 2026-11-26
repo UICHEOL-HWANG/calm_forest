@@ -1,4 +1,5 @@
 import { STAGE_POS } from '../data/concert.js';
+import { fillIconText } from '../icons/canvas-text.js';
 
 export const DECK_H = 0.14;
 
@@ -195,7 +196,7 @@ function clapTexture(T) {
   x.font = '72px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
   x.textAlign = 'center';
   x.textBaseline = 'middle';
-  x.fillText('👏', 48, 54);
+  fillIconText(x, '👏', 48, 54);
   const tex = new T.CanvasTexture(c);
   tex.colorSpace = T.SRGBColorSpace;
   return tex;

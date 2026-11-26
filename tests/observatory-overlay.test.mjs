@@ -3,6 +3,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
+import { UI_FONT } from '../js/fonts.js';
+import { fillIconText } from '../js/icons/canvas-text.js';
 import * as rhythm from '../js/observatory/rhythm.js';
 import { COPY, STAR_COPY, starCopy, fill } from '../js/observatory/copy.js';
 import * as constellations from '../js/observatory/constellations.js';
@@ -14,7 +16,7 @@ function overlay() {
   const source = ['render.js', 'ui.js'].map(file =>
     readFileSync(new URL(`../js/observatory/${file}`, import.meta.url), 'utf8')).join('\n')
     .replace(/^import [\s\S]*?;\n/gm, '').replace(/^export /gm, '');
-  const context = vm.createContext({
+  const context = vm.createContext({ UI_FONT, fillIconText,
     ...rhythm, ...constellations, COPY, STAR_COPY, starCopy, fill, t: s => s, AbortController,
     document: dom.document, window: dom.window, performance: dom.performance,
     requestAnimationFrame: dom.requestAnimationFrame, cancelAnimationFrame: dom.cancelAnimationFrame,

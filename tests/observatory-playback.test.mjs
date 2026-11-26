@@ -2,6 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
+import { UI_FONT } from '../js/fonts.js';
+import { fillIconText } from '../js/icons/canvas-text.js';
 import * as rhythm from '../js/observatory/rhythm.js';
 import { COPY, STAR_COPY, starCopy, fill } from '../js/observatory/copy.js';
 import * as constellations from '../js/observatory/constellations.js';
@@ -15,7 +17,7 @@ function harness() {
   const source = ['render.js', 'ui.js'].map(file =>
     readFileSync(new URL(`../js/observatory/${file}`, import.meta.url), 'utf8')).join('\n')
     .replace(/^import .*;\n/gm, '').replace(/^export /gm, '');
-  const context = vm.createContext({ ...rhythm, ...constellations, COPY, STAR_COPY, starCopy, fill, t: s => s,
+  const context = vm.createContext({ UI_FONT, fillIconText, ...rhythm, ...constellations, COPY, STAR_COPY, starCopy, fill, t: s => s,
     document: { createElement: () => ({ getContext: () => new Proxy({}, { get: () => () => {}, set: () => true }) }) },
     performance: { now: () => 4000 }, Input: { setAnalog() {} },
     Sound: new Proxy({}, { get: () => () => {} }) });

@@ -1,3 +1,5 @@
+import { UI_FONT } from '../fonts.js';
+import { fillIconText } from '../icons/canvas-text.js';
 const C = {
   wood: 0xd9a066, woodM: 0xc9935f, woodD: 0x8f633f, woodDD: 0x6b4a34, bark: 0x7a5536, ring: 0xecd09a,
   metal: 0x8b8b93, metalD: 0x55555d, steel: 0xc9ccd4, wrench: 0x7d7f88,
@@ -236,9 +238,9 @@ function tagCanvas(d, env) {
     const ox = i * 256, col = up ? '#22924f' : '#c8473b';
     c.fillStyle = '#efe4c8'; c.fillRect(ox, 0, 256, 300);
     c.textAlign = 'center'; c.textBaseline = 'middle';
-    c.font = `150px ${EMOJI_FONT}`; c.fillText(icon, ox + 128, 100);
+    c.font = `150px ${EMOJI_FONT}`; fillIconText(c, icon, ox + 128, 100);
     c.fillStyle = col; tri(c, ox + 44, 236, 30, up);
-    c.font = 'bold 90px sans-serif'; c.textAlign = 'left'; c.fillText(label, ox + 80, 240);
+    c.font = `bold 90px ${UI_FONT}`; c.textAlign = 'left'; fillIconText(c, label, ox + 80, 240);
   });
   return cv;
 }

@@ -25,6 +25,8 @@ import { modalQueue } from '../guide/modal-queue.js';
 import * as THREE from 'three';
 
 // 🐗🦝 승부 중 — 카메라·조작을 무대(js/duel/stage.js)에 넘긴다.
+import { UI_FONT } from '../fonts.js';
+import { fillIconText } from '../icons/canvas-text.js';
 //   ⚠️ 이 플래그가 없으면 updateCamera 가 **매 프레임 카메라를 되돌려** 클로즈업이 안 걸린다
 //      (🍳 요리가 mgView 로 막는 것과 같은 자리). 무대만 만들고 이걸 빠뜨려 한 번 겪었다.
 export let duelActive = false;
@@ -58,8 +60,8 @@ function traceTexture() {
   const c = cv.getContext('2d');
   c.fillStyle = 'rgba(226,196,158,0.96)'; roundRect(c, 8, 8, 88, 64, 18); c.fill();
   c.beginPath(); c.moveTo(42, 72); c.lineTo(62, 72); c.lineTo(48, 94); c.closePath(); c.fill();
-  c.font = '50px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText('🐾', 52, 41);
+  c.font = `50px ${UI_FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle';
+  fillIconText(c, '🐾', 52, 41);
   _traceTex = new THREE.CanvasTexture(cv);
   _traceTex.colorSpace = THREE.SRGBColorSpace;
   return _traceTex;

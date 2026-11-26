@@ -2,6 +2,8 @@ import { kit, buildHalloween } from '../spaces/halloween-art.js';
 import { buildJack, buildGhostKid, buildCandyStall } from '../spaces/halloween-event-art.js';
 import { GHOST_SPOTS, HW_R } from './layout.js';
 
+import { UI_FONT } from '../fonts.js';
+import { fillIconText } from '../icons/canvas-text.js';
 const PURPLE = 0x6b4a9a, PURPLE_D = 0x4a3170, BAND = 0xe8822e, WOOD = 0x6b4a2e;
 
 export function makeSharedCtx(T, onNight = null) {
@@ -123,8 +125,8 @@ function signMesh(T, title, sub, w) {
   c.fillStyle = '#5a3e28'; c.beginPath(); c.roundRect(4, 4, 504, 172, 26); c.fill();
   c.fillStyle = '#f3e3c4'; c.beginPath(); c.roundRect(16, 16, 480, 148, 18); c.fill();
   c.fillStyle = '#3b2a4a'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.font = "bold 50px 'Apple SD Gothic Neo','Noto Sans KR',sans-serif"; c.fillText(title, 256, 72, 470);
-  c.font = "32px 'Apple SD Gothic Neo','Noto Sans KR',sans-serif"; c.fillStyle = '#8a4a10'; c.fillText(sub, 256, 128, 470);
+  c.font = `bold 50px ${UI_FONT}`; fillIconText(c, title, 256, 72, 470);
+  c.font = `32px ${UI_FONT}`; c.fillStyle = '#8a4a10'; fillIconText(c, sub, 256, 128, 470);
   const tex = new T.CanvasTexture(cv); tex.colorSpace = T.SRGBColorSpace;
   const m = new T.Mesh(new T.PlaneGeometry(w, w * 180 / 512), new T.MeshStandardMaterial({ map: tex, roughness: 0.9, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.28 }));
   m.userData.keep = true;

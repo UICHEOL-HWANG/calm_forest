@@ -63,6 +63,7 @@ const INCLUDE = [
   'assets/badges/google-play-ko.png',
   'assets/badges/google-play-en.png',
   'assets/qr/app-link.svg',
+  'assets/fonts',
   'assets/decor-sets',            // 📱 /app 안내 페이지 QR(폰이 알아서 스토어로)
   ['pages/app.html', 'app.html'],      // 📱 /app — PC 에서 연 사람용 안내(워커가 휴대폰은 스토어로 바로 보냄)
   'sw.js',           // service worker — 오프라인 안내 페이지만 캐시

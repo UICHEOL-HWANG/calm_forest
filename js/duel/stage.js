@@ -16,6 +16,7 @@ import { makeRaidScar } from './raid-art.js';
 import { arenaKind, buildArena } from './arena.js';
 import { nearIndices } from './clearance.js';
 import { idle, hop, recoil, pump, pop, zoomPunch, flee, shake, decayTrauma, ZOOM_IN } from './motion.js';
+import { fillIconText } from '../icons/canvas-text.js';
 
 const ART_FN = { boar: makeBoar, raccoon: makeRaccoon };
 
@@ -409,9 +410,9 @@ function emojiCanvas(ico, size, px) {
   const src = document.createElement('canvas');
   src.width = src.height = W;
   const c = src.getContext('2d', { willReadFrequently: true });
-  c.font = `${px}px "Apple Color Emoji", sans-serif`;
+  c.font = `${px}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
   c.textBaseline = 'alphabetic';
-  c.fillText(ico, size / 2, W * 0.7);
+  fillIconText(c, ico, size / 2, W * 0.7);
   const d = c.getImageData(0, 0, W, W).data;
   let x0 = W, y0 = W, x1 = -1, y1 = -1;
   for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) {

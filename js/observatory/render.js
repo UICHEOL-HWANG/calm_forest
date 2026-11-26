@@ -2,12 +2,14 @@ import { BY_ID, fitter } from './constellations.js';
 import { COPY, starCopy } from './copy.js';
 import { t } from '../i18n.js';
 
+import { UI_FONT } from '../fonts.js';
+import { fillIconText } from '../icons/canvas-text.js';
 const GOLD = '#f3d27a';
 const GOLD2 = '#d9b45a';
 const NAVY = '#1a2552';
 const INK = '#e9ecff';
 const MISS_DOT = '#6b7088';   // 놓친 노트 — 회색(이은 금빛·남은 흐린 점과 구분)
-const FAMILY = '-apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif';
+const FAMILY = UI_FONT;
 
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
@@ -289,7 +291,7 @@ export function drawJudge(state, L, pts) {
   g.fillStyle = color;
   g.shadowColor = color;
   g.shadowBlur = 12;
-  g.fillText(text, x, y - 30 * s);
+  fillIconText(g, text, x, y - 30 * s);
   g.restore();
 }
 
@@ -358,10 +360,10 @@ export function drawHud(state, L) {
   g.font = `700 ${fs + 4}px ${FAMILY}`;
   g.fillStyle = INK;
   const sc = starCopy(lensC(state).id);
-  g.fillText(`🔭 ${t(sc.name)}`, tx, ty);
+  fillIconText(g, `🔭 ${t(sc.name)}`, tx, ty);
   g.font = `600 ${fs - 2}px ${FAMILY}`;
   g.fillStyle = 'rgba(233,236,255,.6)';
-  g.fillText(t(sc.subtitle), tx, ty + fs + 8);
+  fillIconText(g, t(sc.subtitle), tx, ty + fs + 8);
   for (let i = 0; i < state.chart.length; i++) {
     const x = tx + 6 + i * (fs + 2);
     const y = ty + fs * 2 + 22;
@@ -374,14 +376,14 @@ export function drawHud(state, L) {
   g.font = `800 ${fs + 10}px ${FAMILY}`;
   g.fillStyle = GOLD;
   const rx = W - (portrait ? 64 : 92);
-  g.fillText(String(Math.max(0, combo)), rx, ty + 2);
+  fillIconText(g, String(Math.max(0, combo)), rx, ty + 2);
   g.font = `600 ${fs - 2}px ${FAMILY}`;
   g.fillStyle = 'rgba(233,236,255,.65)';
-  g.fillText(t(COPY.combo), rx, ty + fs + 10);
+  fillIconText(g, t(COPY.combo), rx, ty + fs + 10);
   g.textAlign = 'center';
   g.font = `600 ${fs}px ${FAMILY}`;
   g.fillStyle = 'rgba(233,236,255,.85)';
   const hy = Math.min(H - 40, cy + r + (portrait ? 56 : 46));
-  g.fillText(t(COPY.tapGuide), cx, hy);
+  fillIconText(g, t(COPY.tapGuide), cx, hy);
   g.restore();
 }

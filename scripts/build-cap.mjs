@@ -59,6 +59,7 @@ writeFileSync(`${OUT}/index.html`, html);
 cpSync('js', `${OUT}/js`, { recursive: true });
 cpSync('assets/decor-sets', `${OUT}/assets/decor-sets`, { recursive: true });
 cpSync('assets/boot', `${OUT}/assets/boot`, { recursive: true });
+cpSync('assets/fonts', `${OUT}/assets/fonts`, { recursive: true });
 cpSync('vendor', `${OUT}/vendor`, { recursive: true });
 
 const SUPA_PATH = `${OUT}/js/supabase-client.js`;

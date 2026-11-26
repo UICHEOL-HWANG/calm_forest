@@ -8,6 +8,6 @@ const body = src.slice(src.indexOf('function frameActionShot('), src.indexOf('\n
 test('share card keeps the imported t so the title and dex line are translated, not thrown', () => {
   assert.match(src, /^import \{ t \} from '\.\.\/i18n\.js';/m);
   assert.doesNotMatch(body, /\b(const|let|var)\s+t\b/);
-  assert.match(body, /c\.fillText\(t\('🌿 고요한 숲'\)/);
-  assert.match(body, /c\.fillText\(t\(`\$\{wIco\}/);
+  assert.match(body, /fillIconText\(c, t\('🌿 고요한 숲'\)/);
+  assert.match(body, /fillIconText\(c, t\(`\$\{wIco\}/);
 });

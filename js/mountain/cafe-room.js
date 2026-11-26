@@ -5,6 +5,8 @@ import { disposeTree } from './dispose.js';
 import { applyLook } from './interior-look.js';
 import { animateBubble, makeRing, onTop } from '../bubble-fx.js';
 
+import { UI_FONT } from '../fonts.js';
+import { fillIconText } from '../icons/canvas-text.js';
 export const CAFE_LOOK = Object.freeze({
   hemiSky: 0xfff1dc, hemiGround: 0x5a4636, hemi: 1.0, sun: 0xffe2b8, sunI: 1.2, sunDir: [-6, 14, 9],
   fog: 0x2a2320, fogNear: 30, fogFar: 90, grade: 0, torch: 0.6,
@@ -17,8 +19,8 @@ function emojiTexture(THREE, emoji) {
   const c = cv.getContext('2d');
   c.fillStyle = '#ffffff';
   c.beginPath(); c.arc(64, 60, 54, 0, Math.PI * 2); c.fill();
-  c.font = '64px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText(emoji, 64, 64);
+  c.font = `64px ${UI_FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle';
+  fillIconText(c, emoji, 64, 64);
   const tex = new THREE.CanvasTexture(cv);
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;

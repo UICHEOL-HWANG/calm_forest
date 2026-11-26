@@ -26,6 +26,7 @@ writeFileSync('dist-toss/index.html', html);
 cpSync('js', 'dist-toss/js', { recursive: true });
 cpSync('assets/decor-sets', 'dist-toss/assets/decor-sets', { recursive: true });
 cpSync('assets/boot', 'dist-toss/assets/boot', { recursive: true });
+cpSync('assets/fonts', 'dist-toss/assets/fonts', { recursive: true });
 
 // 활동 기록 페이지는 Toss 번들 내부에서 WebView 세션을 이어받아 보여준다.
 // 페이지와 로컬 의존성도 함께 넣어야 앱 내부 경로에서 정상 로드된다.

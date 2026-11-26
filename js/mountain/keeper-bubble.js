@@ -1,5 +1,7 @@
 import { animateBubble, makeRing, onTop } from '../bubble-fx.js';
 
+import { UI_FONT } from '../fonts.js';
+import { fillIconText } from '../icons/canvas-text.js';
 export const KEEPER_BUBBLE = Object.freeze({ w: 0.9, h: 0.9, y: 2.5, alertR: 4, swapS: 1.2 });
 
 const textures = new Map();
@@ -12,8 +14,8 @@ function emojiTexture(THREE, emoji) {
   c.fillStyle = '#ffffff';
   c.beginPath(); c.arc(64, 60, 54, 0, Math.PI * 2); c.fill();
   c.beginPath(); c.moveTo(52, 108); c.lineTo(64, 126); c.lineTo(76, 108); c.fill();
-  c.font = '64px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText(emoji, 64, 64);
+  c.font = `64px ${UI_FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle';
+  fillIconText(c, emoji, 64, 64);
   const tex = new THREE.CanvasTexture(cv);
   tex.colorSpace = THREE.SRGBColorSpace;
   textures.set(emoji, tex);

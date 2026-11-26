@@ -34,6 +34,8 @@ import * as THREE from 'three';
 import { buildPriceBoard } from './exterior-art.js';
 
 // 상점 좌판(절차적)
+import { UI_FONT } from '../fonts.js';
+import { fillIconText } from '../icons/canvas-text.js';
 export function spawnShop() {
   const g = new THREE.Group(); g.position.copy(SHOP);
   const counter = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.9, 0.7), woodMat(2, 1)); counter.position.y = 0.45; counter.castShadow = true; g.add(counter);
@@ -56,8 +58,8 @@ export function spawnShop() {
   bc.fillStyle = '#d8ccae'; roundRect(bc, 12, 12, 488, 116, 30); bc.fill();
   bc.beginPath(); bc.moveTo(236, 126); bc.lineTo(276, 126); bc.lineTo(256, 152); bc.closePath(); bc.fill();   // 꼬리
   bc.lineWidth = 5; bc.strokeStyle = '#a89a6e'; roundRect(bc, 12, 12, 488, 116, 30); bc.stroke();   // 진한 테두리
-  bc.fillStyle = '#1f7a48'; bc.textAlign = 'center'; bc.font = 'bold 52px sans-serif';   // 낮춘 바탕에 맞춰 글자도 진하게
-  bc.fillText(t(topLine.text), 256, 88);
+  bc.fillStyle = '#1f7a48'; bc.textAlign = 'center'; bc.font = `bold 52px ${UI_FONT}`;   // 낮춘 바탕에 맞춰 글자도 진하게
+  fillIconText(bc, t(topLine.text), 256, 88);
   const btex = new THREE.CanvasTexture(bcv); btex.minFilter = THREE.LinearFilter; btex.magFilter = THREE.LinearFilter; btex.generateMipmaps = false;
   const bubble = new THREE.Sprite(new THREE.SpriteMaterial({ map: btex, transparent: true, depthWrite: false }));
   bubble.scale.set(2.4, 0.75, 1); bubble.position.set(0, 2.55, 0.2); g.add(bubble);

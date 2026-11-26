@@ -11,6 +11,8 @@ import {
 import { syncFarmCrops } from '../spaces/farm.js';
 import * as THREE from 'three';
 
+import { UI_FONT } from '../fonts.js';
+import { fillIconText, measureIconText } from '../icons/canvas-text.js';
 export function _hintCanvas() {
   const cv = document.createElement('canvas'); cv.width = HINT_W; cv.height = HINT_H;
   return [cv, cv.getContext('2d')];
@@ -22,13 +24,13 @@ export function _hintCanvas() {
 //   캔버스는 언어당 한 번만 그리므로 measureText 비용은 없고, 어떤 언어가 와도 자가치유된다.
 //   ⚠️ measureText 전에 c.font 를 먼저 설정해야 폭이 맞는다.
 export function _drawHintBadge(c, bg, ink, text, fontPx) {
-  c.font = `bold ${fontPx}px sans-serif`;
-  const w = c.measureText(text).width;
+  c.font = `bold ${fontPx}px ${UI_FONT}`;
+  const w = measureIconText(c, text).width;
   const padX = Math.max(8, (HINT_W - (w + 44)) / 2);   // 글자 좌우 22px 여백
   c.fillStyle = bg; roundRect(c, padX, 8, HINT_W - padX * 2, 64, 18); c.fill();
   c.beginPath(); c.moveTo(HINT_W / 2 - 10, 72); c.lineTo(HINT_W / 2 + 10, 72); c.lineTo(HINT_W / 2 - 4, 94); c.closePath(); c.fill();
   c.fillStyle = ink; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText(text, HINT_W / 2, 40);
+  fillIconText(c, text, HINT_W / 2, 40);
 }
 
 export function _hintTexFromCanvas(cv) {

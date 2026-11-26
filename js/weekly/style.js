@@ -4,7 +4,7 @@ export const WEEKLY_CSS = `
 #weekly-modal { position: fixed; inset: 0; z-index: 44; display: none; place-items: center; grid-template: minmax(0, 1fr) / minmax(0, 1fr); box-sizing: border-box; background: rgba(20,40,30,0.55);
   padding: calc(12px + var(--top-inset, 0px)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
 #weekly-modal.show { display: grid; }
-#weekly-modal .wk { --font: system-ui, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif; --num: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Apple SD Gothic Neo", sans-serif;
+#weekly-modal .wk { --font: Pretendard, system-ui, -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif; --num: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Apple SD Gothic Neo", sans-serif;
   --wk-w: 380px; --x-bg: #fff6e2; --x-ink: #5a3818; --cork: #c99c63;
   position: relative; width: min(var(--wk-w), 100%); max-height: 100%; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr) auto; grid-template-areas: "head" "side" "main" "foot";
   overflow: hidden; font-family: var(--font); text-align: left; word-break: keep-all; overflow-wrap: break-word; outline: none; box-sizing: border-box;

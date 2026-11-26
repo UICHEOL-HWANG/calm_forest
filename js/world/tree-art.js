@@ -1,3 +1,5 @@
+import { UI_FONT } from '../fonts.js';
+import { fillIconText, measureIconText } from '../icons/canvas-text.js';
 // =============================================================
 //  calm forest · 🌳 마을 세계수 조형 (Three 만 — 게임 상태 없음)
 //  ------------------------------------------------------------
@@ -380,10 +382,10 @@ function plaqueFace(label) {
   const c = cv.getContext('2d');
   c.fillStyle = '#e6cf9f'; c.fillRect(0, 0, W, H);
   c.fillStyle = '#b48c58'; c.fillRect(0, 0, W, 10); c.fillRect(0, H - 10, W, 10);
-  let fs = 54; const font = (s) => `bold ${s}px "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif`;
+  let fs = 54; const font = (s) => `bold ${s}px ${UI_FONT}`;
   c.font = font(fs); c.textAlign = 'center'; c.textBaseline = 'middle';
-  while (fs > 22 && c.measureText(label).width > W - 36) { fs -= 2; c.font = font(fs); }
-  c.fillStyle = '#4a3a24'; c.fillText(label, W / 2, H / 2 + 2);
+  while (fs > 22 && measureIconText(c, label).width > W - 36) { fs -= 2; c.font = font(fs); }
+  c.fillStyle = '#4a3a24'; fillIconText(c, label, W / 2, H / 2 + 2);
   const tex = new THREE.CanvasTexture(cv); tex.minFilter = THREE.LinearFilter;
   return new THREE.Mesh(new THREE.PlaneGeometry(1.95, 1.95 * H / W), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85, emissive: 0x5a5a5a, emissiveMap: tex }));   // 우듬지 그늘에서도 글자가 읽히게
 }

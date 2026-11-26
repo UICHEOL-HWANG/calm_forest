@@ -26,6 +26,8 @@ import { enterFarm, startVisitors } from './visitors.js';
 import { requestSignupNudge } from '../signup-gift/index.js';
 import * as THREE from 'three';
 
+import { UI_FONT } from '../fonts.js';
+import { fillIconText } from '../icons/canvas-text.js';
 const TOUCH = isTouchDevice();   // index.html TOUCH 와 같은 판정(둘째 카드 문구)
 let bubble = null, ring = null;   // 3D 말풍선 + 퍼지는 고리(첫 수확 전에만 있다)
 let active = false;   // 이번 세션에 등록됐는가 — 세이브의 e1 만으로 처치를 켜지 않는다(앱에서 웹 처치 세이브를 열 때, 리뷰 M5)
@@ -41,8 +43,8 @@ function bubbleTexture() {
   c.fillStyle = 'rgba(226,196,158,0.96)';
   c.beginPath(); c.roundRect(8, 8, 88, 64, 18); c.fill();
   c.beginPath(); c.moveTo(42, 72); c.lineTo(62, 72); c.lineTo(48, 94); c.closePath(); c.fill();
-  c.font = '50px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText(E1_BUBBLE_EMOJI, 52, 41);
+  c.font = `50px ${UI_FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle';
+  fillIconText(c, E1_BUBBLE_EMOJI, 52, 41);
   _tex = new THREE.CanvasTexture(cv);
   _tex.colorSpace = THREE.SRGBColorSpace;
   return _tex;

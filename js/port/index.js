@@ -24,6 +24,8 @@ import { guideArbiter } from '../guide/arbiter.js';
 import { quiets } from '../guide/quiet.js';
 import { initFishing, castSpot, castLine, twitchRod, hookFish, reelIn, clearFishing, tickFishing, fishingState } from './fishing.js';
 
+import { UI_FONT } from '../fonts.js';
+import { fillIconText } from '../icons/canvas-text.js';
 export const port = { active: false };
 const env = {};
 let homeCue = null, islandPick = false;
@@ -187,8 +189,8 @@ function drawGlyph(o, g) {
     c.fillStyle = g === '🎁' ? '#8fd6a0' : g === '❗' ? '#ffd27a' : '#cfe3ff';
     c.beginPath(); c.roundRect(18, 14, 92, 82, 22); c.fill();
     c.beginPath(); c.moveTo(54, 94); c.lineTo(74, 94); c.lineTo(60, 118); c.closePath(); c.fill();
-    c.font = '54px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-    c.fillText(g, 64, 57);
+    c.font = `54px ${UI_FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle';
+    fillIconText(c, g, 64, 57);
   }
   o.tex.needsUpdate = true;
 }

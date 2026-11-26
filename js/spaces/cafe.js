@@ -59,6 +59,8 @@ import { state as authState, fetchPurchases } from '../supabase-client.js';
 import * as THREE from 'three';
 
 //   기본은 날짜 시드 로컬 생성. setCafeGuestSource() 로 외부 생성기
+import { UI_FONT } from '../fonts.js';
+import { fillIconText } from '../icons/canvas-text.js';
 //   (예: Gemini API)를 끼우면 매일 다른 손님과 대사를 그대로 쓸 수 있다.
 //   외부 생성기는 async 라서 결과가 올 때까지 로컬 손님으로 플레이가 이어지고,
 //   도착하면 캐시에 담고 홀을 다시 그린다.
@@ -198,7 +200,7 @@ export function makeWallPlate(text, w, h) {
   c.strokeStyle = '#6e675e'; c.lineWidth = 10; c.strokeRect(14, 14, W - 28, H - 28);
   c.fillStyle = '#f2ede3'; c.textAlign = 'center'; c.textBaseline = 'middle';
   c.font = `bold ${Math.round(H * 0.46)}px Georgia, "Times New Roman", serif`;
-  c.fillText(text, W / 2, H / 2 + 2);
+  fillIconText(c, text, W / 2, H / 2 + 2);
   const tex = new THREE.CanvasTexture(cv); tex.minFilter = THREE.LinearFilter; tex.anisotropy = 4;
   return new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8 }));
 }
@@ -1433,9 +1435,9 @@ export function paintOrderBubble(ctx, ico) {
   c.clearRect(0, 0, 128, 128);
   c.fillStyle = 'rgba(255,255,255,0.94)'; roundRect(c, 10, 8, 108, 92, 22); c.fill();
   c.beginPath(); c.moveTo(54, 98); c.lineTo(74, 98); c.lineTo(62, 120); c.closePath(); c.fill();
-  c.font = '58px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.font = `58px ${UI_FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle';
   c.fillStyle = '#000';
-  c.fillText(ico, 64, 56);
+  fillIconText(c, ico, 64, 56);
   ctx.tex.needsUpdate = true;
 }
 

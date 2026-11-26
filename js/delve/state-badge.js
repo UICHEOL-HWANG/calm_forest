@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { BADGE_TONE, HEARTS_SIZE, GIFT_SIZE } from './badge-math.js';
+import { fillIconText } from '../icons/canvas-text.js';
 
 const FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
 const CREAM = '#efe6d4';
@@ -14,7 +15,7 @@ const rgbOf = hex => { const n = parseInt(hex.slice(1), 16); return `${n >> 16},
 function emojiLayer(e) {
   const [c, x] = canvas();
   x.font = `138px ${FONT}`; x.textAlign = 'center'; x.textBaseline = 'middle';
-  x.fillText(e, S / 2, S / 2 + 7);
+  fillIconText(x, e, S / 2, S / 2 + 7);
   return c;
 }
 
@@ -73,7 +74,7 @@ function heartSheet(n) {
   const x = c.getContext('2d');
   x.font = `64px ${FONT}`; x.textAlign = 'center'; x.textBaseline = 'middle';
   x.shadowColor = 'rgba(8,6,4,0.5)'; x.shadowBlur = 8; x.shadowOffsetY = 3;
-  x.fillText('❤️'.repeat(n), 128, 52);
+  fillIconText(x, '❤️'.repeat(n), 128, 52);
   heartSheets.set(n, c);
   return c;
 }

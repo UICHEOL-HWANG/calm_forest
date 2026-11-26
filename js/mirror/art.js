@@ -11,6 +11,8 @@ import { bakeGroup, part } from '../dream/art.js';
 import { LANDMARKS, HOUSES, SPOTS, RING_TREES } from './layout.js';
 import { invertColorPure } from './art-color.js';
 import { buildMirrorHouse } from './house.js';
+import { UI_FONT } from '../fonts.js';
+import { fillIconText } from '../icons/canvas-text.js';
 export { invertColorPure as invertColor };
 
 export const PAL3 = Object.freeze({
@@ -51,7 +53,7 @@ export function makeStopShelter(roof, wood) {
 function drawSign(x, ox, oy, light) {   // 256×104 — 파란 바탕(흰 판은 블룸 0.85 에 번진다) + 크림 원 + 🚏
   x.fillStyle = '#3f63a8'; x.fillRect(ox, oy, 256, 104);
   x.fillStyle = light; x.beginPath(); x.arc(ox + 128, oy + 52, 42, 0, Math.PI * 2); x.fill();
-  x.font = '64px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('🚏', ox + 128, oy + 56);
+  x.font = `64px ${UI_FONT}`; x.textAlign = 'center'; x.textBaseline = 'middle'; fillIconText(x, '🚏', ox + 128, oy + 56);
 }
 function mergeGeos(geos) {   // non-indexed position·normal·uv 이어 붙이기
   const out = new THREE.BufferGeometry();

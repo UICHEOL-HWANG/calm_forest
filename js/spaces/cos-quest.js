@@ -6,6 +6,8 @@ import { SHOP_DOOR } from '../data/places.js';
 import { COS_LINES, COS_REWARD, afterBuy, afterVisit, shouldOffer } from '../cos-onboard.js';
 import { refreshQuestPanel } from './npc.js';
 
+import { UI_FONT } from '../fonts.js';
+import { fillIconText } from '../icons/canvas-text.js';
 const step = (s, extra = {}) => trackEvent('cos_quest', { step: s, ...extra });
 
 export function cosQuestActive() {
@@ -49,8 +51,8 @@ function bubbleTexture() {
   const c = cv.getContext('2d');
   c.fillStyle = 'rgba(226,196,158,0.96)'; roundRect(c, 8, 8, 88, 64, 18); c.fill();
   c.beginPath(); c.moveTo(42, 72); c.lineTo(62, 72); c.lineTo(48, 94); c.closePath(); c.fill();
-  c.font = '50px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText('🎀', 52, 41);
+  c.font = `50px ${UI_FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle';
+  fillIconText(c, '🎀', 52, 41);
   const tex = new THREE.CanvasTexture(cv);
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;

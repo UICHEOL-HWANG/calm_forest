@@ -24,6 +24,8 @@ import { e1Pending } from './e1-start.js';   // 🧪 E1 처치 대기 중엔 첫
 import { makeVisitor } from '../visitor-art.js';
 import * as THREE from 'three';
 
+import { UI_FONT } from '../fonts.js';
+import { fillIconText } from '../icons/canvas-text.js';
 export let visitors = null;
 
 // 막는 요인별 안내 — 앞에 동물 아이콘이 붙는다("🦋 허수아비를 무서워해요").
@@ -54,8 +56,8 @@ function lookTexture() {
   const c = cv.getContext('2d');
   c.fillStyle = 'rgba(226,196,158,0.96)'; roundRect(c, 8, 8, 88, 64, 18); c.fill();
   c.beginPath(); c.moveTo(42, 72); c.lineTo(62, 72); c.lineTo(48, 94); c.closePath(); c.fill();
-  c.font = '50px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
-  c.fillText('🔍', 52, 41);
+  c.font = `50px ${UI_FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle';
+  fillIconText(c, '🔍', 52, 41);
   _lookTex = new THREE.CanvasTexture(cv);
   _lookTex.colorSpace = THREE.SRGBColorSpace;
   return _lookTex;
