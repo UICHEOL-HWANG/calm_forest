@@ -16,6 +16,7 @@ const TOUCH_FULL = [
 const PC_FULL = [
   { key: 'pc_move', core: true, wait: INTRO_WAIT, target: null, keys: ['↑', '←', '↓', '→'], hand: 'key', text: '⌨️ 방향키로 걸어 보세요', done: 'act:move' },
   { key: 'pc_use', core: true, wait: INTRO_WAIT, target: null, keys: ['Space'], hand: 'key', text: '⭕ Space로 도구를 써요', done: 'act:use' },
+  { ...CAM_PC, core: true, wait: INTRO_WAIT },
 ];
 
 const TIPS = {

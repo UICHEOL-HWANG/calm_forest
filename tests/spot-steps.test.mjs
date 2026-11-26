@@ -9,11 +9,11 @@ const SRC = ['js/hud/hud-shell.js', 'js/hud/tool-fan.js', 'js/hud/mobile-hud.js'
   .map((p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8')).join('\n') + HTML;
 
 const all = [
-  ['full', true, 2], ['full', false, 2], ['new', true, 3], ['new', false, 3], ['menu', true, 3], ['menu', false, 3], ['pill', true, 1], ['cam', true, 2], ['cam', false, 1],
+  ['full', true, 2], ['full', false, 3], ['new', true, 3], ['new', false, 3], ['menu', true, 3], ['menu', false, 3], ['pill', true, 1], ['cam', true, 2], ['cam', false, 1],
   ['bag', true, 1], ['bag', false, 1], ['dex', true, 1], ['dex', false, 1],
 ];
 
-test('단계 수 — 첫 안내 2·바뀐 점 3·메뉴 3·근접 알약 1·시점 모바일 2·PC 1·가방/도감 팁 1', () => {
+test('단계 수 — 첫 안내 모바일 2·PC 3·바뀐 점 3·메뉴 3·근접 알약 1·시점 모바일 2·PC 1·가방/도감 팁 1', () => {
   for (const [kind, touch, n] of all) assert.equal(spotSteps(kind, touch).length, n, `${kind}/${touch}`);
 });
 
@@ -65,9 +65,9 @@ test('두 손가락이 캔버스에 닿으면 camtwo 신호를 보낸다', () =>
   assert.match(game, /onTwo: \(\) => ui\.act\?\.\('camtwo'\)/);
 });
 
-test('첫 안내는 걷기·큰 버튼 두 장뿐, 둘 다 core 이고 다음 버튼은 6초 뒤', () => {
+test('첫 안내는 걷기·도구(PC 는 Q·E 시점까지), 모두 core 이고 다음 버튼은 6초 뒤', () => {
   assert.deepEqual(spotSteps('full', true).map((s) => s.key), ['t_move', 't_use']);
-  assert.deepEqual(spotSteps('full', false).map((s) => s.key), ['pc_move', 'pc_use']);
+  assert.deepEqual(spotSteps('full', false).map((s) => s.key), ['pc_move', 'pc_use', 'cam']);
   for (const touch of [true, false]) for (const s of spotSteps('full', touch)) {
     assert.ok(s.core, s.key);
     assert.equal(s.wait, 6000, s.key);
@@ -141,4 +141,13 @@ test('세계수 플레이북: 판을 처음 열 때 한 번, 장식을 놓으면
 
 test('세계수 플레이북 문구 틀은 영어 사전에 있다', () => {
   for (const k of ['📋 {0} 채우는 방법 (클릭)', '🎁 {0}에 재료를 채워 주세요', '🎒 {0} 재료가 부족해요', '🎒 재료가 부족해요', '🏡 {0} 버튼을 {1#}번 눌러요', '🏡 {0} 버튼을 눌러요', '📊 막대를 다 채우면 빈터 완성! 잎이 돋아요']) assert.ok(EN[k], k);
+});
+
+test('이야기 책은 첫 안내가 끝난 뒤 바로가 아니라 텃밭을 나갈 때 한 번 연다', () => {
+  const visitors = readFileSync(new URL('../js/spaces/visitors.js', import.meta.url), 'utf8');
+  assert.match(visitors, /export function exitFarm\(\) \{[\s\S]*?ui\.onExitFarm\?\.\(\);[\s\S]*?\n\}/);
+  const onboard = HTML.slice(HTML.indexOf('async function startOnboarding'), HTML.indexOf('function maybeHudTour'));
+  assert.ok(!onboard.includes('showStoryMapOnce'));
+  assert.match(onboard, /storyOnFarmExit = true;/);
+  assert.match(HTML, /onExitFarm\(\) \{ if \(!storyOnFarmExit\) return; storyOnFarmExit = false; showStoryMapOnce\(null\); \}/);
 });

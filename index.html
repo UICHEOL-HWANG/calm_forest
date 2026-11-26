@@ -5202,6 +5202,7 @@
       //    src: 'welcome'(온보딩 자동) | 'help'(도움말 버튼) — 닫을 때 이 값으로 이벤트를 가른다
       showTutorial(src = 'welcome') { startOnboarding(src); },
       camTour() { return runCamTour(); },
+      onExitFarm() { if (!storyOnFarmExit) return; storyOnFarmExit = false; showStoryMapOnce(null); },
       treeTour(plan) { runTreeTour(plan); },
       treeSpot(sig) { spot?.notify(sig); },
       // 🎬 프롤로그 컷신 DOM — game.js(updateIntro)가 타임라인에 맞춰 호출
@@ -6316,7 +6317,7 @@
       Input.markHintsSeen(['spotV2', TIP_ARM]);
       if ($('worldmap').classList.contains('show')) closeWorldMap();
       startCoach();
-      showStoryMapOnce(null);
+      storyOnFarmExit = true;
     }
     function maybeHudTour() {
       if (Input.needsTutorial()) return;
@@ -7101,6 +7102,7 @@
     // 📖 4장 지도 1회 — 목적("목적이 뭔지 모르겠다" 피드백)을 플레이 시작 전에 보여준다.
     //   진행이 아직 안 붙었으면(세이브 로드 전) 지도 없이 곧바로 다음 단계로 — 온보딩을 막지 않는다.
     let storyMapShown = false;
+    let storyOnFarmExit = false;
     function showStoryMapOnce(then) {
       if (storyMapShown || !lastStoryView || lastStoryView.allDone) { then?.(); return; }
       storyMapShown = true;

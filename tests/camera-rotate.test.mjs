@@ -122,10 +122,11 @@ test('게임 배선: 이동 회전·튜토리얼 신호·미니맵 시야·되�
   assert.match(shell, /cam-reset-btn/);
 });
 
-test('투어 단계 목록: 회전 단계는 첫 시점 조작 때 뜨는 cam 투어에만 있다', async () => {
+test('투어 단계 목록: 모바일 회전은 cam 투어에만, PC 는 첫 안내 끝에 Q·E 가 붙는다', async () => {
   const { spotSteps } = await import('../js/onboarding/spot-steps.js');
+  assert.ok(!spotSteps('full', true).some(s => s.key === 'cam'));
+  assert.equal(spotSteps('full', false).at(-1).key, 'cam');
   for (const touch of [true, false]) {
-    assert.ok(!spotSteps('full', touch).some(s => s.key === 'cam'));
     assert.ok(spotSteps('cam', touch).some(s => s.key === 'cam' && s.done === 'act:camrotate'));
   }
   assert.equal(spotSteps('cam', false).length, 1);

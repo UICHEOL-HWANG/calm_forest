@@ -190,4 +190,5 @@ export function exitFarm() {
   player.position.set(FARM_GATE.x, 0, FARM_GATE.z + 2);
   $w.nearDoor = null; ui.setDoorPrompt?.(null); snapCamera(); setSpaceVisible();
   Sound.blip(); trackEvent('exit_farm'); // [GA4]
+  ui.onExitFarm?.();
 }
