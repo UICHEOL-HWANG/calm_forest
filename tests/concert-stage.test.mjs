@@ -57,3 +57,12 @@ test('the merchant first visit waits while the player is at the stage or playing
   const idx = readFileSync(new URL('../js/concert/index.js', import.meta.url), 'utf8');
   assert.match(idx, /export const concertBusy = \(\) => !!show \|\| spot;/);
 });
+
+test('the merchant first visit comes 45s after the offer is ready, never blocks the player, and goes home', () => {
+  const src = readFileSync(new URL('../js/spaces/npc.js', import.meta.url), 'utf8');
+  const fn = src.slice(src.indexOf('export function updateMerchantVisit'), src.indexOf('const WELCOME_LINES'));
+  assert.match(src, /export const MERCHANT_DELAY_SEC = 45;/);
+  assert.match(fn, /if \(!offer\) return;\n\s*merchantWait \+= dt;\n\s*if \(merchantWait < MERCHANT_DELAY_SEC\) return;\n\s*gameState\.hintsSeen\.merchantVisit = true;/);
+  assert.match(fn, /const v = merchantVisit; v\.t \+= dt;\n\s*m\.collider\.off = true;/);
+  assert.match(fn, /if \(d >= 0\.3\) m\.group\.position\.set\(m\.home\.x, m\.group\.position\.y, m\.home\.z\);\n\s*m\.collider\.off = !!m\.hidden;\n\s*merchantVisit = null;/);
+});

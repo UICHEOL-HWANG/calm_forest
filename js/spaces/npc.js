@@ -675,6 +675,8 @@ export function stepNpcToward(o, target, speed, dt) {
 }
 
 const MERCHANT_WALK_SEC = 8;
+export const MERCHANT_DELAY_SEC = 45;
+let merchantWait = 0;
 const guideRevamp = guideRevampOn(e6Decision());
 
 function placeNearPlayer(o) {
@@ -700,6 +702,8 @@ export function updateMerchantVisit(dt) {
     if (ui.anyModalOpen?.() || ui.tutorialOverlay?.()) return;
     const offer = welcomeOffer(gameState.inventory, { reworld: storyReworld(gameState, unlocksOn()), houseWood: gameState.houseStage === 0 && guideRevamp ? BUILD_STAGES[0].cost.wood : 0 });   // 🔓 첫 수확으로도 돌아온다(E1 처치는 당근부터 거둔다)
     if (!offer) return;
+    merchantWait += dt;
+    if (merchantWait < MERCHANT_DELAY_SEC) return;
     gameState.hintsSeen.merchantVisit = true;            // 즉시 소진(세이브에 남아 재발동 없음)
     gameState.hintsSeen.merchantArrived = true;
     merchantVisit = { state: 'walk', t: 0, offer };
@@ -707,6 +711,7 @@ export function updateMerchantVisit(dt) {
     return;
   }
   const v = merchantVisit; v.t += dt;
+  m.collider.off = true;
   if (v.state === 'walk') {
     if (!inVillage2()) {   // 걸어오는 사이 집·텃밭 등으로 들어갔다 → 방문 무효, 1회권은 돌려줘 다음에 다시 온다(전엔 12초 뒤 실내에서 모달이 떴다)
       merchantVisit = { state: 'return', t: 0, offer: v.offer }; gameState.hintsSeen.merchantVisit = false; return;
@@ -726,7 +731,11 @@ export function updateMerchantVisit(dt) {
     m.group.rotation.y = lerpAngle(m.group.rotation.y, Math.atan2(dx, dz), 0.2);   // 플레이어 바라보기
   } else if (v.state === 'return') {
     const d = stepNpcToward(m, m.home, 2.0, dt);
-    if (d < 0.3 || v.t > 20) merchantVisit = null;      // 홈 도착 → 평소 배회로 복귀
+    if (d < 0.3 || v.t > 20) {
+      if (d >= 0.3) m.group.position.set(m.home.x, m.group.position.y, m.home.z);
+      m.collider.off = !!m.hidden;
+      merchantVisit = null;
+    }      // 홈 도착 → 평소 배회로 복귀
   }
 }
 
