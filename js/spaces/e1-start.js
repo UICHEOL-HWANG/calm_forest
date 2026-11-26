@@ -205,14 +205,14 @@ function release(via) {
   trackEvent('e1_intro', { step: 5, via });
   if (atFarm) startVisitors();
   if (via !== 'away' && ui.isGuestNow?.()) requestSignupNudge(gameState, 'harvest', ui);
-  setTimeout(showTutorialWhenClear, E1_TUTORIAL_DELAY_MS);
+  setTimeout(() => showTutorialWhenClear(via), E1_TUTORIAL_DELAY_MS);
 }
 
 // 수확 순간엔 '새 집 색'·과수원 의뢰 같은 기존 연출이 같이 뜬다 — 그 카드가 닫힌 뒤에 환영 모달을 연다(겹침 방지)
 function otherModalOpen() { return !!document.querySelector('.show > .tut-card, .show > .tk-box, #nudge-modal.show, #gift-box-modal.show'); }
-function showTutorialWhenClear() {
+function showTutorialWhenClear(via) {
   if (gameState.tutorialSeen) return;
-  if (otherModalOpen()) { setTimeout(showTutorialWhenClear, 400); return; }
+  if (otherModalOpen()) { setTimeout(() => showTutorialWhenClear(via), 400); return; }
   gameState.tutorialSeen = true;   // Input.markTutorialSeen 과 같다
-  ui.showTutorial?.();
+  ui.showTutorial?.(via === 'away' ? undefined : 'harvested');
 }

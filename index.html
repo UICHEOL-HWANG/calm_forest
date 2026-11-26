@@ -6313,6 +6313,7 @@
     async function startOnboarding(src) {
       const steps = spotSteps('full', TOUCH);
       Input.markHintsSeen(['spot_started']); requestSave();
+      if (src === 'harvested') Input.markHintsSeen(steps.map(s => 'spot_' + s.key));
       const left = steps.findIndex(s => !Input.hintSeen('spot_' + s.key));
       if (src === 'help' || left >= 0) {
         Input.armTutorialMove();
@@ -7209,6 +7210,7 @@
     const nudgeBtnText = $('nudge-google').textContent;
     const nudgeWarnText = $('nudge-warn').textContent;
     ui.isGuestNow = isGuestNow;
+    ui.modalBusy = () => !document.body.classList.contains('playing') || ui.anyModalOpen() || !!document.querySelector('.show > .tut-card') || ['spot-on', 'intro-open', 'cine-open'].some(c => document.body.classList.contains(c));
     ui.loginNudge = (trigger) => {
       if (!isGuestNow()) return;                               // 로그인 유저에겐 표시 안 함
       nudgeFrom = trigger;

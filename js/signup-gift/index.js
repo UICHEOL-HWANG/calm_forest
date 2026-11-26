@@ -7,12 +7,11 @@ import { modalQueue } from '../guide/modal-queue.js';
 import { queueLoginNudge } from '../guide/nudge-cap.js';
 
 export function requestSignupNudge(state, trigger, ui) {
-  const seen = state.hintsSeen || {};
-  const { fire, flags } = takeNudge(seen.signupNudge, trigger);
-  if (!fire) return false;
-  state.hintsSeen = { ...seen, signupNudge: flags };
-  queueLoginNudge(trigger, ui);
-  return true;
+  if (!takeNudge(state.hintsSeen?.signupNudge, trigger).fire) return false;
+  return queueLoginNudge(trigger, ui, modalQueue, () => {
+    const seen = state.hintsSeen || {};
+    state.hintsSeen = { ...seen, signupNudge: takeNudge(seen.signupNudge, trigger).flags };
+  });
 }
 
 async function call(action) {

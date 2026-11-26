@@ -19,14 +19,18 @@ function writeCap(rec) {
 
 export const touchNudgeClock = (now = Date.now()) => writeCap(startNudgeClock(readCap(), now));
 
-export function queueLoginNudge(trigger, ui, queue = modalQueue) {
+const URGENT_TRIGGERS = new Set(['harvest', 'house']);
+
+export function queueLoginNudge(trigger, ui, queue = modalQueue, onShown) {
   if (ui?.isGuestNow?.() === false || !nudgeAllowed(readCap(), Date.now())) return false;
+  const urgent = URGENT_TRIGGERS.has(trigger) ? { urgent: true, ready: () => !ui?.modalBusy?.() } : {};
   return queue.request({
-    kind: 'nudge', key: 'nudge',
+    kind: 'nudge', key: 'nudge', ...urgent,
     show: () => {
       if (ui?.isGuestNow?.() === false || !nudgeAllowed(readCap(), Date.now())) return;
       writeCap(noteNudge(readCap(), Date.now()));
       ui?.loginNudge?.(trigger);
+      onShown?.();
     },
   });
 }

@@ -164,7 +164,7 @@ test('a login nudge keeps its own wording and a capped one is dropped, not held 
     touchNudgeClock();
     assert.equal(queueLoginNudge('harvest', ui, q), true);
     assert.equal(queueLoginNudge('house', ui, q), true);
-    assert.equal(reqs[0].ready, undefined);
+    assert.equal(reqs[0].ready(), true);
     reqs[0].show();
     reqs[1].show();
     assert.deepEqual(shown, ['harvest']);
@@ -179,7 +179,7 @@ test('automatic modals go through the queue and the 120 s caps are gone', () => 
   assert.doesNotMatch(read('../js/signup-gift/index.js'), /maxMs|whenIdle/);
   assert.doesNotMatch(read('../js/promo-gift/index.js'), /maxMs|whenIdle/);
   assert.match(read('../js/signup-gift/index.js'), /modalQueue\.request\(\{ kind: 'giftBox'/);
-  assert.match(read('../js/signup-gift/index.js'), /queueLoginNudge\(trigger, ui\)/);
+  assert.match(read('../js/signup-gift/index.js'), /queueLoginNudge\(trigger, ui, modalQueue,/);
   assert.match(read('../js/promo-gift/index.js'), /modalQueue\.turn\('promo'\)/);
   assert.match(read('../js/push-ui.js'), /modalQueue\.request\(\{ kind: 'push', key: 'push'/);
   assert.match(read('../js/spaces/farm-auto.js'), /modalQueue\.request\(\{ kind: 'result'/);
@@ -196,4 +196,58 @@ test('automatic modals go through the queue and the 120 s caps are gone', () => 
   assert.match(html, /modalQueue\.addGate\(/);
   const end = html.slice(html.indexOf('function endCoach('), html.indexOf('// 좌측 상단 로그인 상태 표시'));
   assert.match(end, /modalQueue\.flush\(\)/);
+});
+
+test('an urgent item skips the tutorial gate but still waits for its own ready and a hold', async () => {
+  const { q, advance } = harness();
+  const shown = [];
+  let busy = true;
+  q.addGate(() => true);
+  q.request({ kind: 'push', show: () => shown.push('push') });
+  q.request({ kind: 'nudge', urgent: true, ready: () => !busy, show: () => shown.push('nudge') });
+  advance(MODAL_GAP_MS + 400);
+  assert.deepEqual(shown, []);
+  busy = false;
+  advance(MODAL_GAP_MS + 400);
+  assert.deepEqual(shown, ['nudge']);
+  const h = harness();
+  const turn = h.q.turn('promo');
+  h.advance(MODAL_GAP_MS + 400);
+  await turn;
+  h.q.request({ kind: 'nudge', urgent: true, show: () => shown.push('held') });
+  h.advance(MODAL_GAP_MS + 400);
+  assert.deepEqual(shown, ['nudge']);
+});
+
+test('first harvest and first home nudges are urgent, wait for open modals, and report when shown', () => {
+  const store = new Map();
+  globalThis.localStorage = { getItem: k => store.get(k) ?? null, setItem: (k, v) => store.set(k, String(v)) };
+  try {
+    const reqs = [];
+    const q = { request: (item) => { reqs.push(item); return true; } };
+    let busy = true;
+    const done = [];
+    const ui = { isGuestNow: () => true, loginNudge: () => {}, modalBusy: () => busy };
+    touchNudgeClock();
+    queueLoginNudge('harvest', ui, q, () => done.push('harvest'));
+    queueLoginNudge('dex5', ui, q);
+    assert.equal(reqs[0].urgent, true);
+    assert.equal(reqs[0].ready(), false);
+    busy = false;
+    assert.equal(reqs[0].ready(), true);
+    assert.equal(reqs[1].urgent, undefined);
+    assert.deepEqual(done, []);
+    reqs[0].show();
+    assert.deepEqual(done, ['harvest']);
+  } finally {
+    delete globalThis.localStorage;
+  }
+});
+
+test('the signup nudge flag is saved when the window shows, not when it is queued', () => {
+  const src = read('../js/signup-gift/index.js');
+  assert.match(src, /queueLoginNudge\(trigger, ui, modalQueue, \(\) => \{/);
+  assert.doesNotMatch(src, /if \(!fire\) return false;\n\s*state\.hintsSeen =/);
+  const html = read('../index.html');
+  assert.ok(html.indexOf('ui.modalBusy = () =>') > html.indexOf('const ui = {'), 'ui.modalBusy 는 ui 선언 뒤에 둔다(앞이면 부팅이 멈춘다)');
 });

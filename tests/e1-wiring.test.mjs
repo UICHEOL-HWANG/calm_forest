@@ -125,3 +125,12 @@ test('개정 1 — 안내 시트(B)는 -modal id 라 뒤 게임 입력이 막히
   assert.match(E1START, /trackEvent\('e1_intro', \{ step/);
   assert.match(E1START, /intro: true/);
 });
+
+test('밭에서 하나라도 거뒀으면 음영 걷기·도구 안내를 건너뛰고, 안 거두고 떠났을 때만 보여 준다', () => {
+  const show = fnBody(E1START, 'function showTutorialWhenClear(');
+  assert.match(show, /setTimeout\(\(\) => showTutorialWhenClear\(via\), 400\)/);
+  assert.match(show, /ui\.showTutorial\?\.\(via === 'away' \? undefined : 'harvested'\)/);
+  assert.match(fnBody(E1START, 'function release('), /setTimeout\(\(\) => showTutorialWhenClear\(via\), E1_TUTORIAL_DELAY_MS\)/);
+  const start = fnBody(HTML, 'async function startOnboarding(');
+  assert.match(start, /if \(src === 'harvested'\) Input\.markHintsSeen\(steps\.map\(s => 'spot_' \+ s\.key\)\);\n\s*const left =/);
+});

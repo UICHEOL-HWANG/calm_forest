@@ -53,10 +53,11 @@ export function createModalQueue({
 
   function tick() {
     ticking = false;
-    if (blocked()) clearSince = null;
+    const pool = !blocked() ? items : holding() ? [] : items.filter(i => i.urgent && safe(i.ready));
+    if (!pool.length) clearSince = null;
     else {
       clearSince ??= now();
-      const item = nextModal(items, { blocked: false, clearFor: now() - clearSince, gap });
+      const item = nextModal(pool, { blocked: false, clearFor: now() - clearSince, gap });
       if (item) run(item);
     }
     wake();
