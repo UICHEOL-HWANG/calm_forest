@@ -8,7 +8,7 @@ import { resultView } from './views.js';
 import { showHall, showResult } from './ui.js';
 import { showLanes } from './lanes.js';
 import { trackOpen, trackStart, trackEnd, trackExchange, trackLoginPrompt } from './track.js';
-import { buildConcertStage, STAGE_SOLIDS, stageCheer, stageSway } from '../spaces/concert-stage-art.js';
+import { buildConcertStage, STAGE_SOLIDS, SEAT_SOLIDS, stageCheer, stageSway } from '../spaces/concert-stage-art.js';
 import { hasConcertArt, concertDecorMesh } from './items.js';
 import { guideNeed, guideTarget } from './guide.js';
 import { makeThumbs } from '../weekly/thumbs.js';
@@ -87,7 +87,7 @@ export function initConcert(d) {
   }
   if (!(d.scene && d.THREE && d.solidCircle)) return;
   if (!solidsAdded) {
-    STAGE_SOLIDS.forEach(([x, z, r]) => d.solidCircle(x, z, r));
+    [...STAGE_SOLIDS, ...SEAT_SOLIDS].forEach(([x, z, r]) => d.solidCircle(x, z, r));
     solidsAdded = true;
   }
   if (!stage) {
@@ -140,6 +140,7 @@ export function updateConcert(dt, inVillage, pos) {
 }
 
 export const concertSpotNow = () => spot;
+export const concertBusy = () => !!show || spot;
 export const concertPrompt = () => CONCERT_COPY.prompt;
 
 function startShow(songId, practice = !state().tutorial, bgmPaused = false) {

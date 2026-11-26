@@ -15,6 +15,7 @@ const PAL = {
 
 const SHELL = { n: 7, R: 2.42, r0: 0.32, sy: 1.22, base: 0.04, zBack: -1.45, wrap: 0.7, recline: 0.42, ridge: 0.1, lobe: 0.11 };
 const SEATS = [[-2.15, 2.15], [2.15, 2.15]];
+export const SEAT_SOLIDS = Object.freeze(SEATS.map(([x, z]) => Object.freeze([STAGE_POS.x + x, STAGE_POS.z + z, 0.6])));
 const BAND = [
   { body: 0xf3eeea, belly: 0xffffff, id: 'rabbit', R: 0.46, bs: [1, 0.96, 1], headR: 0.39, headY: 1.12, x: -1.28, z: -0.62, ry: 0.32, s: 0.8 },
   { body: 0xffe05a, belly: 0xfff0a0, id: 'chick', R: 0.5, bs: [1.02, 0.94, 1.02], headR: 0.35, headY: 1.06, x: 1.28, z: -0.62, ry: -0.32, s: 0.82 },

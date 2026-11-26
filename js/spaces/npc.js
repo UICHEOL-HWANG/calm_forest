@@ -40,6 +40,7 @@ import * as THREE from 'three';
 import { shopCueVisible } from './shop-cue-rules.js';
 import { guideArbiter } from '../guide/arbiter.js';
 import { markGuided } from '../guide/quiet.js';
+import { concertBusy } from '../concert/index.js';
 
 // id별 퀘스트 진행 상태(없으면 생성)
 export function npcState(id) {
@@ -693,6 +694,7 @@ export function updateMerchantVisit(dt) {
   if (!merchantVisit) {
     if (gameState.hintsSeen.merchantVisit) return;
     if (!inVillage2()) return;   // 마을(실외) 밖(텃밭·동굴·카페·강·바다·안개숲·실내)에선 발동 금지
+    if (concertBusy()) return;
     if (ui.anyModalOpen?.() || ui.tutorialOverlay?.()) return;
     const offer = welcomeOffer(gameState.inventory, { reworld: storyReworld(gameState, unlocksOn()), houseWood: gameState.houseStage === 0 && guideRevamp ? BUILD_STAGES[0].cost.wood : 0 });   // 🔓 첫 수확으로도 돌아온다(E1 처치는 당근부터 거둔다)
     if (!offer) return;
@@ -707,6 +709,7 @@ export function updateMerchantVisit(dt) {
     if (!inVillage2()) {   // 걸어오는 사이 집·텃밭 등으로 들어갔다 → 방문 무효, 1회권은 돌려줘 다음에 다시 온다(전엔 12초 뒤 실내에서 모달이 떴다)
       merchantVisit = { state: 'return', t: 0, offer: v.offer }; gameState.hintsSeen.merchantVisit = false; return;
     }
+    if (concertBusy()) { v.t = 0; return; }
     const d = stepNpcToward(m, player.position, 2.0, dt);
     if (d <= 1.6) {
       if (ui.anyModalOpen?.() || ui.tutorialOverlay?.()) { v.t = 0; return; }   // 튜토리얼 카드 등이 떠 있으면 옆에서 기다린다(뒤에 묻혀 1회권만 소진되던 것)
