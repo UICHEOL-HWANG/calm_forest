@@ -6485,9 +6485,9 @@
           return bootWorld(ui);
         }).then(() => {
           bootTiming.mark('W');
+          revealWorld();
           if (bootScreen) { bootScreen.step(2); return; }
           $('loading').style.display = 'none';
-          revealWorld();
         });
         worldP.catch(showWorldFailed);
       }

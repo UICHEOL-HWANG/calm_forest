@@ -86,7 +86,7 @@ test('웹·앱 모두 첫 페인트 전에 html.boot-b, B 요소는 알약 뒤�
 test('index.html: 앱에선 월드가 지어져도 로딩을 내리지 않고, 로그인 화면으로 갈 땐 페이드', () => {
   const html = read('index.html');
   assert.match(html, /if \(bootScreen\) \{ bootScreen\.step\(1\); return nextPaint\(\)\.then\(\(\) => bootWorld\(ui\)\); \}\n\s*return bootWorld\(ui\);/);
-  assert.match(html, /if \(bootScreen\) \{ bootScreen\.step\(2\); return; \}\n\s*\$\('loading'\)\.style\.display = 'none';\n\s*revealWorld\(\);/);
+  assert.match(html, /revealWorld\(\);\n\s*if \(bootScreen\) \{ bootScreen\.step\(2\); return; \}\n\s*\$\('loading'\)\.style\.display = 'none';/, 'B 화면이 켜져 있어도 로그인 배경 가림막(pre-world)을 걷는다');
   assert.match(html, /try \{ await enterGame\(\); \} catch \(e\) \{ if \(bootScreen\?\.isUp\(\)\) showWorldFailed\(\); throw e; \}/, '입장 중 오류면 B 화면 뒤에 갇히지 않고 다시 들어가기 안내');
   assert.match(html, /if \(bootScreen\?\.isUp\(\)\) bootScreen\.dismiss\(\); else \$\('loading'\)\.style\.display = 'none';/);
   assert.match(html, /if \(bootScreen\?\.isUp\(\) && !stuck && el\.dataset\.stuck !== '1'\) \{ if \(on\) bootScreen\.step\(2\); return; \}/);
