@@ -1,6 +1,6 @@
 import { seoHead, escapeHtml } from '../seo-meta.mjs';
 import { SITE } from '../seo-pages.mjs';
-import { SECTION_ORDER, renderBlock, renderInline, linkedRefs, toPlain, firstSentence } from './content.mjs';
+import { SECTION_ORDER, renderBlock, renderInline, linkedRefs, toPlain, firstSentence, isIndexable } from './content.mjs';
 import { CONFIG } from '../../../js/config.js';
 import { faqOf } from './faq.mjs';
 import { categoryGuide, entryGuide } from './guides.mjs';
@@ -103,7 +103,7 @@ ${facts.map(([k, v]) => `<tr><th>${escapeHtml(k)}</th><td>${escapeHtml(v)}</td><
 ${guideHtml}
 ${faqHtml}<section class="wk-rel"><h2>함께 보면 좋아요</h2><div class="wk-cards">${rel.map(e => `<a href="${docPath(e)}">${e.ico} ${escapeHtml(e.name)}</a>`).join('')}</div>
 <a class="wk-cta" href="${gameHref(`${entry.cat}_${entry.id}`)}">🌿 게임에서 만나러 가기</a></section>`;
-  return shell({ path, title, description, jsonLd, body, campaign: `${entry.cat}_${entry.id}`, noindex: true });
+  return shell({ path, title, description, jsonLd, body, campaign: `${entry.cat}_${entry.id}`, noindex: !isIndexable(secs, ctx.index) });
 }
 
 const CAT_DESC = {

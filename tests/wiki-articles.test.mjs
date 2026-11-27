@@ -4,10 +4,10 @@ import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { loadWiki } from '../scripts/lib/wiki/load-data.mjs';
-import { buildIndex, renderHome, renderArticle } from '../scripts/lib/wiki/render.mjs';
+import { buildIndex, renderHome, renderArticle, docPath } from '../scripts/lib/wiki/render.mjs';
 import { parseArticle, loadArticles, articlePath } from '../scripts/lib/wiki/articles.mjs';
-import { linkedRefs, toPlain } from '../scripts/lib/wiki/content.mjs';
-import { writeWiki } from '../scripts/lib/wiki/build.mjs';
+import { linkedRefs, toPlain, isIndexable } from '../scripts/lib/wiki/content.mjs';
+import { writeWiki, loadAllContent } from '../scripts/lib/wiki/build.mjs';
 
 const wiki = await loadWiki();
 const index = buildIndex(wiki.entries);
@@ -55,13 +55,15 @@ test('renderHome: 공략 글 목록을 싣는다', () => {
   for (const a of articles) assert.match(home, new RegExp(`href="/wiki/guides/${a.slug}"`));
 });
 
-test('writeWiki: sitemap 은 대문·분류·공략 글만, 개별 문서는 뺀다', async () => {
+test('writeWiki: sitemap 은 대문·분류·공략 글과 본문이 충분한 개별 문서만', async () => {
   const dist = await mkdtemp(path.join(tmpdir(), 'wiki-'));
   const paths = (await writeWiki(dist)).map(p => p.path);
   assert.ok(paths.includes('/wiki/'));
   assert.ok(paths.includes('/wiki/fish/'));
-  assert.ok(!paths.includes('/wiki/fish/rare'));
   for (const a of articles) assert.ok(paths.includes(articlePath(a)), a.slug);
-  assert.equal(paths.length, 1 + wiki.cats.length + articles.length);
+  const content = loadAllContent();
+  const docs = wiki.entries.filter(e => isIndexable(content.get(`${e.cat}/${e.id}`), index)).map(docPath);
+  for (const e of wiki.entries) assert.equal(paths.includes(docPath(e)), docs.includes(docPath(e)), docPath(e));
+  assert.equal(paths.length, 1 + wiki.cats.length + articles.length + docs.length);
   assert.match(await readFile(path.join(dist, 'wiki/guides', `${articles[0].slug}.html`), 'utf8'), /<h1>/);
 });

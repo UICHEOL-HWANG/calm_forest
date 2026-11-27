@@ -57,6 +57,8 @@ test('renderDoc: 제목·canonical·정보 표·목차·BreadcrumbList·게임 �
   assert.match(html, /게임에서 만나러 가기/);
   assert.match(html, /<meta name="robots" content="noindex" \/>/);
   assert.doesNotMatch(html, /—/);
+  const long = new Map([['개요', '방어는 바다터의 물고기다. '.repeat(70)]]);
+  assert.doesNotMatch(renderDoc(index.get('fish/sea_buri'), long, { index, entries: wiki.entries, cats: wiki.cats }), /noindex/);
 });
 
 test('renderCat·renderHome·searchIndex', () => {

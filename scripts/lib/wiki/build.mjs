@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadWiki, WIKI_DATA_FILES } from './load-data.mjs';
 import { gitDate } from '../git-date.mjs';
-import { parseContent, SECTION_ORDER } from './content.mjs';
+import { parseContent, SECTION_ORDER, isIndexable } from './content.mjs';
 import { renderDoc, renderCat, renderHome, renderArticle, searchIndex, buildIndex, docPath, catPath } from './render.mjs';
 import { loadArticles, articlePath } from './articles.mjs';
 import { buildBacklinks } from './guides.mjs';
@@ -56,7 +56,9 @@ export async function writeWiki(dist) {
     paths.push({ path: catPath(c), lastmod: catDate[c.id] });
   }
   for (const e of entries) {
-    await put(docPath(e), renderDoc(e, content.get(`${e.cat}/${e.id}`), { ...ctx, lastmod: catDate[e.cat] }));
+    const secs = content.get(`${e.cat}/${e.id}`);
+    await put(docPath(e), renderDoc(e, secs, { ...ctx, lastmod: catDate[e.cat] }));
+    if (isIndexable(secs, index)) paths.push({ path: docPath(e), lastmod: catDate[e.cat] });
   }
   await writeFile(path.join(dist, 'wiki', 'search.json'), searchIndex(entries, cats));
   return paths;

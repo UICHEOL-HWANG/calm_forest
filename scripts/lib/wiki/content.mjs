@@ -50,6 +50,12 @@ export function toPlain(text, index) {
   return text.replace(LINK_RE, (_, ref, label) => label ?? target(ref, index).name).replace(/\s+/g, ' ').trim();
 }
 
+export const INDEX_MIN = 700;
+
+export function isIndexable(secs, index) {
+  return [...secs.values()].map(t => toPlain(t, index)).join('').replace(/\s/g, '').length >= INDEX_MIN;
+}
+
 export function firstSentence(plain) {
   const m = plain.match(/^.*?[.!?](?=\s|$)/);
   return (m ? m[0] : plain).trim();
