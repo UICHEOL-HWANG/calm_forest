@@ -1,6 +1,7 @@
 export const E5_ARMS = ['control', 'guest_first'];
 export const E5_STORE_KEY = 'cf_e5';
 export const E5_START_MS = Date.parse('2026-10-31T00:00:00+09:00');
+export const E5_ENDED = true;
 
 export const E5_COPY = {
   guest: '🌱 바로 시작하기',
@@ -38,7 +39,13 @@ export function parseE5Stored(raw) {
   } catch { return null; }
 }
 
+export function concludeE5(decision) {
+  if (!E5_ENDED || !decision?.enrolled || decision.reason === 'forced') return decision;
+  return { ...decision, arm: 'guest_first', ended: true };
+}
+
 export function e5UserProps(decision) {
+  if (decision?.ended) return {};
   return decision?.enrolled && decision.reason !== 'forced' && isArm(decision.arm) ? { exp_login: decision.arm } : {};
 }
 

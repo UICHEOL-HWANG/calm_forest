@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  E5_ARMS, E5_STORE_KEY, E5_START_MS, armForE5, decideE5, parseE5Stored, e5UserProps, guestFirst,
+  E5_ARMS, E5_STORE_KEY, E5_START_MS, armForE5, decideE5, parseE5Stored, e5UserProps, guestFirst, E5_ENDED, concludeE5,
 } from '../js/exp-e5.js';
 
 const AFTER = Date.parse('2026-10-31T00:00:00+09:00');
@@ -96,4 +96,26 @@ test('처치 문구는 영어판이 있다', async () => {
   const { E5_COPY } = await import('../js/exp-e5.js');
   const en = read('../js/i18n-en.js');
   for (const s of Object.values(E5_COPY)) assert.ok(en.includes(`'${s}'`), `영어판 없음: ${s}`);
+});
+
+test('E5 종료: 배정되던 기기는 모두 게스트 우선, 무리 속성은 보내지 않는다', () => {
+  assert.equal(E5_ENDED, true);
+  for (const cid of ['a', 'b', 'c', 'd', 'e', 'f']) {
+    const d = concludeE5(decideE5({ ...base, clientId: cid }));
+    assert.equal(guestFirst(d), true);
+    assert.deepEqual(e5UserProps(d), {});
+  }
+  const stored = concludeE5(decideE5({ ...base, newDevice: false, stored: { arm: 'control' } }));
+  assert.equal(guestFirst(stored), true);
+  assert.equal(guestFirst(concludeE5(decideE5({ ...base, inApp: false }))), false);
+  assert.equal(guestFirst(concludeE5(decideE5({ ...base, platform: 'android' }))), false);
+});
+
+test('E5 종료 뒤에도 QA 강제 무리는 그대로 따른다', () => {
+  const d = concludeE5(decideE5({ ...base, dev: true, forced: 'control' }));
+  assert.equal(guestFirst(d), false);
+});
+
+test('부트 모듈이 종료 판정을 거친다', () => {
+  assert.ok(read('../js/exp-e5-boot.js').includes('concludeE5(decideE5('));
 });
